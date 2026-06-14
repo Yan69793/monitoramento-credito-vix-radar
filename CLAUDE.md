@@ -6,7 +6,7 @@ A memória canônica do projeto é o Obsidian Vault **interno ao projeto**:
 
 `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\`
 
-(Atualizado 2026-06-13 — projeto consolidado em E:\Diretorio\Claude\Monitoramento de Credito\. Vault antigo em C:\Projetos Claude\Claude\Sistema de Credito\VixRadar\ pode ser arquivado. Comece sempre lendo `Obsidian VIX Radar\00 - Índice (MOC).md`.)
+(Atualizado 2026-06-14 — projeto consolidado em E:\Diretorio\Claude\Monitoramento de Credito\, **única cópia ativa**, repo git **`monitoramento-credito-vix-radar.git`** (branch `main`). A cópia antiga C:\Projetos Claude\Claude\Sistema de Credito\VixRadar\ (repo `VIXRADAR.git`, defasada) teve os dados de sessão fundidos para cá e foi **ARQUIVADA em 2026-06-14**. Sessões futuras DEVEM abrir a partir desta pasta E:\. Comece sempre lendo `Obsidian VIX Radar\00 - Índice (MOC).md`.)
 
 ## Regra central
 

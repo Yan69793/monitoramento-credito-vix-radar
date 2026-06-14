@@ -127,6 +127,7 @@ testsprite_tests\tmp\config.json
 # ---------- Histórico de sessões Claude (JSONL, paths longos, gitignored) ----------
 _historico_sessoes_claude/
 archive/_historico_sessoes_claude/
+_historico/
 
 # ---------- Credenciais (nunca versionar) ----------
 memory/credenciais.md
@@ -135,3 +136,4 @@ memory/credenciais.md
 auth/
 documentos-emissores/
 dados/*.xlsx
+.forja/

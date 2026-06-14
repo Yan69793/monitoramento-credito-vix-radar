@@ -1,15 +1,34 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-14 (v4.9.109 — N04/N09/N11/P15* resolvidos, skill reescrita, CI atualizado).
+Atualizado: 2026-06-14 (v4.9.110 — PERF op=state paralelizado; consolidação de diretório C:→E:).
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.109** | `GET /` `versao:"v4.9.109"` HTTP 200; CF Version ID `089135fe-c640-44dd-967b-06b732576535` | 2026-06-14 |
+| Worker `radar-credito-api` | **v4.9.110** | `GET /` `versao:"v4.9.110"` HTTP 200; CF Version ID `b9da2212-cf3e-4a90-b807-e219318c377c` | 2026-06-14 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}`; sidebar 100 emissores OK | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51; commit `2f74e46` | 2026-06-13 |
-| Worker repo | v4.9.109 | `api/v4.9.109.js` `WORKER_VERSAO="v4.9.109"` | 2026-06-14 |
+| Worker repo | v4.9.110 | `api/v4.9.110.js` `WORKER_VERSAO="v4.9.110"` | 2026-06-14 |
+
+## Incidente 2026-06-14 — Dashboard lento / "CEMIG sem eventos" (RESOLVIDO v4.9.110)
+
+> [!success] PERF op=state paralelizado + consolidação de diretório
+>
+> **Causa raiz confirmada:** handler `op=state` (`api/v4.9.109.js:13347`) fazia `await lerFlagsEmissor(env, emp)` **dentro de um `for`** sobre ~103 emissores → ~103 leituras KV sequenciais a cada carregamento inicial do dashboard. Latência de vários segundos. Enquanto não retornava, dashboard mostrava "0 de 103 / Nenhum evento" e painel do emissor "sem dados" — estado transitório. Depois populava normalmente.
+>
+> **Evidência objetiva:** `op=state` autenticado pós-fix = **1,15s cold / 0,39s warm**, 115 emissores, 5 semanas (W24-W20). CEMIG retorna **9 eventos** (debênture R$1,5bi 03/06 + incidente cyber 14/05 + eleição presidente 07/05 + AGO). 47/115 emissores com ≥1 evento. A janela "0 com sinal (7d)" é comportamento correto (eventos fora de 04-12/jun).
+>
+> **Correção aplicada:** `op=state` agora coleta as flags com `Promise.all` (1 round-trip paralelo em vez de 103×). Edição cirúrgica em `api/v4.9.110.js:13344-13357`; `node --check` OK; demais funções reusadas (`lerFlagsEmissor`, `obterCalendarioEmpresa`, `sanitizarEventosUserFacing`, `carregarEstadoMultiSemana`).
+>
+> **Validação em produção:** deploy `npx wrangler deploy` 2026-06-14T23:23Z, CF Version ID `b9da2212`. `GET /` → `versao:"v4.9.110"`, kv/rate_limiter/telemetria `true`, 3/3 providers. Login admin com senha documentada confirmado funcionando (o "Credenciais inválidas" relatado era engano de digitação/sessão — sem reset de senha necessário).
+
+## Consolidação de diretório 2026-06-14 — fim do drift C:↔E:
+
+> [!info] Cópia única e repo único
+> Havia **duas cópias** em repos git distintos: C:\Projetos Claude\Claude\Sistema de Credito\VixRadar (`VIXRADAR.git`, código defasado v4.9.108, mas dados de hoje mais novos) e E:\Diretorio\Claude\Monitoramento de Credito (`monitoramento-credito-vix-radar.git`, código v4.9.109 + pastas extras). **Decisão:** E:\ é a única cópia ativa, repo `monitoramento-credito-vix-radar.git`.
+>
+> **Ações:** dados de sessão de hoje fundidos C:→E: via `robocopy /XO` (1 nota Obsidian `2026-06-14.md` + 49 JSONs de noturno em testing/; nenhum código sobrescrito). Pasta-fantasma vazia `E:\...\Sistema de Credito` removida. `.gitignore` corrigido (`_historico/` agora excluído — era furo de PII). CLAUDE.md atualizado (E:\ canônico, C:\ arquivado). C:\ movido para `_ARQUIVO_MORTO_VIXRADAR_2026-06-14\` (reversível). **Sessões futuras DEVEM abrir a partir de E:\Diretorio\Claude\Monitoramento de Credito.**
 
 ## Bindings (confirmados via health)
 
