@@ -1,0 +1,34 @@
+# _headers — Cloudflare Pages
+# Instrui o navegador a SEMPRE verificar se há versão nova antes de usar o cache.
+# Resultado: nenhum usuário precisa apertar Ctrl+F5 ou limpar cache manualmente.
+
+# ─── Headers de segurança (auditoria 2026-06-01) ──────────────────────
+# Aplicados a todos os assets. Seguros (não quebram o app inline-script).
+# CSP NÃO incluída aqui de propósito: o index.html usa scripts/estilos inline
+# pesados; uma CSP restritiva quebraria o app. CSP exige teste em staging antes
+# de entrar — ver pendência registrada no Obsidian (03 - Estado de Produção).
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()
+
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+/
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+/version.json
+  Cache-Control: no-cache, no-store, must-revalidate
+  Pragma: no-cache
+  Expires: 0
+
+/api/*
+  Cache-Control: no-store, no-cache
+  Pragma: no-cache

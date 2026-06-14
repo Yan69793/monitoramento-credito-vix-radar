@@ -1,0 +1,21 @@
+# Copiar este arquivo para .dev.vars e preencher com valores reais.
+# NUNCA commitar .dev.vars — ele está no .gitignore.
+# Em produção, as variáveis ficam em Cloudflare Dashboard → Workers → Settings.
+
+# ─── APIs de IA ──────────────────────────────────────────────────────────────
+GEMINI_API_KEY=<GEMINI_API_KEY>
+OPENROUTER_API_KEY=<OPENROUTER_API_KEY>
+PERPLEXITY_API_KEY=<PERPLEXITY_API_KEY>
+
+# ─── Autenticação ────────────────────────────────────────────────────────────
+JWT_SECRET=gerar-com-openssl-rand-hex-32
+ADMIN_PASSWORD=...
+USER_PASSWORD=...
+
+# ─── Cloudflare (para management via CLI, se necessário) ─────────────────────
+CF_API_TOKEN=<CLOUDFLARE_API_TOKEN>
+
+# ─── Cloudflare KV ───────────────────────────────────────────────────────────
+# IDs preenchidos no wrangler.toml da pasta auth/
+# KV_ID_PRODUCAO=...
+# KV_ID_PREVIEW=...

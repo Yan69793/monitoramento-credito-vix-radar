@@ -1,0 +1,173 @@
+---
+type: project
+date: 2026-06-11
+session: dd52ec52-6d88-4d70-8da8-92e1cfb9d7df
+title: Pendências abertas após sessão 2026-06-11
+status: pendente
+---
+
+# Pendências abertas — sessão 2026-06-11
+
+## SEGURANÇA — FAZER ANTES DE TUDO
+
+- [ ] **ROTACIONAR TOKEN CLOUDFLARE** — exposto no chat desta sessão.
+  URL: https://dash.cloudflare.com/profile/api-tokens
+  Revogar: `cfut_oCWZ1Ae93LPedIVUwNoeqzWld9ipBmUydZ1S84JEe4d3cc42`
+  Criar novo com escopos: Pages Edit + Account Settings Read + User Details Read
+  Depois rodar: `pwsh ./scripts/setup-deploy-credential.ps1`
+
+## FASE 0 — Críticos operacionais (de 2026-06-10, abertos)
+
+- [ ] **N01 (REFINADO 2026-06-11)** — OpenRouter NÃO é falta de crédito.
+  Health 2026-06-11: `openrouter:true` (genérico) mas `perplexity_primario` e
+  `openrouter_web_search_exa` com HTTP 402 **e saldo de $76.08**. 402 + saldo positivo
+  = billing de add-on / spending limit / modelo web-search depreciado. Investigar no
+  painel OpenRouter por que esses modelos específicos dão 402 — recarregar crédito
+  não resolve. Sistema opera em `claude-haiku-4-5` (sem web search).
+  URL: https://openrouter.ai/credits e https://openrouter.ai/settings
+- [x] **P05* — CORRIGIDO** (commit `04fc826`). CI `canonical-test.yml` reescrito para
+  health check GET / (anônimo, 200) em vez do POST que dava 401. Valida ok/kv/telemetria;
+  `EXPECTED_WORKER="v4.9.102"`. Validado: YAML parseia, pipeline extrai HTTP 200 de prod.
+- [ ] **P15*** — Documentar ou remover cron `0 2 * * *` em `api/wrangler.toml`
+  (dobra custo de API; propósito não documentado)
+
+## DEPLOY v201.47 — CONCLUÍDO
+
+- [x] **Deploy v201.47** (fix Briefing EWS) — DEPLOYADO em produção 2026-06-11
+  (commit `745e8cb`, deployment `44119551`). Evidência bruta: version.json apex+www
+  v201.47, fix presente no bundle servido.
+
+## VALIDAÇÃO CONCLUÍDA (verificação online 2026-06-11)
+
+- [x] P12 (Comparar) + P13 (Briefing) verificados em produção por Claude in Chrome — OK
+  (1 defeito achado e corrigido: seção EWS sumia quando vazia → v201.47)
+
+## FIXES 2026-06-11 (continuação de sessão)
+
+- [x] **N06 PARCIAL — RESOLVIDO (display)** (commit `0c80ade`). Worker v4.9.104:
+  `handleBriefingExecutivo` e `handleCompararEmissores` agora usam
+  `SETOR_DE_EMPRESA[emp]` como fonte primária do setor (canônico) em vez de
+  `resultado.setor` bruto do KV (que continha nomes lowercase da cascade AI).
+  Corrige: distribuicao_setorial no Briefing, setor no Comparar, "Setores cobertos: 0" no PDF.
+
+- [x] **N06 CÁLCULO — RESOLVIDO em repo** (Worker v4.9.105, 2026-06-11).
+  `CRITICIDADE_SETOR` realinhado às 13 chaves canônicas do `EMISSORES_MAP`.
+  6 setores divergiam (48/103 emissores, ~47%, caíam no fallback 0.7 em
+  `enriquecerEvento`): Transportes e Logística 0.85 (era "Infraestrutura e
+  Transporte"), Financeiro 0.95 (era "Bancos e Financeiras"), Real Estate e
+  Construção 0.7 (era "Imobiliário e Shoppings"), Petróleo, Gás e Combustíveis
+  0.85 (era "Petróleo e Gás"), Telecom e Tecnologia 0.65 (era "Telecomunicações"),
+  Locação de Veículos e Mobilidade 0.7 (não existia; neutro = fallback).
+  Validação: `node --check` OK; `testing/test-n06-criticidade-setor.mjs` PASS
+  (13/13 cobertos, zero órfãs); diff v4.9.104→v4.9.105 = 8 linhas (2 versão + 6 chaves).
+  `wrangler.toml main = "v4.9.105.js"`. Deploy pendente (token).
+
+- [x] **Engajamento admin — erro melhorado** (frontend v201.48, commit `0c80ade`).
+  Painel agora exibe o erro real da resposta (`c._erro`) em vez da mensagem genérica.
+  **AINDA ABERTO (configuração operacional)**: painel requer 2 secrets no Worker:
+  1. `CLOUDFLARE_ACCOUNT_ID` — adicionado a `[vars]` no wrangler.toml (deploy pendente)
+  2. `CLOUDFLARE_API_TOKEN` com permissão Analytics Engine Read:
+     `cd api && npx wrangler secret put CLOUDFLARE_API_TOKEN`
+  Sem esses secrets, handleUso retorna 500 e o painel fica inoperante.
+
+- [ ] **P16 — Agenda de Divulgação semanal (design pendente)**
+  Estado: KV `admin:agenda_divulgacao` vazio, handler `admin_agenda_rebuild` existe
+  no Worker (linha 13457) mas nunca acionado. Cron `0 4 * * *` não existe no wrangler.toml
+  (só `ehAgenda` no handler, sem trigger). Usuário quer Routine semanal (Opus 4.8) para
+  gerar agenda 7d/30d/90d com mínimo de API. Requer definição: fonte de datas (CVM RAD?
+  calendário B3?), formato de output, mecanismo de acionamento semanal.
+
+- [ ] **P17 — Relatório diário automático (design pendente)**
+  PDF atual: "Setores cobertos: 0" corrigido pelo N06 fix. Relatório diário automático
+  ao final de cada dia requer: novo handler no Worker + endpoint de geração HTML/PDF +
+  possível cron adicional ou integração ao cron noturno existente.
+
+## VALIDAÇÃO ONLINE 02:07 BRT (Claude in Chrome) — relatório completo
+
+- [x] Verificação end-to-end em produção sobre v201.47 + v4.9.102: nenhuma regressão.
+  Fix v201.47 (EWS sempre visível) CONFIRMADO. Briefing/Comparar/Visão Geral/painel
+  emissor/toggle alertas — todos operacionais.
+- Sintomas pendentes confirmados (resolvem com o deploy): setores lowercase +
+  duplicados no Briefing (mineracao/energia/saude... vs canônicos), Auren "Outros"
+  no Comparar, mensagem genérica no Engajamento (v201.48 ausente).
+- Achado: `RadarAdmin@2026` REJEITADA em produção; senha vigente (sistema + admin)
+  registrada em `memory/credenciais.md`. Skill `radar-credito-privado` desatualizada.
+
+## DEPLOY CONCLUÍDO (2026-06-11 05:29Z)
+
+- [x] Worker v4.9.105 — Version ID `c8e93a7a-8535-4c25-bedc-cc441d88b24f`
+- [x] `EMAIL_ALERTAS_FAVORITOS` = "1" (P11 ativo)
+- [x] Frontend v201.48 — deployment `8077def8`
+- [x] `CLOUDFLARE_API_TOKEN` — CONFIGURADO (2026-06-11 sessão continuação)
+  Token `vixradar-analytics-engine-read` criado via Cloudflare dashboard (Account Analytics:Read,
+  escopo conta 7ac79fb1030e4e81115ef33c21a9b070). Secret aplicado ao Worker via wrangler.
+  Validação: POST `{action:"uso",admin_senha,visao:"overview"}` → HTTP 200 com dados reais
+  (587 admin_upsert_analise, 110 logins, etc.). Painel Engajamento operacional.
+
+## FASE 2 — Produto (próximo sprint)
+
+- [~] **P11 — IMPLEMENTADO, DEPLOY PENDENTE** (Worker v4.9.103→v4.9.104, commit `c829fd3`+`0c80ade`).
+  Alerta crítico direcionado por emissor favoritado + opt-in. Backend cirúrgico e
+  aditivo (gate `EMAIL_ALERTAS_FAVORITOS`); frontend não muda (toggle "Alertas críticos"
+  + favoritos já existem e persistem server-side). Validado local: node --check OK,
+  8/8 testes (fn real extraída do bundle), Worker sobe no dev como v4.9.103.
+  **Para ativar em produção:**
+  1. Rotacionar token Cloudflare + autorizar deploy de Worker.
+  2. `cd api && npx wrangler deploy` (main já aponta v4.9.103.js).
+  3. `wrangler secret put EMAIL_ALERTAS_FAVORITOS` = "1" (liga o modo direcionado).
+  4. Confirmar `EMAIL_ALERTAS_ENABLED` (kill-switch global; se ausente, nada é enviado).
+  5. Validar: pulso em emissor favoritado com opt-in → email só a quem favoritou+optou.
+- [ ] **P14** — Gráfico de série temporal por emissor (chaves `serie:` do KV existem, nunca visualizadas)
+- [ ] **P15** — Histórico estendido na timeline (3 meses via `op=historico_emissor`, só mudança de frontend)
+
+## TÉCNICAS — Backlog
+
+- [ ] **T11** — Cache inteligente de análise recente (`radar:analise:{empresa}`, TTL 4-6h)
+- [ ] **T12** — Dedup de requisições concorrentes (lock KV/DO durante cascade)
+- [ ] **T13** — Custo por análise logado (tokens + USD por provider via `tel()`)
+- [ ] **T14** — Feedback progressivo de análise (SSE/polling de status da cascade)
+- [ ] **T15** — Backoff exponencial + timeout individual por provider na cascade
+
+## DÍVIDA TÉCNICA
+
+- [x] **N06** — RESOLVIDO em repo (v4.9.105, ver bloco FIXES acima). Deploy pendente.
+- [ ] **P11-sec** — Remover `ADMIN_EMAIL` hardcoded do bundle → `env.ADMIN_EMAIL`
+- [ ] **N09** — Atualizar `CLAUDE.md` do projeto:
+  - Paths `worker/` → `api/`, `index.html` raiz → `app/index.html`
+  - Teste padrão: POST anônimo → GET `/` (anônimo retorna 200 agora)
+- [ ] **N10** — Atualizar model IDs no Worker:
+  - `claude-haiku-4-5-20251001` → `claude-haiku-4-5`
+  - `claude-sonnet-4-5-20250929` → `claude-sonnet-4-6`
+- [ ] **P18** — Decidir política de tracking de `archive/`, `docs/`, `research/`, `testing/`, `vixradar/`
+- [ ] **Git** — Push do branch `audit/reconcile-prod-2026-06-01` para remote (ainda local)
+- [x] **Drift de artefato do Worker — RECONCILIADO** (2026-06-11). Snapshot de prod puxado
+  via MCP comparado com `api/v4.9.102.js`: VEREDICTO equivalentes (só build/minificação
+  difere; prod NÃO tem código a mais). Repo é base segura para editar. Snapshot gitignorado
+  (`api/_prod_snapshot_*.js`). Ressalva: ambos são bundles minificados, sem fonte hand-authored.
+
+## Estado em produção ao encerrar esta sessão
+
+| Componente | Versão | Status |
+|---|---|---|
+| Worker `radar-credito-api` | v4.9.102 (prod) · v4.9.103 (repo, deploy pendente) | OK — em prod |
+| Frontend `vixradar.com` | **v201.47** | OK — em prod (deploy 2026-06-11) |
+| OpenRouter | — | 402 c/ saldo $76 (billing, não falta de crédito — ver N01 refinado) |
+| CI canonical-test | — | QUEBRADO |
+| Deploy script | `scripts/deploy-pages.ps1` | Criado e validado 2026-06-11 |
+
+## O que foi entregue nesta sessão
+
+- Levantamento de oportunidades T11-T15 / P11-P15
+- P12 (Comparar emissores) + P13 (Briefing executivo) implementados em `app/index.html`
+- Frontend bumped v201.45 → v201.46 e deployado em produção
+- `scripts/deploy-pages.ps1` — deploy repetível sem colar token
+- `scripts/setup-deploy-credential.ps1` — configuração/rotação de credencial
+- `Obsidian VIX Radar/10 - Oportunidades de Melhoria (2026-06-11).md`
+- `Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md`
+- `PENDENCIAS.md` — atualizado com T11-T15 e P11-P15
+- **Continuação 2026-06-11 (sessão opus):**
+  - Verificação online (Claude in Chrome) de P12/P13 em produção — 5/7 OK
+  - Fix v201.47 (seção EWS sempre visível no Briefing) — DEPLOYADO
+  - Reconciliação do Worker prod vs repo via MCP — equivalentes
+  - P11 implementado (Worker v4.9.103) — DEPLOY PENDENTE de rotação de token + flag
+  - Refinamento N01: OpenRouter 402 com saldo $76 (billing, não falta de crédito)

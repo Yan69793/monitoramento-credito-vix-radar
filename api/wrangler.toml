@@ -1,0 +1,72 @@
+# ═══════════════════════════════════════════════════════════════════════
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.109)
+# ═══════════════════════════════════════════════════════════════════════
+# v4.9.100.js = bundle limpo recuperado de produção via Cloudflare MCP (2026-06-01).
+# v4.9.101.js = v4.9.100 + fix de CORS choke-point.
+# v4.9.102.js = v4.9.101 + fix corsHeaders fallback.
+# v4.9.103.js = v4.9.102 + P11: alerta crítico por emissor favoritado.
+# v4.9.104.js = v4.9.103 + fix N06 display.
+# v4.9.105.js = v4.9.104 + fix N06 cálculo CRITICIDADE_SETOR.
+# v4.9.106.js = v4.9.105 + migração cascade AI → Claude Opus scheduled routines.
+# v4.9.107.js = v4.9.106 + T16 fix prompt data URL path + P16 flags em_reestruturacao + T15 retry/backoff.
+# v4.9.108.js = v4.9.107 + remoção OpenRouter do cascade (todos os 7 arrays) — apenas claude-haiku-analise como fallback Pulso.
+# v4.9.109.js = v4.9.108 + N04 worker_version hardcoded→WORKER_VERSAO, N11 console.error em __fixCorsResp, P15 cron 0 2→0 4 UTC (agenda build ativado).
+# Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
+name       = "radar-credito-api"
+main       = "v4.9.109.js"
+compatibility_date  = "2025-10-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+account_id = "7ac79fb1030e4e81115ef33c21a9b070"
+
+# ─── KV NAMESPACE (produção) ──────────────────────────────────────────
+[[kv_namespaces]]
+binding = "RADAR_KV"
+id      = "c6805b8d8a7b468e9f854ab4f91fb93a"
+
+# ─── DURABLE OBJECT ───────────────────────────────────────────────────
+[[durable_objects.bindings]]
+name       = "RATE_LIMITER_DO"
+class_name = "RateLimiterDO"
+
+[[migrations]]
+tag               = "v1"
+new_sqlite_classes = ["RateLimiterDO"]
+
+# ─── ANALYTICS ENGINE ─────────────────────────────────────────────────
+[[analytics_engine_datasets]]
+binding = "RADAR_USAGE_EVENTS"
+dataset = "radar_usage_events"
+
+# ─── VARIÁVEIS ────────────────────────────────────────────────────────
+[vars]
+ENVIRONMENT = "production"
+CLOUDFLARE_ACCOUNT_ID = "7ac79fb1030e4e81115ef33c21a9b070"
+
+# ─── CUSTOM DOMAIN ────────────────────────────────────────────────────
+# api.vixradar.com é o AG_API usado pelo frontend para login/auth.
+# OBRIGATÓRIO declarar aqui — deploy sem esta seção remove o route binding do dashboard.
+[[routes]]
+pattern = "api.vixradar.com"
+custom_domain = true
+
+# ─── CRON TRIGGERS ────────────────────────────────────────────────────
+# IMPORTANTE: estes triggers DEVEM permanecer aqui. Se removidos do .toml,
+# o `wrangler deploy` NÃO os apaga automaticamente do dashboard (verificado
+# em 2026-05-07 via Cloudflare API), mas ter no .toml é defesa em
+# profundidade — versionado em git, recuperável após qualquer mudança.
+#
+# Confirmados via API CF em 2026-05-07T07:14Z; papel redefinido em v4.9.106:
+#   - 30 15 * * 1-5  → matinal 12:30 BRT, dias úteis (sync_cvm + recalc + saldo; varredura AI via routine)
+#   - 30 21 * * *    → noturno 18:30 BRT, diário (sync_cvm + recalc + sync_anbima + newsletter + saldo + healthcheck; batch AI via routine)
+#   - 0 1 * * *      → watchdog 22:00 BRT, diário
+#   - 0 4 * * *      → agenda build 01:00 BRT (agendaBuildPersistir: calendário 90 dias → KV agenda:eventos:v1, TTL 3d)
+#                      (era "0 2 * * *" = 23h BRT, caía no else/noturno duplicando pipeline — corrigido 2026-06-14)
+[triggers]
+crons = [
+  "30 15 * * 1-5",
+  "30 21 * * *",
+  "0 1 * * *",
+  "0 4 * * *"
+]

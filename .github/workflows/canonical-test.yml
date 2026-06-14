@@ -1,0 +1,101 @@
+# VixRadar — Canonical Production Test
+# Valida a saúde de produção a cada 6h via health check anônimo (GET /).
+# NOTA: o endpoint POST de análise passou a exigir JWT (401 anônimo) desde a
+# reconciliação de 2026-06-01, por isso este teste usa o health check público
+# GET / em vez do antigo POST de análise (que falhava sempre com 401).
+
+name: Canonical Production Test
+
+on:
+  schedule:
+    # A cada 6 horas, em minuto 15 para evitar topo-de-hora
+    - cron: '15 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  canonical-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run health check
+        id: test
+        run: |
+          RESPONSE=$(curl -s https://api.vixradar.com/ \
+            --max-time 30 \
+            -w "\n__HTTP:%{http_code}__TIME:%{time_total}__")
+
+          HTTP=$(echo "$RESPONSE" | grep -oP '__HTTP:\K\d+')
+          TIME=$(echo "$RESPONSE" | grep -oP '__TIME:\K[0-9.]+')
+          BODY=$(echo "$RESPONSE" | sed 's/__HTTP:.*//')
+          OK=$(echo "$BODY" | jq -r '.ok // false')
+          WORKER_V=$(echo "$BODY" | jq -r '.versao // "unknown"')
+          KV=$(echo "$BODY" | jq -r '.bindings.kv // false')
+          RL=$(echo "$BODY" | jq -r '.bindings.rate_limiter // false')
+          TEL=$(echo "$BODY" | jq -r '.bindings.telemetria // false')
+          PROV=$(echo "$BODY" | jq -r '.providers_configurados // "?"')
+
+          echo "http=$HTTP" >> $GITHUB_OUTPUT
+          echo "time=$TIME" >> $GITHUB_OUTPUT
+          echo "ok=$OK" >> $GITHUB_OUTPUT
+          echo "worker_v=$WORKER_V" >> $GITHUB_OUTPUT
+          echo "kv=$KV" >> $GITHUB_OUTPUT
+          echo "rate_limiter=$RL" >> $GITHUB_OUTPUT
+          echo "telemetria=$TEL" >> $GITHUB_OUTPUT
+          echo "providers=$PROV" >> $GITHUB_OUTPUT
+
+          echo "### Resultado"
+          echo "HTTP: $HTTP (${TIME}s)"
+          echo "ok: $OK | Worker: $WORKER_V"
+          echo "bindings: kv=$KV rate_limiter=$RL telemetria=$TEL"
+          echo "providers_configurados: $PROV"
+
+      - name: Validate health
+        run: |
+          HTTP="${{ steps.test.outputs.http }}"
+          OK="${{ steps.test.outputs.ok }}"
+          WORKER_V="${{ steps.test.outputs.worker_v }}"
+          KV="${{ steps.test.outputs.kv }}"
+          RL="${{ steps.test.outputs.rate_limiter }}"
+          TEL="${{ steps.test.outputs.telemetria }}"
+
+          # Atualizar quando deployar nova versão de Worker (ver Obsidian 03 - Estado de Produção).
+          EXPECTED_WORKER="v4.9.109"
+          FAIL=0
+
+          if [ "$HTTP" != "200" ]; then
+            echo "::error::HTTP esperado 200, recebido $HTTP"
+            FAIL=1
+          fi
+
+          if [ "$OK" != "true" ]; then
+            echo "::error::Health ok=$OK (esperado true) — produção degradada"
+            FAIL=1
+          fi
+
+          if [ "$KV" != "true" ]; then
+            echo "::error::Binding RADAR_KV ausente (kv=$KV)"
+            FAIL=1
+          fi
+
+          # Telemetria é regra inviolável do projeto (binding RADAR_USAGE_EVENTS).
+          if [ "$TEL" != "true" ]; then
+            echo "::error::Binding de telemetria ausente (telemetria=$TEL) — painel de Engajamento cego"
+            FAIL=1
+          fi
+
+          if [ "$RL" != "true" ]; then
+            echo "::warning::Binding rate_limiter=$RL (esperado true)"
+          fi
+
+          if [ "$WORKER_V" != "$EXPECTED_WORKER" ]; then
+            echo "::warning::Worker drift. Esperado $EXPECTED_WORKER, produção em $WORKER_V. Atualizar EXPECTED_WORKER e os docs (Obsidian 03 - Estado de Produção)."
+          fi
+
+          if [ "$FAIL" = "1" ]; then
+            echo "Health check FALHOU."
+            exit 1
+          fi
+          echo "Produção saudável."

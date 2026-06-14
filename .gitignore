@@ -1,0 +1,137 @@
+# ============================================================
+# VIX Radar, .gitignore
+# Objetivo, nunca versionar segredos, caches, builds, temporarios.
+# ============================================================
+
+# ---------- Segredos e credenciais ----------
+.env
+.env.*
+*.env
+.envrc
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+*.pfx
+*.keystore
+secrets.json
+secrets.yml
+credentials.json
+.credentials.json
+mcp-needs-auth-cache.json
+API\ TOKENS/
+API_TOKENS/
+*TOKEN*.txt
+*token*.txt
+*SECRET*
+*secret.json
+
+# ---------- Config local e ferramentas pessoais ----------
+.claude/
+.claude.json
+.claude.json.backup
+.copilot/
+.config/
+.local/
+.bun/
+.cache/
+.antigravity/
+.paperclip/
+.gitconfig
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Cloudflare Workers, Wrangler ----------
+.wrangler/
+.mf/
+.miniflare/
+wrangler.toml.bak
+# Snapshots de evidência (bundles grandes puxados de prod via MCP; veredicto fica nos docs)
+api/_prod_snapshot_*.js
+.playwright-mcp/
+
+# ---------- Node, builds, dependencias ----------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+dist/
+build/
+out/
+.next/
+.nuxt/
+.vite/
+.turbo/
+coverage/
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ---------- Logs, temporarios, dumps ----------
+*.log
+deploy_log_*.txt
+deploy_err.txt
+deploy_out.txt
+deploy_*_tee.log
+*.tmp
+*.temp
+*.bak
+*.bak_*
+*.backup
+*.old
+
+# ---------- Backups e arquivos grandes ----------
+backups/
+*.tar.gz
+*.zip
+index.html.bak*
+index_*_backup*.html
+
+# ---------- Audio gerado, nao essencial para codigo ----------
+audio/*.mp3
+audio/*.wav
+
+# ---------- IDE ----------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ---------- Outputs de ferramentas MCP/Claude Code ----------
+.claude-local/
+.claude.json*
+.claude-skills/
+
+# ---------- Scripts de automacao transitoria ----------
+_git_*.ps1
+_git_*.log
+_deploy_*.ps1
+_deploy_*.log
+
+testsprite_tests\tmp\config.json
+
+# ---------- Histórico de sessões Claude (JSONL, paths longos, gitignored) ----------
+_historico_sessoes_claude/
+archive/_historico_sessoes_claude/
+
+# ---------- Credenciais (nunca versionar) ----------
+memory/credenciais.md
+
+# ---------- Protótipos e dados não-código ----------
+auth/
+documentos-emissores/
+dados/*.xlsx
