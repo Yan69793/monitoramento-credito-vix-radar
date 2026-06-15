@@ -12,9 +12,10 @@
 # v4.9.108.js = v4.9.107 + remoção OpenRouter do cascade (todos os 7 arrays) — apenas claude-haiku-analise como fallback Pulso.
 # v4.9.109.js = v4.9.108 + N04 worker_version hardcoded→WORKER_VERSAO, N11 console.error em __fixCorsResp, P15 cron 0 2→0 4 UTC (agenda build ativado).
 # v4.9.110.js = v4.9.109 + PERF op=state: paraleliza ~103 leituras de flags (await em loop → Promise.all). Corrige dashboard lento p/ abrir / "demora muito p/ voltar ao normal".
+# v4.9.111.js = v4.9.110 + FIX persistência: rodada nova com eventos passa a UNIR+dedup com a anterior (em vez de replace na :7283). Impede que rodada rasa apague eventos válidos de rodada anterior (regressão "só até 09/06"). Ordena por materialidade, cap 40, dedup data+titulo+fonte.
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.110.js"
+main       = "v4.9.111.js"
 compatibility_date  = "2025-10-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
