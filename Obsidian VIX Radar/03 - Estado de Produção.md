@@ -1,15 +1,42 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-14 (v4.9.110 — PERF op=state paralelizado; consolidação de diretório C:→E:).
+Atualizado: 2026-06-14 (v4.9.111 — persistência fix + merge; replay 17 eventos restaurados).
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.110** | `GET /` `versao:"v4.9.110"` HTTP 200; CF Version ID `b9da2212-cf3e-4a90-b807-e219318c377c` | 2026-06-14 |
+| Worker `radar-credito-api` | **v4.9.111** | `GET /` `versao:"v4.9.111"` HTTP 200; CF Version ID `4a6f76e1` | 2026-06-14 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}`; sidebar 100 emissores OK | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51; commit `2f74e46` | 2026-06-13 |
-| Worker repo | v4.9.110 | `api/v4.9.110.js` `WORKER_VERSAO="v4.9.110"` | 2026-06-14 |
+| Worker repo | v4.9.111 | `api/v4.9.111.js` `WORKER_VERSAO="v4.9.111"` | 2026-06-14 |
+
+## Incidente 2026-06-14B — Eventos só até 09/jun + replay v2 (RESOLVIDO v4.9.111)
+
+> [!success] Regressão de persistência corrigida + 17 eventos restaurados manualmente
+>
+> **Causa raiz confirmada (dupla):**
+> 1. **Regressão de persistência (`persistirResultadoCompartilhado`):** rodada nova com eventos passava a **substituir** o KV em vez de unir com a rodada anterior — eventos válidos de execuções anteriores eram apagados quando a nova rodada retornava conjunto menor. Corrigido em v4.9.111: rodadas com eventos agora fazem **UNION + dedup** (por data+titulo+fonte), ordena por materialidade, cap 40. Merge com anterior preservado para rodadas rasas (`sem_eventos:true`).
+> 2. **Schema mismatch no `action=receber_analise`:** arquivos de teste usavam campos `data_evento`/`evento`/`fonte_primaria`; `validarSchemaEvento` exige `data`/`descricao`/`fonte`. `processarEventosComVerdadeGraduada` rejeitava todos os eventos → `sem_eventos=true` antes de `_raSaneado.eventos = _raEvs` → `persistirResultadoCompartilhado` ignorava os eventos verificados pelo AI (`verificarEventosBatch`). Bug de ordering no handler.
+>
+> **Evidência objetiva:** eventos de CEMIG (12/jun), Equatorial (11/jun), JBS (12/jun), Light (10/jun), Oi (11/jun), Petrobras (12/jun), Vale (11/jun) ausentes do dashboard pós-noturno 2026-06-13; `op=state` retornava dados só até 09/jun.
+>
+> **Correção aplicada:**
+> - v4.9.111 deployado: `persistirResultadoCompartilhado` linha ~7283 agora faz UNION+dedup+sort+cap40 em vez de replace.
+> - Replay manual: 7 arquivos `testing/noturno_*.json` corrigidos com campos de schema (`data`, `descricao`, `fonte`) + URLs CVM embutidas → enviados via `action=receber_analise` em paralelo (7 agentes simultâneos).
+>
+> **Validação em produção:**
+> | Empresa | HTTP | n_eventos | sem_eventos |
+> |---|---|---|---|
+> | CEMIG | 200 | 2 | false |
+> | Equatorial | 200 | 2 | false |
+> | JBS | 200 | 2 | false |
+> | Light | 200 | 3 | false |
+> | Oi | 200 | 3 | false |
+> | Petrobras | 200 | 3 | false |
+> | Vale | 200 | 2 | false |
+>
+> **Total: 17 eventos restaurados.** Arquivos temporários `_v2_replay_*.json` e `_replay_*.json` removidos. Bug de ordering no handler (`receber_analise`) documentado como pendência v4.9.112.
 
 ## Incidente 2026-06-14 — Dashboard lento / "CEMIG sem eventos" (RESOLVIDO v4.9.110)
 
