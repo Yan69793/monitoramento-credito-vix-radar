@@ -74,9 +74,9 @@ status: pendente
   Worker: KV `calendario:overrides:v1`, `listar_calendario_stale`, `atualizar_calendario_emissor`, merge em `agendaBuildPersistir`.
   SKILL: `~/.claude/scheduled-tasks/vixradar-agenda-semanal/` (cron `0 6 * * 1` — registrar no agendador Claude).
 
-- [x] **P17 — Relatório diário automático (IMPLEMENTADO v4.9.119 — 2026-06-16)**
-  `executarRelatorioDiario` + hook cron `30 21 * * *`; `action=relatorio_diario_teste` (admin).
-  Secret `RELATORIO_DIARIO_ENABLED=0` (off até validação); destinatários com `prefs.frequencia=diario`.
+- [x] **P17 — Relatório semanal piloto (v4.9.120 — 2026-06-16)**
+  Semanal dedup semanaISO; `RELATORIO_DESTINATARIOS_PILOTO=yan@szuchmacher.com.br`; `RELATORIO_DIARIO_ENABLED=1`.
+  Piloto enviado `relatorio_diario_teste` ok. Remover secret piloto para abrir a usuários semanal.
 
 ## VALIDAÇÃO ONLINE 02:07 BRT (Claude in Chrome) — relatório completo
 

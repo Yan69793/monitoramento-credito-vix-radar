@@ -1,15 +1,21 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16 (Worker v4.9.119 + P16/P17). Anterior: v4.9.118 health 2/2.
+Atualizado: 2026-06-16 (Worker v4.9.120 + P16 exec + P17 piloto yan@). Anterior: v4.9.119 P16/P17 código.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.119** | `GET /` `ok:true` `versao:"v4.9.119"` `providers_configurados:"2/2"` `verificador_ok:true` HTTP 200; CF Version ID `37d691d4-c4aa-48be-93bb-7d40ec3a65fe` | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.120** | `GET /` `versao:"v4.9.120"`; CF Version ID `7d92ee8c-79a4-4a7c-8cd8-4873fcf913d9` | 2026-06-16 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
-| Worker repo | v4.9.119 | `api/v4.9.119.js` `WORKER_VERSAO="v4.9.119"`; `api/wrangler.toml main="v4.9.119.js"` | 2026-06-16 |
+| Worker repo | v4.9.120 | `api/v4.9.120.js`; `api/wrangler.toml main="v4.9.120.js"` | 2026-06-16 |
+
+## Deploy v4.9.120 — P17 semanal piloto + P16 execução manual (2026-06-16)
+
+**P17:** relatório **semanal** (dedup `relatorio:enviado:{semanaISO}`); secret `RELATORIO_DESTINATARIOS_PILOTO=yan@szuchmacher.com.br`; `RELATORIO_DIARIO_ENABLED=1`. Piloto enviado via `relatorio_diario_teste` → `enviado:true`.
+
+**P16 manual:** 16/20 emissores atualizados em `calendario:overrides:v1` (4 skipped: AES Brasil, MRS, Santos Brasil, Omega). `admin_agenda_rebuild` executado.
 
 ## Deploy v4.9.119 — P16 calendário + P17 relatório diário (2026-06-16)
 
