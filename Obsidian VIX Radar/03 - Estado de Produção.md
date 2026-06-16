@@ -1,15 +1,71 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-14 (v4.9.111 — persistência fix + merge; replay 17 eventos restaurados).
+Atualizado: 2026-06-16 (INCIDENTE RESOLVIDO: ANTHROPIC_API_KEY rotacionado + verificador validado sem 401 — ver blocos abaixo). Anterior: 2026-06-15 (ANTHROPIC_API_KEY inválido — 33 eventos quarentenados; verificador cego).
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.111** | `GET /` `versao:"v4.9.111"` HTTP 200; CF Version ID `4a6f76e1` | 2026-06-14 |
+| Worker `radar-credito-api` | **v4.9.113** | `GET /` `versao:"v4.9.113"` `verificador_ok:true` HTTP 200; CF Version ID `de4fa8f8` | 2026-06-16 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}`; sidebar 100 emissores OK | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51; commit `2f74e46` | 2026-06-13 |
-| Worker repo | v4.9.111 | `api/v4.9.111.js` `WORKER_VERSAO="v4.9.111"` | 2026-06-14 |
+| Worker repo | v4.9.112 | `api/v4.9.112.js` `WORKER_VERSAO="v4.9.112"` | 2026-06-16 |
+
+## Regressão v4.9.112 + Hotfix v4.9.113 (2026-06-16)
+
+**Causa raiz:** edit `admin_mercado form method="get"→"post"` (v4.9.112) quebrou o handler. `handleAdminMercado` lê `senha` via `url.searchParams.get("senha")` — exclusivamente em rotas GET. POST form-urlencoded caía no parser JSON genérico (`JSON.parse(body)`) → `{"error":"JSON inválido."}` HTTP 400.
+
+**Correção:** v4.9.113 reverte `method="post"` → `method="get"`. Handler GET preservado sem mudança. CF Version ID `de4fa8f8`.
+
+**Lição:** antes de alterar `method` de form HTML embutido em Worker, verificar qual bloco do router trata a action (GET vs POST). `admin_mercado` é tratado no bloco GET; não tem handler POST equivalente.
+
+**Validação:** `GET /?action=admin_mercado` → form `method="get"` ✅ | `GET /?action=admin_mercado&senha=errada` → HTTP 200 sem 500 ✅ | `POST {} anônimo` → 401 ✅ | `tel_test` → `write_result.ok:true` ✅ | `admin_verificar_evento` → `quarentenados:0` ✅
+
+## Deploy v4.9.112 (2026-06-16 19:09Z) — Segurança + Observabilidade
+
+**CF Version ID:** `02ec5bd9-5141-4cfd-bb87-43ae9b0ff5de`
+**wrangler.toml:** `main=v4.9.112.js`, `compatibility_date=2026-06-16`, bloco `[observability]` adicionado.
+
+**Mudanças aplicadas (8 edits cirúrgicos):**
+1. `Math.random()` → `crypto.getRandomValues(new Uint8Array)` em `gerarMessageId` e `gerarCicloId`
+2. `JWT_SECRET || "radar"` → sem fallback (fail-secure em `hashIpLgpd`)
+3. `admin_mercado` form `method="get"` → `method="post"` (senha não vaza em URL/logs)
+4. Rate limiter bypass `env_indisponivel` / `do_binding_ausente` / `do_erro` → `console.warn` antes de retornar fail-open
+5. Health check `GET /` agora expõe `verificador_ok: !!env.ANTHROPIC_API_KEY`
+
+**wrangler.toml adições:**
+- `compatibility_date`: `2025-10-01` → `2026-06-16`
+- `[observability] enabled=true head_sampling_rate=1` adicionado
+
+**Validação pós-deploy:**
+- `GET /` → `{"ok":true,"versao":"v4.9.112","verificador_ok":true,"bindings":{"kv":true,"rate_limiter":true,"telemetria":true},"providers_configurados":"3/3"}` ✅
+- `action=tel_test` → `binding_presente:true, write_result.ok:true` ✅
+- `action=admin_verificar_evento` (evento sintético) → `quarentenados:0, verificados:1, rejeitados:1` (Haiku operacional) ✅
+
+## Incidente 2026-06-15 — ANTHROPIC_API_KEY inválida cega o verificador (RESOLVIDO 2026-06-16)
+
+> [!success] RESOLVIDO 2026-06-16 18:22Z — Secret rotacionado via `wrangler secret put`; `admin_verificar_evento` → `quarentenados:0`; verificador operacional
+>
+> **Resolução:** `cd api && grep "^ANTHROPIC_API_KEY=" .env | cut -d'=' -f2- | npx wrangler secret put ANTHROPIC_API_KEY` (`✨ Success!`). Validação: health 200 + `admin_verificar_evento` HTTP 200 `quarentenados:0` sem 401 + chave KV `2026-06-16` inexistente (nenhum novo evento quarentenado). Ver [[14 - Auditoria Completa 2026-06-16]] para evidências completas.
+>
+> **Nota sobre replay:** quarentena armazena só metadados (sem payload completo). Replay real = próxima execução de `vixradar-noturno` (18h BRT), que re-analisa todos 103 emissores com verificador funcional.
+
+> [!info] Contexto original do incidente (preservado para histórico)
+> Secret `ANTHROPIC_API_KEY` do Worker retornava HTTP 401 — TODO o pipeline de ingestão estava em quarentena
+>
+> **Causa raiz confirmada:** o secret `ANTHROPIC_API_KEY` configurado no Worker `radar-credito-api` está **inválido/revogado**. Toda chamada ao verificador adversarial (`chamarClaudeVerificador`, modelo `claude-haiku-4-5-20251001`) retorna `HTTP 401 {"type":"authentication_error","message":"invalid x-api-key"}`.
+>
+> **Mecânica da falha (api/v4.9.111.js):** em `verificarEventosBatch` (linha ~9007), quando a chamada Haiku lança erro, o `catch` (linha ~9008) joga **todos** os eventos do batch para `quarentenarBatch` e nenhum entra em `aprovados`. Em `receber_analise` (linha ~13948), `validarEVerificar` retorna `[]` → `_raSaneado.eventos = []` → resposta `{"ok":true,"n_eventos":0,"sem_eventos":false}`. O POST é aceito (HTTP 200) mas **nada é persistido no estado** — falha silenciosa.
+>
+> **Evidência objetiva (bruta):** chave KV `radar:auditoria:verificador_indisponivel:2026-06-15` (namespace `c6805b8d8a7b468e9f854ab4f91fb93a`), lida via `wrangler kv key get --remote`, contém eventos quarentenados de **Raízen, Oi, Equatorial, Vamos, Cosan, Oncoclínicas** desde 2026-06-15T00:19:48Z, todos com `motivo_quarentena: "batch_haiku_falhou: claude-haiku-4-5-20251001 HTTP 401: ...invalid x-api-key"`. Múltiplos `request_id` Anthropic distintos (req_011Cc4..., req_011Cc5...) confirmam falha persistente, não transitória.
+>
+> **Impacto:** desde ~00:19 UTC de 15/06 (e possivelmente antes), nenhum evento novo é aprovado nem persistido. O cron noturno de 14/06 e qualquer routine/Pulso que dependa do verificador estão cegos. Dashboard/EWS não recebem eventos novos. Análises chegam ao Worker e morrem na quarentena.
+>
+> **Correção pendente (operador):** rotacionar o secret. `cd api && npx wrangler secret put ANTHROPIC_API_KEY` com chave Anthropic válida. Depois: reenviar (replay) os eventos quarentenados da chave `radar:auditoria:verificador_indisponivel:2026-06-15` via `action=receber_analise`.
+>
+> **Validação pós-fix obrigatória:** reenviar 1 evento de teste e confirmar `n_eventos >= 1` na resposta; conferir que a chave de quarentena para o dia para de crescer.
+>
+> **Nota Raízen (tarefa 2026-06-15):** análise autônoma da Raízen executada com sucesso (5 rodadas WebSearch, 3 eventos montados com fontes reais: plano final RE 03/06 [CVM FR protocolo 1485599 + Brazil Journal 75,45% adesão], venda Argentina ~R$7,2bi 04/06, perda ~60% debêntures/CRAs). Eventos válidos e dentro da janela — **bloqueados apenas pelo 401 acima**, não por defeito da análise. Aguardam replay pós-rotação do secret.
 
 ## Incidente 2026-06-14B — Eventos só até 09/jun + replay v2 (RESOLVIDO v4.9.111)
 
@@ -79,10 +135,14 @@ Atualizado: 2026-06-14 (v4.9.111 — persistência fix + merge; replay 17 evento
 
 | Routine | Horário BRT | Função |
 |---|---|---|
-| `vixradar-matinal` | 13h00, dias úteis | Top 15 emissores por EWS → 9 rodadas de busca → push resultado ao Worker |
-| `vixradar-noturno` | 17h30, diário | Top **103** emissores por staleness/EWS → 9 rodadas de busca → push resultado ao Worker (era top_n:30 — corrigido 2026-06-14) |
+| `vixradar-matinal` | 10h00, dias úteis (cron `0 10 * * 1-5`, jitter ~+6min) | Top 15 emissores por EWS → 9 rodadas de busca → push resultado ao Worker |
+| `vixradar-noturno` | 18h00, diário (cron `0 18 * * *`, jitter ~+5min) | Top **103** emissores por staleness/EWS → 9 rodadas de busca → push resultado ao Worker (era top_n:30 — corrigido 2026-06-14) |
+| `atualizar-agenda-macro-szuchmacher` | sexta 07:07 (cron `7 7 * * 5`, jitter ~+9min) | Atualiza calendário macro `/assets/agenda.php` de szuchmacher.com.br via FTP HostGator (backup + upload + validação + rollback) |
 
-**Arquivos:** `C:\Users\User\.claude\scheduled-tasks\vixradar-matinal\SKILL.md` e `vixradar-noturno\SKILL.md`
+> [!warning] Horários alterados 2026-06-15 (reinstalação do Claude desktop)
+> A reinstalação **zerou o registro do agendador** (banco interno em `AppData\Roaming\Claude\`); `list_scheduled_tasks` retornava vazio. Os arquivos SKILL.md (prompts) sobreviveram órfãos em disco. **Correção:** as 3 rotinas recriadas via `create_scheduled_task`, que reescreve o SKILL.md **e** re-registra o cron. Novos horários por decisão do operador: matinal 13h→**10h**, noturno 17h30→**18h** (para alimentar o newsletter das 18h30). ⚠️ Janela noturna×newsletter caiu para ~25min — só os emissores mais urgentes da fila entram frescos na edição do dia; restante na seguinte.
+
+**Arquivos:** `C:\Users\User\.claude\scheduled-tasks\vixradar-matinal\SKILL.md`, `vixradar-noturno\SKILL.md` e `atualizar-agenda-macro-szuchmacher\SKILL.md`
 
 **Secret:** `ROUTINE_API_KEY` configurado no Worker (wrangler secret, 48 chars alfanuméricos). Ver `memory/credenciais.md`.
 
@@ -197,12 +257,16 @@ Rotinas Claude Opus (`vixradar-matinal`, `vixradar-noturno`) são independentes 
 
 | Componente | Repo | Produção | Drift |
 |---|---|---|---|
-| Worker | v4.9.109 | v4.9.109 | Nenhum ✅ |
+| Worker | v4.9.111 | v4.9.111 | Nenhum ✅ |
 | Frontend | v201.51 | v201.51 | Nenhum ✅ |
 | deploy_zip | v201.51 | v201.51 | Nenhum ✅ |
+| `app/version.json` (raiz) | v201.51 (corrigido 2026-06-16) | — | Nenhum ✅ (era v201.50) |
+| `wrangler.toml` comentário | v4.9.111 (corrigido 2026-06-16) | — | Nenhum ✅ (era v4.9.109) |
 
 ## Histórico recente
 
+- **2026-06-16:** **Auditoria completa + rotação de ANTHROPIC_API_KEY (incidente 2026-06-15 RESOLVIDO).** (1) `wrangler secret put ANTHROPIC_API_KEY` executado com chave válida — `✨ Success!` 18:22Z. (2) Validação pós-rotação: `GET /` HTTP 200 v4.9.111, `admin_verificar_evento` HTTP 200 `quarentenados:0`, `tel_test` `binding_presente:true`, `uso visao=debug` exibe `tel_test_sintetico` — todos 7 critérios da auditoria atendidos. (3) Micro-drift `app/version.json` (v201.50→v201.51) corrigido. (4) Comentário stale `wrangler.toml` (v4.9.109→v4.9.111) corrigido. (5) `api/.env` criado com credenciais operacionais (gitignored). Nota [[14 - Auditoria Completa 2026-06-16]] com 4 blocos por achado + 7 regras invioláveis confirmadas. Pendência v4.9.112: `verificador_ok` no health check.
+- **2026-06-15:** **Scheduled Routines re-registradas após reinstalação do Claude desktop.** A reinstalação zerou o registro do agendador (`list_scheduled_tasks` vazio); os 3 SKILL.md ficaram órfãos em `C:\Users\User\.claude\scheduled-tasks\`. Recriadas via `create_scheduled_task` (reescreve prompt + re-registra cron). Novos horários: `vixradar-matinal` 13h→**10h** (`0 10 * * 1-5`), `vixradar-noturno` 17h30→**18h** (`0 18 * * *`), `atualizar-agenda-macro-szuchmacher` mantida sexta 07:07 (`7 7 * * 5`). Validação: `list_scheduled_tasks` mostra as 3 `enabled:true` com `nextRunAt`. ⚠️ Janela noturno×newsletter agora ~25min (disparo real ~18:05 vs newsletter 18:30).
 - **2026-06-14:** **Worker v4.9.109** — 5 correções aplicadas e deployadas. (1) **N04** `worker_version` hardcoded removido: dois pontos no bundle (`handleOps` linha 11612 `"v4.8.0"` + `executarHealthCheckDiario` linha 13214 `"v4.8.5"`) substituídos por `WORKER_VERSAO`; health check agora reporta versão correta. (2) **N11** catch vazio em `__fixCorsResp` ganhou `console.error("[cors-fix]", ...)` — erros de CORS agora visíveis nos logs do Worker. (3) **P15*** cron `0 2 * * *` (23h BRT) renomeado para `0 4 * * *` (01h BRT): eliminado o pipeline noturno duplicado e ativado `agendaBuildPersistir` (calendário 90 dias → KV `agenda:eventos:v1`, TTL 3d), que nunca havia rodado. (4) **N09** CLAUDE.md corrigido: teste padrão obrigatório trocado de POST anônimo (401) para `GET /` health check público. (5) **P05*** CI `canonical-test.yml` atualizado: `EXPECTED_WORKER="v4.9.102"` → `"v4.9.109"`. Versão WORKER_VERSAO atualizada para `"v4.9.109"` (linha 3483). `wrangler.toml` atualizado (main + crons + changelog). Deploy CF Version ID `089135fe-c640-44dd-967b-06b732576535`. Health check pós-deploy: `{"ok":true,"versao":"v4.9.109","bindings":{"kv":true,"rate_limiter":true,"telemetria":true},"providers_configurados":"3/3"}` HTTP 200. Skill `radar-credito-privado` reescrita completa (v3.9.6/v61 → v4.9.108/v201.51 real). Rotina `vixradar-noturno` corrigida: `top_n:30` → `top_n:103`.
 - **2026-06-13 (3):** **vixradar-noturno executado manualmente** — 30/30 emissores, 0 falhas. 11 com eventos persistidos. Emissores CRÍTICOS: Oncoclínicas (standstill vencido, deadline RE 15/06), Raízen (CCC+, RE R$64,7bi), Light (FR capital RJ), Aegea (downgrade S&P/Fitch). Brava Energia: FR OPA Ecopetrol (anuência debenturistas waiver). Noturno anterior: 2026-06-12 (automático).
 - **2026-06-13 (2):** **Worker v4.9.108** — OpenRouter removido de todos os 7 arrays de cascade. Causa: OR com saldo -$0.20 (overdraft), todos os providers externos inoperantes. Decisão: usar apenas claude-haiku-analise como fallback para Pulso manual; análises substantivas via rotinas Claude Opus. Deploy CF Version ID `ff307140`. Health check: versao v4.9.108, telemetria OK, tel_test OK.
@@ -372,3 +436,28 @@ Verificação end-to-end em produção sobre v201.47 + v4.9.102. Resultado geral
 - **Correção aplicada:** objeto `CRITICIDADE_SETOR` realinhado às 13 chaves canônicas. Mapeamento de pesos: Transportes e Logística 0.85, Financeiro 0.95, Real Estate e Construção 0.7, Petróleo, Gás e Combustíveis 0.85, Telecom e Tecnologia 0.65, Locação de Veículos e Mobilidade 0.7 (novo, neutro). 7 setores já coincidentes inalterados. 6 chaves órfãs removidas.
 - **Evidência objetiva:** diff v4.9.104→v4.9.105 = exatamente 8 linhas (2 de versão + 6 chaves); `node --check` OK; `testing/test-n06-criticidade-setor.mjs` PASS — 13/13 setores cobertos, zero chaves órfãs (objetos extraídos do bundle real).
 - **Validação em produção:** PENDENTE — após deploy, verificar materialidade de emissor Financeiro/Transportes no Briefing (deve refletir peso 0.95/0.85, não 0.7).
+
+---
+
+## INCIDENTE CRÍTICO 2026-06-15 — Verificador Haiku com ANTHROPIC_API_KEY inválido (ingestão de eventos cega)
+
+> [!success] RESOLVIDO 2026-06-16 18:22Z — `wrangler secret put ANTHROPIC_API_KEY` executado; verificador validado (`quarentenados:0`); chave KV 2026-06-16 inexistente. Ver [[14 - Auditoria Completa 2026-06-16]].
+
+**Causa raiz confirmada.** O secret `ANTHROPIC_API_KEY` do Worker `radar-credito-api` está **inválido**. O verificador adversarial de verdade graduada (`verificarEventosBatch`, modelo `claude-haiku-4-5-20251001`) recebe **HTTP 401 `authentication_error: invalid x-api-key`** da Anthropic API em toda chamada. O `catch` joga 100% dos eventos para quarentena (`motivo_quarentena: batch_haiku_falhou`) em vez de persisti-los. O `receber_analise` retorna `ok:true` mas grava `n_eventos:0, sem_eventos:true` — **falha silenciosa**: o POST é aceito, nada entra no estado, nada aparece no frontend.
+
+**Evidência objetiva (bruta, lida via `wrangler kv key get --remote`, namespace `c6805b8d8a7b468e9f854ab4f91fb93a`):**
+- Chave `radar:auditoria:verificador_indisponivel:2026-06-15`: **33 eventos quarentenados hoje**, todos com `HTTP 401 invalid x-api-key` (request_ids Anthropic distintos: `req_011Cc462...`, `req_011Cc463...`).
+- Primeiros eventos às **00:19 UTC** (cron noturno automático: Equatorial/Copasa R$5,6bi, Oi falência+leilão Oi Soluções, Vamos aumento de capital R$600mi) — o cron do Worker também falhou.
+- 401 idêntico confirmado nas chaves de **2026-06-12, 06-13, 06-14 e 05-31** → incidente recorrente, não pontual. Eventos materiais reais presos: Kora Saúde (AGD reperfilamento 23/06, CRITICO), Oncoclínicas (recuperação extrajudicial, CRITICO), Raízen (Plano REJ R$64,7bi), Dasa, Hapvida.
+- Health check `GET /` retorna `ok:true, v4.9.111, kv/rate_limiter/telemetria:true` — **não detecta o 401 do verificador** (cego para este modo de falha).
+
+**Correção aplicada.** NENHUMA no código — é problema de credencial, não de bundle. Ação requerida do **operador** (não automatizável; secret válido não está no escopo da rotina):
+1. `cd api && npx wrangler secret put ANTHROPIC_API_KEY` com uma chave Anthropic válida (a vigente expirou/foi revogada).
+2. Validar: disparar um pulso e confirmar `n_eventos>=1` no retorno.
+3. Replay dos eventos quarentenados de 12–15/06 (mecanismo de replay já existe — v4.9.111 restaurou 17 eventos em 14/06). Reprocessar `radar:auditoria:verificador_indisponivel:2026-06-{12,13,14,15}`.
+
+**Validação em produção.** PENDENTE — bloqueada pela credencial. Enquanto o secret estiver inválido, toda análise (cron + matinal + pulso manual) cai na mesma quarentena.
+
+**Impacto na rotina matinal de 15/06.** Os 15 emissores prioritários foram identificados (top EWS: Oncoclínicas 71,1, Raízen 66,6, Oi 60,4, Cosan 59,6, Light 57,4...). 5 foram analisados e enviados (Oncoclínicas, Raízen, Oi, Cosan persistiram eventos→quarentena; Light corretamente `sem_eventos` por janela). Varredura dos 10 restantes **interrompida deliberadamente**: sem o secret, gerar análises que só engrossam a quarentena é desperdício. Re-executar a rotina após a rotação do secret.
+
+**Aprendizado / melhoria sugerida.** O health check `GET /` deve passar a testar o verificador Haiku (ping autenticado mínimo) e expor `verificador_ok: true/false`, espelhando a defesa-em-profundidade da regra de telemetria. Hoje uma falha de credencial do verificador cega toda a ingestão sem nenhum alarme visível por ≥4 dias.

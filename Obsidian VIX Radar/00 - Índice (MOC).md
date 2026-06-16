@@ -15,25 +15,24 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[13 - Metodo de Vistoria Operacional]]
 - [[14 - Auditoria Completa 2026-06-16]]
 
-## Versões confirmadas (última sessão: 2026-06-16 — auditoria + rotação ANTHROPIC_API_KEY)
+## Versões confirmadas (última sessão: 2026-06-16 — auditoria + v4.9.112 + skills)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.111** (prod = repo) | DEPLOYADO 2026-06-14 — Version ID 4a6f76e1; AUDITADO 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.113** (prod = repo) | DEPLOYADO 2026-06-16 — Version ID de4fa8f8; hotfix regressão admin_mercado |
 | Frontend `vixradar.com` | **v201.51** (prod = repo) | DEPLOYADO 2026-06-13 02:20Z |
-| `ANTHROPIC_API_KEY` | — | **ROTACIONADO 2026-06-16 18:22Z** — verificador operacional |
+| `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado em v4.9.112 |
 | Cascade AI | — | claude-haiku-analise apenas (Pulso manual); Claude Opus via rotinas agendadas |
 | vixradar-noturno | — | top_n:103 confirmado — cobre todos os 103 emissores por staleness/EWS |
 
-## Pendências abertas (atualizado 2026-06-16 — auditoria completa)
+## Pendências abertas (atualizado 2026-06-16 — pós-v4.9.112)
 
-1. **MÉDIO (v4.9.112)** — `verificador_ok: true/false` no health check `GET /` (credencial Haiku inválida ficou 4+ dias sem alarme — ver [[14 - Auditoria Completa 2026-06-16]])
-2. **SEGURANÇA** — chave Anthropic exposta em chat 2026-06-16 — rotacionar novamente após sessão
-3. **CRÍTICO** — OpenRouter 402 **com saldo $76** (billing/add-on) — investigar no painel; sistema em haiku-only
-4. **ALTO** — `ADMIN_EMAIL` hardcoded no bundle → mover para `env.ADMIN_EMAIL`
-5. **MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote
-6. **MÉDIO** — P16: Agenda de Divulgação semanal (design pendente — ver memory)
-7. **MÉDIO** — P17: Relatório diário automático (design pendente)
+1. ~~**SEGURANÇA** — chave Anthropic exposta em chat 2026-06-16~~ **RESOLVIDO** — rotacionada 2026-06-16 (pós-sessão); `verificador_ok:true` confirmado
+2. **CRÍTICO** — OpenRouter 402 **com saldo $76** (billing/add-on) — investigar no painel; sistema em haiku-only
+3. **ALTO** — `ADMIN_EMAIL` hardcoded no bundle → mover para `env.ADMIN_EMAIL` (v4.9.113+)
+4. **MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote
+5. **MÉDIO** — P16: Agenda de Divulgação semanal (design pendente — ver memory)
+6. **MÉDIO** — P17: Relatório diário automático (design pendente)
 
 **Resolvidos anteriormente:** ~~cron `0 2 * * *` duplicado~~ (v4.9.109 — `0 4 * * *`); ~~`CLOUDFLARE_API_TOKEN` secret~~ (2026-06-11); P05* CI; P11 alerta favorito; N06 CRITICIDADE_SETOR.
 
