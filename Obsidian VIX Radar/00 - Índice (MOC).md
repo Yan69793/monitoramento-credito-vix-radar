@@ -15,22 +15,22 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[13 - Metodo de Vistoria Operacional]]
 - [[14 - Auditoria Completa 2026-06-16]]
 
-## Versões confirmadas (última sessão: 2026-06-16 — auditoria + v4.9.112 + skills)
+## Versões confirmadas (última sessão: 2026-06-16 — v4.9.115 + verificação pós-deploy)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.113** (prod = repo) | DEPLOYADO 2026-06-16 — Version ID de4fa8f8; hotfix regressão admin_mercado |
+| Worker `radar-credito-api` | **v4.9.115** (prod = repo) | DEPLOYADO 2026-06-16 — Version ID `9583e77a`; `ADMIN_EMAIL` via env + health sem OpenRouter obsoleto |
 | Frontend `vixradar.com` | **v201.51** (prod = repo) | DEPLOYADO 2026-06-13 02:20Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado em v4.9.112 |
 | Cascade AI | — | claude-haiku-analise apenas (Pulso manual); Claude Opus via rotinas agendadas |
 | vixradar-noturno | — | top_n:103 confirmado — cobre todos os 103 emissores por staleness/EWS |
 
-## Pendências abertas (atualizado 2026-06-16 — pós-v4.9.112)
+## Pendências abertas (atualizado 2026-06-16 — pós-v4.9.115)
 
 1. ~~**SEGURANÇA** — chave Anthropic exposta em chat 2026-06-16~~ **RESOLVIDO** — rotacionada 2026-06-16 (pós-sessão); `verificador_ok:true` confirmado
-2. **CRÍTICO** — OpenRouter 402 **com saldo $76** (billing/add-on) — investigar no painel; sistema em haiku-only
-3. **ALTO** — `ADMIN_EMAIL` hardcoded no bundle → mover para `env.ADMIN_EMAIL` (v4.9.113+)
-4. **MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote
+2. ~~**CRÍTICO** — OpenRouter 402~~ **RESOLVIDO 2026-06-16** — causa real: `OPENROUTER_API_KEY` no Worker inválida (HTTP 401 na credits API, não 402 de billing). Secret removido via `wrangler secret delete`. Probe agora retorna `sem_chave_openrouter` (gracioso). Cache KV `status_providers` atualiza no próximo cron noturno.
+3. ~~**ALTO** — `ADMIN_EMAIL` hardcoded no bundle~~ **RESOLVIDO 2026-06-16** — v4.9.115 usa `env.ADMIN_EMAIL` em runtime; bundle novo não contém e-mail literal em `var ADMIN_EMAIL`.
+4. ~~**MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote~~ **SUPERADO/RESOLVIDO 2026-06-16** — branch não existe localmente; reconciliação estava em `main`. Pendente operacional real: push de `main`.
 5. **MÉDIO** — P16: Agenda de Divulgação semanal (design pendente — ver memory)
 6. **MÉDIO** — P17: Relatório diário automático (design pendente)
 

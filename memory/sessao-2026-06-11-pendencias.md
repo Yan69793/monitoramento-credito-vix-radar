@@ -131,7 +131,7 @@ status: pendente
 ## DÍVIDA TÉCNICA
 
 - [x] **N06** — RESOLVIDO em repo (v4.9.105, ver bloco FIXES acima). Deploy pendente.
-- [ ] **P11-sec** — Remover `ADMIN_EMAIL` hardcoded do bundle → `env.ADMIN_EMAIL`
+- [x] **P11-sec — RESOLVIDO 2026-06-16 (v4.9.115)** — `ADMIN_EMAIL` removido do bundle novo (`var ADMIN_EMAIL=""`) e carregado por `env.ADMIN_EMAIL` em runtime via `aplicarConfigRuntime(env)` para `fetch` e `scheduled`; `NEWSLETTER_DESTINATARIOS` recalculado. Validação: deploy CF Version ID `9583e77a`, `GET /` HTTP 200 `ok:true` `versao:"v4.9.115"` `telemetria:true` `verificador_ok:true`.
 - [ ] **N09** — Atualizar `CLAUDE.md` do projeto:
   - Paths `worker/` → `api/`, `index.html` raiz → `app/index.html`
   - Teste padrão: POST anônimo → GET `/` (anônimo retorna 200 agora)
@@ -139,7 +139,7 @@ status: pendente
   - `claude-haiku-4-5-20251001` → `claude-haiku-4-5`
   - `claude-sonnet-4-5-20250929` → `claude-sonnet-4-6`
 - [ ] **P18** — Decidir política de tracking de `archive/`, `docs/`, `research/`, `testing/`, `vixradar/`
-- [ ] **Git** — Push do branch `audit/reconcile-prod-2026-06-01` para remote (ainda local)
+- [x] **Git — item stale reclassificado 2026-06-16** — branch `audit/reconcile-prod-2026-06-01` não existe localmente; reconciliação foi feita em `main`. Pendência operacional correta: push de `main` com commits locais.
 - [x] **Drift de artefato do Worker — RECONCILIADO** (2026-06-11). Snapshot de prod puxado
   via MCP comparado com `api/v4.9.102.js`: VEREDICTO equivalentes (só build/minificação
   difere; prod NÃO tem código a mais). Repo é base segura para editar. Snapshot gitignorado

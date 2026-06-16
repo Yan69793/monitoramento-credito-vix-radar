@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.113)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.115)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.100.js = bundle limpo recuperado de produção via Cloudflare MCP (2026-06-01).
 # v4.9.101.js = v4.9.100 + fix de CORS choke-point.
@@ -15,9 +15,11 @@
 # v4.9.111.js = v4.9.110 + FIX persistência: rodada nova com eventos passa a UNIR+dedup com a anterior (em vez de replace na :7283). Impede que rodada rasa apague eventos válidos de rodada anterior (regressão "só até 09/06"). Ordena por materialidade, cap 40, dedup data+titulo+fonte.
 # v4.9.112.js = v4.9.111 + SEC: Math.random→crypto.getRandomValues (gerarMessageId+gerarCicloId), JWT_SECRET sem fallback "radar", admin_mercado form method GET→POST (REGRESSÃO — revertida em v4.9.113), RL bypass console.warn x3; OBS: verificador_ok no health check GET /.
 # v4.9.113.js = v4.9.112 + HOTFIX: reverter admin_mercado form method POST→GET (handler lê via searchParams, POST form-urlencoded caía no parser JSON genérico retornando 400).
+# v4.9.114.js = v4.9.113 + SEC: ADMIN_EMAIL passa a ser sobrescrito por env.ADMIN_EMAIL no início de cada request; NEWSLETTER_DESTINATARIOS recalculado pelo mesmo valor.
+# v4.9.115.js = v4.9.114 + HEALTH: GET / não exige mais OPENROUTER_API_KEY, obsoleto desde v4.9.108; saúde exige KV + telemetria + Resend + Anthropic.
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.113.js"
+main       = "v4.9.115.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
@@ -47,6 +49,7 @@ dataset = "radar_usage_events"
 [vars]
 ENVIRONMENT = "production"
 CLOUDFLARE_ACCOUNT_ID = "7ac79fb1030e4e81115ef33c21a9b070"
+ADMIN_EMAIL = "szuchmacheryan@gmail.com"
 
 # ─── CUSTOM DOMAIN ────────────────────────────────────────────────────
 # api.vixradar.com é o AG_API usado pelo frontend para login/auth.

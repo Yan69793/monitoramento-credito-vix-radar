@@ -1,15 +1,27 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16 (INCIDENTE RESOLVIDO: ANTHROPIC_API_KEY rotacionado + verificador validado sem 401 — ver blocos abaixo). Anterior: 2026-06-15 (ANTHROPIC_API_KEY inválido — 33 eventos quarentenados; verificador cego).
+Atualizado: 2026-06-16 (Worker v4.9.115 deployado: `ADMIN_EMAIL` via env + health sem OpenRouter obsoleto). Anterior: 2026-06-16 (ANTHROPIC_API_KEY rotacionado + verificador validado sem 401).
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.113** | `GET /` `versao:"v4.9.113"` `verificador_ok:true` HTTP 200; CF Version ID `de4fa8f8` | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.115** | `GET /` `ok:true` `versao:"v4.9.115"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `9583e77a-99be-498e-852b-7869ee3f74a5` | 2026-06-16 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}`; sidebar 100 emissores OK | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51; commit `2f74e46` | 2026-06-13 |
-| Worker repo | v4.9.112 | `api/v4.9.112.js` `WORKER_VERSAO="v4.9.112"` | 2026-06-16 |
+| Worker repo | v4.9.115 | `api/v4.9.115.js` `WORKER_VERSAO="v4.9.115"`; `api/wrangler.toml main="v4.9.115.js"` | 2026-06-16 |
+
+## Deploy v4.9.115 — ADMIN_EMAIL via env + health sem OpenRouter (2026-06-16)
+
+**Causa raiz confirmada:** duas pendências se cruzavam. (1) `ADMIN_EMAIL` estava hardcoded no bundle (`var ADMIN_EMAIL = "...";`) e era usado por login, endpoints admin, newsletter e watchdog. (2) Após a remoção operacional do OpenRouter, o health público ainda calculava `ok` exigindo `OPENROUTER_API_KEY`, embora a arquitetura atual use Claude/Anthropic e rotinas agendadas.
+
+**Evidência objetiva:** antes do hotfix, `GET /` em v4.9.114 retornou HTTP 200 mas `ok:false`, `versao:"v4.9.114"`, `telemetria:true`, `providers_configurados:"2/3"`, `verificador_ok:true`. O `admin_executar_batch` foi disparado, mas não respondeu em 240s (`HTTP:000` no cliente), portanto não é evidência síncrona confiável de conclusão de lote.
+
+**Correção aplicada:** `api/v4.9.114.js` remove o e-mail literal do bundle (`ADMIN_EMAIL=""`) e adiciona `aplicarConfigRuntime(env)` para carregar `env.ADMIN_EMAIL` no início de `fetch` e `scheduled`, recalculando `NEWSLETTER_DESTINATARIOS`. `api/v4.9.115.js` ajusta o health público para exigir `RADAR_KV`, `RADAR_USAGE_EVENTS`, `RESEND_API_KEY` e `ANTHROPIC_API_KEY`, sem depender de OpenRouter obsoleto. `api/wrangler.toml` agora aponta `main="v4.9.115.js"` e declara `ADMIN_EMAIL` em `[vars]`. Deploy Worker concluído com CF Version ID `9583e77a-99be-498e-852b-7869ee3f74a5`.
+
+**Validação em produção:** `GET /` retornou `{"ok":true,"versao":"v4.9.115","bindings":{"kv":true,"rate_limiter":true,"telemetria":true},"providers_configurados":"2/3","verificador_ok":true}` HTTP 200 em 0,117s. `action=tel_test` retornou `binding_presente:true` e `write_result.ok:true`; `action=uso visao=debug` confirmou `tel_test_sintetico` às `2026-06-16 19:54:14`. `action=admin_health_check` retornou `ok:true`, `worker_version:"v4.9.115"`, `anthropic:true`, `resend:true`, `telemetria:true`, `estado_semanal.empresas_com_dados:113`. `op=state` autenticado retornou `state_ok:true`, 116 emissores no estado multi-semana, 47 emissores com eventos e 185 eventos totais, `updated_at:"2026-06-16T19:57:51.034Z"`.
+
+**Pendências e próximos passos:** P16 (Agenda de Divulgação semanal) e P17 (Relatório diário automático) permanecem abertas por exigirem desenho de produto/rotina e formato de output. `admin_executar_batch` deve ser tratado como operação assíncrona ou substituído por rotina/endpoint com status, pois a execução síncrona excedeu 240s no cliente. O item "push do branch audit/reconcile-prod-2026-06-01" foi reclassificado como stale: o branch não existe; a reconciliação está em `main`.
 
 ## Regressão v4.9.112 + Hotfix v4.9.113 (2026-06-16)
 
