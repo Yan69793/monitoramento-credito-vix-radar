@@ -50,6 +50,18 @@ desktop.ini
 wrangler.toml.bak
 # Snapshots de evidência (bundles grandes puxados de prod via MCP; veredicto fica nos docs)
 api/_prod_snapshot_*.js
+
+# Worker bundles legado — versionar só releases ativas (demais ficam locais)
+api/v4.*.js
+!api/v4.9.109.js
+!api/v4.9.110.js
+!api/v4.9.111.js
+!api/v4.9.112.js
+!api/v4.9.113.js
+!api/v4.9.114.js
+!api/v4.9.115.js
+!api/v4.9.117.js
+!api/v4.9.118.js
 .playwright-mcp/
 
 # ---------- Node, builds, dependencias ----------

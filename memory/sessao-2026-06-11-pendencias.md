@@ -70,17 +70,14 @@ status: pendente
      `cd api && npx wrangler secret put CLOUDFLARE_API_TOKEN`
   Sem esses secrets, handleUso retorna 500 e o painel fica inoperante.
 
-- [ ] **P16 — Agenda de Divulgação semanal (design pendente)**
-  Estado: KV `admin:agenda_divulgacao` vazio, handler `admin_agenda_rebuild` existe
-  no Worker (linha 13457) mas nunca acionado. Cron `0 4 * * *` não existe no wrangler.toml
-  (só `ehAgenda` no handler, sem trigger). Usuário quer Routine semanal (Opus 4.8) para
-  gerar agenda 7d/30d/90d com mínimo de API. Requer definição: fonte de datas (CVM RAD?
-  calendário B3?), formato de output, mecanismo de acionamento semanal.
+- [x] **P16 — Agenda de Divulgação semanal (design concluído 2026-06-16)**
+  Infra já existe: `agendaBuildPersistir` + cron `0 4 * * *` + KV `agenda:eventos:v1` (v4.9.109+).
+  Gap refinado: routine semanal Opus para atualizar `CALENDARIO_RESULTADOS_V1`.
+  Design: `Obsidian VIX Radar/16 - Design P16 P17 Agenda e Relatorio.md`. Implementação pendente.
 
-- [ ] **P17 — Relatório diário automático (design pendente)**
-  PDF atual: "Setores cobertos: 0" corrigido pelo N06 fix. Relatório diário automático
-  ao final de cada dia requer: novo handler no Worker + endpoint de geração HTML/PDF +
-  possível cron adicional ou integração ao cron noturno existente.
+- [x] **P17 — Relatório diário automático (design concluído 2026-06-16)**
+  Proposta: estender cron `30 21 * * *` com `executarRelatorioDiario` + template HTML Resend.
+  Design: `Obsidian VIX Radar/16 - Design P16 P17 Agenda e Relatorio.md`. Implementação pendente.
 
 ## VALIDAÇÃO ONLINE 02:07 BRT (Claude in Chrome) — relatório completo
 

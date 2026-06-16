@@ -9,7 +9,7 @@ Atualizado: 2026-06-16 (Worker v4.9.118 + P1 health providers 2/2). Anterior: v4
 | Worker `radar-credito-api` | **v4.9.118** | `GET /` `ok:true` `versao:"v4.9.118"` `providers_configurados:"2/2"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `7e850ae1-4689-4d37-95d3-ebe8d51c53f4` | 2026-06-16 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
-| Worker repo | v4.9.117 | `api/v4.9.117.js` `WORKER_VERSAO="v4.9.117"`; `api/wrangler.toml main="v4.9.117.js"` | 2026-06-16 |
+| Worker repo | v4.9.118 | `api/v4.9.118.js` `WORKER_VERSAO="v4.9.118"`; `api/wrangler.toml main="v4.9.118.js"` | 2026-06-16 |
 
 ## Varredura manual 103/103 emissores (2026-06-16 noite)
 
@@ -302,7 +302,7 @@ Rotinas Claude Opus (`vixradar-matinal`, `vixradar-noturno`) são independentes 
 
 | Componente | Repo | Produção | Drift |
 |---|---|---|---|
-| Worker | v4.9.111 | v4.9.111 | Nenhum ✅ |
+| Worker | v4.9.118 | v4.9.118 | Nenhum ✅ |
 | Frontend | v201.51 | v201.51 | Nenhum ✅ |
 | deploy_zip | v201.51 | v201.51 | Nenhum ✅ |
 | `app/version.json` (raiz) | v201.51 (corrigido 2026-06-16) | — | Nenhum ✅ (era v201.50) |

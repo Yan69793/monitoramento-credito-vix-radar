@@ -14,12 +14,14 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[11 - Runbook Deploy Cloudflare Pages]]
 - [[13 - Metodo de Vistoria Operacional]] — skill `/vix-radar-audit`
 - [[14 - Auditoria Completa 2026-06-16]]
+- [[15 - Auditoria Completa 2026-06-16 (v2)]]
+- [[16 - Design P16 P17 Agenda e Relatorio]]
 
-## Versões confirmadas (última sessão: 2026-06-16 — v4.9.117 + varredura 103/103 emissores)
+## Versões confirmadas (última sessão: 2026-06-16 — v4.9.118 + varredura 103/103 emissores)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.117** (prod = repo) | DEPLOYADO 2026-06-16 — Version ID `05aebca8`; FIX `receber_analise` rotina |
+| Worker `radar-credito-api` | **v4.9.118** (prod = repo) | DEPLOYADO 2026-06-16 — health `providers_configurados:"2/2"` |
 | Frontend `vixradar.com` | **v201.51** (prod = repo) | DEPLOYADO 2026-06-13 02:20Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado em v4.9.112 |
 | Cascade AI | — | claude-haiku-analise apenas (Pulso manual); Claude Opus via rotinas agendadas |
@@ -31,8 +33,8 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 2. ~~**CRÍTICO** — OpenRouter 402~~ **RESOLVIDO 2026-06-16** — causa real: `OPENROUTER_API_KEY` no Worker inválida (HTTP 401 na credits API, não 402 de billing). Secret removido via `wrangler secret delete`. Probe agora retorna `sem_chave_openrouter` (gracioso). Cache KV `status_providers` atualiza no próximo cron noturno.
 3. ~~**ALTO** — `ADMIN_EMAIL` hardcoded no bundle~~ **RESOLVIDO 2026-06-16** — v4.9.115 usa `env.ADMIN_EMAIL` em runtime; bundle novo não contém e-mail literal em `var ADMIN_EMAIL`.
 4. ~~**MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote~~ **SUPERADO/RESOLVIDO 2026-06-16** — branch não existe localmente; reconciliação estava em `main`. `main` pushado para `origin/main` até commit `b5e1c7c`.
-5. **MÉDIO** — P16: Agenda de Divulgação semanal (design pendente — ver memory)
-6. **MÉDIO** — P17: Relatório diário automático (design pendente)
+5. **MÉDIO** — P16: Agenda de Divulgação semanal — design em [[16 - Design P16 P17 Agenda e Relatorio]]; implementação pendente
+6. **MÉDIO** — P17: Relatório diário automático — design em [[16 - Design P16 P17 Agenda e Relatorio]]; implementação pendente
 
 **Resolvidos anteriormente:** ~~cron `0 2 * * *` duplicado~~ (v4.9.109 — `0 4 * * *`); ~~`CLOUDFLARE_API_TOKEN` secret~~ (2026-06-11); P05* CI; P11 alerta favorito; N06 CRITICIDADE_SETOR.
 
@@ -49,6 +51,7 @@ Ver lista completa em `memory/sessao-2026-06-11-pendencias.md`.
 | `tech-debt-audit` | `/tech-debt-audit` | Dívida técnica + arquitetura (9 dimensões, file:line) | ✅ `~/.claude/skills/tech-debt-audit/` |
 | `insecure-defaults` | `/insecure-defaults` | Segurança (JWT fail-open, CORS, hardcoded creds, debug) | ✅ `~/.claude/skills/insecure-defaults/` |
 | `workers-best-practices` | `/workers-best-practices` | Cloudflare Workers anti-patterns (wrangler, bindings) | ✅ pré-instalada |
+| `vix-radar-audit` | `/vix-radar-audit` | Auditoria completa multi-camada (readonly) | ✅ `~/.claude/skills/vix-radar-audit/` |
 
 ---
 
