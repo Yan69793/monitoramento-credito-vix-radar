@@ -62,6 +62,7 @@ api/v4.*.js
 !api/v4.9.115.js
 !api/v4.9.117.js
 !api/v4.9.118.js
+!api/v4.9.119.js
 .playwright-mcp/
 
 # ---------- Node, builds, dependencias ----------

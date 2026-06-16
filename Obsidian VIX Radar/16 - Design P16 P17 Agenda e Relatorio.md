@@ -1,6 +1,6 @@
 # Design P16 / P17 — Agenda de Divulgação e Relatório Diário
 
-Data: 2026-06-16 | Status: **design aprovado para implementação** (código não alterado nesta sessão)
+Data: 2026-06-16 | Status: **implementado v4.9.119** (deploy 2026-06-16, CF Version ID `37d691d4`)
 
 > Nota de numeração: no MOC, P16/P17 referem-se a **produto** (agenda + relatório). Em notas antigas, "P16" também nomeou flags `em_reestruturacao` (já implementado em v4.9.107). Este documento trata apenas agenda de divulgação e relatório diário.
 

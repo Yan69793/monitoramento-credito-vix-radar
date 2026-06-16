@@ -70,14 +70,13 @@ status: pendente
      `cd api && npx wrangler secret put CLOUDFLARE_API_TOKEN`
   Sem esses secrets, handleUso retorna 500 e o painel fica inoperante.
 
-- [x] **P16 — Agenda de Divulgação semanal (design concluído 2026-06-16)**
-  Infra já existe: `agendaBuildPersistir` + cron `0 4 * * *` + KV `agenda:eventos:v1` (v4.9.109+).
-  Gap refinado: routine semanal Opus para atualizar `CALENDARIO_RESULTADOS_V1`.
-  Design: `Obsidian VIX Radar/16 - Design P16 P17 Agenda e Relatorio.md`. Implementação pendente.
+- [x] **P16 — Agenda de Divulgação semanal (IMPLEMENTADO v4.9.119 — 2026-06-16)**
+  Worker: KV `calendario:overrides:v1`, `listar_calendario_stale`, `atualizar_calendario_emissor`, merge em `agendaBuildPersistir`.
+  SKILL: `~/.claude/scheduled-tasks/vixradar-agenda-semanal/` (cron `0 6 * * 1` — registrar no agendador Claude).
 
-- [x] **P17 — Relatório diário automático (design concluído 2026-06-16)**
-  Proposta: estender cron `30 21 * * *` com `executarRelatorioDiario` + template HTML Resend.
-  Design: `Obsidian VIX Radar/16 - Design P16 P17 Agenda e Relatorio.md`. Implementação pendente.
+- [x] **P17 — Relatório diário automático (IMPLEMENTADO v4.9.119 — 2026-06-16)**
+  `executarRelatorioDiario` + hook cron `30 21 * * *`; `action=relatorio_diario_teste` (admin).
+  Secret `RELATORIO_DIARIO_ENABLED=0` (off até validação); destinatários com `prefs.frequencia=diario`.
 
 ## VALIDAÇÃO ONLINE 02:07 BRT (Claude in Chrome) — relatório completo
 

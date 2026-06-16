@@ -1,15 +1,23 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16 (Worker v4.9.118 + P1 health providers 2/2). Anterior: v4.9.117 varredura 103/103.
+Atualizado: 2026-06-16 (Worker v4.9.119 + P16/P17). Anterior: v4.9.118 health 2/2.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.118** | `GET /` `ok:true` `versao:"v4.9.118"` `providers_configurados:"2/2"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `7e850ae1-4689-4d37-95d3-ebe8d51c53f4` | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.119** | `GET /` `ok:true` `versao:"v4.9.119"` `providers_configurados:"2/2"` `verificador_ok:true` HTTP 200; CF Version ID `37d691d4-c4aa-48be-93bb-7d40ec3a65fe` | 2026-06-16 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
-| Worker repo | v4.9.118 | `api/v4.9.118.js` `WORKER_VERSAO="v4.9.118"`; `api/wrangler.toml main="v4.9.118.js"` | 2026-06-16 |
+| Worker repo | v4.9.119 | `api/v4.9.119.js` `WORKER_VERSAO="v4.9.119"`; `api/wrangler.toml main="v4.9.119.js"` | 2026-06-16 |
+
+## Deploy v4.9.119 — P16 calendário + P17 relatório diário (2026-06-16)
+
+**P16:** KV `calendario:overrides:v1`; endpoints `listar_calendario_stale` + `atualizar_calendario_emissor` (routine_key); `agendaBuildPersistir` merge overrides para 103 emissores. SKILL `vixradar-agenda-semanal` criada (`0 6 * * 1`).
+
+**P17:** `executarRelatorioDiario` após newsletter no cron `30 21 * * *`; dedup `relatorio:enviado:{data}`; filtro `prefs.frequencia=diario`; `action=relatorio_diario_teste` (admin). Secret `RELATORIO_DIARIO_ENABLED=0` (kill-switch off).
+
+**Validação:** `GET /` v4.9.119; `listar_calendario_stale` ok; `atualizar_calendario_emissor` Copel `trimestres_count:1`.
 
 ## Varredura manual 103/103 emissores (2026-06-16 noite)
 
