@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.117)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.118)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.100.js = bundle limpo recuperado de produção via Cloudflare MCP (2026-06-01).
 # v4.9.101.js = v4.9.100 + fix de CORS choke-point.
@@ -19,9 +19,10 @@
 # v4.9.115.js = v4.9.114 + HEALTH: GET / não exige mais OPENROUTER_API_KEY, obsoleto desde v4.9.108; saúde exige KV + telemetria + Resend + Anthropic.
 # v4.9.116.js = v4.9.115 + FIX receber_analise: atribui eventos verificados ANTES de processarEventosComVerdadeGraduada (evita sem_eventos stale descartando persistência).
 # v4.9.117.js = v4.9.116 + FIX receber_analise: remove processarEventosComVerdadeGraduada no path de rotina (schema legado data/descricao/fonte incompatível com data_evento/evento/fonte_primaria).
+# v4.9.118.js = v4.9.117 + HEALTH: providers_configurados conta apenas Resend+Anthropic (2/2), remove legado OpenRouter/Perplexity do denominador.
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.117.js"
+main       = "v4.9.118.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
