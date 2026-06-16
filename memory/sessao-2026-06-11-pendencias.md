@@ -139,7 +139,7 @@ status: pendente
   - `claude-haiku-4-5-20251001` → `claude-haiku-4-5`
   - `claude-sonnet-4-5-20250929` → `claude-sonnet-4-6`
 - [ ] **P18** — Decidir política de tracking de `archive/`, `docs/`, `research/`, `testing/`, `vixradar/`
-- [x] **Git — item stale reclassificado 2026-06-16** — branch `audit/reconcile-prod-2026-06-01` não existe localmente; reconciliação foi feita em `main`. Pendência operacional correta: push de `main` com commits locais.
+- [x] **Git — item stale reclassificado e resolvido 2026-06-16** — branch `audit/reconcile-prod-2026-06-01` não existe localmente; reconciliação foi feita em `main`. `main` pushado para `origin/main` até commit `b5e1c7c`.
 - [x] **Drift de artefato do Worker — RECONCILIADO** (2026-06-11). Snapshot de prod puxado
   via MCP comparado com `api/v4.9.102.js`: VEREDICTO equivalentes (só build/minificação
   difere; prod NÃO tem código a mais). Repo é base segura para editar. Snapshot gitignorado
