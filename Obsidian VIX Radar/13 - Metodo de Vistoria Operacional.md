@@ -3,6 +3,8 @@
 Atualizado: 2026-06-16
 Status: procedimento aprendido a partir das auditorias Claude Code e da skill `workers-best-practices`.
 
+**Skill invocável:** `/vix-radar-audit` — `C:\Users\User\.claude\skills\vix-radar-audit\SKILL.md`
+
 ## Objetivo
 
 Padronizar a vistoria do sistema para evitar conclusoes por impressao. Toda auditoria deve separar fato verificavel, interpretacao e acao recomendada, com evidencia bruta suficiente para reproducao.

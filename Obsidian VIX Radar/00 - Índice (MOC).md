@@ -12,7 +12,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[09 - Auditoria 2026-06-10 (Pendências)]]
 - [[10 - Oportunidades de Melhoria (2026-06-11)]]
 - [[11 - Runbook Deploy Cloudflare Pages]]
-- [[13 - Metodo de Vistoria Operacional]]
+- [[13 - Metodo de Vistoria Operacional]] — skill `/vix-radar-audit`
 - [[14 - Auditoria Completa 2026-06-16]]
 
 ## Versões confirmadas (última sessão: 2026-06-16 — v4.9.117 + varredura 103/103 emissores)
