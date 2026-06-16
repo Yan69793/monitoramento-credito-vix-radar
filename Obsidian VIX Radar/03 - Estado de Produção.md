@@ -1,12 +1,12 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16 (Worker v4.9.117 + varredura 103/103 emissores). Anterior: v4.9.115 ADMIN_EMAIL via env.
+Atualizado: 2026-06-16 (Worker v4.9.118 + P1 health providers 2/2). Anterior: v4.9.117 varredura 103/103.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.117** | `GET /` `ok:true` `versao:"v4.9.117"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `05aebca8-9e5f-4962-8b99-6e55d4ce330e` | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.118** | `GET /` `ok:true` `versao:"v4.9.118"` `providers_configurados:"2/2"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `7e850ae1-4689-4d37-95d3-ebe8d51c53f4` | 2026-06-16 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
 | Worker repo | v4.9.117 | `api/v4.9.117.js` `WORKER_VERSAO="v4.9.117"`; `api/wrangler.toml main="v4.9.117.js"` | 2026-06-16 |
@@ -29,6 +29,14 @@ Atualizado: 2026-06-16 (Worker v4.9.117 + varredura 103/103 emissores). Anterior
 **Destaques CRÍTICO/RELEVANTE:** Oncoclínicas, Raízen, Oi, Energisa (4 ev), Rede D'Or (3 ev), Simpar (4 ev), Petrobras (3 ev), JSL (3 ev), Engie (incorporação CEJA), Copel (UBP Elejor).
 
 **Nota:** `listar_emissores_prioritarios top_n=103` retorna ~78 quando emissores já foram escaneados hoje (filtro staleness) — não indica gap de cobertura.
+
+## Deploy v4.9.118 — HEALTH providers_configurados 2/2 (2026-06-16)
+
+**Mudança:** health público `GET /` passa a contar apenas providers ativos (`RESEND_API_KEY` + `ANTHROPIC_API_KEY`); remove OpenRouter/Perplexity legado do denominador. Antes: `2/3` (confuso).
+
+**Validação:** `GET /` → `v4.9.118` `providers_configurados:"2/2"` `verificador_ok:true`. CF Version ID `7e850ae1-4689-4d37-95d3-ebe8d51c53f4`.
+
+**CSS regra 6:** `<strong>` global em `app/index.html:2594` permanece **sem** `color` (correto per `CLAUDE.md` — herda do pai). Nenhuma alteração necessária.
 
 ## Deploy v4.9.117 — FIX receber_analise rotina (2026-06-16)
 
