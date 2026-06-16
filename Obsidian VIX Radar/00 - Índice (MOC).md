@@ -15,11 +15,11 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[13 - Metodo de Vistoria Operacional]]
 - [[14 - Auditoria Completa 2026-06-16]]
 
-## Versões confirmadas (última sessão: 2026-06-16 — v4.9.115 + verificação pós-deploy)
+## Versões confirmadas (última sessão: 2026-06-16 — v4.9.117 + varredura 103/103 emissores)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.115** (prod = repo) | DEPLOYADO 2026-06-16 — Version ID `9583e77a`; `ADMIN_EMAIL` via env + health sem OpenRouter obsoleto |
+| Worker `radar-credito-api` | **v4.9.117** (prod = repo) | DEPLOYADO 2026-06-16 — Version ID `05aebca8`; FIX `receber_analise` rotina |
 | Frontend `vixradar.com` | **v201.51** (prod = repo) | DEPLOYADO 2026-06-13 02:20Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado em v4.9.112 |
 | Cascade AI | — | claude-haiku-analise apenas (Pulso manual); Claude Opus via rotinas agendadas |

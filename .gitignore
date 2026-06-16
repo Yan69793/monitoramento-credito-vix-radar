@@ -137,3 +137,15 @@ auth/
 documentos-emissores/
 dados/*.xlsx
 .forja/
+
+# ---------- Artefatos operacionais noturnos (local, nao versionar) ----------
+.noturno_lote/
+.noturno_tmp/
+_lote_tmp/
+testing/
+claude-vixradar-noturno-*.prompt.txt
+ctx*.json
+in.json
+out*.json
+tmp_in.json
+untracked-auditoria.txt

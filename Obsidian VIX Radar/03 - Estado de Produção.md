@@ -1,15 +1,40 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16 (Worker v4.9.115 deployado: `ADMIN_EMAIL` via env + health sem OpenRouter obsoleto). Anterior: 2026-06-16 (ANTHROPIC_API_KEY rotacionado + verificador validado sem 401).
+Atualizado: 2026-06-16 (Worker v4.9.117 + varredura 103/103 emissores). Anterior: v4.9.115 ADMIN_EMAIL via env.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.115** | `GET /` `ok:true` `versao:"v4.9.115"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `9583e77a-99be-498e-852b-7869ee3f74a5` | 2026-06-16 |
-| Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}`; sidebar 100 emissores OK | 2026-06-13 |
-| Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51; commit `2f74e46` | 2026-06-13 |
-| Worker repo | v4.9.115 | `api/v4.9.115.js` `WORKER_VERSAO="v4.9.115"`; `api/wrangler.toml main="v4.9.115.js"` | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.117** | `GET /` `ok:true` `versao:"v4.9.117"` `telemetria:true` `verificador_ok:true` HTTP 200; CF Version ID `05aebca8-9e5f-4962-8b99-6e55d4ce330e` | 2026-06-16 |
+| Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
+| Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
+| Worker repo | v4.9.117 | `api/v4.9.117.js` `WORKER_VERSAO="v4.9.117"`; `api/wrangler.toml main="v4.9.117.js"` | 2026-06-16 |
+
+## Varredura manual 103/103 emissores (2026-06-16 noite)
+
+**Causa raiz (pré-varredura):** `receber_analise` chamava `processarEventosComVerdadeGraduada` com schema legado (`data`/`descricao`/`fonte`) incompatível com payload da rotina (`data_evento`/`evento`/`fonte_primaria`) → `sem_eventos:true` com `n_eventos>0` → persistência ignorada.
+
+**Correção:** v4.9.116 reorder + v4.9.117 remove `processarEventosComVerdadeGraduada` no path de rotina. Smoke CEMIG: `n_eventos:2`, `sem_eventos:false`.
+
+**Execução varredura:**
+- Replay 53 JSONs existentes em `testing/noturno_*.json` → 53/53 `ok:true` (5 corrigidos com envelope `receber_analise`)
+- 4 lotes paralelos (47 emissores novos) → 47/47 `ok:true`
+- **Fechamento 103/103:** diff `EMISSORES_LISTA` vs arquivos identificou **4 faltantes** (não 3): `Eletrobras`, `Engie Brasil Energia`, `Copel`, `Omega Energia` — analisados e persistidos via `receber_analise`
+- **Total arquivos:** 104 `noturno_*.json` (103 canônicos + 1 variante de grafia) | **82 com eventos** | **22 sem_eventos legítimos**
+- Semana KV: `2026-W25`
+- Janela: 2026-05-17 a 2026-06-16
+- **POST faltantes:** Copel `n_eventos:2` | Engie `n_eventos:1` (verificador rejeitou 1/2) | Eletrobras/Omega `sem_eventos:true` comprovado
+
+**Destaques CRÍTICO/RELEVANTE:** Oncoclínicas, Raízen, Oi, Energisa (4 ev), Rede D'Or (3 ev), Simpar (4 ev), Petrobras (3 ev), JSL (3 ev), Engie (incorporação CEJA), Copel (UBP Elejor).
+
+**Nota:** `listar_emissores_prioritarios top_n=103` retorna ~78 quando emissores já foram escaneados hoje (filtro staleness) — não indica gap de cobertura.
+
+## Deploy v4.9.117 — FIX receber_analise rotina (2026-06-16)
+
+**Mudança:** remove `processarEventosComVerdadeGraduada` no handler `receber_analise`; atribui `_raEvs` antes da persistência; `sem_eventos = (_raEvs.length === 0)`.
+
+**Validação:** `receber_analise` CEMIG HTTP 200 `n_eventos:2 sem_eventos:false`; health `v4.9.117` `verificador_ok:true`.
 
 ## Deploy v4.9.115 — ADMIN_EMAIL via env + health sem OpenRouter (2026-06-16)
 
