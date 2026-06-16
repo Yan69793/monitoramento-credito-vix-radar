@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.109)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.112)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.100.js = bundle limpo recuperado de produção via Cloudflare MCP (2026-06-01).
 # v4.9.101.js = v4.9.100 + fix de CORS choke-point.
@@ -13,10 +13,11 @@
 # v4.9.109.js = v4.9.108 + N04 worker_version hardcoded→WORKER_VERSAO, N11 console.error em __fixCorsResp, P15 cron 0 2→0 4 UTC (agenda build ativado).
 # v4.9.110.js = v4.9.109 + PERF op=state: paraleliza ~103 leituras de flags (await em loop → Promise.all). Corrige dashboard lento p/ abrir / "demora muito p/ voltar ao normal".
 # v4.9.111.js = v4.9.110 + FIX persistência: rodada nova com eventos passa a UNIR+dedup com a anterior (em vez de replace na :7283). Impede que rodada rasa apague eventos válidos de rodada anterior (regressão "só até 09/06"). Ordena por materialidade, cap 40, dedup data+titulo+fonte.
+# v4.9.112.js = v4.9.111 + SEC: Math.random→crypto.getRandomValues (gerarMessageId+gerarCicloId), JWT_SECRET sem fallback "radar", admin_mercado form method GET→POST, RL bypass console.warn x3; OBS: verificador_ok no health check GET /.
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.111.js"
-compatibility_date  = "2025-10-01"
+main       = "v4.9.112.js"
+compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
@@ -65,6 +66,10 @@ custom_domain = true
 #   - 0 1 * * *      → watchdog 22:00 BRT, diário
 #   - 0 4 * * *      → agenda build 01:00 BRT (agendaBuildPersistir: calendário 90 dias → KV agenda:eventos:v1, TTL 3d)
 #                      (era "0 2 * * *" = 23h BRT, caía no else/noturno duplicando pipeline — corrigido 2026-06-14)
+[observability]
+enabled           = true
+head_sampling_rate = 1
+
 [triggers]
 crons = [
   "30 15 * * 1-5",
