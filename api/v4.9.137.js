@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.136";
+var WORKER_VERSAO = "v4.9.137";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -3489,7 +3489,7 @@ var CUSTO_PRECO = {
   web_search_por_uso: 0.01
 };
 var CUSTO_DISJUNTOR_USD_DIA = 25;
-var WORKER_DEPLOY_NOTE = "v4.9.136: polish visual/copy boletim diario (montarEmailHTML) (montarEmailHTML) — layout executivo table/inline, separacao diario vs briefing semanal. 2026-06-17.";
+var WORKER_DEPLOY_NOTE = "v4.9.137: fix header layout boletim diario (eyebrow full-width) (montarEmailHTML) (montarEmailHTML) — layout executivo table/inline, separacao diario vs briefing semanal. 2026-06-17.";
 var ANCORAS_SINTETICAS = [
   "Ra\xEDzen",
   "Petrobras",

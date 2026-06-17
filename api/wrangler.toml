@@ -38,9 +38,10 @@
 # v4.9.134.js = v4.9.133 + P14 op=serie com ews_serie, horizonte 30/60/90 e deltas.
 # v4.9.135.js = v4.9.134 + redesign HTML boletim diario (montarEmailHTML) estilo relatorio executivo.
 # v4.9.136.js = v4.9.135 + polish visual/copy boletim diario (alinhamento emailWrap, preheader, hierarquia).
+# v4.9.137.js = v4.9.136 + fix header boletim diario (eyebrow full-width, CTA alinhado ao titulo).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.136.js"
+main       = "v4.9.137.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
