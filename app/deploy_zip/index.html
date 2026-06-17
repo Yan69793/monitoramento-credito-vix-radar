@@ -3397,7 +3397,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
   <div id="status-right"></div>
 </div>
 
-<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.51";window.CACHE_VERSION="v201.51";const API_BASE="https://api.vixradar.com";
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.53";window.CACHE_VERSION="v201.53";const API_BASE="https://api.vixradar.com";
 /* P0-2026-05-11: WORKER_URL alias de API_BASE — corrige "[BRANDING] erro ao carregar: WORKER_URL is not defined" */
 const WORKER_URL=API_BASE;
 /* P0-2026-05-11: silenciar console.log/info/debug em producao — manter warn/error */
@@ -5159,7 +5159,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
 </script>
 
 <style nonce="SBmwijc5RXf1v4r2gkzvoA==">
-/* v201.46 — Briefing Executivo (P13) + Comparar Emissores (P12). Consome op=briefing_executivo e op=comparar (Worker v4.9.102, ja em prod). DOM API only em dados de fonte. */
+/* v201.52 — Briefing Executivo (P13): legendas Mat./Crít./Rel./Eco + tooltips. Comparar Emissores (P12). */
 #intel-nav{display:flex;flex-direction:column;gap:5px;padding:8px 10px 6px;border-bottom:1px solid #0D2438}
 .intel-nav-btn{display:flex;align-items:center;gap:8px;width:100%;background:#000A14;border:1px solid #16314a;color:#C9BE9C;font-family:inherit;font-size:11px;letter-spacing:.05em;text-transform:uppercase;padding:8px 10px;border-radius:5px;cursor:pointer;transition:all .15s;text-align:left}
 .intel-nav-btn:hover{border-color:#B7985D;color:#EDE8D8;background:#0a1626}
@@ -5179,15 +5179,23 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
 .intel-card-lbl{color:#4E6070;font-size:9px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
 .intel-card-val{color:#EDE8D8;font-size:22px;font-weight:700;font-family:'IBM Plex Mono',monospace}
 .intel-sec-h{color:#B7985D;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin:22px 0 10px;padding-bottom:6px;border-bottom:1px solid #0D2438}
+.bf-sec-note{color:#6b7280;font-size:11px;line-height:1.45;margin:-4px 0 10px;letter-spacing:.02em}
+.bf-ev-hdr{display:grid;grid-template-columns:54px 1fr auto;gap:12px;padding:0 0 6px;border-bottom:1px solid #0D2438;margin-bottom:2px;font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#4E6070}
+.bf-ev-hdr-mat{text-align:center}
 .bf-ev{display:grid;grid-template-columns:54px 1fr auto;gap:12px;padding:9px 0;border-bottom:1px solid rgba(13,36,56,0.5);align-items:start}
-.bf-ev-mat{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:#EDE8D8;text-align:center}
+.bf-ev-mat-wrap{text-align:center;cursor:help}
+.bf-ev-mat-lbl{font-size:8px;text-transform:uppercase;letter-spacing:.08em;color:#4E6070;margin-bottom:2px}
+.bf-ev-mat{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:700;color:#EDE8D8;line-height:1}
 .bf-ev-emp{color:#C9BE9C;font-size:12px;font-weight:600}
 .bf-ev-tit{color:#9CA3AF;font-size:11px;margin-top:2px}
 .bf-ev-cad{color:#4E6070;font-size:10px;margin-top:3px;font-style:italic}
 .intel-badge{font-size:9px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:3px;text-transform:uppercase;white-space:nowrap}
+.bf-legend{color:#6b7280;font-size:10px;line-height:1.5;margin-bottom:8px;padding:8px 10px;background:#000A14;border:1px solid #0D2438;border-radius:5px}
 .bf-setor-row,.bf-alerta-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(13,36,56,0.5);font-size:12px}
 .bf-setor-nome{color:#C9BE9C}
-.bf-setor-stats{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7280;display:flex;gap:12px}
+.bf-setor-stats{font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b7280;display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+.bf-stat{cursor:help;white-space:nowrap}
+.bf-stat-lbl{font-size:9px;text-transform:uppercase;letter-spacing:.04em;opacity:.85}
 .intel-foot{margin-top:20px;padding-top:14px;border-top:1px solid #0D2438;color:#4E6070;font-size:11px;display:flex;gap:22px;flex-wrap:wrap;font-family:'IBM Plex Mono',monospace}
 .cmp-hint{color:#9CA3AF;font-size:12px;margin-bottom:14px}
 .cmp-search{width:100%;background:#000A14;border:1px solid #1f2937;color:#EDE8D8;font-family:inherit;font-size:12px;padding:9px 12px;border-radius:5px;margin-bottom:12px;box-sizing:border-box}
@@ -5217,7 +5225,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
 
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">
 // ────────────────────────────────────────────────────────────────────────
-// v201.46 — Briefing Executivo (P13) + Comparar Emissores (P12)
+// v201.52 — Briefing Executivo (P13): legendas e tooltips de leitura
 // Endpoints (Worker v4.9.102, ja em prod): GET /?op=briefing_executivo
 // e GET /?op=comparar&empresas=A,B,C  (ambos exigem JWT Bearer).
 // Padrao overlay espelhado de #agenda-overlay. DOM API only em dados de fonte
@@ -5264,6 +5272,25 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     if (typeof v !== "number" || isNaN(v)) return "—";
     return v <= 1 ? Math.round(v * 100) + "%" : Math.round(v) + "%";
   }
+  function _bfHint(text){
+    return _mkEl("div", { className: "bf-sec-note" }, text);
+  }
+  function _bfStat(short, value, color, tip){
+    var sp = _mkEl("span", { className: "bf-stat", title: tip });
+    if (color) sp.style.color = color;
+    sp.appendChild(_mkEl("span", { className: "bf-stat-lbl" }, short));
+    sp.appendChild(document.createTextNode(" " + (value != null ? value : 0)));
+    return sp;
+  }
+  function _bfMatCell(score){
+    var wrap = _mkEl("div", {
+      className: "bf-ev-mat-wrap",
+      title: "Materialidade (0–100): relevância do evento para análise de crédito. Quanto maior, mais prioritário."
+    });
+    wrap.appendChild(_mkEl("div", { className: "bf-ev-mat-lbl" }, "Mat."));
+    wrap.appendChild(_mkEl("div", { className: "bf-ev-mat" }, (score != null ? score : "—")));
+    return wrap;
+  }
   function _listaEmissores(){
     var out = [];
     try {
@@ -5301,7 +5328,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   function _ensureOverlays(){
     if (!document.getElementById("briefing-overlay")) {
       var bf = _mkEl("div", { id: "briefing-overlay", className: "intel-ov" });
-      bf.innerHTML = '<div class="intel-ov-card"><div class="intel-head"><div><div class="intel-title">Briefing do dia</div><div class="intel-sub" id="bf-sub">Resumo executivo dos últimos eventos</div></div><button class="intel-close" id="bf-close">Fechar ✕</button></div><div id="bf-body"><div class="intel-loading">Carregando…</div></div></div>';
+      bf.innerHTML = '<div class="intel-ov-card"><div class="intel-head"><div><div class="intel-title">Briefing do dia</div><div class="intel-sub" id="bf-sub">Panorama das últimas 5 semanas de eventos monitorados</div></div><button class="intel-close" id="bf-close">Fechar ✕</button></div><div id="bf-body"><div class="intel-loading">Carregando…</div></div></div>';
       document.body.appendChild(bf);
       bf.addEventListener("click", function(e){ if (e.target === bf) _briefingFechar(); });
       var bc = bf.querySelector("#bf-close"); if (bc) bc.addEventListener("click", _briefingFechar);
@@ -5321,7 +5348,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     if (!body) return;
     body.innerHTML = "";
     var sub = document.getElementById("bf-sub");
-    if (sub) sub.textContent = "Semana " + (b.semana || "—") + " · " + _fmtDataBr(b.data) + " · gerado " + _fmtDataBr((b.gerado_em || "").slice(0,10));
+    if (sub) sub.textContent = "Semana " + (b.semana || "—") + " · " + _fmtDataBr(b.data) + " · últimas 5 semanas · gerado " + _fmtDataBr((b.gerado_em || "").slice(0,10));
 
     var r = b.resumo || {};
     var cards = _mkEl("div", { className: "intel-cards" });
@@ -5334,16 +5361,24 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     body.appendChild(cards);
 
     var evs = Array.isArray(b.top_eventos) ? b.top_eventos : [];
-    body.appendChild(_mkEl("div", { className: "intel-sec-h" }, "Maior materialidade (top " + evs.length + ")"));
+    body.appendChild(_mkEl("div", { className: "intel-sec-h" }, "Eventos mais materiais (top " + evs.length + ")"));
+    body.appendChild(_bfHint("Cada linha é um evento. O número Mat. (0–100) mede relevância para crédito — não é preço, rating nem PL."));
     if (!evs.length) {
       body.appendChild(_mkEl("div", { className: "intel-empty" }, "Sem eventos materiais na janela."));
     } else {
+      var hdr = _mkEl("div", { className: "bf-ev-hdr" });
+      hdr.appendChild(_mkEl("div", { className: "bf-ev-hdr-mat", title: "Materialidade: relevância para crédito (0–100)" }, "Mat."));
+      hdr.appendChild(_mkEl("div", null, "Emissor e evento"));
+      hdr.appendChild(_mkEl("div", { style: "text-align:right" }, "Gravidade"));
+      body.appendChild(hdr);
       evs.forEach(function(ev){
         var row = _mkEl("div", { className: "bf-ev" });
-        row.appendChild(_mkEl("div", { className: "bf-ev-mat" }, (ev.materialidade != null ? ev.materialidade : "—")));
+        row.appendChild(_bfMatCell(ev.materialidade));
         var mid = _mkEl("div");
         mid.appendChild(_mkEl("div", { className: "bf-ev-emp" }, ev.empresa || "—"));
-        mid.appendChild(_mkEl("div", { className: "bf-ev-tit" }, ev.titulo || ""));
+        var titTxt = ev.titulo || "";
+        if (ev.data_evento) titTxt = (titTxt ? titTxt + " · " : "") + _fmtDataBr(ev.data_evento);
+        mid.appendChild(_mkEl("div", { className: "bf-ev-tit" }, titTxt));
         if (ev.cadeia_causal) mid.appendChild(_mkEl("div", { className: "bf-ev-cad" }, ev.cadeia_causal));
         row.appendChild(mid);
         row.appendChild(_badge(ev.classificacao));
@@ -5355,15 +5390,16 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     var setores = Object.keys(ds);
     if (setores.length) {
       body.appendChild(_mkEl("div", { className: "intel-sec-h" }, "Distribuição setorial"));
+      body.appendChild(_mkEl("div", { className: "bf-legend" }, "Contagem de eventos por setor: Crít. = críticos (alto impacto) · Rel. = relevantes · Eco = ruído baixo · Total = soma do setor."));
       setores.sort(function(a,c){ return (ds[c].total||0) - (ds[a].total||0); }).forEach(function(s){
         var d = ds[s] || {};
         var row = _mkEl("div", { className: "bf-setor-row" });
         row.appendChild(_mkEl("div", { className: "bf-setor-nome" }, s));
         var stats = _mkEl("div", { className: "bf-setor-stats" });
-        stats.appendChild(_mkEl("span", { style: "color:#dc2626" }, "C " + (d.criticos||0)));
-        stats.appendChild(_mkEl("span", { style: "color:#d97706" }, "R " + (d.relevantes||0)));
-        stats.appendChild(_mkEl("span", null, "E " + (d.ecos||0)));
-        stats.appendChild(_mkEl("span", { style: "color:#9CA3AF" }, "Σ " + (d.total||0)));
+        stats.appendChild(_bfStat("Crít.", d.criticos, "#dc2626", "Eventos classificados como CRÍTICO"));
+        stats.appendChild(_bfStat("Rel.", d.relevantes, "#d97706", "Eventos classificados como RELEVANTE"));
+        stats.appendChild(_bfStat("Eco", d.ecos, "#6b7280", "Eventos classificados como ECO (baixo impacto)"));
+        stats.appendChild(_bfStat("Total", d.total, "#9CA3AF", "Total de eventos do setor na janela"));
         row.appendChild(stats);
         body.appendChild(row);
       });
@@ -5418,7 +5454,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     if (!body) return;
     body.innerHTML = "";
     var sel = [];
-    body.appendChild(_mkEl("div", { className: "cmp-hint" }, "Selecione de 2 a 5 emissores para comparar lado a lado."));
+    body.appendChild(_mkEl("div", { className: "cmp-hint" }, "Selecione de 2 a 5 emissores para comparar lado a lado. Última análise só aparece para emissores já varridos pelo radar (não são os 103 todos os dias)."));
     var search = _mkEl("input", { className: "cmp-search", type: "text", placeholder: "Buscar emissor…" });
     body.appendChild(search);
     var list = _mkEl("div", { className: "cmp-list" });
@@ -5501,7 +5537,18 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     _linha("Críticos", function(td, c){ td.textContent = (c.criticos != null ? c.criticos : 0); if (c.criticos) td.style.color = "#dc2626"; });
     _linha("Relevantes", function(td, c){ td.textContent = (c.relevantes != null ? c.relevantes : 0); if (c.relevantes) td.style.color = "#d97706"; });
     _linha("Anomalias", function(td, c){ var n = Array.isArray(c.anomalias) ? c.anomalias.length : 0; td.textContent = n; });
-    _linha("Última análise", function(td, c){ td.textContent = c.ultima_analise ? _fmtDataBr(String(c.ultima_analise).slice(0,10)) : "—"; });
+    _linha("Última análise", function(td, c){
+      if (c.ultima_analise) {
+        td.textContent = _fmtDataBr(String(c.ultima_analise).slice(0, 10));
+      } else if (c.tem_estado === false) {
+        td.textContent = "Nunca analisado";
+        td.title = "Este emissor ainda não tem varredura salva no radar (universo: 103).";
+      } else {
+        td.textContent = "Sem data";
+        td.title = "Há registro no radar, mas sem timestamp da última varredura.";
+      }
+      if (!c.ultima_analise) td.style.color = "#4E6070";
+    });
     table.appendChild(tbody);
     wrap.appendChild(table);
     body.appendChild(wrap);
