@@ -26,6 +26,14 @@ Atualizado: 2026-06-17 (Worker v4.9.134 + Frontend v201.63 + fix sessão JWT). A
 
 **Validação:** `https://vixradar.com/version.json` → v201.63; `CACHE_VERSION="v201.63"` no HTML; deploy Pages 2026-06-17T21:26:52Z.
 
+## Deliverability P2 — resolvido (2026-06-17T21:33Z)
+
+**DNS:** SPF `-all`, DMARC `p=quarantine; sp=quarantine`, DKIM Resend OK (8.8.8.8).
+
+**Inbox test:** `relatorio_diario_teste` + `newsletter_teste` → `enviado:true` (admin); `resend_id` newsletter `e681141b-3985-4749-9dc6-1d3e62f94f1d`.
+
+**Massa semanal:** dry-run 15 destinatários; cron sexta fechamento B3 `30 21 * * *`. Detalhe: [[17 - Email Relatorio e Deliverability 2026-06-17]].
+
 ## Deploy v4.9.131 — deliverability one-click (2026-06-17)
 
 **Mudança:** one-click unsubscribe POST no Worker; remove mailto inválido; footer personalizado por destinatário; `List-Unsubscribe` HTTPS.

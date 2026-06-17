@@ -41,7 +41,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 4. ~~**MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote~~ **SUPERADO/RESOLVIDO 2026-06-16** — branch não existe localmente; reconciliação estava em `main`. `main` pushado para `origin/main` até commit `b5e1c7c`.
 5. ~~**MÉDIO** — P16~~ **ATIVO v4.9.121** — 16/20 overrides; routine `vixradar-agenda-semanal` registrada (`0 3 * * 1` BRT)
 6. ~~**MÉDIO** — P17~~ **ATIVO v4.9.121** — semanal → 16 aprovados `frequencia=semanal`; PILOTO removido; `RELATORIO_DIARIO_ENABLED=1`
-7. **MÉDIO** — Deliverability SPAM — v4.9.131 corrigiu one-click; DNS ainda `p=none` + SPF `~all` (manual no dashboard); inbox test pendente; envio massa **sex 19/06 18h30**
+7. ~~**MÉDIO** — Deliverability SPAM~~ **RESOLVIDO 2026-06-17** — DNS `SPF -all` + `DMARC p=quarantine`; inbox test enviado (`relatorio_diario_teste` + `newsletter_teste`); dry-run 15 destinatários; envio massa no cron sexta fechamento B3
 
 **Resolvidos anteriormente:** ~~cron `0 2 * * *` duplicado~~ (v4.9.109 — `0 4 * * *`); ~~`CLOUDFLARE_API_TOKEN` secret~~ (2026-06-11); P05* CI; P11 alerta favorito; N06 CRITICIDADE_SETOR.
 

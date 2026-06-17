@@ -140,4 +140,4 @@ Nenhum nesta passagem.
 | Prioridade | Ação |
 |---|---|
 | **P1** | Eduardo: login de novo (não recadastrar se já aprovado) |
-| **P2** | Deliverability: DMARC `p=quarantine`, inbox test pré-envio sexta |
+| ~~**P2**~~ | ~~Deliverability~~ **RESOLVIDO** — ver [[17 - Email Relatorio e Deliverability 2026-06-17]] seção P2 2026-06-17T21:33Z |

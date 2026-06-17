@@ -102,11 +102,41 @@ Atualizado: 2026-06-17 02:30Z | Worker produção **v4.9.131** (one-click unsubs
 
 ## Pendências (acesso externo)
 
-1. ~~**DNS:** endurecer SPF (`-all`), DMARC (`p=quarantine`)~~ **APLICADO 2026-06-17** via Global API Key + API Cloudflare. SPF: `-all`. DMARC: `p=quarantine; sp=quarantine`. Propagação TTL ~5min.
-2. **Resend:** confirmar domínio verificado e reputação no dashboard
-3. **Mailbox:** criar/rotear `unsubscribe@vixradar.com` se mailto for mantido
-4. **Inbox test:** inspecionar headers `Authentication-Results` do e-mail de teste pós v4.9.121
-5. **Primeiro envio semanal real:** monitorar após cron noturno; se `relatorio:enviado:2026-W25` já existe, próximo disparo só na semana seguinte
+1. ~~**DNS:** endurecer SPF (`-all`), DMARC (`p=quarantine`)~~ **APLICADO 2026-06-17** via Cloudflare. Propagado em DNS público (Google 8.8.8.8).
+2. ~~**Resend:** confirmar domínio verificado~~ **VALIDADO 2026-06-17T21:33Z** — `admin_health_check` → `resend:true`; envios teste com `resend_id`.
+3. ~~**Mailbox mailto unsubscribe**~~ **SUPERADO** — v4.9.131+ usa só HTTPS one-click (`?action=email_unsubscribe`); mailto removido do `List-Unsubscribe`.
+4. ~~**Inbox test**~~ **EXECUTADO 2026-06-17T21:33Z** — `relatorio_diario_teste` + `newsletter_teste` → `enviado:true` para admin. Conferir caixa de entrada `szuchmacheryan@gmail.com` (não spam).
+5. **Primeiro envio semanal real:** cron `30 21 * * *` em sexta de fechamento B3; dry-run **15 destinatários** semanais.
+
+---
+
+## Validação deliverability P2 (2026-06-17T21:33Z)
+
+### DNS (nslookup 8.8.8.8 + script deliverability-checker)
+
+| Registro | Status | Valor |
+|---|---|---|
+| SPF | ✅ hardfail | `v=spf1 include:_spf.mx.cloudflare.net include:amazonses.com include:send.resend.com -all` |
+| DKIM (resend) | ✅ | `resend._domainkey.vixradar.com` presente |
+| DMARC | ✅ quarantine | `p=quarantine; sp=quarantine; pct=100; adkim=r; aspf=r` |
+
+Score audit (resend selector): **SPF + DKIM + DMARC válidos**.
+
+### Envio teste (produção v4.9.134)
+
+| Ação | Resultado |
+|---|---|
+| `relatorio_diario_teste` | `enviado:true`, `destinatarios:1`, `semana:2026-W25`, briefing semanal |
+| `newsletter_teste` | `enviado:true`, `resend_id:e681141b-3985-4749-9dc6-1d3e62f94f1d` |
+| `relatorio_dry_run` | `total_destinatarios:15` (massa semanal pronta) |
+| `email_unsubscribe` sig inválido | HTML "Link expirado" (endpoint vivo) |
+| `admin_health_check` | `resend:true`, `anthropic:true`, `telemetria:true` |
+
+### Conferência manual restante (1 min)
+
+Abrir Gmail admin e confirmar:
+- Briefing semanal e newsletter teste na **caixa de entrada** (não spam)
+- Headers `Authentication-Results`: `spf=pass`, `dkim=pass`, `dmarc=pass`
 
 ---
 
