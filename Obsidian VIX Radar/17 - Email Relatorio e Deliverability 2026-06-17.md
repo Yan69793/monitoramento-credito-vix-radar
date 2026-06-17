@@ -139,16 +139,17 @@ Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatór
 
 **Não usar Opus/Claude na geração do e-mail** — dados já estruturados no KV após rotina noturna.
 
-### Implementação sugerida (v4.9.129)
+### Implementado v4.9.129 (2026-06-16)
 
-1. Renomear/refatorar `executarRelatorioDiario` → `executarRelatorioSemanal`
-2. Gate: `if (!ehSextaOuUltimoPregaoSemana(hoje)) return pulado`
-3. Nova `coletarDestaquesSemana(env, semanaISO)` — eventos seg–sex da semana corrente
-4. Nova `coletarAgendaProximaSemana(env, hoje)` — filtro segunda–sexta da semana ISO seguinte
-5. HTML: trocar "Briefing Diario" → "Briefing Semanal"; seções alinhadas aos 4 blocos
-6. Dedup KV semanal; manter `relatorio_diario_teste` / `_manual` para admin
-
-Cron pode permanecer `30 21 * * *` (função faz no-op nos outros dias) ou estreitar para `30 21 * * 5`.
+| Item | Status |
+|---|---|
+| Deploy Worker v4.9.129 | CF Version ID `f47bb65d-cf4d-4433-9153-a3657b22e6c4` |
+| Gate `ehFechamentoSemanalB3` | ultimo pregao da semana (sexta ou quinta se sexta feriado) |
+| Conteudo | KPI + top 12 semana + heatmap setorial + agenda proxima semana |
+| Dedup | `relatorio:enviado:{semanaISO}` TTL 10d |
+| Cron | `30 21 * * *` — no-op fora fechamento semanal |
+| Newsletter diaria | inalterada |
+| Teste admin | `relatorio_diario_teste` OK — `tipo:semanal`, semana 2026-W25 |
 
 ---
 
@@ -157,8 +158,7 @@ Cron pode permanecer `30 21 * * *` (função faz no-op nos outros dias) ou estre
 1. Abrir e-mail de teste (`relatorio_diario_teste`) e capturar headers SPF/DKIM/DMARC
 2. Após 1 semana com DMARC reports, subir policy para `p=quarantine`
 3. Rodar `vixradar-agenda-semanal` na primeira segunda 03h BRT e validar `calendario:overrides:v1`
-4. **Implementar v4.9.129** briefing semanal (sexta 18h30) conforme seção acima
-5. Confirmar primeiro envio semanal em massa pós-deploy
+4. Confirmar primeiro envio semanal em massa na proxima sexta 18h30 (16 destinatarios)
 
 ---
 
