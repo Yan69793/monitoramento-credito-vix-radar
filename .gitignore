@@ -152,6 +152,7 @@ audio/*.wav
 *~
 
 # ---------- Outputs de ferramentas MCP/Claude Code ----------
+mcps/
 .claude-local/
 .claude.json*
 .claude-skills/
