@@ -18,12 +18,12 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[16 - Design P16 P17 Agenda e Relatorio]]
 - [[17 - Email Relatorio e Deliverability 2026-06-17]]
 
-## Versões confirmadas (última sessão: 2026-06-16/17 — v4.9.128 + v201.53)
+## Versões confirmadas (última sessão: 2026-06-17 — v4.9.131 + v201.54 repo)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.128** (prod = repo) | `ultima_analise` no comparar + `_provedor` dinâmico matinal/noturno |
-| Frontend `vixradar.com` | **v201.53** (prod = repo) | Legendas Briefing, tooltips materialidade, `Última análise` no Comparar |
+| Worker `radar-credito-api` | **v4.9.131** (prod = repo) | one-click unsubscribe POST; footer email personalizado |
+| Frontend `vixradar.com` | **v201.53** (prod) / **v201.54** (repo) | P15 timeline 90d no painel emissor — **deploy Pages pendente** |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |
@@ -37,7 +37,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 4. ~~**MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote~~ **SUPERADO/RESOLVIDO 2026-06-16** — branch não existe localmente; reconciliação estava em `main`. `main` pushado para `origin/main` até commit `b5e1c7c`.
 5. ~~**MÉDIO** — P16~~ **ATIVO v4.9.121** — 16/20 overrides; routine `vixradar-agenda-semanal` registrada (`0 3 * * 1` BRT)
 6. ~~**MÉDIO** — P17~~ **ATIVO v4.9.121** — semanal → 16 aprovados `frequencia=semanal`; PILOTO removido; `RELATORIO_DIARIO_ENABLED=1`
-7. **MÉDIO** — Deliverability SPAM — DMARC `p=none`, SPF `~all`; fix List-Unsubscribe deployado; inbox test pendente
+7. **MÉDIO** — Deliverability SPAM — v4.9.131 corrigiu one-click; DNS ainda `p=none` + SPF `~all` (manual no dashboard); inbox test pendente; envio massa **sex 19/06 18h30**
 
 **Resolvidos anteriormente:** ~~cron `0 2 * * *` duplicado~~ (v4.9.109 — `0 4 * * *`); ~~`CLOUDFLARE_API_TOKEN` secret~~ (2026-06-11); P05* CI; P11 alerta favorito; N06 CRITICIDADE_SETOR.
 

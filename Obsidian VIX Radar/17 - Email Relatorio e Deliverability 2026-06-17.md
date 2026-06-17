@@ -1,6 +1,6 @@
 # Email Relatório e Deliverability — 2026-06-17
 
-Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatório inalterado desde v4.9.121–v4.9.126)
+Atualizado: 2026-06-17 02:30Z | Worker produção **v4.9.131** (one-click unsubscribe + footer personalizado)
 
 ---
 
@@ -90,9 +90,19 @@ Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatór
 
 ---
 
+## Deploy v4.9.131 — one-click unsubscribe (2026-06-17 02:30Z)
+
+**Causa raiz SPAM (código):** `List-Unsubscribe-Post: One-Click` declarado mas URL apontava para frontend (`?unsubscribe=email`) sem handler POST; `mailto:unsubscribe@vixradar.com` sem mailbox.
+
+**Correção:** endpoint `GET/POST ?action=email_unsubscribe` no Worker com token HMAC (`gerarTokenEmail` ação `unsubscribe`); `List-Unsubscribe` só HTTPS assinado; footer boletim/briefing usa link personalizado por destinatário (`htmlPara` em `enviarResend`).
+
+**Validação:** `GET /` → `v4.9.131` HTTP 200; endpoint unsubscribe retorna HTML em sig inválido (esperado). CF Version ID `b669402a-6e0c-4b29-a500-e74595bcd3c3`.
+
+**Envio semanal em massa:** agendado **sexta 19/06/2026 18h30 BRT** (`ehFechamentoSemanalB3` + cron `30 21 * * *`). 16 destinatários `frequencia=semanal`.
+
 ## Pendências (acesso externo)
 
-1. **DNS:** endurecer SPF (`-all`), DMARC (`p=quarantine` ou `p=reject` após monitoramento)
+1. ~~**DNS:** endurecer SPF (`-all`), DMARC (`p=quarantine`)~~ **APLICADO 2026-06-17** via Global API Key + API Cloudflare. SPF: `-all`. DMARC: `p=quarantine; sp=quarantine`. Propagação TTL ~5min.
 2. **Resend:** confirmar domínio verificado e reputação no dashboard
 3. **Mailbox:** criar/rotear `unsubscribe@vixradar.com` se mailto for mantido
 4. **Inbox test:** inspecionar headers `Authentication-Results` do e-mail de teste pós v4.9.121
@@ -162,6 +172,17 @@ Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatór
 
 ---
 
+## Sessão 2026-06-17 (tarde) — commit + P15 frontend
+
+| Item | Status |
+|---|---|
+| Git commit | wrangler v4.9.131, CI EXPECTED_WORKER, Obsidian, frontend v201.54 |
+| P15 timeline 90d | `app/index.html` — módulo append-only; janela painel emissor 90d; `op=historico_emissor` no `selecionar()` |
+| Deploy Pages v201.54 | **Pendente** autorização operador |
+| Lacuna P15 | API `historico_emissor` cobre ~5 semanas KV (regra inviolável); janela UI 90d preenche com `ARQUIVO_PRE` onde existir |
+
+---
+
 ## Arquivos alterados nesta sessão
 
 - `api/v4.9.121.js` (novo)
@@ -170,3 +191,4 @@ Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatór
 - `Obsidian VIX Radar/17 - Email Relatorio e Deliverability 2026-06-17.md` (este)
 - `Obsidian VIX Radar/00 - Índice (MOC).md`
 - `Obsidian VIX Radar/03 - Estado de Produção.md`
+- `app/index.html` + `app/deploy_zip/` (v201.54 P15)

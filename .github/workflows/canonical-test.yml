@@ -62,7 +62,7 @@ jobs:
           TEL="${{ steps.test.outputs.telemetria }}"
 
           # Atualizar quando deployar nova versão de Worker (ver Obsidian 03 - Estado de Produção).
-          EXPECTED_WORKER="v4.9.109"
+          EXPECTED_WORKER="v4.9.131"
           FAIL=0
 
           if [ "$HTTP" != "200" ]; then

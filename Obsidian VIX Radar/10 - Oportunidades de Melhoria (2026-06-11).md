@@ -56,7 +56,7 @@ Itens T1–T10 do `PENDENCIAS.md` permanecem válidos. Destaques por sinergia co
 | P12 | **UI de comparação de emissores.** Tela side-by-side (até 5) consumindo `op=comparar` já pronto no backend — eventos da semana, materialidade, EWS, anomalias. | Quick win: endpoint completo desde v4.8.0 sem nenhum consumidor (confirmado via Grep em `app/index.html`). Análise relativa intra-setor é fluxo natural de crédito. | Alto | P/M |
 | P13 | **Briefing executivo na UI.** Card/tela "Briefing do dia" consumindo `op=briefing_executivo` já pronto (top 10 materialidade, distribuição setorial, EWS, CVM). | Mesmo padrão do P12: endpoint órfão de alto valor (única menção no frontend é texto de tooltip, linha 3408). Vira a "primeira tela do dia" do gestor. | Alto | P/M |
 | P14 | **Gráfico de série temporal por emissor.** Spread/EWS/anomalias ao longo do tempo a partir das chaves `serie:` do KV (sparkline ou chart leve no painel do emissor). | O dado histórico existe no KV mas não é visualizado em lugar nenhum; gestor enxerga tendência, não só snapshot. | Médio | M |
-| P15 | **Histórico estendido na timeline (3 meses).** Ampliar janela da timeline do emissor usando `op=historico_emissor` (reclassificação do P10 original como prioridade). | Backend pronto; mudança só de frontend. | Médio | P |
+| P15 | **Histórico estendido na timeline (3 meses).** Ampliar janela da timeline do emissor usando `op=historico_emissor` (reclassificação do P10 original como prioridade). | **Implementado repo v201.54** — módulo `#p15-timeline-module`; janela 90d; fetch `historico_emissor` ao selecionar emissor. Deploy Pages pendente. | Médio | P |
 
 Itens P1–P10 do `PENDENCIAS.md` permanecem válidos. Destaques: P1/P2 (status de providers e saldo OpenRouter no painel admin — visibilidade do incidente N01), P3 (landing page), P9 (onboarding guiado).
 
@@ -80,6 +80,7 @@ Itens P1–P10 do `PENDENCIAS.md` permanecem válidos. Destaques: P1/P2 (status 
 |---|---|---|
 | P13 Briefing executivo na UI | **Implementado (repo v201.46)** | Render verificado em pages dev: 5 cards, top 10 materialidade, distribuição setorial, alertas EWS, confiança média |
 | P12 Comparação de emissores | **Implementado (repo v201.46)** | Modal seleção 2–5 (103 emissores) + tabela lado a lado verificados em pages dev |
+| P15 Timeline 90d (emissor) | **Implementado (repo v201.54)** | `#emp-hist-timeline` no topo da aba Eventos; merge `historico_emissor` + `resultados` + `ARQUIVO_PRE`; filtros painel 30d→90d |
 | Segurança (vetor N03) | **Não reaberto** | Teste adversarial: payload `<img onerror>` renderizado como texto, `onerror` não dispara |
 
 > [!success] Deploy concluído — em produção (v201.46)
