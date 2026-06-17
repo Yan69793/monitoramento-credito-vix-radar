@@ -26,9 +26,10 @@
 # v4.9.122.js = v4.9.121 + redesign HTML briefing semanal (KPI cards, seções, agenda tabela).
 # v4.9.123.js = v4.9.122 + briefing DIARIO: destaques do dia + agenda da semana; dedup diario.
 # v4.9.124.js = v4.9.123 + dedup eventos empresa+data+fonte (email + persistencia KV).
+# v4.9.125.js = v4.9.124 + action relatorio_diario_manual (reenvio admin, bypass dedup).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.124.js"
+main       = "v4.9.125.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
