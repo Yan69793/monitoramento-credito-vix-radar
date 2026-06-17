@@ -18,15 +18,16 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[16 - Design P16 P17 Agenda e Relatorio]]
 - [[17 - Email Relatorio e Deliverability 2026-06-17]]
 
-## Versões confirmadas (última sessão: 2026-06-17 — v4.9.121)
+## Versões confirmadas (última sessão: 2026-06-16/17 — v4.9.128 + v201.53)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.121** (prod = repo) | P17 semanal 16 destinatários + fix List-Unsubscribe |
-| Frontend `vixradar.com` | **v201.51** (prod = repo) | DEPLOYADO 2026-06-13 02:20Z |
-| `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado em v4.9.112 |
-| Cascade AI | — | claude-haiku-analise apenas (Pulso manual); Claude Opus via rotinas agendadas |
-| vixradar-noturno | — | top_n:103 confirmado — cobre todos os 103 emissores por staleness/EWS |
+| Worker `radar-credito-api` | **v4.9.128** (prod = repo) | `ultima_analise` no comparar + `_provedor` dinâmico matinal/noturno |
+| Frontend `vixradar.com` | **v201.53** (prod = repo) | Legendas Briefing, tooltips materialidade, `Última análise` no Comparar |
+| `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
+| Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
+| vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |
+| Cobertura KV | — | **103/103** com `Última análise:` em `dados_para_analise` |
 
 ## Pendências abertas (atualizado 2026-06-16 — pós-v4.9.115)
 

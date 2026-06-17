@@ -1,6 +1,6 @@
 # Email Relatório e Deliverability — 2026-06-17
 
-Atualizado: 2026-06-17 (noite) | Worker **v4.9.122** (CF Version ID `091cc235-a2b8-4412-89ba-d1c8ebdbaadf`)
+Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatório inalterado desde v4.9.121–v4.9.126)
 
 ---
 

@@ -174,7 +174,7 @@ Sem esse ritual, a tarefa está incompleta.
 | Caminho | Modelo | Trigger |
 |---|---|---|
 | Pulso manual (análise individual) | `claude-haiku-4-5-20251001` via Anthropic API | Usuário dispara no frontend |
-| Cobertura em lote (103 emissores) | Claude Opus via Claude Code Scheduled Tasks | `vixradar-matinal` (13h BRT dias úteis, top_n:15) + `vixradar-noturno` (17h30 BRT diário, top_n:103) |
+| Cobertura em lote (103 emissores) | Claude Code Scheduled Tasks | `vixradar-matinal` (10h BRT dias úteis, Opus, top_n:15) + `vixradar-noturno` (18h BRT diário, **Sonnet**, `listar_todos_emissores` 103/103) |
 
 ## Sobre OpenRouter / Gemini / Perplexity
 
@@ -707,7 +707,7 @@ Version ID: `3c866818-f402-4457-bc40-baf7bc6049be`. Deploy em 2026-04-11T02:31:3
 |---------|--------|
 | Cascade AI (OpenRouter → Gemini → Perplexity) | ❌ OBSOLETO desde v4.9.108 — ver seção "Arquitetura de IA Atual" |
 | Análise inline (claude-haiku-4-5-20251001 via Anthropic API) | ✅ |
-| Análise em lote (Claude Opus via Claude Code Scheduled Tasks) | ✅ |
+| Análise em lote (matinal Opus + noturno Sonnet via Claude Code Scheduled Tasks) | ✅ |
 | Circuit breaker por provider | ✅ (resíduo no bundle — não ativo) |
 | Cache de último resort | ✅ |
 | Pipeline verdade graduada | ✅ |

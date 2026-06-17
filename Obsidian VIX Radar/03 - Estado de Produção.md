@@ -1,15 +1,16 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-17 (Worker v4.9.121 + P17 destinatários + deliverability). Anterior: v4.9.120 piloto yan@.
+Atualizado: 2026-06-16/17 (Worker v4.9.128 + Frontend v201.53 + rotina noturno Sonnet 103/103). Anterior: v4.9.121 P17 deliverability.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.121** | `GET /` `versao:"v4.9.121"`; CF Version ID `c57bb6f6-bd9c-44aa-863d-cab1961367b1` | 2026-06-17 |
-| Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
-| Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
-| Worker repo | v4.9.121 | `api/v4.9.121.js`; `api/wrangler.toml main="v4.9.121.js"` | 2026-06-17 |
+| Worker `radar-credito-api` | **v4.9.128** | `GET /` `versao:"v4.9.128"` em `api.vixradar.com` e `workers.dev` | 2026-06-16 |
+| Frontend `vixradar.com` | **v201.53** | `version.json` `{"version":"v201.53","deployed_at":"2026-06-17T00:36:01Z"}` | 2026-06-16 |
+| Frontend repo | v201.53 | `app/index.html` CACHE_VERSION v201.53 | 2026-06-16 |
+| Worker repo | v4.9.128 | `api/v4.9.128.js`; `api/wrangler.toml main="v4.9.128.js"` | 2026-06-16 |
+| Cobertura KV | 103/103 | `Última análise:` em `dados_para_analise` para todos os emissores | 2026-06-16 |
 
 ## Deploy v4.9.121 — P17 destinatários + deliverability (2026-06-17)
 
@@ -198,12 +199,12 @@ Atualizado: 2026-06-17 (Worker v4.9.121 + P17 destinatários + deliverability). 
 | `0 1 * * *` | 22h00, diário | Watchdog |
 | `0 4 * * *` | 01h00, diário | agendaBuildPersistir — calendário 90 dias → KV `agenda:eventos:v1`, TTL 3d (era `0 2 * * *` = 23h BRT, caía no else/noturno duplicando pipeline — corrigido em v4.9.109 / P15*) |
 
-## Scheduled Routines Claude Opus (Claude Code Max)
+## Scheduled Routines Claude Code (Claude Code Max)
 
-| Routine | Horário BRT | Função |
-|---|---|---|
-| `vixradar-matinal` | 10h00, dias úteis (cron `0 10 * * 1-5`, jitter ~+6min) | Top 15 emissores por EWS → 9 rodadas de busca → push resultado ao Worker |
-| `vixradar-noturno` | 18h00, diário (cron `0 18 * * *`, jitter ~+5min) | Top **103** emissores por staleness/EWS → 9 rodadas de busca → push resultado ao Worker (era top_n:30 — corrigido 2026-06-14) |
+| Routine | Horário BRT | Modelo | Função |
+|---|---|---|---|
+| `vixradar-matinal` | 10h00, dias úteis (cron `0 10 * * 1-5`, jitter ~+6min) | Opus | Top 15 emissores por EWS → 9 rodadas de busca → push resultado ao Worker |
+| `vixradar-noturno` | 18h00, diário (cron `0 18 * * *`, jitter ~+5min) | **Sonnet 4.6** | **`listar_todos_emissores` 103/103** → 9 rodadas → `receber_analise` com `claude-sonnet-routine` (v4.9.128) |
 | `atualizar-agenda-macro-szuchmacher` | sexta 07:07 (cron `7 7 * * 5`, jitter ~+9min) | Atualiza calendário macro `/assets/agenda.php` de szuchmacher.com.br via FTP HostGator (backup + upload + validação + rollback) |
 
 > [!warning] Horários alterados 2026-06-15 (reinstalação do Claude desktop)
@@ -213,7 +214,10 @@ Atualizado: 2026-06-17 (Worker v4.9.121 + P17 destinatários + deliverability). 
 
 **Secret:** `ROUTINE_API_KEY` configurado no Worker (wrangler secret, 48 chars alfanuméricos). Ver `memory/credenciais.md`.
 
-> [!info] Última execução `vixradar-noturno`: 2026-06-13 (manual, Claude Sonnet 4.6)
+> [!success] Teste manual pós-migração Sonnet: 2026-06-16/17 (Grok, validação pipeline)
+> **103/103** `receber_analise` com `ok:true`, `_provedor: claude-sonnet-routine`, Worker **v4.9.128**. Smoke 3/3 (Raízen, Bradesco, Dasa). Cobertura KV: **103/103** com `Última análise:` em `dados_para_analise`. Evidência: `testing/noturno_final_summary.json`, `testing/smoke_summary.json`.
+
+> [!info] Última execução `vixradar-noturno` agendada: 2026-06-13 (manual, Claude Sonnet 4.6)
 > **30/30 emissores concluídos**, 0 falhas de envio (`ok:true` para todos). 11 com `n_eventos≥1`, 19 sem eventos. Janela de análise: 2026-05-14 a 2026-06-13.
 >
 > **Emissores com eventos persistidos (11):**
@@ -528,3 +532,31 @@ Verificação end-to-end em produção sobre v201.47 + v4.9.102. Resultado geral
 **Impacto na rotina matinal de 15/06.** Os 15 emissores prioritários foram identificados (top EWS: Oncoclínicas 71,1, Raízen 66,6, Oi 60,4, Cosan 59,6, Light 57,4...). 5 foram analisados e enviados (Oncoclínicas, Raízen, Oi, Cosan persistiram eventos→quarentena; Light corretamente `sem_eventos` por janela). Varredura dos 10 restantes **interrompida deliberadamente**: sem o secret, gerar análises que só engrossam a quarentena é desperdício. Re-executar a rotina após a rotação do secret.
 
 **Aprendizado / melhoria sugerida.** O health check `GET /` deve passar a testar o verificador Haiku (ping autenticado mínimo) e expor `verificador_ok: true/false`, espelhando a defesa-em-profundidade da regra de telemetria. Hoje uma falha de credencial do verificador cega toda a ingestão sem nenhum alarme visível por ≥4 dias.
+
+---
+
+## Vistoria 2026-06-16 22:06 BRT — alterações do dia no sistema
+
+**Escopo.** Verificação solicitada pelo operador para identificar o que foi alterado hoje no sistema. Data operacional considerada: 2026-06-16 BRT, com validação pública em 2026-06-17T01:06Z.
+
+**Evidência objetiva.**
+- Produção Worker `radar-credito-api.prospects-intel.workers.dev` e `api.vixradar.com`: `GET /` HTTP 200, `versao:"v4.9.128"`, `telemetria:true`, `kv:true`, `rate_limiter:true`, `providers_configurados:"2/2"`, `verificador_ok:true`.
+- Produção Frontend `vixradar.com/version.json`: HTTP 200, `{"version":"v201.53","deployed_at":"2026-06-17T00:36:01Z"}`.
+- Git local tem 14 commits em 2026-06-16 BRT, de `v4.9.112` até `v4.9.126`; último commit: `4663b20 feat(worker): v4.9.126 admin_deduplicar_eventos_kv limpa duplicatas KV`.
+- Working tree ainda não commitado aponta Worker para `v4.9.128` e Frontend para `v201.53`.
+
+**Síntese do que mudou.**
+- Worker: v4.9.112 segurança/observabilidade; v4.9.113 hotfix `admin_mercado`; v4.9.115 `ADMIN_EMAIL` via `env`; v4.9.117 recebimento de análise de rotina + varredura 103/103; v4.9.118 health providers 2/2; v4.9.119 P16 calendário KV + P17 relatório diário; v4.9.120 relatório semanal piloto + P16 16/20; v4.9.121 relatório semanal para 16 destinatários + List-Unsubscribe; v4.9.122 briefing semanal HTML + `EMAIL_ALERTAS_ENABLED`; v4.9.124 dedup de eventos por empresa/data/fonte no e-mail; v4.9.125 reenvio admin manual; v4.9.126 deduplicação KV admin.
+- Worker publicado além do último commit: v4.9.127 corrige `ultima_analise` no `comparar` via `_last_scanned_at/timestamp`; v4.9.128 registra `_provedor` dinâmico no `receber_analise` (`matinal=claude-opus-routine`, `noturno=claude-sonnet-routine`).
+- Frontend: `v201.53` publicado; adiciona legendas/tooltips no Briefing Executivo, explicação de materialidade, labels Crít./Rel./Eco/Total por setor e estados de `Última análise` no Comparar (`Nunca analisado`/`Sem data`).
+- Documentação operacional: Obsidian atualizado com auditoria completa, design P16/P17 e nota de e-mail/deliverability; `CLAUDE.md` ajustado para refletir matinal Opus e noturno Sonnet.
+
+**Validação.**
+- Produção confirma Worker v4.9.128 saudável em dois domínios públicos.
+- Produção confirma Frontend v201.53 via `version.json`.
+- Regra global CSS do `<strong>` validada em `app/index.html` e `app/deploy_zip/index.html`: `strong, .text-strong, [class*="strong"] { font-weight: 600; }`, sem `color`.
+
+**Pendências e próximos passos.**
+- Commitar/reconciliar as mudanças locais ainda não versionadas: `CLAUDE.md`, `api/wrangler.toml`, `app/index.html`, `app/deploy_zip/index.html`, `app/version.json`, `app/deploy_zip/version.json`.
+- Decidir destino de arquivos não rastreados novos (`api/openai-mcp.js`, `api/package*.json`, `api/tools/`, `producao/`, `scripts/deploy-pages.ps1`, `scripts/setup-deploy-credential.ps1`, `docs/auditorias/`, `research/`, `src/`, `vixradar/` etc.).
+- Atualizar o índice MOC/nota de produção para refletir explicitamente v4.9.128 e v201.53 como estado real publicado, pois o índice ainda menciona v4.9.121 como última sessão.

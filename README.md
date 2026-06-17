@@ -21,11 +21,11 @@ próprio, sem banco de dados, sem manutenção de infraestrutura.
 
 ```
 api/
-  v4.9.109.js        ← bundle Worker em produção (bundle Wrangler, NÃO editar)
+  v4.9.128.js        ← bundle Worker em produção (bundle Wrangler, NÃO editar)
   wrangler.toml      ← config de deploy: main, bindings, cron triggers, custom domain
 
 app/
-  index.html         ← frontend canônico (CACHE_VERSION=v201.51)
+  index.html         ← frontend canônico (CACHE_VERSION=v201.53)
   _headers           ← headers HTTP do Pages (cache, segurança)
   _routes.json       ← roteamento do Pages
   deploy_zip/        ← artefato pronto para deploy (index.html + _headers + _routes.json + version.json)
@@ -72,7 +72,7 @@ research/            ← pesquisa e referências externas
 | Rate Limiting | Cloudflare Durable Object (`RATE_LIMITER_DO`, SQLite) |
 | Telemetria | Cloudflare Analytics Engine (`RADAR_USAGE_EVENTS`) |
 | IA inline | `claude-haiku-4-5-20251001` via Anthropic API (Pulso manual) |
-| IA em lote | Claude Opus via Claude Code Scheduled Tasks (rotinas externas) |
+| IA em lote | Opus (matinal top 15) + Sonnet 4.6 (noturno 103/103) via Scheduled Tasks |
 | Email | Resend (`boletim@vixradar.com`) |
 | Deploy | Cloudflare Pages + Workers + Wrangler CLI |
 
@@ -82,8 +82,8 @@ research/            ← pesquisa e referências externas
 
 | Componente | Versão | Confirmada |
 |---|---|---|
-| Worker `radar-credito-api` | v4.9.109 | 2026-06-14 |
-| Frontend `vixradar.com` | v201.51 | 2026-06-13 |
+| Worker `radar-credito-api` | v4.9.128 | 2026-06-16 |
+| Frontend `vixradar.com` | v201.53 | 2026-06-16 |
 | Emissores monitorados | 103 empresas / 13 setores | — |
 
 ---
