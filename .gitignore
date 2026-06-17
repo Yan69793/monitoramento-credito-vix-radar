@@ -64,6 +64,31 @@ api/v4.*.js
 !api/v4.9.118.js
 !api/v4.9.119.js
 !api/v4.9.120.js
+!api/v4.9.121.js
+!api/v4.9.122.js
+!api/v4.9.123.js
+!api/v4.9.124.js
+!api/v4.9.125.js
+!api/v4.9.126.js
+!api/v4.9.127.js
+!api/v4.9.128.js
+
+# ---------- Protótipos e legado local (não versionar) ----------
+producao/
+research/
+vixradar/
+archive/
+dados/
+api/openai-mcp.js
+api/package.json
+api/package-lock.json
+api/radar-standalone-worker.js
+api/worker_v4.5.0.js
+api/validate.js
+api/workflow-config.json
+api/blocklist.json
+Projetos Claude/
+Obsidian VIX Radar/.obsidian/
 .playwright-mcp/
 
 # ---------- Node, builds, dependencias ----------

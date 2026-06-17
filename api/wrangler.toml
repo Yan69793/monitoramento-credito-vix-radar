@@ -28,9 +28,11 @@
 # v4.9.124.js = v4.9.123 + dedup eventos empresa+data+fonte (email + persistencia KV).
 # v4.9.125.js = v4.9.124 + action relatorio_diario_manual (reenvio admin, bypass dedup).
 # v4.9.126.js = v4.9.125 + admin_deduplicar_eventos_kv (limpa duplicatas no KV).
+# v4.9.127.js = v4.9.126 + FIX ultima_analise no comparar (_last_scanned_at/timestamp em receber_analise e persistir).
+# v4.9.128.js = v4.9.127 + receber_analise _provedor dinâmico (matinal=opus, noturno=sonnet).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.126.js"
+main       = "v4.9.128.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
