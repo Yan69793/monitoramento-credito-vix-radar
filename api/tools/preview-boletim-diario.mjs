@@ -3,7 +3,7 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const bundle = readFileSync(join(__dir, "..", "v4.9.135.js"), "utf8");
+const bundle = readFileSync(join(__dir, "..", "v4.9.136.js"), "utf8");
 
 function extractFn(name) {
   const re = new RegExp(`function ${name}\\([^)]*\\)\\s*\\{`, "m");

@@ -268,11 +268,31 @@ Abrir Gmail admin e confirmar:
 | Health | `GET /` → `versao:"v4.9.135"` |
 | `newsletter_teste` | `enviado:true`, `resend_id:94c6ccc8-1b98-4f80-ac19-7020a8f55859` |
 
+### Polish v4.9.136 (2026-06-17 noite)
+
+| Item | Mudança |
+|---|---|
+| Header | Eyebrow `RADAR · CRÉDITO PRIVADO` (alinhado `emailWrap` / briefing semanal) |
+| Preheader | Snippet Gmail: `N críticos, N relevantes · data` |
+| KPI | Label `Resumo do dia` + números 22px |
+| Eventos | Emissor em caps acima do badge; título 15px |
+| Copy | Nota curta (ghost); disclaimer `Fontes: CVM...` |
+| Footer | `Radar de Crédito Privado · vixradar.com` |
+
+**Veredito visual:** preview local + `newsletter_teste` v4.9.136 → **apto para cliente** no Gmail (layout table/inline, hierarquia institucional, separação diário vs semanal). `print-emulated.png` é teste PDF vazio — não é referência do boletim.
+
+| Evidência v4.9.136 | Resultado |
+|---|---|
+| Deploy | CF `78e12e6a-a76b-4494-80c4-3369f8f8df8d` |
+| Health | `v4.9.136` |
+| `newsletter_teste` | `resend_id:a91cfb5a-ff00-463a-b164-c9963f273ef2` |
+| Preview | `app/_preview/boletim-diario.html` |
+
 ### Pendências
 
-1. Inspecionar inbox do e-mail de teste (layout Gmail + Outlook real)
-2. Commit/push repo (`v4.9.135.js`, wrangler, CI, preview tool, Obsidian)
-3. Confirmar que briefing semanal (`montarRelatorioSemanalHTML`) permanece distinto no próximo `relatorio_diario_teste` de sexta
+1. Confirmar inbox Gmail admin (snippet preheader + render mobile)
+2. Outlook desktop (opcional) — validar KPI 3 colunas
+3. Briefing semanal inalterado — conferir na sexta via `relatorio_diario_teste`
 
 ---
 

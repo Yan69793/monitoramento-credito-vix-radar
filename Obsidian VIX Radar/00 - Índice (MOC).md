@@ -27,7 +27,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.135** (prod) | Redesign `montarEmailHTML`; CF `472c9236-54d3-4925-8c6f-1dbd36eb5469`; CI `EXPECTED_WORKER=v4.9.135` |
+| Worker `radar-credito-api` | **v4.9.136** (prod) | Polish boletim diário; CF `78e12e6a-a76b-4494-80c4-3369f8f8df8d`; CI `EXPECTED_WORKER=v4.9.136` |
 | Frontend `vixradar.com` | **v201.63** (prod = repo) | Fix JWT sessão; deploy 2026-06-17T21:26:52Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
