@@ -1,6 +1,6 @@
 # Email Relatório e Deliverability — 2026-06-17
 
-Atualizado: 2026-06-17 | Worker **v4.9.121** (CF Version ID `c57bb6f6-bd9c-44aa-863d-cab1961367b1`)
+Atualizado: 2026-06-17 (noite) | Worker **v4.9.122** (CF Version ID `091cc235-a2b8-4412-89ba-d1c8ebdbaadf`)
 
 ---
 
@@ -77,6 +77,16 @@ Atualizado: 2026-06-17 | Worker **v4.9.121** (CF Version ID `c57bb6f6-bd9c-44aa-
 - SPF `~all` em vez de `-all`
 - `mailto:unsubscribe@vixradar.com` — mailbox pode não existir
 - Footer HTML newsletter usa `?unsubscribe=1` genérico (não por e-mail) — pendente alinhar
+
+---
+
+## Incidente 2026-06-16/17 — cron não enviou
+
+**Causa:** secret `EMAIL_ALERTAS_ENABLED` **ausente** em produção. `executarNewsletter` e `executarRelatorioDiario` retornam `motivo:"EMAIL_ALERTAS_ENABLED_ausente"` no cron `30 21 * * *` (18h30 BRT).
+
+**Correção:** `wrangler secret put EMAIL_ALERTAS_ENABLED=1` (2026-06-17). Próximo disparo automático: cron noturno do dia útil seguinte.
+
+**Nota:** `relatorio:enviado:2026-W25` não existia no KV — dedup semanal **não** era o bloqueio.
 
 ---
 
