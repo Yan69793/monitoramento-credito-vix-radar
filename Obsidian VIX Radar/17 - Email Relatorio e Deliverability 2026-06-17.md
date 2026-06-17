@@ -178,7 +178,7 @@ Atualizado: 2026-06-17 02:30Z | Worker produção **v4.9.131** (one-click unsubs
 |---|---|
 | Git commit | wrangler v4.9.131, CI EXPECTED_WORKER, Obsidian, frontend v201.54 |
 | P15 timeline 90d | `app/index.html` — módulo append-only; janela painel emissor 90d; `op=historico_emissor` no `selecionar()` |
-| Deploy Pages v201.54 | **Pendente** autorização operador |
+| Deploy Pages v201.54 | **OK** 2026-06-17T02:40Z — `version.json` + `CACHE_VERSION` confirmados em produção |
 | Lacuna P15 | API `historico_emissor` cobre ~5 semanas KV (regra inviolável); janela UI 90d preenche com `ARQUIVO_PRE` onde existir |
 
 ---

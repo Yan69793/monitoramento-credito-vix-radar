@@ -23,7 +23,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 | Componente | Versão | Status |
 |---|---|---|
 | Worker `radar-credito-api` | **v4.9.131** (prod = repo) | one-click unsubscribe POST; footer email personalizado |
-| Frontend `vixradar.com` | **v201.53** (prod) / **v201.54** (repo) | P15 timeline 90d no painel emissor — **deploy Pages pendente** |
+| Frontend `vixradar.com` | **v201.54** (prod = repo) | P15 timeline 90d no painel emissor; deploy 2026-06-17T02:40Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |
