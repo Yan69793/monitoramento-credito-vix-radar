@@ -18,7 +18,9 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[16 - Design P16 P17 Agenda e Relatorio]]
 - [[17 - Email Relatorio e Deliverability 2026-06-17]]
 
-## Versões confirmadas (última sessão: 2026-06-17 — v4.9.131 + v201.54 repo)
+## Versões confirmadas (última sessão: 2026-06-17 — v4.9.131 + v201.54 prod = origin/main)
+
+**Git:** `origin/main` = `462bfa5` (push 2026-06-17) — commits `83cf9d6` + `462bfa5` publicados.
 
 | Componente | Versão | Status |
 |---|---|---|
