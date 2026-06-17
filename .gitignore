@@ -188,3 +188,7 @@ in.json
 out*.json
 tmp_in.json
 untracked-auditoria.txt
+
+src/
+Obsidian VIX Radar/Sem t*.canvas
+
