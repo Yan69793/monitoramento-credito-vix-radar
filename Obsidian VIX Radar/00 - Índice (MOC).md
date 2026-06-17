@@ -17,15 +17,17 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[15 - Auditoria Completa 2026-06-16 (v2)]]
 - [[16 - Design P16 P17 Agenda e Relatorio]]
 - [[17 - Email Relatorio e Deliverability 2026-06-17]]
+- [[18 - Auditoria Completa 2026-06-17]]
+- [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]]
 
-## Versões confirmadas (última sessão: 2026-06-17 — v4.9.131 + v201.54 prod = origin/main)
+## Versões confirmadas (última sessão: 2026-06-17 — v4.9.134 + v201.63 prod = repo)
 
-**Git:** `origin/main` = `462bfa5` (push 2026-06-17) — commits `83cf9d6` + `462bfa5` publicados.
+**Git:** `origin/main` = `131b1fd` (push 2026-06-17) — commits `83cf9d6` → `462bfa5` → `657b907` → `131b1fd`.
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.131** (prod = repo) | one-click unsubscribe POST; footer email personalizado |
-| Frontend `vixradar.com` | **v201.54** (prod = repo) | P15 timeline 90d no painel emissor; deploy 2026-06-17T02:40Z |
+| Worker `radar-credito-api` | **v4.9.134** (prod = repo) | P14 op=serie; bundle versionado; CI alinhado |
+| Frontend `vixradar.com` | **v201.63** (prod = repo) | Fix JWT sessão; deploy 2026-06-17T21:26:52Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |

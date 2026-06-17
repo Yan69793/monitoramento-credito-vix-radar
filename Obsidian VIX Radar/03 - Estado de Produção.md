@@ -1,16 +1,42 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16/17 (Worker v4.9.128 + Frontend v201.53 + rotina noturno Sonnet 103/103). Anterior: v4.9.121 P17 deliverability.
+Atualizado: 2026-06-17 (Worker v4.9.134 + Frontend v201.63 + fix sessão JWT). Auditoria: [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]].
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.128** | `GET /` `versao:"v4.9.128"` em `api.vixradar.com` e `workers.dev` | 2026-06-16 |
-| Frontend `vixradar.com` | **v201.53** | `version.json` `{"version":"v201.53","deployed_at":"2026-06-17T00:36:01Z"}` | 2026-06-16 |
-| Frontend repo | v201.53 | `app/index.html` CACHE_VERSION v201.53 | 2026-06-16 |
-| Worker repo | v4.9.128 | `api/v4.9.128.js`; `api/wrangler.toml main="v4.9.128.js"` | 2026-06-16 |
-| Cobertura KV | 103/103 | `Última análise:` em `dados_para_analise` para todos os emissores | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.134** | `GET /` `versao:"v4.9.134"` em `api.vixradar.com` e `workers.dev`; `verificador_ok:true` | 2026-06-17 |
+| Frontend `vixradar.com` | **v201.63** | `version.json` `{"version":"v201.63","deployed_at":"2026-06-17T21:26:52Z"}` | 2026-06-17 |
+| Frontend repo | v201.63 | `app/version.json`; `app/index.html` + `app/deploy_zip/` | 2026-06-17 |
+| Worker repo | v4.9.134 | `api/wrangler.toml main="v4.9.134.js"`; bundle versionado em git | 2026-06-17 |
+| CI canonical-test | v4.9.134 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.134` | 2026-06-17 |
+| Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-17 |
+| Git `origin/main` | `131b1fd` | `chore: ignorar mcps/` | 2026-06-17 |
+
+## Incidente + Deploy v201.63 — sessão expira em ~1s (2026-06-17)
+
+**Sintoma:** usuário antigo (Eduardo Meyer) entrava no dashboard e era deslogado em ~1s com "Sua sessão expirou".
+
+**Causa raiz:** frontend chamava `?op=state`, `?op=anomalias`, `?op=ews` e favoritos **sem** `Authorization: Bearer` após login; Worker retorna 401 → `_tratarSessaoExpirada()` derruba sessão.
+
+**Correção (v201.63):** `_authHeadersGet()` / `_authHeaders()` em todos os GETs autenticados; restauração de sessão exige `radar_user` **e** `radar_jwt`; `rl_inspect` não derruba sessão em 401.
+
+**Escopo:** vale para **todos** os usuários — antigos e novos. Antigo não precisa recadastrar: basta **login de novo** (gera JWT fresco). Novo cadastro continua `pendente` até aprovação admin (Ctrl+Shift+A).
+
+**Validação:** `https://vixradar.com/version.json` → v201.63; `CACHE_VERSION="v201.63"` no HTML; deploy Pages 2026-06-17T21:26:52Z.
+
+## Deploy v4.9.131 — deliverability one-click (2026-06-17)
+
+**Mudança:** one-click unsubscribe POST no Worker; remove mailto inválido; footer personalizado por destinatário; `List-Unsubscribe` HTTPS.
+
+**Validação:** `GET /` → `v4.9.131` HTTP 200; `bindings.telemetria:true`; `providers_configurados:"2/2"`; `verificador_ok:true` (2026-06-17T02:48Z).
+
+## Deploy v201.54 — P15 timeline 90d (2026-06-17)
+
+**Mudança:** módulo `#p15-timeline-module` no painel emissor; janela 90d via `op=historico_emissor`; deploy Pages 2026-06-17T02:40Z.
+
+**Validação:** `https://vixradar.com/version.json` → v201.54; apex e www idênticos; `Cache-Control: no-cache, no-store, must-revalidate`.
 
 ## Deploy v4.9.121 — P17 destinatários + deliverability (2026-06-17)
 

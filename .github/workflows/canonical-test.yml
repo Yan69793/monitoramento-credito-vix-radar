@@ -3,6 +3,10 @@
 # NOTA: o endpoint POST de análise passou a exigir JWT (401 anônimo) desde a
 # reconciliação de 2026-06-01, por isso este teste usa o health check público
 # GET / em vez do antigo POST de análise (que falhava sempre com 401).
+#
+# NOTA: listar_emissores_prioritarios top_n=103 pode retornar <103 quando
+# staleness dos emissores é baixo (varredura recente). Isso NÃO indica gap de
+# cobertura — use listar_todos_emissores (total:103) para validar universo.
 
 name: Canonical Production Test
 
@@ -62,7 +66,7 @@ jobs:
           TEL="${{ steps.test.outputs.telemetria }}"
 
           # Atualizar quando deployar nova versão de Worker (ver Obsidian 03 - Estado de Produção).
-          EXPECTED_WORKER="v4.9.131"
+          EXPECTED_WORKER="v4.9.134"
           FAIL=0
 
           if [ "$HTTP" != "200" ]; then

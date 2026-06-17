@@ -40,7 +40,7 @@ Tudo que tá no frontend é visível com 2 cliques no DevTools.
 - `OPENROUTER_API_KEY` — OpenRouter (pago, verificar saldo em openrouter.ai/credits)
 - `PERPLEXITY_API_KEY` — Perplexity (pago, renew em perplexity.ai/settings/api)
 - `JWT_SECRET` — Gerado uma vez, mantido fixo
-- `ADMIN_PASSWORD` — RadarAdmin@2026 (copiar do seu gestor de senha)
+- `ADMIN_PASSWORD` — ver `memory/credenciais.md` (nunca versionar senha em docs públicos)
 - `USER_PASSWORD` — Radar2026
 
 **Nunca** escrever essas variáveis em arquivo `.js` ou `.html`. Sempre via Cloudflare Dashboard → Worker Settings → Environment Variables.

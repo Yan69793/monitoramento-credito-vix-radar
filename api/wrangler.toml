@@ -33,9 +33,12 @@
 # v4.9.129.js = v4.9.128 + briefing SEMANAL sexta 18h30: KPI + destaques semana + heatmap setorial + agenda proxima semana; dedup semanaISO.
 # v4.9.130.js = v4.9.129 + entregabilidade: remove Precedence:bulk; htmlToPlainText com quebras apos links/celulas.
 # v4.9.131.js = v4.9.130 + one-click unsubscribe POST no Worker; remove mailto invalido; footer personalizado por destinatario.
+# v4.9.132.js = v4.9.131 + rotinas matinal/noturno automaticas no Worker (reverte delegacao v4.9.106); cron matinal 30 15 * * *.
+# v4.9.133.js = v4.9.132 + T13 custo por analise (KV+AE) + pipeline preditivo Fase0/1/2 (rule+logistic) + sync ANBIMA matinal.
+# v4.9.134.js = v4.9.133 + P14 op=serie com ews_serie, horizonte 30/60/90 e deltas.
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.131.js"
+main       = "v4.9.134.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
@@ -80,9 +83,9 @@ custom_domain = true
 # em 2026-05-07 via Cloudflare API), mas ter no .toml é defesa em
 # profundidade — versionado em git, recuperável após qualquer mudança.
 #
-# Confirmados via API CF em 2026-05-07T07:14Z; papel redefinido em v4.9.106:
-#   - 30 15 * * 1-5  → matinal 12:30 BRT, dias úteis (sync_cvm + recalc + saldo; varredura AI via routine)
-#   - 30 21 * * *    → noturno 18:30 BRT, diário (sync_cvm + recalc + sync_anbima + newsletter + saldo + healthcheck; batch AI via routine)
+# Confirmados via API CF em 2026-05-07T07:14Z; v4.9.132 restaura varredura AI no Worker:
+#   - 30 15 * * *    → matinal 12:30 BRT (sync_cvm + recalc + executarVarreduraMatinal + saldo; dia util via ehDiaPregaoB3)
+#   - 30 21 * * *    → noturno 18:30 BRT (sync_cvm + recalc + sync_anbima + executarVarreduraBatchComFila + newsletter + saldo + healthcheck)
 #   - 0 1 * * *      → watchdog 22:00 BRT, diário
 #   - 0 4 * * *      → agenda build 01:00 BRT (agendaBuildPersistir: calendário 90 dias → KV agenda:eventos:v1, TTL 3d)
 #                      (era "0 2 * * *" = 23h BRT, caía no else/noturno duplicando pipeline — corrigido 2026-06-14)
@@ -92,7 +95,7 @@ head_sampling_rate = 1
 
 [triggers]
 crons = [
-  "30 15 * * 1-5",
+  "30 15 * * *",
   "30 21 * * *",
   "0 1 * * *",
   "0 4 * * *"
