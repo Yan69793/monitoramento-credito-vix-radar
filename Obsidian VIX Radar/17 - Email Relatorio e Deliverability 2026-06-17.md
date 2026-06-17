@@ -100,12 +100,65 @@ Atualizado: 2026-06-17 (noite) | Worker produção **v4.9.128** (e-mail/relatór
 
 ---
 
+## Briefing semanal — decisão de produto (2026-06-16)
+
+**Pedido:** e-mail semanal às sextas, após o mercado, com principais notícias da semana + agenda da próxima semana.
+
+### Estado atual (v4.9.128)
+
+| Peça | Comportamento hoje | Gap |
+|---|---|---|
+| Cron | `30 21 * * *` = 18h30 BRT **todo dia** | Não é só sexta |
+| `executarRelatorioDiario` | Roda no cron noturno junto com newsletter | Nome/corpo dizem "diário" |
+| Conteúdo eventos | `coletarDestaquesDia` — só `data_evento === hoje` | Não agrega a semana |
+| Agenda | Semana ISO corrente (fallback +7d) | Deveria ser **próxima semana** no fechamento |
+| Destinatários | `frequencia=semanal` (16 aprovados) | Recebem em **todo dia útil**, não 1×/semana |
+| Dedup | `relatorio:enviado:{YYYY-MM-DD}` | Diário — não impede 5 envios/semana |
+
+**Newsletter** (`executarNewsletter`) continua separada: eventos hoje/ontem, todos com `newsletter!=false`.
+
+### Recomendação (melhor prática crédito privado)
+
+**Modelo dois canais:**
+
+1. **Diário (já existe)** — newsletter intraday: alertas CRÍTICO/RELEVANTE do dia anterior + hoje.
+2. **Semanal (ajustar)** — briefing de fechamento de semana:
+
+| Campo | Valor recomendado |
+|---|---|
+| Quando | **Sexta 18h30 BRT** (após fechamento B3 17h + buffer CVM) |
+| Alternativa | Último dia útil da semana se sexta for feriado (`ehDiaPregaoB3`) |
+| Assunto | `Briefing Semanal VIX Radar — semana {W##} · {data}` |
+| Bloco 1 | KPI strip: N críticos / N relevantes / emissores com evento na semana |
+| Bloco 2 | Top 8–12 eventos da semana por materialidade (dedup empresa+data+fonte) |
+| Bloco 3 | Heatmap setorial (contagem Crít./Rel. por setor — reutilizar lógica Briefing Executivo) |
+| Bloco 4 | **Agenda próxima semana** (resultados, vencimentos, assembleias de `agenda:eventos:v1`) |
+| CTA | Link dashboard + preferências |
+| Dedup | `relatorio:enviado:{semanaISO}` — 1 envio por semana |
+| Custo IA | **Zero** — só render KV (mesma filosofia P17 Opção A) |
+
+**Não usar Opus/Claude na geração do e-mail** — dados já estruturados no KV após rotina noturna.
+
+### Implementação sugerida (v4.9.129)
+
+1. Renomear/refatorar `executarRelatorioDiario` → `executarRelatorioSemanal`
+2. Gate: `if (!ehSextaOuUltimoPregaoSemana(hoje)) return pulado`
+3. Nova `coletarDestaquesSemana(env, semanaISO)` — eventos seg–sex da semana corrente
+4. Nova `coletarAgendaProximaSemana(env, hoje)` — filtro segunda–sexta da semana ISO seguinte
+5. HTML: trocar "Briefing Diario" → "Briefing Semanal"; seções alinhadas aos 4 blocos
+6. Dedup KV semanal; manter `relatorio_diario_teste` / `_manual` para admin
+
+Cron pode permanecer `30 21 * * *` (função faz no-op nos outros dias) ou estreitar para `30 21 * * 5`.
+
+---
+
 ## Próximo passo recomendado
 
 1. Abrir e-mail de teste (`relatorio_diario_teste`) e capturar headers SPF/DKIM/DMARC
 2. Após 1 semana com DMARC reports, subir policy para `p=quarantine`
 3. Rodar `vixradar-agenda-semanal` na primeira segunda 03h BRT e validar `calendario:overrides:v1`
-4. Confirmar envio semanal automático no cron da próxima semana ISO nova
+4. **Implementar v4.9.129** briefing semanal (sexta 18h30) conforme seção acima
+5. Confirmar primeiro envio semanal em massa pós-deploy
 
 ---
 
