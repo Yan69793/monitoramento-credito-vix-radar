@@ -23,7 +23,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 
 ## Versões confirmadas (última sessão: 2026-06-17 — v4.9.135 + v201.63 prod)
 
-**Git:** pendente commit desta sessão (redesign boletim diário).
+**Git:** `origin/main` = `b350bf2` (redesign boletim diário v4.9.135).
 
 | Componente | Versão | Status |
 |---|---|---|
