@@ -140,6 +140,29 @@ Abrir Gmail admin e confirmar:
 
 ---
 
+## Checagem envio aos clientes — 2026-06-17 ~18:35 BRT
+
+**Pergunta operacional:** verificar como está o relatório/briefing "diário" para envio aos clientes hoje.
+
+**Conclusão corrigida:** há dois fluxos distintos no Worker v4.9.134:
+
+1. **Newsletter diária** (`executarNewsletter`) — existe, roda no cron noturno e pode ser disparada por `action=newsletter_manual`. Usa eventos de **hoje ou ontem** no KV, filtra apenas `CRITICO` e `RELEVANTE`, deduplica, envia para usuários `aprovado` com `newsletter !== false`, e grava dedup diário `newsletter:enviada:{YYYY-MM-DD}` por 24h.
+2. **Briefing/relatório semanal** (`executarRelatorioDiario`, nome legado) — apesar do nome "diário", hoje opera como **Briefing Semanal**. Em dia comum, sem `_teste` ou `_forcar`, retorna `motivo:"nao_eh_fechamento_semanal"`.
+
+**Evidência objetiva:**
+- Produção `GET /`: Worker `v4.9.134`, HTTP 200, `ok:true`, `telemetria:true`, `verificador_ok:true`, `providers_configurados:"2/2"`.
+- `api/v4.9.134.js`: `executarRelatorioDiario()` valida `RELATORIO_DIARIO_ENABLED`, `EMAIL_ALERTAS_ENABLED` e depois bloqueia envio se `!ehFechamentoSemanalB3(hoje)`.
+- `api/v4.9.134.js`: assunto do fluxo é `Briefing Semanal VIX Radar — semana {semanaISO}`.
+- `api/wrangler.toml`: cron noturno `30 21 * * *` roda diariamente, mas o relatório fica em no-op fora do fechamento semanal.
+
+**Impacto para hoje, quarta-feira 2026-06-17:**
+- A **newsletter diária** pode sair hoje no cron noturno se houver eventos `CRITICO`/`RELEVANTE` com `data_evento` hoje ou ontem, se `EMAIL_ALERTAS_ENABLED` estiver ativo, e se `newsletter:enviada:2026-06-17` ainda não existir.
+- O **briefing semanal em massa** não deve sair hoje pelo caminho normal. O primeiro envio em massa esperado permanece **sexta 2026-06-19 às 18h30 BRT**, se for dia de pregão/fechamento B3 e se `RELATORIO_DIARIO_ENABLED=1` + `EMAIL_ALERTAS_ENABLED=1` estiverem ativos.
+
+**Recomendação:** renomear endpoints/actions e variáveis legadas do briefing semanal (`relatorio_diario_teste`, `RELATORIO_DIARIO_ENABLED`, `executarRelatorioDiario`) para nomes semanais em próxima janela de manutenção, preservando aliases temporários para compatibilidade. Também criar `newsletter_dry_run` para saber, antes do cron, quantos eventos e destinatários a newsletter diária teria hoje sem enviar e sem depender de admin manual.
+
+---
+
 ## Briefing semanal — decisão de produto (2026-06-16)
 
 **Pedido:** e-mail semanal às sextas, após o mercado, com principais notícias da semana + agenda da próxima semana.
@@ -214,12 +237,54 @@ Abrir Gmail admin e confirmar:
 
 ---
 
+## Sessão 2026-06-17 (noite) — redesign Boletim Diário v4.9.135
+
+### Causa
+
+| Área | Causa |
+|---|---|
+| Visual amador | `montarEmailHTML` herdava estilo marketing (bordas coloridas, numeração 01/02, título genérico) — confundia com briefing semanal |
+| Bug preview | Strings `sC`/`sR` misturavam aspas simples/dobras (`">'` fechava string cedo); `return` principal alternava aspas dentro de literal longo — quebrava `new Function()` do preview |
+| Drift versão | HTML editado em `v4.9.134.js` com `WORKER_VERSAO=v4.9.135` sem bundle/wrangler alinhados |
+
+### Correção
+
+| Arquivo | Mudança |
+|---|---|
+| `api/v4.9.135.js` | `montarEmailHTML` redesenhado: header navy/gold, KPIs em tabela, seções Críticos/Relevantes, nota diário vs semanal, copy direta (ghost), `escapeHtml` em dinâmicos, unsubscribe HTTPS preservado |
+| `api/wrangler.toml` | `main=v4.9.135.js` |
+| `api/tools/preview-boletim-diario.mjs` | Fixture + stub `__name22222222`; aponta v4.9.135 |
+| `.gitignore` | `!api/v4.9.135.js` |
+| `.github/workflows/canonical-test.yml` | `EXPECTED_WORKER=v4.9.135` |
+
+**Lógica de envio inalterada:** `executarNewsletter`, dedup diário, destinatários, gates, `enviarResend` bulk com `htmlPara` + unsubscribe one-click.
+
+### Evidência
+
+| Item | Resultado |
+|---|---|
+| Preview local | `app/_preview/boletim-diario.html` + screenshot Playwright `boletim-diario-preview.png` |
+| Deploy | CF Version ID `472c9236-54d3-4925-8c6f-1dbd36eb5469` |
+| Health | `GET /` → `versao:"v4.9.135"` |
+| `newsletter_teste` | `enviado:true`, `resend_id:94c6ccc8-1b98-4f80-ac19-7020a8f55859` |
+
+### Pendências
+
+1. Inspecionar inbox do e-mail de teste (layout Gmail + Outlook real)
+2. Commit/push repo (`v4.9.135.js`, wrangler, CI, preview tool, Obsidian)
+3. Confirmar que briefing semanal (`montarRelatorioSemanalHTML`) permanece distinto no próximo `relatorio_diario_teste` de sexta
+
+---
+
 ## Arquivos alterados nesta sessão
 
 - `api/v4.9.121.js` (novo)
+- `api/v4.9.135.js` (novo — redesign boletim diário)
 - `api/wrangler.toml`
+- `api/tools/preview-boletim-diario.mjs`
 - `scheduled-tasks.json` (Claude Code session — `vixradar-agenda-semanal`)
 - `Obsidian VIX Radar/17 - Email Relatorio e Deliverability 2026-06-17.md` (este)
 - `Obsidian VIX Radar/00 - Índice (MOC).md`
 - `Obsidian VIX Radar/03 - Estado de Produção.md`
 - `app/index.html` + `app/deploy_zip/` (v201.54 P15)
+- `app/_preview/boletim-diario.html`

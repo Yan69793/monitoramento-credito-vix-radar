@@ -19,14 +19,15 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[17 - Email Relatorio e Deliverability 2026-06-17]]
 - [[18 - Auditoria Completa 2026-06-17]]
 - [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]]
+- [[20 - Monitoramento Loop 2026-06-17]]
 
-## Versões confirmadas (última sessão: 2026-06-17 — v4.9.134 + v201.63 prod = repo)
+## Versões confirmadas (última sessão: 2026-06-17 — v4.9.135 + v201.63 prod)
 
-**Git:** `origin/main` = `131b1fd` (push 2026-06-17) — commits `83cf9d6` → `462bfa5` → `657b907` → `131b1fd`.
+**Git:** pendente commit desta sessão (redesign boletim diário).
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.134** (prod = repo) | P14 op=serie; bundle versionado; CI alinhado |
+| Worker `radar-credito-api` | **v4.9.135** (prod) | Redesign `montarEmailHTML`; CF `472c9236-54d3-4925-8c6f-1dbd36eb5469`; CI `EXPECTED_WORKER=v4.9.135` |
 | Frontend `vixradar.com` | **v201.63** (prod = repo) | Fix JWT sessão; deploy 2026-06-17T21:26:52Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
