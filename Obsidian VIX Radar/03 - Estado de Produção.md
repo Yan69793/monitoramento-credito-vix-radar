@@ -1,15 +1,23 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-16 (Worker v4.9.120 + P16 exec + P17 piloto yan@). Anterior: v4.9.119 P16/P17 código.
+Atualizado: 2026-06-17 (Worker v4.9.121 + P17 destinatários + deliverability). Anterior: v4.9.120 piloto yan@.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.120** | `GET /` `versao:"v4.9.120"`; CF Version ID `7d92ee8c-79a4-4a7c-8cd8-4873fcf913d9` | 2026-06-16 |
+| Worker `radar-credito-api` | **v4.9.121** | `GET /` `versao:"v4.9.121"`; CF Version ID `c57bb6f6-bd9c-44aa-863d-cab1961367b1` | 2026-06-17 |
 | Frontend `vixradar.com` | **v201.51** | `version.json` `{"version":"v201.51","deployed_at":"2026-06-13T02:20:25Z"}` | 2026-06-13 |
 | Frontend repo | v201.51 | `app/index.html` CACHE_VERSION v201.51 | 2026-06-13 |
-| Worker repo | v4.9.120 | `api/v4.9.120.js`; `api/wrangler.toml main="v4.9.120.js"` | 2026-06-16 |
+| Worker repo | v4.9.121 | `api/v4.9.121.js`; `api/wrangler.toml main="v4.9.121.js"` | 2026-06-17 |
+
+## Deploy v4.9.121 — P17 destinatários + deliverability (2026-06-17)
+
+**P17:** removido `RELATORIO_DESTINATARIOS_PILOTO`; destinatários = 16 `aprovado` com `newsletter!=false` + `frequencia=semanal`. Fix `List-Unsubscribe` por destinatário. `action=relatorio_dry_run` admin. Teste: `relatorio_diario_teste` → 1 e-mail admin.
+
+**P16:** routine `vixradar-agenda-semanal` registrada no agendador Claude (`0 3 * * 1` BRT).
+
+**Deliverability:** SPF/DKIM OK; DMARC `p=none`; ver [[17 - Email Relatorio e Deliverability 2026-06-17]].
 
 ## Deploy v4.9.120 — P17 semanal piloto + P16 execução manual (2026-06-16)
 

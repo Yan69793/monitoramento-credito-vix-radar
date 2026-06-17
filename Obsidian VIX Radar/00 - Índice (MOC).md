@@ -16,12 +16,13 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[14 - Auditoria Completa 2026-06-16]]
 - [[15 - Auditoria Completa 2026-06-16 (v2)]]
 - [[16 - Design P16 P17 Agenda e Relatorio]]
+- [[17 - Email Relatorio e Deliverability 2026-06-17]]
 
-## Versões confirmadas (última sessão: 2026-06-16 — v4.9.120)
+## Versões confirmadas (última sessão: 2026-06-17 — v4.9.121)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.120** (prod = repo) | P16 16/20 emissores + P17 piloto yan@ semanal |
+| Worker `radar-credito-api` | **v4.9.121** (prod = repo) | P17 semanal 16 destinatários + fix List-Unsubscribe |
 | Frontend `vixradar.com` | **v201.51** (prod = repo) | DEPLOYADO 2026-06-13 02:20Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado em v4.9.112 |
 | Cascade AI | — | claude-haiku-analise apenas (Pulso manual); Claude Opus via rotinas agendadas |
@@ -33,8 +34,9 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 2. ~~**CRÍTICO** — OpenRouter 402~~ **RESOLVIDO 2026-06-16** — causa real: `OPENROUTER_API_KEY` no Worker inválida (HTTP 401 na credits API, não 402 de billing). Secret removido via `wrangler secret delete`. Probe agora retorna `sem_chave_openrouter` (gracioso). Cache KV `status_providers` atualiza no próximo cron noturno.
 3. ~~**ALTO** — `ADMIN_EMAIL` hardcoded no bundle~~ **RESOLVIDO 2026-06-16** — v4.9.115 usa `env.ADMIN_EMAIL` em runtime; bundle novo não contém e-mail literal em `var ADMIN_EMAIL`.
 4. ~~**MÉDIO** — Push do branch `audit/reconcile-prod-2026-06-01` para remote~~ **SUPERADO/RESOLVIDO 2026-06-16** — branch não existe localmente; reconciliação estava em `main`. `main` pushado para `origin/main` até commit `b5e1c7c`.
-5. ~~**MÉDIO** — P16~~ **ATIVO v4.9.120** — 16/20 overrides 2026-06-16; SKILL `vixradar-agenda-semanal` (registrar cron `0 6 * * 1`)
-6. ~~**MÉDIO** — P17~~ **PILOTO v4.9.120** — semanal → yan@szuchmacher.com.br; `RELATORIO_DIARIO_ENABLED=1`
+5. ~~**MÉDIO** — P16~~ **ATIVO v4.9.121** — 16/20 overrides; routine `vixradar-agenda-semanal` registrada (`0 3 * * 1` BRT)
+6. ~~**MÉDIO** — P17~~ **ATIVO v4.9.121** — semanal → 16 aprovados `frequencia=semanal`; PILOTO removido; `RELATORIO_DIARIO_ENABLED=1`
+7. **MÉDIO** — Deliverability SPAM — DMARC `p=none`, SPF `~all`; fix List-Unsubscribe deployado; inbox test pendente
 
 **Resolvidos anteriormente:** ~~cron `0 2 * * *` duplicado~~ (v4.9.109 — `0 4 * * *`); ~~`CLOUDFLARE_API_TOKEN` secret~~ (2026-06-11); P05* CI; P11 alerta favorito; N06 CRITICIDADE_SETOR.
 
