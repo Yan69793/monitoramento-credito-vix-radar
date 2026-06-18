@@ -93,7 +93,7 @@
 
   function getSenha() {
     try {
-      return localStorage.getItem("radar_admin_senha") || "";
+      return sessionStorage.getItem("radar_admin_senha") || "";
     } catch (_) {
       return "";
     }
@@ -101,7 +101,8 @@
 
   function setSenha(v) {
     try {
-      if (v) localStorage.setItem("radar_admin_senha", v);
+      if (v) sessionStorage.setItem("radar_admin_senha", v);
+      else sessionStorage.removeItem("radar_admin_senha");
     } catch (_) {}
   }
 

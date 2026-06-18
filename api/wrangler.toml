@@ -41,9 +41,11 @@
 # v4.9.137.js = v4.9.136 + fix header boletim diario (eyebrow full-width, CTA alinhado ao titulo).
 # v4.9.138.js = v4.9.137 + polish design boletim (mobile, tabular-nums, hairlines, a11y email).
 # v4.9.139.js = v4.9.138 + newsletter_envio_direcionado (lista admin, sem dedup global).
+# v4.9.140.js = v4.9.139 + fix datas CVM (Data_Entrega, remove fallback_hoje, boletim por protocolo).
+# v4.9.141.js = v4.9.140 + SEC (webhook fail-closed, _teste+routine_key prod, GETs ops JWT admin, corrigir_datas_cvm_kv).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.139.js"
+main       = "v4.9.141.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

@@ -1,4 +1,8 @@
-$rk = '47SxDkg2uvJE1WyAjFqa5hMVfnRXdGs6PN8OpLQTtoKwl3Um'
+$rk = $env:ROUTINE_API_KEY
+if (-not $rk) {
+  Write-Error "ROUTINE_API_KEY nao definida. Ex.: `$env:ROUTINE_API_KEY = '...'"
+  return
+}
 $worker = 'https://radar-credito-api.prospects-intel.workers.dev'
 $failFiles = @('noturno_Hidrovias.json','noturno_Kora.json','noturno_MRV.json','noturno_Vibra.json','noturno_Raizen.json')
 $dir = 'E:\Diretorio\Claude\Monitoramento de Credito\testing'

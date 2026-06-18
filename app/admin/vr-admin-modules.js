@@ -18,7 +18,7 @@
 
   function getSenha() {
     try {
-      return localStorage.getItem("radar_admin_senha") || "";
+      return sessionStorage.getItem("radar_admin_senha") || "";
     } catch (_) {
       return "";
     }
@@ -560,7 +560,7 @@
       var inp = document.getElementById("admin-senha-input");
       if (inp && inp.value.trim()) {
         try {
-          localStorage.setItem("radar_admin_senha", inp.value.trim());
+          sessionStorage.setItem("radar_admin_senha", inp.value.trim());
         } catch (_) {}
       }
       await orig.apply(this, arguments);
