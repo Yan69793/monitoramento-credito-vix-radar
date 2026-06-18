@@ -116,6 +116,61 @@ Se houver lacuna, criar seção "Lacunas e Próximos Passos".
 Português do Brasil.
 Tom executivo, direto e sem redundância.
 
+## Modo expert (padrão neste projeto)
+
+Comportamento default — não exige invocar skill a cada sessão.
+
+| Princípio | Regra |
+|-----------|-------|
+| Execução | Implementar e validar; não só descrever comandos para o usuário rodar |
+| Profundidade | Assumir competência técnica; pular tutorial básico |
+| Assertividade | Recomendar uma opção clara com trade-offs explícitos |
+| Completude | Edge cases, efeitos colaterais e regressão antes de encerrar |
+| Tom | Principal/staff engineer — sem fluff, sem "Espero que ajude", sem elogios vazios |
+| Lacunas | Perguntar antes de inventar; nunca preencher com suposição |
+
+**Proibido neste projeto:** prompts vazados/jailbreak, `--dangerously-skip-permissions` como rotina, ou contornar salvaguardas do Claude Code. Customização legítima = este arquivo + skills locais.
+
+### Skills locais (`.claude/skills/`)
+
+Fonte única no repo: `E:\Diretorio\Claude\Monitoramento de Credito\.claude\skills\` (consolidado 2026-06-18 — não depender de `~/.claude/skills`).
+
+| Invocação | Pasta | Uso |
+|-----------|-------|-----|
+| `/godmode` | `godmode/` | Resposta máxima em profundidade e assertividade |
+| `/ODDA` | `ODDA/` | Incidente, outage, debug urgente — ciclo Boyd ~70% confiança |
+| `/299` | `299/` | Arquitetura e decisões com profundidade staff |
+| `/vix-radar-audit` | `vix-radar-audit/` | Auditoria completa Worker + Pages + drift |
+| `/vix-radar-briefing` | `vix-radar-session-briefing/` | Estado do projeto em bullets |
+| `/vix-radar-next-steps` | `vix-radar-next-steps/` | Priorização P0/P1/P2 do backlog |
+| `/sprite-health` | `sprite-health/` | Health check Worker via Sprite VM `site` (vantagem externa) |
+| `/wrangler` | `wrangler/` | Deploy, bindings, cron, secrets Cloudflare Workers |
+| `/workers-best-practices` | `workers-best-practices/` | Anti-patterns Worker (bindings, promises, observabilidade) |
+
+Ordem sugerida em incidente: **Obsidian → /ODDA → diagnóstico com evidência → correção → validação produção → registro Obsidian**.
+
+### Health check — dupla validação (automático)
+
+| Cenário | Ação |
+|---------|------|
+| Deploy/edição Worker, Pages, endpoint, binding | curl local **+** MCP Sprite `sh health_vix.sh` |
+| Auditoria `/vix-radar-audit` ou pós-edição obrigatória | idem |
+| Incidente (outage, `ok:false`, telemetria off) | idem |
+| Consulta rápida / usuário não pediu deploy | só curl local |
+
+**Sprite (MCP):** `exec_command` → `sprite=site`, `command=sh health_vix.sh` — script em `/home/sprite/health_vix.sh`. Repo: `scripts/sprite/health_vix.sh`. Sync: `.\scripts\sprite\push-health.ps1`. **Não** passar `curl -s` direto no `exec_command` (CLI Sprite consome flags).
+
+**Esperado:** `HTTP:200`, `ok:true`, `telemetria:true`, `kv:true`, `verificador_ok:true`.
+
+### OODA resumido (incidentes)
+
+1. **Observe** — logs, health check, diff deploy, o que mudou (time-box curto)
+2. **Orient** — ≥2 hipóteses; não fixar na primeira
+3. **Decide** — ação reversível que testa hipótese (~70% confiança)
+4. **Act** — executar, re-observar, repetir até estável
+
+Ação irreversível ou alto blast radius → mais dados antes de agir.
+
 REGRA PERMANENTE DE PÓS-EDIÇÃO
 
 Após qualquer edição de código, configuração, deploy, endpoint, Worker, Pages, integração, timeout, provider, autenticação, KV, DO, frontend ou backend, é obrigatório executar auditoria completa antes de encerrar.

@@ -21,6 +21,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]]
 - [[20 - Monitoramento Loop 2026-06-17]]
 - [[21 - Auditoria Completa 2026-06-18]]
+- [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 
 ## Versões confirmadas (última sessão: 2026-06-18 — v4.9.139 + v201.63 prod)
 
@@ -51,16 +52,20 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 
 Ver lista completa em `memory/sessao-2026-06-11-pendencias.md`.
 
-## Skills VIX Radar (instaladas 2026-06-16)
+## Skills VIX Radar (consolidadas no repo 2026-06-18)
+
+Fonte única: `.claude/skills/` no projeto (versionadas no git). Global `~/.claude/skills` é fallback legado.
 
 | Skill | Invocação | Categoria | Status |
 |---|---|---|---|
-| `vix-radar-session-briefing` | `/vix-radar-session-briefing` | Master briefing (versões + health + pendências) | ✅ `~/.claude/skills/vix-radar-session-briefing/` |
-| `vix-radar-next-steps` | `/vix-radar-next-steps` | Product advisor (P0/P1/P2 + quick wins) | ✅ `~/.claude/skills/vix-radar-next-steps/` |
-| `tech-debt-audit` | `/tech-debt-audit` | Dívida técnica + arquitetura (9 dimensões, file:line) | ✅ `~/.claude/skills/tech-debt-audit/` |
-| `insecure-defaults` | `/insecure-defaults` | Segurança (JWT fail-open, CORS, hardcoded creds, debug) | ✅ `~/.claude/skills/insecure-defaults/` |
-| `workers-best-practices` | `/workers-best-practices` | Cloudflare Workers anti-patterns (wrangler, bindings) | ✅ pré-instalada |
-| `vix-radar-audit` | `/vix-radar-audit` | Auditoria completa multi-camada (readonly) | ✅ `~/.claude/skills/vix-radar-audit/` |
+| `vix-radar-session-briefing` | `/vix-radar-briefing` | Master briefing (versões + health + pendências) | ✅ `.claude/skills/vix-radar-session-briefing/` |
+| `vix-radar-next-steps` | `/vix-radar-next-steps` | Product advisor (P0/P1/P2 + quick wins) | ✅ `.claude/skills/vix-radar-next-steps/` |
+| `vix-radar-audit` | `/vix-radar-audit` | Auditoria completa multi-camada (readonly) | ✅ `.claude/skills/vix-radar-audit/` |
+| `workers-best-practices` | `/workers-best-practices` | Cloudflare Workers anti-patterns | ✅ `.claude/skills/workers-best-practices/` |
+| `wrangler` | `/wrangler` | Deploy/bindings/cron Workers | ✅ `.claude/skills/wrangler/` |
+| `sprite-health` | `/sprite-health` | Health check via VM Sprite `site` | ✅ `.claude/skills/sprite-health/` |
+| `tech-debt-audit` | `/tech-debt-audit` | Dívida técnica (9 dimensões) | ⚠️ só global `~/.claude/skills/` |
+| `insecure-defaults` | `/insecure-defaults` | Segurança JWT/CORS/hardcoded | ⚠️ só global `~/.claude/skills/` |
 
 ---
 

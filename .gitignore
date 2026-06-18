@@ -29,6 +29,8 @@ API_TOKENS/
 
 # ---------- Config local e ferramentas pessoais ----------
 .claude/
+!.claude/skills/
+!.claude/skills/**
 .claude.json
 .claude.json.backup
 .copilot/
