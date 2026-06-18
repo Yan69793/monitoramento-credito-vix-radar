@@ -10,26 +10,18 @@ status: pendente
 
 ## SEGURANÇA — FAZER ANTES DE TUDO
 
-- [ ] **ROTACIONAR TOKEN CLOUDFLARE** — exposto no chat desta sessão.
-  URL: https://dash.cloudflare.com/profile/api-tokens
-  Revogar: `cfut_oCWZ1Ae93LPedIVUwNoeqzWld9ipBmUydZ1S84JEe4d3cc42`
-  Criar novo com escopos: Pages Edit + Account Settings Read + User Details Read
-  Depois rodar: `pwsh ./scripts/setup-deploy-credential.ps1`
+- [x] **ROTACIONAR TOKEN CLOUDFLARE** — **RESOLVIDO 2026-06-11** (sessão continuação).
+  Token `vixradar-analytics-engine-read` criado; `CLOUDFLARE_API_TOKEN` aplicado ao Worker.
+  Scripts `deploy-pages.ps1` / `setup-deploy-credential.ps1` operacionais.
 
 ## FASE 0 — Críticos operacionais (de 2026-06-10, abertos)
 
-- [ ] **N01 (REFINADO 2026-06-11)** — OpenRouter NÃO é falta de crédito.
-  Health 2026-06-11: `openrouter:true` (genérico) mas `perplexity_primario` e
-  `openrouter_web_search_exa` com HTTP 402 **e saldo de $76.08**. 402 + saldo positivo
-  = billing de add-on / spending limit / modelo web-search depreciado. Investigar no
-  painel OpenRouter por que esses modelos específicos dão 402 — recarregar crédito
-  não resolve. Sistema opera em `claude-haiku-4-5` (sem web search).
-  URL: https://openrouter.ai/credits e https://openrouter.ai/settings
+- [x] **N01 — RESOLVIDO 2026-06-16** — causa real: `OPENROUTER_API_KEY` inválida no Worker (HTTP 401 na credits API).
+  Secret removido via `wrangler secret delete`; cascade sem OpenRouter desde v4.9.108; probe retorna `sem_chave_openrouter`.
 - [x] **P05* — CORRIGIDO** (commit `04fc826`). CI `canonical-test.yml` reescrito para
   health check GET / (anônimo, 200) em vez do POST que dava 401. Valida ok/kv/telemetria;
   `EXPECTED_WORKER="v4.9.102"`. Validado: YAML parseia, pipeline extrai HTTP 200 de prod.
-- [ ] **P15*** — Documentar ou remover cron `0 2 * * *` em `api/wrangler.toml`
-  (dobra custo de API; propósito não documentado)
+- [x] **P15* — RESOLVIDO 2026-06-16** — cron duplicado removido em v4.9.109 (`0 4 * * *` único).
 
 ## DEPLOY v201.47 — CONCLUÍDO
 
@@ -102,17 +94,7 @@ status: pendente
 
 ## FASE 2 — Produto (próximo sprint)
 
-- [~] **P11 — IMPLEMENTADO, DEPLOY PENDENTE** (Worker v4.9.103→v4.9.104, commit `c829fd3`+`0c80ade`).
-  Alerta crítico direcionado por emissor favoritado + opt-in. Backend cirúrgico e
-  aditivo (gate `EMAIL_ALERTAS_FAVORITOS`); frontend não muda (toggle "Alertas críticos"
-  + favoritos já existem e persistem server-side). Validado local: node --check OK,
-  8/8 testes (fn real extraída do bundle), Worker sobe no dev como v4.9.103.
-  **Para ativar em produção:**
-  1. Rotacionar token Cloudflare + autorizar deploy de Worker.
-  2. `cd api && npx wrangler deploy` (main já aponta v4.9.103.js).
-  3. `wrangler secret put EMAIL_ALERTAS_FAVORITOS` = "1" (liga o modo direcionado).
-  4. Confirmar `EMAIL_ALERTAS_ENABLED` (kill-switch global; se ausente, nada é enviado).
-  5. Validar: pulso em emissor favoritado com opt-in → email só a quem favoritou+optou.
+- [x] **P11 — RESOLVIDO 2026-06-11** — deploy v4.9.105+; `EMAIL_ALERTAS_FAVORITOS` = "1" ativo em produção.
 - [ ] **P14** — Gráfico de série temporal por emissor (chaves `serie:` do KV existem, nunca visualizadas)
 - [ ] **P15** — Histórico estendido na timeline (3 meses via `op=historico_emissor`, só mudança de frontend)
 
@@ -126,7 +108,7 @@ status: pendente
 
 ## DÍVIDA TÉCNICA
 
-- [x] **N06** — RESOLVIDO em repo (v4.9.105, ver bloco FIXES acima). Deploy pendente.
+- [x] **N06** — RESOLVIDO 2026-06-11 — v4.9.105 deployado em produção (Version ID `c8e93a7a`).
 - [x] **P11-sec — RESOLVIDO 2026-06-16 (v4.9.115)** — `ADMIN_EMAIL` removido do bundle novo (`var ADMIN_EMAIL=""`) e carregado por `env.ADMIN_EMAIL` em runtime via `aplicarConfigRuntime(env)` para `fetch` e `scheduled`; `NEWSLETTER_DESTINATARIOS` recalculado. Validação: deploy CF Version ID `9583e77a`, `GET /` HTTP 200 `ok:true` `versao:"v4.9.115"` `telemetria:true` `verificador_ok:true`.
 - [ ] **N09** — Atualizar `CLAUDE.md` do projeto:
   - Paths `worker/` → `api/`, `index.html` raiz → `app/index.html`
@@ -141,15 +123,23 @@ status: pendente
   difere; prod NÃO tem código a mais). Repo é base segura para editar. Snapshot gitignorado
   (`api/_prod_snapshot_*.js`). Ressalva: ambos são bundles minificados, sem fonte hand-authored.
 
-## Estado em produção ao encerrar esta sessão
+## Atualização 2026-06-18 (hygiene pós-auditoria 24)
+
+- [x] **ROUTINE_API_KEY rotacionada** — 2026-06-18; chave antiga 403; rotinas + `replay-falhas.ps1` atualizados
+- [x] **Worker v4.9.141 em produção** — CVM dates + SEC hardening; CI `EXPECTED_WORKER=v4.9.141`
+- [x] **Deliverability email** — RESOLVIDO 2026-06-17 (SPF/DMARC; ver nota 17)
+- [x] **CI canonical-test** — RESOLVIDO 2026-06-11 (P05); alinhado v4.9.141 em 2026-06-18
+- [x] **`.claude/settings.local.json`** — allowlist Bash sem refs `routine_key` antiga (2026-06-18)
+
+## Estado em produção (snapshot 2026-06-18)
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | v4.9.102 (prod) · v4.9.103 (repo, deploy pendente) | OK — em prod |
-| Frontend `vixradar.com` | **v201.47** | OK — em prod (deploy 2026-06-11) |
-| OpenRouter | — | 402 c/ saldo $76 (billing, não falta de crédito — ver N01 refinado) |
-| CI canonical-test | — | QUEBRADO |
-| Deploy script | `scripts/deploy-pages.ps1` | Criado e validado 2026-06-11 |
+| Worker `radar-credito-api` | **v4.9.141** (prod = repo) | OK — `verificador_ok:true` |
+| Frontend `vixradar.com` | **v201.69** | OK — Admin HEART modular |
+| OpenRouter | — | Removido do cascade (v4.9.108+) |
+| CI canonical-test | v4.9.141 | OK |
+| ROUTINE_API_KEY | rotacionada 2026-06-18 | OK |
 
 ## O que foi entregue nesta sessão
 

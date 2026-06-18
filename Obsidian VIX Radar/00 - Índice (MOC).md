@@ -24,6 +24,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]]
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
+- [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
 
 ## Versões confirmadas (última sessão: 2026-06-18 — v4.9.141 + v201.69 prod)
 
@@ -38,7 +39,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |
 | Cobertura KV | — | **103/103** com `Última análise:` em `dados_para_analise` |
 
-## Pendências abertas (atualizado 2026-06-16 — pós-v4.9.115)
+## Pendências abertas (atualizado 2026-06-18 — pós-v4.9.141)
 
 1. ~~**SEGURANÇA** — chave Anthropic exposta em chat 2026-06-16~~ **RESOLVIDO** — rotacionada 2026-06-16 (pós-sessão); `verificador_ok:true` confirmado
 2. ~~**CRÍTICO** — OpenRouter 402~~ **RESOLVIDO 2026-06-16** — causa real: `OPENROUTER_API_KEY` no Worker inválida (HTTP 401 na credits API, não 402 de billing). Secret removido via `wrangler secret delete`. Probe agora retorna `sem_chave_openrouter` (gracioso). Cache KV `status_providers` atualiza no próximo cron noturno.
@@ -52,11 +53,21 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 
 **Resolvidos nesta sessão (2026-06-11):** P05* CI corrigido; fix Briefing EWS (v201.47, deployado); reconciliação Worker; P11 implementado (v4.9.103→v4.9.104); N06 display corrigido (v4.9.104); Engajamento erro melhorado (v201.48); validação online completa (Claude in Chrome, 02:07 BRT — nenhuma regressão); N06 cálculo corrigido (v4.9.105, `CRITICIDADE_SETOR` alinhado ao `EMISSORES_MAP`, teste 13/13 PASS); credenciais atualizadas (`memory/credenciais.md`).
 
-**Abertas pós-admin HEART (2026-06-18):**
-1. ~~**P1** — Fase 2 wrappers~~ **FEITO v201.67** — `vr-admin-shared/engajamento/metricas.js`; extração completa do monólito pendente (Fase 2b)
-2. **P1** — Versionar `api/v4.9.139.js` no git (untracked)
-3. **P2** — Watchdog `stale_count:1` (heartbeats)
-4. ~~**P2** — Fase 3 reengajamento~~ **FEITO v201.68** — boletim 1-click via `newsletter_envio_direcionado`
+**Resolvidos 2026-06-18 (auditoria 24):**
+- ~~**v4.9.141** em produção~~ — CVM dates + SEC hardening; CI `EXPECTED_WORKER=v4.9.141`
+- ~~**ROUTINE_API_KEY rotacionada**~~ — chave antiga retorna 403; rotinas scheduled-tasks + `replay-falhas.ps1` atualizados
+- ~~**P1** — Limpar `settings.local.json` (refs `routine_key` antiga na allowlist Bash)~~
+- ~~**P2** — Nota 13: `tel_test` documentado com `admin_senha`~~
+
+**Abertas (hygiene + produto — 2026-06-18):**
+1. **P2** — `admin_mercado`: refactor auth POST (senha ainda em query string GET)
+2. **P2** — Watchdog `stale_count:1` (heartbeats)
+3. **P2** — Admin HEART Fase 2b — extração completa do monólito (`vr-admin-shared`)
+4. **P3** — `admin_corrigir_datas_cvm_kv` em lote pós-matinal
+5. **P3** — Incidente matinal 18/06: reanálise Onco/Kora/GPA com fonte CVM primária ([[23 - Incidente 2026-06-18 Verificador reprova matinal]])
+6. **Backlog** — Expor `rejeitados` + `veredicto.motivo` no retorno de `receber_analise`
+7. **Backlog** — `scheduled-tasks/backups/` com prompts de chave antiga (não runtime, limpar)
+8. **Backlog** — N09/N10 (`CLAUDE.md` paths; model IDs no Worker)
 
 Ver lista completa em `memory/sessao-2026-06-11-pendencias.md`.
 

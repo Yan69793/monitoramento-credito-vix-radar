@@ -1,6 +1,6 @@
 # Metodo de Vistoria Operacional — VIX Radar
 
-Atualizado: 2026-06-16
+Atualizado: 2026-06-18
 Status: procedimento aprendido a partir das auditorias Claude Code e da skill `workers-best-practices`.
 
 **Skill invocável:** `/vix-radar-audit` — `C:\Users\User\.claude\skills\vix-radar-audit\SKILL.md`
@@ -69,3 +69,18 @@ Pontos de atencao antes da execucao:
 4. **Replay:** antes de re-submeter eventos quarentenados, confirmar formato real das chaves KV e caminho de ingestao no bundle `api/v4.9.111.js`. Nao reconstruir evento por inferencia.
 5. **Version drift:** conferir separadamente `app/index.html`, `app/version.json`, `app/deploy_zip/version.json`, apex e www. `producao/` e standalone-worker sao legado e nao devem contaminar a auditoria.
 6. **Regra 6:** fechar lacuna da auditoria anterior verificando explicitamente `<strong>` global sem `color`.
+
+## Credenciais por endpoint (auditoria 24 — P2)
+
+Não confundir `routine_key` (rotinas Claude: `listar_*`, `dados_para_analise`, `receber_analise`) com `admin_senha` (painel admin e telemetria).
+
+| Endpoint / action | Credencial | Observação |
+|---|---|---|
+| `tel_test` | **`admin_senha`** | Escrita sintética no Analytics Engine; **não** aceita `routine_key` (403) |
+| `admin_health_check` | `admin_senha` | Estado interno, providers, KV |
+| `admin_verificar_evento` | `admin_senha` | Smoke do verificador Haiku |
+| `action=uso` (`visao=debug`) | `admin_senha` | Confirmar `tel_test_sintetico` ~60s após `tel_test` |
+| `listar_emissores_prioritarios` | `routine_key` | Rotina matinal/noturna |
+| `dados_para_analise` / `receber_analise` | `routine_key` | Ingestão scheduled-tasks |
+
+**Ritual pós-deploy (telemetria):** `POST {action:"tel_test", admin_senha:"..."}` → aguardar ~60s → `POST {action:"uso", admin_senha:"...", visao:"debug"}` e buscar evento `tel_test_sintetico`. Ver `AGENTS.md` regra de telemetria.
