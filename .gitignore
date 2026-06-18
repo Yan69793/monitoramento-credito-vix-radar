@@ -81,6 +81,8 @@ api/v4.*.js
 !api/v4.9.135.js
 !api/v4.9.136.js
 !api/v4.9.137.js
+!api/v4.9.138.js
+!api/v4.9.139.js
 
 # ---------- Protótipos e legado local (não versionar) ----------
 producao/

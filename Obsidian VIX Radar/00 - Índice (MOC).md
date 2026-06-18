@@ -20,14 +20,15 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[18 - Auditoria Completa 2026-06-17]]
 - [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]]
 - [[20 - Monitoramento Loop 2026-06-17]]
+- [[21 - Auditoria Completa 2026-06-18]]
 
-## Versões confirmadas (última sessão: 2026-06-17 — v4.9.135 + v201.63 prod)
+## Versões confirmadas (última sessão: 2026-06-18 — v4.9.139 + v201.63 prod)
 
-**Git:** `origin/main` = `b350bf2` (redesign boletim diário v4.9.135).
+**Git:** `origin/main` = `d61840f` (fix header boletim v4.9.137); produção Worker em v4.9.139 (deploy à frente do commit).
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.136** (prod) | Polish boletim diário; CF `78e12e6a-a76b-4494-80c4-3369f8f8df8d`; CI `EXPECTED_WORKER=v4.9.136` |
+| Worker `radar-credito-api` | **v4.9.139** (prod) | `newsletter_envio_direcionado`; health `ok:true`, `verificador_ok:true`; CI `EXPECTED_WORKER=v4.9.139` |
 | Frontend `vixradar.com` | **v201.63** (prod = repo) | Fix JWT sessão; deploy 2026-06-17T21:26:52Z |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |

@@ -1,18 +1,18 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-17 (Worker v4.9.134 + Frontend v201.63 + fix sessão JWT). Auditoria: [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]].
+Atualizado: 2026-06-18 (Worker v4.9.139 + Frontend v201.63). Auditoria: [[21 - Auditoria Completa 2026-06-18]].
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.134** | `GET /` `versao:"v4.9.134"` em `api.vixradar.com` e `workers.dev`; `verificador_ok:true` | 2026-06-17 |
-| Frontend `vixradar.com` | **v201.63** | `version.json` `{"version":"v201.63","deployed_at":"2026-06-17T21:26:52Z"}` | 2026-06-17 |
-| Frontend repo | v201.63 | `app/version.json`; `app/index.html` + `app/deploy_zip/` | 2026-06-17 |
-| Worker repo | v4.9.134 | `api/wrangler.toml main="v4.9.134.js"`; bundle versionado em git | 2026-06-17 |
-| CI canonical-test | v4.9.134 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.134` | 2026-06-17 |
-| Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-17 |
-| Git `origin/main` | `131b1fd` | `chore: ignorar mcps/` | 2026-06-17 |
+| Worker `radar-credito-api` | **v4.9.139** | `GET /` `versao:"v4.9.139"` em `api.vixradar.com`; `verificador_ok:true`, `telemetria:true` | 2026-06-18 |
+| Frontend `vixradar.com` | **v201.63** | `version.json` `{"version":"v201.63","deployed_at":"2026-06-17T21:26:52Z"}` | 2026-06-18 |
+| Frontend repo | v201.63 | `app/version.json`; `CACHE_VERSION="v201.63"` no HTML servido | 2026-06-18 |
+| Worker repo | v4.9.139 | `api/wrangler.toml main="v4.9.139.js"`; bundle local (untracked) | 2026-06-18 |
+| CI canonical-test | v4.9.139 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.139` (working tree) | 2026-06-18 |
+| Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-18 |
+| Git `origin/main` | `d61840f` | `fix(email): header boletim diario v4.9.137` — deploy v4.9.139 à frente do commit | 2026-06-18 |
 
 ## Incidente + Deploy v201.63 — sessão expira em ~1s (2026-06-17)
 
