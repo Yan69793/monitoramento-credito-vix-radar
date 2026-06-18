@@ -1,11 +1,87 @@
 /**
  * VIX Radar — Admin shared utilities + design tokens
- * v201.67
+ * v201.69 — shortcut robusto + z-index admin
  */
 (function () {
   "use strict";
 
   var API = typeof API_BASE !== "undefined" ? API_BASE : "https://api.vixradar.com";
+
+  function isAdminShortcut(e) {
+    if (!e || e.repeat) return false;
+    if (!(e.ctrlKey || e.metaKey)) return false;
+    var keyOk = e.code === "KeyA" || (e.key && String(e.key).toLowerCase() === "a");
+    if (!keyOk) return false;
+    return e.shiftKey || e.altKey;
+  }
+
+  function toggleAdminPanel() {
+    var overlay = document.getElementById("admin-overlay");
+    if (!overlay) return false;
+    overlay.style.zIndex = "100002";
+    if (overlay.classList.contains("vis")) {
+      if (typeof window.fecharAdmin === "function") {
+        window.fecharAdmin();
+        document.body.classList.remove("vr-admin-open");
+        return true;
+      }
+    } else if (typeof window.abrirAdmin === "function") {
+      document.body.classList.add("vr-admin-open");
+      window.abrirAdmin();
+      return true;
+    }
+    return false;
+  }
+
+  function registerAdminShortcut() {
+    if (window._vrAdminShortcutRegistered) return;
+    window._vrAdminShortcutRegistered = true;
+    document.addEventListener(
+      "keydown",
+      function (e) {
+        if (!isAdminShortcut(e)) return;
+        if (e.target && (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.isContentEditable)) {
+          /* ainda permite — admin é global */
+        }
+        e.preventDefault();
+        e.stopPropagation();
+        if (!toggleAdminPanel()) {
+          setTimeout(function () {
+            toggleAdminPanel();
+          }, 200);
+        }
+      },
+      true
+    );
+  }
+
+  function patchAdminToggle() {
+    var wrap = function (name, after) {
+      var tries = 0;
+      function attempt() {
+        var orig = window[name];
+        if (typeof orig === "function" && !orig._vrShortcutPatched) {
+          window[name] = function () {
+            var r = orig.apply(this, arguments);
+            after();
+            return r;
+          };
+          window[name]._vrShortcutPatched = true;
+          return;
+        }
+        if (++tries < 80) setTimeout(attempt, 150);
+      }
+      attempt();
+    };
+    wrap("abrirAdmin", function () {
+      var o = document.getElementById("admin-overlay");
+      if (o) o.style.zIndex = "100002";
+      document.body.classList.add("vr-admin-open");
+    });
+    wrap("fecharAdmin", function () {
+      document.body.classList.remove("vr-admin-open");
+    });
+  }
 
   function esc(s) {
     return String(s || "")
@@ -79,7 +155,10 @@
       "@media(prefers-reduced-motion:reduce){.vr-sk-line{animation:none;background:#1a3a52}}" +
       ".uso-kpi-value,.uso-evento-count,.uso-rank-count,.uso-ret-val{font-variant-numeric:tabular-nums}" +
       ".uso-heatmap td{transition:background .15s ease}" +
-      ".uso-vis-btn:focus-visible,.admin-tab-btn:focus-visible,.admin-btn:focus-visible{outline:2px solid #64748B;outline-offset:2px}";
+      ".uso-vis-btn:focus-visible,.admin-tab-btn:focus-visible,.admin-btn:focus-visible{outline:2px solid #64748B;outline-offset:2px}" +
+      "#admin-overlay{z-index:100002!important}" +
+      "#admin-overlay.vis{display:flex!important}" +
+      "body.vr-admin-open #publicHome{pointer-events:none}";
     document.head.appendChild(s);
   }
 
@@ -112,4 +191,6 @@
   };
 
   injectBaseStyles();
+  registerAdminShortcut();
+  patchAdminToggle();
 })();
