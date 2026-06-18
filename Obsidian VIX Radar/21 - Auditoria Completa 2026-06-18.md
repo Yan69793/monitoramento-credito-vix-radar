@@ -144,7 +144,13 @@ Nenhum nesta passagem.
 
 | Prioridade | Ação |
 |---|---|
-| **P1** | Commitar `v4.9.139.js` + `wrangler.toml` + `canonical-test.yml` (fechar drift git/deploy) |
-| **P1** | Atualizar `03 - Estado` e MOC para v4.9.139 (feito nesta auditoria) |
+| ~~**P1**~~ | ~~Commitar v4.9.139~~ **FEITO** — `e7ce539` |
+| ~~**P1**~~ | ~~Docs Obsidian~~ **FEITO** — MOC + `03 - Estado` |
+| ~~**P1**~~ | ~~Limpeza repo~~ **FEITO** — `de77e82` |
 | **P2** | Investigar `[tel] Invalid URL string` — verificar callers que passam `request` sintético |
 | **P3** | Versionar payloads smoke `receber_analise` em `testing/` para auditorias futuras |
+
+## Encerramento de sessão (2026-06-18)
+
+- Working tree limpo; commits `e7ce539` + `de77e82`
+- Produção validada: Worker v4.9.139, Frontend v201.63, health OK
