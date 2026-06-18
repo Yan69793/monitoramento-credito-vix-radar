@@ -52,9 +52,16 @@ Write-Host "CACHE_VERSION detectada: $ver" -ForegroundColor Cyan
 
 # --- 2. Sincroniza deploy_zip (raiz vence) ---------------------------------
 Copy-Item -Force $indexSrc (Join-Path $zipDir "index.html")
-foreach ($f in @("_headers","_routes.json")) {
+foreach ($f in @("_headers","_routes.json","landing-demo.json")) {
   $srcF = Join-Path $appDir $f
   if (Test-Path $srcF) { Copy-Item -Force $srcF (Join-Path $zipDir $f) }
+}
+$adminSrc = Join-Path $appDir "admin"
+$adminDst = Join-Path $zipDir "admin"
+if (Test-Path $adminSrc) {
+  if (Test-Path $adminDst) { Remove-Item -Recurse -Force $adminDst }
+  Copy-Item -Recurse -Force $adminSrc $adminDst
+  Write-Host "admin/ copiado para deploy_zip" -ForegroundColor Cyan
 }
 $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 $verJson = "{`"version`":`"$ver`",`"deployed_at`":`"$ts`"}"
@@ -63,8 +70,13 @@ Set-Content -NoNewline -Path (Join-Path $appDir "version.json") -Value $verJson
 Write-Host "deploy_zip sincronizado + version.json gerado ($ts)" -ForegroundColor Cyan
 
 # --- 3. Confere o bundle (4 arquivos) --------------------------------------
-foreach ($f in @("index.html","_headers","_routes.json","version.json")) {
+foreach ($f in @("index.html","_headers","_routes.json","version.json","landing-demo.json")) {
   if (-not (Test-Path (Join-Path $zipDir $f))) { Fail "Bundle incompleto: falta $f em deploy_zip" }
+}
+foreach ($af in @("vr-admin-shared.js","vr-admin-modules.js","vr-admin-engajamento.js","vr-admin-metricas.js","vr-admin-fase3.js")) {
+  if (-not (Test-Path (Join-Path $zipDir "admin\$af"))) {
+    Fail "Bundle incompleto: falta admin/$af em deploy_zip"
+  }
 }
 
 # --- 4. Deploy -------------------------------------------------------------

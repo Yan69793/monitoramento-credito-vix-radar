@@ -22,15 +22,16 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[20 - Monitoramento Loop 2026-06-17]]
 - [[21 - Auditoria Completa 2026-06-18]]
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
+- [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 
-## Versões confirmadas (última sessão: 2026-06-18 — v4.9.139 + v201.63 prod)
+## Versões confirmadas (última sessão: 2026-06-18 — v4.9.139 + v201.68 prod)
 
 **Git:** `origin/main` = `d61840f` (fix header boletim v4.9.137); produção Worker em v4.9.139 (deploy à frente do commit).
 
 | Componente | Versão | Status |
 |---|---|---|
 | Worker `radar-credito-api` | **v4.9.139** (prod) | `newsletter_envio_direcionado`; health `ok:true`, `verificador_ok:true`; CI `EXPECTED_WORKER=v4.9.139` |
-| Frontend `vixradar.com` | **v201.63** (prod = repo) | Fix JWT sessão; deploy 2026-06-17T21:26:52Z |
+| Frontend `vixradar.com` | **v201.68** (prod = repo) | Admin Fase 3: reengajamento + sparklines HEART; deploy 2026-06-18 |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |
@@ -49,6 +50,12 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 **Resolvidos anteriormente:** ~~cron `0 2 * * *` duplicado~~ (v4.9.109 — `0 4 * * *`); ~~`CLOUDFLARE_API_TOKEN` secret~~ (2026-06-11); P05* CI; P11 alerta favorito; N06 CRITICIDADE_SETOR.
 
 **Resolvidos nesta sessão (2026-06-11):** P05* CI corrigido; fix Briefing EWS (v201.47, deployado); reconciliação Worker; P11 implementado (v4.9.103→v4.9.104); N06 display corrigido (v4.9.104); Engajamento erro melhorado (v201.48); validação online completa (Claude in Chrome, 02:07 BRT — nenhuma regressão); N06 cálculo corrigido (v4.9.105, `CRITICIDADE_SETOR` alinhado ao `EMISSORES_MAP`, teste 13/13 PASS); credenciais atualizadas (`memory/credenciais.md`).
+
+**Abertas pós-admin HEART (2026-06-18):**
+1. ~~**P1** — Fase 2 wrappers~~ **FEITO v201.67** — `vr-admin-shared/engajamento/metricas.js`; extração completa do monólito pendente (Fase 2b)
+2. **P1** — Versionar `api/v4.9.139.js` no git (untracked)
+3. **P2** — Watchdog `stale_count:1` (heartbeats)
+4. ~~**P2** — Fase 3 reengajamento~~ **FEITO v201.68** — boletim 1-click via `newsletter_envio_direcionado`
 
 Ver lista completa em `memory/sessao-2026-06-11-pendencias.md`.
 

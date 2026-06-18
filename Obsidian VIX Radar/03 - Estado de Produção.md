@@ -1,14 +1,14 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-18 (Worker v4.9.139 + Frontend v201.63). Auditoria: [[21 - Auditoria Completa 2026-06-18]].
+Atualizado: 2026-06-18 (Worker v4.9.139 + Frontend v201.67). Auditoria: [[21 - Auditoria Completa 2026-06-18]] · Admin HEART Fase 1–2: [[23 - Admin HEART Modular v201.66]].
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
 | Worker `radar-credito-api` | **v4.9.139** | `GET /` `versao:"v4.9.139"` em `api.vixradar.com`; `verificador_ok:true`, `telemetria:true` | 2026-06-18 |
-| Frontend `vixradar.com` | **v201.63** | `version.json` `{"version":"v201.63","deployed_at":"2026-06-17T21:26:52Z"}` | 2026-06-18 |
-| Frontend repo | v201.63 | `app/version.json`; `CACHE_VERSION="v201.63"` no HTML servido | 2026-06-18 |
+| Frontend `vixradar.com` | **v201.67** | `version.json`; 4 módulos `app/admin/*.js` servidos | 2026-06-18 |
+| Frontend repo | v201.67 | `CACHE_VERSION="v201.67"`; shared + HEART + engajamento + métricas | 2026-06-18 |
 | Worker repo | v4.9.139 | `api/wrangler.toml main="v4.9.139.js"`; bundle local (untracked) | 2026-06-18 |
 | CI canonical-test | v4.9.139 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.139` (working tree) | 2026-06-18 |
 | Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-18 |
