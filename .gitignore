@@ -84,6 +84,9 @@ api/v4.*.js
 !api/v4.9.138.js
 !api/v4.9.139.js
 
+# ---------- Agent local (não versionar) ----------
+.grok/
+
 # ---------- Protótipos e legado local (não versionar) ----------
 producao/
 research/

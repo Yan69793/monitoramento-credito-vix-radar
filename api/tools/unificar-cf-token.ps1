@@ -1,14 +1,34 @@
 #Requires -Version 5.1
 <#
   Valida token unificado Cloudflare (DNS + Workers) e persiste em CLOUDFLARE_API_TOKEN (User).
-  Uso: .\tools\unificar-cf-token.ps1 -Token 'cfut_...'
+  Uso:
+    .\tools\unificar-cf-token.ps1 -Token 'cfut_...'
+    .\tools\unificar-cf-token.ps1 -Auto
 #>
 param(
-  [Parameter(Mandatory = $true)]
-  [string]$Token
+  [string]$Token,
+  [switch]$Auto
 )
 
 $ErrorActionPreference = 'Stop'
+
+if ($Auto) {
+  $workerTok = [Environment]::GetEnvironmentVariable('CLOUDFLARE_API_TOKEN', 'User')
+  $dnsTok = [Environment]::GetEnvironmentVariable('CLOUDFLARE_DNS_TOKEN', 'User')
+  $candidates = @($workerTok, $dnsTok) | Where-Object { $_ } | Select-Object -Unique
+  foreach ($c in $candidates) {
+    & $PSCommandPath -Token $c
+    if ($LASTEXITCODE -eq 0) { return }
+  }
+  if ($workerTok -and $dnsTok) {
+    Write-Host ''
+    Write-Host 'Dual-token operacional (Workers + DNS). Unificacao total requer edicao no dashboard.' -ForegroundColor Green
+    exit 0
+  }
+  throw 'Configure CLOUDFLARE_API_TOKEN e CLOUDFLARE_DNS_TOKEN.'
+}
+if (-not $Token) { throw 'Informe -Token ou -Auto.' }
+
 $AccountId = '7ac79fb1030e4e81115ef33c21a9b070'
 $ZoneId = 'ea770942bf861c70bc0ce783c4ece5fa'
 $Headers = @{ Authorization = "Bearer $Token" }
@@ -37,13 +57,23 @@ $dnsOk = Test-Cf 'DNS read' { Invoke-RestMethod -Uri "https://api.cloudflare.com
 $workerOk = Test-Cf 'Workers list' { Invoke-RestMethod -Uri "https://api.cloudflare.com/client/v4/accounts/$AccountId/workers/scripts" -Headers $Headers }
 
 if (-not ($dnsOk -and $workerOk)) {
+  if ($dnsOk -and -not $workerOk) {
+    [Environment]::SetEnvironmentVariable('CLOUDFLARE_DNS_TOKEN', $Token, 'User')
+    Write-Host 'CLOUDFLARE_DNS_TOKEN atualizado (escopo User).' -ForegroundColor Cyan
+  } elseif ($workerOk -and -not $dnsOk) {
+    [Environment]::SetEnvironmentVariable('CLOUDFLARE_API_TOKEN', $Token, 'User')
+    Write-Host 'CLOUDFLARE_API_TOKEN atualizado (escopo User).' -ForegroundColor Cyan
+  }
   Write-Host ''
   Write-Host 'Token ainda nao unificado. No dashboard, adicione ao MESMO token DNS:' -ForegroundColor Yellow
   Write-Host '  - Account > Workers Scripts > Edit'
   Write-Host '  - Account > Workers KV Storage > Edit'
   Write-Host '  - Account > Workers Routes > Edit'
   Write-Host '  - Zone > Zone > Read (vixradar.com) — ja deve existir'
-  return
+  Write-Host ''
+  Write-Host 'Modo dual-token: deploy usa CLOUDFLARE_API_TOKEN, DNS usa CLOUDFLARE_DNS_TOKEN.'
+  Write-Host 'Status: .\tools\cf-token-status.ps1'
+  exit 2
 }
 
 [Environment]::SetEnvironmentVariable('CLOUDFLARE_API_TOKEN', $Token, 'User')
