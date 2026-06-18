@@ -21,17 +21,18 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[19 - Auditoria Completa 2026-06-17 (pós v201.63)]]
 - [[20 - Monitoramento Loop 2026-06-17]]
 - [[21 - Auditoria Completa 2026-06-18]]
+- [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]]
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 
-## Versões confirmadas (última sessão: 2026-06-18 — v4.9.139 + v201.68 prod)
+## Versões confirmadas (última sessão: 2026-06-18 — v4.9.141 + v201.69 prod)
 
-**Git:** `origin/main` = `d61840f` (fix header boletim v4.9.137); produção Worker em v4.9.139 (deploy à frente do commit).
+**Git:** `main` com v4.9.140/141 commitados; `ROUTINE_API_KEY` rotacionada 2026-06-18.
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.139** (prod) | `newsletter_envio_direcionado`; health `ok:true`, `verificador_ok:true`; CI `EXPECTED_WORKER=v4.9.139` |
-| Frontend `vixradar.com` | **v201.68** (prod = repo) | Admin Fase 3: reengajamento + sparklines HEART; deploy 2026-06-18 |
+| Worker `radar-credito-api` | **v4.9.141** (prod) | CVM dates + SEC hardening; health `ok:true`, `verificador_ok:true`; CI `EXPECTED_WORKER=v4.9.141` |
+| Frontend `vixradar.com` | **v201.69** (prod = repo) | Admin HEART modular; senha admin em `sessionStorage` |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |

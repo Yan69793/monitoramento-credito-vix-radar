@@ -1,16 +1,17 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-18 (Worker v4.9.139 + Frontend v201.67). Auditoria: [[21 - Auditoria Completa 2026-06-18]] · Admin HEART Fase 1–2: [[23 - Admin HEART Modular v201.66]].
+Atualizado: 2026-06-18 (Worker v4.9.141 + Frontend v201.69). Auditoria: [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]] · Admin HEART: [[23 - Admin HEART Modular v201.66]].
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.139** | `GET /` `versao:"v4.9.139"` em `api.vixradar.com`; `verificador_ok:true`, `telemetria:true` | 2026-06-18 |
-| Frontend `vixradar.com` | **v201.67** | `version.json`; 4 módulos `app/admin/*.js` servidos | 2026-06-18 |
-| Frontend repo | v201.67 | `CACHE_VERSION="v201.67"`; shared + HEART + engajamento + métricas | 2026-06-18 |
-| Worker repo | v4.9.139 | `api/wrangler.toml main="v4.9.139.js"`; bundle local (untracked) | 2026-06-18 |
-| CI canonical-test | v4.9.139 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.139` (working tree) | 2026-06-18 |
+| Worker `radar-credito-api` | **v4.9.141** | `GET /` `versao:"v4.9.141"` em `api.vixradar.com`; `verificador_ok:true`, `telemetria:true` | 2026-06-18 |
+| Frontend `vixradar.com` | **v201.69** | `version.json`; 4 módulos `app/admin/*.js` servidos | 2026-06-18 |
+| Frontend repo | v201.69 | `CACHE_VERSION` alinhado; admin `sessionStorage` para senha | 2026-06-18 |
+| Worker repo | v4.9.141 | `api/wrangler.toml main="v4.9.141.js"`; commit `83dc503+` | 2026-06-18 |
+| CI canonical-test | v4.9.141 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.141` | 2026-06-18 |
+| ROUTINE_API_KEY | rotacionada | `wrangler secret put` 2026-06-18; rotinas scheduled-tasks atualizadas | 2026-06-18 |
 | Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-18 |
 | Git `origin/main` | `d61840f` | `fix(email): header boletim diario v4.9.137` — deploy v4.9.139 à frente do commit | 2026-06-18 |
 
