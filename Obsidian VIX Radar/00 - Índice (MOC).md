@@ -26,6 +26,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[26 - Auditoria Completa 2026-06-18 (caveman)]]
 - [[27 - Otimizacao Tokens Rotina Noturna]]
 - [[29 - Rotina Noturna 2026-06-20]] — **7 CRITICOs**: Raízen PRE, Cosan, Kora Saúde, Oncoclínicas, Oi, GPA, Aegea (rating)
+- [[30 - Monitor CRITICOs 2026-06-20]] — rastreamento contínuo dos 7 CRITICOs; atualizar a cada sessão
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
