@@ -43,9 +43,11 @@
 # v4.9.139.js = v4.9.138 + newsletter_envio_direcionado (lista admin, sem dedup global).
 # v4.9.140.js = v4.9.139 + fix datas CVM (Data_Entrega, remove fallback_hoje, boletim por protocolo).
 # v4.9.141.js = v4.9.140 + SEC (webhook fail-closed, _teste+routine_key prod, GETs ops JWT admin, corrigir_datas_cvm_kv).
+# v4.9.142.js = v4.9.141 + SEC admin_mercado login via POST form-urlencoded (senha fora da URL; fix regressão v4.9.112/113).
+# v4.9.143.js = v4.9.142 + rotina-v2: listar_plano_rotina (tiers SKIP/LIGHT/FULL/AUDIT) + VARREDURA_CRON_AI_ENABLED=false (delega AI ao Claude tiered).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.141.js"
+main       = "v4.9.143.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
@@ -76,6 +78,8 @@ dataset = "radar_usage_events"
 ENVIRONMENT = "production"
 CLOUDFLARE_ACCOUNT_ID = "7ac79fb1030e4e81115ef33c21a9b070"
 ADMIN_EMAIL = "szuchmacheryan@gmail.com"
+# false = cron nao roda executarVarreduraMatinal/BatchComFila (Claude tiered v2 assume analise AI)
+VARREDURA_CRON_AI_ENABLED = "false"
 
 # ─── CUSTOM DOMAIN ────────────────────────────────────────────────────
 # api.vixradar.com é o AG_API usado pelo frontend para login/auth.

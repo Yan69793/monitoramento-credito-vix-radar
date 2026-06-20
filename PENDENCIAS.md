@@ -17,7 +17,7 @@
 7. **`CRITICIDADE_SETOR` usa 6 chaves de setor que não existem no `EMISSORES_MAP`**, degradando materialidade para 48 de 103 emissores — o multiplicador de enriquecimento cai para fallback 0.7 em vez do valor calibrado.
 8. **METRICAS_CURADAS hardcodado** com dados de 4T25 (dez/2025) para 101 empresas. Sem pipeline de atualização, todo KPI exibido ao usuário tem 6+ meses de defasagem.
 9. **ADMIN_EMAIL hardcoded** no bundle de produção (`szuchmacheryan@gmail.com`); qualquer pessoa com acesso ao repo conhece o vetor de acesso privilegiado.
-10. **CLAUDE.md do projeto tem paths incorretos** (referencia `worker/` e `index.html` raiz, que não existem mais), teste padrão que espera HTTP 200 anônimo (retorna 401), e vault Obsidian no caminho errado.
+10. ~~**CLAUDE.md do projeto tem paths incorretos**~~ **RESOLVIDO 2026-06-19** — `CLAUDE.md` enxuto (5 KB): paths `api/`/`app/`, vault `E:\Diretorio\Claude\...`, teste GET `/` (POST anônimo = 401 documentado). Histórico em `docs/archived/CLAUDE-HISTORICO.md`; `AGENTS.md` virou ponteiro.
 
 ---
 
@@ -72,7 +72,7 @@ Verificador: claude-sonnet-4-5 (Anthropic) → OK
 | N06 | Qualidade / Enriquecimento | prod:~12950; `api/v4.9.102.js:11951-11965` | Médio | P | 17,22 | NOVO | `CRITICIDADE_SETOR` usa 13 chaves de setor. Pelo menos 6 não batem com as chaves reais do `EMISSORES_MAP` (ex: `"Energia Elétrica"` vs `"Energia"`, `"Financeiro"` vs `"Bancos"`). 48 de 103 emissores caem no fallback 0.7 em vez do valor calibrado. Materialidade calculada incorretamente para ~47% do universo. | Alinhar chaves de `CRITICIDADE_SETOR` com as chaves exatas do `EMISSORES_MAP`. Adicionar teste de consistência. |
 | N07 | Dados / Frontend | `app/index.html:~3406` | Médio | P | 22 | NOVO | `ARQUIVO_PRE` contém 2 eventos com `data_evento` anterior a 90 dias: Raízen (`2026-03-11`, 91 dias) e GPA (`2026-03-10`, 92 dias). Ficam visíveis no PDF mas fora do dashboard (filtro `dentroJanela`). Dado obsoleto apresentado em contexto premium. | Remover ou arquivar eventos com mais de 90 dias. Ou documentar explicitamente que ARQUIVO_PRE é memória histórica sem TTL. |
 | N08 | Qualidade / Dados | `app/index.html:~3406` | Médio | P | 22 | NOVO | `METRICAS_CURADAS` tem 101 empresas com KPIs todos marcados como `"CVM · 4T25"` (dados de dez/2025, hoje com 6 meses de defasagem). Inconsistência em Aegea: nota interna diverge dos campos publicados. Nenhum pipeline de atualização existe. | Definir ciclo trimestral de atualização. Adicionar `data_referencia` por empresa (não global) para o usuário saber quando foi atualizado. |
-| N09 | CLAUDE.md / Drift doc | `CLAUDE.md:projeto` | Médio | P | — | NOVO | CLAUDE.md do projeto tem: (1) path do vault Obsidian sem segmento `Claude` (caminho inválido); (2) referencia `worker/` (agora `api/`); (3) referencia `index.html` raiz (agora `app/index.html`); (4) teste padrão POST anônimo esperando HTTP 200 (retorna 401). Instruções erradas levam qualquer sessão nova a trabalhar com premissas incorretas. | Atualizar seção de teste padrão, paths e vault. Este arquivo é a primeira coisa lida em toda sessão. |
+| N09 | CLAUDE.md / Drift doc | `CLAUDE.md:projeto` | Médio | P | — | **RESOLVIDO 2026-06-19** | CLAUDE.md reescrito (62 KB → 5 KB): paths `api/`/`app/`, vault correto, teste GET `/`, histórico arquivado, AGENTS.md deduplicado. | — |
 | P12 | Tratamento de erro | prod:14447-14450 | Médio | P | — | ABERTO | `__fixCorsResp` tem `catch(e) {}` vazio. Se a lógica de correção de CORS falhar, a exceção é silenciada e o response sai sem `Access-Control-Allow-Origin`. Diagnóstico impossível em produção. | Adicionar `console.error("[fixCors]", e)` no catch. |
 | P13 | Débito técnico / KV | prod:~14100 (`handleHistoricoEmissor`) | Médio | P | — | ABERTO | `handleHistoricoEmissor` usa `RADAR_KV.list({prefix: "comentario:..."})` para leitura. `list()` tem eventual consistency (até 60s de lag). Mesmo padrão que causou bug em favoritos (v4.7.1). Comentário recém-adicionado pode não aparecer por ~60s. | Migrar para doc único `comentarios:{empresa}` (JSON array), padrão já estabelecido nos favoritos. |
 | P18 | Decadência / Repo | `api/` (diretório) | Médio | G | 8 | ABERTO | Diretório `api/` acumula múltiplos bundles `.js` sem política de retenção (histórico visível no git). Bloat de repo e `git clone` lento. Fora do git: `archive/`, `docs/`, `research/`, `testing/`, `vixradar/` não rastreados. | Definir política: manter últimas 3 versões + versão em produção. Tags git para versões anteriores. |
@@ -173,9 +173,9 @@ var CRITICIDADE_SETOR = {
 
 ---
 
-### 5. ADMIN_EMAIL hardcoded + CLAUDE.md desatualizado — P11 + N09
+### 5. ADMIN_EMAIL hardcoded — P11 (N09 resolvido 2026-06-19)
 
-**Dois achados de baixo custo de correção, alto impacto operacional.** ADMIN_EMAIL hardcoded expõe vetor de ataque em repo público. CLAUDE.md com paths errados contamina toda sessão nova com premissas incorretas.
+**N09 fechado:** CLAUDE.md enxuto com paths corretos. **P11 permanece:** ADMIN_EMAIL hardcoded expõe vetor de ataque em repo público.
 
 ```js
 // Worker — diff sketch P11
@@ -205,7 +205,7 @@ curl -s https://radar-credito-api.prospects-intel.workers.dev | python3 -m json.
 | 2 | P20 — express/openai não usados | `npm uninstall express openai` | `api/package.json` |
 | 3 | P05* — `EXPECTED_WORKER` desatualizado | Atualizar para `"4.9.102"` | `.github/workflows/canonical-test.yml:56` |
 | 4 | P12 — `catch(e){}` vazio | Adicionar `console.error` | prod:14447 |
-| 5 | N09 — CLAUDE.md paths errados | Atualizar 4 itens | `CLAUDE.md` |
+| 5 | ~~N09 — CLAUDE.md paths errados~~ | **FEITO 2026-06-19** | `CLAUDE.md` |
 | 6 | N07 — ARQUIVO_PRE com eventos expirados | Remover Raízen e GPA | `app/index.html:~3406` |
 
 ---

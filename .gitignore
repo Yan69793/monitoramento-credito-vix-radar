@@ -88,9 +88,12 @@ api/v4.*.js
 !api/v4.9.139.js
 !api/v4.9.140.js
 !api/v4.9.141.js
+!api/v4.9.142.js
+!api/v4.9.143.js
 
 # ---------- Agent local (não versionar) ----------
 .grok/
+!.grok/skills/
 
 # ---------- Protótipos e legado local (não versionar) ----------
 producao/
@@ -139,6 +142,7 @@ env/
 .ruff_cache/
 
 # ---------- Logs, temporarios, dumps ----------
+logs/routines/
 *.log
 deploy_log_*.txt
 deploy_err.txt

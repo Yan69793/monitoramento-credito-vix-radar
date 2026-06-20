@@ -22,17 +22,21 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[20 - Monitoramento Loop 2026-06-17]]
 - [[21 - Auditoria Completa 2026-06-18]]
 - [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]]
+- [[25 - Deploy Readiness v4.9.142]]
+- [[26 - Auditoria Completa 2026-06-18 (caveman)]]
+- [[27 - Otimizacao Tokens Rotina Noturna]]
+- [[29 - Rotina Noturna 2026-06-20]] — **7 CRITICOs**: Raízen PRE, Cosan, Kora Saúde, Oncoclínicas, Oi, GPA, Aegea (rating)
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
 
-## Versões confirmadas (última sessão: 2026-06-18 — v4.9.141 + v201.69 prod)
+## Versões confirmadas (última sessão: 2026-06-20 — v4.9.143 em prod)
 
-**Git:** `main` com v4.9.140/141 commitados; `ROUTINE_API_KEY` rotacionada 2026-06-18.
+**Git:** `main` com v4.9.143 em prod; rotina v2 tiered ativa; CI `EXPECTED_WORKER=v4.9.143`.
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.141** (prod) | CVM dates + SEC hardening; health `ok:true`, `verificador_ok:true`; CI `EXPECTED_WORKER=v4.9.141` |
+| Worker `radar-credito-api` | **v4.9.143** (prod = repo) | rotina-v2: `listar_plano_rotina` + `VARREDURA_CRON_AI_ENABLED=false`; CI alinhado |
 | Frontend `vixradar.com` | **v201.69** (prod = repo) | Admin HEART modular; senha admin em `sessionStorage` |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
@@ -59,8 +63,14 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - ~~**P1** — Limpar `settings.local.json` (refs `routine_key` antiga na allowlist Bash)~~
 - ~~**P2** — Nota 13: `tel_test` documentado com `admin_senha`~~
 
-**Abertas (hygiene + produto — 2026-06-18):**
-1. **P2** — `admin_mercado`: refactor auth POST (senha ainda em query string GET)
+**Resolvidos nesta sessão (2026-06-18 — v4.9.142 readiness):**
+- ~~**P2** — `admin_mercado`: refactor auth POST~~ **RESOLVIDO v4.9.142** — form login usa `method="post"`; handler lê `formData`; fallback GET permanece como P2 residual (não bloqueante)
+- ~~**gitignore v4.9.142.js**~~ **RESOLVIDO** — adicionado `!api/v4.9.142.js` linha 91
+- ~~**CLAUDE.md podado**~~ **REVERTIDO** — `git checkout CLAUDE.md` restaurou protocolo completo
+- **Email modo_teste** — IMPLEMENTADO v4.9.142; ativar pós-deploy via `email_modo_teste_ativar`
+
+**Abertas (hygiene + produto — 2026-06-20):**
+1. ~~**P0** — Deploy v4.9.142~~ **SUPERADO** — v4.9.143 em prod (2026-06-20); ativar `email_modo_teste` se ainda pendente
 2. **P2** — Watchdog `stale_count:1` (heartbeats)
 3. **P2** — Admin HEART Fase 2b — extração completa do monólito (`vr-admin-shared`)
 4. **P3** — `admin_corrigir_datas_cvm_kv` em lote pós-matinal

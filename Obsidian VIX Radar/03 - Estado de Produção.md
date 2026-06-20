@@ -1,16 +1,19 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-18 (Worker v4.9.141 + Frontend v201.69). Auditoria: [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]] · Admin HEART: [[23 - Admin HEART Modular v201.66]].
+Atualizado: 2026-06-20 (Worker v4.9.143 + Frontend v201.69). Rotina v2: [[27 - Otimizacao Tokens Rotina Noturna]] · [[29 - Rotina Noturna 2026-06-20]].
+
+> [!info] Deploy v4.9.143 — 2026-06-20
+> `listar_plano_rotina` (tiers SKIP/LIGHT/FULL/AUDIT) + `VARREDURA_CRON_AI_ENABLED=false` (delega IA ao Claude tiered). Health: `verificador_ok:true`, `telemetria:true`.
 
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.141** | `GET /` `versao:"v4.9.141"` em `api.vixradar.com`; `verificador_ok:true`, `telemetria:true` | 2026-06-18 |
+| Worker `radar-credito-api` | **v4.9.143** | `GET /` `versao:"v4.9.143"` em `api.vixradar.com`; `verificador_ok:true`, `telemetria:true` | 2026-06-20 |
 | Frontend `vixradar.com` | **v201.69** | `version.json`; 4 módulos `app/admin/*.js` servidos | 2026-06-18 |
 | Frontend repo | v201.69 | `CACHE_VERSION` alinhado; admin `sessionStorage` para senha | 2026-06-18 |
-| Worker repo | v4.9.141 | `api/wrangler.toml main="v4.9.141.js"`; commit `83dc503+` | 2026-06-18 |
-| CI canonical-test | v4.9.141 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.141` | 2026-06-18 |
+| Worker repo | v4.9.143 | `api/wrangler.toml main="v4.9.143.js"` | 2026-06-20 |
+| CI canonical-test | v4.9.143 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.143` | 2026-06-20 |
 | ROUTINE_API_KEY | rotacionada | `wrangler secret put` 2026-06-18; rotinas scheduled-tasks atualizadas | 2026-06-18 |
 | Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-18 |
 | Git `origin/main` | `d61840f` | `fix(email): header boletim diario v4.9.137` — deploy v4.9.139 à frente do commit | 2026-06-18 |

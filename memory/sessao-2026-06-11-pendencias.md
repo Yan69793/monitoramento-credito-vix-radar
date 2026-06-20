@@ -110,7 +110,7 @@ status: pendente
 
 - [x] **N06** — RESOLVIDO 2026-06-11 — v4.9.105 deployado em produção (Version ID `c8e93a7a`).
 - [x] **P11-sec — RESOLVIDO 2026-06-16 (v4.9.115)** — `ADMIN_EMAIL` removido do bundle novo (`var ADMIN_EMAIL=""`) e carregado por `env.ADMIN_EMAIL` em runtime via `aplicarConfigRuntime(env)` para `fetch` e `scheduled`; `NEWSLETTER_DESTINATARIOS` recalculado. Validação: deploy CF Version ID `9583e77a`, `GET /` HTTP 200 `ok:true` `versao:"v4.9.115"` `telemetria:true` `verificador_ok:true`.
-- [ ] **N09** — Atualizar `CLAUDE.md` do projeto:
+- [x] **N09** — Atualizar `CLAUDE.md` do projeto (feito 2026-06-19: 62 KB → 5 KB, histórico arquivado):
   - Paths `worker/` → `api/`, `index.html` raiz → `app/index.html`
   - Teste padrão: POST anônimo → GET `/` (anônimo retorna 200 agora)
 - [ ] **N10** — Atualizar model IDs no Worker:
