@@ -32,6 +32,8 @@ API_TOKENS/
 .claude/
 !.claude/skills/
 !.claude/skills/**
+!.claude/scheduled-tasks/
+!.claude/scheduled-tasks/**
 .claude.json
 .claude.json.backup
 .copilot/
