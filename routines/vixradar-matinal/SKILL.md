@@ -1,6 +1,6 @@
 ---
 name: vixradar-matinal
-schedule: "0 10 * * 1-5"   # 10h00 BRT, dias úteis (America/Sao_Paulo)
+schedule: "0 9 * * 1-5"   # 09h00 BRT, dias úteis (America/Sao_Paulo)
 model: opus
 ---
 

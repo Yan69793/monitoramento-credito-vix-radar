@@ -15,7 +15,7 @@
 
 | Routine | Cron (BRT) | Modelo | Universo | Endpoint de saída |
 |---|---|---|---|---|
-| `vixradar-matinal` | `0 10 * * 1-5` (10h, dias úteis) | Claude Opus | Top 15 por EWS (`listar_emissores_prioritarios` `top_n=15`) | `receber_analise` com `_matinal:true` → `_provedor=claude-opus-routine` |
+| `vixradar-matinal` | `0 9 * * 1-5` (9h, dias úteis) | Claude Opus | Top 15 por EWS (`listar_emissores_prioritarios` `top_n=15`) | `receber_analise` com `_matinal:true` → `_provedor=claude-opus-routine` |
 | `vixradar-noturno` | `0 18 * * *` (18h, diário) | Claude Sonnet 4.6 | 103/103 (`listar_todos_emissores`) | `receber_analise` → `_provedor=claude-sonnet-routine` |
 
 Ambas: para cada emissor → `dados_para_analise` (contexto CVM + histórico) →
@@ -49,7 +49,7 @@ Todos exigem `"routine_key": "<ROUTINE_API_KEY>"` no corpo (403 sem ela).
 1. Confirmar o estado atual: `list_scheduled_tasks` (se vier vazio, o registro foi zerado).
 2. Para cada rotina, `create_scheduled_task` com:
    - **name**: `vixradar-matinal` / `vixradar-noturno`
-   - **schedule (cron)**: `0 10 * * 1-5` / `0 18 * * *` (timezone America/Sao_Paulo)
+   - **schedule (cron)**: `0 9 * * 1-5` / `0 18 * * *` (timezone America/Sao_Paulo)
    - **model**: Opus (matinal) / Sonnet 4.6 (noturno)
    - **prompt**: o conteúdo integral do `SKILL.md` correspondente desta pasta.
 3. Validar: `list_scheduled_tasks` deve mostrar as 2 `enabled:true` com `nextRunAt`.
