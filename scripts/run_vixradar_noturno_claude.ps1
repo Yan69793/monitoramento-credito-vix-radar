@@ -1,4 +1,4 @@
-# run_vixradar_noturno_claude.ps1 — Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
+# run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
@@ -15,7 +15,7 @@ $MetricsFile    = Join-Path $LogDir ('noturno_metrics_' + $DateTag + '.json')
 
 $ModelHaiku     = 'claude-haiku-4-5-20251001'
 $ModelSonnet    = 'claude-sonnet-4-6'
-$TokenTarget    = 500000   # meta — passar um pouco OK
+$TokenTarget    = 500000   # meta - passar um pouco OK
 $TokenHardCap   = 700000   # deferred só acima disto
 $SonnetEwsMin   = 38
 $HaikuChunk     = 12
@@ -108,7 +108,7 @@ function Submit-SkipEmissor($key, $emp) {
 function Submit-CapDeferred($key, $emp) {
     $resultado = [ordered]@{
         empresa = $emp.empresa; setor = $emp.setor; sem_eventos = $true
-        cobertura_nota = "Tier $($emp.tier). Cap hard ${TokenHardCap} tokens — ledger minimo. EWS=$($emp.ews_score). Priorizar amanha."
+        cobertura_nota = "Tier $($emp.tier). Cap hard ${TokenHardCap} tokens - ledger minimo. EWS=$($emp.ews_score). Priorizar amanha."
         fontes_consultadas = @([ordered]@{ rodada = '0'; query = 'token_cap'; resultado = 'deferred' })
         eventos = @(); _tier = $emp.tier; _rotina_v2 = $true; _token_cap_deferred = $true
     }
@@ -291,11 +291,11 @@ try {
 
         if ($stats.tokens_total -ge $TokenTarget -and -not $stats.tokens_over_target) {
             $stats.tokens_over_target = $true
-            Write-Log ('AVISO: meta ' + $TokenTarget + ' ultrapassada — continua ate hard ' + $TokenHardCap)
+            Write-Log ('AVISO: meta ' + $TokenTarget + ' ultrapassada - continua ate hard ' + $TokenHardCap)
         }
         if ($stats.tokens_total -ge $TokenHardCap) {
             $stats.tokens_hard_hit = $true
-            Write-Log ('HARD CAP ' + $TokenHardCap + ' — restante deferred')
+            Write-Log ('HARD CAP ' + $TokenHardCap + ' - restante deferred')
         }
     }
 

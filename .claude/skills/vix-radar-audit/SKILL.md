@@ -1,14 +1,13 @@
 ---
 name: vix-radar-audit
 description: >
-  VIX Radar auditoria completa do sistema. Invocado como /vix-radar-audit para vistoria
-  multi-camada: Worker, Pages, wrangler, KV/DO, auth/CORS, telemetria, verificador,
-  rotinas Claude e drift repo/producao. Segue Obsidian nota 13 + workers-best-practices.
-  Use quando: auditoria completa, vistoria operacional, auditar sistema, pos-deploy,
-  pos-incidente, validar producao, checar drift, readonly audit, antes de encerrar sessao
-  com mudanca de codigo/deploy. NAO usar para carteiras (/verificar = verificacao-carteiras-v2)
-  nem briefing rapido (/vix-radar-briefing).
-argument-hint: "[--readonly] [--quick]"
+  VIX Radar auditoria operacional do sistema, incluindo vistoria completa ou quick audit
+  de Worker, Pages, wrangler, KV/DO, auth/CORS, telemetria, verificador, rotinas Claude,
+  drift repo/producao e monitoramento em loop de 40 segundos ate estabilizar ou terminar
+  o processo observado. Use quando o usuario pedir auditoria completa, vistoria
+  operacional, auditar sistema, pos-deploy, pos-incidente, validar producao, checar drift,
+  loop de health, verificacao em 40 segundos, readonly audit, ou antes de encerrar sessao
+  com mudanca de codigo/deploy. Nao usar para carteiras nem briefing rapido.
 ---
 
 # VIX Radar — Auditoria Completa do Sistema
@@ -52,6 +51,32 @@ Projeto: `E:\Diretorio\Claude\Monitoramento de Credito`
 - **Padrão:** auditoria completa (6 blocos abaixo).
 - **`--readonly`:** só coleta evidência; não edita código, não deploy, não secrets, não POST destrutivo.
 - **`--quick`:** blocos A+B+D apenas (documental + health + config); pular testes autenticados profundos.
+- **`--loop-40s`:** repetir health público a cada 40s; só encerrar quando o processo/rotina observada terminar ou quando o operador interromper.
+
+---
+
+## Loop 40s — monitoramento até término
+
+Use quando o operador pedir "verificação em loop de 40 segundos", "loop do code" ou equivalente.
+
+1. Confirmar o alvo observado: por padrão, `https://api.vixradar.com/`; se o usuário mencionar processo local, coletar também `Get-Process`/`Get-CimInstance Win32_Process` filtrando pelo nome relevante.
+2. Executar ciclos de 40s registrando horário BRT, HTTP, tempo total, `versao`, `ok`, `kv`, `telemetria`, `verificador_ok`.
+3. Não considerar "qualquer Codex vivo" como critério de bloqueio, pois a própria sessão mantém processos `Codex/codex`. Se não houver alvo local inequívoco, usar saúde de produção + instrução explícita do operador como critério.
+4. Se qualquer ciclo falhar, coletar bruto: resposta, HTTP, erro de rede, tempo, e repetir uma vez antes de concluir incidente.
+5. Ao final, registrar a tabela curta em `Obsidian VIX Radar/03 - Estado de Produção.md`; se houve falha, criar nota de auditoria/incidente no vault.
+
+Comando base:
+
+```powershell
+$url='https://api.vixradar.com'
+while ($true) {
+  $ts=(Get-Date).ToString('yyyy-MM-dd HH:mm:ss zzz')
+  $resp = curl.exe -s $url -w "`nHTTP:%{http_code} TEMPO:%{time_total}s"
+  "--- LOOP 40s / $ts ---"
+  $resp
+  Start-Sleep -Seconds 40
+}
+```
 
 ---
 

@@ -148,3 +148,53 @@ Segunda invocação detectada (scheduled task). Diagnóstico: sessão anterior (
 **Vibra Energia:** Resgate Antecipado Facultativo Total 1ª série 4ª emissão (VBBR14), R$ 779 mi, liquidação 17/06/2026. Positivo para crédito — gestão ativa de passivos.
 
 **Comportamento Worker v4.9.143:** `n_eventos:0 sem_eventos:true` em todas as submissões desta sessão — confirmado como padrão da versão (verificarEventosBatch normaliza internamente; timestamps "Última análise" atualizados em todas as submissões com `ok:true`).
+
+---
+
+## Terceira Invocação (2026-06-20 ~21:33 UTC — scheduled 18h BRT)
+
+**Contexto:** Invocação prevista do cron noturno diário (18h BRT = 21h UTC). Sessão anterior foi truncada (compressão de contexto) após 3 submissões. Esta invocação retomou e completou as 30 restantes.
+
+**Plano retornado pelo Worker:** SKIP=70, FULL=24, LIGHT=4, AUDIT=5 (33 não-SKIP).
+
+**Submissões realizadas nesta invocação:**
+
+| Empresa | Tier | Classificação | ok |
+|---------|------|---------------|----|
+| Raízen | FULL alto | CRÍTICO | true |
+| Oi | FULL alto | CRÍTICO | true |
+| Oncoclínicas | FULL alto | CRÍTICO | true |
+| Kora Saúde | FULL alto | CRÍTICO | true |
+| Pão de Açúcar (GPA) | FULL alto | CRÍTICO | true |
+| Light | FULL alto | **CRÍTICO** ↑ (era RELEVANTE na 1ª inv.) | true |
+| CSN | FULL alto | RELEVANTE | true |
+| Aegea Saneamento | FULL alto | CRÍTICO | true |
+| Equatorial Energia | FULL baixo | ECO | true |
+| Vale | FULL baixo | ECO | true |
+| BTG Pactual | FULL baixo | ECO | true |
+| Cielo | FULL baixo | ECO | true |
+| Brisanet | FULL baixo | ECO | true |
+| LWSA | FULL baixo | ECO | true |
+| Totvs | FULL baixo | ECO | true |
+| Vibra Energia | FULL baixo | RELEVANTE | true |
+| CEMIG | FULL baixo | ECO | true |
+| Engie Brasil | FULL baixo | RELEVANTE | true |
+| Energisa | FULL baixo | RELEVANTE | true |
+| Rumo | FULL baixo | RELEVANTE | true |
+| Petrobras | FULL baixo | ECO | true |
+| Cosan | FULL baixo | CRÍTICO | true |
+| Brava Energia | FULL baixo | RELEVANTE | true |
+| Rede D'Or | FULL baixo | RELEVANTE | true |
+| Simpar | LIGHT | RELEVANTE | true |
+| Hapvida | LIGHT | RELEVANTE | true |
+| Dasa | LIGHT | RELEVANTE | true |
+| MRV Engenharia | LIGHT | RELEVANTE | true |
+| Auren Energia | AUDIT | ECO | true |
+| Arteris | AUDIT | NENHUM | true |
+| Itaúsa | AUDIT | ECO | true |
+| Marfrig | AUDIT | ECO | true |
+| Trisul | AUDIT | NENHUM | true |
+
+**33/33 ok:true — zero falhas.**
+
+**Atualização de CRITICOs:** Light reclassificada de RELEVANTE → CRÍTICO nesta análise (RJ em curso, capital R$1,5bi + conversão R$2,2bi pendentes, concessão renovada mas plano incompleto). Total CRITICOs nesta sessão: **8** (Raízen, Cosan, Kora Saúde, Oncoclínicas, Oi, GPA, Aegea, Light).

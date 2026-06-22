@@ -1,4 +1,4 @@
-# run_vixradar_matinal_claude.ps1 — Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
+# run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
 $ErrorActionPreference = 'Stop'
 
 $ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
@@ -109,7 +109,7 @@ function Submit-SkipEmissor($key, $emp) {
 function Submit-CapDeferred($key, $emp) {
     $resultado = [ordered]@{
         empresa = $emp.empresa; setor = $emp.setor; sem_eventos = $true
-        cobertura_nota = "Tier $($emp.tier). Cap hard ${TokenHardCap} tokens — ledger minimo. EWS=$($emp.ews_score). Priorizar amanha."
+        cobertura_nota = "Tier $($emp.tier). Cap hard ${TokenHardCap} tokens - ledger minimo. EWS=$($emp.ews_score). Priorizar amanha."
         fontes_consultadas = @([ordered]@{ rodada = '0'; query = 'token_cap'; resultado = 'deferred' })
         eventos = @(); _tier = $emp.tier; _rotina_v2 = $true; _token_cap_deferred = $true
     }
@@ -312,11 +312,11 @@ try {
 
         if ($stats.tokens_total -ge $TokenTarget -and -not $stats.tokens_over_target) {
             $stats.tokens_over_target = $true
-            Write-Log ('AVISO: meta ' + $TokenTarget + ' ultrapassada — continua ate hard ' + $TokenHardCap)
+            Write-Log ('AVISO: meta ' + $TokenTarget + ' ultrapassada - continua ate hard ' + $TokenHardCap)
         }
         if ($stats.tokens_total -ge $TokenHardCap) {
             $stats.tokens_hard_hit = $true
-            Write-Log ('HARD CAP ' + $TokenHardCap + ' — restante deferred')
+            Write-Log ('HARD CAP ' + $TokenHardCap + ' - restante deferred')
         }
     }
 

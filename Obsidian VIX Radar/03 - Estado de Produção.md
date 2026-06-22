@@ -5,6 +5,9 @@ Atualizado: 2026-06-20 (Worker v4.9.143 + Frontend v201.69). Rotina v2: [[27 - O
 > [!info] Deploy v4.9.143 — 2026-06-20
 > `listar_plano_rotina` (tiers SKIP/LIGHT/FULL/AUDIT) + `VARREDURA_CRON_AI_ENABLED=false` (delega IA ao Claude tiered). Health: `verificador_ok:true`, `telemetria:true`.
 
+> [!warning] Auditoria geral backend/frontend — 2026-06-20
+> Produção saudável no health público (`v4.9.143`, `telemetria:true`, `verificador_ok:true`, frontend `v201.69`), mas há P1 de frontend admin: `app/admin/*.js` usa `sessionStorage` para `radar_admin_senha`, enquanto `app/deploy_zip/admin/*.js` e produção `https://vixradar.com/admin/*.js` ainda usam `localStorage`. Ver [[32 - Auditoria Geral Backend Frontend 2026-06-20]].
+
 ## Versões confirmadas
 
 | Componente | Versão | Evidência | Data confirmação |
@@ -221,12 +224,14 @@ Atualizado: 2026-06-20 (Worker v4.9.143 + Frontend v201.69). Rotina v2: [[27 - O
 
 ## Bindings (confirmados via health)
 
+> [!note] Atualizado 2026-06-21 (v4.9.143) — Providers `2/2` desde v4.9.118 (denominador conta só Resend + Anthropic; OpenRouter/Perplexity legado removido).
+
 | Binding | Status | Evidência |
 |---|---|---|
 | RADAR_KV | OK | `bindings.kv:true` |
 | RATE_LIMITER_DO | OK | `bindings.rate_limiter:true` |
 | RADAR_USAGE_EVENTS | OK | `bindings.telemetria:true` |
-| Providers | 3/3 | `providers_configurados:"3/3"` |
+| Providers | 2/2 | `providers_configurados:"2/2"` (2026-06-21T19:41Z) |
 
 ## Crons Worker (api/wrangler.toml)
 
@@ -364,13 +369,15 @@ Rotinas Claude Opus (`vixradar-matinal`, `vixradar-noturno`) são independentes 
 
 ## Drift repo vs produção
 
+> [!note] Atualizado 2026-06-21 (auditoria `/vix-radar-audit`). Valores anteriores (v4.9.118/v201.51) estavam stale.
+
 | Componente | Repo | Produção | Drift |
 |---|---|---|---|
-| Worker | v4.9.118 | v4.9.118 | Nenhum ✅ |
-| Frontend | v201.51 | v201.51 | Nenhum ✅ |
-| deploy_zip | v201.51 | v201.51 | Nenhum ✅ |
-| `app/version.json` (raiz) | v201.51 (corrigido 2026-06-16) | — | Nenhum ✅ (era v201.50) |
-| `wrangler.toml` comentário | v4.9.111 (corrigido 2026-06-16) | — | Nenhum ✅ (era v4.9.109) |
+| Worker bundle | v4.9.143 | v4.9.143 | Nenhum ✅ |
+| Frontend | v201.69 | v201.69 | Nenhum ✅ |
+| deploy_zip `index.html` | v201.69 | v201.69 | Nenhum ✅ |
+| admin `*.js` | `sessionStorage` | `sessionStorage` | Nenhum ✅ (F1 **RESOLVIDO 2026-06-21** — deploy Pages `0f72c04b`; prod L96/104 + L21/563 = `sessionStorage`, HTTP 200) |
+| CI canonical-test | `EXPECTED_WORKER=v4.9.143` | prod v4.9.143 | Nenhum ✅ |
 
 ## Histórico recente
 
@@ -386,6 +393,27 @@ Rotinas Claude Opus (`vixradar-matinal`, `vixradar-noturno`) são independentes 
 ## Pendências abertas
 
 > [!success] Resolvidas em 2026-06-14: P05* (CI), P15* (cron 0 2 duplicado), N04 (worker_version hardcoded), N09 (CLAUDE.md teste anônimo), N11 (catch vazio CORS)
+
+## Verificação em loop 40s + skill auditoria — 2026-06-20
+
+Validação solicitada pelo operador em 2026-06-20 08:47-08:59 BRT contra `https://api.vixradar.com`, mantendo o loop até o processo observado finalizar. Processo local candidato: `claude.exe` PID 23820, vivo entre 08:56:56 e 08:58:30; finalizado no ciclo de 08:59:20.
+
+| Ciclo | Horário BRT | HTTP | Tempo | Versão | Processo | Resultado |
+|---|---:|---:|---:|---|---|---|
+| 1 | 08:47:30 | 200 | 0.070s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 2 | 08:48:10 | 200 | 0.077s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 3 | 08:48:50 | 200 | 0.094s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 4 | 08:52:08 | 200 | 0.090s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 5 | 08:53:24 | 200 | 0.071s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 6 | 08:54:24 | 200 | 0.077s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 7 | 08:55:19 | 200 | 0.097s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 8 | 08:56:06 | 200 | 0.072s | v4.9.143 | n/a | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 9 | 08:56:56 | 200 | 0.081s | v4.9.143 | PID 23820 vivo | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 10 | 08:57:44 | 200 | 0.072s | v4.9.143 | PID 23820 vivo | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 11 | 08:58:30 | 200 | 0.084s | v4.9.143 | PID 23820 vivo | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+| 12 | 08:59:20 | 200 | 0.076s | v4.9.143 | PID 23820 finalizado | `ok:true`, `kv:true`, `telemetria:true`, `verificador_ok:true` |
+
+Conclusão: produção estável durante todo o loop; sem evidência de degradação ou falha de binding. Skill `.claude/skills/vix-radar-audit` atualizada com modo `--loop-40s` e metadados `agents/openai.yaml`; validação oficial `quick_validate.py` passou com `Skill is valid!` usando `PYTHONUTF8=1`.
 
 1. **MÉDIO** — `archive/`, `docs/`, `research/`, `testing/` não trackeados no git
 2. **INFO** — Saldos providers só verificáveis via painel admin (action=status_providers)

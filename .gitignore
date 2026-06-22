@@ -29,7 +29,8 @@ API_TOKENS/
 *secret.json
 
 # ---------- Config local e ferramentas pessoais ----------
-.claude/
+.claude/*
+!.claude/SKILLS-ROUTER.md
 !.claude/skills/
 !.claude/skills/**
 .claude.json

@@ -1,0 +1,6 @@
+interface:
+  display_name: "VIX Radar General Audit"
+  short_description: "Auditoria geral backend e frontend"
+  default_prompt: "Use $vix-radar-general-audit para auditar backend, frontend, seguranca, performance e producao do VIX Radar."
+policy:
+  allow_implicit_invocation: true

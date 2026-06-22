@@ -27,6 +27,11 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[27 - Otimizacao Tokens Rotina Noturna]]
 - [[29 - Rotina Noturna 2026-06-20]] — **7 CRITICOs**: Raízen PRE, Cosan, Kora Saúde, Oncoclínicas, Oi, GPA, Aegea (rating)
 - [[30 - Monitor CRITICOs 2026-06-20]] — rastreamento contínuo dos 7 CRITICOs; atualizar a cada sessão
+- [[31 - Auditoria Completa 2026-06-20]] — multi-model review (composer-2.5-fast); verificador_ok = key presence
+- [[32 - Auditoria Geral Backend Frontend 2026-06-20]] — `/vix-radar-general-audit`; P1 drift admin `deploy_zip`/produção usa `localStorage` para senha admin
+- [[33 - Auditoria Geral 2026-06-22]] — `/vix-radar-general-audit`; F1 confirmado resolvido em working tree (pendente commit); novos achados: N12 FERIADOS_B3_2028, B-MID2 model_escalation stale, P20 package.json cruft
+- [[34 - Rotina Matinal 2026-06-22]] — 15 emissores; **5 CRITICOs**: Oi, Raízen, Kora Saúde, Oncoclínicas, GPA; Light RELEVANTE; exit 0
+- `PENDENCIAS.md` (root) — **lista viva de pendências** (regenerada 2026-06-21, base v4.9.143); abertas: A1 `verificador_ok`=key presence, A2 ingestão mascarada, F1 drift admin `localStorage`, D1 nota 03 stale, watchdog `stale_count:1`, Admin HEART 2b
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
@@ -91,6 +96,7 @@ Fonte única: `.claude/skills/` no projeto (versionadas no git). Global `~/.clau
 | `vix-radar-session-briefing` | `/vix-radar-briefing` | Master briefing (versões + health + pendências) | ✅ `.claude/skills/vix-radar-session-briefing/` |
 | `vix-radar-next-steps` | `/vix-radar-next-steps` | Product advisor (P0/P1/P2 + quick wins) | ✅ `.claude/skills/vix-radar-next-steps/` |
 | `vix-radar-audit` | `/vix-radar-audit` | Auditoria completa multi-camada (readonly) | ✅ `.claude/skills/vix-radar-audit/` |
+| `vix-radar-general-audit` | `/vix-radar-general-audit` | Auditoria geral backend/frontend + segurança/perf/a11y | ✅ `.claude/skills/vix-radar-general-audit/` |
 | `workers-best-practices` | `/workers-best-practices` | Cloudflare Workers anti-patterns | ✅ `.claude/skills/workers-best-practices/` |
 | `wrangler` | `/wrangler` | Deploy/bindings/cron Workers | ✅ `.claude/skills/wrangler/` |
 | `sprite-health` | `/sprite-health` | Health check via VM Sprite `site` | ✅ `.claude/skills/sprite-health/` |

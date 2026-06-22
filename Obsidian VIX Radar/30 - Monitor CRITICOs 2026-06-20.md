@@ -1,6 +1,8 @@
 # Monitor CRITICOs — Identificados em 2026-06-20
 
 Criado a partir do noturno v2 de 2026-06-20 (7 CRITICOs detectados).  
+**Atualizado em 2026-06-20 21:33 UTC** — 3ª invocação noturna: Light elevada RELEVANTE→CRÍTICO. Total: **8 CRITICOs**.  
+**Atualizado em 2026-06-22 10:25 BRT** — Matinal 2026-06-22: 5 CRITICOs ativos (Cosan→ECO, Aegea→ECO, Light→RELEVANTE). Ver [[34 - Rotina Matinal 2026-06-22]].  
 Atualizar nesta nota a cada sessão que revisitar um emissor.
 
 ---
@@ -16,6 +18,7 @@ Atualizar nesta nota a cada sessão que revisitar um emissor.
 | Oi | 66 | Leilão sem proposta; caixa R$29mi set/26; YTM 92% | 2026-06-23 | 🔴 ATIVO |
 | GPA | 55 | PRE R$4,6bi aprovada; going concern; prejuízo R$1,3bi | 2026-06-27 | 🔴 ATIVO |
 | Aegea | 40 | Fitch+S&P BB-→B+; processo Copasa | 2026-06-27 | 🟡 WATCH |
+| Light | — | RJ em curso; capital R$1,5bi + conversão R$2,2bi pendentes | 2026-06-27 | 🔴 ATIVO |
 
 ---
 
@@ -176,6 +179,30 @@ Atualizar nesta nota a cada sessão que revisitar um emissor.
 | Data | Evento | Fonte |
 |------|--------|-------|
 | 2026-06-20 | Duplo rebaixamento BB-→B+ identificado | VIX Radar noturno |
+
+---
+
+### Light — Energia Elétrica
+**Data identificação:** 2026-06-20 (3ª invocação — upgrade de RELEVANTE)  
+**EWS:** —
+
+**Situação:**
+- RJ em curso; concessão LESA renovada por 30 anos em 08/05/2026 (viabiliza plano)
+- Capital de até R$ 1,5 bi pelos acionistas pendente de conclusão
+- Conversão R$ 2,2 bi em equity pendente (próximos 90 dias a partir de jun/2026)
+- EBITDA ajustado R$ 423 mi (-27%); receita +8,1% para R$ 4,406 bi no 1T26
+
+**O que monitorar:**
+- [ ] Conclusão do aporte de capital (R$ 1,5 bi — prazo ~set/2026)
+- [ ] Conversão da dívida em equity (R$ 2,2 bi — prazo ~set/2026)
+- [ ] Encerramento formal do processo de RJ
+- [ ] Retorno ao mercado de capitais (emissões pós-RJ)
+
+**Atualizações:**
+
+| Data | Evento | Fonte |
+|------|--------|-------|
+| 2026-06-20 | Classificada RELEVANTE na 1ª invocação noturna; elevada CRÍTICO na 3ª | VIX Radar noturno |
 
 ---
 
