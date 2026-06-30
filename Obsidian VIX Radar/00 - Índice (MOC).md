@@ -22,11 +22,14 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[20 - Monitoramento Loop 2026-06-17]]
 - [[21 - Auditoria Completa 2026-06-18]]
 - [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]]
+- [[25 - Auditoria Completa 2026-06-30]] — ⛔ DRIFT prod v4.9.143 vs repo v4.9.141
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
 
 ## Versões confirmadas (última sessão: 2026-06-18 — v4.9.141 + v201.69 prod)
+
+> ⛔ **2026-06-30 — DRIFT ATIVO:** produção em **v4.9.143** (CI canonical-test run #59, 2026-06-29T20:11Z), repo em **v4.9.141**. Bundles v4.9.142/143 **não commitados**. P0 reconciliar. Ver [[25 - Auditoria Completa 2026-06-30]].
 
 **Git:** `main` com v4.9.140/141 commitados; `ROUTINE_API_KEY` rotacionada 2026-06-18.
 
