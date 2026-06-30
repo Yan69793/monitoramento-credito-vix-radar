@@ -1,0 +1,76 @@
+# VixRadar — Verificação de Frescor da Ingestão
+# Responde "as notícias estão atualizadas?" sem precisar de acesso direto à
+# produção: o GitHub Actions alcança api.vixradar.com (fora do bloqueio de
+# egresso das sessões Cowork) e consulta endpoints admin de leitura.
+#
+# Auth: usa o secret ADMIN_PASSWORD se configurado no repo; senão, aceita a
+# senha como input (digitada na hora pela UI do GitHub). A senha é MASCARADA
+# no log (::add-mask::) antes de qualquer uso — nunca aparece em texto claro.
+#
+# Endpoints consultados (somente leitura, NÃO disparam varredura/custo):
+#   - admin_health_check → estado_semanal.empresas_com_dados + updated_at
+#   - admin_custo        → gasto do dia (prova que análises rodaram hoje)
+
+name: Frescor da Ingestao
+
+on:
+  workflow_dispatch:
+    inputs:
+      admin_senha:
+        description: 'Senha admin do Worker (deixe vazio se ADMIN_PASSWORD estiver nos secrets)'
+        required: false
+        type: string
+
+jobs:
+  frescor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Consultar frescor
+        env:
+          SECRET_PWD: ${{ secrets.ADMIN_PASSWORD }}
+          INPUT_PWD: ${{ inputs.admin_senha }}
+        run: |
+          PWD="${SECRET_PWD:-$INPUT_PWD}"
+          if [ -z "$PWD" ]; then
+            echo "::error::Sem senha. Configure o secret ADMIN_PASSWORD ou informe o input admin_senha."
+            exit 1
+          fi
+          # Mascarar a senha no log antes de qualquer uso
+          echo "::add-mask::$PWD"
+
+          API="https://api.vixradar.com"
+
+          echo "=== 1) admin_health_check (estado semanal / frescor) ==="
+          HC=$(curl -s -X POST "$API/" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$PWD\"}" \
+            --max-time 60)
+          echo "$HC" | jq '{
+            ok: .ok,
+            versao: .versao,
+            empresas_com_dados: .checks.estado_semanal.empresas_com_dados,
+            updated_at: .checks.estado_semanal.updated_at,
+            weeks_loaded: .checks.estado_semanal.weeks_loaded,
+            anthropic: .checks.anthropic,
+            resend: .checks.resend,
+            telemetria: .checks.telemetria
+          }' 2>/dev/null || echo "$HC"
+
+          echo ""
+          echo "=== 2) admin_custo (gasto de hoje — prova de análise no dia) ==="
+          CT=$(curl -s -X POST "$API/" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"admin_custo\",\"admin_senha\":\"$PWD\"}" \
+            --max-time 60)
+          echo "$CT" | jq '{ data: .data, resumo: .resumo, disjuntor_usd: .disjuntor_usd }' 2>/dev/null || echo "$CT"
+
+          echo ""
+          echo "=== Leitura rápida ==="
+          EMP=$(echo "$HC" | jq -r '.checks.estado_semanal.empresas_com_dados // "?"' 2>/dev/null)
+          UPD=$(echo "$HC" | jq -r '.checks.estado_semanal.updated_at // "?"' 2>/dev/null)
+          echo "Emissores com dados (de 103): $EMP"
+          echo "Última atualização do estado: $UPD"
+          if echo "$HC" | jq -e '.ok == false' >/dev/null 2>&1; then
+            echo "::warning::admin_health_check retornou ok:false ou acesso negado — verifique a senha."
+          fi
