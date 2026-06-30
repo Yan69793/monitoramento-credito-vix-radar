@@ -73,10 +73,47 @@ jobs:
 
           echo ""
           echo "=== Leitura rápida ==="
-          EMP=$(echo "$HC" | jq -r '.checks.estado_semanal.empresas_com_dados // "?"' 2>/dev/null)
-          UPD=$(echo "$HC" | jq -r '.checks.estado_semanal.updated_at // "?"' 2>/dev/null)
+          EMP=$(echo "$HC" | jq -r '.checks.estado_semanal.empresas_com_dados // "null"' 2>/dev/null)
+          UPD=$(echo "$HC" | jq -r '.checks.estado_semanal.updated_at // "null"' 2>/dev/null)
           echo "Emissores com dados (de 103): $EMP"
           echo "Última atualização do estado: $UPD"
+
           if echo "$HC" | jq -e '.ok == false' >/dev/null 2>&1; then
-            echo "::warning::admin_health_check retornou ok:false ou acesso negado — verifique a senha."
+            echo "::error::admin_health_check retornou ok:false ou acesso negado — verifique o secret ADMIN_PASSWORD."
+            exit 1
           fi
+
+          # ── Gate de frescor: falha (→ GitHub notifica por email) se dados velhos ──
+          # Limiares: cobertura mínima 50/103 e estado atualizado nas últimas 48h.
+          COBERTURA_MIN=50
+          IDADE_MAX_H=48
+          FALHA=0
+
+          if [ "$EMP" = "null" ] || [ "$EMP" -lt "$COBERTURA_MIN" ] 2>/dev/null; then
+            echo "::error::Cobertura baixa: $EMP emissores com dados (< $COBERTURA_MIN). Ingestão pode estar travada."
+            FALHA=1
+          fi
+
+          if [ "$UPD" = "null" ]; then
+            echo "::error::Estado sem updated_at — sem prova de dados recentes."
+            FALHA=1
+          else
+            UPD_EPOCH=$(date -d "$UPD" +%s 2>/dev/null || echo 0)
+            NOW_EPOCH=$(date +%s)
+            if [ "$UPD_EPOCH" -eq 0 ]; then
+              echo "::warning::Não consegui parsear updated_at ($UPD) — pulando checagem de idade."
+            else
+              IDADE_H=$(( (NOW_EPOCH - UPD_EPOCH) / 3600 ))
+              echo "Idade do estado: ${IDADE_H}h"
+              if [ "$IDADE_H" -gt "$IDADE_MAX_H" ]; then
+                echo "::error::Estado desatualizado há ${IDADE_H}h (> ${IDADE_MAX_H}h). Notícias podem estar paradas."
+                FALHA=1
+              fi
+            fi
+          fi
+
+          if [ "$FALHA" = "1" ]; then
+            echo "FRESCOR: PROBLEMA — ver erros acima."
+            exit 1
+          fi
+          echo "FRESCOR: OK — $EMP emissores com dados, estado atualizado dentro de ${IDADE_MAX_H}h."
