@@ -20,6 +20,10 @@ on:
         description: 'Senha admin do Worker (deixe vazio se ADMIN_PASSWORD estiver nos secrets)'
         required: false
         type: string
+  schedule:
+    # 01:37 UTC = 22:37 BRT, após o cron noturno (21:30 UTC). Roda sozinho
+    # quando o secret ADMIN_PASSWORD existir; sem o secret, sai limpo (exit 0).
+    - cron: '37 1 * * *'
 
 jobs:
   frescor:
@@ -33,8 +37,10 @@ jobs:
         run: |
           PWD="${SECRET_PWD:-$INPUT_PWD}"
           if [ -z "$PWD" ]; then
-            echo "::error::Sem senha. Configure o secret ADMIN_PASSWORD ou informe o input admin_senha."
-            exit 1
+            echo "::warning::Sem senha disponivel (secret ADMIN_PASSWORD ausente e input vazio)."
+            echo "Configure o secret ADMIN_PASSWORD em Settings -> Secrets and variables -> Actions"
+            echo "para que o agendamento rode sozinho. Saindo limpo (sem falha)."
+            exit 0
           fi
           # Mascarar a senha no log antes de qualquer uso
           echo "::add-mask::$PWD"
