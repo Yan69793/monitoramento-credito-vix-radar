@@ -23,6 +23,7 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[21 - Auditoria Completa 2026-06-18]]
 - [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]]
 - [[25 - Auditoria Completa 2026-06-30]] — ⛔ DRIFT prod v4.9.143 vs repo v4.9.141
+- [[26 - Auditoria Completa 2026-07-01]] — ⛔ INGESTÃO CONGELADA desde 23/06 (varredura desktop offline)
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)

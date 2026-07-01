@@ -2,6 +2,8 @@
 
 Atualizado: 2026-06-18 (Worker v4.9.141 + Frontend v201.69). Auditoria: [[24 - Auditoria Completa 2026-06-18 (pós v4.9.141)]] · Admin HEART: [[23 - Admin HEART Modular v201.66]].
 
+> ⛔ **2026-07-01 — INGESTÃO CONGELADA (ver [[26 - Auditoria Completa 2026-07-01]]):** timeline de eventos parado em **23/06** (~8 dias). Causa: a varredura (`vixradar-matinal`/`noturno`) é **Scheduled Task do Claude Code no PC do operador**, não cron do Worker — PC offline → sem eventos novos. Worker segue verde (independente). P0: religar PC/reinstalar tasks de `routines/`; criar secret `ADMIN_PASSWORD` p/ alerta automático de frescor; **durável:** tirar varredura da dependência do desktop.
+>
 > ⛔ **2026-06-30 — DRIFT ATIVO (ver [[25 - Auditoria Completa 2026-06-30]]):** produção real está em **v4.9.143** (evidência: CI canonical-test run #59, 2026-06-29T20:11Z — `Esperado v4.9.141, produção em v4.9.143`). O repo (`api/wrangler.toml main`, bundles `api/`) está em **v4.9.141**; v4.9.142/143 **não foram commitados**. A tabela abaixo (v4.9.141) reflete o REPO, não a produção. **Não rodar `wrangler deploy` do repo até reconciliar** — regrediria prod 143→141. Health ao vivo: `ok:true`, KV/telemetria/rate_limiter `true`, HTTP 200.
 
 ## Versões confirmadas
