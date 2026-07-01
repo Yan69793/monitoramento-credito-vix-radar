@@ -37,7 +37,7 @@ esperado. **Não** force entrada nem invente URL para passar no gate.
 
 ---
 
-## Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.141)
+## Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)
 
 ### REGRA ABSOLUTA — LEI ZERO
 INVENTAR DADOS É PIOR DO QUE NÃO TER DADOS. Só reporte o que encontrou
@@ -59,7 +59,7 @@ Crie eventos somente na janela `${trintaDiasAtras}`..`${hoje}`.
 - R2: `{empresa} rating rebaixamento downgrade Moody's Fitch S&P Austin after:${trintaDiasAtras}`
 - R3: `{empresa} resultado trimestral EBITDA alavancagem after:${trintaDiasAtras}`
 - R4: `{empresa} emissão debênture CRI CRA FIDC captação mercado de capitais after:${trintaDiasAtras}`
-- R4b: `{empresa} letra financeira LF emissão banco captação site:bcb.gov.br OR site:anbima.com.br OR site:b3.com.br after:${trintaDiasAtras}`
+- R4b: `{empresa} letra financeira LF letras financeiras emissão banco captação site:bcb.gov.br OR site:anbima.com.br OR site:b3.com.br after:${trintaDiasAtras}`
 - R5: `{empresa} recuperação judicial default covenant waiver after:${trintaDiasAtras}`
 - R6: `{empresa} {regulador} regulatório tarifa after:${trintaDiasAtras}`
 - R7: `{empresa} RI relações investidores comunicado dividendos JCP bônus subscrição assembleia conselho guidance M&A aquisição after:${trintaDiasAtras}`
@@ -72,11 +72,14 @@ R4 e R4b são INDEPENDENTES — um emissor pode ter debênture E LF. NUNCA pule 
   contando R4 e R4b separadamente. `resultado` ∈ {"X artigos, Y na janela",
   "nenhum resultado relevante na janela", "resultados fora da janela ou RUIDO",
   "fonte inacessível nesta execução"}.
-- `sem_eventos:true` exige `cobertura_nota` explícita provando as 9 rodadas.
+- `sem_eventos:true` exige `cobertura_nota` explícita no formato: "X/9 rodadas executadas.
+  Fontes primárias: CVM RAD [resultado], ANBIMA [resultado], imprensa financeira [resultado],
+  research sell-side [resultado], LF bancária [resultado se aplicável]. Conclusão: [motivo
+  concreto da ausência de eventos]."
 - Ausência não verificada ≠ ausência confirmada. Nunca retorne `fontes_consultadas:[]`.
 
 ### CLASSIFICAÇÃO — 4 TIERS
-- **CRITICO**: downgrade por agência reconhecida; RJ/RExtrajudicial (pedido/deferimento);
+- **CRITICO**: downgrade por agência reconhecida (Moody's, Fitch, S&P, Austin, Liberum); RJ/RExtrajudicial (pedido/deferimento);
   default/vencimento antecipado; breach de covenant/waiver; cross-default; intervenção
   regulatória >10% EBITDA/receita; assembleia de debenturistas por inadimplência/waiver/
   reestruturação; fraude/investigação/afastamento por regulador; FR CVM tratando de
@@ -89,7 +92,8 @@ R4 e R4b são INDEPENDENTES — um emissor pode ter debênture E LF. NUNCA pule 
   sem implicação de crédito; M&A pequeno/médio; guidance reafirmado/para cima; comunicados
   rotineiros; rating reafirmado; menções setoriais sem afetar o emissor.
 - **RUIDO** (descartar): publicidade; menção tangencial; repetição literal já capturada;
-  especulação sem fonte primária; evento de terceiros; rumor/fake news.
+  especulação sem fonte primária; evento de terceiros; rumor/fake news. RUIDO é só para
+  conteúdo fora do universo do emissor ou sem valor informacional.
 
 Capture TUDO que o RI divulgar; a classificação separa sinal de contexto. Evento genuíno
 sem impacto direto → ECO, não RUIDO.
@@ -103,7 +107,11 @@ DL/EBITDA, ICSD, PU, spread, duration, call, put, amortização, subordinação,
 ECO (enxuto): acontecimento factual; importância "Sem impacto direto no crédito — fato
 informacional do RI."; monitorar "Manter em dossiê para contexto do emissor."; ação
 "Nenhuma ação requerida."
-`nivel_conviccao` ∈ {baixa, media, alta}. Sem evidência suficiente → escreva
+`nivel_conviccao` ∈ {baixa, media, alta} — **alta**: evidência primária oficial, verificada,
+recente, diretamente ligada ao emissor/emissão; **media**: evidência relevante mas
+incompleta, indireta ou dependente de inferência moderada, ou imprensa confiável sem
+confirmação primária; **baixa**: evidência escassa, pouco específica, indireta ou
+insuficiente para sustentar conclusão prática. Sem evidência suficiente → escreva
 "Sem evidência suficiente para este campo." Inferência → "Inferência baseada em [evidência]."
 Fonte secundária (imprensa) complementa mas NUNCA substitui primária em CRITICO/RELEVANTE.
 
@@ -120,8 +128,13 @@ renovacao-credito, amortizacao-antecipada, covenant-melhora, liquidez-melhora, u
 ```
 - `instrumentos_ativos`: subconjunto de {"debenture","cri","cra","lf","fidc"} com evidência
   concreta de instrumento ativo. Sem evidência → `[]`. Nunca invente classe.
-- `fonte_tipo`: CVM_RAD | B3 | ANBIMA | RATING_AGENCY | IMPRENSA_OFICIAL | RESEARCH_HOUSE | IMPRENSA.
+- `fonte_tipo`: CVM_RAD (`rad.cvm.gov.br`, `dados.cvm.gov.br`) | B3 (`b3.com.br`) |
+  ANBIMA (`anbima.com.br`, `data.anbima.com.br`) | RATING_AGENCY (`moodyslocal.com.br`,
+  `austinrating.com.br`, `fitchratings.com`, `spglobal.com`) | IMPRENSA_OFICIAL (`gov.br`,
+  BCB, ANS, ANEEL, ANP, ANATEL, ANTT) | RESEARCH_HOUSE | IMPRENSA.
   RESEARCH_HOUSE é opinião — NUNCA CRITICO (máx RELEVANTE); para evento crítico, confirme no
-  documento primário e use AQUELA URL como `fonte_primaria`.
+  documento primário e use AQUELA URL como `fonte_primaria`. **Nota:** o backend re-deriva
+  `tipo_dado` a partir do hostname de `fonte_primaria` como verdade final — `fonte_tipo` é
+  usado só como pista de roteamento.
 - `data_publicacao_fonte`: data de publicação da página/comunicado citado (ou protocolo CVM);
   não substitui `data_evento`. Em dúvida, deixe vazio.
