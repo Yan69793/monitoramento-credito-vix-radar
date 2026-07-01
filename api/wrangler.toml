@@ -1,6 +1,18 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.120)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.143)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.142.js = v4.9.141 + SEC admin_mercado login via POST form-urlencoded
+#   (senha fora da URL) + email modo_teste via KV (bloqueia envio de teste
+#   para toda a base). Bundle intermediário não recuperado — ver nota 26.
+# v4.9.143.js = v4.9.142 + planejador de rotina tiered "rotina-v2"
+#   (montarPlanoRotina: tiers FULL/LIGHT/SKIP/AUDIT por EWS/staleness/
+#   materialidade) + novo kill-switch VARREDURA_CRON_AI_ENABLED (default
+#   "false" — quando ausente/false, scheduled() PULA a varredura AI nativa
+#   e delega 100% às Scheduled Tasks do Claude Code no desktop do operador;
+#   grava heartbeat "pulado" motivo "delegado_claude_tiered_v2"). Deployado
+#   em produção 2026-06-19T05:08:47Z. Bundle recuperado fiel via Cloudflare
+#   MCP (workers_get_worker_code) e reconciliado nesta sessão — resolve o
+#   drift prod v4.9.143 vs repo v4.9.141 identificado nas auditorias 25/26.
 # v4.9.100.js = bundle limpo recuperado de produção via Cloudflare MCP (2026-06-01).
 # v4.9.101.js = v4.9.100 + fix de CORS choke-point.
 # v4.9.102.js = v4.9.101 + fix corsHeaders fallback.
@@ -45,7 +57,7 @@
 # v4.9.141.js = v4.9.140 + SEC (webhook fail-closed, _teste+routine_key prod, GETs ops JWT admin, corrigir_datas_cvm_kv).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.141.js"
+main       = "v4.9.143.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
