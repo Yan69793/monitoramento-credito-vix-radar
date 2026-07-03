@@ -65,9 +65,18 @@ jobs:
           RL="${{ steps.test.outputs.rate_limiter }}"
           TEL="${{ steps.test.outputs.telemetria }}"
 
-          # Atualizar quando deployar nova versão de Worker (ver Obsidian 03 - Estado de Produção).
-          EXPECTED_WORKER="v4.9.143"
+          # Fonte de verdade do repo: api/wrangler.toml (main = "vX.Y.Z.js").
+          # Deriva a versão esperada em vez de hardcode — o guard passa a comparar
+          # produção viva contra o repo, que é a definição exata de drift. Assim
+          # não há um segundo ponto de sincronização manual (o antigo EXPECTED_WORKER).
+          MAIN_JS=$(grep -oP '^\s*main\s*=\s*"\K[^"]+' api/wrangler.toml | head -1)
+          EXPECTED_WORKER="${MAIN_JS%.js}"
           FAIL=0
+
+          if [ -z "$EXPECTED_WORKER" ]; then
+            echo "::error::Não consegui derivar a versão esperada de api/wrangler.toml (main)."
+            FAIL=1
+          fi
 
           if [ "$HTTP" != "200" ]; then
             echo "::error::HTTP esperado 200, recebido $HTTP"
@@ -94,8 +103,13 @@ jobs:
             echo "::warning::Binding rate_limiter=$RL (esperado true)"
           fi
 
+          # GUARD ANTI-DRIFT: falha (não só avisa). O warning anterior foi ignorado
+          # por ~12 dias / ~47 runs (drift v4.9.143), porque ::warning:: mantém o run
+          # verde e o GitHub só notifica em FALHA. Falhar inverte o ônus: run vermelho
+          # + email automático ao dono até o drift ser reconciliado. Ver Obsidian 25/26.
           if [ "$WORKER_V" != "$EXPECTED_WORKER" ]; then
-            echo "::warning::Worker drift. Esperado $EXPECTED_WORKER, produção em $WORKER_V. Atualizar EXPECTED_WORKER e os docs (Obsidian 03 - Estado de Produção)."
+            echo "::error::DRIFT prod/repo. Produção=$WORKER_V vs repo (api/wrangler.toml main)=$EXPECTED_WORKER. Reconcilie: recupere o bundle deployado via Cloudflare MCP, commite api/<versao>.js e aponte wrangler.toml main. NÃO deploye do repo até reconciliar (regrediria produção)."
+            FAIL=1
           fi
 
           if [ "$FAIL" = "1" ]; then
