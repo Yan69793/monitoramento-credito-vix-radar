@@ -1,6 +1,21 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.143)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.146)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.144.js / v4.9.145.js = bundles intermediários não recuperados (deploy
+#   sem commit correspondente, drift detectado pelo guard anti-drift do CI
+#   entre 2026-07-04 e 07-05). Conteúdo exato não auditado.
+# v4.9.146.js = bundle real de produção, recuperado fiel via Cloudflare MCP
+#   (workers_get_worker_code) em 2026-07-06. WORKER_VERSAO confirmado.
+#   Mudança identificada vs v4.9.143: health check GET / ganhou verificação
+#   ATIVA do verificador Haiku (`_verificadorRealOk`) — além de checar se
+#   ANTHROPIC_API_KEY existe, consulta `radar:auditoria:verificador_indisponivel:{hoje}`
+#   no KV (falha real nas últimas 6h: crédito baixo, chave inválida, HTTP 401)
+#   e a fila de verificação pendente (`listarFilaVerificacaoPendente`, atraso
+#   >12h). `ok` do health público agora reflete saúde REAL do verificador, não
+#   só presença da env var — explica o `ok:false` transitório observado em
+#   2026-07-04 no lembrete diário (provável falha momentânea autocurada).
+#   Kill-switch VARREDURA_CRON_AI_ENABLED inalterado (ainda default "false").
+#   Resolve o drift prod v4.9.146 vs repo v4.9.143 (auditorias 25/26).
 # v4.9.142.js = v4.9.141 + SEC admin_mercado login via POST form-urlencoded
 #   (senha fora da URL) + email modo_teste via KV (bloqueia envio de teste
 #   para toda a base). Bundle intermediário não recuperado — ver nota 26.
@@ -57,7 +72,7 @@
 # v4.9.141.js = v4.9.140 + SEC (webhook fail-closed, _teste+routine_key prod, GETs ops JWT admin, corrigir_datas_cvm_kv).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.143.js"
+main       = "v4.9.146.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
