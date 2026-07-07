@@ -112,6 +112,24 @@ jobs:
             FAIL=1
           fi
 
+          # ── Frontend drift detection ─────────────────────────────────
+          EXPECTED_FRONTEND=$(jq -r '.version // "unknown"' app/version.json)
+          FRONTEND_JSON=$(curl -s https://vixradar.com/version.json --max-time 15)
+          PROD_FRONTEND=$(echo "$FRONTEND_JSON" | jq -r '.version // "unknown"')
+
+          if [ "$PROD_FRONTEND" != "$EXPECTED_FRONTEND" ]; then
+            echo "::error::DRIFT frontend prod/repo. Produção=$PROD_FRONTEND vs repo (app/version.json)=$EXPECTED_FRONTEND"
+            FAIL=1
+          fi
+
+          # Confirma que o HTML servido declara o mesmo CACHE_VERSION
+          PROD_HTML_CV=$(curl -s https://vixradar.com/ --max-time 15 | grep -oP 'CACHE_VERSION\s*=\s*"\K[^"]+')
+          if [ "$PROD_HTML_CV" != "$EXPECTED_FRONTEND" ]; then
+            echo "::error::DRIFT CACHE_VERSION no HTML. Produção=$PROD_HTML_CV vs esperado=$EXPECTED_FRONTEND"
+            FAIL=1
+          fi
+          echo "Frontend: produção=$PROD_FRONTEND repo=$EXPECTED_FRONTEND CACHE_VERSION=$PROD_HTML_CV"
+
           if [ "$FAIL" = "1" ]; then
             echo "Health check FALHOU."
             exit 1

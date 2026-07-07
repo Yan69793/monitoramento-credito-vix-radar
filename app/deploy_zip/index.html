@@ -3442,7 +3442,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
       </div>
     </div>
     <div id="busca-wrap" style="padding:6px 10px 4px">
-      <input id="busca" type="text" placeholder="Buscar emissor…" oninput="filtrarEmissores(this.value)">
+      <input id="busca" type="text" placeholder="Buscar emissor…" aria-label="Buscar emissor" oninput="filtrarEmissores(this.value)">
     </div>
     <div id="sidebar-list"></div>
   </aside>
@@ -3552,7 +3552,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
           <div class="config-field"><span class="config-field-label">Credencial (opcional)</span><input type="text" id="brand-credencial" maxlength="60" placeholder="Ex: CNPI 1234" style="background:#0A1F33;border:1px solid #0D2438;color:#E5EDF5;padding:6px 10px;border-radius:4px;font-size:12px;width:60%"></div>
           <div class="config-field"><span class="config-field-label">CNPJ (opcional)</span><input type="text" id="brand-cnpj" maxlength="20" placeholder="00.000.000/0001-00" style="background:#0A1F33;border:1px solid #0D2438;color:#E5EDF5;padding:6px 10px;border-radius:4px;font-size:12px;width:60%"></div>
           <div class="config-field"><span class="config-field-label">Preset visual</span><select id="brand-preset" class="config-dropdown"><option value="sobrio_dark_navy">Sóbrio Dark Navy</option><option value="classic_gold">Classic Gold</option><option value="minimal_slate">Minimal Slate</option></select></div>
-          <div class="config-field"><span class="config-field-label">Logo (PNG/SVG, até 200KB)</span><input type="file" id="brand-logo-file" accept="image/png,image/svg+xml,image/jpeg" style="font-size:11px;color:#94A3B8"></div>
+          <div class="config-field"><span class="config-field-label">Logo (PNG/SVG, até 200KB)</span><input type="file" id="brand-logo-file" accept="image/png,image/svg+xml,image/jpeg" aria-label="Logo da gestora" style="font-size:11px;color:#94A3B8"></div>
           <div id="brand-logo-preview" style="margin:8px 0;max-height:60px"></div>
           <div class="config-field" style="opacity:0.6;pointer-events:none"><span class="config-field-label">"Powered by VIX Radar" no rodapé</span><span style="font-size:11px;color:#64748B">Sempre presente</span></div>
           <div style="display:flex;gap:8px;margin-top:12px"><button class="config-button" onclick="salvarBranding()">Salvar identidade visual</button><button class="config-button" style="background:transparent;border:1px solid rgba(183,152,93,0.3);color:#B7985D" onclick="removerLogoBranding()">Remover logo</button></div>
@@ -3743,7 +3743,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     <div id="share-link-output" style="display:none;margin-bottom:14px;background:#001528;border:1px solid #B7985D;border-radius:4px;padding:12px">
       <div style="font-size:10px;color:#B7985D;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">Link Público</div>
       <div style="display:flex;gap:6px">
-        <input type="text" id="share-link-input" readonly style="flex:1;background:#0A1F33;border:1px solid #0D2438;color:#E5EDF5;padding:8px 10px;border-radius:4px;font-size:12px;font-family:monospace">
+        <input type="text" id="share-link-input" readonly aria-label="Link compartilhável" style="flex:1;background:#0A1F33;border:1px solid #0D2438;color:#E5EDF5;padding:8px 10px;border-radius:4px;font-size:12px;font-family:monospace">
         <button id="share-btn-copiar" class="config-button" onclick="copiarLinkShare()" style="white-space:nowrap">Copiar</button>
       </div>
       <div id="share-link-expira" style="font-size:11px;color:#64748B;margin-top:8px"></div>
@@ -3934,7 +3934,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     </div>
   </div>
   <div class="onb-check">
-    <input type="checkbox" id="onb-naomostrar">
+    <input type="checkbox" id="onb-naomostrar" aria-label="Não mostrar novamente">
     <label for="onb-naomostrar">Não mostrar novamente</label>
   </div>
 </div>
@@ -3963,7 +3963,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   <div id="cmdk-box">
     <div id="cmdk-input-wrap">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="cmdk-input" type="text" placeholder="Buscar emissor, ação, setor..." autocomplete="off" spellcheck="false" />
+      <input id="cmdk-input" type="text" placeholder="Buscar emissor, ação, setor..." aria-label="Buscar emissor ou ação" autocomplete="off" spellcheck="false" />
     </div>
     <div id="cmdk-results"></div>
     <div id="cmdk-footer">
