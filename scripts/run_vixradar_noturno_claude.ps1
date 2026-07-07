@@ -104,6 +104,19 @@ function Get-SlimEmissor($emp, [switch]$Ultra) {
     return $o
 }
 
+function Invoke-WorkerJsonUtf8 {
+    # Worker responde application/json SEM charset; Windows PowerShell 5.1 decodificaria a
+    # resposta como ISO-8859-1, corrompendo acentos em memoria (Raizen -> "RaA*zen", match
+    # do plano falha e CRITICO real vira NENHUM - P0 nota 43, 2026-07-07). Le bytes crus e
+    # decoda UTF-8 explicitamente; envia body como bytes UTF-8 pelo mesmo motivo.
+    param([string]$Uri, $BodyObj, [int]$TimeoutSec = 120, [int]$Depth = 16)
+    $params = @{ Uri = $Uri; Method = 'Post'; TimeoutSec = $TimeoutSec; UseBasicParsing = $true }
+    $params.ContentType = 'application/json; charset=utf-8'
+    $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($BodyObj | ConvertTo-Json -Depth $Depth -Compress))
+    $resp = Invoke-WebRequest @params
+    return ([System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json)
+}
+
 function Submit-Analise($key, $empresa, $setor, $resultado, [string]$provedor = 'claude-sonnet-routine') {
     $body = @{
         action = 'receber_analise'; routine_key = $key; empresa = $empresa; setor = $setor
@@ -342,8 +355,7 @@ $batchSeq = 0
 
 Push-Location $ProjectRoot
 try {
-    $plano = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
-        -Body (@{ action = 'listar_plano_rotina'; routine_key = $routineKey; modo = 'noturno' } | ConvertTo-Json -Compress) -TimeoutSec 180
+    $plano = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_plano_rotina'; routine_key = $routineKey; modo = 'noturno' } -TimeoutSec 180
     if ($plano.ok -ne $true -or $plano.total -ne 103) { Write-Log 'ERRO: plano'; exit 5 }
 
     @{

@@ -130,6 +130,19 @@ function Get-VeredictosArray($outputLines, [int]$esperado) {
     return $arr
 }
 
+function Invoke-WorkerJsonUtf8 {
+    # Worker responde application/json SEM charset; Windows PowerShell 5.1 decodificaria a
+    # resposta como ISO-8859-1, corrompendo acentos em memoria (nomes de emissor e ate o
+    # system_prompt do verificador - P0 nota 43, 2026-07-07). Le bytes crus e decoda UTF-8
+    # explicitamente; envia body como bytes UTF-8 pelo mesmo motivo.
+    param([string]$Uri, $BodyObj, [int]$TimeoutSec = 120, [int]$Depth = 16)
+    $params = @{ Uri = $Uri; Method = 'Post'; TimeoutSec = $TimeoutSec; UseBasicParsing = $true }
+    $params.ContentType = 'application/json; charset=utf-8'
+    $params.Body = [System.Text.Encoding]::UTF8.GetBytes(($BodyObj | ConvertTo-Json -Depth $Depth -Compress))
+    $resp = Invoke-WebRequest @params
+    return ([System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json)
+}
+
 Write-Log 'INICIO: drenar fila de verificacao assincrona'
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
@@ -151,8 +164,7 @@ $stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_pars
 $exitCode = 0
 
 try {
-    $fila = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
-        -Body (@{ action = 'listar_fila_verificacao'; routine_key = $routineKey; dias = 3 } | ConvertTo-Json -Compress) -TimeoutSec 60
+    $fila = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_fila_verificacao'; routine_key = $routineKey; dias = 3 } -TimeoutSec 60
 
     if ($fila.ok -ne $true) { Write-Log 'ERRO: listar_fila_verificacao'; exit 5 }
     $stats.total_fila = [int]$fila.total
@@ -174,8 +186,7 @@ try {
         # Prompt construido pelo Worker (fonte unica de verdade das regras do verificador) so para os ids deste chunk -
         # evita duplicar o template do prompt em PowerShell e mantem o system_prompt/user_prompt alinhados ao chunk exato.
         $chunkIds = @($chunk | ForEach-Object { $_.id })
-        $chunkFila = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
-            -Body (@{ action = 'listar_fila_verificacao'; routine_key = $routineKey; ids = $chunkIds } | ConvertTo-Json -Compress) -TimeoutSec 60
+        $chunkFila = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_fila_verificacao'; routine_key = $routineKey; ids = $chunkIds } -TimeoutSec 60
         if ($chunkFila.ok -ne $true -or -not $chunkFila.system_prompt) {
             Write-Log ('ERRO: nao consegui montar prompt do lote ' + $label + ' via listar_fila_verificacao(ids) - itens ficam na fila')
             $stats.erros_parse++
@@ -214,8 +225,7 @@ try {
         }
 
         try {
-            $confirmResp = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
-                -Body (@{ action = 'confirmar_verificacao'; routine_key = $routineKey; itens = $confirmarItens } | ConvertTo-Json -Depth 12 -Compress) -TimeoutSec 60
+            $confirmResp = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'confirmar_verificacao'; routine_key = $routineKey; itens = $confirmarItens } -Depth 12 -TimeoutSec 60
             if ($confirmResp.ok -eq $true) {
                 $stats.aprovados += [int]$confirmResp.resultado.aprovados
                 $stats.rejeitados += [int]$confirmResp.resultado.rejeitados
