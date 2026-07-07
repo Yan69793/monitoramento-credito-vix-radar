@@ -230,7 +230,7 @@ agent-tools/
 terminals/
 workspace.code-workspace
 app/design/preview-p1/
-diagnosticos/*.png
-diagnosticos/*.json
+diagnosticos/
+app/index.prod.html
 /fechamento-*.jpeg
 
