@@ -1,4 +1,4 @@
 interface:
-  display_name: "VIX Radar Audit"
-  short_description: "Audit VIX Radar production health and drift"
-  default_prompt: "Use $vix-radar-audit to run a production audit with evidence, drift checks, and the appropriate health validation."
+  display_name: "Auditoria VIX Radar"
+  short_description: "Audita produção, drift e datas dos 103 emissores"
+  default_prompt: "Use $vix-radar-audit para auditar a produção com evidências, drift e cobertura recente dos 103 emissores."

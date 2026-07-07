@@ -27,6 +27,8 @@ API_TOKENS/
 *token*.txt
 *SECRET*
 *secret.json
+scripts/azul_payload.json
+*_payload.json
 
 # ---------- Config local e ferramentas pessoais ----------
 .claude/*
@@ -91,6 +93,9 @@ api/v4.*.js
 !api/v4.9.141.js
 !api/v4.9.142.js
 !api/v4.9.143.js
+!api/v4.9.144.js
+!api/v4.9.145.js
+!api/v4.9.146.js
 
 # ---------- Agent local (não versionar) ----------
 .grok/
@@ -219,4 +224,13 @@ Obsidian VIX Radar/Sem t*.canvas
 
 
 docs/archived/
+
+# ---------- Artefatos de agentes/terminais Claude Code (nao versionar) ----------
+agent-tools/
+terminals/
+workspace.code-workspace
+app/design/preview-p1/
+diagnosticos/*.png
+diagnosticos/*.json
+/fechamento-*.jpeg
 

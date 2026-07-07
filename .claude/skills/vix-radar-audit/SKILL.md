@@ -7,7 +7,9 @@ description: >
   o processo observado. Use quando o usuario pedir auditoria completa, vistoria
   operacional, auditar sistema, pos-deploy, pos-incidente, validar producao, checar drift,
   loop de health, verificacao em 40 segundos, readonly audit, ou antes de encerrar sessao
-  com mudanca de codigo/deploy. Nao usar para carteiras nem briefing rapido.
+  com mudanca de codigo/deploy. Tambem use quando a data de atualizacao estiver antiga,
+  presa ou divergente, ou quando for preciso provar cobertura recente dos 103 emissores.
+  Nao usar para carteiras nem briefing rapido.
 ---
 
 # VIX Radar — Auditoria Completa do Sistema
@@ -32,6 +34,7 @@ Vistoria operacional multi-camada do VIX Radar. Protocolo canônico: `Obsidian V
 4. **Lacunas explícitas** — se não coletou prova, registrar por quê (escopo, credencial, custo).
 5. **Não inventar** — sem suposição de versão, deploy ou estado KV.
 6. **Registrar no vault** — ao final, criar/atualizar nota `Obsidian VIX Radar/NN - Auditoria Completa YYYY-MM-DD.md` (nunca sobrescrever nota 13).
+7. **ACK não prova atualização** — `ok:true`/`submit_ok:true` não prova que `_last_scanned_at` avançou; medir os 103 emissores após toda rotina.
 
 ---
 
@@ -164,8 +167,17 @@ Testes em ordem de risco (preferir readonly):
 ## Bloco F — Rotinas e cobertura emissores
 
 - Rotina noturna: `vixradar-noturno` — 103 emissores (`EMISSORES_LISTA` no Worker)
-- Cruzar: `listar_todos_emissores` (103) vs scan recente via `dados_para_analise` amostra
+- Executar `scripts/audit-routine-staleness.ps1` desta skill. Gate saudável: `total=103`, `stale_24h=0`, `presos_data=0` e timestamp máximo dentro do SLA.
+- Cruzar: `listar_todos_emissores` (103) vs plano completo; amostra de `dados_para_analise` é evidência complementar, nunca substitui o gate dos 103.
 - Semana KV atual (`semanaISO`) e janela 30 dias
+
+### Data antiga ou presa
+
+1. Receber a data reclamada em `-StuckDate YYYY-MM-DD` (ex.: `2026-06-26`).
+2. Rodar o verificador antes de qualquer correção e guardar o JSON bruto.
+3. Diferenciar `data_evento` (data do fato), `timestamp/_last_scanned_at` (data da análise) e `estado.updated_at` (última escrita no KV). Não corrigir o campo errado.
+4. Após reprocessar, rodar novamente. Não fechar se qualquer emissor permanecer em `stale_24h` ou `presos_data`.
+5. Não avançar timestamp com payload fictício. Cobertura curta deve ser marcada explicitamente como inconclusiva e eventos só entram com fonte profunda verificável.
 
 ---
 
@@ -175,6 +187,7 @@ Testes em ordem de risco (preferir readonly):
 |---|---|
 | **CRÍTICO** | Ingestão cega, perda de dados, credencial inválida, drift prod/repo no bundle ativo |
 | **ALTO** | Telemetria off, verificador off, auth fail-open, cron quebrado |
+| **ALTO** | Data de análise presa, qualquer emissor `stale_24h`, ou relatório 103/103 sem prova de `_last_scanned_at` |
 | **MÉDIO** | Documentação desatualizada, untracked sem impacto em prod |
 | **BAIXO** | Débito técnico, legado em `producao/` |
 

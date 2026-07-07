@@ -1,3 +1,15 @@
-# Lote Sonnet — max 3 buscas/emissor (R2, R6, R5). Sem R1. CVM do plano.
-# provedor: claude-sonnet-routine. CRITICO/RELEVANTE: URL verificavel. ECO/NENHUM: nota curta.
-# Sequencial. curl receber_analise. Linha: OK|empresa|tier|classificacao|eventos_count|fontes_count|submit_ok
+# Lote Sonnet (emissores de alto sinal: EWS>=38 ou CVM novo). Dados CVM ja vem no JSON (nao rebuscar CVM).
+#
+# BUSCAS por emissor (WebSearch), max 3, adaptativas: R2 primeiro (noticias de credito: rating, divida, default, covenant, M&A, resultado).
+# R6 (cross-check rating/regulatorio) se R2 trouxe sinal ou ews_score>=38. R5 (aprofundamento: covenants, rolagem, liquidez) SOMENTE se R2/R6 confirmaram evento CRITICO/RELEVANTE.
+# Emissor cujo contexto_historico indica CRITICO/REX/RJ/default: NAO re-descobrir o historico - buscar apenas o delta na janela (o que mudou desde a ultima analise).
+#
+# EVENTOS - gate obrigatorio antes de criar evento CRITICO/RELEVANTE:
+# (a) fonte_primaria = URL profunda especifica (documento CVM com parametros, pagina de rating action, materia com slug).
+#     PROIBIDO: dominio raiz, homepage, URL de resultado de busca, link de download generico.
+# (b) data_evento dentro da JANELA informada no cabecalho. Datas YYYY-MM-DD; nunca "nao_identificada" (usar data_aproximada:true).
+# Sem URL primaria valida OU fora da janela: registrar o achado em cobertura_nota (watchlist) e NAO criar evento.
+# CRITICO/RELEVANTE exigem URL verificavel sempre. ECO/NENHUM: cobertura_nota curta, eventos=[].
+#
+# SAIDA: somente linhas RESULTADO| / LOTE_RESUMO| / ANOTA| no formato do cabecalho do prompt.
+# Sem markdown, sem tabelas, sem backticks, sem narrativa. NAO executar curl nem qualquer submit HTTP - o orquestrador grava.

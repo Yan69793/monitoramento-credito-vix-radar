@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.120)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.146)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.100.js = bundle limpo recuperado de produção via Cloudflare MCP (2026-06-01).
 # v4.9.101.js = v4.9.100 + fix de CORS choke-point.
@@ -45,9 +45,12 @@
 # v4.9.141.js = v4.9.140 + SEC (webhook fail-closed, _teste+routine_key prod, GETs ops JWT admin, corrigir_datas_cvm_kv).
 # v4.9.142.js = v4.9.141 + SEC admin_mercado login via POST form-urlencoded (senha fora da URL; fix regressão v4.9.112/113).
 # v4.9.143.js = v4.9.142 + rotina-v2: listar_plano_rotina (tiers SKIP/LIGHT/FULL/AUDIT) + VARREDURA_CRON_AI_ENABLED=false (delega AI ao Claude tiered).
+# v4.9.144.js = v4.9.143 + verificador: aplica CORRIGIR estruturado com confianca >=0.8 + observabilidade de rejeicoes no receber_analise.
+# v4.9.145.js = v4.9.144 + fallback fail-closed para fonte oficial durante indisponibilidade do verificador + health real via quarentena recente.
+# v4.9.146.js = v4.9.145 + verificacao assincrona via Claude Code (assinatura) em vez de chamada paga sincrona no receber_analise: eventos que deveVerificar()=true vao para fila KV (radar:verif_fila:{data}) em vez de chamar chamarClaudeVerificador direto; novos endpoints listar_fila_verificacao e confirmar_verificacao (routine_key) para a scheduled task drenar a fila; health verificador_ok agora tambem reflete fila atrasada (>12h sem drenar).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.143.js"
+main       = "v4.9.146.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

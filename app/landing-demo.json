@@ -1,0 +1,14 @@
+{
+  "atualizado": "2026-06-17",
+  "nota": "Snapshot anonimizado do formato de sinal — sem nome de emissor real",
+  "evento": {
+    "classificacao": "RELEVANTE",
+    "empresa": "Emissor — setor elétrico",
+    "titulo": "Comunicado ao mercado — revisão de guidance operacional",
+    "resumo": "Revisão de projeção operacional e impacto na geração de caixa reportada à CVM.",
+    "materialidade": 72,
+    "fonte_tipo": "CVM",
+    "data_evento": "2026-06-16",
+    "monitorar": "spreads e próximos vencimentos"
+  }
+}

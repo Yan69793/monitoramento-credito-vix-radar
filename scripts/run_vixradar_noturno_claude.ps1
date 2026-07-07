@@ -1,5 +1,11 @@
 # run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
 $ErrorActionPreference = 'Stop'
+# Sem isso, stdout do binario nativo 'claude' pode ser decodificado com o codepage ANSI/OEM
+# em vez de UTF-8 quando o processo roda sem console interativo (scheduled task) - corrompe
+# nomes de emissores acentuados (ex.: "Raizen"->"Ra┬íen") e quebra o match em Get-ResultadoEmissor,
+# descartando RESULTADO valido e submetendo NENHUM/sem_eventos no lugar (achado 2026-07-05).
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $WorkerUrl      = 'https://api.vixradar.com'
@@ -12,17 +18,26 @@ $LogDir         = Join-Path $ProjectRoot 'logs\routines'
 $DateTag        = Get-Date -Format 'yyyyMMdd'
 $LogFile        = Join-Path $LogDir ('vixradar-noturno_' + $DateTag + '.log')
 $MetricsFile    = Join-Path $LogDir ('noturno_metrics_' + $DateTag + '.json')
+$McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelHaiku     = 'claude-haiku-4-5-20251001'
 $ModelSonnet    = 'claude-sonnet-4-6'
 $TokenTarget    = 500000   # meta - passar um pouco OK
 $TokenHardCap   = 700000   # deferred só acima disto
 $SonnetEwsMin   = 38
-$HaikuChunk     = 12
-$SonnetChunk    = 8
+$HaikuChunk     = 15
+$SonnetChunk    = 11
 $PauseSec       = 2
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+# --mcp-config recebia JSON inline ('{"mcpServers":{}}') - em execucao agendada (scheduled task,
+# possivelmente via powershell.exe 5.1 em vez de pwsh) as aspas embutidas eram perdidas na
+# serializacao do argumento nativo, chegando ao claude.exe como {mcpServers:{}} sem aspas -> CLI
+# tentava resolver como CAMINHO de arquivo e falhava com "MCP config file not found" em TODA
+# chamada (achado 2026-07-05: rotina de 04/07 18h teve 0 buscas/0 tokens em 98/98 emissores por
+# isso; so a 2a tentativa manual 5 min depois, noutro contexto de shell, funcionou). Arquivo
+# elimina qualquer ambiguidade de quoting entre interpretadores.
+Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
@@ -59,21 +74,31 @@ function Get-CvmResumo($docs) {
 }
 
 function Get-SlimEmissor($emp, [switch]$Ultra) {
-    $docs = @($emp.cvm_documentos | Select-Object -First $(if ($Ultra) { 2 } else { 3 }))
+    # projeta docs CVM para os 4 campos que o agente usa; empresa_cvm so quando for alias divergente
+    $docs = @($emp.cvm_documentos | Select-Object -First $(if ($Ultra) { 2 } else { 3 }) | ForEach-Object {
+        $assunto = '' + $_.assunto
+        if ($assunto.Length -gt 100) { $assunto = $assunto.Substring(0, 100) }
+        $d = [ordered]@{ categoria = $_.categoria; assunto = $assunto; data = $_.data; link = $_.link }
+        if ($_.empresa_cvm -and ($_.empresa_cvm -notmatch [regex]::Escape(($emp.empresa -split ' ')[0]))) {
+            $d['empresa_cvm'] = $_.empresa_cvm
+        }
+        [pscustomobject]$d
+    })
     $o = [ordered]@{
         empresa        = $emp.empresa
         setor          = $emp.setor
         tier           = $emp.tier
-        rodadas        = $emp.rodadas
         ews_score      = $emp.ews_score
         cvm_novos      = $emp.cvm_novos
-        janela_inicio  = $emp.janela_inicio
-        janela_fim     = $emp.janela_fim
         cvm_documentos = $docs
     }
-    if (-not $Ultra -and $emp.contexto_historico) {
-        $ctx = $emp.contexto_historico
-        if ($ctx.Length -gt 120) { $ctx = $ctx.Substring(0, 120) }
+    # contexto historico: expandido para emissores ja em situacao critica (evita re-descoberta via busca paga);
+    # nunca omitido por completo - lotes Haiku (Ultra) recebem versao reduzida
+    $ctx = '' + $emp.contexto_historico
+    if ($ctx) {
+        $isCritico = ($emp.ews_score -ge $SonnetEwsMin) -or ($ctx -match 'REX|RJ|recupera|default|CRITICO')
+        $max = if ($isCritico) { 400 } elseif ($Ultra) { 200 } else { 120 }
+        if ($ctx.Length -gt $max) { $ctx = $ctx.Substring(0, $max) }
         $o['contexto_historico'] = $ctx
     }
     return $o
@@ -139,38 +164,115 @@ function Split-IntoChunks($items, [int]$chunkSize) {
     return $chunks
 }
 
-function Parse-TokensFromOutput([string]$text) {
-    $total = 0
-    if (-not $text) { return 0 }
-    foreach ($pat in @('total[_\s-]*tokens?[:\s]+([\d,]+)', '([\d,]+)\s+tokens?\s+used')) {
-        foreach ($match in [regex]::Matches($text, $pat, 'IgnoreCase')) {
-            $n = [int]($match.Groups[1].Value -replace ',', '')
-            if ($n -gt $total) { $total = $n }
+function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
+    # Flags de economia (medidas 2026-07-03): boot 33.9k -> ~13.6k tokens/invocacao.
+    # --tools restringe schemas built-in (maior corte); MCP off; sem plugins/hooks de usuario;
+    # --exclude-dynamic-system-prompt-sections estabiliza o prefixo p/ cache ephemeral_1h entre lotes.
+    # stderr vai para arquivo proprio - nunca misturar no stdout (quebrava o parse do envelope JSON).
+    # ErrorActionPreference='Stop' e' global (herdado do script); sem isso, QUALQUER linha em stderr
+    # do binario nativo 'claude' (avisos/deprecations, comuns mesmo com exit 0) vira excecao terminante
+    # que mata a rotina inteira a partir deste lote. Isolar localmente com Continue.
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    # stderr por-PID (nao date-tagged): duas instancias no mesmo dia (Task nativo 18:00 + scheduled-task
+    # Claude Code ~18:06) compartilhavam noturno_stderr_<data>.txt; o 2>> da 2a instancia tomava sharing
+    # violation em TODO lote -> exceao terminante -> 37 submits de cobertura minima 0 buscas/0 tokens
+    # (incidente 2026-07-06). Sufixo _$PID isola o handle por processo. Defesa complementar ao mutex.
+    $stderrFile = Join-Path $LogDir ('noturno_stderr_' + $DateTag + '_' + $PID + '.txt')
+    $raw = $null; $exitCode = 1
+    try {
+        $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+            --model $Model `
+            --permission-mode bypassPermissions `
+            --output-format json `
+            --tools 'WebSearch,WebFetch' `
+            --strict-mcp-config --mcp-config $McpConfigFile `
+            --setting-sources project `
+            --disable-slash-commands `
+            --no-session-persistence `
+            --exclude-dynamic-system-prompt-sections 2>>$stderrFile
+        $exitCode = $LASTEXITCODE
+    } catch {
+        Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
+    $textOut = @($raw)
+    $tokens = -1   # -1 = DESCONHECIDO (parse falhou); nunca reportar 0 falso
+    try {
+        $jsonLine = @($raw) | Where-Object { ('' + $_).TrimStart().StartsWith('{') } | Select-Object -Last 1
+        if ($jsonLine) {
+            $json = $jsonLine | ConvertFrom-Json
+            if ($null -ne $json.result) { $textOut = @(('' + $json.result) -split "`n") }
+            if ($json.usage) {
+                $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
+                    + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
+            }
+        }
+    } catch {
+        Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
+    }
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens }
+}
+
+function Get-NomeNormalizado([string]$s) {
+    # Remove diacriticos (Iguá -> Igua) para o match nao quebrar por acentuacao; hashtable ja e case-insensitive.
+    $norm = $s.Normalize([Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($ch in $norm.ToCharArray()) {
+        if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) {
+            [void]$sb.Append($ch)
         }
     }
-    return $total
+    return $sb.ToString().Trim()
 }
 
-function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
-    $out = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
-        --model $Model `
-        --add-dir $ScriptsDir `
-        --add-dir $ScheduledTasks `
-        --permission-mode bypassPermissions `
-        --output-format text 2>&1
-    return @{ Output = $out; ExitCode = $LASTEXITCODE }
+function Get-ParsedResultados($outputLines) {
+    # Protocolo do lote: RESULTADO|<empresa>|<json compacto> por emissor + LOTE_RESUMO|buscas=N
+    # Chave do map e' o nome normalizado (sem acento) - o match com o plano tambem normaliza (ver Get-ResultadoEmissor).
+    $map = @{}
+    $buscas = -1
+    foreach ($line in @($outputLines)) {
+        $t = ('' + $line).Trim()
+        if ($t -match '^RESULTADO\|([^|]+)\|(\{.*\})\s*$') {
+            $empName = Get-NomeNormalizado ($Matches[1].Trim())
+            try {
+                $obj = $Matches[2] | ConvertFrom-Json
+                if ($obj) { $map[$empName] = $obj }
+            } catch {
+                Write-Log ('AVISO: RESULTADO com JSON invalido para ' + $empName)
+            }
+        } elseif ($t -match '^LOTE_RESUMO\|buscas=(\d+)') {
+            $buscas = [int]$Matches[1]
+        } elseif ($t -match '^ANOTA\|(.+)$') {
+            Write-Log ('ANOTA: ' + $Matches[1])
+        }
+    }
+    return @{ Map = $map; Buscas = $buscas }
 }
 
-function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $routineKey, [switch]$Ultra) {
+function Get-ResultadoEmissor($parsedMap, [string]$empresaPlano) {
+    return $parsedMap[(Get-NomeNormalizado $empresaPlano)]
+}
+
+function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [switch]$Ultra) {
     $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Ultra:$Ultra })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
     $skill = (Get-Content $skillPath -Raw -Encoding UTF8).Trim()
     return @"
-Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais.
-ROUTINE_KEY=$routineKey
-PROIBIDO: Task, listar_plano_rotina, testing/, narrativa longa.
-Reporte: OK|empresa|tier|classificacao|eventos_count|fontes_count|submit_ok
-Final: LOTE_RESUMO|ok|fail|buscas|criticos
+Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais. Sem chamadas HTTP de submit - o orquestrador grava os resultados.
+JANELA: $janelaInicio a $janelaFim
+PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
+SAIDA - exatamente estas linhas e nada mais:
+1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
+Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
+Cada evento em CRITICO/RELEVANTE EXIGE: memo_acontecimento (2-3 frases, o que aconteceu - alimenta o card do usuario E o contexto_historico da rotina de amanha), memo_importancia_credito (por que importa para o credito), memo_monitorar (o que observar a seguir). Sem esses 3 campos preenchidos o evento fica incompleto - nao omitir.
+Ultima linha: LOTE_RESUMO|buscas=<total de buscas executadas>
+Anomalia operacional (opcional, max 1): ANOTA|<frase curta>
+Exemplo literal de saida completa para lote de 2 emissores:
+RESULTADO|Empresa A|{"classificacao_geral":"ECO","sem_eventos":true,"cobertura_nota":"R2 sem sinal de credito na janela.","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"Empresa A divida rating","resultado":"sem eventos"}]}
+RESULTADO|Empresa B|{"classificacao_geral":"RELEVANTE","sem_eventos":false,"cobertura_nota":"","eventos":[{"classificacao":"RELEVANTE","titulo":"Emissao de debentures","evento":"...","impacto_credito":"...","memo_acontecimento":"Empresa B emitiu R$500mi em debentures em 01/07 para rolagem de divida de curto prazo.","memo_importancia_credito":"Reduz risco de refinanciamento no curto prazo, sem piora de alavancagem.","memo_monitorar":"Prazo e taxa da nova emissao vs divida anterior.","fonte_primaria":"https://exemplo.com/materia-especifica","fonte_tipo":"IMPRENSA","data_evento":"2026-07-01","data_aproximada":false,"tags":["emissao"]}],"fontes_consultadas":[{"rodada":"R2","query":"Empresa B debentures","resultado":"emissao confirmada"},{"rodada":"R6","query":"Empresa B rating","resultado":"sem acao de rating"}]}
+LOTE_RESUMO|buscas=3
 
 JSON:
 $json
@@ -181,12 +283,23 @@ $skill
 
 function Remove-BatchPrompts([string]$tag) {
     Get-ChildItem $LogDir -Filter ('noturno_*_' + $tag + '.txt') -ErrorAction SilentlyContinue |
+        Where-Object { $_.Name -notlike 'noturno_stderr_*' } |
         Remove-Item -Force -ErrorAction SilentlyContinue
     Remove-Item (Join-Path $LogDir ('noturno_plano_' + $tag + '.json')) -Force -ErrorAction SilentlyContinue
 }
 
 foreach ($f in @($HaikuSkill, $SonnetSkill)) {
     if (-not (Test-Path $f)) { Write-Log ('ERRO: skill ausente ' + $f); exit 1 }
+}
+
+# Mutex global: impede execucao concorrente da noturna. O Task Scheduler nativo (VIXRadar-Noturno, 18:00)
+# e a scheduled-task Claude Code (vixradar-noturno, ~18:06) disparam o MESMO PS1; sem exclusao mutua, a 2a
+# instancia colidia com a 1a e submetia cobertura minima (incidente 2026-07-06). WaitOne(0) = nao-bloqueante:
+# se outra instancia ja detem o mutex, esta sai limpa em 0 tokens (o SO libera o mutex ao encerrar o processo).
+$__noturnoMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-noturno-v2')
+if (-not $__noturnoMutex.WaitOne(0)) {
+    Write-Log 'ABORT: outra instancia da noturna ja esta em execucao (mutex ocupado) - saindo limpo em 0 tokens'
+    return
 }
 
 Write-Log "INICIO: noturno meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
@@ -199,8 +312,15 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
 
 try {
     $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30
-    if ($health.ok -ne $true) { Write-Log 'ERRO: health'; exit 3 }
-    Write-Log ('Health ' + $health.versao)
+    # So bloqueia por dependencia real desta rotina (KV + telemetria). NAO bloquear por 'ok' agregado:
+    # 'ok' inclui verificador_ok/Resend, que nao tem relacao com busca web + submit via receber_analise
+    # (achado 2026-07-04: rotina de 03/07 abortou 100% dos 103 emissores por causa disso, ok:false so por
+    # saldo Anthropic insuficiente no verificador - nada a ver com o trabalho desta rotina).
+    if (-not $health.bindings.kv -or -not $health.bindings.telemetria) {
+        Write-Log ('ERRO: health - kv=' + $health.bindings.kv + ' telemetria=' + $health.bindings.telemetria)
+        exit 3
+    }
+    Write-Log ('Health ' + $health.versao + ' ok=' + $health.ok + ' verificador_ok=' + $health.verificador_ok + ' (nao bloqueante para esta rotina)')
 } catch {
     Write-Log ('ERRO: health ' + $_.Exception.Message)
     exit 3
@@ -213,6 +333,7 @@ $stats = @{
     skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0
     tokens_total = 0; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0
     batches_run = 0; sonnet_count = 0; haiku_count = 0
+    submit_ok = 0; submit_fail = 0; buscas_total = 0
     criticos = New-Object System.Collections.Generic.List[string]
 }
 $pendingDeferred = New-Object System.Collections.Generic.List[object]
@@ -232,6 +353,9 @@ try {
 
     Write-Log ('Plano ' + ($plano.contagem_tiers | ConvertTo-Json -Compress))
 
+    $janIni = '' + $plano.emissores[0].janela_inicio
+    $janFim = '' + $plano.emissores[0].janela_fim
+
     foreach ($emp in @($plano.emissores | Where-Object { $_.tier -eq 'SKIP' })) {
         try {
             $r = Submit-SkipEmissor $routineKey $emp
@@ -247,10 +371,10 @@ try {
 
     $jobs = New-Object System.Collections.Generic.List[object]
     foreach ($chunk in (Split-IntoChunks $queues.Sonnet $SonnetChunk)) {
-        $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false })
+        $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false; Provedor = 'claude-sonnet-routine' })
     }
     foreach ($chunk in (Split-IntoChunks $queues.Haiku $HaikuChunk)) {
-        $jobs.Add([ordered]@{ Name = 'haiku'; Model = $ModelHaiku; Chunk = @($chunk); Skill = $HaikuSkill; Ultra = $true })
+        $jobs.Add([ordered]@{ Name = 'haiku'; Model = $ModelHaiku; Chunk = @($chunk); Skill = $HaikuSkill; Ultra = $true; Provedor = 'claude-haiku-routine' })
     }
 
     $ji = 0
@@ -264,7 +388,7 @@ try {
 
         $batchSeq++
         $label = $job.Name + '-' + $ji
-        $prompt = New-BatchPrompt $job.Chunk $label $job.Model $job.Skill $routineKey -Ultra:$job.Ultra
+        $prompt = New-BatchPrompt $job.Chunk $label $job.Model $job.Skill $janIni $janFim -Ultra:$job.Ultra
         $promptPath = Join-Path $LogDir ('noturno_' + $label + '_' + $DateTag + '.txt')
         Set-Content $promptPath -Value $prompt -Encoding UTF8
 
@@ -273,20 +397,73 @@ try {
         $stats.batches_run++
         if ($job.Name -eq 'sonnet') { $stats.sonnet_count += $job.Chunk.Count } else { $stats.haiku_count += $job.Chunk.Count }
 
-        if ($result.Output) {
-            $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) }
-            foreach ($line in $result.Output) {
-                if ($line -match '^OK\|([^|]+)\|([^|]+)\|([^|]+)\|') {
-                    if ($Matches[3] -eq 'CRITICO') { $stats.criticos.Add($Matches[1]) }
-                }
+        if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
+
+        $bt = $result.Tokens
+        if ($bt -gt 0) { $stats.tokens_total += $bt; Write-Log ('Tokens lote=' + $bt + ' acum=' + $stats.tokens_total) }
+        else { Write-Log 'Tokens lote=DESCONHECIDO (parse falhou) - acum inalterado' }
+
+        $parsed = Get-ParsedResultados $result.Output
+        $buscasLote = $parsed.Buscas
+
+        # retry parcial: reprocessa somente emissores sem linha RESULTADO valida
+        $missing = @($job.Chunk | Where-Object { -not (Get-ResultadoEmissor $parsed.Map $_.empresa) })
+        if ($missing.Count -gt 0) {
+            Write-Log ('WARN: ' + $missing.Count + ' sem RESULTADO no lote ' + $label + ' - retry parcial: ' + (($missing | ForEach-Object { $_.empresa }) -join ', '))
+            $retryLabel = $label + '-retry'
+            $retryPrompt = New-BatchPrompt $missing $retryLabel $job.Model $job.Skill $janIni $janFim -Ultra:$job.Ultra
+            $retryPath = Join-Path $LogDir ('noturno_' + $retryLabel + '_' + $DateTag + '.txt')
+            Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
+            $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
+            if ($retryRes.Output) { $retryRes.Output | ForEach-Object { Write-Log ('OUT-RETRY: ' + $_) } }
+            if ($retryRes.Tokens -gt 0) { $stats.tokens_total += $retryRes.Tokens }
+            $retryParsed = Get-ParsedResultados $retryRes.Output
+            foreach ($k in @($retryParsed.Map.Keys)) { $parsed.Map[$k] = $retryParsed.Map[$k] }
+            if ($retryParsed.Buscas -gt 0) {
+                if ($buscasLote -lt 0) { $buscasLote = 0 }
+                $buscasLote += $retryParsed.Buscas
             }
+            Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
         }
 
-        $bt = Parse-TokensFromOutput ($result.Output -join "`n")
-        if ($bt -gt 0) { $stats.tokens_total += $bt }
-        Write-Log ('Tokens lote=' + $bt + ' acum=' + $stats.tokens_total)
+        # submit centralizado no PS1: schema garantido (resultado aninhado) + retry por emissor
+        $loteOk = 0; $loteFail = 0; $loteCrit = 0
+        foreach ($emp in $job.Chunk) {
+            $res = Get-ResultadoEmissor $parsed.Map $emp.empresa
+            if (-not $res) {
+                # fallback minimo: nunca deixar o emissor sem nenhum registro na semana por falha de parse do agente
+                Write-Log ('WARN: ' + $emp.empresa + '|sem RESULTADO apos retry - submit minimo de cobertura pendente')
+                $res = [pscustomobject]@{
+                    classificacao_geral = 'NENHUM'; sem_eventos = $true
+                    cobertura_nota = 'Falha de parse do agente apos retry - cobertura pendente, revisar manualmente.'
+                    eventos = @(); fontes_consultadas = @()
+                }
+            }
+            $classif = '' + $res.classificacao_geral
+            if (-not $classif) { $classif = if (@($res.eventos).Count -gt 0) { 'RELEVANTE' } else { 'ECO' } }
+            $subOk = $false; $nEv = 0
+            try {
+                $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor
+                if ($resp.ok -ne $true) {
+                    Start-Sleep -Seconds $PauseSec
+                    $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor
+                }
+                $subOk = ($resp.ok -eq $true)
+                if ($subOk) { $nEv = [int]$resp.n_eventos }
+                elseif ($resp.erro) { Write-Log ('SUBMIT_ERRO|' + $emp.empresa + '|' + $resp.erro) }
+            } catch {
+                Write-Log ('SUBMIT_EXC|' + $emp.empresa + '|' + $_.Exception.Message)
+            }
+            Write-Log ('OK|' + $emp.empresa + '|' + $emp.tier + '|' + $classif + '|' + $nEv + '|' + $subOk)
+            if ($subOk) { $loteOk++ } else { $loteFail++ }
+            if ($classif -eq 'CRITICO') { $loteCrit++; $stats.criticos.Add($emp.empresa) }
+        }
+        $stats.submit_ok += $loteOk
+        $stats.submit_fail += $loteFail
+        if ($buscasLote -ge 0) { $stats.buscas_total += $buscasLote }
+        Write-Log ('LOTE_FECHADO|' + $label + '|ok=' + $loteOk + '|fail=' + $loteFail + '|buscas=' + $buscasLote + '|criticos=' + $loteCrit)
 
-        if ($result.ExitCode -ne 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
+        if ($loteFail -gt 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
 
         if ($stats.tokens_total -ge $TokenTarget -and -not $stats.tokens_over_target) {
@@ -313,11 +490,13 @@ try {
         tokens_total_est = $stats.tokens_total; tokens_over_target = $stats.tokens_over_target
         tokens_hard_hit = $stats.tokens_hard_hit; skip_ok = $stats.skip_ok
         sonnet_llm = $stats.sonnet_count; haiku_llm = $stats.haiku_count; deferred = $stats.deferred
+        submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total
         batches = $stats.batches_run; criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
     } | ConvertTo-Json -Depth 5 | Set-Content $MetricsFile -Encoding UTF8
 
     Write-Log ('FIM: tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap +
         ' sonnet=' + $stats.sonnet_count + ' haiku=' + $stats.haiku_count +
+        ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' buscas=' + $stats.buscas_total +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
 
     if ($stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) { $exitCode = 6 }

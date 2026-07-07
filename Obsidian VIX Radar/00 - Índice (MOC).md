@@ -31,6 +31,9 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[32 - Auditoria Geral Backend Frontend 2026-06-20]] — `/vix-radar-general-audit`; P1 drift admin `deploy_zip`/produção usa `localStorage` para senha admin
 - [[33 - Auditoria Geral 2026-06-22]] — `/vix-radar-general-audit`; F1 confirmado resolvido em working tree (pendente commit); novos achados: N12 FERIADOS_B3_2028, B-MID2 model_escalation stale, P20 package.json cruft
 - [[34 - Rotina Matinal 2026-06-22]] — 15 emissores; **5 CRITICOs**: Oi, Raízen, Kora Saúde, Oncoclínicas, GPA; Light RELEVANTE; exit 0
+- [[35 - Auditoria Completa 2026-07-02]] — `/vix-radar-audit`; **CRÍTICO resolvido**: scheduler Claude Code zerado (2ª vez, mesmo padrão 15/06) — rotinas paradas 9 dias, 103/103 emissores stale; 5 tasks recriadas e validadas
+- [[36 - Auditoria Completa 2026-07-03]] — `/vix-radar-audit`; saudável, sem drift. Rotina noturna 02/07 fechada 103/103 após reprocessar 24 emissores com falha de schema (mal-diagnosticada como auth). P0 aberto: cleanup apaga log/metrics do próprio dia
+- [[37 - Auditoria Geral Backend Frontend 2026-07-03]] — `/vix-radar-general-audit`; saudável, sem P0. 3 P1 de débito técnico nos scripts de rotina (cleanup, schema docs, token parser)
 - `PENDENCIAS.md` (root) — **lista viva de pendências** (regenerada 2026-06-21, base v4.9.143); abertas: A1 `verificador_ok`=key presence, A2 ingestão mascarada, F1 drift admin `localStorage`, D1 nota 03 stale, watchdog `stale_count:1`, Admin HEART 2b
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1

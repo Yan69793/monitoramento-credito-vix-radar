@@ -1,11 +1,11 @@
 # Limpa artefatos temporarios das rotinas (disco) — prompts, planos, testing/, lotes
 param(
     [int]$KeepDays = 7,
-    [switch]$Aggressive
+    [switch]$Aggressive,
+    [string]$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
-$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir = Join-Path $ProjectRoot 'logs\routines'
 $cutoff = (Get-Date).AddDays(-$KeepDays)
 $removed = 0
@@ -14,6 +14,11 @@ $freed = 0L
 function Remove-IfStale($path) {
     if (-not (Test-Path $path)) { return }
     $item = Get-Item $path
+    if ($item.LastWriteTime.Date -eq (Get-Date).Date) { return }
+    # Um diretorio pode conservar mtime antigo mesmo contendo arquivo alterado hoje.
+    # Em modo agressivo, preservar o diretorio inteiro se houver qualquer artefato do dia.
+    if ($item.PSIsContainer -and (Get-ChildItem $path -Recurse -File -ErrorAction SilentlyContinue |
+        Where-Object { $_.LastWriteTime.Date -eq (Get-Date).Date } | Select-Object -First 1)) { return }
     if ($Aggressive -or $item.LastWriteTime -lt $cutoff) {
         $sz = if ($item.PSIsContainer) {
             (Get-ChildItem $path -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum

@@ -1,5 +1,10 @@
 # run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
 $ErrorActionPreference = 'Stop'
+# Mesma correcao de encoding do noturno (ver run_vixradar_noturno_claude.ps1) - stdout do
+# binario 'claude' sem console interativo pode decodificar em ANSI/OEM e corromper nomes
+# acentuados, quebrando o match de RESULTADO por emissor.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $WorkerUrl      = 'https://api.vixradar.com'
@@ -215,8 +220,12 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
 
 try {
     $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30
-    if ($health.ok -ne $true) { Write-Log 'ERRO: health'; exit 3 }
-    Write-Log ('Health ' + $health.versao)
+    # So bloqueia por dependencia real desta rotina (KV + telemetria) - ver nota em run_vixradar_noturno_claude.ps1
+    if (-not $health.bindings.kv -or -not $health.bindings.telemetria) {
+        Write-Log ('ERRO: health - kv=' + $health.bindings.kv + ' telemetria=' + $health.bindings.telemetria)
+        exit 3
+    }
+    Write-Log ('Health ' + $health.versao + ' ok=' + $health.ok + ' verificador_ok=' + $health.verificador_ok + ' (nao bloqueante para esta rotina)')
 } catch {
     Write-Log ('ERRO: health ' + $_.Exception.Message)
     exit 3

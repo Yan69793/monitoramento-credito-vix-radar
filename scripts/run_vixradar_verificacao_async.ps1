@@ -1,0 +1,248 @@
+# run_vixradar_verificacao_async.ps1 - Dreno da fila de verificacao assincrona (radar:verif_fila:{data})
+# Roda via Claude Code (assinatura mensal) em vez do Worker chamar a API Anthropic paga por token.
+# Programado para rodar pouco depois de vixradar-matinal (10h BRT) e vixradar-noturno (18h BRT).
+$ErrorActionPreference = 'Stop'
+# Encoding UTF-8 na captura do stdout do 'claude' (higiene, alinhado ao noturno/matinal).
+# NOTA: a falha de parse dos veredictos (2026-07-05) NAO era encoding - era o extrator ingenuo
+# com LastIndexOf(']') casando com ']' de links markdown que o modelo anexa depois do JSON.
+# Corrigido em Get-VeredictosArray/Get-BalancedJson (varredura balanceada).
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+
+$ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$WorkerUrl      = 'https://api.vixradar.com'
+$ScheduledTasks = 'C:\Users\User\.claude\scheduled-tasks'
+$LogDir         = Join-Path $ProjectRoot 'logs\routines'
+$DateTag        = Get-Date -Format 'yyyyMMdd'
+$LogFile        = Join-Path $LogDir ('vixradar-verificacao-async_' + $DateTag + '.log')
+$MetricsFile    = Join-Path $LogDir ('verificacao_async_metrics_' + $DateTag + '.json')
+$McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
+
+$ModelVerificador = 'claude-sonnet-4-6'
+$ChunkSize        = 12
+$PauseSec         = 2
+
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+# Ver run_vixradar_noturno_claude.ps1 para o achado completo: --mcp-config inline perdia as
+# aspas em contexto de execucao agendada, quebrando 100% das chamadas. Arquivo elimina a fragilidade.
+Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
+
+function Write-Log([string]$msg) {
+    $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
+    Add-Content -Path $LogFile -Value $line -Encoding UTF8
+    Write-Host $line
+}
+
+function Get-RoutineKey {
+    if ($env:ROUTINE_API_KEY) { return $env:ROUTINE_API_KEY }
+    $skillPath = Join-Path $ScheduledTasks 'vixradar-noturno\SKILL.md'
+    if (Test-Path $skillPath) {
+        $raw = Get-Content $skillPath -Raw -Encoding UTF8
+        if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') { return $Matches[1] }
+    }
+    throw 'ROUTINE_KEY nao encontrada'
+}
+
+# Identica a run_vixradar_noturno_claude.ps1 (mesmas flags de economia/isolamento ja validadas em producao)
+function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $stderrFile = Join-Path $LogDir ('verifasync_stderr_' + $DateTag + '.txt')
+    $raw = $null; $exitCode = 1
+    try {
+        $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+            --model $Model `
+            --permission-mode bypassPermissions `
+            --output-format json `
+            --tools 'WebSearch,WebFetch' `
+            --strict-mcp-config --mcp-config $McpConfigFile `
+            --setting-sources project `
+            --disable-slash-commands `
+            --no-session-persistence `
+            --exclude-dynamic-system-prompt-sections 2>>$stderrFile
+        $exitCode = $LASTEXITCODE
+    } catch {
+        Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
+    $textOut = @($raw)
+    $tokens = -1
+    try {
+        $jsonLine = @($raw) | Where-Object { ('' + $_).TrimStart().StartsWith('{') } | Select-Object -Last 1
+        if ($jsonLine) {
+            $json = $jsonLine | ConvertFrom-Json
+            if ($null -ne $json.result) { $textOut = @(('' + $json.result) -split "`n") }
+            if ($json.usage) {
+                $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
+                    + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
+            }
+        }
+    } catch {
+        Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
+    }
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens }
+}
+
+function Get-BalancedJson([string]$scan) {
+    # Varre a partir do primeiro '[' (ou '{') ate o delimitador que o FECHA, contando profundidade
+    # e ignorando colchetes/chaves dentro de strings JSON. Robusto contra texto apos o JSON
+    # (ex.: o modelo via `claude -p` anexa uma lista de fontes em markdown `[titulo](url)` depois
+    # do bloco - o LastIndexOf(']') ingenuo casava com esses ']' e corrompia a extracao).
+    $start = $scan.IndexOf('[')
+    $startObj = $scan.IndexOf('{')
+    if ($start -lt 0 -or ($startObj -ge 0 -and $startObj -lt $start)) { $start = $startObj }
+    if ($start -lt 0) { return $null }
+    $depth = 0; $inStr = $false; $esc = $false
+    for ($k = $start; $k -lt $scan.Length; $k++) {
+        $ch = [string]$scan[$k]
+        if ($esc) { $esc = $false; continue }
+        if ($ch -eq '\') { $esc = $true; continue }
+        if ($ch -eq '"') { $inStr = -not $inStr; continue }
+        if ($inStr) { continue }
+        if ($ch -eq '[' -or $ch -eq '{') { $depth++ }
+        elseif ($ch -eq ']' -or $ch -eq '}') {
+            $depth--
+            if ($depth -eq 0) { return $scan.Substring($start, $k - $start + 1) }
+        }
+    }
+    return $null
+}
+
+function Get-VeredictosArray($outputLines, [int]$esperado) {
+    # O verificador retorna um array JSON de veredictos, mas o `claude -p` costuma envolver em
+    # cerca ```json ... ``` e anexar uma lista de fontes em markdown depois. Estrategia:
+    #   1. Se houver bloco cercado ```json/```, extrair o conteudo dele (isola o JSON do resto).
+    #   2. Senao, usar o texto inteiro.
+    #   3. Extrair o JSON balanceado a partir do primeiro '[' (ignora qualquer coisa apos o array).
+    $texto = ($outputLines -join "`n").Trim()
+    $fence = [regex]::Match($texto, '```(?:json)?\s*([\s\S]*?)```')
+    $scan = if ($fence.Success) { $fence.Groups[1].Value } else { $texto }
+    $bruto = Get-BalancedJson $scan
+    if (-not $bruto) { return $null }
+    try {
+        $parsed = $bruto | ConvertFrom-Json
+    } catch {
+        return $null
+    }
+    $arr = @($parsed)
+    if ($arr.Count -ne $esperado) { return $null }
+    return $arr
+}
+
+Write-Log 'INICIO: drenar fila de verificacao assincrona'
+
+if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+    Write-Log 'ERRO: claude.exe ausente'
+    exit 2
+}
+
+try {
+    $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30
+    Write-Log ('Health ' + $health.versao + ' verificador_ok=' + $health.verificador_ok)
+} catch {
+    Write-Log ('ERRO: health ' + $_.Exception.Message)
+    exit 3
+}
+
+try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exit 4 }
+
+$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; tokens_total = 0 }
+$exitCode = 0
+
+try {
+    $fila = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
+        -Body (@{ action = 'listar_fila_verificacao'; routine_key = $routineKey; dias = 3 } | ConvertTo-Json -Compress) -TimeoutSec 60
+
+    if ($fila.ok -ne $true) { Write-Log 'ERRO: listar_fila_verificacao'; exit 5 }
+    $stats.total_fila = [int]$fila.total
+    Write-Log ('Fila: ' + $stats.total_fila + ' evento(s) pendente(s)')
+
+    if ($stats.total_fila -eq 0) {
+        Write-Log 'FIM: fila vazia, nada a fazer'
+        @{ data = $DateTag; total_fila = 0; lotes = 0 } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
+        exit 0
+    }
+
+    $itens = @($fila.itens)
+    for ($i = 0; $i -lt $itens.Count; $i += $ChunkSize) {
+        $fim = [Math]::Min($i + $ChunkSize - 1, $itens.Count - 1)
+        $chunk = @($itens[$i..$fim])
+        $stats.lotes++
+        $label = 'verifasync-' + $stats.lotes
+
+        # Prompt construido pelo Worker (fonte unica de verdade das regras do verificador) so para os ids deste chunk -
+        # evita duplicar o template do prompt em PowerShell e mantem o system_prompt/user_prompt alinhados ao chunk exato.
+        $chunkIds = @($chunk | ForEach-Object { $_.id })
+        $chunkFila = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
+            -Body (@{ action = 'listar_fila_verificacao'; routine_key = $routineKey; ids = $chunkIds } | ConvertTo-Json -Compress) -TimeoutSec 60
+        if ($chunkFila.ok -ne $true -or -not $chunkFila.system_prompt) {
+            Write-Log ('ERRO: nao consegui montar prompt do lote ' + $label + ' via listar_fila_verificacao(ids) - itens ficam na fila')
+            $stats.erros_parse++
+            Start-Sleep -Seconds $PauseSec
+            continue
+        }
+        $promptTexto = $chunkFila.system_prompt + "`n`n" + $chunkFila.user_prompt + "`n`nResponda SOMENTE com o array JSON de veredictos, um por evento, na mesma ordem em que os eventos foram listados acima. Nenhum texto antes ou depois do JSON."
+        $promptPath = Join-Path $LogDir ('verifasync_' + $label + '_' + $DateTag + '.txt')
+        Set-Content $promptPath -Value $promptTexto -Encoding UTF8
+
+        Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) - ' + (($chunk | ForEach-Object { $_.empresa }) -join ', '))
+        $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
+        if ($result.Tokens -gt 0) { $stats.tokens_total += $result.Tokens }
+
+        $veredictos = Get-VeredictosArray $result.Output $chunk.Count
+        if (-not $veredictos) {
+            # Observabilidade: salva a saida bruta do modelo para diagnosticar o motivo do parse falhar
+            # (contagem, JSON malformado, preambulo, truncamento). Sem isso o erro era cego.
+            $rawOutPath = Join-Path $LogDir ('verifasync_rawout_' + $label + '_' + $DateTag + '.txt')
+            Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
+            Write-Log ('ERRO: parse de veredictos falhou ou contagem nao bate no lote ' + $label +
+                ' (esperado=' + $chunk.Count + ') - saida bruta em ' + $rawOutPath + ' - itens ficam na fila')
+            $stats.erros_parse++
+            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds $PauseSec
+            continue
+        }
+
+        $confirmarItens = @()
+        for ($j = 0; $j -lt $chunk.Count; $j++) {
+            $confirmarItens += @{
+                id = $chunk[$j].id; empresa = $chunk[$j].empresa; semana = $chunk[$j].semana
+                setor = $chunk[$j].setor; data_fila = $chunk[$j].data_fila; evento = $chunk[$j].evento
+                veredicto = $veredictos[$j]
+            }
+        }
+
+        try {
+            $confirmResp = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' `
+                -Body (@{ action = 'confirmar_verificacao'; routine_key = $routineKey; itens = $confirmarItens } | ConvertTo-Json -Depth 12 -Compress) -TimeoutSec 60
+            if ($confirmResp.ok -eq $true) {
+                $stats.aprovados += [int]$confirmResp.resultado.aprovados
+                $stats.rejeitados += [int]$confirmResp.resultado.rejeitados
+                Write-Log ('LOTE_FECHADO|' + $label + '|aprovados=' + $confirmResp.resultado.aprovados + '|rejeitados=' + $confirmResp.resultado.rejeitados + '|erros=' + $confirmResp.resultado.erros)
+            } else {
+                Write-Log ('ERRO: confirmar_verificacao falhou no lote ' + $label + ' - ' + $confirmResp.erro)
+            }
+        } catch {
+            Write-Log ('EXCECAO: confirmar_verificacao ' + $label + ' - ' + $_.Exception.Message)
+        }
+
+        Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+        Start-Sleep -Seconds $PauseSec
+    }
+
+    @{
+        data = $DateTag; total_fila = $stats.total_fila; lotes = $stats.lotes
+        aprovados = $stats.aprovados; rejeitados = $stats.rejeitados
+        erros_parse = $stats.erros_parse; tokens_total_est = $stats.tokens_total
+    } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
+
+    Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse)
+
+    if ($stats.erros_parse -gt 0) { $exitCode = 6 }
+} catch {
+    Write-Log ('ERRO FATAL: ' + $_.Exception.Message)
+    $exitCode = 1
+}
+
+if ($exitCode -ne 0) { exit $exitCode }

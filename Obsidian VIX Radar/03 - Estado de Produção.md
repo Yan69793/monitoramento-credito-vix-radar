@@ -1,6 +1,15 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-06-20 (Worker v4.9.143 + Frontend v201.69). Rotina v2: [[27 - Otimizacao Tokens Rotina Noturna]] · [[29 - Rotina Noturna 2026-06-20]].
+Atualizado: 2026-07-03 (Worker v4.9.143 + Frontend v201.69, sem drift). Rotina v2: [[27 - Otimizacao Tokens Rotina Noturna]] · [[29 - Rotina Noturna 2026-06-20]] · [[rotinas/2026-06-22-haiku-12]] · [[rotinas/2026-06-22-haiku-13]] · [[35 - Auditoria Completa 2026-07-02]] · [[rotinas/2026-07-03-haiku-10]] · [[rotinas/2026-07-02-noturno-v2]].
+
+> [!warning] Incidente de atualização parcialmente resolvido — 03/07
+> O timestamp de **análise** foi normalizado: `total:103`, `stale_24h:0`, `max_stale:16.2`, nenhum `_last_scanned_at` preso em 26/06. Porém a data das **notícias** no painel usa `data_evento`, não `_last_scanned_at`. Consulta aos `eventos_historicos` dos 103 emissores confirmou apenas 19 eventos no snapshot e **zero após 26/06**; o mais recente é Aegea Saneamento em 26/06. Na retomada, 30/30 payloads foram aceitos, mas os três eventos candidatos retornaram `n_eventos:0` após `validarEVerificar`, portanto não entraram no estado. O problema visual das notícias até 26/06 permanece aberto: é necessário reprocessar notícias pós-26/06 com fontes profundas e auditar os veredictos/rejeições do verificador.
+
+> [!success] Rotina noturna 02/07 concluída — 103/103 emissores com submit_ok=true
+> 11 lotes (6 Sonnet + 5 Haiku), 2 falhas de submit em `haiku-9` e `haiku-11` (24 emissores) inicialmente relatadas como "falha de autenticação" — causa raiz real: **schema drift** no payload (`resultado` precisa ser objeto aninhado, agentes montaram body errado e leram mal o erro do Worker). Reprocessados manualmente 03/07, 24/24 OK, zero falha real de chave/infra. Hardening concluído: submit centralizado no orquestrador, parser JSON de tokens, retry parcial e cleanup impedido de apagar artefatos do dia (inclusive dentro de diretórios). Detalhe: [[rotinas/2026-07-02-noturno-v2]].
+
+> [!error] INCIDENTE RESOLVIDO 2026-07-02 — Scheduler Claude Code zerado, ingestão parada 9 dias (2ª ocorrência)
+> Mesmo padrão do incidente 2026-06-15 (nota abaixo): reinstalação/update do Claude Desktop apaga o registro interno do agendador. `list_scheduled_tasks` retornou vazio; `listar_plano_rotina` mostrou **103/103 emissores em tier FULL** (`horas_stale:219.6` ≈ 9,15 dias), `estado_semanal.updated_at` travado em `2026-06-23T22:06:37Z`. **Correção:** `register-all-routines.ps1` + `create_scheduled_task` recriaram as 5 tasks (`vixradar-noturno`, `vixradar-matinal`, `vixradar-agenda-semanal`, `fechamento-diario-szuchmacher`, `atualizar-agenda-macro-szuchmacher`); `list_scheduled_tasks` pós-fix confirma 5/5 `enabled:true`. **Gap retroativo de 9 dias não preenchido automaticamente** — decisão de catch-up manual (~500k tokens) em aberto com o operador. **Ação de hardening recomendada:** alerta automatizado comparando `estado_semanal.updated_at` contra limiar de staleness, para não depender de auditoria manual detectando isso pela 2ª vez. Detalhe: [[35 - Auditoria Completa 2026-07-02]].
 
 > [!info] Deploy v4.9.143 — 2026-06-20
 > `listar_plano_rotina` (tiers SKIP/LIGHT/FULL/AUDIT) + `VARREDURA_CRON_AI_ENABLED=false` (delega IA ao Claude tiered). Health: `verificador_ok:true`, `telemetria:true`.
