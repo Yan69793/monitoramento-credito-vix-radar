@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.146)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.147)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.144.js / v4.9.145.js = bundles intermediários não recuperados (deploy
 #   sem commit correspondente, drift detectado pelo guard anti-drift do CI
@@ -77,7 +77,7 @@
 # v4.9.146.js = v4.9.145 + verificacao assincrona via Claude Code (assinatura) em vez de chamada paga sincrona no receber_analise: eventos que deveVerificar()=true vao para fila KV (radar:verif_fila:{data}) em vez de chamar chamarClaudeVerificador direto; novos endpoints listar_fila_verificacao e confirmar_verificacao (routine_key) para a scheduled task drenar a fila; health verificador_ok agora tambem reflete fila atrasada (>12h sem drenar).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.146.js"
+main       = "v4.9.147.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
