@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.147)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.148)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.144.js / v4.9.145.js = bundles intermediários não recuperados (deploy
 #   sem commit correspondente, drift detectado pelo guard anti-drift do CI
@@ -75,9 +75,11 @@
 # v4.9.144.js = v4.9.143 + verificador: aplica CORRIGIR estruturado com confianca >=0.8 + observabilidade de rejeicoes no receber_analise.
 # v4.9.145.js = v4.9.144 + fallback fail-closed para fonte oficial durante indisponibilidade do verificador + health real via quarentena recente.
 # v4.9.146.js = v4.9.145 + verificacao assincrona via Claude Code (assinatura) em vez de chamada paga sincrona no receber_analise: eventos que deveVerificar()=true vao para fila KV (radar:verif_fila:{data}) em vez de chamar chamarClaudeVerificador direto; novos endpoints listar_fila_verificacao e confirmar_verificacao (routine_key) para a scheduled task drenar a fila; health verificador_ok agora tambem reflete fila atrasada (>12h sem drenar).
+# v4.9.147.js = v4.9.146 + calcularZScoresANBIMA (z-score de spread/volume por emissor apos sync ANBIMA, cache KV anbima:zscores TTL 7d) + endpoint action=zscores_anbima.
+# v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.147.js"
+main       = "v4.9.148.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
