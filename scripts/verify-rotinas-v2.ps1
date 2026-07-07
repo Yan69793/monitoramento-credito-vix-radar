@@ -15,23 +15,31 @@ function Assert-Check($cond, $msg) {
 
 Write-Output '=== verify-rotinas-v2 (local) ==='
 
-# 1. Worker bundle
-$worker143 = Join-Path $root 'api\v4.9.143.js'
-Assert-Check (Test-Path $worker143) 'v4.9.143.js existe'
-if (Test-Path $worker143) {
-    $w = Get-Content $worker143 -Raw
-    Assert-Check ($w -match 'listar_plano_rotina') 'endpoint listar_plano_rotina'
-    Assert-Check ($w -match 'montarPlanoRotina') 'funcao montarPlanoRotina'
-    Assert-Check ($w -match 'varreduraCronAiHabilitada') 'flag varreduraCronAiHabilitada'
-    Assert-Check ($w -match 'v4\.9\.143') 'WORKER_VERSAO v4.9.143'
-}
-
-# 2. wrangler.toml
+# 1. wrangler.toml - deriva o bundle ATIVO do campo main (nunca hardcodear versao;
+#    isso e o que ficou stale em v4.9.143 enquanto prod ja estava em v4.9.148)
 $wrangler = Join-Path $root 'api\wrangler.toml'
+$activeBundle = $null
 if (Test-Path $wrangler) {
     $toml = Get-Content $wrangler -Raw
-    Assert-Check ($toml -match 'main\s*=\s*"v4\.9\.143\.js"') 'wrangler main v4.9.143'
+    if ($toml -match 'main\s*=\s*"(v4\.9\.[0-9]+\.js)"') { $activeBundle = $Matches[1] }
+    Assert-Check ($null -ne $activeBundle) 'wrangler main aponta para bundle v4.9.x.js'
     Assert-Check ($toml -match 'VARREDURA_CRON_AI_ENABLED\s*=\s*"false"') 'VARREDURA_CRON_AI_ENABLED=false'
+}
+
+# 2. Worker bundle ativo (path derivado do wrangler.toml acima)
+if ($activeBundle) {
+    $workerActive = Join-Path $root ('api\' + $activeBundle)
+    Assert-Check (Test-Path $workerActive) "$activeBundle existe"
+    if (Test-Path $workerActive) {
+        $w = Get-Content $workerActive -Raw
+        Assert-Check ($w -match 'listar_plano_rotina') 'endpoint listar_plano_rotina'
+        Assert-Check ($w -match 'montarPlanoRotina') 'funcao montarPlanoRotina'
+        Assert-Check ($w -match 'varreduraCronAiHabilitada') 'flag varreduraCronAiHabilitada'
+        $bundleVersao = $activeBundle -replace '\.js$', ''
+        Assert-Check ($w -match [regex]::Escape($bundleVersao)) "WORKER_VERSAO $bundleVersao"
+    }
+} else {
+    Assert-Check $false 'nao foi possivel derivar bundle ativo do wrangler.toml'
 }
 
 # 3. SKILL.md v2
@@ -77,7 +85,7 @@ if ($key) {
     }
 }
 
-# 6. Live: listar_plano_rotina (so apos deploy v4.9.143)
+# 6. Live: listar_plano_rotina (rodar com -Live pos-deploy, contra o bundle ativo)
 if ($Live -and $key) {
     Write-Output '=== verify-rotinas-v2 (live) ==='
     foreach ($modo in @('matinal', 'noturno')) {
@@ -98,7 +106,7 @@ if ($Live -and $key) {
         }
     }
 } elseif (-not $Live) {
-    Write-Output 'SKIP live: use -Live apos deploy v4.9.143'
+    Write-Output 'SKIP live: use -Live apos deploy'
 }
 
 # 7. Orquestradores (SKIP PS1 + lotes)
@@ -126,11 +134,11 @@ if (Test-Path $orchNot) {
 $orchMat = Join-Path $root 'scripts\run_vixradar_matinal_claude.ps1'
 $batchMatH = Join-Path $root 'scripts\matinal-batch-haiku.md'
 $batchMatS = Join-Path $root 'scripts\matinal-batch-sonnet.md'
-$estMat = Join-Path $root 'scripts\estimate-matinal-tokens.ps1'
+$estMat = Join-Path $root 'scripts\_archive\estimate-matinal-tokens.ps1'
 Assert-Check (Test-Path $orchMat) 'run_vixradar_matinal_claude.ps1 orquestrado'
 Assert-Check (Test-Path $batchMatH) 'matinal-batch-haiku.md existe'
 Assert-Check (Test-Path $batchMatS) 'matinal-batch-sonnet.md existe'
-Assert-Check (Test-Path $estMat) 'estimate-matinal-tokens.ps1 existe'
+Assert-Check (Test-Path $estMat) 'estimate-matinal-tokens.ps1 existe (ferramenta auxiliar, arquivada - nao e dependencia de runtime)'
 if (Test-Path $orchMat) {
     $m = Get-Content $orchMat -Raw
     Assert-Check ($m -match 'Submit-SkipEmissor') 'matinal SKIP via PS1'
@@ -165,9 +173,9 @@ if (Test-Path $notCloud) {
 }
 
 # 9. Dev skills projeto (execute-plan + superpowers)
-$installDev = Join-Path $root 'scripts\install-project-dev-skills.ps1'
+$installDev = Join-Path $root 'scripts\_archive\install-project-dev-skills.ps1'
 $grokCfg = Join-Path $root '.grok\config.toml'
-Assert-Check (Test-Path $installDev) 'install-project-dev-skills.ps1 existe'
+Assert-Check (Test-Path $installDev) 'install-project-dev-skills.ps1 existe (setup one-off, arquivado - nao e dependencia de runtime)'
 Assert-Check (Test-Path $grokCfg) '.grok/config.toml existe'
 if (Test-Path $grokCfg) {
     $gc = Get-Content $grokCfg -Raw
