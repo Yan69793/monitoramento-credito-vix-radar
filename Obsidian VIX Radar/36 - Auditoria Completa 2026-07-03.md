@@ -55,3 +55,21 @@ Nenhum.
 
 - **P2** — Documentar em `CLAUDE.md` ou no próprio script que reprocessamento manual fora do scheduled task deve usar Agent tool, não `Invoke-ClaudeBatch` com bypassPermissions.
 - Monitorar a próxima execução noturna e confirmar no artefato de métricas: `submit_fail=0`, tokens conhecidos e preservação do log/metrics do próprio dia.
+
+## Otimização de custo da rotina noturna (03/07, sessão da tarde)
+
+Aplicadas mudanças de redução de custo (ver plano completo em `C:\Users\User\.claude\plans\ticklish-orbiting-liskov.md`), medidas empiricamente antes de implementar (4 agentes de medição): boot de cada `claude -p` caiu de ~33,9k para ~11-13,6k tokens (flags `--tools`, `--strict-mcp-config`, `--setting-sources project`, `--exclude-dynamic-system-prompt-sections`); submit migrou do agente pro PS1 (protocolo `RESULTADO|`/`LOTE_RESUMO|`, sem curl no agente); buscas condicionais (R6 só com sinal); gate pré-evento (URL primária + janela); chunks Sonnet 8→11, Haiku 12→15; retry parcial de lote falho.
+
+**Gap corrigido:** 10 emissores do lote `haiku-8` de 02/07 (nunca processados, falha silenciosa) foram reprocessados — 10/10 OK, 0 crítico, 3 RELEVANTE (Copasa, Brava Energia, Gerdau — M&A/CADE) quarentenados pelo verificador do Worker, pendentes de validação manual no painel admin.
+
+**Revisão adversarial (workflow, 3 lentes) encontrou 3 bugs BLOQUEIA reais nas mudanças, todos corrigidos e revalidados com teste real antes de fechar:**
+
+1. `$ErrorActionPreference='Stop'` global + redirect de stderr do `claude -p` fazia QUALQUER aviso benigno do CLI (comum em binários Node, mesmo com exit 0) lançar exceção terminante e derrubar a rotina inteira a partir daquele lote, sem gravar métricas nem log de fim. Fix: `$ErrorActionPreference='Continue'` isolado dentro de `Invoke-ClaudeBatch`, com try/catch/finally.
+2. Match de emissor por nome (`.ContainsKey`) quebrava com diferença de acentuação (ex.: agente normaliza "Iguá" → "Igua"), causando retry desnecessário ou FAIL falso. Fix: `Get-NomeNormalizado` (remove diacríticos) usado nos dois lados do match.
+3. O protocolo novo (`RESULTADO|`) não pedia `memo_acontecimento`/`memo_importancia_credito`/`memo_monitorar` por evento — esses campos alimentam tanto o card exibido ao usuário quanto o `contexto_historico` que a rotina de amanhã recebe (api/v4.9.143.js:8193/8645). Sem eles, todo evento novo da rotina noturna virava um card vazio e o contexto histórico nunca melhorava. Fix: schema e os 2 skills md agora exigem os 3 memos para CRITICO/RELEVANTE.
+
+Também corrigidos (IMPORTANTE): emissor sem RESULTADO após retry agora recebe submit mínimo de cobertura (`classificacao_geral:NENHUM` + nota explícita) em vez de ficar sem nenhum registro na semana; threshold do gate R6 ajustado de 25→20 (referência: `ROTINA_EWS_LIGHT=30` do Worker) com nota de que é provisório até 3 noites de telemetria; doc legada `C:\Users\User\.claude\scheduled-tasks\vixradar-noturno\SKILL.md` atualizada para não contradizer o protocolo novo.
+
+**Achados não corrigidos (baixo risco, registrados para acompanhamento):** custo de `server_tool_use.web_search_requests` não é somado no total de tokens reportado (subestima custo real, não afeta execução); `cleanup-rotina-artifacts.ps1` ainda apaga o stderr do dia anterior no ciclo seguinte (aceitável — debug transitório).
+
+**Validação:** sintaxe PS1 limpa; teste real de invocação com as flags novas confirmou boot ~11-13k tokens; parser completo (`Get-ParsedResultados`/`Get-ResultadoEmissor`) validado com saída real do CLI incluindo nome acentuado e evento com os 3 memos preenchidos.

@@ -34,18 +34,23 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[35 - Auditoria Completa 2026-07-02]] — `/vix-radar-audit`; **CRÍTICO resolvido**: scheduler Claude Code zerado (2ª vez, mesmo padrão 15/06) — rotinas paradas 9 dias, 103/103 emissores stale; 5 tasks recriadas e validadas
 - [[36 - Auditoria Completa 2026-07-03]] — `/vix-radar-audit`; saudável, sem drift. Rotina noturna 02/07 fechada 103/103 após reprocessar 24 emissores com falha de schema (mal-diagnosticada como auth). P0 aberto: cleanup apaga log/metrics do próprio dia
 - [[37 - Auditoria Geral Backend Frontend 2026-07-03]] — `/vix-radar-general-audit`; saudável, sem P0. 3 P1 de débito técnico nos scripts de rotina (cleanup, schema docs, token parser)
-- `PENDENCIAS.md` (root) — **lista viva de pendências** (regenerada 2026-06-21, base v4.9.143); abertas: A1 `verificador_ok`=key presence, A2 ingestão mascarada, F1 drift admin `localStorage`, D1 nota 03 stale, watchdog `stale_count:1`, Admin HEART 2b
+- [[38 - Auditoria Geral Backend Frontend 2026-07-04]] — `/vix-radar-general-audit`; 3 P1 de ontem RESOLVIDOS (working tree, não commitados); novo P1: secret `routine_key` em `scripts/azul_payload.json` staged sem gitignore; P2 XSS defesa-em-profundidade `anomalia-card-desc`, `index.prod.html` órfão mal documentado
+- [[39 - Auditoria Completa 2026-07-04]] — `/vix-radar-audit`; pós-deploy v4.9.146 (verificador assíncrono). **CRÍTICO resolvido**: health-gate de `run_vixradar_noturno_claude.ps1`/`run_vixradar_matinal_claude.ps1` bloqueava a rotina inteira por `verificador_ok` degradado — noturna de 03/07 processou 0/103 emissores por isso (`stale_24h:3` resultante). `.gitignore` corrigido (v4.9.144/145/146.js não eram commitáveis)
+- [[40 - Auditoria Geral Backend Frontend 2026-07-05]] — `/vix-radar-general-audit` (OODA); **P0 novo**: bug de encoding (CP850 vs UTF-8) na captura do stdout do `claude -p` corrompe nomes de emissor acentuados e descarta RESULTADO CRITICO real (Raízen, Oncoclínicas confirmados) — corrigido nos 3 scripts de rotina, 2 registros repostos em produção. XSS1 e AZ1 (nota 38) confirmados resolvidos
+- [[41 - Auditoria Completa 2026-07-06]] — `/vix-radar-audit`; saudável, sem drift. **Incidente resolvido**: noturno rodou DUPLICADO (Task nativa 18:00 + scheduled-task Claude Code) → colisão de handle no stderr date-tagged → 37 submits de cobertura mínima. Fix: stderr por-PID + mutex global + scheduled-task Claude Code desabilitada. Run canônico entregou 103/103 real (`stale_24h:0`, `max_stale:1.5h`)
+- [[42 - Auditoria Geral Backend Frontend 2026-07-06]] — `/vix-radar-general-audit`; saudável, sem P0/P1. AZ1 (secret) confirmado resolvido. P2: **F1 confirmado ainda em prod** (admin `localStorage`, repo já em `sessionStorage`, fix não deployado); script `run_vixradar_verificacao_async.ps1` untracked. P3: jpeg solto na raiz
+- `PENDENCIAS.md` (root) — **lista viva de pendências** (base histórica v4.9.143); A1/A2 corrigidos em v4.9.144–145; permanecem saldo Anthropic, F1 drift admin `localStorage`, watchdog e Admin HEART 2b
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
 
-## Versões confirmadas (última sessão: 2026-06-20 — v4.9.143 em prod)
+## Versões confirmadas (última sessão: 2026-07-03 — v4.9.145 em prod)
 
-**Git:** `main` com v4.9.143 em prod; rotina v2 tiered ativa; CI `EXPECTED_WORKER=v4.9.143`.
+**Produção:** v4.9.145; rotina v2 tiered ativa; CI local `EXPECTED_WORKER=v4.9.145`. Health degradado corretamente por saldo Anthropic insuficiente.
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.143** (prod = repo) | rotina-v2: `listar_plano_rotina` + `VARREDURA_CRON_AI_ENABLED=false`; CI alinhado |
+| Worker `radar-credito-api` | **v4.9.145** (prod = repo local) | fallback oficial fail-closed; health real do verificador; notícias até 02/07 restauradas |
 | Frontend `vixradar.com` | **v201.69** (prod = repo) | Admin HEART modular; senha admin em `sessionStorage` |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |

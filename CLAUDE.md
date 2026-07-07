@@ -87,14 +87,17 @@ Cascade OpenRouter → Gemini → Perplexity **obsoleta desde v4.9.108**.
 |---------|--------|---------|
 | Pulso manual | `claude-haiku-4-5-20251001` (Anthropic API) | Usuário no frontend |
 | Lote 103 emissores | Opus matinal (top 15) + Sonnet noturno | Scheduled Tasks |
+| Verificador adversarial (CRITICO + amostra RELEVANTE) | Assíncrono via Claude Code (assinatura), `claude-sonnet-4-6` — desde v4.9.146 | Fila KV `radar:verif_fila:{data}` drenada por scheduled task `vixradar-verificacao-async` (script pronto em `scripts/run_vixradar_verificacao_async.ps1`, registro da task ainda pendente) |
 
 Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — não indicam uso ativo.
+
+`chamarClaudeVerificador`/`verificarEventosBatch` (chamada paga direta à API Anthropic) seguem existindo só para `admin_verificar_evento`/`admin_sweep_revalidacao` (diagnóstico manual) — não fazem mais parte do caminho principal de ingestão (`receber_analise`) desde v4.9.146.
 
 ## Produção atual (fonte: Obsidian `03 - Estado de Produção.md`)
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.143** | `api/wrangler.toml` → `v4.9.143.js` (deploy 2026-06-20) | https://api.vixradar.com |
+| Worker | **v4.9.146** | `api/wrangler.toml` → `v4.9.146.js` (deploy 2026-07-04) | https://api.vixradar.com |
 | Frontend | **v201.69** | `app/index.html` + `app/deploy_zip/version.json` | https://vixradar.com |
 | Deploy Worker | `cd api && npx wrangler deploy` | — | — |
 | Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
