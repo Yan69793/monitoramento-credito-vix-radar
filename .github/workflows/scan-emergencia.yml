@@ -1,0 +1,119 @@
+# VixRadar — Varredura de Emergência (Opção B / Híbrido)
+# ---------------------------------------------------------------------------
+# O QUE FAZ (FALLBACK — o desktop continua sendo a varredura PRINCIPAL)
+#   A ingestão de notícias do VIX Radar roda como Scheduled Task do Claude Code
+#   no PC do operador (routines/). Quando o PC está indisponível, o feed
+#   congela. Este workflow é o paraquedas: quando o feed está DESATUALIZADO,
+#   dispara uma varredura de emergência via API da Anthropic (com web search)
+#   SOMENTE nos top-15 emissores prioritários — limitando custo e impedindo o
+#   congelamento dos nomes críticos.
+#
+# GATE DE STALENESS (Passo 1)
+#   Consulta admin_health_check. Se o estado foi atualizado nas últimas 24h
+#   (o desktop já rodou hoje) → exit 0 limpo, emergência não necessária.
+#   Se ≥24h ou sem dados → prossegue para o scan.
+#
+# SECRETS NECESSÁRIOS (Settings → Secrets and variables → Actions)
+#   ADMIN_PASSWORD     — senha admin do Worker (gate de staleness). Só operador.
+#   ANTHROPIC_API_KEY  — chave da API Anthropic (Messages + web search). Só operador.
+#   ROUTINE_API_KEY    — auth das rotinas no Worker (routine_key). Só operador.
+#   Faltando QUALQUER secret → aviso + exit 0 (nunca falha por secret ausente).
+#
+# CUSTO
+#   Só top-15, só quando stale. O scan loga total de emissores e n_eventos.
+# ---------------------------------------------------------------------------
+
+name: Scan de Emergencia (Opcao B)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 23:30 UTC = 20:30 BRT — DEPOIS da janela do noturno desktop (18h BRT).
+    - cron: '30 23 * * *'
+
+jobs:
+  scan-emergencia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # ── Passo 1: gate de staleness ───────────────────────────────────────
+      - name: Gate de staleness (admin_health_check)
+        id: gate
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          if [ -z "$ADMIN_PASSWORD" ]; then
+            echo "::warning::ADMIN_PASSWORD ausente nos secrets — impossivel avaliar staleness."
+            echo "Configure ADMIN_PASSWORD em Settings -> Secrets and variables -> Actions."
+            echo "Saindo limpo (exit 0)."
+            echo "prosseguir=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "::add-mask::$ADMIN_PASSWORD"
+
+          API="https://api.vixradar.com"
+          HC=$(curl -s -X POST "$API/" \
+            -H "Content-Type: application/json" \
+            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$ADMIN_PASSWORD\"}" \
+            --max-time 60)
+
+          echo "$HC" | jq '{
+            ok: .ok,
+            versao: .versao,
+            empresas_com_dados: .checks.estado_semanal.empresas_com_dados,
+            updated_at: .checks.estado_semanal.updated_at
+          }' 2>/dev/null || echo "$HC"
+
+          if echo "$HC" | jq -e '.ok == false' >/dev/null 2>&1; then
+            echo "::warning::admin_health_check retornou ok:false ou acesso negado — verifique ADMIN_PASSWORD. Saindo limpo."
+            echo "prosseguir=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          UPD=$(echo "$HC" | jq -r '.checks.estado_semanal.updated_at // "null"' 2>/dev/null)
+          echo "Ultima atualizacao do estado: $UPD"
+
+          IDADE_MAX_H=24
+          if [ "$UPD" = "null" ]; then
+            echo "Sem updated_at — tratando como STALE (sem prova de dados recentes)."
+            echo "prosseguir=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          UPD_EPOCH=$(date -d "$UPD" +%s 2>/dev/null || echo 0)
+          NOW_EPOCH=$(date +%s)
+          if [ "$UPD_EPOCH" -eq 0 ]; then
+            echo "::warning::Nao consegui parsear updated_at ($UPD) — tratando como STALE por seguranca."
+            echo "prosseguir=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          IDADE_H=$(( (NOW_EPOCH - UPD_EPOCH) / 3600 ))
+          echo "Idade do estado: ${IDADE_H}h (limiar ${IDADE_MAX_H}h)"
+          if [ "$IDADE_H" -lt "$IDADE_MAX_H" ]; then
+            echo "FEED FRESCO — desktop ja rodou nas ultimas ${IDADE_MAX_H}h. Emergencia nao necessaria."
+            echo "prosseguir=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "FEED STALE (${IDADE_H}h >= ${IDADE_MAX_H}h) — disparando scan de emergencia."
+            echo "prosseguir=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── Passo 2: scan de emergência (só se stale + secrets presentes) ─────
+      - name: Scan de emergencia (top-15 via Anthropic web search)
+        if: steps.gate.outputs.prosseguir == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ROUTINE_API_KEY: ${{ secrets.ROUTINE_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then echo "::add-mask::$ANTHROPIC_API_KEY"; fi
+          if [ -n "$ROUTINE_API_KEY" ]; then echo "::add-mask::$ROUTINE_API_KEY"; fi
+          # O script sai limpo (exit 0) se ANTHROPIC_API_KEY/ROUTINE_API_KEY faltarem.
+          node scripts/scan-emergencia.mjs
