@@ -9664,7 +9664,7 @@ __name2222222(extrairDataDoHTML, "extrairDataDoHTML");
 __name22222222(extrairDataDoHTML, "extrairDataDoHTML");
 var VERIFICADOR_CONFIG = {
   model_primary: "claude-haiku-4-5-20251001",
-  model_escalation: "claude-sonnet-4-5-20250929",
+  model_escalation: "claude-sonnet-4-6",
   confianca_escalation: 0.7,
   batch_size: 5,
   cache_ttl: 30 * 86400,
@@ -15532,7 +15532,7 @@ async function __coreFetch(request, env2222) {
           _raSaneado.cvm_documentos = _dpaCvmDocs;
           await persistirResultadoCompartilhado(env2222, _raSemana, _raEmp, _raSaneado);
         }
-        tel(env2222, "routine_analise_recebida", { empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length, provedor: _raProv, pendente_async: _raVerificacao.pendente_verificacao_async || 0 });
+        await tel(env2222, request, { evento: "routine_analise_recebida", empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length, provedor: _raProv, pendente_async: _raVerificacao.pendente_verificacao_async || 0 });
         return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0 }, 200, request);
       } catch (_raErr) {
         return resp({ ok: false, erro: _raErr.message }, 500, request);
