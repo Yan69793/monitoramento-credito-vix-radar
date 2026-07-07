@@ -3189,7 +3189,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
       <div id="agLogin" class="ag-view active">
         <div class="ag-card">
           <div class="ag-field"><label class="ag-label">E-mail</label><input class="ag-input" id="agEmail" type="email" placeholder="seu.email@empresa.com.br" autocomplete="username"></div>
-          <div class="ag-field"><label class="ag-label">Senha</label><input class="ag-input" id="agPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
+          <div class="ag-field"><label class="ag-label" for="agPass">Senha</label><input class="ag-input" id="agPass" type="password" placeholder="••••••••" autocomplete="current-password"></div>
           <div class="ag-msg ag-msg-e" id="agLoginErr"><span id="agLoginErrTxt"></span></div>
           <button class="ag-btn" id="agBtnLogin" onclick="agLogin()"><span class="ag-sp"></span><span class="ag-bl">Acessar Radar</span></button>
           <button class="ag-link" onclick="agShow('forgot')">Esqueceu sua senha?</button>
@@ -3203,7 +3203,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
           <div class="ag-field"><label class="ag-label">Nome</label><input class="ag-input" id="agNome" type="text" placeholder="Seu nome"></div>
           <div class="ag-field"><label class="ag-label">E-mail</label><input class="ag-input" id="agRegEmail" type="email" placeholder="seu@email.com"></div>
           <div class="ag-field"><label class="ag-label">Empresa <span style="font-weight:400;opacity:0.55;font-size:0.8em">(opcional)</span></label><input class="ag-input" id="agEmpresa" type="text" placeholder="Nome da empresa"></div>
-          <div class="ag-field"><label class="ag-label">Senha</label><input class="ag-input" id="agRegPass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+          <div class="ag-field"><label class="ag-label" for="agRegPass">Senha</label><input class="ag-input" id="agRegPass" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
           <div class="ag-consent">
             <input type="checkbox" id="agConsentLgpd">
             <label for="agConsentLgpd">Li e concordo com a <a onclick="abrirLgpd('privacidade');event.preventDefault()">Política de Privacidade</a> e os <a onclick="abrirLgpd('termos');event.preventDefault()">Termos de Uso</a> do VIX Radar.</label>
@@ -3229,8 +3229,8 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
         <div class="ag-card">
           <div class="ag-title">Nova senha</div>
           <p style="font-size:11px;color:rgba(232,228,220,0.4);line-height:1.5;margin:0 0 14px;font-family:'Manrope',sans-serif;">Escolha sua nova senha para acessar o Radar.</p>
-          <div class="ag-field"><label class="ag-label">Nova senha</label><input class="ag-input" id="agResetPass1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
-          <div class="ag-field"><label class="ag-label">Confirmar senha</label><input class="ag-input" id="agResetPass2" type="password" placeholder="Repita a senha" autocomplete="new-password"></div>
+          <div class="ag-field"><label class="ag-label" for="agResetPass1">Nova senha</label><input class="ag-input" id="agResetPass1" type="password" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+          <div class="ag-field"><label class="ag-label" for="agResetPass2">Confirmar senha</label><input class="ag-input" id="agResetPass2" type="password" placeholder="Repita a senha" autocomplete="new-password"></div>
           <div class="ag-msg ag-msg-e" id="agResetErr"><span id="agResetErrTxt"></span></div>
           <div class="ag-msg ag-msg-s" id="agResetOk"><span id="agResetOkTxt"></span></div>
           <button class="ag-btn" id="agBtnReset" onclick="agResetSenha()"><span class="ag-sp"></span><span class="ag-bl">Redefinir senha</span></button>
