@@ -1,8 +1,10 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-07 ~22:20 BRT | **Skill:** `/vix-radar-general-audit` (3ª rodada, noite — pós-lançamento LinkedIn)
-**Base auditada:** prod **v4.9.148** + Frontend **v201.73** (ambos DEPLOYADOS; v201.73 deploy ~22:11Z) — **sem drift repo/prod**
+**Atualizado:** 2026-07-07 ~22:50 BRT | **Skill:** `/vix-radar-general-audit` (3ª rodada, noite — pós-lançamento LinkedIn)
+**Base auditada:** prod **v4.9.148** + Frontend **v201.73** deployado — repo à frente em **v201.74** (a11y, commitado, deploy PENDENTE)
 **Fontes de evidência:** auditoria geral 2026-07-07 noite (Opus 4.8) + varredura de prontidão pós-lançamento (Playwright ao vivo + curl). Nota completa: [[45 - Auditoria Geral 2026-07-07 (noite)]]
+
+**Fechamento de backlog (godmode + /goal):** `scripts/verify-rotinas-v2.ps1` corrigido — hardcodeava v4.9.143 em 4 lugares, agora deriva o bundle ativo do `wrangler.toml` (nunca mais fica stale); rodado 65/65 PASS. 5 overlays ganharam `role="dialog"`+`aria-modal`+`aria-label` real (v201.74, commit `618f635`) — `modal-varredura`, `config-modal-unsubscribe`, `modal-share`, `guia-overlay`, `onb-overlay`. 2 candidatos da lista original eram falsos positivos (mobile-drawer-overlay é backdrop decorativo correto; a sidebar é landmark de navegação, não dialog). 2 ficaram fora por serem construídos via JS e de superfície admin/logado (admin-overlay, pdf-period-overlay) — deferidos, não é regressão. Tentativa de remover código morto (`checkRateLimit` v1) e corrigir a regra do CLAUDE.md sobre bundles foi **revertida** — bateu 2x no guardrail de auto-mode (edição de bundle Worker + reescrita de regra de permissão), decisão adiada pro operador.
 
 **Correção de processo desta rodada:** o Playwright MCP usado para testar "visitante novo" estava conectado ao browser real do operador (sessão já logada), não a uma instância isolada. Um achado de segurança relatado em chat ("dado exposto a anônimo") foi **falso alarme** — causado pelo fetch rodar dentro da aba autenticada; descartado após confirmação via `curl` puro (3 cenários sem credencial, todos 401 corretos). Não impactou nenhum commit ou deploy.
 
