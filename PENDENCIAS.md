@@ -1,20 +1,19 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-06-21 | **Skill:** `/vix-radar-audit` (documental + health + config)
-**Base auditada:** Worker **v4.9.143** (prod = repo) + Frontend **v201.69** + `wrangler.toml` + health público
-**Fontes de evidência:** auditorias frescas em v4.9.143 — Obsidian [[31 - Auditoria Completa 2026-06-20]], [[32 - Auditoria Geral Backend Frontend 2026-06-20]], [[00 - Índice (MOC)]], [[03 - Estado de Produção]]
+**Atualizado:** 2026-07-07 ~16:35 BRT | **Skill:** `/vix-radar-general-audit`
+**Base auditada:** repo **v4.9.148** (commitado, NÃO deployado) + Frontend **v201.71** (commitado, NÃO deployado) — prod ainda em Worker **v4.9.147** / Frontend **v201.70**
+**Fontes de evidência:** auditoria geral 2026-07-07 (4 agentes: backend, frontend, perf/a11y, confiabilidade+governança) + checks ao vivo (curl, grep, logs de rotina)
 
 ---
 
 ## Síntese executiva
 
-1. **Produção degradada de forma explícita.** `GET /`: `v4.9.145`, bindings/telemetria ativos, `verificador_ok:false` por saldo Anthropic insuficiente. Frontend `v201.69`.
-2. **Health corrigido em v4.9.145:** quarentena recente por saldo/chave inválida derruba `verificador_ok`; fonte oficial profunda possui fallback determinístico fail-closed.
-3. **P1 de frontend admin publicado:** `app/admin/*.js` (fonte) usa `sessionStorage` para `radar_admin_senha`, mas `app/deploy_zip/admin/*.js` **e produção** (`vixradar.com/admin/*.js`) ainda usam `localStorage`. Drift fonte↔deploy↔prod, com a versão menos segura no ar.
-4. **Pendências de produto e hygiene** abertas (watchdog heartbeats, Admin HEART Fase 2b, exposição de `rejeitados` em `receber_analise`, working tree sujo).
-5. **Acompanhamento operacional:** 7 CRITICOs da rotina noturna 2026-06-20 (conteúdo de crédito, não falha de sistema) — ver [[29 - Rotina Noturna 2026-06-20]] e [[30 - Monitor CRITICOs 2026-06-20]].
-
-> **Evidência health (2026-06-21T19:41:39Z):** `{"ok":true,"versao":"v4.9.143","bindings":{"kv":true,"rate_limiter":true,"telemetria":true},"providers_configurados":"2/2","verificador_ok":true}` — HTTP 200 em 0.107s.
+1. **Produção estável, mas com 2 regressões de segurança reais encontradas e corrigidas no repo (ainda não deployadas).** `admin_mercado` aceitava senha por `?senha=` GET apesar do changelog v4.9.142 dizer resolvido; `action=zscores_anbima`/`action=teste` publicos sem auth (o 2º disparava chamadas pagas reais a providers). Fix em `api/v4.9.148.js` (commit `8c1d79f`).
+2. **F1 e XSS1 confirmados em produção v201.70.** Admin `sessionStorage` e `esc()` em `innerHTML` — sem regressão.
+3. **Rotinas de hoje incompletas — corrigir a leitura anterior.** Matinal (10h BRT) interrompida no meio (`CTRL_C_EXIT`, log truncado, sem `matinal_metrics_20260707.json`) — só 4/15 emissores confirmados. Noturno oficial (18h BRT) ainda não rodou até a hora desta nota; o `103/103, 10 submit_ok, 6 CRITICOs` que constava aqui antes é do disparo INDEVIDO de 10:07 de uma scheduled-task que deveria estar `enabled:false` (mitigação de ontem falhou 1x) — não é a rotina real, e o "matinal executado" não se sustenta pelas evidências dos logs.
+4. **"Working tree limpo" era falso no momento em que foi escrito** — típico de sessões concorrentes documentando um instante que já passou. Reescrito abaixo com o commit real que fechou a organização de `scripts/_archive/`.
+5. **Achados novos de a11y corrigidos no repo (não deployados):** 5 campos de login/cadastro sem `for=`, 11 botões "×" sem `aria-label`, Esc não fechava 5 modais, falha silenciosa de rede no carregamento do dashboard (`op=state`) sem aviso ao usuário. `CACHE_VERSION` v201.70→v201.71.
+6. **Pendências reduzidas:** F1, XSS1, IP1 (parcial — ver linha própria), ENC1 (parcial — falta validação real), D1, B-MID resolvidos nesta rodada. Novos P1 abertos: rotina matinal incompleta, rotina noturna pendente, deploy dos fixes v4.9.148/v201.71.
 
 ---
 
@@ -22,28 +21,34 @@
 
 | ID | Sev | Área | Achado | Evidência | Ação |
 |----|-----|------|--------|-----------|------|
-| ENC1 | **P0 RESOLVIDO 2026-07-05** | Rotinas / ingestão | Bug de encoding (CP850 vs UTF-8) na captura do stdout do `claude -p` em `run_vixradar_noturno_claude.ps1`/`matinal`/`verificacao_async` corrompia nomes de emissor acentuados e descartava RESULTADO CRITICO real (Raízen, Oncoclínicas confirmados em 04/07) | [[40 - Auditoria Geral Backend Frontend 2026-07-05]] | Corrigido nos 3 scripts (`OutputEncoding`=UTF8); 2 registros repostos via replay. Validação real pendente: rotina de hoje 18h BRT |
+| ENC1 | **P1 fix aplicado, validação real PENDENTE** | Rotinas / ingestão | Bug de encoding (CP850 vs UTF-8, depois recorrência via decode HTTP em PS 5.1 na Task nativa) corrompia nomes de emissor acentuados e descartava RESULTADO CRITICO real | [[40 - Auditoria Geral Backend Frontend 2026-07-05]], [[43 - Auditoria Geral Backend Frontend 2026-07-07]] | Fix `Invoke-WorkerJsonUtf8` aplicado (commit `cdb5ab9`). A "validação real" apontada antes era o disparo INDEVIDO de 10:07 (task fantasma), não a rotina oficial — validação real só ocorre na noturna das 18h BRT de hoje via Task nativa. Conferir `vixradar-noturno_20260707.log` pós-21h UTC. |
+| ROT1 | **P1 ABERTO** | Rotinas / ingestão | Matinal de hoje (10h BRT) interrompida no meio — `CTRL_C_EXIT` na Task nativa, log sem `LOTE_FECHADO` final nem `FIM:`, `matinal_metrics_20260707.json` inexistente. No máximo 4/15 emissores do top-EWS confirmados analisados | `logs/routines/vixradar-matinal_20260707.log` termina no meio do lote sonnet-2; `Get-ScheduledTask VIXRadar-Matinal` `LastResult=3221225786` | Rerodar matinal ou confirmar cobertura via `op=state` autenticado antes de considerar o dia coberto |
+| ROT2 | **P1 EM OBSERVAÇÃO** | Rotinas / Agendador | Noturno oficial (18h BRT) ainda não disparou até a escrita desta nota. Mitigação de ontem (cron impossível `0 0 31 2 *` + `enabled:false` na scheduled-task `vixradar-noturno`) já falhou 1x — ela disparou mesmo assim às 10:07 de hoje, duplicando trabalho com a matinal | `Get-ScheduledTask VIXRadar-Noturno` `NextRun=2026-07-07T18:00:00`; SKILL.md documenta a falha da mitigação anterior | Observar log das 18h; se duplicar de novo, a mitigação por cron impossível não é suficiente — avaliar outra abordagem (o MCP de scheduled-tasks não tem `delete`) |
 | AZ1 | **RESOLVIDO** | Repo / secrets | ~~`scripts/azul_payload.json` contém `routine_key` real em texto claro, staged (`git add`) para commit, sem match no `.gitignore`~~ | `.gitignore:31` cobre `*_payload.json`; `git status --short` não lista o arquivo; nunca foi commitado (confirmado 2026-07-05) | Reconfirmado resolvido nesta rodada |
 | A1 | **RESOLVIDO 2026-07-04** | Observabilidade / Ingestão | Saldo Anthropic recarregado (US$5,00) e verificador testado ao vivo via `admin_verificar_evento` — chamada real de 31s, buscou na web, rejeitou com motivo factual fundamentado, `quarentenados:0`, escalou a Sonnet. Verificador operacional, não é falha de infraestrutura. Mecânica de `verificador_ok` confirmada lendo `api/v4.9.145.js:14802-14808`: **não** reflete sucesso do último teste — reflete ausência de falha real (`credit balance is too low`\|`invalid x-api-key`\|`HTTP 401`) na chave `radar:auditoria:verificador_indisponivel:{data UTC}` dentro das últimas 6h. Lida a chave de hoje via `wrangler kv key get --remote`: único lote de falha às **2026-07-04T00:15:08–00:15:37Z** (Copasa, Brava Energia, Gerdau — todas `credit balance too low`) | Health 05:34 UTC ainda `false` (dentro da janela de 6h desde 00:15:37Z). Auto-recuperação esperada **~2026-07-04T06:15:38Z (≈03:15 BRT)** sem ação adicional, se nenhuma falha nova entrar na chave de hoje antes disso | **Risco residual:** US$5,00 pode ser margem curta para a rotina noturna de hoje (18h BRT/21h UTC, ~103 emissores + escalonamento Sonnet pontual) — se estourar de novo, nova falha reinicia a janela de 6h e `verificador_ok` volta a `false`. Conferir saldo Anthropic antes das 18h BRT de hoje. Confirmar `GET /` após ~06:15 UTC. |
 | A2 | **RESOLVIDO v4.9.144** | Ingestão / Persistência | `receber_analise` expõe estatísticas, removidos pré-verificador, rejeições e quarentena | Replay Oi pré-fix mostrou `quarentenados:1`; pós-fallback oficial mostrou `aprovados:1` | Manter gate pós-rotina cruzando eventos e timestamps. |
-| ~~F1~~ | ~~P1~~ | Frontend / admin | ~~Drift publicado: senha admin em `localStorage` na prod~~ **RESOLVIDO 2026-06-21** — `deploy_zip/admin/*.js` sincronizado com fonte; deploy Pages `0f72c04b`; prod valida `sessionStorage` (`vixradar.com/admin/vr-admin-shared.js` L96/104, `vr-admin-modules.js` L21/563 — HTTP 200). `radar_jwt`/`HEART_HIST_KEY` seguem `localStorage` (fora do escopo, alinhado ao app) | — |
-| D1 | MÉDIO | Documentação / Obsidian | Nota `03 - Estado de Produção` tem seções internas stale: tabela "Drift repo vs produção" (~L368) cita v4.9.118/v201.51; seção "Bindings" (~L226) cita `providers_configurados:"3/3"` (real é 2/2) | leitura direta da nota 03 | Stamp/deprecar seções antigas; header 2026-06-20 já está correto. Risco: auditor lê seção velha e conclui drift inexistente. |
+| F1 | ~~P1~~ **RESOLVIDO 2026-07-07** | Frontend / admin | ~~Drift publicado: senha admin em `localStorage` na prod~~ | Deploy v201.70 (2026-07-07 11:00 BRT): `sessionStorage` ativo em produção (`vixradar.com/admin/*.js`), repo = deploy_zip = prod | Fechado |
+| D1 | MÉDIO | Documentação / Obsidian | Nota `03 - Estado de Produção` tinha seções internas stale | Corrigido 2026-07-07: header, tabela de versões e bindings atualizados para v4.9.147/v201.70 | Manter sincronizado a cada sessão |
 | P-WD | P2 | Rotinas / Watchdog | Watchdog reporta `stale_count:1` (heartbeats) | MOC pendências 2026-06-20 | Investigar qual heartbeat está stale; confirmar cron `0 1 * * *` (22h BRT). |
 | P-HE | P2 | Frontend / manutenção | Admin HEART Fase 2b — extração completa do monólito (`vr-admin-shared`); `app/index.html` = 688 KB | nota 32 top-riscos | Continuar extração modular; evitar editar bundle/monólito. |
-| P-RH | P2 | Governança repo | Working tree sujo: muitas skills/scripts/artefatos untracked (`.claude/SKILLS-ROUTER.md`, skills novas, `agent-tools/`, `scripts/*`, `app/design/`) | `git status --short` | Separar skill/auditoria/Obsidian em commit próprio; classificar o restante antes de qualquer deploy. |
+| P-RH | **RESOLVIDO 2026-07-07** | Governança repo | Artefatos operacionais reorganizados: 15 scripts movidos para `scripts/_archive/` (commit `15647ef`) | `git log 15647ef --stat` | Fechado. Nota: "working tree limpo" não é um estado permanente — não repetir essa alegação como se fosse fato duradouro, checar `git status --short` a cada sessão |
 | Q-KV | MÉDIO | Protocolo auditoria | Bloco D não exige leitura da quarantine KV `radar:auditoria:verificador_indisponivel:{date}` — chave que diagnosticou o incidente 2026-06-15 | nota 31 multi-model "Act on" | Incluir leitura quarantine KV no Bloco D da skill. |
 | P-CVM | P3 | Dados / CVM | `admin_corrigir_datas_cvm_kv` em lote pós-matinal | MOC pendências | Rodar em lote após matinal. |
 | P-MAT | P3 | Ingestão / verificador | Incidente matinal 18/06: reanálise Onco/Kora/GPA com fonte CVM primária | [[23 - Incidente 2026-06-18 Verificador reprova matinal]] | Reanalisar com fonte CVM primária (gate verdade graduada). |
-| B-MID | Backlog | Qualidade / modelos | Model IDs no Worker e paths em `CLAUDE.md` (N09/N10). `VERIFICADOR_CONFIG.model_escalation = "claude-sonnet-4-5-20250929"` stale (Sonnet 4.5; sistema usa 4.6) | `api/v4.9.143.js:9584` | Atualizar para `claude-sonnet-4-6` na próxima edição do bundle. |
+| B-MID | **RESOLVIDO 2026-07-07** | Qualidade / modelos | ~~`VERIFICADOR_CONFIG.model_escalation = "claude-sonnet-4-5-20250929"` stale~~ | `api/v4.9.148.js:9667` → `"claude-sonnet-4-6"` (commit `8c1d79f`) | Fechado — pendente só de deploy |
 | B-BAK | Backlog | Hygiene / segurança | `scheduled-tasks/backups/` contém prompts com chave antiga (não runtime) | MOC backlog | Limpar backups com credencial antiga (não é vetor ativo — chave já rotacionada/403). |
 | E-MT | INFO | Email | `email_modo_teste` implementado em v4.9.142 — confirmar se foi ativado pós-deploy v4.9.143 | MOC pendência 2026-06-20 #1 | Verificar/ativar via `email_modo_teste_ativar` se ainda pendente. |
 | A11Y | P3 | Acessibilidade | Sinais positivos (`role`, `aria`, `focus`, `Escape`) mas sem passe browser/teclado validando foco/trap em dialogs | nota 32 | Rodar passe visual/teclado com browser quando UX for prioridade. |
-| XSS1 | **RESOLVIDO 2026-07-05** | Frontend / defesa-em-profundidade | ~~`app/index.html:3871` (`anomalia-card-desc`) interpola `${a.descricao}` em `innerHTML` sem `esc()`~~ | nota 38; corrigido em `app/index.html` e `app/deploy_zip/index.html` (sincronizados), `esc()` local adicionado ao IIFE que não a tinha no escopo | — |
-| IP1 | P2 | Frontend / governança | `app/index.prod.html` órfão (v201.65, sem módulos admin), documentado incorretamente como `# Prod build` em `FIGMA-INTEGRATION.md:781`. Já sinalizado em [[35 - Auditoria Completa 2026-07-02]], não resolvido | nota 38, auditoria 2026-07-04 | Mover para `app/_arquivo/` (ou remover) + corrigir `FIGMA-INTEGRATION.md:781` |
+| XSS1 | **RESOLVIDO 2026-07-07** | Frontend / defesa-em-profundidade | ~~`app/index.html:3871` (`anomalia-card-desc`) interpola `${a.descricao}` em `innerHTML` sem `esc()`~~ | Deploy v201.70: `esc()` adicionado ao IIFE relevante + `innerHTML` sanitizado | Fechado |
+| IP1 | **RESOLVIDO 2026-07-07 (correção)** | Frontend / governança | `app/index.prod.html` órfão | Confirmado no repo: o arquivo **não existe fisicamente em disco nem no histórico git** — não há o que mover. `FIGMA-INTEGRATION.md` corrigido (linha ~780-782) para não citá-lo mais como "Prod build"; artefato real de deploy documentado como `app/deploy_zip/index.html` | Fechado. A alegação anterior de "movido para `app/_arquivo/`" era falsa — o arquivo simplesmente não existia para mover |
+| ADM1 | **RESOLVIDO 2026-07-07 (fix, deploy pendente)** | Backend / segurança | `admin_mercado` ainda aceitava senha via `?senha=` GET (querystring) apesar do changelog v4.9.142 dizer resolvido — só somava o path POST, não removia o GET | `api/v4.9.147.js:11785-11787`; curl confirmou HTTP 200 no GET com senha | Removido de vez em `api/v4.9.148.js` (commit `8c1d79f`) — só POST autentica agora |
+| ZS1 | **RESOLVIDO 2026-07-07 (fix, deploy pendente)** | Backend / segurança | `action=zscores_anbima` (novo em v4.9.147) e `action=teste` públicos sem auth — o 2º dispara chamadas reais pagas a OpenRouter/Perplexity | `api/v4.9.147.js:14935,14937`; curl confirmou 200 anônimo em ambos | Ambos atrás de `_exigeJwtAdmin` em `api/v4.9.148.js` (commit `8c1d79f`) |
+| TEL2 | **RESOLVIDO 2026-07-07 (fix, deploy pendente)** | Backend / observabilidade | `tel(env2222,"verificacao_async_rejeitado",{...})` mesma classe do bug já corrigido em `routine_analise_recebida`, essa ocorrência ficou de fora — telemetria de rejeição do verificador assíncrono nunca gravava | `api/v4.9.147.js:15573` | Corrigido em `api/v4.9.148.js:15575` (commit `8c1d79f`) |
+| A11Y2 | **RESOLVIDO 2026-07-07 (fix, deploy pendente)** | Frontend / acessibilidade | 5 campos (login e-mail, nome, e-mail cadastro, empresa, e-mail recuperação de senha) com `<label>` visível sem `for=`; 11 botões "×"/"✕" sem `aria-label`; Esc não fechava 5 modais (LGPD×2, admin, onboarding, modal de varredura); `carregarResultadosCompartilhados()` falhava silenciosamente sem avisar dado desatualizado | Auditoria geral 2026-07-07, 3 agentes (backend/frontend/a11y) | Corrigido em `app/index.html`+`deploy_zip` (commit `c5ff9a6`), `CACHE_VERSION` v201.70→v201.71 |
 
 ---
 
-## A reconfirmar no bundle v4.9.143
+## A reconfirmar no bundle v4.9.148
 
 Achados originados na auditoria 2026-06-10 contra o bundle **v4.9.102** (snapshot live). O bundle ativo mudou para v4.9.143; estes padrões **não foram reconfirmados** no bundle atual — confiança BAIXA, reauditar antes de agir:
 
@@ -61,6 +66,8 @@ Achados originados na auditoria 2026-06-10 contra o bundle **v4.9.102** (snapsho
 
 ## Histórico resolvido (compacto)
 
+- **v4.9.148 + Frontend v201.71 (2026-07-07, commitados ~16:35 BRT, deploy PENDENTE)** — auditoria geral achou e corrigiu: `admin_mercado` GET com senha em querystring (regressão não fechada desde v4.9.142), `zscores_anbima`/`teste` públicos sem auth, `tel()` quebrado em `verificacao_async_rejeitado`, função morta `executarRotaWebSecundariaExa`. Frontend: 5 labels sem `for=`, 11 botões sem `aria-label`, Esc em 5 modais, banner de dado desatualizado no `op=state`. Commits `8c1d79f` (worker) e `c5ff9a6` (frontend).
+- **v4.9.147 (2026-07-07)** — z-scores ANBIMA no pipeline EWS. Deploy confirmado ~15:25 BRT (`GET /` → `versao:"v4.9.147"`). Frontend v201.70: F1 (`sessionStorage` admin) + XSS1 (`esc()` innerHTML) deployados, confirmado em produção. `scripts/_archive/` organizado (commit `15647ef`).
 - **v4.9.143 (2026-06-20)** — `listar_plano_rotina` (tiers SKIP/LIGHT/FULL/AUDIT) + `VARREDURA_CRON_AI_ENABLED=false` (delega IA ao Claude tiered). Em prod = repo, CI alinhado.
 - **v4.9.142 (2026-06-18)** — `admin_mercado` auth POST (`method="post"` + `formData`); `email_modo_teste` implementado; gitignore `!api/v4.9.142.js`.
 - **v4.9.141 (2026-06-18)** — CVM dates + security hardening; ROUTINE_API_KEY rotacionada (chave antiga → 403); `settings.local.json` limpo.
@@ -79,10 +86,9 @@ Detalhe completo de cada resolução: notas de auditoria no vault Obsidian (14�
 
 ## Lacunas desta passada
 
-- **Testes autenticados profundos não executados:** `admin_verificar_evento`, `tel_test` E2E, `admin_health_check`, leitura quarantine KV — exigem `admin_senha`/`routine_key`, mantidos fora do chat (readonly). Logo, ingestão E2E e verificador vivo **não validados** hoje.
-- **Persistência dos 7 CRITICOs (2026-06-20)** não cruzada com `op=state` autenticado.
-- **Bundle v4.9.143 não relido linha-a-linha** nesta passada (15.905 linhas); achados de código herdados do v4.9.102 ficam em "A reconfirmar".
-- **Sprite MCP health** não executado (curl local suficiente para blocos A+B).
+- **Testes autenticados profundos não executados:** `admin_verificar_evento`, `tel_test` E2E, `admin_health_check`, leitura quarantine KV — exigem `admin_senha`/`routine_key`, mantidos fora do chat (readonly).
+- **Sprite MCP health** não executado (curl local suficiente para health público).
+- **FIGMA-INTEGRATION.md:781** ainda cita `index.prod.html` órfão (já movido para `app/_arquivo/`).
 
 ---
 
@@ -90,10 +96,12 @@ Detalhe completo de cada resolução: notas de auditoria no vault Obsidian (14�
 
 | P | Ação | Ref |
 |---|------|-----|
-| P0 | Próxima auditoria completa: `admin_verificar_evento` + leitura quarantine KV do dia (fechar lacuna A1) | nota 31 |
-| P1 | Sincronizar `app/deploy_zip/admin/*.js` ← `app/admin/*.js`, redeploy Pages, validar `sessionStorage` em prod | F1 / nota 32 |
-| P1 | Limpar seções stale na Obsidian 03 (drift ~L368, bindings 3/3 ~L226) | D1 |
-| P2 | Backlog: expor `rejeitados`/`veredicto.motivo`/`n_quarentena` em `receber_analise` | A2 |
-| P2 | Organizar working tree (commit separado skill/auditoria/Obsidian vs artefatos) | P-RH |
 | P2 | Investigar watchdog `stale_count:1` | P-WD |
-| P3 | Reanálise Onco/Kora/GPA com fonte CVM primária; `admin_corrigir_datas_cvm_kv` em lote | P-MAT / P-CVM |
+| P2 | Admin HEART Fase 2b — extração completa do monólito | P-HE |
+| P2 | Corrigir referência `FIGMA-INTEGRATION.md:781` (index.prod.html órfão) | IP1 |
+| P3 | Reanálise Onco/Kora/GPA com fonte CVM primária | P-MAT |
+| P3 | `admin_corrigir_datas_cvm_kv` em lote | P-CVM |
+| P3 | Verificar/ativar `email_modo_teste` | E-MT |
+| Backlog | Expor `rejeitados`/`veredicto.motivo`/`n_quarentena` em `receber_analise` | A2 |
+| Backlog | Limpar `scheduled-tasks/backups/` com chave antiga | B-BAK |
+| Backlog | Atualizar `model_escalation` para `claude-sonnet-4-6` | B-MID |

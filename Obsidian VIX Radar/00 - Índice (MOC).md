@@ -39,19 +39,21 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[40 - Auditoria Geral Backend Frontend 2026-07-05]] — `/vix-radar-general-audit` (OODA); **P0 novo**: bug de encoding (CP850 vs UTF-8) na captura do stdout do `claude -p` corrompe nomes de emissor acentuados e descarta RESULTADO CRITICO real (Raízen, Oncoclínicas confirmados) — corrigido nos 3 scripts de rotina, 2 registros repostos em produção. XSS1 e AZ1 (nota 38) confirmados resolvidos
 - [[41 - Auditoria Completa 2026-07-06]] — `/vix-radar-audit`; saudável, sem drift. **Incidente resolvido**: noturno rodou DUPLICADO (Task nativa 18:00 + scheduled-task Claude Code) → colisão de handle no stderr date-tagged → 37 submits de cobertura mínima. Fix: stderr por-PID + mutex global + scheduled-task Claude Code desabilitada. Run canônico entregou 103/103 real (`stale_24h:0`, `max_stale:1.5h`)
 - [[42 - Auditoria Geral Backend Frontend 2026-07-06]] — `/vix-radar-general-audit`; saudável, sem P0/P1. AZ1 (secret) confirmado resolvido. P2: **F1 confirmado ainda em prod** (admin `localStorage`, repo já em `sessionStorage`, fix não deployado); script `run_vixradar_verificacao_async.ps1` untracked. P3: jpeg solto na raiz
-- `PENDENCIAS.md` (root) — **lista viva de pendências** (base histórica v4.9.143); A1/A2 corrigidos em v4.9.144–145; permanecem saldo Anthropic, F1 drift admin `localStorage`, watchdog e Admin HEART 2b
+- [[43 - Auditoria Geral Backend Frontend 2026-07-07]] — `/vix-radar-general-audit` (manhã); P0 governança (bundles untracked) resolvido; agendador disparando tasks desabilitadas mitigado; recorrência do bug de encoding via Task nativa diagnosticada e corrigida; drift XSS/F1 invisível fechado com deploy v201.70
+- [[44 - Auditoria Geral Backend Frontend 2026-07-07]] — `/vix-radar-general-audit` (tarde); achou e corrigiu no repo (deploy pendente): `admin_mercado` GET com senha em querystring (regressão não fechada desde v4.9.142), `zscores_anbima`/`teste` públicos sem auth (custo real), `tel()` quebrado, 6 campos + 11 botões sem nome acessível, 5 modais sem Esc, falha silenciosa no `op=state`. **Correção de registro**: "rotina 07/07 103/103" e "working tree limpo" alegados por sessão concorrente eram falsos — matinal real ficou incompleta, noturno oficial não tinha rodado
+- `PENDENCIAS.md` (root) — **lista viva de pendências**, atualizada 07/07 ~16:35 BRT com os achados desta rodada
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
 
-## Versões confirmadas (última sessão: 2026-07-03 — v4.9.145 em prod)
+## Versões confirmadas (última sessão: 2026-07-07 — v4.9.147 em prod)
 
-**Produção:** v4.9.145; rotina v2 tiered ativa; CI local `EXPECTED_WORKER=v4.9.145`. Health degradado corretamente por saldo Anthropic insuficiente.
+**Produção:** v4.9.147 (z-scores ANBIMA); Frontend v201.70 (F1 sessionStorage + XSS1 esc()); rotina v2 tiered ativa; CI alinhado dinamicamente. Health: `ok:true`, `verificador_ok:true`.
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.145** (prod = repo local) | fallback oficial fail-closed; health real do verificador; notícias até 02/07 restauradas |
-| Frontend `vixradar.com` | **v201.69** (prod = repo) | Admin HEART modular; senha admin em `sessionStorage` |
+| Worker `radar-credito-api` | **v4.9.147** (prod = repo local) | z-scores ANBIMA; health real do verificador; CI alinhado |
+| Frontend `vixradar.com` | **v201.70** (prod = repo) | Admin HEART modular; senha admin em `sessionStorage` (F1); `esc()` innerHTML (XSS1) |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |

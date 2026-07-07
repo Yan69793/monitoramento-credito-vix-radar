@@ -87,7 +87,7 @@ Cascade OpenRouter → Gemini → Perplexity **obsoleta desde v4.9.108**.
 |---------|--------|---------|
 | Pulso manual | `claude-haiku-4-5-20251001` (Anthropic API) | Usuário no frontend |
 | Lote 103 emissores | Opus matinal (top 15) + Sonnet noturno | Scheduled Tasks |
-| Verificador adversarial (CRITICO + amostra RELEVANTE) | Assíncrono via Claude Code (assinatura), `claude-sonnet-4-6` — desde v4.9.146 | Fila KV `radar:verif_fila:{data}` drenada por scheduled task `vixradar-verificacao-async` (script pronto em `scripts/run_vixradar_verificacao_async.ps1`, registro da task ainda pendente) |
+| Verificador adversarial (CRITICO + amostra RELEVANTE) | Assíncrono via Claude Code (assinatura), `claude-sonnet-4-6` — desde v4.9.146 | Fila KV `radar:verif_fila:{data}` drenada por scheduled task `vixradar-verificacao-async` (registrada, cron `20 10,18 * * *`, confirmada rodando e drenando fila em 07/07) |
 
 Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — não indicam uso ativo.
 
@@ -97,10 +97,12 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.146** | `api/wrangler.toml` → `v4.9.146.js` (deploy 2026-07-04) | https://api.vixradar.com |
-| Frontend | **v201.69** | `app/index.html` + `app/deploy_zip/version.json` | https://vixradar.com |
+| Worker | **v4.9.147** | `api/wrangler.toml` → **v4.9.148.js** (commitado 07/07 ~16:xx BRT, deploy PENDENTE) | https://api.vixradar.com |
+| Frontend | **v201.70** | `app/index.html` → **v201.71** (commitado 07/07, deploy PENDENTE) | https://vixradar.com |
 | Deploy Worker | `cd api && npx wrangler deploy` | — | — |
 | Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
+
+Drift atual (repo à frente de prod): v4.9.148 corrige `admin_mercado` GET com senha em querystring, `zscores_anbima`/`teste` públicos sem auth e um `tel()` quebrado. v201.71 corrige a11y (labels, aria-label, Esc em modais) e falha silenciosa no carregamento do dashboard. Deploy requer autorização explícita do operador.
 
 Drift: conferir Obsidian antes de cada sessão — repo pode estar à frente ou atrás de produção.
 

@@ -1,6 +1,18 @@
 # Estado de Produção — VIX Radar
 
-Atualizado: 2026-07-06 (Worker v4.9.146 + Frontend v201.69). Rotina v2: [[27 - Otimizacao Tokens Rotina Noturna]] · [[29 - Rotina Noturna 2026-06-20]] · [[rotinas/2026-06-22-haiku-12]] · [[rotinas/2026-06-22-haiku-13]] · [[35 - Auditoria Completa 2026-07-02]] · [[rotinas/2026-07-03-haiku-10]] · [[rotinas/2026-07-02-noturno-v2]] · [[40 - Auditoria Geral Backend Frontend 2026-07-05]].
+Atualizado: 2026-07-07 ~16:35 BRT (prod: Worker v4.9.147 + Frontend v201.70; repo à frente: v4.9.148 + v201.71 commitados, deploy PENDENTE). Rotina v2: [[27 - Otimizacao Tokens Rotina Noturna]] · [[29 - Rotina Noturna 2026-06-20]] · [[rotinas/2026-06-22-haiku-12]] · [[rotinas/2026-06-22-haiku-13]] · [[35 - Auditoria Completa 2026-07-02]] · [[rotinas/2026-07-03-haiku-10]] · [[rotinas/2026-07-02-noturno-v2]] · [[40 - Auditoria Geral Backend Frontend 2026-07-05]] · [[41 - Auditoria Completa 2026-07-06]] · [[42 - Auditoria Geral Backend Frontend 2026-07-06]] · [[44 - Auditoria Geral Backend Frontend 2026-07-07]].
+
+> [!warning] Correção de registro — bloco anterior (abaixo) misturava fato com alegação não verificada
+> Sessão concorrente registrou "rotina 07/07 executada 103/103" e "working tree limpo" — ambos falsos no momento em que a auditoria geral das ~16h os checou. O `103/103` era o disparo INDEVIDO de 10:07 de uma scheduled-task `enabled:false` (mitigação de ontem falhou 1x), não a rotina oficial das 18h. A matinal real (10h BRT) foi interrompida (`CTRL_C_EXIT`), sem `matinal_metrics_20260707.json`. Detalhe: [[44 - Auditoria Geral Backend Frontend 2026-07-07]].
+
+> [!success] Fixes v4.9.148 + v201.71 — commitados 07/07 ~16:35 BRT, deploy PENDENTE de autorização
+> Auditoria geral (4 agentes) achou e corrigiu no repo: **backend** (`api/v4.9.148.js`, commit `8c1d79f`) — `admin_mercado` removeu de vez o path GET com senha em querystring (regressão não fechada desde v4.9.142); `action=zscores_anbima` e `action=teste` (público, disparava chamadas pagas reais a providers) agora exigem `_exigeJwtAdmin`; `tel()` quebrado em `verificacao_async_rejeitado` corrigido; função morta `executarRotaWebSecundariaExa` removida. **Frontend** (`app/index.html`+`deploy_zip`, commit `c5ff9a6`) — 5 labels de login/cadastro sem `for=`, 11 botões "×" sem `aria-label`, Esc não fechava 5 modais, `carregarResultadosCompartilhados()` falhava silenciosa sem avisar dado desatualizado (novo banner `dados_desatualizados`). `CACHE_VERSION` v201.70→v201.71. Validado local (preview estático + `preview_eval`, sem erro de console, `for=`/Esc/banner testados funcionalmente). **Nada disso está em produção ainda** — `GET /` continua `versao:"v4.9.147"`.
+
+> [!success] Deploy v4.9.147 — z-scores ANBIMA (07/07)
+> v4.9.146 → v4.9.147: adiciona cálculo de z-scores ANBIMA (spread/volume) ao pipeline de anomalias de mercado (EWS). Deploy 2026-07-07 ~15:25 BRT. Validação: `GET /` → `versao:"v4.9.147"` HTTP 200, `verificador_ok:true`, bindings OK. CI alinhado.
+
+> [!success] Frontend v201.70 — deploy 2026-07-07 (11:00 BRT)
+> F1 RESOLVIDO: admin `localStorage` → `sessionStorage` para `radar_admin_senha`. XSS1 RESOLVIDO: `esc()` em `anomalia-card-desc` (`innerHTML`). Deploy Pages; `version.json` e `CACHE_VERSION` = v201.70. `app/index.html` = `app/deploy_zip/index.html` (hash idêntico), sem drift.
 
 > [!error] Incidente corrigido — noturno rodou DUPLICADO, 2ª instância submeteu cobertura mínima (06/07)
 > **Causa raiz:** noturna agendada em DOIS gatilhos (Task Scheduler nativo `VIXRadar-Noturno` 18:00 + scheduled-task Claude Code `vixradar-noturno` cron `0 18 * * *`). As duas instâncias compartilhavam `noturno_stderr_<data>.txt` (`run_vixradar_noturno_claude.ps1:189`, date-tagged); a 2ª tomava *sharing violation* em todo lote → 37 submits `NENHUM`/0 buscas/0 tokens (`noturno_metrics_20260706.json`: `tokens:0`, `buscas:0`).
@@ -53,11 +65,11 @@ Atualizado: 2026-07-06 (Worker v4.9.146 + Frontend v201.69). Rotina v2: [[27 - O
 
 | Componente | Versão | Evidência | Data confirmação |
 |---|---|---|---|
-| Worker `radar-credito-api` | **v4.9.146** | `GET /` `versao:"v4.9.146"`; `telemetria:true`; `verificador_ok:true`; `providers 2/2` | 2026-07-06 |
-| Frontend `vixradar.com` | **v201.69** | `version.json`; 4 módulos `app/admin/*.js` servidos | 2026-06-18 |
-| Frontend repo | v201.69 | `CACHE_VERSION` alinhado; admin `sessionStorage` para senha | 2026-06-18 |
-| Worker repo | v4.9.146 | `api/wrangler.toml main="v4.9.146.js"` | 2026-07-06 |
-| CI canonical-test | v4.9.146 | `.github/workflows/canonical-test.yml` `EXPECTED_WORKER=v4.9.146` | 2026-07-06 |
+| Worker `radar-credito-api` | **v4.9.147** | `GET /` `versao:"v4.9.147"`; `telemetria:true`; `verificador_ok:true`; `providers 2/2` | 2026-07-07 |
+| Frontend `vixradar.com` | **v201.70** | `version.json`; `CACHE_VERSION` HTML; F1 (`sessionStorage`) e XSS1 (`esc()`) deployados | 2026-07-07 |
+| Frontend repo | v201.70 | `CACHE_VERSION` alinhado; `app/index.html` = `app/deploy_zip/index.html` (hash idêntico) | 2026-07-07 |
+| Worker repo | v4.9.147 | `api/wrangler.toml main="v4.9.147.js"` | 2026-07-07 |
+| CI canonical-test | v4.9.147 | `.github/workflows/canonical-test.yml` dinâmico (lê `main` do `wrangler.toml`) | 2026-07-07 |
 | ROUTINE_API_KEY | rotacionada | `wrangler secret put` 2026-06-18; rotinas scheduled-tasks atualizadas | 2026-06-18 |
 | Cobertura emissores | 103/103 | `listar_todos_emissores` `total:103` | 2026-06-18 |
 | Git `origin/main` | `d61840f` | `fix(email): header boletim diario v4.9.137` — deploy v4.9.139 à frente do commit | 2026-06-18 |
