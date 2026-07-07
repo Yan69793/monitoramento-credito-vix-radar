@@ -777,8 +777,9 @@ E:\Diretorio\Claude\Monitoramento de Credito\
 │   ├── index.js               # Entry point
 │   └── routes/                # API endpoints
 ├── app/                        # Frontend SPA
-│   ├── index.html             # Main entry (6000+ linhas)
-│   ├── index.prod.html        # Prod build
+│   ├── index.html             # Fonte viva do frontend (6000+ linhas)
+│   ├── deploy_zip/            # Artefato REAL de deploy de produção
+│   │   └── index.html         # Sincronizado a partir de app/index.html antes do deploy Pages
 │   ├── admin/                 # Admin JS modules
 │   │   ├── vr-admin-modules.js
 │   │   ├── vr-admin-engajamento.js
