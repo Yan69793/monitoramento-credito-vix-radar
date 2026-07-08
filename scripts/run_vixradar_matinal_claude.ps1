@@ -170,6 +170,13 @@ function Parse-TokensFromOutput([string]$text) {
     return $total
 }
 
+function Test-AuthFailure([string]$text) {
+    # claude -p sai com exit 0 mesmo sem sessao valida (so imprime aviso no stdout) -
+    # sem esta checagem o lote conta como sucesso mascarando 0 analises reais (nota 2026-07-08).
+    if (-not $text) { return $false }
+    return [bool]([regex]::IsMatch($text, 'not logged in|please run\s*/?login|authentication[_\s-]error|invalid_grant', 'IgnoreCase'))
+}
+
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $out = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
         --model $Model `
@@ -248,7 +255,7 @@ try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exi
 
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stats = @{
-    skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0
+    skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0; auth_fail = 0; silent_fail = 0
     tokens_total = 0; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0
     batches_run = 0; sonnet_count = 0; haiku_count = 0
     criticos = New-Object System.Collections.Generic.List[string]
@@ -315,20 +322,34 @@ try {
         $stats.batches_run++
         if ($job.Name -eq 'sonnet') { $stats.sonnet_count += $job.Chunk.Count } else { $stats.haiku_count += $job.Chunk.Count }
 
+        $okLines = 0
         if ($result.Output) {
             $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) }
             foreach ($line in $result.Output) {
                 if ($line -match '^OK\|([^|]+)\|([^|]+)\|([^|]+)\|') {
+                    $okLines++
                     if ($Matches[3] -eq 'CRITICO') { $stats.criticos.Add($Matches[1]) }
                 }
             }
         }
 
-        $bt = Parse-TokensFromOutput ($result.Output -join "`n")
+        $joinedOut = ($result.Output -join "`n")
+        $bt = Parse-TokensFromOutput $joinedOut
         if ($bt -gt 0) { $stats.tokens_total += $bt }
         Write-Log ('Tokens lote=' + $bt + ' acum=' + $stats.tokens_total)
 
         if ($result.ExitCode -ne 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
+
+        # claude -p sem sessao valida sai com ExitCode 0 e so imprime aviso no stdout -
+        # sem isto o lote conta como batch_ok mesmo com 0 emissores analisados.
+        if (Test-AuthFailure $joinedOut) {
+            $stats.auth_fail++
+            Write-Log ('ERRO: lote ' + $label + ' sem autenticacao (claude -p nao logado)')
+        } elseif ($okLines -eq 0) {
+            $stats.silent_fail++
+            Write-Log ('ERRO: lote ' + $label + ' sem linhas OK| - falha silenciosa (0 emissores confirmados)')
+        }
+
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
 
         if ($stats.tokens_total -ge $TokenTarget -and -not $stats.tokens_over_target) {
@@ -355,14 +376,21 @@ try {
         tokens_total_est = $stats.tokens_total; tokens_over_target = $stats.tokens_over_target
         tokens_hard_hit = $stats.tokens_hard_hit; skip_ok = $stats.skip_ok
         sonnet_llm = $stats.sonnet_count; haiku_llm = $stats.haiku_count; deferred = $stats.deferred
-        batches = $stats.batches_run; criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
+        batches = $stats.batches_run; auth_fail = $stats.auth_fail; silent_fail = $stats.silent_fail
+        criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
     } | ConvertTo-Json -Depth 5 | Set-Content $MetricsFile -Encoding UTF8
 
     Write-Log ('FIM: tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap +
         ' sonnet=' + $stats.sonnet_count + ' haiku=' + $stats.haiku_count +
-        ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
+        ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count +
+        ' auth_fail=' + $stats.auth_fail + ' silent_fail=' + $stats.silent_fail)
 
-    if ($stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) { $exitCode = 6 }
+    if ($stats.auth_fail -gt 0) {
+        Write-Log 'ERRO FATAL: claude -p sem sessao autenticada em pelo menos 1 lote - rotina nao cobriu todos os emissores'
+        $exitCode = 7
+    } elseif ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) {
+        $exitCode = 6
+    }
 } finally {
     Remove-BatchPrompts $DateTag
     Invoke-Cleanup -Aggressive
