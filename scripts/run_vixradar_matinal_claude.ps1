@@ -170,11 +170,13 @@ function Parse-TokensFromOutput([string]$text) {
     return $total
 }
 
-function Test-AuthFailure([string]$text) {
-    # claude -p sai com exit 0 mesmo sem sessao valida (so imprime aviso no stdout) -
-    # sem esta checagem o lote conta como sucesso mascarando 0 analises reais (nota 2026-07-08).
-    if (-not $text) { return $false }
-    return [bool]([regex]::IsMatch($text, 'not logged in|please run\s*/?login|authentication[_\s-]error|invalid_grant', 'IgnoreCase'))
+function Test-ClaudeAuthFailure([string[]]$outputLines) {
+    # Achado 2026-07-08 (identica a run_vixradar_noturno_claude.ps1/run_vixradar_verificacao_async.ps1):
+    # claude.exe pode perder a sessao OAuth local (Task Scheduler roda sem console interativo) e
+    # imprimir esta mensagem em vez de analisar - exit code do processo continua 0, entao sem esta
+    # checagem o lote falso-positiva como sucesso e a rotina degrada silenciosamente (0 analises).
+    $texto = ($outputLines -join "`n")
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead'
 }
 
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
@@ -184,7 +186,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         --add-dir $ScheduledTasks `
         --permission-mode bypassPermissions `
         --output-format text 2>&1
-    return @{ Output = $out; ExitCode = $LASTEXITCODE }
+    $authFail = Test-ClaudeAuthFailure $out
+    return @{ Output = $out; ExitCode = $LASTEXITCODE; AuthFailure = $authFail }
 }
 
 function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $routineKey, [switch]$Ultra) {
@@ -322,6 +325,14 @@ try {
         $stats.batches_run++
         if ($job.Name -eq 'sonnet') { $stats.sonnet_count += $job.Chunk.Count } else { $stats.haiku_count += $job.Chunk.Count }
 
+        if ($result.AuthFailure) {
+            Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login" antes do proximo disparo. Abortando lotes restantes para nao degradar em cobertura minima silenciosa (' + ($jobs.Count - $ji) + ' lote(s) restante(s) NAO processado(s)).')
+            $exitCode = 7
+            $stats.auth_fail++
+            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+            break
+        }
+
         $okLines = 0
         if ($result.Output) {
             $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) }
@@ -333,19 +344,13 @@ try {
             }
         }
 
-        $joinedOut = ($result.Output -join "`n")
-        $bt = Parse-TokensFromOutput $joinedOut
+        $bt = Parse-TokensFromOutput ($result.Output -join "`n")
         if ($bt -gt 0) { $stats.tokens_total += $bt }
         Write-Log ('Tokens lote=' + $bt + ' acum=' + $stats.tokens_total)
 
         if ($result.ExitCode -ne 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
 
-        # claude -p sem sessao valida sai com ExitCode 0 e so imprime aviso no stdout -
-        # sem isto o lote conta como batch_ok mesmo com 0 emissores analisados.
-        if (Test-AuthFailure $joinedOut) {
-            $stats.auth_fail++
-            Write-Log ('ERRO: lote ' + $label + ' sem autenticacao (claude -p nao logado)')
-        } elseif ($okLines -eq 0) {
+        if ($okLines -eq 0) {
             $stats.silent_fail++
             Write-Log ('ERRO: lote ' + $label + ' sem linhas OK| - falha silenciosa (0 emissores confirmados)')
         }
