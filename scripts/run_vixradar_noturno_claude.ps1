@@ -538,6 +538,9 @@ try {
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
 
     if ($stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) { $exitCode = 6 }
+} catch {
+    Write-Log ('ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message)
+    $exitCode = 1
 } finally {
     Remove-BatchPrompts $DateTag
     Invoke-Cleanup -Aggressive
