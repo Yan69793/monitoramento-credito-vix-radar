@@ -57,7 +57,7 @@ function Get-RoutineKey {
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
-    $stderrFile = Join-Path $LogDir ('verifasync_stderr_' + $DateTag + '.txt')
+    $stderrFile = Join-Path $LogDir ('verifasync_stderr_' + $DateTag + '_' + $PID + '.txt')
     $raw = $null; $exitCode = 1
     try {
         # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao
