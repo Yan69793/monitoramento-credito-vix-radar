@@ -87,7 +87,7 @@ Cascade OpenRouter → Gemini → Perplexity **obsoleta desde v4.9.108**.
 |---------|--------|---------|
 | Pulso manual | `claude-haiku-4-5-20251001` (Anthropic API) | Usuário no frontend |
 | Lote 103 emissores | Opus matinal (top 15) + Sonnet noturno | Scheduled Tasks |
-| Verificador adversarial (CRITICO + amostra RELEVANTE) | Assíncrono via Claude Code (assinatura), `claude-sonnet-4-6` — desde v4.9.146 | Fila KV `radar:verif_fila:{data}` drenada por scheduled task `vixradar-verificacao-async` (registrada, cron `20 10,18 * * *`, confirmada rodando e drenando fila em 07/07) |
+| Verificador adversarial (CRITICO + amostra RELEVANTE) | Assíncrono via Claude Code (assinatura), `claude-sonnet-4-6` — desde v4.9.146 | Fila KV `radar:verif_fila:{data}` drenada por scheduled task `vixradar-verificacao-async` (registrada, cron `20 10,18 * * *`). Ponto frágil conhecido: depende de sessão OAuth local do `claude.exe` — incidente 08/07 (sessão expirou, "Not logged in" em matinal/noturno/verificacao_async simultaneamente, drenagem só recuperou entre 15:17-15:27 BRT). Guardas de auth-failure adicionadas em noturno/verificacao_async (exit code 7 + abort em vez de degradar silenciosamente); matinal em correção separada. Ver `03 - Estado de Produção.md`. |
 
 Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — não indicam uso ativo.
 
@@ -97,12 +97,12 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.147** | `api/wrangler.toml` → **v4.9.148.js** (commitado 07/07 ~16:xx BRT, deploy PENDENTE) | https://api.vixradar.com |
-| Frontend | **v201.70** | `app/index.html` → **v201.71** (commitado 07/07, deploy PENDENTE) | https://vixradar.com |
+| Worker | **v4.9.148** | `api/wrangler.toml` → **v4.9.148.js** (deployado 07/07 ~22h47 BRT, commit `8c1d79f`) | https://api.vixradar.com |
+| Frontend | **v201.74** | `app/index.html` → **v201.74** (deployado 07/07 ~22h45 BRT, commit `618f635`/`6a6d3f1`) | https://vixradar.com |
 | Deploy Worker | `cd api && npx wrangler deploy` | — | — |
 | Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
 
-Drift atual (repo à frente de prod): v4.9.148 corrige `admin_mercado` GET com senha em querystring, `zscores_anbima`/`teste` públicos sem auth e um `tel()` quebrado. v201.71 corrige a11y (labels, aria-label, Esc em modais) e falha silenciosa no carregamento do dashboard. Deploy requer autorização explícita do operador.
+Sem drift repo/prod (confirmado 07/07 ~22h47 BRT: `GET /` → `versao:"v4.9.148"`, `version.json` → v201.74). v4.9.148 corrigiu `admin_mercado` GET com senha em querystring, `zscores_anbima`/`teste` públicos sem auth e um `tel()` quebrado. v201.71→v201.74 corrigiu a11y (labels, aria-label, Esc em modais, `role="dialog"`/`aria-modal` em 8/8 overlays), falha silenciosa no carregamento do dashboard, janela de corrida XSS e mensagem de sessão indevida a visitante novo.
 
 Drift: conferir Obsidian antes de cada sessão — repo pode estar à frente ou atrás de produção.
 
