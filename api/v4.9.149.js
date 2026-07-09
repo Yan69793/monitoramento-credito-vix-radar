@@ -7612,9 +7612,14 @@ async function mesclarEventoVerificado(env2222, semana, empresa, eventoAprovado,
   const anterior = estado.results[empresa] || {};
   const evEnriquecido = enriquecerEvento(Object.assign({}, eventoAprovado, { empresa }), setor || anterior.setor);
   const existentes = Array.isArray(anterior.eventos) ? anterior.eventos.slice() : [];
-  const vistos = new Set(existentes.map(_chaveDedupEvento));
   const chaveNovo = _chaveDedupEvento(evEnriquecido);
-  if (!vistos.has(chaveNovo)) existentes.push(evEnriquecido);
+  const idxExistente = existentes.findIndex(function(ev) { return _chaveDedupEvento(ev) === chaveNovo; });
+  if (idxExistente >= 0) {
+    var _original = existentes[idxExistente];
+    existentes[idxExistente] = Object.assign({}, _original, evEnriquecido, { _pendente_verificacao: false });
+  } else {
+    existentes.push(evEnriquecido);
+  }
   existentes.sort(function(a, b) {
     const ma = a && a._enriquecimento ? a._enriquecimento.materialidade : 0;
     const mb = b && b._enriquecimento ? b._enriquecimento.materialidade : 0;
