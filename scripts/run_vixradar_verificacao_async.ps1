@@ -19,7 +19,7 @@ $MetricsFile    = Join-Path $LogDir ('verificacao_async_metrics_' + $DateTag + '
 $McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelVerificador = 'claude-sonnet-4-6'
-$ChunkSize        = 12
+$ChunkSize        = 4
 $PauseSec         = 2
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
