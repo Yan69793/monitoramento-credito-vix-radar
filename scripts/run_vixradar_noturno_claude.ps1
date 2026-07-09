@@ -204,6 +204,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $stderrFile = Join-Path $LogDir ('noturno_stderr_' + $DateTag + '_' + $PID + '.txt')
     $raw = $null; $exitCode = 1
     try {
+        # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, achado 08/07:
+        # mojibake reapareceu num lote isolado mesmo com o fix global no boot do script).
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        $OutputEncoding = [System.Text.Encoding]::UTF8
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `
@@ -354,7 +358,7 @@ try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exi
 
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stats = @{
-    skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0
+    skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0; silent_fail = 0
     tokens_total = 0; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0
     batches_run = 0; sonnet_count = 0; haiku_count = 0
     submit_ok = 0; submit_fail = 0; buscas_total = 0
@@ -464,6 +468,19 @@ try {
             Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
         }
 
+        # silent_fail: zero RESULTADO| parseados do output do modelo (cobre falhas alem da regex de
+        # auth - ex.: prompt truncado, modelo devolveu texto em vez de RESULTADO|, falha nova do
+        # claude CLI que nao esta na lista de auth). Sem isto, todos os emissores do lote caem no
+        # fallback "Falha de parse do agente apos retry", submit_OK incrementa, metrics e exit code
+        # ficam limpos, e a rotina sai como sucesso (achado 2026-07-08 - mesmo incidente do silent_fail
+        # no matinal, via protocolo diferente: aqui a falha e mascarada via fallback, la via OK|).
+        $parsedCount = 0
+        foreach ($emp in $job.Chunk) { if (Get-ResultadoEmissor $parsed.Map $emp.empresa) { $parsedCount++ } }
+        if ($parsedCount -eq 0) {
+            $stats.silent_fail++
+            Write-Log ('ERRO: lote ' + $label + ' sem RESULTADO| - falha silenciosa (0/' + $job.Chunk.Count + ' emissores com analise real)')
+        }
+
         # submit centralizado no PS1: schema garantido (resultado aninhado) + retry por emissor
         $loteOk = 0; $loteFail = 0; $loteCrit = 0
         foreach ($emp in $job.Chunk) {
@@ -529,15 +546,17 @@ try {
         tokens_hard_hit = $stats.tokens_hard_hit; skip_ok = $stats.skip_ok
         sonnet_llm = $stats.sonnet_count; haiku_llm = $stats.haiku_count; deferred = $stats.deferred
         submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total
+        silent_fail = $stats.silent_fail
         batches = $stats.batches_run; criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
     } | ConvertTo-Json -Depth 5 | Set-Content $MetricsFile -Encoding UTF8
 
     Write-Log ('FIM: tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap +
         ' sonnet=' + $stats.sonnet_count + ' haiku=' + $stats.haiku_count +
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' buscas=' + $stats.buscas_total +
+        ' silent_fail=' + $stats.silent_fail +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
 
-    if ($stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) { $exitCode = 6 }
+    if ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) { $exitCode = 6 }
 } catch {
     Write-Log ('ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message)
     $exitCode = 1

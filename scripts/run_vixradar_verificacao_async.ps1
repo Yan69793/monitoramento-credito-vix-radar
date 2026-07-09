@@ -60,6 +60,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $stderrFile = Join-Path $LogDir ('verifasync_stderr_' + $DateTag + '.txt')
     $raw = $null; $exitCode = 1
     try {
+        # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao
+        # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        $OutputEncoding = [System.Text.Encoding]::UTF8
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `
