@@ -141,7 +141,11 @@ function Get-VeredictosArray($outputLines, [int]$esperado) {
         return $null
     }
     $arr = @($parsed)
-    if ($arr.Count -ne $esperado) { return $null }
+    if ($arr.Count -lt $esperado) { return $null }
+    if ($arr.Count -gt $esperado) {
+        Write-Log ("AVISO: modelo retornou " + $arr.Count + " veredictos para " + $esperado + " eventos - truncando para os primeiros " + $esperado)
+        $arr = $arr[0..($esperado - 1)]
+    }
     return $arr
 }
 
