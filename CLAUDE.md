@@ -97,12 +97,14 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.148** | `api/wrangler.toml` → **v4.9.149.js** (v4.9.149 commitado, deploy PENDENTE — fix n_eventos=0 no receber_analise) | https://api.vixradar.com |
-| Frontend | **v201.74** | `app/index.html` → **v201.74** (deployado 07/07 ~22h45 BRT, commit `618f635`/`6a6d3f1`) | https://vixradar.com |
-| Deploy Worker | `cd api && npx wrangler deploy` | — | — |
+| Worker | **v4.9.149** | `api/wrangler.toml` → **v4.9.149.js** (deployado 09/07 ~15:21 BRT — fix n_eventos=0 + mesclarEventoVerificado) | https://api.vixradar.com |
+| Frontend | **v201.74** | `app/index.html` → **v201.74** (deployado 07/07 ~22h45 BRT) | https://vixradar.com |
+| Deploy Worker | `cd api && npx wrangler deploy v4.9.149.js --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name radar-credito-api` | — | — |
 | Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
 
-Drift repo/prod: repo à frente (v4.9.149 corrige `receber_analise` — eventos pendentes de verificação agora são persistidos em vez de descartados com n_eventos=0). Deploy requer autorização explícita do operador.
+Sem drift repo/prod. v4.9.149 corrige `receber_analise` (eventos pendentes de verificação são persistidos em vez de descartados com n_eventos=0) e `mesclarEventoVerificado` (substitui evento pendente pelo verificado em vez de pular duplicata).
+
+**Atenção Wrangler 4.x:** `--no-autoconfig` obrigatório — sem isso, o Wrangler detecta `E:\Diretorio\Claude\dashboard` como projeto e ignora `wrangler.toml`.
 
 Drift: conferir Obsidian antes de cada sessão — repo pode estar à frente ou atrás de produção.
 
