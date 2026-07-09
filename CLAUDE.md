@@ -97,12 +97,12 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.148** | `api/wrangler.toml` → **v4.9.148.js** (deployado 07/07 ~22h47 BRT, commit `8c1d79f`) | https://api.vixradar.com |
+| Worker | **v4.9.148** | `api/wrangler.toml` → **v4.9.149.js** (v4.9.149 commitado, deploy PENDENTE — fix n_eventos=0 no receber_analise) | https://api.vixradar.com |
 | Frontend | **v201.74** | `app/index.html` → **v201.74** (deployado 07/07 ~22h45 BRT, commit `618f635`/`6a6d3f1`) | https://vixradar.com |
 | Deploy Worker | `cd api && npx wrangler deploy` | — | — |
 | Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
 
-Sem drift repo/prod (confirmado 07/07 ~22h47 BRT: `GET /` → `versao:"v4.9.148"`, `version.json` → v201.74). v4.9.148 corrigiu `admin_mercado` GET com senha em querystring, `zscores_anbima`/`teste` públicos sem auth e um `tel()` quebrado. v201.71→v201.74 corrigiu a11y (labels, aria-label, Esc em modais, `role="dialog"`/`aria-modal` em 8/8 overlays), falha silenciosa no carregamento do dashboard, janela de corrida XSS e mensagem de sessão indevida a visitante novo.
+Drift repo/prod: repo à frente (v4.9.149 corrige `receber_analise` — eventos pendentes de verificação agora são persistidos em vez de descartados com n_eventos=0). Deploy requer autorização explícita do operador.
 
 Drift: conferir Obsidian antes de cada sessão — repo pode estar à frente ou atrás de produção.
 
