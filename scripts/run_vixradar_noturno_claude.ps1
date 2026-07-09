@@ -45,6 +45,16 @@ function Write-Log([string]$msg) {
     Write-Host $line
 }
 
+function Test-ClaudeAuthFailure([string[]]$outputLines) {
+    # Achado 2026-07-08: claude.exe pode perder a sessao OAuth local (Task Scheduler roda sem
+    # console interativo) e imprimir esta mensagem em vez do envelope JSON - exit code do
+    # processo continua 0, entao sem esta checagem o lote falso-positiva como sucesso e a
+    # rotina degrada silenciosamente (RESULTADO ausente -> fallback "cobertura pendente" via
+    # receber_analise, que sempre responde ok:true por ser so um HTTP POST ao Worker).
+    $texto = ($outputLines -join "`n")
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead'
+}
+
 function Invoke-Cleanup([switch]$Aggressive) {
     if (-not (Test-Path $CleanupScript)) { return }
     try {
@@ -225,7 +235,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     } catch {
         Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
     }
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens }
+    $authFail = Test-ClaudeAuthFailure $textOut
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; AuthFailure = $authFail }
 }
 
 function Get-NomeNormalizado([string]$s) {
@@ -409,6 +420,14 @@ try {
         $stats.batches_run++
         if ($job.Name -eq 'sonnet') { $stats.sonnet_count += $job.Chunk.Count } else { $stats.haiku_count += $job.Chunk.Count }
 
+        if ($result.AuthFailure) {
+            Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login" antes do proximo disparo. Abortando lotes restantes para nao degradar em cobertura minima silenciosa (' + ($jobs.Count - $ji) + ' lote(s) restante(s) NAO processado(s)).')
+            $exitCode = 7
+            $stats.batch_fail++
+            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+            break
+        }
+
         if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
 
         $bt = $result.Tokens
@@ -427,6 +446,13 @@ try {
             $retryPath = Join-Path $LogDir ('noturno_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
             $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
+            if ($retryRes.AuthFailure) {
+                Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no retry do lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes.')
+                $exitCode = 7
+                $stats.batch_fail++
+                Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
+                break
+            }
             if ($retryRes.Output) { $retryRes.Output | ForEach-Object { Write-Log ('OUT-RETRY: ' + $_) } }
             if ($retryRes.Tokens -gt 0) { $stats.tokens_total += $retryRes.Tokens }
             $retryParsed = Get-ParsedResultados $retryRes.Output

@@ -33,6 +33,16 @@ function Write-Log([string]$msg) {
     Write-Host $line
 }
 
+function Test-ClaudeAuthFailure([string[]]$outputLines) {
+    # Identica a run_vixradar_noturno_claude.ps1/run_vixradar_matinal_claude.ps1 (achado 2026-07-08):
+    # claude.exe pode perder a sessao OAuth local e imprimir esta mensagem em vez do envelope JSON,
+    # com exit code 0. Sem isso o lote so cai no branch generico "parse de veredictos falhou" -
+    # correto quanto ao efeito (erros_parse incrementa, exitCode vira 6), mas a causa fica oculta
+    # no log (indistinguivel de JSON malformado/truncado por outro motivo).
+    $texto = ($outputLines -join "`n")
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead'
+}
+
 function Get-RoutineKey {
     if ($env:ROUTINE_API_KEY) { return $env:ROUTINE_API_KEY }
     $skillPath = Join-Path $ScheduledTasks 'vixradar-noturno\SKILL.md'
@@ -81,7 +91,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     } catch {
         Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
     }
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens }
+    $authFail = Test-ClaudeAuthFailure $textOut
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; AuthFailure = $authFail }
 }
 
 function Get-BalancedJson([string]$scan) {
@@ -200,6 +211,14 @@ try {
         Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) - ' + (($chunk | ForEach-Object { $_.empresa }) -join ', '))
         $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
         if ($result.Tokens -gt 0) { $stats.tokens_total += $result.Tokens }
+
+        if ($result.AuthFailure) {
+            Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
+            $stats.erros_parse++
+            $exitCode = 7
+            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+            break
+        }
 
         $veredictos = Get-VeredictosArray $result.Output $chunk.Count
         if (-not $veredictos) {
