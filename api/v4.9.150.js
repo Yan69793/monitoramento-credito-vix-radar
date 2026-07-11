@@ -12367,6 +12367,44 @@ function spreadScoreDeAnomalias(anomaliasEmpresa) {
   return Math.min(30, Math.round(pp * 10));
 }
 __name(spreadScoreDeAnomalias, "spreadScoreDeAnomalias");
+function calcularSpreadRelSetorMap(zscoresPayload) {
+  // v4.9.150 (SHADOW MODE - peso zero no score): z-spread do emissor vs peers do SETOR
+  // no dia, a partir do snapshot anbima:zscores (spread_bps por emissor com serie).
+  // Literatura: spread alto vs peers antecipa downgrade melhor que vs historico proprio.
+  // Minimo 4 peers com serie no setor; senao o emissor fica sem a feature (peer group instavel).
+  const porSetor = {};
+  const emissores = zscoresPayload && Array.isArray(zscoresPayload.emissores) ? zscoresPayload.emissores : [];
+  for (const e of emissores) {
+    if (!e || e.spread_bps == null) continue;
+    const setor = SETOR_DE_EMPRESA[e.empresa] || "Outros";
+    if (!porSetor[setor]) porSetor[setor] = [];
+    porSetor[setor].push(e);
+  }
+  const map = {};
+  for (const [setor, lista] of Object.entries(porSetor)) {
+    if (lista.length < 4) continue;
+    const vals = lista.map((e) => e.spread_bps);
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const std = Math.sqrt(vals.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / vals.length);
+    for (const e of lista) {
+      map[e.empresa] = {
+        spread_rel_setor: std > 0 ? +((e.spread_bps - mean) / std).toFixed(2) : 0,
+        peers_setor: lista.length
+      };
+    }
+  }
+  return map;
+}
+function liquidezSerieMap(zscoresPayload) {
+  // v4.9.150: proxy de liquidez do papel (n_papeis do dia + profundidade da serie ANBIMA).
+  const map = {};
+  const emissores = zscoresPayload && Array.isArray(zscoresPayload.emissores) ? zscoresPayload.emissores : [];
+  for (const e of emissores) {
+    if (!e || !e.empresa) continue;
+    map[e.empresa] = { n_papeis: e.n_papeis || 0, n_dias_historico: e.n_dias_historico || 0 };
+  }
+  return map;
+}
 function calcularStressSetorialDeCache(ewsCache) {
   const counts = {};
   for (const emp of EMISSORES_LISTA) {
@@ -12456,10 +12494,12 @@ async function executarPipelinePreditivo(env2222, opts) {
   if (!env2222.RADAR_KV) return { ok: false, erro: "KV indisponivel" };
   const persistHist = !(opts && opts.skip_hist_persist);
   const dataISO = obterAgoraBRT().toISOString().split("T")[0];
-  const [estado, anomalias, flagsMap] = await Promise.all([
+  const [estado, anomalias, flagsMap, zscoresKV, fundamentalsKV] = await Promise.all([
     carregarEstadoMultiSemana(env2222, 3),
     carregarAnomalias(env2222),
-    _carregarMapaFlags(env2222)
+    _carregarMapaFlags(env2222),
+    env2222.RADAR_KV.get("anbima:zscores", "json").catch(() => null),
+    env2222.RADAR_KV.get("fundamentals:altman:latest", "json").catch(() => null)
   ]);
   const ewsCache = {};
   const eventosCache = {};
@@ -12469,6 +12509,9 @@ async function executarPipelinePreditivo(env2222, opts) {
     ewsCache[empresa] = calcularEWS(empresa, anomalias, eventos, []).score;
   }
   const stressMap = calcularStressSetorialDeCache(ewsCache);
+  const srsMap = calcularSpreadRelSetorMap(zscoresKV);
+  const liqMap = liquidezSerieMap(zscoresKV);
+  const altmanMap = fundamentalsKV && fundamentalsKV.empresas && typeof fundamentalsKV.empresas === "object" ? fundamentalsKV.empresas : {};
   const histMap = {};
   if (persistHist) {
     const histListed = await env2222.RADAR_KV.list({ prefix: "ews:hist:" }).catch(() => ({ keys: [] }));
@@ -12494,19 +12537,31 @@ async function executarPipelinePreditivo(env2222, opts) {
     const vel = calcularVelocityEws(histNext, 7);
     const flags = flagsMap[empresa] || {};
     const setor = SETOR_DE_EMPRESA[empresa] || "Outros";
+    const liq = liqMap[empresa] || null;
+    const liquidezBaixa = !!(liq && (liq.n_papeis < 2 || liq.n_dias_historico < 15));
+    let spreadScoreAjustado = spreadScoreDeAnomalias(anomalias[empresa]);
+    if (liquidezBaixa && spreadScoreAjustado > 0) spreadScoreAjustado = Math.round(spreadScoreAjustado * 0.5);
+    const srs = srsMap[empresa] || null;
+    const altmanEmp = altmanMap[empresa] || null;
     const features = {
       empresa,
       data: dataISO,
       ews_score: ewsScore,
       velocity_delta: vel.delta,
       direction: vel.direction,
-      spread_score: spreadScoreDeAnomalias(anomalias[empresa]),
+      spread_score: spreadScoreAjustado,
       event_cluster: contarClusterEventos14d(eventos),
       structural_floor: flags.em_reestruturacao ? 55 : ewsScore,
       setor_stress: stressMap[setor] || 0,
       hist_len: histNext.length,
       tem_serie: !!(anomalias[empresa] && anomalias[empresa].length),
-      event_count: eventos.length
+      event_count: eventos.length,
+      // v4.9.150 - filtro de liquidez ATIVO (amortece sinal de spread de papel iliquido)
+      // e features em SHADOW (peso zero no score; observacao p/ promocao futura via backtest)
+      liquidez_baixa: liquidezBaixa,
+      spread_rel_setor: srs ? srs.spread_rel_setor : null,
+      peers_setor: srs ? srs.peers_setor : null,
+      altman_z_em: altmanEmp && altmanEmp.z_em != null ? altmanEmp.z_em : null
     };
     const rule = scorePreditivoRuleV1(features);
     const logistic = scorePreditivoLogisticV2(features);
@@ -12524,14 +12579,18 @@ async function executarPipelinePreditivo(env2222, opts) {
         prob_30d: logistic.prob_30d,
         prob_90d: logistic.prob_90d,
         ews_score: ewsScore,
-        velocity_7d: vel.delta
-      }
+        velocity_7d: vel.delta,
+        spread_rel_setor: features.spread_rel_setor,
+        liquidez_baixa: features.liquidez_baixa
+      },
+      features
     });
   }
   emissores.sort((a, b) => (b.predictive_v1.score || 0) - (a.predictive_v1.score || 0));
   const payload = {
     schema_v: 2,
     modelo: "rule_v1+logistic_v2",
+    model_version: "v4.9.150+liqfilter+srs_shadow1",
     run_date: dataISO,
     gerado_em: (/* @__PURE__ */ new Date()).toISOString(),
     tempo_ms: Date.now() - t0,
@@ -12540,7 +12599,7 @@ async function executarPipelinePreditivo(env2222, opts) {
     emissores,
     _histUpdates: histUpdates
   };
-  const kvPayload = { schema_v: 2, modelo: payload.modelo, run_date: payload.run_date, gerado_em: payload.gerado_em, tempo_ms: 0, total_emissores: payload.total_emissores, com_score: payload.com_score, emissores: payload.emissores };
+  const kvPayload = { schema_v: 2, modelo: payload.modelo, model_version: payload.model_version, run_date: payload.run_date, gerado_em: payload.gerado_em, tempo_ms: 0, total_emissores: payload.total_emissores, com_score: payload.com_score, emissores: payload.emissores };
   await env2222.RADAR_KV.put("predictive_v1:latest", JSON.stringify(kvPayload), { expirationTtl: 60 * 60 * 24 * 14 });
   if (persistHist) await persistirHistEwsBatch(env2222, histUpdates);
   payload.tempo_ms = Date.now() - t0;
