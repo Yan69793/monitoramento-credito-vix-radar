@@ -3489,7 +3489,7 @@ var CUSTO_PRECO = {
   web_search_por_uso: 0.01
 };
 var CUSTO_DISJUNTOR_USD_DIA = 25;
-var WORKER_DEPLOY_NOTE = "v4.9.149: fix receber_analise - persiste eventos pendentes de verificacao assincrona em vez de descarta-los (n_eventos=0 cegava rotinas). Eventos com _pendente_verificacao=true visiveis no feed imediatamente. 2026-07-09.";
+var WORKER_DEPLOY_NOTE = "v4.9.150: mojibake read path + fix porSetor briefing + preditivo quick wins (filtro liquidez ativo, spread_rel_setor shadow, features+model_version no payload predictive_v1:latest, leitura fundamentals:altman:latest). 2026-07-11.";
 var ANCORAS_SINTETICAS = [
   "Ra\xEDzen",
   "Petrobras",
