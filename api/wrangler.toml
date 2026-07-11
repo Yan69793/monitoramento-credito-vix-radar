@@ -1,6 +1,20 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.149)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.150)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.149.js = v4.9.148 + fix receber_analise (eventos pendentes de verificação
+#   persistidos em vez de descartados com n_eventos=0) + mesclarEventoVerificado
+#   substitui evento pendente pelo verificado. Deployado 09/07 ~15:21 BRT.
+# v4.9.150.js = v4.9.149 + (a) normalizarMojibake no read path de
+#   carregarEstadoCompartilhado + setor normalizado no briefing interno (diff
+#   pendente de sessão anterior, incorporado com fix do porSetor[setorEmp] →
+#   setorNorm que quebraria com setor mojibakeado) + empresas_monitoradas
+#   filtrado por EMISSORES_LISTA; (b) preditivo quick wins (plano 2026-07-11,
+#   nota 51): filtro de liquidez no sinal de spread (papel ilíquido → sinal
+#   amortecido), spread_rel_setor em SHADOW MODE (z-spread vs peers do setor,
+#   min 4 peers, peso zero no score), vetor de features + model_version
+#   embutidos no payload predictive_v1:latest (fundação de dados), leitura
+#   null-safe de fundamentals:altman:latest (Altman Z''-EM trimestral via CVM,
+#   escrito por script local via wrangler kv put).
 # v4.9.144.js / v4.9.145.js = bundles intermediários não recuperados (deploy
 #   sem commit correspondente, drift detectado pelo guard anti-drift do CI
 #   entre 2026-07-04 e 07-05). Conteúdo exato não auditado.
@@ -79,7 +93,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.149.js"
+main       = "v4.9.150.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
