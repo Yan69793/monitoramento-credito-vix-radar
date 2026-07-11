@@ -1,0 +1,112 @@
+{
+    "Assaí Atacadista":  {
+                             "cnpj":  null,
+                             "denom":  null,
+                             "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                         },
+    "Banco Pan":  {
+                      "cnpj":  null,
+                      "denom":  null,
+                      "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                  },
+    "AES Brasil":  {
+                       "cnpj":  "15.114.494/0001-02",
+                       "denom":  "CORREDOR LOGÍSTICA E INFRAESTRUTURA S.A.",
+                       "match":  "medio - REVISAR"
+                   },
+    "Sanepar":  {
+                    "cnpj":  "76.484.013/0001-45",
+                    "denom":  "CIA. DE SANEAMENTO DO PARANÁ - SANEPAR",
+                    "match":  "medio - REVISAR"
+                },
+    "CCR":  {
+                "cnpj":  null,
+                "denom":  null,
+                "match":  "sem candidato (fechada/nao-cia-aberta?)"
+            },
+    "Copasa":  {
+                   "cnpj":  null,
+                   "denom":  null,
+                   "match":  "sem candidato (fechada/nao-cia-aberta?)"
+               },
+    "CBA":  {
+                "cnpj":  null,
+                "denom":  null,
+                "match":  "sem candidato (fechada/nao-cia-aberta?)"
+            },
+    "Natura \u0026Co":  {
+                            "cnpj":  "71.673.990/0001-77",
+                            "denom":  "NATURA COSMETICOS SA",
+                            "match":  "medio - REVISAR"
+                        },
+    "Minerva Foods":  {
+                          "cnpj":  null,
+                          "denom":  null,
+                          "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                      },
+    "Taesa":  {
+                  "cnpj":  null,
+                  "denom":  null,
+                  "match":  "sem candidato (fechada/nao-cia-aberta?)"
+              },
+    "Dasa":  {
+                 "cnpj":  null,
+                 "denom":  null,
+                 "match":  "sem candidato (fechada/nao-cia-aberta?)"
+             },
+    "Vivo (Telefônica Brasil)":  {
+                                     "cnpj":  null,
+                                     "denom":  null,
+                                     "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                                 },
+    "Banco Votorantim":  {
+                             "cnpj":  null,
+                             "denom":  null,
+                             "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                         },
+    "Usiminas":  {
+                     "cnpj":  "60.894.730/0001-05",
+                     "denom":  "USINAS SID DE MINAS GERAIS S.A.-USIMINAS",
+                     "match":  "medio - REVISAR"
+                 },
+    "Nexa Resources":  {
+                           "cnpj":  null,
+                           "denom":  null,
+                           "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                       },
+    "Petrobras":  {
+                      "cnpj":  "33.000.167/0001-01",
+                      "denom":  "PETRÓLEO BRASILEIRO  S.A.  - PETROBRAS",
+                      "match":  "medio - REVISAR"
+                  },
+    "Terra Santa Agro":  {
+                             "cnpj":  null,
+                             "denom":  null,
+                             "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                         },
+    "Sabesp":  {
+                   "cnpj":  null,
+                   "denom":  null,
+                   "match":  "sem candidato (fechada/nao-cia-aberta?)"
+               },
+    "Eletrobras":  {
+                       "cnpj":  null,
+                       "denom":  null,
+                       "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                   },
+    "Pão de Açúcar (GPA)":  {
+                                "cnpj":  null,
+                                "denom":  null,
+                                "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                            },
+    "Omega Energia":  {
+                          "cnpj":  null,
+                          "denom":  null,
+                          "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                      },
+    "Equatorial Energia":  {
+                               "cnpj":  null,
+                               "denom":  null,
+                               "match":  "sem candidato (fechada/nao-cia-aberta?)"
+                           }
+}

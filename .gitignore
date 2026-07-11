@@ -237,3 +237,6 @@ diagnosticos/
 app/index.prod.html
 /fechamento-*.jpeg
 
+
+# cache de CSVs da CVM (grandes; regeneraveis via download)
+data/cvm/
