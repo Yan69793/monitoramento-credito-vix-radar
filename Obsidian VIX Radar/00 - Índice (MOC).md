@@ -41,19 +41,25 @@ Vault anterior estava ausente da nova estrutura de diretórios (`api/`, `app/`).
 - [[42 - Auditoria Geral Backend Frontend 2026-07-06]] — `/vix-radar-general-audit`; saudável, sem P0/P1. AZ1 (secret) confirmado resolvido. P2: **F1 confirmado ainda em prod** (admin `localStorage`, repo já em `sessionStorage`, fix não deployado); script `run_vixradar_verificacao_async.ps1` untracked. P3: jpeg solto na raiz
 - [[43 - Auditoria Geral Backend Frontend 2026-07-07]] — `/vix-radar-general-audit` (manhã); P0 governança (bundles untracked) resolvido; agendador disparando tasks desabilitadas mitigado; recorrência do bug de encoding via Task nativa diagnosticada e corrigida; drift XSS/F1 invisível fechado com deploy v201.70
 - [[44 - Auditoria Geral Backend Frontend 2026-07-07]] — `/vix-radar-general-audit` (tarde); achou e corrigiu no repo (deploy pendente): `admin_mercado` GET com senha em querystring (regressão não fechada desde v4.9.142), `zscores_anbima`/`teste` públicos sem auth (custo real), `tel()` quebrado, 6 campos + 11 botões sem nome acessível, 5 modais sem Esc, falha silenciosa no `op=state`. **Correção de registro**: "rotina 07/07 103/103" e "working tree limpo" alegados por sessão concorrente eram falsos — matinal real ficou incompleta, noturno oficial não tinha rodado
+- [[46 - Auditoria Completa 2026-07-09]] — `/vix-radar-audit`; sistema saudável, v4.9.149/v201.74 em produção, sem drift worker. Drift frontend: repo v201.70 vs produção v201.74 (alegação incorreta — ver nota 47). Rotina noturna teve incidente de travamento (lote sonnet-1) - resolvido via cleanup de mutex/processos. Universo 103/103 confirmado.
+- [[47 - Auditoria Completa 2026-07-09 (v2)]] — `/vix-radar-audit`; **stale_24h:3** (Light 46.5h, GPA 26.2h, Raízen 25.7h) — matinal 09/07 falhou por weekly limit Claude API. Sem drift Worker nem Frontend (v4.9.149/v201.74 alinhados repo=prod). Working tree com 5 arquivos MEGAPLAN pendentes de commit (Get-AnthropicApiKey + regex auth expandido).
+- [[48 - Auditoria Verificador Async 2026-07-10]] — auditoria do script `run_vixradar_verificacao_async.ps1`: guards de refusal (Fable 5), fallback model, parsing, observabilidade. 3 falhas achadas e corrigidas pelo implementador. Veredito: correto no nucleo.
+- [[49 - Avaliação Fable 5 e Guards Refusal 2026-07-10]] — avaliação `claude-fable-5` p/ o verificador: 2 testes reais vs Sonnet 4.6 (~USD 1,07), Fable sem ganho demonstrado, custo 2,3x-4,3x. **Decisão: modelo NÃO trocado** (critério de reversão documentado). Guards implementados no dreno: `stop_reason:refusal` + rawout + exit 8 + métrica `refusals` + `--fallback-model` condicional. Achado: `ANTHROPIC_API_KEY` no registro → dreno roda **metered**, não assinatura. Doc drift do `CLAUDE.md` corrigido ("Opus matinal" inexistente; "assinatura" no verificador; "matinal em correção separada" stale).
+- [[50 - Análise Competitiva e Baseline SEO 2026-07-11]] — mapa competitivo com preços reais (Quantum Axis R$ 1.940-2.810/mês e Economatica ~R$ 2,8k via contratos públicos; Comdinheiro Basic+ R$ 249,90 vs Radar R$ 119/490), baseline SERP de 10 keywords em 2 instrumentos, 6 gaps de mercado, ameaças (Economatica IA/MCP, XP "Radar do Crédito Privado" na quase-marca). **Nova rotina**: task `VIXRadar-Ranking-Mensal` (dia 1, 11h30) — alerta de ultrapassagem de ranking; notas mensais em `SEO/Ranking SEO YYYY-MM.md`. Pendência SEO1: `RESEND_API_KEY` (User) para ativar o e-mail do alerta.
+- [[51 - Pesquisa Preditivo v2 2026-07-11]] — pesquisa web (Jessen&Lando, Robeco, Moody's EWS Toolkit, LLM credit reviews) validando o roadmap v2 da skill `vix-radar-predictive`; achado central: **gargalo é retenção de dados** (KV com TTL evapora o histórico antes de virar dataset). Execução quick wins: exporter diário `VIXRadar-Export-Historico` (20h45, `data/historico/`), labels seed (`data/labels/eventos_credito.jsonl`), Worker **v4.9.150 no repo** (filtro de liquidez ativo, `spread_rel_setor` em shadow, features+`model_version` no payload, leitura de `fundamentals:altman:latest`) — **deploy pendente de aprovação**; Altman Z''-EM trimestral via CVM (`scripts/predictive/`).
 - `PENDENCIAS.md` (root) — **lista viva de pendências**, atualizada 07/07 ~16:35 BRT com os achados desta rodada
 - [[22 - Sprite Health Check]] — skill `/sprite-health`, VM `site`
 - [[23 - Admin HEART Modular v201.66]] — painel admin modular Fase 1
 - [[23 - Incidente 2026-06-18 Verificador reprova matinal]] — gate verdade graduada (Onco/Kora)
 
-## Versões confirmadas (última sessão: 2026-07-07 — v4.9.147 em prod)
+## Versões confirmadas (última sessão: 2026-07-10 ~15:30 BRT — v4.9.149 em prod)
 
-**Produção:** v4.9.147 (z-scores ANBIMA); Frontend v201.70 (F1 sessionStorage + XSS1 esc()); rotina v2 tiered ativa; CI alinhado dinamicamente. Health: `ok:true`, `verificador_ok:true`.
+**Produção:** v4.9.149 (mesclarEventoVerificado + fix n_eventos=0); Frontend v201.74 (a11y 5 modais); rotina v2 tiered ativa; CI alinhado dinamicamente. Health: `ok:true`, `verificador_ok:true`.
 
 | Componente | Versão | Status |
 |---|---|---|
-| Worker `radar-credito-api` | **v4.9.147** (prod = repo local) | z-scores ANBIMA; health real do verificador; CI alinhado |
-| Frontend `vixradar.com` | **v201.70** (prod = repo) | Admin HEART modular; senha admin em `sessionStorage` (F1); `esc()` innerHTML (XSS1) |
+| Worker `radar-credito-api` | **v4.9.149** (prod = repo local) | mesclarEventoVerificado; fix n_eventos=0; sem drift |
+| Frontend `vixradar.com` | **v201.74** (prod = repo = deploy_zip) | 8/8 modais com role=dialog+aria-modal; sem drift |
 | `ANTHROPIC_API_KEY` | — | ROTACIONADO 2026-06-16 18:22Z — `verificador_ok:true` confirmado |
 | Cascade AI | — | Haiku (Pulso manual); Opus (matinal); Sonnet 4.6 (noturno 103/103) |
 | vixradar-noturno | — | `listar_todos_emissores` 103/103 → `claude-sonnet-routine` (18h BRT) |
