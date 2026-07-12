@@ -1,6 +1,6 @@
 {
     "schema_version":  1,
-    "gerado_em":  "2026-07-11 14:50:25",
+    "gerado_em":  "2026-07-11 15:13:01",
     "fonte":  "CVM Dados Abertos - DFP 2025 consolidado (dados.cvm.gov.br)",
     "formula":  "Z\u0027\u0027-EM = 3.25 + 6.56*X1 + 3.26*X2 + 6.72*X3 + 1.05*X4",
     "total":  78,
@@ -204,19 +204,19 @@
 
                                                         ]
                                    },
-                     "Brisanet":  {
-                                      "z_em":  4.79,
-                                      "x1_cg_at":  0.0838,
-                                      "x2_ret_at":  0.0369,
-                                      "x3_ebit_at":  0.0517,
-                                      "x4_pl_exig":  0.496,
-                                      "ativo_total":  4685456000,
-                                      "dt_refer":  "2025-12-31",
-                                      "cnpj":  "04.601.397/0001-28",
-                                      "aproximacoes":  [
+                     "Arteris":  {
+                                     "z_em":  3.83,
+                                     "x1_cg_at":  -0.0016,
+                                     "x2_ret_at":  -0.0752,
+                                     "x3_ebit_at":  0.089,
+                                     "x4_pl_exig":  0.2234,
+                                     "ativo_total":  20677716000,
+                                     "dt_refer":  "2025-12-31",
+                                     "cnpj":  "02.919.555/0001-67",
+                                     "aproximacoes":  [
 
-                                                       ]
-                                  },
+                                                      ]
+                                 },
                      "Totvs":  {
                                    "z_em":  7.57,
                                    "x1_cg_at":  0.2008,
@@ -234,19 +234,19 @@
                                       "z_em":  null,
                                       "motivo":  "setor financeiro - Altman nao aplicavel"
                                   },
-                     "Embraer":  {
-                                     "z_em":  5.3,
-                                     "x1_cg_at":  0.1849,
-                                     "x2_ret_at":  0.0239,
-                                     "x3_ebit_at":  0.0471,
-                                     "x4_pl_exig":  0.4185,
-                                     "ativo_total":  71092088000,
-                                     "dt_refer":  "2025-12-31",
-                                     "cnpj":  "07.689.002/0001-89",
-                                     "aproximacoes":  [
+                     "Brisanet":  {
+                                      "z_em":  4.79,
+                                      "x1_cg_at":  0.0838,
+                                      "x2_ret_at":  0.0369,
+                                      "x3_ebit_at":  0.0517,
+                                      "x4_pl_exig":  0.496,
+                                      "ativo_total":  4685456000,
+                                      "dt_refer":  "2025-12-31",
+                                      "cnpj":  "04.601.397/0001-28",
+                                      "aproximacoes":  [
 
-                                                      ]
-                                 },
+                                                       ]
+                                  },
                      "Cyrela":  {
                                     "z_em":  7.84,
                                     "x1_cg_at":  0.4213,
@@ -713,15 +713,15 @@
 
                                                   ]
                              },
-                     "Arteris":  {
-                                     "z_em":  3.83,
-                                     "x1_cg_at":  -0.0016,
-                                     "x2_ret_at":  -0.0752,
-                                     "x3_ebit_at":  0.089,
-                                     "x4_pl_exig":  0.2234,
-                                     "ativo_total":  20677716000,
+                     "Embraer":  {
+                                     "z_em":  5.3,
+                                     "x1_cg_at":  0.1849,
+                                     "x2_ret_at":  0.0239,
+                                     "x3_ebit_at":  0.0471,
+                                     "x4_pl_exig":  0.4185,
+                                     "ativo_total":  71092088000,
                                      "dt_refer":  "2025-12-31",
-                                     "cnpj":  "02.919.555/0001-67",
+                                     "cnpj":  "07.689.002/0001-89",
                                      "aproximacoes":  [
 
                                                       ]

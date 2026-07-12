@@ -1,6 +1,6 @@
 {
     "data":  "2026-07-11",
-    "gerado_em_brt":  "2026-07-11 14:42:56",
+    "gerado_em_brt":  "2026-07-11 20:45:01",
     "model_version":  "rule_v1+logistic_v2 (schema_v 2)",
     "run_date_pipeline":  "2026-07-11",
     "modo":  "delta",
@@ -11,5 +11,5 @@
 
               ],
     "dry_run":  false,
-    "duracao_s":  143
+    "duracao_s":  161
 }

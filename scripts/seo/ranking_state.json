@@ -1,0 +1,179 @@
+﻿{
+    "data":  "2026-07-11",
+    "mes":  "2026-07",
+    "instrumento":  "claude-websearch",
+    "posicoes":  [
+                     {
+                         "keyword":  "monitoramento de crédito privado",
+                         "propria":  null,
+                         "concorrentes":  {
+
+                                          },
+                         "top":  [
+                                     "btcreditos.com.br",
+                                     "nebraskacapital.com.br",
+                                     "dimensa.com",
+                                     "fairfield.com.br",
+                                     "kronoos.com",
+                                     "giro.tech",
+                                     "credriskseguros.com",
+                                     "deps.com.br",
+                                     "support.microsoft.com"
+                                 ]
+                     },
+                     {
+                         "keyword":  "monitoramento de debêntures",
+                         "propria":  null,
+                         "concorrentes":  {
+                                              "quantumfinance.com.br":  1
+                                          },
+                         "top":  [
+                                     "quantumfinance.com.br",
+                                     "conexaobr.com",
+                                     "oliveiratrust.com.br",
+                                     "nordinvestimentos.com.br",
+                                     "siacorp.com.br",
+                                     "warren.com.br",
+                                     "meudinheiroinvestimentos.com.br",
+                                     "anbima.com.br",
+                                     "fortesec.com.br",
+                                     "infomoney.com.br"
+                                 ]
+                     },
+                     {
+                         "keyword":  "radar de crédito privado",
+                         "propria":  null,
+                         "concorrentes":  {
+
+                                          },
+                         "top":  [
+                                     "acionista.com.br",
+                                     "rfd.org.ec",
+                                     "wortev.capital",
+                                     "cmseventos.com",
+                                     "capitaniainvestimentos.com.br",
+                                     "picpay.com",
+                                     "itau.com.br",
+                                     "circulodecredito.com.mx"
+                                 ]
+                     },
+                     {
+                         "keyword":  "eventos de crédito renda fixa",
+                         "propria":  null,
+                         "concorrentes":  {
+                                              "conteudos.xpi.com.br":  1
+                                          },
+                         "top":  [
+                                     "conteudos.xpi.com.br",
+                                     "abcdacomunicacao.com.br",
+                                     "conteudos.xpi.com.br",
+                                     "conteudos.xpi.com.br",
+                                     "investalk.bb.com.br",
+                                     "seudinheiro.com",
+                                     "blog.inter.co",
+                                     "infomoney.com.br"
+                                 ]
+                     },
+                     {
+                         "keyword":  "monitoramento de emissores de renda fixa",
+                         "propria":  null,
+                         "concorrentes":  {
+                                              "quantumfinance.com.br":  8
+                                          },
+                         "top":  [
+                                     "rendafixa.finance",
+                                     "apprendafixa.com.br",
+                                     "btgpactual.com",
+                                     "bb.com.br",
+                                     "seudinheiro.com",
+                                     "fincatch.com.br",
+                                     "investalk.bb.com.br",
+                                     "quantumfinance.com.br",
+                                     "bb.com.br"
+                                 ]
+                     },
+                     {
+                         "keyword":  "plataforma de crédito privado para gestoras",
+                         "propria":  null,
+                         "concorrentes":  {
+
+                                          },
+                         "top":  [
+                                     "gestor-creditos-webs.vercel.app",
+                                     "hubcred.com.br",
+                                     "capitalaberto.com.br",
+                                     "credimanager.app",
+                                     "am.gs.com",
+                                     "gestionadora.com",
+                                     "apps.apple.com",
+                                     "fundssociety.com"
+                                 ]
+                     },
+                     {
+                         "keyword":  "alerta de downgrade debêntures",
+                         "propria":  null,
+                         "concorrentes":  {
+
+                                          },
+                         "top":  [
+                                     "infomoney.com.br",
+                                     "braziljournal.com",
+                                     "seudinheiro.com"
+                                 ]
+                     },
+                     {
+                         "keyword":  "ferramenta risco de crédito debêntures carteira",
+                         "propria":  null,
+                         "concorrentes":  {
+                                              "quantumfinance.com.br":  2
+                                          },
+                         "top":  [
+                                     "conexaobr.com",
+                                     "quantumfinance.com.br",
+                                     "safra.com.br",
+                                     "repositorio.unicamp.br",
+                                     "cnnbrasil.com.br",
+                                     "linqinvestimentos.com",
+                                     "nordinvestimentos.com.br",
+                                     "infomoney.com.br",
+                                     "guiainvest.com.br"
+                                 ]
+                     },
+                     {
+                         "keyword":  "análise de crédito privado com IA",
+                         "propria":  null,
+                         "concorrentes":  {
+
+                                          },
+                         "top":  [
+                                     "siacorp.com.br",
+                                     "matera.com",
+                                     "avenue.us",
+                                     "kronoos.com",
+                                     "soliduz.com.br",
+                                     "siacorp.com.br",
+                                     "gyramais.com.br",
+                                     "qitech.com.br"
+                                 ]
+                     },
+                     {
+                         "keyword":  "monitoramento de carteira de renda fixa",
+                         "propria":  null,
+                         "concorrentes":  {
+
+                                          },
+                         "top":  [
+                                     "rendafixapratica.com.br",
+                                     "investidor10.com.br",
+                                     "daycoval.com.br",
+                                     "rendafixa.finance",
+                                     "riconnect.rico.com.vc",
+                                     "infomoney.com.br",
+                                     "genialinvestimentos.com.br",
+                                     "itaucorretora.com.br",
+                                     "forbes.com.br",
+                                     "interinvest.inter.co"
+                                 ]
+                     }
+                 ]
+}

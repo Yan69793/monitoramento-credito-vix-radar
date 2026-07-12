@@ -1,24 +1,26 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-09 ~17:10 BRT | **Skill:** MEGAPLAN execução (resolução P1/P2/P3)
-**Base auditada:** prod **v4.9.149** + Frontend **v201.74** deployado — repo = prod (sem drift)
-**Fontes de evidência:** MEGAPLAN execução + validação logs noturno 09/07 + investigação scheduled-task
+**Atualizado:** 2026-07-12 ~15h30 BRT | **Skill:** `/vix-radar-audit` (auditoria semanal 8 etapas, dirigida pelo operador)
+**Base auditada:** prod **v4.9.150** + Frontend **v201.74** — repo = prod (sem drift, confirmado ao vivo via `workers_get_worker_code`)
+**Fontes de evidência:** bundle de produção + curl health + DNS ao vivo + logs rotinas 07-12/07 + vault Obsidian
 
-**Fechamento de backlog (godmode + /goal):** `scripts/verify-rotinas-v2.ps1` corrigido — hardcodeava v4.9.143 em 4 lugares, agora deriva o bundle ativo do `wrangler.toml` (nunca mais fica stale); rodado 65/65 PASS. 5 overlays ganharam `role="dialog"`+`aria-modal`+`aria-label` real (v201.74, commit `618f635`) — `modal-varredura`, `config-modal-unsubscribe`, `modal-share`, `guia-overlay`, `onb-overlay`. 2 candidatos da lista original eram falsos positivos (mobile-drawer-overlay é backdrop decorativo correto; a sidebar é landmark de navegação, não dialog). 2 ficaram fora por serem construídos via JS e de superfície admin/logado (admin-overlay, pdf-period-overlay) — deferidos, não é regressão. Tentativa de remover código morto (`checkRateLimit` v1) e corrigir a regra do CLAUDE.md sobre bundles foi **revertida** — bateu 2x no guardrail de auto-mode (edição de bundle Worker + reescrita de regra de permissão), decisão adiada pro operador.
+**Auditoria 2026-07-12 (esta rodada):** 8 etapas executadas, 6/8 completas (OK), 2 bloqueadas por credencial (CRED1). Sistema saudável: `ok:true`, todos os bindings true, `verificador_ok:true`. EWS/matinal batem 100% com especificação (`MATINAL_TOP_N=30`, fórmula `score_combinado` char-por-char no bundle ao vivo). 3 achados novos — ALRT1 (ALTO), SPF1 (MÉDIO), CRED1 (bloqueio). Nenhum drift repo/produção. Detalhe completo: [[52 - Auditoria Completa 2026-07-12]].
 
-**Correção de processo desta rodada:** o Playwright MCP usado para testar "visitante novo" estava conectado ao browser real do operador (sessão já logada), não a uma instância isolada. Um achado de segurança relatado em chat ("dado exposto a anônimo") foi **falso alarme** — causado pelo fetch rodar dentro da aba autenticada; descartado após confirmação via `curl` puro (3 cenários sem credencial, todos 401 corretos). Não impactou nenhum commit ou deploy.
+**Noturno 11/07:** 92/103 emissores cobertos (89%). 83 SKIP + 9 lotes Haiku. 1 CRITICO (CSN), 2 RELEVANTE (Engie, Cosan). Hard cap atingido (758.850 tokens), 11 emissores diferidos. Fila de verificação drenada pós-noturno: vazia.
+
+**Matinal:** Sem atividade 11-12/07 (fim de semana). Último run: 10/07 (sexta). Próximo: 13/07 10h BRT.
 
 ---
 
 ## Síntese executiva
 
-1. **MEGAPLAN executado com sucesso — todas pendências P1/P2/P3 resolvidas ou bloqueadas (requer admin).** ENC1 (encoding) validado em log noturno 09/07 — nomes acentuados corretos. ROT1 (matinal) falhou por weekly limit Claude API, não CTRL_C_EXIT — aguardar reset Jul 11. ROT2 (scheduled-task duplicada) diagnosticada — VIXRadar-Noturno habilitada em paralelo com Task nativa, requer desabilitação manual (admin).
-2. **Watchdog stale_count:1 investigado.** expectedAgents = ["sync_cvm", "varredura_batch", "varredura_matinal", "newsletter", "healthcheck_diario", "cascade_analise"]. Provavelmente `newsletter` ou `healthcheck_diario` (menos frequentes). Não crítico, monitorar.
-3. **Reanálise Onco/Kora/GPA completada.** Oncoclínicas e Kora Saúde reanalisados na noturna 09/07 com sucesso (CRITICO e RELEVANTE). Fonte CVM primária usada em Kora. Onco tem fonte Folha (IMPRENSA) mas resultado CRITICO está correto.
-4. **Hygiene backups resolvida.** Diretório `_historico/` está no gitignore e contém backup de produção pré-sync. Chave já rotacionada/403, não é vetor ativo. Mantido como histórico.
-5. **Pendências bloqueadas (requer admin_senha):** P-CVM (correção datas CVM), E-MT (email_modo_teste status), PEND1 (aprovação usuários). Operador deve executar manualmente via painel admin ou curl.
-6. **Pendências deferidas (trabalho grande):** P-HE (Admin HEART Fase 2b), A11Y (passe browser/teclado). Não críticas, prioridade média.
-7. **Sistema saudável:** Worker v4.9.149, Frontend v201.74, sem drift. GitHub Actions canonical-test passando após correção drift frontend.
+1. **Sistema saudável, sem drift.** Worker v4.9.150 = Frontend v201.74, health `ok:true`, bindings todos true, verificador_ok true. Fila de verificação vazia (confirmado 12/07 14:28).
+2. **ALRT1 (ALTO, novo 12/07):** `dispararAlertaCritico` não filtra `prefs.newsletter` — assimetria com fluxo de newsletter. Se `EMAIL_ALERTAS_FAVORITOS` não setado, fallback é broadcast total sem filtro.
+3. **SPF1 (MÉDIO, novo 12/07):** `send.vixradar.com` em softfail `~all` vs domínio raiz hardfail `-all`. Hardcoded em script, não atualizado junto com hardening de 06/17.
+4. **CRED1 (bloqueio):** `admin_senha` não bate com `ADMIN_PASSWORD` de produção. `status_providers` exige JWT admin. Etapas 4 e 6 da auditoria bloqueadas.
+5. **Cobertura semanal:** Noturno 11/07 cobriu 92/103 (89%). 11 diferidos por hard cap. Matinal inativa no fim de semana (esperado).
+6. **Pendências estruturais:** Migração para Claude Code Routines (Remote) documentada mas não executada — dependência de PC local segue como causa raiz de incidentes de ingestão. Prompt da rotina `atualizar-agenda-macro-szuchmacher` obsoleto (FTP/HostGator morto).
+7. **PRED1 resolvido:** v4.9.150 deployado 11/07 ~15:17 BRT com aprovação do operador — diff pendente de 10/07 + quick wins preditivos + Altman KV.
 
 ---
 
@@ -53,6 +55,9 @@
 | B-BAK | **RESOLVIDO 2026-07-09** | Hygiene / segurança | `scheduled-tasks/backups/` contém prompts com chave antiga (não runtime) | MOC backlog | Diretório `_historico/` está no gitignore e contém backup de produção pré-sync. Chave já rotacionada/403, não é vetor ativo. Mantido como histórico, não precisa limpeza. |
 | E-MT | **INFO BLOQUEADO - requer admin_senha** | Email | `email_modo_teste` implementado em v4.9.142 — confirmar se foi ativado pós-deploy v4.9.143 | MOC pendência 2026-06-20 #1 | Endpoint `email_modo_teste_status` requer `admin_senha`. Operador deve verificar manualmente via painel admin ou curl. Não posso executar automaticamente (guardrail auto-mode). |
 | A11Y | P3 | Acessibilidade | Sinais positivos (`role`, `aria`, `focus`, `Escape`) mas sem passe browser/teclado validando foco/trap em dialogs | nota 32 | Rodar passe visual/teclado com browser quando UX for prioridade. |
+| ALRT1 | **P1 — novo 2026-07-12** | Backend / e-mail | `dispararAlertaCritico`→`selecionarDestinatariosAlerta` só exclui destinatário por `prefs.alertas === false`; nunca checa `prefs.newsletter` (assimetria com o fluxo de newsletter em massa, que checa corretamente). Se `EMAIL_ALERTAS_FAVORITOS` não estiver setado, fallback é broadcast pra todos os aprovados sem filtro | Confirmado ao vivo no bundle de produção (`workers_get_worker_code`, ~linha 5005/5029), [[52 - Auditoria Completa 2026-07-12]] | Decidir comportamento correto (incluir checagem de `prefs.newsletter` ou documentar independência intencional) e confirmar se `EMAIL_ALERTAS_FAVORITOS` está setado em produção |
+| SPF1 | **P2 — novo 2026-07-12** | DNS / deliverability | `send.vixradar.com` segue com SPF em softfail (`~all`) enquanto o domínio raiz `vixradar.com` foi hardenizado para `-all` em 2026-06-17 (nota 17); valor hardcoded em `api/tools/criar-token-dns-e-spf.ps1:37` não foi atualizado junto | `nslookup -type=TXT send.vixradar.com` ao vivo 2026-07-12, [[52 - Auditoria Completa 2026-07-12]] | Atualizar script + registro DNS de `send.vixradar.com` para `-all`, alinhando com o domínio raiz |
+| CRED1 | **BLOQUEADO — requer operador** | Credenciais / auditoria | `admin_senha` usada na auditoria de 2026-07-12 não autenticou (`admin_health_check` → "Acesso negado"); `status_providers` nem aceita `admin_senha` (exige JWT admin). Bloqueou confirmação ao vivo de saldo de providers e `EMAIL_ALERTAS_ENABLED` | `POST admin_health_check` → `{"ok":false,"erro":"Acesso negado."}`; código-fonte linha 15774 (`admin_senha !== env.ADMIN_PASSWORD`), [[52 - Auditoria Completa 2026-07-12]] | Operador confirmar/rotacionar `ADMIN_PASSWORD` e informar a credencial correta (ou realizar login admin/JWT) para desbloquear as etapas 4 e 6 na próxima auditoria |
 | XSS1 | **RESOLVIDO 2026-07-07** | Frontend / defesa-em-profundidade | ~~`app/index.html:3871` (`anomalia-card-desc`) interpola `${a.descricao}` em `innerHTML` sem `esc()`~~ | Deploy v201.70: `esc()` adicionado ao IIFE relevante + `innerHTML` sanitizado | Fechado |
 | IP1 | **RESOLVIDO 2026-07-07 (correção)** | Frontend / governança | `app/index.prod.html` órfão | Confirmado no repo: o arquivo **não existe fisicamente em disco nem no histórico git** — não há o que mover. `FIGMA-INTEGRATION.md` corrigido (linha ~780-782) para não citá-lo mais como "Prod build"; artefato real de deploy documentado como `app/deploy_zip/index.html` | Fechado. A alegação anterior de "movido para `app/_arquivo/`" era falsa — o arquivo simplesmente não existia para mover |
 | ADM1 | **RESOLVIDO 2026-07-07 (fix, deploy pendente)** | Backend / segurança | `admin_mercado` ainda aceitava senha via `?senha=` GET (querystring) apesar do changelog v4.9.142 dizer resolvido — só somava o path POST, não removia o GET | `api/v4.9.147.js:11785-11787`; curl confirmou HTTP 200 no GET com senha | Removido de vez em `api/v4.9.148.js` (commit `8c1d79f`) — só POST autentica agora |
@@ -98,11 +103,13 @@ Detalhe completo de cada resolução: notas de auditoria no vault Obsidian (14�
 
 ---
 
-## Lacunas desta passada
+## Lacunas desta passada (2026-07-12)
 
-- **Testes autenticados profundos não executados:** `admin_verificar_evento`, `tel_test` E2E, `admin_health_check`, leitura quarantine KV — exigem `admin_senha`/`routine_key`, mantidos fora do chat (readonly).
-- **Sprite MCP health** não executado (curl local suficiente para health público).
-- **FIGMA-INTEGRATION.md:781** ainda cita `index.prod.html` órfão (já movido para `app/_arquivo/`).
+- **Etapa 4 (status_providers):** Bloqueada — `admin_senha` não autenticou e `status_providers` exige JWT admin. Saldo granular de providers não confirmado ao vivo.
+- **Etapa 6 parcial (`EMAIL_ALERTAS_ENABLED`):** Bloqueada — secret Cloudflare, não versionado. Última confirmação documentada: ativado em 2026-06-17 (nota 17).
+- **`EMAIL_ALERTAS_FAVORITOS`:** Não confirmado se setado em produção — determina severidade real de ALRT1 (broadcast total vs só favoritos).
+- **Cobertura 103 emissores / staleness:** Fora do escopo das 8 etapas desta rodada (não solicitado).
+- **Sprite MCP health:** Não executado (curl local suficiente para health público).
 
 ---
 
@@ -110,12 +117,18 @@ Detalhe completo de cada resolução: notas de auditoria no vault Obsidian (14�
 
 | P | Ação | Ref |
 |---|------|-----|
+| P0 | **Operador confirmar/rotacionar `ADMIN_PASSWORD`** e informar credencial correta (ou login JWT) para desbloquear etapas 4/6 na próxima auditoria | CRED1 |
+| P1 | Corrigir `dispararAlertaCritico` — incluir checagem de `prefs.newsletter` ou documentar independência intencional; confirmar se `EMAIL_ALERTAS_FAVORITOS` está setado em produção | ALRT1 |
+| P1 | Executar migração para Claude Code Routines (Remote) — elimina dependência de PC local (causa raiz de ~80% dos incidentes) | `REGISTRAR-CLOUD.md` |
+| P1 | Atualizar prompt da rotina `atualizar-agenda-macro-szuchmacher` (FTP/HostGator morto → pipeline Cloudflare real) + publicar agenda pendente de 10/07 | Log 10/07 |
+| P2 | Hardening SPF `send.vixradar.com` para `-all` (script + DNS) | SPF1 |
+| P2 | Adicionar `credit balance is too low` ao regex de `Test-ClaudeAuthFailure` nas 3 rotinas | Gap billing 10/07 |
 | P2 | Investigar watchdog `stale_count:1` | P-WD |
 | P2 | Admin HEART Fase 2b — extração completa do monólito | P-HE |
 | P2 | Corrigir referência `FIGMA-INTEGRATION.md:781` (index.prod.html órfão) | IP1 |
-| P3 | Reanálise Onco/Kora/GPA com fonte CVM primária | P-MAT |
+| P3 | Revisar 22 matches CNPJ pendentes (PRED3) e rodar `atualizar_altman_cvm.ps1` | PRED3 |
+| P3 | Investigar escrita KV com case divergente em `radar:estado:2026-W28` | PRED2 |
 | P3 | `admin_corrigir_datas_cvm_kv` em lote | P-CVM |
 | P3 | Verificar/ativar `email_modo_teste` | E-MT |
 | Backlog | Expor `rejeitados`/`veredicto.motivo`/`n_quarentena` em `receber_analise` | A2 |
 | Backlog | Limpar `scheduled-tasks/backups/` com chave antiga | B-BAK |
-| Backlog | Atualizar `model_escalation` para `claude-sonnet-4-6` | B-MID |

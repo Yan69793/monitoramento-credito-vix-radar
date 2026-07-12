@@ -29,6 +29,14 @@ $HaikuChunk     = 15
 $SonnetChunk    = 11
 $PauseSec       = 2
 
+# v4.9.151: Start-Transcript captura TODO o output do script (stdout+stderr do processo),
+# incluindo crashes que o try/catch nao alcanca (ex.: claude.exe matando o processo pai).
+# Sem isso, 5 reinicios em 09/07 ficaram sem diagnostico (stderr vazio).
+$TranscriptFile = Join-Path $LogDir ('noturno_transcript_' + $DateTag + '_' + $PID + '.txt')
+try { Start-Transcript -Path $TranscriptFile -Append -Force -ErrorAction Stop } catch {
+    Write-Host "AVISO: Start-Transcript falhou ($($_.Exception.Message)) - continuando sem transcript"
+}
+
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 # --mcp-config recebia JSON inline ('{"mcpServers":{}}') - em execucao agendada (scheduled task,
 # possivelmente via powershell.exe 5.1 em vez de pwsh) as aspas embutidas eram perdidas na
@@ -41,8 +49,10 @@ Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
-    Add-Content -Path $LogFile -Value $line -Encoding UTF8
     Write-Host $line
+    try { Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch {
+        Write-Host "FALHA Write-Log (Add-Content): $($_.Exception.Message)"
+    }
 }
 
 function Test-ClaudeAuthFailure([string[]]$outputLines) {
@@ -52,7 +62,7 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # rotina degrada silenciosamente (RESULTADO ausente -> fallback "cobertura pendente" via
     # receber_analise, que sempre responde ok:true por ser so um HTTP POST ao Worker).
     $texto = ($outputLines -join "`n")
-    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead'
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit|credit balance is too low|insufficient.*credit'
 }
 
 function Invoke-Cleanup([switch]$Aggressive) {
@@ -74,6 +84,21 @@ function Get-RoutineKey {
         if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') { return $Matches[1] }
     }
     throw 'ROUTINE_KEY nao encontrada'
+}
+
+function Get-AnthropicApiKey {
+    # v4.9.150: usar API key (pay-per-token) em vez de assinatura Claude Code.
+    # Elimina o limite semanal recorrente. A chave ja existe no Cloudflare Worker.
+    # Basta setar 1x como env var do Windows:
+    #   [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY','sk-ant-...','User')
+    # A chave esta em https://console.anthropic.com/settings/keys
+    if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
+    # Fallback: Task Scheduler/sessao nao-interativa pode nao popular $env: automaticamente
+    # do registry User. Leitura direta do hive resolve.
+    $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
+    if ($fromRegistry) { return $fromRegistry }
+    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
+    return $null
 }
 
 function Get-CvmResumo($docs) {
@@ -208,6 +233,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # mojibake reapareceu num lote isolado mesmo com o fix global no boot do script).
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
+        # v4.9.150: usar API key (pay-per-token) elimina limite semanal da assinatura.
+        # Se nao tiver ANTHROPIC_API_KEY, claude -p usa assinatura normalmente (fallback).
+        $apiKey = Get-AnthropicApiKey
+        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `
@@ -380,37 +409,87 @@ try {
 
     Write-Log ('Plano ' + ($plano.contagem_tiers | ConvertTo-Json -Compress))
 
+    # v4.9.151: idempotencia - se a rotina reiniciou, nao reprocessar emissores ja feitos neste dia.
+    # Oi e Oncoclínicas foram processadas 2x em 09/07 (~180k tokens desperdicados) por falta disto.
+    $jaProcessados = @{}
+    if (Test-Path $LogFile) {
+        $linhasOk = Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|([^|]+)\|' }
+        foreach ($linha in $linhasOk) {
+            if ($linha -match 'OK\|([^|]+)\|') {
+                $jaProcessados[(Get-NomeNormalizado $Matches[1])] = $true
+            }
+        }
+        # tambem pular emissores que ja foram SKIP (Submit-SkipEmissor produz OK| no log)
+        $linhasSkip = Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match 'SKIP \d+ via PS1' }
+        if ($linhasSkip) {
+            # SKIP ja foi feito para todos da rodada anterior - pular da lista
+            $skipsAnteriores = $linhasOk | Where-Object { $_ -match 'SKIP\|' }
+            foreach ($linha in $skipsAnteriores) {
+                if ($linha -match 'OK\|([^|]+)\|') {
+                    $jaProcessados[(Get-NomeNormalizado $Matches[1])] = $true
+                }
+            }
+        }
+        if ($jaProcessados.Count -gt 0) {
+            Write-Log ('Idempotencia: ' + $jaProcessados.Count + ' emissores ja processados hoje, pulando')
+        }
+    }
+
     $janIni = '' + $plano.emissores[0].janela_inicio
     $janFim = '' + $plano.emissores[0].janela_fim
 
-    foreach ($emp in @($plano.emissores | Where-Object { $_.tier -eq 'SKIP' })) {
+    $skipQueue = @($plano.emissores | Where-Object { $_.tier -eq 'SKIP' -and -not $jaProcessados.ContainsKey((Get-NomeNormalizado $_.empresa)) })
+    $skipN = 0
+    foreach ($emp in $skipQueue) {
+        $skipN++
         try {
             $r = Submit-SkipEmissor $routineKey $emp
             if ($r.ok) { $stats.skip_ok++ } else { $stats.skip_fail++ }
         } catch { $stats.skip_fail++ }
+        if ($skipN % 20 -eq 0 -or $skipN -eq $skipQueue.Count) {
+            Write-Log ("SKIP progresso: $skipN/$($skipQueue.Count) (ok=$($stats.skip_ok) fail=$($stats.skip_fail))")
+        }
         Start-Sleep -Seconds $PauseSec
     }
     Write-Log ('SKIP ' + $stats.skip_ok + ' via PS1')
 
-    $analyzeList = @($plano.emissores | Where-Object { $_.tier -ne 'SKIP' })
+    $analyzeList = @($plano.emissores | Where-Object { $_.tier -ne 'SKIP' -and -not $jaProcessados.ContainsKey((Get-NomeNormalizado $_.empresa)) })
     $queues = Build-LlmQueues $analyzeList
     Write-Log ('Filas: sonnet=' + $queues.Sonnet.Count + ' haiku=' + $queues.Haiku.Count)
 
+    # v4.9.151: Haiku primeiro garante cobertura total (LIGHT/AUDIT/FULL resto).
+    # Sonnet depois com orcamento restante - se o hard cap estourar nos Sonnet,
+    # pelo menos a cobertura base ja foi feita. Ordem anterior (Sonnet primeiro)
+    # resultou em haiku=0 na rotina de 09/07 (17 emissores descobertos).
     $jobs = New-Object System.Collections.Generic.List[object]
-    foreach ($chunk in (Split-IntoChunks $queues.Sonnet $SonnetChunk)) {
-        $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false; Provedor = 'claude-sonnet-routine' })
-    }
     foreach ($chunk in (Split-IntoChunks $queues.Haiku $HaikuChunk)) {
         $jobs.Add([ordered]@{ Name = 'haiku'; Model = $ModelHaiku; Chunk = @($chunk); Skill = $HaikuSkill; Ultra = $true; Provedor = 'claude-haiku-routine' })
+    }
+    foreach ($chunk in (Split-IntoChunks $queues.Sonnet $SonnetChunk)) {
+        $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false; Provedor = 'claude-sonnet-routine' })
     }
 
     $ji = 0
     foreach ($job in $jobs) {
         $ji++
-        if ($stats.tokens_total -ge $TokenHardCap) {
+
+        # v4.9.151: estimar tokens ANTES de iniciar o lote.
+        # Dados reais de 09/07: Sonnet ~40k/emissor, Haiku ~8k/emissor (conservador).
+        # Hard cap checado pre-lote evita ultrapassar o limite durante o processamento
+        # (09/07: acum=635k, lote Light consumiu +141k e estourou o cap em 76k).
+        $estLote = if ($job.Name -eq 'sonnet') { $job.Chunk.Count * 40000 } else { $job.Chunk.Count * 8000 }
+
+        if (($stats.tokens_total + $estLote) -ge $TokenHardCap) {
             $stats.tokens_hard_hit = $true
             foreach ($e in $job.Chunk) { $pendingDeferred.Add($e) }
+            Write-Log ('HARD CAP pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $TokenHardCap + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores)')
             continue
+        }
+
+        # Aviso de meta: antes de iniciar o lote que ultrapassara a meta
+        if (($stats.tokens_total + $estLote) -ge $TokenTarget -and -not $stats.tokens_over_target) {
+            $stats.tokens_over_target = $true
+            Write-Log ('AVISO: meta ' + $TokenTarget + ' sera ultrapassada neste lote (acum=' + $stats.tokens_total + ' est=' + $estLote + ') - continua ate hard ' + $TokenHardCap)
         }
 
         $batchSeq++
@@ -520,15 +599,6 @@ try {
 
         if ($loteFail -gt 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-
-        if ($stats.tokens_total -ge $TokenTarget -and -not $stats.tokens_over_target) {
-            $stats.tokens_over_target = $true
-            Write-Log ('AVISO: meta ' + $TokenTarget + ' ultrapassada - continua ate hard ' + $TokenHardCap)
-        }
-        if ($stats.tokens_total -ge $TokenHardCap) {
-            $stats.tokens_hard_hit = $true
-            Write-Log ('HARD CAP ' + $TokenHardCap + ' - restante deferred')
-        }
     }
 
     foreach ($emp in $pendingDeferred) {
@@ -556,14 +626,42 @@ try {
         ' silent_fail=' + $stats.silent_fail +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
 
+    # Dreno da fila de verificação assíncrona pós-noturno (v4.9.150)
+    # Problema: o cron 18:20 drena ANTES do noturno terminar (~19:00), deixando eventos
+    # CRITICO novos presos na fila por 16h+ até o drain das 10:20 do dia seguinte.
+    # Este dreno resolve o timing gap e garante verificador_ok:true ao fim da noite.
+    if ($stats.submit_ok -gt 0) {
+        $verifScript = Join-Path $ScriptsDir 'run_vixradar_verificacao_async.ps1'
+        if (Test-Path $verifScript) {
+            Write-Log 'POS-NOTURNO: drenando fila de verificacao...'
+            try {
+                $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$verifScript`"" -PassThru -Wait -NoNewWindow
+                Write-Log ('POS-NOTURNO: dreno concluido (exit=' + $verifProc.ExitCode + ')')
+            } catch {
+                Write-Log ('POS-NOTURNO: ERRO ao executar dreno - ' + $_.Exception.Message)
+            }
+        }
+    }
+
     if ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) { $exitCode = 6 }
 } catch {
-    Write-Log ('ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message)
+    $errMsg = 'ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message
+    $stackMsg = 'STACK: ' + $_.Exception.StackTrace
+    Write-Host $errMsg
+    Write-Host $stackMsg
+    if ($_.Exception.InnerException) {
+        $innerMsg = 'INNER: ' + $_.Exception.InnerException.Message
+        Write-Host $innerMsg
+    }
+    # Gravar no log via caminho seguro (sem Write-Log que pode falhar e mascarar o erro)
+    try { Add-Content -Path $LogFile -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $errMsg) -Encoding UTF8 -ErrorAction Stop } catch {}
+    try { Add-Content -Path $LogFile -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $stackMsg) -Encoding UTF8 -ErrorAction Stop } catch {}
     $exitCode = 1
 } finally {
     Remove-BatchPrompts $DateTag
     Invoke-Cleanup -Aggressive
     Pop-Location
+    try { Stop-Transcript -ErrorAction SilentlyContinue } catch { }
 }
 
 if ($exitCode -ne 0) { exit $exitCode }

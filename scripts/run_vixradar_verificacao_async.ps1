@@ -1,5 +1,9 @@
 # run_vixradar_verificacao_async.ps1 - Dreno da fila de verificacao assincrona (radar:verif_fila:{data})
 # Roda via Claude Code (assinatura mensal) em vez do Worker chamar a API Anthropic paga por token.
+# NOTA (2026-07-10): ANTHROPIC_API_KEY esta setada no registro (User) nesta maquina - Get-AnthropicApiKey
+# retorna essa chave e o dreno roda cobrado por token hoje, nao por limite semanal de assinatura.
+# Confirmado rodando claude -p manual com a mesma chave. Guards de refusal (Fable 5) e --fallback-model
+# adicionados em Invoke-ClaudeBatch - ver comentarios la.
 # Programado para rodar pouco depois de vixradar-matinal (10h BRT) e vixradar-noturno (18h BRT).
 $ErrorActionPreference = 'Stop'
 # Encoding UTF-8 na captura do stdout do 'claude' (higiene, alinhado ao noturno/matinal).
@@ -19,6 +23,7 @@ $MetricsFile    = Join-Path $LogDir ('verificacao_async_metrics_' + $DateTag + '
 $McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelVerificador = 'claude-sonnet-4-6'
+$ModelFallback    = 'claude-sonnet-4-6'  # --fallback-model quando ModelVerificador != ModelFallback (ex.: troca futura pra claude-fable-5)
 $ChunkSize        = 4
 $PauseSec         = 2
 
@@ -40,7 +45,7 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # correto quanto ao efeito (erros_parse incrementa, exitCode vira 6), mas a causa fica oculta
     # no log (indistinguivel de JSON malformado/truncado por outro motivo).
     $texto = ($outputLines -join "`n")
-    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead'
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit'
 }
 
 function Get-RoutineKey {
@@ -53,17 +58,33 @@ function Get-RoutineKey {
     throw 'ROUTINE_KEY nao encontrada'
 }
 
+function Get-AnthropicApiKey {
+    if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
+    $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
+    if ($fromRegistry) { return $fromRegistry }
+    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
+    return $null
+}
+
 # Identica a run_vixradar_noturno_claude.ps1 (mesmas flags de economia/isolamento ja validadas em producao)
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $LogDir ('verifasync_stderr_' + $DateTag + '_' + $PID + '.txt')
     $raw = $null; $exitCode = 1
+    # --fallback-model so entra quando Model difere do fallback - evita fallback-pra-si-mesmo.
+    # Hoje (Model=Sonnet=ModelFallback) isso NAO adiciona a flag; ativa sozinho se Model virar Fable.
+    # Guard de nulidade: se a funcao for copiada para outro script sem $ModelFallback no escopo,
+    # a comparacao com $null passaria e a flag iria vazia - quebrando o claude -p inteiro.
+    $fallbackArgs = @()
+    if ($ModelFallback -and $Model -ne $ModelFallback) { $fallbackArgs = @('--fallback-model', $ModelFallback) }
     try {
         # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao
         # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
+        $apiKey = Get-AnthropicApiKey
+        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `
@@ -73,7 +94,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             --setting-sources project `
             --disable-slash-commands `
             --no-session-persistence `
-            --exclude-dynamic-system-prompt-sections 2>>$stderrFile
+            --exclude-dynamic-system-prompt-sections `
+            @fallbackArgs 2>>$stderrFile
         $exitCode = $LASTEXITCODE
     } catch {
         Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
@@ -82,6 +104,9 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     }
     $textOut = @($raw)
     $tokens = -1
+    $refusal = $false
+    $refusalCategory = $null
+    $refusalExplanation = $null
     try {
         $jsonLine = @($raw) | Where-Object { ('' + $_).TrimStart().StartsWith('{') } | Select-Object -Last 1
         if ($jsonLine) {
@@ -91,12 +116,27 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                 $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
                     + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
             }
+            # Classificador de seguranca do Fable 5/Mythos 5 pode recusar com stop_reason=refusal
+            # (resposta HTTP 200 normal, nao excecao). stop_details.category/.explanation nao
+            # confirmados no envelope do CLI (nunca observado em teste real) - le se existir, sem
+            # quebrar se nao existir. Sem este guard, uma recusa cairia no branch generico de
+            # parse-falhou e a causa raiz ficaria invisivel no log.
+            if ($json.stop_reason -eq 'refusal') {
+                $refusal = $true
+                if ($json.stop_details) {
+                    $refusalCategory = $json.stop_details.category
+                    $refusalExplanation = $json.stop_details.explanation
+                }
+            }
         }
     } catch {
         Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
     }
     $authFail = Test-ClaudeAuthFailure $textOut
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; AuthFailure = $authFail }
+    return @{
+        Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; AuthFailure = $authFail
+        Refusal = $refusal; RefusalCategory = $refusalCategory; RefusalExplanation = $refusalExplanation
+    }
 }
 
 function Get-BalancedJson([string]$scan) {
@@ -179,7 +219,7 @@ try {
 
 try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exit 4 }
 
-$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; tokens_total = 0 }
+$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0 }
 $exitCode = 0
 
 try {
@@ -228,6 +268,20 @@ try {
             break
         }
 
+        if ($result.Refusal) {
+            $categoria = if ($result.RefusalCategory) { $result.RefusalCategory } else { 'desconhecida (stop_details ausente no envelope)' }
+            # Salva a saida bruta (mesmo padrao do branch de parse-falhou): se stop_details vier
+            # ausente, o rawout e a unica evidencia para diagnosticar qual evento disparou o classificador.
+            $rawOutPath = Join-Path $LogDir ('verifasync_rawout_refusal_' + $label + '_' + $DateTag + '.txt')
+            Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
+            Write-Log ('AVISO: classificador de seguranca recusou o lote ' + $label + ' (' + $chunk.Count + ' evento(s); stop_reason=refusal, categoria=' + $categoria + ', modelo=' + $ModelVerificador + ') - possivel falso-positivo. Recusa e por conteudo do evento, nao por sessao - prosseguindo para o proximo lote. Itens deste lote ficam na fila (janela de releitura: 3 dias). Saida bruta em ' + $rawOutPath)
+            if ($result.RefusalExplanation) { Write-Log ('  explicacao do classificador: ' + $result.RefusalExplanation) }
+            $stats.refusals++
+            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds $PauseSec
+            continue
+        }
+
         $veredictos = Get-VeredictosArray $result.Output $chunk.Count
         if (-not $veredictos) {
             # Observabilidade: salva a saida bruta do modelo para diagnosticar o motivo do parse falhar
@@ -271,12 +325,12 @@ try {
     @{
         data = $DateTag; total_fila = $stats.total_fila; lotes = $stats.lotes
         aprovados = $stats.aprovados; rejeitados = $stats.rejeitados
-        erros_parse = $stats.erros_parse; tokens_total_est = $stats.tokens_total
+        erros_parse = $stats.erros_parse; refusals = $stats.refusals; tokens_total_est = $stats.tokens_total
     } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
 
-    Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse)
+    Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals)
 
-    if ($stats.erros_parse -gt 0) { $exitCode = 6 }
+    if ($stats.erros_parse -gt 0) { $exitCode = 6 } elseif ($stats.refusals -gt 0) { $exitCode = 8 }
 } catch {
     Write-Log ('ERRO FATAL: ' + $_.Exception.Message)
     $exitCode = 1

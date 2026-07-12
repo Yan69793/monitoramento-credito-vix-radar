@@ -79,15 +79,16 @@ curl.exe -s https://radar-credito-api.prospects-intel.workers.dev -w "`nHTTP:%{h
 
 Esperado: HTTP 200, `ok:true`, `telemetria:true`, `kv:true`. POST anônimo retorna 401 desde v4.9.x.
 
-## Arquitetura de IA (2026-06)
+## Arquitetura de IA (revisada 2026-07-10 contra os scripts reais)
 
-Cascade OpenRouter → Gemini → Perplexity **obsoleta desde v4.9.108**.
+Cascade OpenRouter → Gemini → Perplexity **obsoleta desde v4.9.108**. Nenhuma rotina usa Opus — registro anterior ("Opus matinal") era drift de documentação.
 
 | Caminho | Modelo | Trigger |
 |---------|--------|---------|
 | Pulso manual | `claude-haiku-4-5-20251001` (Anthropic API) | Usuário no frontend |
-| Lote 103 emissores | Opus matinal (top 15) + Sonnet noturno | Scheduled Tasks |
-| Verificador adversarial (CRITICO + amostra RELEVANTE) | Assíncrono via Claude Code (assinatura), `claude-sonnet-4-6` — desde v4.9.146 | Fila KV `radar:verif_fila:{data}` drenada por scheduled task `vixradar-verificacao-async` (registrada, cron `20 10,18 * * *`). Ponto frágil conhecido: depende de sessão OAuth local do `claude.exe` — incidente 08/07 (sessão expirou, "Not logged in" em matinal/noturno/verificacao_async simultaneamente, drenagem só recuperou entre 15:17-15:27 BRT). Guardas de auth-failure adicionadas em noturno/verificacao_async (exit code 7 + abort em vez de degradar silenciosamente); matinal em correção separada. Ver `03 - Estado de Produção.md`. |
+| Matinal (top 15 por EWS) | `claude-haiku-4-5-20251001` (chunks de 6) + `claude-sonnet-4-6` (emissores com EWS >= 38, chunks de 4) — `run_vixradar_matinal_claude.ps1` | Task nativa Windows `VIXRadar-Matinal` 10h00 BRT (scheduled-task Claude Code duplicada foi neutralizada 08/07) |
+| Noturno (103/103) | `claude-haiku-4-5-20251001` (tier ultra) + `claude-sonnet-4-6` — `run_vixradar_noturno_claude.ps1` | Task nativa Windows 18h00 BRT (mutex `Global\vixradar-noturno-v2` contra duplicata) |
+| Verificador adversarial (CRITICO + amostra 20% RELEVANTE) | `claude-sonnet-4-6` via `claude -p` — desde v4.9.146. **Cobrança:** com `ANTHROPIC_API_KEY` no registro (User), roda **por token (metered)**, não por assinatura — assinatura é só fallback se a chave sumir. Avaliação de troca para `claude-fable-5` feita em 10/07: **não trocado** (sem ganho demonstrado, custo 2,3x-4,3x; critério de reversão na nota 49) | Fila KV `radar:verif_fila:{data}` drenada por 3 gatilhos: cron `20 10,18 * * *` (`vixradar-verificacao-async`) + dreno inline pós-matinal + dreno inline pós-noturno. Guardas nas 3 rotinas: auth-failure (exit 7 + abort, matinal incluída desde 08/07); dreno também detecta `stop_reason:refusal` (classificador Fable 5 — exit 8, rawout, métrica `refusals`, `--fallback-model` condicional preparado, 10/07). Gap conhecido: `Credit balance is too low` ainda não abortável (P2, incidente 10/07 10h). Ver `03 - Estado de Produção.md`, notas 48 e 49. |
 
 Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — não indicam uso ativo.
 
@@ -97,12 +98,12 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.149** | `api/wrangler.toml` → **v4.9.149.js** (deployado 09/07 ~15:21 BRT — fix n_eventos=0 + mesclarEventoVerificado) | https://api.vixradar.com |
+| Worker | **v4.9.150** | `api/wrangler.toml` → **v4.9.150.js** (deployado 11/07 ~15:17 BRT — mojibake read path + fix porSetor briefing + preditivo quick wins) | https://api.vixradar.com |
 | Frontend | **v201.74** | `app/index.html` → **v201.74** (deployado 07/07 ~22h45 BRT) | https://vixradar.com |
-| Deploy Worker | `cd api && npx wrangler deploy v4.9.149.js --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name radar-credito-api` | — | — |
+| Deploy Worker | `cd api && npx wrangler deploy v4.9.150.js --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name radar-credito-api` | — | — |
 | Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
 
-Sem drift repo/prod. v4.9.149 corrige `receber_analise` (eventos pendentes de verificação são persistidos em vez de descartados com n_eventos=0) e `mesclarEventoVerificado` (substitui evento pendente pelo verificado em vez de pular duplicata).
+Sem drift repo/prod. v4.9.150 = diff pendente de 10/07 (normalizarMojibake no read path + briefing com fix porSetor) + preditivo quick wins (filtro de liquidez ativo, `spread_rel_setor` shadow, features+`model_version` no payload `predictive_v1:latest`, leitura null-safe de `fundamentals:altman:latest`). Rotinas locais novas: `VIXRadar-Export-Historico` (diária 20h45 — fundação de dados preditiva, `data/historico/`) e `VIXRadar-Ranking-Mensal` (dia 1, 11h30 — alerta de ultrapassagem SEO). Ver notas 50 e 51 do vault.
 
 **Atenção Wrangler 4.x:** `--no-autoconfig` obrigatório — sem isso, o Wrangler detecta `E:\Diretorio\Claude\dashboard` como projeto e ignora `wrangler.toml`.
 

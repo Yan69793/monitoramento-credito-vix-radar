@@ -57,6 +57,14 @@ function Get-RoutineKey {
     throw 'ROUTINE_KEY nao encontrada'
 }
 
+function Get-AnthropicApiKey {
+    if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
+    $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
+    if ($fromRegistry) { return $fromRegistry }
+    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
+    return $null
+}
+
 function Get-CvmResumo($docs) {
     if (-not $docs) { return '0 docs' }
     $arr = @($docs)
@@ -176,7 +184,7 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # imprimir esta mensagem em vez de analisar - exit code do processo continua 0, entao sem esta
     # checagem o lote falso-positiva como sucesso e a rotina degrada silenciosamente (0 analises).
     $texto = ($outputLines -join "`n")
-    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead'
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit'
 }
 
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
@@ -184,6 +192,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
+    $apiKey = Get-AnthropicApiKey
+    if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
     $out = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
         --model $Model `
         --add-dir $ScriptsDir `
@@ -393,6 +403,22 @@ try {
         ' sonnet=' + $stats.sonnet_count + ' haiku=' + $stats.haiku_count +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count +
         ' auth_fail=' + $stats.auth_fail + ' silent_fail=' + $stats.silent_fail)
+
+    # Dreno da fila de verificacao assincrona pos-matinal (v4.9.150)
+    # Mesmo racional do noturno: eventos CRITICO/RELEVANTE submetidos pela matinal
+    # ficam presos na fila ate o proximo drain. Este dreno garante visibilidade imediata.
+    if ($stats.batch_ok -gt 0) {
+        $verifScript = Join-Path $ScriptsDir 'run_vixradar_verificacao_async.ps1'
+        if (Test-Path $verifScript) {
+            Write-Log 'POS-MATINAL: drenando fila de verificacao...'
+            try {
+                $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$verifScript`"" -PassThru -Wait -NoNewWindow
+                Write-Log ('POS-MATINAL: dreno concluido (exit=' + $verifProc.ExitCode + ')')
+            } catch {
+                Write-Log ('POS-MATINAL: ERRO ao executar dreno - ' + $_.Exception.Message)
+            }
+        }
+    }
 
     if ($stats.auth_fail -gt 0) {
         Write-Log 'ERRO FATAL: claude -p sem sessao autenticada em pelo menos 1 lote - rotina nao cobriu todos os emissores'

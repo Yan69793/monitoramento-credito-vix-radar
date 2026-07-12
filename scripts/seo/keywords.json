@@ -1,0 +1,30 @@
+{
+  "dominio_proprio": "vixradar.com",
+  "concorrentes": [
+    "comdinheiro.com.br",
+    "quantumfinance.com.br",
+    "economatica.com",
+    "data.anbima.com.br",
+    "uqbar.com.br",
+    "conteudos.xpi.com.br",
+    "maisretorno.com",
+    "britech.global"
+  ],
+  "keywords": [
+    "monitoramento de crédito privado",
+    "monitoramento de debêntures",
+    "radar de crédito privado",
+    "eventos de crédito renda fixa",
+    "monitoramento de emissores de renda fixa",
+    "plataforma de crédito privado para gestoras",
+    "alerta de downgrade debêntures",
+    "ferramenta risco de crédito debêntures carteira",
+    "análise de crédito privado com IA",
+    "monitoramento de carteira de renda fixa"
+  ],
+  "alerta": {
+    "email_para": "szuchmacheryan@gmail.com",
+    "email_de": "VIX Radar <onboarding@resend.dev>",
+    "queda_minima_posicoes": 2
+  }
+}
