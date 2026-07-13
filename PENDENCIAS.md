@@ -1,26 +1,29 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-12 ~15h30 BRT | **Skill:** `/vix-radar-audit` (auditoria semanal 8 etapas, dirigida pelo operador)
-**Base auditada:** prod **v4.9.150** + Frontend **v201.74** — repo = prod (sem drift, confirmado ao vivo via `workers_get_worker_code`)
-**Fontes de evidência:** bundle de produção + curl health + DNS ao vivo + logs rotinas 07-12/07 + vault Obsidian
+**Atualizado:** 2026-07-13 ~06:40 BRT | **Skills:** `/vix-radar-audit` (operacional, nota 53) **+** `/vix-radar-general-audit` (engenharia, nota 54) — **duas sessões rodaram em paralelo nesta madrugada**, ver nota de reconciliação abaixo
+**Base auditada:** prod **v4.9.150** + Frontend **v201.75** — Worker sem drift; Frontend com drift documental menor (`app/version.json` v201.74 vs prod v201.75)
+**Fontes de evidência:** curl health + logs rotinas + Task Scheduler + KV emissores + console Anthropic (operador) + leitura de código (backend/frontend/scripts) + reprodução isolada de bug + navegador ao vivo + pesquisa externa
 
-**Auditoria 2026-07-12 (esta rodada):** 8 etapas executadas, 6/8 completas (OK), 2 bloqueadas por credencial (CRED1). Sistema saudável: `ok:true`, todos os bindings true, `verificador_ok:true`. EWS/matinal batem 100% com especificação (`MATINAL_TOP_N=30`, fórmula `score_combinado` char-por-char no bundle ao vivo). 3 achados novos — ALRT1 (ALTO), SPF1 (MÉDIO), CRED1 (bloqueio). Nenhum drift repo/produção. Detalhe completo: [[52 - Auditoria Completa 2026-07-12]].
+**Auditoria 2026-07-13 (nota 53, operacional):** Sistema parcialmente degradado — **MAT1 (CRÍTICO):** `VIXRadar-Matinal` parada 3 dias (saldo Anthropic -US$1,21). **DEF1 (ALTO):** Noturna 12/07 estourou hard cap (736k/700k tokens), 9 emissores deferred. **Correção aplicada (não commitada):** 3 scripts migrados pay-per-token → assinatura Claude Code + regex `Test-ClaudeAuthFailure` expandido. Detalhe: [[53 - Auditoria Completa 2026-07-13]].
 
-**Noturno 11/07:** 92/103 emissores cobertos (89%). 83 SKIP + 9 lotes Haiku. 1 CRITICO (CSN), 2 RELEVANTE (Engie, Cosan). Hard cap atingido (758.850 tokens), 11 emissores diferidos. Fila de verificação drenada pós-noturno: vazia.
+**Auditoria 2026-07-13 (nota 54, engenharia):** **CHUNK1 (CRÍTICO, novo)** — causa raiz de DEF1 identificada, reproduzida isoladamente e corrigida (não aplicada): `Split-IntoChunks` em `noturno`/`matinal` devolve lotes de 1 emissor em vez de agrupados sempre que a fila do dia cabe em 1 chunk (bug clássico de array-unwrapping do PowerShell) — 12+8 emissores viraram 20 chamadas individuais em vez de 2, consumindo ~10x mais tokens e estourando o hard cap antes do tier Sonnet (maior risco). Mais 3 P1 (senha admin via querystring GET, XSS confirmado em conteúdo de IA sem CSP, rate limiter fail-open sem cobertura em login/admin) e 6 P2. Detalhe: [[54 - Auditoria Geral Backend Frontend 2026-07-13]].
 
-**Matinal:** Sem atividade 11-12/07 (fim de semana). Último run: 10/07 (sexta). Próximo: 13/07 10h BRT.
+**Noturno 12/07:** 94/103 emissores cobertos (91%). 83 SKIP + 11 lotes Haiku (0 Sonnet). 1 CRITICO (Cosan: S&P downgrade BB-→B+ + venda Radar R$1,85bi), 6 RELEVANTE. Hard cap 736k/700k, 9 deferred. Fila de verificação drenada pós-noturno (exit=0).
+
+**Matinal:** Parada desde 10/07 (sexta). Último run falhou com `LastTaskResult=6` (Credit balance too low). Trigger Mon-Fri não disparou 11-12/07 (correto). Próximo: 13/07 10h BRT — **primeiro teste com assinatura pós-migração v4.9.152.**
 
 ---
 
 ## Síntese executiva
 
-1. **Sistema saudável, sem drift.** Worker v4.9.150 = Frontend v201.74, health `ok:true`, bindings todos true, verificador_ok true. Fila de verificação vazia (confirmado 12/07 14:28).
-2. **ALRT1 (ALTO, novo 12/07):** `dispararAlertaCritico` não filtra `prefs.newsletter` — assimetria com fluxo de newsletter. Se `EMAIL_ALERTAS_FAVORITOS` não setado, fallback é broadcast total sem filtro.
-3. **SPF1 (MÉDIO, novo 12/07):** `send.vixradar.com` em softfail `~all` vs domínio raiz hardfail `-all`. Hardcoded em script, não atualizado junto com hardening de 06/17.
-4. **CRED1 (bloqueio):** `admin_senha` não bate com `ADMIN_PASSWORD` de produção. `status_providers` exige JWT admin. Etapas 4 e 6 da auditoria bloqueadas.
-5. **Cobertura semanal:** Noturno 11/07 cobriu 92/103 (89%). 11 diferidos por hard cap. Matinal inativa no fim de semana (esperado).
-6. **Pendências estruturais:** Migração para Claude Code Routines (Remote) documentada mas não executada — dependência de PC local segue como causa raiz de incidentes de ingestão. Prompt da rotina `atualizar-agenda-macro-szuchmacher` obsoleto (FTP/HostGator morto).
-7. **PRED1 resolvido:** v4.9.150 deployado 11/07 ~15:17 BRT com aprovação do operador — diff pendente de 10/07 + quick wins preditivos + Altman KV.
+1. **Sistema saudavel, sem drift de codigo.** Worker v4.9.150, Frontend v201.75, health `ok:true`, bindings todos true, verificador_ok true. Drift documental menor: `app/version.json` v201.74 vs prod v201.75.
+2. **MAT1 (CRITICO, novo 13/07):** `VIXRadar-Matinal` parada 3 dias por saldo Anthropic -US$1,21. **Corrigido nesta sessao:** 3 scripts migrados pay-per-token → assinatura Claude Code (v4.9.152). Primeiro teste real: matinal 13/07 10h BRT.
+3. **DEF1 (ALTO, novo 13/07):** Noturna 12/07 estourou hard cap (736k/700k tokens), 9 emissores deferred, 0 lotes Sonnet.
+4. **ALRT1 (ALTO, 12/07):** `dispararAlertaCritico` nao filtra `prefs.newsletter` — assimetria com fluxo de newsletter. Se `EMAIL_ALERTAS_FAVORITOS` nao setado, fallback e broadcast total sem filtro.
+5. **SPF1 (MEDIO, 12/07):** `send.vixradar.com` em softfail `~all` vs dominio raiz hardfail `-all`. Hardcoded em script.
+6. **DRIFT1 (BAIXO, novo 13/07):** `app/version.json` nao atualizado no commit v201.75 — `deploy_zip/version.json` e producao corretos.
+7. **CRED1 (bloqueio, 12/07):** `admin_senha` nao bate com `ADMIN_PASSWORD` de producao. `status_providers` exige JWT admin.
+8. **Pendencias estruturais:** Migracao para Claude Code Routines (Remote) documentada mas nao executada — dependencia de PC local segue como causa raiz de incidentes de ingestao.
 
 ---
 
@@ -28,6 +31,18 @@
 
 | ID | Sev | Área | Achado | Evidência | Ação |
 |----|-----|------|--------|-----------|------|
+| MAT1 | **CRITICO — CORRIGIDO 2026-07-13** | Rotinas / cobertura | `VIXRadar-Matinal` parada 3 dias (10-12/07) por saldo Anthropic -US$1,21. `LastTaskResult=6` em 10/07; trigger Mon-Fri nao disparou 11-12/07 (correto). Impacto: 15 emissores prioritarios sem cobertura diaria desde 09/07. | `Get-ScheduledTaskInfo VIXRadar-Matinal`: `LastRunTime 10/07, LastTaskResult 6, NextRunTime 13/07 10:00`. Console Anthropic: `-US$1,21`. | **Fix aplicado:** 3 scripts migrados pay-per-token → assinatura (ver MIG1). Validacao real: matinal 13/07 10h BRT. |
+| DEF1 | **P1** | Rotinas / cobertura | Noturna 12/07 estourou hard cap (736k/700k tokens): 9 emissores deferred, 0 lotes Sonnet. 94/103 cobertos (91%). | `noturno_metrics_20260712.json`: `tokens_total_est 736030, token_hard_hit true, deferred 9, sonnet_llm 0`. | Reprocessar emissores FULL/AUDIT faltantes (8 FULL + 1 AUDIT). Migracao assinatura (MIG1) reduz pressao de token por nao cobrar por uso. Aumentar hard cap ou reduzir estimativa pre-lote. |
+| DRIFT1 | **P2** | Frontend / repo | `app/version.json` v201.74 vs producao v201.75. `deploy_zip/version.json` e producao estao corretos; `app/version.json` nao foi atualizado no commit `7dee278`. | `app/version.json` = `{"version":"v201.74"}`; `curl vixradar.com/version.json` = `{"version":"v201.75"}`. | Atualizar `app/version.json` → v201.75 (1 linha). |
+| MIG1 | **P0 RESOLVIDO 2026-07-13** | Rotinas / billing | 3 scripts de rotina migrados de pay-per-token (ANTHROPIC_API_KEY) para assinatura Claude Code (OAuth). Elimina dependencia de saldo pre-pago que esgotou 3x em 10 dias. Regex `Test-ClaudeAuthFailure` expandido (+credit balance\|insufficient.*credit) nos 3 scripts. | `git diff scripts/`: 3 arquivos, ParseFile 0 erros. Alteracoes nao commitadas. | Commit pendente de aprovacao do operador. Validacao real: matinal 13/07 10h BRT. |
+| CHUNK1 | **P0 CORRIGIDO 2026-07-13 (nota 54)** | Rotinas / cobertura | `Split-IntoChunks` (`noturno.ps1:205-214`, `matinal.ps1:158-167`) devolve lotes de **1 emissor** em vez de agrupados quando a fila do dia cabe em 1 chunk (noturno usa HaikuChunk=15/SonnetChunk=11, maiores que o volume típico) — bug de array-unwrapping do PowerShell (`return $chunks` sem vírgula unária). **Causa raiz confirmada de DEF1**: 12/07 gerou 20 chamadas `claude -p` individuais em vez de 2 lotes, ~10x overhead de tokens, hard cap estourado antes do tier Sonnet (EWS≥38, maior risco) | Log 12/07 (`Lote haiku-1: Eneva` … `haiku-11: MRV`, depois 8 `sonnet-13..20` de 1 emissor cada); reprodução isolada da função em PowerShell nesta sessão confirmou 12 iterações de 1 item em vez de 1 iteração de 12; fix `return ,$chunks` validado em 4 cenários sem regressão | **Aplicado 2026-07-13 ~03:55 BRT** (aprovação explícita do operador): `return $chunks` → `return ,$chunks` em `noturno.ps1:213` e `matinal.ps1:166`. Validado: `ParseFile` 0 erros nos 2 arquivos; função extraída do arquivo real pós-edição re-testada com os tamanhos exatos do incidente 12/07 (12 itens/chunkSize 15 → 1 lote de 12, não mais 12 de 1; 8 itens/chunkSize 11 → 1 lote de 8; controle 20/chunkSize 6 → 4 lotes corretos; fila vazia → 0). **Não commitado** — aguardando decisão do operador. Efeito real só se confirma no próximo disparo (matinal 13/07 10h ou noturno 18h). Provável causa recorrente, não pontual — checar histórico de `sonnet_llm:0`+`deferred>0` se logs anteriores sobreviverem (ver CLEANAGG1) |
+| HDASH1 | **P1 — novo 2026-07-13 (nota 54)** | Backend / segurança | `op=health-dashboard` autentica com senha admin via querystring GET (`?senha=` vs `env.ADMIN_SENHA`, variável distinta de `ADMIN_PASSWORD`) — mesma classe de bug já removida do `admin_mercado` em v4.9.148. Com `head_sampling_rate=1` ativo, a senha fica gravada em log de request na Cloudflare | `api/v4.9.150.js:14760-14763` | Migrar para `_exigeJwtAdmin` ou POST form, como já feito em `admin_mercado`. Confirmar se `ADMIN_SENHA` ainda é secret vivo em produção |
+| XSSEVT1 | **P1 — novo 2026-07-13 (nota 54)** | Frontend / segurança | `renderEventoCard` e bloco `alertas_mercado` interpolam campos vindos da análise de IA (`titulo`, `evento`, `tags`, `memo_*`, `query`, `resultado`, `cobertura_nota`) em `innerHTML` sem `esc()` — maior superfície do app sem escape, contrastando com comentários de usuário (que são escapados). Sem CSP como contenção (`_headers` omite de propósito) | `app/index.html:3610` (def. ~L24774 no bundle minificado); `_headers:7-9` | Aplicar `esc()` em todos os campos de evento; escapar corpo dentro de `_mdAnchor`; avaliar CSP em staging |
+| RLADMIN1 | **P1 — novo 2026-07-13 (nota 54)** | Backend / segurança | Rate limiter (`checkRateLimitV2`) é fail-open em 3 cenários de falha (env indisponível, binding ausente, exceção do DO); único call site é o caminho de pulso — login, registrar, reset e ~60 comparações de `admin_senha`/`ADMIN_PASSWORD` não têm rate limit nem lockout. Comparação de senha admin não é constant-time | `api/v4.9.150.js:12895,12899-12901,12938-12941` (fail-open); `:15630` (único RL real) | Aplicar rate limit em login/registrar/admin; fail-closed (ou fallback KV) quando o DO falhar |
+| CASEKEY1 | **P2 — novo 2026-07-13 (nota 54)** | Ingestão / dados | `receber_analise` grava `body.empresa` cru como chave de `results`, sem case-fold nem validação contra `EMISSORES_LISTA` — **causa raiz confirmada de PRED2** (chaves duplicadas por caixa em `radar:estado:2026-W28`) | `api/v4.9.150.js:15492,15500,15531,15567`; contraste com upsert admin que valida `EMISSORES_LISTA.includes` (`:15078`) | Resolver contra lista canônica antes de persistir (reusar `resolverEmpresa`, `:10861`) |
+| VERIFMUTEX1 | **P2 — novo 2026-07-13 (nota 54)** | Rotinas / confiabilidade | Dreno de verificação assíncrona sem mutex, com 3 gatilhos concorrentes (cron 10:20/18:20 + inline pós-matinal + inline pós-noturno) — risco de processar o mesmo evento 2x | `run_vixradar_verificacao_async.ps1` sem mutex (contraste: noturno/export/ranking têm) | Mutex `Global\vixradar-verifasync` no padrão do noturno |
+| CLEANAGG1 | **P2 — novo 2026-07-13 (nota 54)** | Rotinas / governança | `cleanup -Aggressive` no `finally` de matinal/noturno apaga logs e métricas de **todos** os dias anteriores — retenção real é 1 dia, não os 7 configurados. Log do incidente de billing de 10/07 já não existe | `cleanup-rotina-artifacts.ps1:22,59-61` | Aggressive deve poupar `*.log`/`*_metrics_*.json` |
+| FOCUSTRAP1 | **P2 — novo 2026-07-13 (nota 54)** | Frontend / acessibilidade | Modal `role="dialog" aria-modal="true"` não retém foco — confirmado ao vivo (navegador): foco inicial fica em `BODY`, `Tab` circula por botões da página por trás. Falha real de WCAG 2.4.3 | Testado via `document.activeElement`+`Tab`×3 em produção (vixradar.com, modal de Termos/Documentação) | Focar primeiro elemento focável ao abrir + trap de `Tab` dentro do dialog |
 | PRED1 | **P1 RESOLVIDO 2026-07-11 ~15:17 BRT** | Worker / preditivo | v4.9.150 **deployado com aprovação do operador** (versão `365ceff5`): diff pendente de 10/07 incorporado (mojibake read path + briefing, com fix `porSetor[setorEmp]`→`setorNorm`) + quick wins preditivos (filtro de liquidez ativo, `spread_rel_setor` shadow, features+`model_version` no payload, leitura de `fundamentals:altman:latest`). Altman publicado no KV (`fundamentals:altman:latest`, 78 emissores) | Health duplo pós-deploy: curl + Sprite ambos `versao:v4.9.150, ok:true, verificador_ok:true` | **Checagem restante (hoje ~20h50):** manifest do exporter das 20h45 deve mostrar `model_version: v4.9.150+liqfilter+srs_shadow1` e `features` no predictive.json (payload só regenera no cron 18h30 BRT) |
 | PRED2 | **P2** | Ingestão / dados | `radar:estado:2026-W28` contém chaves de emissor em `results` diferindo **só por caixa** (parser JSON estrito rejeita o dicionário; parente da linhagem mojibake/normalização). Semana corrente, dedup do Worker pode estar tratando como emissores distintos | Download cru da chave em 11/07 (212 KB, "keys with different casing"); `seed_labels.ps1` ganhou fallback `-AsHashtable` | Investigar a origem da escrita com case divergente (provável `receber_analise` sem normalizar nome de emissor) e corrigir num próximo bump; conferir se há score/eventos duplicados por case no painel |
 | PRED3 | **P3 — revisão do operador** | Preditivo / Altman | Match nome→CNPJ do Altman: 81 fortes publicáveis, **22 em revisão manual** (ex.: Petrobras — DENOM não começa com o nome curto) | `scripts/predictive/cnpj_emissores.review.json` | Revisar os 22, mover os corretos para `cnpj_emissores.json` e rodar de novo o `atualizar_altman_cvm.ps1` (cobertura sobe de 69→~90 emissores) |
@@ -117,17 +132,28 @@ Detalhe completo de cada resolução: notas de auditoria no vault Obsidian (14�
 
 | P | Ação | Ref |
 |---|------|-----|
+| ~~P0~~ APLICADO | ~~Aplicar `return ,$chunks`~~ — feito e validado 03:55 BRT, não commitado. Decidir commit (junto com MIG1) | CHUNK1 |
+| P0 | Revisar e decidir commit da migração de auth nos 3 scripts (nota 53) antes do teste real das 10h | MIG1 |
 | P0 | **Operador confirmar/rotacionar `ADMIN_PASSWORD`** e informar credencial correta (ou login JWT) para desbloquear etapas 4/6 na próxima auditoria | CRED1 |
+| P1 | `op=health-dashboard`: migrar senha de querystring GET para JWT admin/POST | HDASH1 |
+| P1 | Aplicar `esc()` em `renderEventoCard`/`alertas_mercado`; avaliar CSP em staging | XSSEVT1 |
+| P1 | Rate limit em login/registrar/admin; fail-closed no DO | RLADMIN1 |
 | P1 | Corrigir `dispararAlertaCritico` — incluir checagem de `prefs.newsletter` ou documentar independência intencional; confirmar se `EMAIL_ALERTAS_FAVORITOS` está setado em produção | ALRT1 |
-| P1 | Executar migração para Claude Code Routines (Remote) — elimina dependência de PC local (causa raiz de ~80% dos incidentes) | `REGISTRAR-CLOUD.md` |
+| P1 | Executar migração para Claude Code Routines (Remote) — elimina dependência de PC local (causa raiz de ~80% dos incidentes); paliativo imediato: heartbeat externo tipo healthchecks.io | `REGISTRAR-CLOUD.md` |
 | P1 | Atualizar prompt da rotina `atualizar-agenda-macro-szuchmacher` (FTP/HostGator morto → pipeline Cloudflare real) + publicar agenda pendente de 10/07 | Log 10/07 |
+| P2 | Resolver `empresa` contra `EMISSORES_LISTA` antes de persistir em `receber_analise` | CASEKEY1 |
+| P2 | Mutex no dreno de verificação assíncrona | VERIFMUTEX1 |
+| P2 | Cleanup agressivo não apagar logs/métricas de dias anteriores | CLEANAGG1 |
+| P2 | Focus trap + foco inicial nos modais (falha WCAG 2.4.3 confirmada ao vivo) | FOCUSTRAP1 |
 | P2 | Hardening SPF `send.vixradar.com` para `-all` (script + DNS) | SPF1 |
-| P2 | Adicionar `credit balance is too low` ao regex de `Test-ClaudeAuthFailure` nas 3 rotinas | Gap billing 10/07 |
+| ~~P2~~ RESOLVIDO | ~~Adicionar `credit balance is too low` ao regex de `Test-ClaudeAuthFailure`~~ — confirmado no disco: já presente nos 3 scripts (`matinal.ps1:187`, `noturno.ps1:65`, `verificacao_async.ps1:48`) via MIG1, verificado nesta sessão | Gap billing 10/07 |
 | P2 | Investigar watchdog `stale_count:1` | P-WD |
 | P2 | Admin HEART Fase 2b — extração completa do monólito | P-HE |
+| P2 | Ativar `cacheTtl`/Cache API nas leituras KV de `op=state`/`comparar` (N+1 confirmado) | Nota 54 item 12 |
+| P2 | Ativar auto-reload com teto de gasto na Billing page do console Anthropic (complementa MIG1 — assinatura também tem limite semanal) | Pesquisa externa, nota 54 |
 | P2 | Corrigir referência `FIGMA-INTEGRATION.md:781` (index.prod.html órfão) | IP1 |
 | P3 | Revisar 22 matches CNPJ pendentes (PRED3) e rodar `atualizar_altman_cvm.ps1` | PRED3 |
-| P3 | Investigar escrita KV com case divergente em `radar:estado:2026-W28` | PRED2 |
+| P3 | Investigar escrita KV com case divergente em `radar:estado:2026-W28` (causa raiz já identificada — ver CASEKEY1) | PRED2 |
 | P3 | `admin_corrigir_datas_cvm_kv` em lote | P-CVM |
 | P3 | Verificar/ativar `email_modo_teste` | E-MT |
 | Backlog | Expor `rejeitados`/`veredicto.motivo`/`n_quarentena` em `receber_analise` | A2 |
