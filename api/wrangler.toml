@@ -1,6 +1,26 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.152)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.153)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.153.js = v4.9.152 + FIX STATELEAK1 (2026-07-13, investigação de queixa
+#   ao vivo do operador: "sistema continua sem estar atualizado até 10/07").
+#   Causa raiz confirmada por leitura direta do KV de produção (autorizada
+#   explicitamente pelo operador): radar:estado:2026-W28 tem 125 chaves em
+#   `results`, mas EMISSORES_LISTA só tem 103 — as 22 extras são resíduo do
+#   bug de mojibake (ENC1, corrigido 09/07) e de teste manual, todas travadas
+#   em 06/07, 08/07 ou 10/07 (nunca mais atualizadas): "Raízen" tinha 3 chaves
+#   diferentes (`RaÃ­zen`, `Raizen`, `Ra�zen`) além da correta, mesmo padrão em
+#   Kora Saúde, Pão de Açúcar (GPA), Itaú Unibanco, Vivo, +11 outras. `op=state`
+#   (dado principal do painel logado) e `montarBriefingInterno` (usa por
+#   `briefing_executivo`) mandavam as 125 chaves para o frontend SEM filtrar
+#   contra EMISSORES_LISTA - as 3 outras rotas que usam
+#   carregarEstadoMultiSemana (`ews` ranking, `historico_emissor`, `comparar`)
+#   já eram seguras (iteram EMISSORES_LISTA ou fazem lookup por chave
+#   específica). Fix: `.filter(EMISSORES_LISTA.includes)` nos 2 pontos.
+#   Validado com o dado real de produção (backup local antes do fix):
+#   125→103 após filtro, Cosan (CRITICO real, 12/07) sobrevive, só a chave
+#   "Raízen" corretamente acentuada sobrevive das 4 variantes. NÃO apaga as
+#   22 chaves-lixo do KV (proposta separada, ação destrutiva, aguarda decisão
+#   própria do operador) - só impede que cheguem ao frontend.
 # v4.9.152.js = v4.9.151 + rodada 2 da auditoria 2026-07-13 (3 dos 5 P1
 #   adiados no v4.9.151, atacados a pedido explicito do operador):
 #   (1) FIX ANOMPROMO1: recalcularTodasAnomalias (cron, ~9 call-sites)
@@ -155,7 +175,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.152.js"
+main       = "v4.9.153.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
