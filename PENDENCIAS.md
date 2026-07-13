@@ -1,6 +1,8 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-13 ~05:19 BRT (rodada 3) | **Skills:** `/vix-radar-audit` (operacional, nota 53) **+** `/vix-radar-general-audit` (engenharia, nota 54) — **duas sessões rodaram em paralelo nesta madrugada**, ver nota de reconciliação abaixo
+**Atualizado:** 2026-07-13 ~05:52 BRT (rodada 4 — STATELEAK1) | **Skills:** `/vix-radar-audit` (operacional, nota 53) **+** `/vix-radar-general-audit` (engenharia, nota 54) — **três sessões rodaram em paralelo nesta madrugada** (incl. edição não commitada em `api/v4.9.151.js` descoberta na rodada 4, ver nota de reconciliação abaixo)
+
+**STATELEAK1 (P1 RESOLVIDO 2026-07-13, deploy v4.9.153):** Investigação de queixa ao vivo do operador ("sistema sem atualizar até 10/07") — causa raiz confirmada por leitura direta do KV: `radar:estado:2026-W28` tinha 125 chaves em `results` vs 103 em `EMISSORES_LISTA` (22 resíduos de mojibake/teste, travados em 06-10/07). `op=state`/`briefing_executivo` mandavam tudo pro frontend sem filtrar. Fix deployado e validado contra dado real de produção (125→103, Cosan sobrevive, só a grafia correta de cada emissor sobrevive). Chaves-lixo continuam no KV (não apagadas — ação destrutiva separada).
 **Base auditada:** prod **v4.9.150** + Frontend **v201.75** — Worker sem drift; Frontend com drift documental menor (`app/version.json` v201.74 vs prod v201.75)
 **Fontes de evidência:** curl health + logs rotinas + Task Scheduler + KV emissores + console Anthropic (operador) + leitura de código (backend/frontend/scripts) + reprodução isolada de bug + navegador ao vivo + pesquisa externa
 

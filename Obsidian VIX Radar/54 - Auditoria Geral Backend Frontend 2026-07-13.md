@@ -1,5 +1,24 @@
 # Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)
 
+## Rodada 4 — STATELEAK1 + colisão nova com sessão concorrente (2026-07-13 ~05:20-05:52 BRT)
+
+Operador reportou ao vivo: "continua o sistema sem estar atualizado até o dia 10/07". Investigação direta (autorizada pelo operador a ler KV de produção após bloqueio inicial do classificador).
+
+**Achado e corrigido — STATELEAK1 (deploy v4.9.153, `ce1f2987-9f3a-421c-a2db-005e3b14d12e`):** `radar:estado:2026-W28` real tem 125 chaves em `results`, mas `EMISSORES_LISTA` só tem 103. As 22 extras são resíduo do bug de mojibake (ENC1, corrigido 09/07) e testes manuais: "Raízen" tinha 4 chaves (`RaÃ­zen`, `Raizen`, `Ra�zen`, + a correta), travadas em 06/07 ou 10/07 para sempre (nunca mais reescritas, pois a rotina agora grava só na chave canônica). Mesmo padrão em Kora Saúde, Pão de Açúcar (GPA), Itaú Unibanco, Itaúsa, Vivo, São Martinho, SLC Agrícola, Assaí, Cogna, CSN Mineração, Compass, Iguá Saneamento, MRS Logística, Oncoclínicas — 14 emissores reais afetados. `op=state` (dado principal do painel logado) e `montarBriefingInterno` mandavam as 125 chaves ao frontend sem filtrar contra `EMISSORES_LISTA` — os outros 3 endpoints de `carregarEstadoMultiSemana` (`ews`, `historico_emissor`, `comparar`) já eram seguros. Fix: `.filter(EMISSORES_LISTA.includes)` nos 2 pontos. Validado com o dado real baixado (não sintético): 125→103, Cosan (CRITICO real de 12/07) sobrevive, só a grafia certa de cada emissor sobrevive. **Não apaga as chaves-lixo do KV** — só impede que cheguem ao frontend; limpeza é ação destrutiva separada, não executada.
+
+**Colisão nova descoberta durante o commit:** `git status` mostrou `api/v4.9.151.js` modificado no working tree, não commitado, nunca tocado por mim nesta sessão. Diff revela que uma **terceira sessão concorrente** implementou, em paralelo e de forma independente, tentativas de fix para os mesmos 3 achados que eu ataquei na Rodada 3 — mas com abordagens diferentes das minhas, cada uma com um problema técnico real:
+
+| Achado | Abordagem da sessão concorrente (em `v4.9.151.js`, não commitada) | Problema identificado |
+|---|---|---|
+| RACEKV1 | Lock via KV: `get(radar:lock:estado:{semana}:{empresa})` → se vazio, `put` + prossegue; retry 5x com backoff; delete no `finally` | KV do Cloudflare **não é fortemente consistente** — o padrão check-then-set não é atômico entre edges diferentes. Dá falsa sensação de estar corrigido mas não elimina a corrida de verdade (por isso deferi para Durable Object, que serializa de verdade) |
+| ANOMPROMO1 | Mesma lógica da minha (filtra promovidos antes de re-detectar), mas compara por `empresa.toLowerCase().trim()` em vez de match exato | Funcionalmente equivalente à minha; só a chave de comparação difere |
+| RLADMIN1 | Rate limit **global**: `checkRateLimitV2` aplicado a toda requisição não-GET-de-health, no topo do `__coreFetch` | `receber_analise` (chamado repetidamente pelas rotinas matinal/noturno, mesmo IP de servidor, dezenas de vezes por execução) passaria a competir pela mesma cota IP de `RATE_LIMITS_ANONIMO` — risco real de 429 bloquear a própria ingestão das rotinas, inclusive no teste de hoje 10h/18h |
+| CASEKEY1 | `empresa = empresa.toLowerCase().trim()` — normaliza tudo para minúsculo | Incompatível com a minha abordagem (canonicalizo para a grafia exata de `EMISSORES_LISTA`) — se as duas fossem aplicadas juntas, criaria uma 5ª variante de chave por emissor |
+
+**Não toquei no arquivo** (nem descartei, nem commitei, nem mesclei) — fica exatamente como a outra sessão deixou, para o operador decidir. `v4.9.151.js` não é mais o `main` do `wrangler.toml` (já em v4.9.153) e não foi deployado nesse estado.
+
+---
+
 ## Rodada 3 — ataque aos P1 adiados (2026-07-13 ~05:05-05:19 BRT)
 
 Operador, perguntado explicitamente entre 3 opções (esperar validação de hoje / atacar agora / só monitorar), escolheu **atacar agora** os 5 P1 deixados em aberto na Rodada 2. Releitura fresca do código antes de qualquer edição (linhas haviam mudado desde a Rodada 2) — 1 dos 5 já estava resolvido por sessão concorrente, 1 foi deliberadamente NÃO deployado por julgamento técnico, 3 foram corrigidos e estão prontos para deploy.
