@@ -1,5 +1,26 @@
 # Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)
 
+## Rodada 3 — ataque aos P1 adiados (2026-07-13 ~05:05-05:19 BRT)
+
+Operador, perguntado explicitamente entre 3 opções (esperar validação de hoje / atacar agora / só monitorar), escolheu **atacar agora** os 5 P1 deixados em aberto na Rodada 2. Releitura fresca do código antes de qualquer edição (linhas haviam mudado desde a Rodada 2) — 1 dos 5 já estava resolvido por sessão concorrente, 1 foi deliberadamente NÃO deployado por julgamento técnico, 3 foram corrigidos e estão prontos para deploy.
+
+**RETRYDROP1 — já corrigido (sessão concorrente), não commitado.** `scripts/run_vixradar_noturno_claude.ps1` já tinha o fix completo no disco (`$abortAfterSubmit` inicializado L491, setado L560, consumido L628 — submete resultados do lote principal antes de abortar lotes restantes). Conferido linha a linha: correto e completo. Incluído no commit desta rodada (estava pendente).
+
+**Deploy proposto — Worker v4.9.152 (ainda NÃO deployado, aguardando aprovação):**
+- **FIX ANOMPROMO1:** `recalcularTodasAnomalias` agora carrega `eventos:confirmados:promovidos` 1x por execução e filtra (`empresa::tipo`) antes de gravar `KV_ANOMALIAS_ATIVAS` — anomalia promovida por admin para de reaparecer no cron seguinte enquanto a condição de mercado que a gerou continuar ativa. Validado isolado (2 casos: promovida filtrada, não-promovida preservada).
+- **FIX RLADMIN1:** `checkRateLimitV2` (mesmo DO `RATE_LIMITER_DO` já em produção via `consulta_empresa`) aplicado no dispatch antes de `handleLogin`/`handleRegistrar` — identidade por IP (`RATE_LIMITS_ANONIMO`, sem JWT antes do login). Fecha brute-force de senha sem throttling de aplicação, inclusive na conta admin.
+- **FIX CASEKEY1:** `receber_analise` agora resolve `body.empresa` contra `EMISSORES_LISTA` (match exato → passa direto; case-insensitive → canonicaliza; sem match → rejeita 400, mesmo padrão já usado em `admin_upsert_analise`). Risco real avaliado como baixo: `$plano.emissores` no PowerShell já vem do próprio Worker, nomes já chegam canônicos na operação normal — fix é rede de segurança para os casos fora do caminho feliz. Validado isolado (4 casos).
+- **NÃO aplicado — RACEKV1 (deliberado):** avaliado real (confirmado em `persistirResultadoCompartilhado`: lê `estado` inteiro, muta só a empresa da chamada, regrava o blob inteiro — nenhum `await` entre leitura e escrita dentro da função, mas isso não elimina a corrida entre chamadas CONCORRENTES vindas de processos diferentes — matinal/noturno/verificação-async/pulso manual todos escrevem na mesma chave `radar:estado:{semana}`). KV do Cloudflare não tem CAS — não existe mitigação parcial honesta sem infraestrutura nova. Duas opções de fix real, ambas arquiteturais:
+  1. **Durable Object write-serializer:** nova classe (ex. `EstadoSemanaDO`), `idFromName(semana)`, todo `.put()` em `radar:estado:{semana}` passa a ser uma chamada HTTP interna ao DO, que executa o read-modify-write dentro do seu próprio `fetch()` (DO garante serialização por instância). Exige `[[migrations]] new_classes` no `wrangler.toml` + novo binding + rewrite de 3 call-sites (`persistirResultadoCompartilhado`, `rodarSweepRevalidacao`, `mesclarEventoVerificado`).
+  2. **Quebrar o blob em chave por empresa** (`radar:estado:{semana}:{empresa}`): elimina a corrida por construção (cada empresa grava sua própria chave, sem read-modify-write no nível semanal), mas é migração de dado (dado existente não converte sozinho) e toca os 5 endpoints que usam `carregarEstadoMultiSemana` (regra do `CLAUDE.md`).
+  
+  Decisão: **não empilhar nenhuma das duas no deploy de hoje.** Motivo: ambas mudam o caminho crítico de escrita (todo `receber_analise` passa por ele) no mesmo dia em que CHUNK1 + mutex + migração de auth + os 3 fixes acima ainda serão testados ao vivo pela 1ª vez (matinal 10h, noturno 18h) — se algo quebrar às 10h, isolar a causa fica muito mais difícil com uma migration de DO nova no meio. Design acima é suficiente para implementar em sessão dedicada, com deploy e teste isolados do resto.
+
+**Skill:** `/vix-radar-general-audit` (continuação da Rodada 2, mesma sessão)
+**Modo:** Não mais readonly — aplicação de fix autorizada explicitamente pelo operador via pergunta direta.
+
+---
+
 ## Rodada 2 — caça preditiva + deploy (2026-07-13 ~04:00-04:41 BRT)
 
 Operador pediu explicitamente: aplicar tudo para não recorrer + caçar preditivamente outros bugs. 2 agentes despachados (Worker + rotinas PowerShell), ambos com evidência empírica (código lido linha a linha + testes isolados, não especulação).
