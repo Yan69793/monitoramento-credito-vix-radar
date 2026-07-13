@@ -237,6 +237,9 @@
 .ph-faq summary::-webkit-details-marker { display:none; }
 .ph-faq p { margin:10px 0 0; font-size:12px; line-height:1.65; color:rgba(232,228,220,0.5); font-weight:300; }
 .ph-disclaimer { font-size:10px; line-height:1.6; color:rgba(232,228,220,0.32); max-width:72ch; margin:32px auto 0; text-align:center; padding:0 12px 24px; }
+.ph-signature { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:28px; opacity:0.5; }
+.ph-signature__icon { width:20px; height:20px; border:1px solid rgba(183,152,93,0.4); display:flex; align-items:center; justify-content:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:8px; color:#B7985D; flex-shrink:0; }
+.ph-signature__text { font-family:'Manrope',sans-serif; font-size:10px; font-weight:300; letter-spacing:0.08em; color:rgba(232,228,220,0.45); }
 #publicHome.vix-landing-extended .ph-auth-container.visible { max-height:none !important; opacity:1 !important; margin:16px auto 0; }
 .ph-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
 .ph-pill { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(232,228,220,0.55); border:1px solid rgba(184,115,51,0.2); border-radius:999px; padding:8px 12px; }
@@ -3107,6 +3110,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
       <a class="ph-btn-entrar" id="phBtnEntrar" onclick="showLogin()">Acessar sistema</a>
       <button type="button" class="ph-btn-saiba" id="phBtnSaiba" onclick="VIX_goExtendedLanding()">Ainda não conhece? Veja como funciona</button>
     </div>
+    <div class="ph-signature"><span class="ph-signature__icon" aria-hidden="true">YS</span><span class="ph-signature__text">por Szuchmacher Consultoria</span></div>
   </div>
 
   <div class="ph-page ph-page--extended" id="phExtended" hidden>
@@ -3375,7 +3379,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
     <h3>11. Contato</h3>
     <p>Para dúvidas sobre estes Termos: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f0838a8593989d9193989582b08699888291949182de939f9d">[email&#160;protected]</a>.</p>
   </div>
-  <div class="lgpd-footer"><span class="lgpd-footer-info">VIX Radar · Termos vigentes desde 13/04/2026 · © 2026 Szuchmacher Consultoria Ltda.</span></div>
+  <div class="lgpd-footer"><span class="ph-signature__icon" aria-hidden="true" style="width:16px;height:16px;font-size:6.5px;vertical-align:middle;margin-right:8px;display:inline-flex">YS</span><span class="lgpd-footer-info" style="vertical-align:middle">VIX Radar · Termos vigentes desde 13/04/2026 · © 2026 Szuchmacher Consultoria Ltda.</span></div>
 </div>
 </div>
 
@@ -3595,7 +3599,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
   <div id="status-right"></div>
 </div>
 
-<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.74";window.CACHE_VERSION="v201.74";const API_BASE="https://api.vixradar.com";
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.75";window.CACHE_VERSION="v201.75";const API_BASE="https://api.vixradar.com";
 /* P0-2026-05-11: WORKER_URL alias de API_BASE — corrige "[BRANDING] erro ao carregar: WORKER_URL is not defined" */
 const WORKER_URL=API_BASE;
 /* P0-2026-05-11: silenciar console.log/info/debug em producao — manter warn/error */
@@ -3674,9 +3678,12 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
       <!-- FOOTER -->
       <div style="border-top:1px solid #E9ECEF;padding-top:14px;margin-top:4px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div style="color:#9CA3AF;font-size:9px;line-height:1.7">
-            © 2026 Szuchmacher Consultoria Ltda. · Software registrado<br>
-            103 Emissores · Acesso autenticado · Uso sujeito aos termos acima
+          <div style="display:flex;align-items:center;gap:10px">
+            <span aria-hidden="true" style="width:20px;height:20px;border:1px solid #0D2438;display:inline-flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:700;font-size:8px;color:#0D2438;flex-shrink:0">YS</span>
+            <div style="color:#9CA3AF;font-size:9px;line-height:1.7">
+              © 2026 Szuchmacher Consultoria Ltda. · Software registrado<br>
+              103 Emissores · Acesso autenticado · Uso sujeito aos termos acima
+            </div>
           </div>
           <button onclick="toggleGuia()" style="background:#0D2438;color:#B7985D;border:none;border-radius:4px;padding:8px 20px;font-size:10px;font-family:inherit;cursor:pointer;font-weight:700">Fechar</button>
         </div>
@@ -4028,7 +4035,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   </div>
 </div>
 
-<script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="carteira-module">!function(){var e="radar_carteira_v1",t=[];function r(e){return String(e||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim()}function n(e){return String(e||"").replace(/[&<>"']/g,function(e){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[e]})}function a(){try{localStorage.setItem(e,JSON.stringify(t))}catch(e){console.warn("[Carteira] salvar falhou",e)}}function i(e){try{if("function"==typeof parseISODateLocal)return parseISODateLocal(e)}catch(e){}if(!e||"string"!=typeof e)return null;var t=e.match(/^(\d{4})-(\d{2})-(\d{2})/);return t?new Date(+t[1],+t[2]-1,+t[3]):null}function o(e){if(e.matched){e.setor=("undefined"!=typeof SETOR_DE?SETOR_DE[e.matched]:"")||"";var t=function(e){var t=new Date,r=[];try{var n="undefined"!=typeof resultados?resultados[e]:null;n&&n.eventos&&Array.isArray(n.eventos)&&(r=r.concat(n.eventos))}catch(e){}try{var a=window.ARQUIVO_PRE&&window.ARQUIVO_PRE[e];a&&Array.isArray(a)&&(r=r.concat(a))}catch(e){}var o=null;return r.forEach(function(e){if(e&&e.data_evento){var r=i(e.data_evento);if(r&&!isNaN(r)){var n=(t-r)/864e5;n<0||n>30||(!o||r>i(o.data_evento))&&(o=e)}}}),o}(e.matched);t?(e.status="green",e.evento_recente={titulo:t.titulo,data:t.data_evento,classificacao:t.classificacao||""}):(e.status="amber",e.evento_recente=null)}else e.status="red",e.setor="",e.evento_recente=null;return e}function c(){!function(){var e=t.filter(function(e){return e.incluido}),r=e.filter(function(e){return"green"===e.status}).length,n=e.filter(function(e){return"amber"===e.status}).length,a=e.filter(function(e){return"red"===e.status}).length,i=document.getElementById("cart-resumo");if(i){var o=i.querySelectorAll(".cart-stat-value");o.length>=3&&(o[0].childNodes[0].nodeValue=r,o[1].childNodes[0].nodeValue=n,o[2].childNodes[0].nodeValue=a);var c=document.getElementById("cart-count");c&&(c.textContent=e.length+" "+(1===e.length?"item":"itens"));var l=document.getElementById("cart-gap-count");l&&(e.length?l.textContent=a||n?a+n+" sinalizado"+(a+n===1?"":"s"):"sem gaps":l.textContent="—")}}(),function(){var e=document.getElementById("cart-lista");if(e)if(t.length){var r={green:0,amber:1,red:2},a=t.slice().sort(function(e,t){var n=r[e.status]||9,a=r[t.status]||9;return n!==a?n-a:(e.matched||e.nome_limpo).localeCompare(t.matched||t.nome_limpo)}),i="";a.forEach(function(e,r){var a=t.indexOf(e),o="cart-item "+e.status+(e.incluido?"":" excluido"),c=e.matched||e.nome_limpo,l="";if("green"===e.status){var s=e.evento_recente&&e.evento_recente.data||"";l=(e.setor||"—")+" · sinal "+s}else l="amber"===e.status?(e.setor||"—")+" · silencioso últimos 30d":"fora do universo Radar";var u=e.matched?'<button class="cart-icon-btn" title="Abrir emissor" onclick="carteiraAbrirEmissor('+a+')">Abrir</button>':"";i+='<div class="'+o+'"><span class="cart-item-dot"></span><div class="cart-item-body"><div class="cart-item-nome">'+n(c)+'</div><div class="cart-item-meta">'+n(l)+'</div></div><div class="cart-item-actions">'+u+'<button class="cart-icon-btn" onclick="carteiraToggle('+a+')" title="'+(e.incluido?"Ocultar do resumo":"Incluir")+'">'+(e.incluido?"−":"+")+'</button><button class="cart-icon-btn remove" onclick="carteiraRemover('+a+')" title="Remover" aria-label="Remover">✕</button></div></div>'}),e.innerHTML=i}else e.innerHTML='<div class="cart-empty">Cole sua carteira no campo ao lado e clique em <strong style="color:#B7985D">Analisar</strong>.</div>'}(),function(){var e=document.getElementById("cart-heatmap-grid");if(e){var r=t.filter(function(e){return e.incluido});if(r.length){var a={red:0,green:1,amber:2},i=r.slice().sort(function(e,t){var r=a[e.status]||9,n=a[t.status]||9;return r!==n?r-n:(e.matched||e.nome_limpo).localeCompare(t.matched||t.nome_limpo)}),o="";i.forEach(function(e){var t,r=e.matched||e.nome_limpo,a="green"===e.status?"sinal":"amber"===e.status?"quiet":"gap";t="green"===e.status?n((e.setor||"")+" · "+(e.evento_recente&&e.evento_recente.data||"")):"amber"===e.status?n(e.setor||"—"):"não monitorado",o+='<div class="cart-tile '+e.status+'" title="'+n(r+" — "+t)+'"><span class="cart-tile-badge">'+a+'</span><div class="cart-tile-nome">'+n(r)+'</div><div class="cart-tile-meta">'+t+"</div></div>"}),e.innerHTML=o}else e.innerHTML='<div class="cart-empty" style="grid-column:1/-1">O heatmap aparece aqui após você colar e analisar sua carteira.</div>'}}()}window.carteiraAbrir=function(){if("legacy"!==window.UI_TRACK){_track("carteira_aberta",{});var r=document.getElementById("carteira-overlay");if(r&&((t=function(){try{var t=localStorage.getItem(e);if(!t)return[];var r=JSON.parse(t);return Array.isArray(r)?r:[]}catch(e){return[]}}()).forEach(o),r.classList.add("show"),c(),!t.length)){var n=document.getElementById("carteira-paste");n&&setTimeout(function(){n.focus()},60)}}},window.carteiraFechar=function(){var e=document.getElementById("carteira-overlay");e&&e.classList.remove("show")},window.carteiraAnalisar=function(){var e=document.getElementById("carteira-paste");if(e){var n=function(e){if(!e)return[];var t=e.split(/[\r\n;\t]+/).map(function(e){return e.trim()}).filter(Boolean),n=[];t.forEach(function(e){var t=e.replace(/R\$\s*[\d.,]+/gi,"").replace(/\d+[.,]?\d*\s*%/g,"").replace(/\b\d{4,}\b/g,"").replace(/[|]+/g," ").replace(/\s{2,}/g," ").trim(),a=[t];t.indexOf(",")>-1&&t.length<80&&(a=t.split(",").map(function(e){return e.trim()}).filter(Boolean)),a.forEach(function(t){if(t&&!(t.length<2)){var a=function(e){if(!e)return{nome:null,score:0};var t=r(e);if(!t)return{nome:null,score:0};for(var n=function(){var e=[];try{Object.keys(EMISSORES).forEach(function(t){(EMISSORES[t]||[]).forEach(function(t){e.push(t)})})}catch(e){}return e}(),a={nome:null,score:0},i=0;i<n.length;i++){var o=n[i],c=r(o);if(c){var l=0;if(c===t)l=1e3;else if(0===t.indexOf(c+" ")||t===c)l=900;else if(0===t.indexOf(c))l=700;else if(t.indexOf(c)>-1&&c.length>=3)l=550;else if(c.indexOf(t)>-1&&t.length>=4)l=450;else{var s=t.split(" ").filter(function(e){return e.length>=4}),u=c.split(" ").filter(function(e){return e.length>=4});if(s.length&&u.length){for(var d=0,m=0;m<s.length;m++)u.indexOf(s[m])>-1&&d++;d>=1&&(l=200+80*d)}}l>a.score&&(a={nome:o,score:l})}}return a.score>=450?a:{nome:null,score:a.score}}(t);n.push({input:e,nome_limpo:t,matched:a.nome,score:a.score})}})});var a={};return n.filter(function(e){var t=e.matched||r(e.nome_limpo);return!!t&&!a[t]&&(a[t]=!0,!0)})}(e.value||"");if(n.length){var i={};t.forEach(function(e){i[e.matched||r(e.nome_limpo)]=e}),n.forEach(function(e){var n=e.matched||r(e.nome_limpo);if(!i[n]){var a={input:e.input,nome_limpo:e.nome_limpo,matched:e.matched,score:e.score,incluido:!0};o(a),t.push(a),i[n]=a}}),a(),e.value="",c()}else t.length||c()}},window.carteiraLimpar=function(){t.length&&confirm("Limpar toda a carteira salva neste navegador?")&&(t=[],a(),c())},window.carteiraToggle=function(e){t[e]&&(t[e].incluido=!t[e].incluido,a(),c())},window.carteiraRemover=function(e){t[e]&&(t.splice(e,1),a(),c())},window.carteiraAbrirEmissor=function(e){if(t[e]&&t[e].matched){var r=t[e].matched;window.carteiraFechar(),"function"==typeof selecionar&&selecionar(r)}},document.addEventListener("keydown",function(e){var t=document.getElementById("carteira-overlay");t&&t.classList.contains("show")&&"Escape"===e.key&&(e.preventDefault(),window.carteiraFechar())}),document.addEventListener("DOMContentLoaded",function(){var e=document.getElementById("carteira-overlay");e&&e.addEventListener("click",function(t){t.target===e&&window.carteiraFechar()})})}();</script>
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="carteira-module">!function(){var e="radar_carteira_v1",t=[];function r(e){return String(e||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9\s]/g," ").replace(/\s+/g," ").trim()}function n(e){return String(e||"").replace(/[&<>"']/g,function(e){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[e]})}function a(){try{localStorage.setItem(e,JSON.stringify(t))}catch(e){console.warn("[Carteira] salvar falhou",e)}}function i(e){try{if("function"==typeof parseISODateLocal)return parseISODateLocal(e)}catch(e){}if(!e||"string"!=typeof e)return null;var t=e.match(/^(\d{4})-(\d{2})-(\d{2})/);return t?new Date(+t[1],+t[2]-1,+t[3]):null}function o(e){if(e.matched){e.setor=("undefined"!=typeof SETOR_DE?SETOR_DE[e.matched]:"")||"";var t=function(e){var t=new Date,r=[];try{var n="undefined"!=typeof resultados?resultados[e]:null;n&&n.eventos&&Array.isArray(n.eventos)&&(r=r.concat(n.eventos))}catch(e){}try{var a=window.ARQUIVO_PRE&&window.ARQUIVO_PRE[e];a&&Array.isArray(a)&&(r=r.concat(a))}catch(e){}var o=null;return r.forEach(function(e){if(e&&e.data_evento){var r=i(e.data_evento);if(r&&!isNaN(r)){var n=(t-r)/864e5;n<0||n>30||(!o||r>i(o.data_evento))&&(o=e)}}}),o}(e.matched);t?(e.status="green",e.evento_recente={titulo:t.titulo,data:t.data_evento,classificacao:t.classificacao||""}):(e.status="amber",e.evento_recente=null)}else e.status="red",e.setor="",e.evento_recente=null;return e}function c(){!function(){var e=t.filter(function(e){return e.incluido}),r=e.filter(function(e){return"green"===e.status}).length,n=e.filter(function(e){return"amber"===e.status}).length,a=e.filter(function(e){return"red"===e.status}).length,i=document.getElementById("cart-resumo");if(i){var o=i.querySelectorAll(".cart-stat-value");o.length>=3&&(o[0].childNodes[0].nodeValue=r,o[1].childNodes[0].nodeValue=n,o[2].childNodes[0].nodeValue=a);var c=document.getElementById("cart-count");c&&(c.textContent=e.length+" "+(1===e.length?"item":"itens"));var l=document.getElementById("cart-gap-count");l&&(e.length?l.textContent=a||n?a+n+" sinalizado"+(a+n===1?"":"s"):"sem gaps":l.textContent="—")}}(),function(){var e=document.getElementById("cart-lista");if(e)if(t.length){var r={green:0,amber:1,red:2},a=t.slice().sort(function(e,t){var n=r[e.status]||9,a=r[t.status]||9;return n!==a?n-a:(e.matched||e.nome_limpo).localeCompare(t.matched||t.nome_limpo)}),i="";a.forEach(function(e,r){var a=t.indexOf(e),o="cart-item "+e.status+(e.incluido?"":" excluido"),c=e.matched||e.nome_limpo,l="";if("green"===e.status){var s=e.evento_recente&&e.evento_recente.data||"";l=(e.setor||"—")+" · sinal "+s}else l="amber"===e.status?(e.setor||"—")+" · silencioso últimos 30d":"fora do universo Radar";var u=e.matched?'<button class="cart-icon-btn" title="Abrir emissor" onclick="carteiraAbrirEmissor('+a+')">Abrir</button>':"";i+='<div class="'+o+'"><span class="cart-item-dot"></span><div class="cart-item-body"><div class="cart-item-nome">'+n(c)+'</div><div class="cart-item-meta">'+n(l)+'</div></div><div class="cart-item-actions">'+u+'<button class="cart-icon-btn" onclick="carteiraToggle('+a+')" title="'+(e.incluido?"Ocultar do resumo":"Incluir")+'">'+(e.incluido?"−":"+")+'</button><button class="cart-icon-btn remove" onclick="carteiraRemover('+a+')" title="Remover" aria-label="Remover">✕</button></div></div>'}),e.innerHTML=i}else e.innerHTML='<div class="cart-empty">Cole sua carteira no campo ao lado e clique em <strong style="color:#B7985D">Analisar</strong>.</div>'}(),function(){var e=document.getElementById("cart-heatmap-grid");if(e){var r=t.filter(function(e){return e.incluido});if(r.length){var a={red:0,green:1,amber:2},i=r.slice().sort(function(e,t){var r=a[e.status]||9,n=a[t.status]||9;return r!==n?r-n:(e.matched||e.nome_limpo).localeCompare(t.matched||t.nome_limpo)}),o="";i.forEach(function(e){var t,r=e.matched||e.nome_limpo,a="green"===e.status?"sinal":"amber"===e.status?"quiet":"gap";t="green"===e.status?n((e.setor||"")+" · "+(e.evento_recente&&e.evento_recente.data||"")):"amber"===e.status?n(e.setor||"—"):"não monitorado",o+='<div class="cart-tile '+e.status+'" title="'+n(r+" — "+t)+'"><span class="cart-tile-badge">'+a+'</span><div class="cart-tile-nome">'+n(r)+'</div><div class="cart-tile-meta">'+t+"</div></div>"}),e.innerHTML=o}else e.innerHTML='<div class="cart-empty" style="grid-column:1/-1">O heatmap aparece aqui após você colar e analisar sua carteira.</div>'}}()}window.carteiraAbrir=function(){if("legacy"!==window.UI_TRACK){_track("carteira_aberta",{});var r=document.getElementById("carteira-overlay");if(r&&((t=function(){try{var t=localStorage.getItem(e);if(!t)return[];var r=JSON.parse(t);return Array.isArray(r)?r:[]}catch(e){return[]}}()).forEach(o),r.classList.add("show"),c(),!t.length)){var n=document.getElementById("carteira-paste");n&&setTimeout(function(){n.focus()},60)}}},window.carteiraFechar=function(){var e=document.getElementById("carteira-overlay");e&&e.classList.remove("show")},window.carteiraAnalisar=function(){var e=document.getElementById("carteira-paste");if(e){var n=function(e){if(!e)return[];var t=e.split(/[\r\n;\t]+/).map(function(e){return e.trim()}).filter(Boolean),n=[];t.forEach(function(e){var t=e.replace(/R\$\s*[\d.,]+/gi,"").replace(/\d+[.,]?\d*\s*%/g,"").replace(/\b\d{4,}\b/g,"").replace(/[|]+/g," ").replace(/\s{2,}/g," ").trim(),a=[t];t.indexOf(",")>-1&&t.length<80&&(a=t.split(",").map(function(e){return e.trim()}).filter(Boolean)),a.forEach(function(t){if(t&&!(t.length<2)){var a=function(e){if(!e)return{nome:null,score:0};var t=r(e);if(!t)return{nome:null,score:0};for(var n=function(){var e=[];try{Object.keys(EMISSORES).forEach(function(t){(EMISSORES[t]||[]).forEach(function(t){e.push(t)})})}catch(e){}return e}(),a={nome:null,score:0},i=0;i<n.length;i++){var o=n[i],c=r(o);if(c){var l=0;if(c===t)l=1e3;else if(0===t.indexOf(c+" ")||t===c)l=900;else if(0===t.indexOf(c))l=700;else if(t.indexOf(c)>-1&&c.length>=3)l=550;else if(c.indexOf(t)>-1&&t.length>=4)l=450;else{var s=t.split(" ").filter(function(e){return e.length>=4}),u=c.split(" ").filter(function(e){return e.length>=4});if(s.length&&u.length){for(var d=0,m=0;m<s.length;m++)u.indexOf(s[m])>-1&&d++;d>=1&&(l=200+80*d)}}l>a.score&&(a={nome:o,score:l})}}return a.score>=450?a:{nome:null,score:a.score}}(t);n.push({input:e,nome_limpo:t,matched:a.nome,score:a.score})}})});var a={};return n.filter(function(e){var t=e.matched||r(e.nome_limpo);return!!t&&!a[t]&&(a[t]=!0,!0)})}(e.value||"");if(n.length){var i={};t.forEach(function(e){i[e.matched||r(e.nome_limpo)]=e}),n.forEach(function(e){var n=e.matched||r(e.nome_limpo);if(!i[n]){var a={input:e.input,nome_limpo:e.nome_limpo,matched:e.matched,score:e.score,incluido:!0};o(a),t.push(a),i[n]=a}}),a(),c()}else t.length||c()}},window.carteiraLimpar=function(){t.length&&confirm("Limpar toda a carteira salva neste navegador?")&&(t=[],a(),c())},window.carteiraToggle=function(e){t[e]&&(t[e].incluido=!t[e].incluido,a(),c())},window.carteiraRemover=function(e){t[e]&&(t.splice(e,1),a(),c())},window.carteiraAbrirEmissor=function(e){if(t[e]&&t[e].matched){var r=t[e].matched;window.carteiraFechar(),"function"==typeof selecionar&&selecionar(r)}},document.addEventListener("keydown",function(e){var t=document.getElementById("carteira-overlay");t&&t.classList.contains("show")&&"Escape"===e.key&&(e.preventDefault(),window.carteiraFechar())}),document.addEventListener("DOMContentLoaded",function(){var e=document.getElementById("carteira-overlay");e&&e.addEventListener("click",function(t){t.target===e&&window.carteiraFechar()})})}();</script>
 
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="v201-patch">
 /* ===== V201 PATCH consolidado · Frente A (#dashboard) + Frente B (Visão Geral Eventos Recentes) + Frente C (provenance ribbon) ===== */
@@ -4041,7 +4048,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   };
   var FILTROS_DEFAULT = {
     janela: "30d",
-    severidade: { CRITICO: true, RELEVANTE: true, ECO: true },
+    severidade: { CRITICO: true, RELEVANTE: true, ECO: true, ALERTA: true, ATENCAO: true },
     escopo: { idiossincratico: true, setorial: true },
     origem: { rating: true, fato_relevante: true, comunicado: true, imprensa: true, regulador: true }
   };
@@ -4088,7 +4095,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   }
   function _v201OrigemLabel(o){ return {rating:"RATING",fato_relevante:"FATO RELEVANTE",comunicado:"CVM/B3",imprensa:"IMPRENSA",regulador:"REGULADOR"}[o]||o.toUpperCase(); }
   function _v201Escopo(ev){ if(ev.escopo==="setorial"||ev.escopo==="idiossincratico")return ev.escopo; return "idiossincratico"; }
-  function _v201Sev(ev){ var c=String(ev.classificacao||"").toUpperCase(); return (c==="CRITICO"||c==="RELEVANTE"||c==="ECO")?c:"ECO"; }
+  function _v201Sev(ev){ var c=String(ev.classificacao||"").toUpperCase(); if (c==="CRITICO"||c==="RELEVANTE"||c==="ECO"||c==="ALERTA"||c==="ATENCAO") return c; if (c==="ESTAVEL") return "ECO"; return "ECO"; }
   function _v201SevCfg(s){
     if (s==="CRITICO") return {cor:"#DC2626",label:"CRITICO",aria:"Critico"};
     if (s==="RELEVANTE") return {cor:"#EA580C",label:"RELEVANTE",aria:"Relevante"};
@@ -4508,7 +4515,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
       if (_v201CatExpandida === "janela"){
         painel += ["7d","15d","30d","Tudo"].map(function(j){return pill(j,f.janela===j,"window._v201SetJanela('"+j+"')","Janela "+j);}).join("");
       } else if (_v201CatExpandida === "severidade"){
-        painel += ["CRITICO","RELEVANTE","ECO"].map(function(s){return pill(s,f.severidade[s],"window._v201ToggleSev('"+s+"')","Severidade "+s);}).join("");
+        painel += ["CRITICO","ALERTA","RELEVANTE","ECO"].map(function(s){return pill(s,f.severidade[s],"window._v201ToggleSev('"+s+"')","Severidade "+s);}).join("");
       } else if (_v201CatExpandida === "tipo"){
         painel += pill("Idiossincratico", f.escopo.idiossincratico, "window._v201ToggleEsc('idiossincratico')","Tipo idiossincratico");
         painel += pill("Setorial", f.escopo.setorial, "window._v201ToggleEsc('setorial')","Tipo setorial");
@@ -4529,7 +4536,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   window._v201ToggleSev = function(s){ _v201Filtros.severidade[s]=!_v201Filtros.severidade[s]; if(!Object.values(_v201Filtros.severidade).some(Boolean)){_v201Filtros.severidade[s]=true;alert("Mantenha pelo menos uma severidade ativa.");return;} _v201SaveFiltros(); _v201Refresh(); };
   window._v201ToggleEsc = function(e){ _v201Filtros.escopo[e]=!_v201Filtros.escopo[e]; if(!Object.values(_v201Filtros.escopo).some(Boolean)){_v201Filtros.escopo[e]=true;return;} _v201SaveFiltros(); _v201Refresh(); };
   window._v201ToggleOr  = function(o){ _v201Filtros.origem[o]=!_v201Filtros.origem[o]; _v201SaveFiltros(); _v201Refresh(); };
-  function _v201Refresh(){ var b=document.getElementById("v201-filter-bar"); if(b)b.remove(); _v201InjectFilterBar(); _v201RenderDashboardOverride(); _v201RebuildVisaoGeralRecentes(); }
+  function _v201Refresh(){ var b=document.getElementById("v201-filter-bar"); if(b)b.remove(); _v201InjectFilterBar(); var p=document.getElementById("ews-ranking-panel"); if(p)p.dataset.v201Rendered="0"; _v201RenderDashboardOverride(); _v201RebuildVisaoGeralRecentes(); }
 
   function _v201RebuildVisaoGeralRecentes(){
     try{
@@ -4634,12 +4641,23 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     if (!panel || !window._v201EwsData || !Array.isArray(window._v201EwsData.ranking)) return;
     if (panel.dataset.v201Rendered === "1") return;
     var ativos = window._v201EwsData.ranking.filter(function(e){return e.score>0});
-    if (!ativos.length) return;
-    if (typeof window._v201RenderEWSv3 === "function"){
-      var top = window._v201EwsExpandTop || 3;
-      window._v201RenderEWSv3(ativos, top);
-      panel.dataset.v201Rendered = "1";
-    }
+    // v4.9.150: aplicar filtros de severidade ao ranking EWS (bug: filtros nao alteravam ranking).
+    var sevFilter = _v201Filtros.severidade;
+    var allSevActive = sevFilter.CRITICO && sevFilter.RELEVANTE && sevFilter.ECO;
+    if (!allSevActive) {
+    ativos = ativos.filter(function(a){
+        var sev = String(a.severidade || a.label || "").toUpperCase();
+	        if (sev === "ALERTA" || sev === "ATENCAO") return sevFilter.RELEVANTE || sevFilter.CRITICO;
+	        if (sev === "ESTAVEL") return sevFilter.ECO;
+	        return sevFilter[sev] || sevFilter.ECO;
+	      });
+	    }
+	    if (!ativos.length) return;
+	    if (typeof window._v201RenderEWSv3 === "function"){
+	      var top = window._v201EwsExpandTop || 3;
+	      window._v201RenderEWSv3(ativos, top);
+	      panel.dataset.v201Rendered = "1";
+	    }
   }
   (function(){
     var panel = document.getElementById("ews-ranking-panel");
@@ -5215,7 +5233,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     card.dataset.vixFonteProcessado = "1";
     var meta = card.querySelector(".ev-meta");
     if (!meta) return;
-    if (meta.querySelector(".vix-fonte-tag")) return;
+    if (meta.querySelector(".vix-fonte-tag") || meta.querySelector(".ft-badge")) return;
     var tag = document.createElement("span");
     tag.className = "vix-fonte-tag" + (td === "research" ? " vix-fonte-research" : (td === "imprensa" ? " vix-fonte-imprensa" : ""));
     tag.textContent = _labelFromTipo(td);
@@ -5884,7 +5902,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
   function coletarEventos90(empresa,histData){
     var out=[],seen={};
     function push(ev){
-      if(!ev||!ev.data_evento||ev.classificacao==="RUIDO")return;
+      if(!ev||!ev.data_evento||ev.classificacao==="RUIDO"||String(ev.data_evento).length<10)return;
       if(!dentroJanela(ev,JANELA_DIAS))return;
       var k=(ev.data_evento||"")+"|"+String(ev.titulo||ev.evento||"").slice(0,80);
       if(seen[k])return;
@@ -5916,7 +5934,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
           '<span class="emp-hist-date">'+esc(fmtData(ev.data_evento))+'</span>'+
           (mat!=null?'<span class="emp-hist-mat" title="Materialidade">Mat. '+esc(mat)+'</span>':"")+
           '</div>'+
-          '<div class="emp-hist-title">'+esc(ev.titulo||ev.evento||"—")+'</div>'+
+          '<div class="emp-hist-title">'+esc(ev.titulo||ev.evento||"(sem titulo)")+'</div>'+
         '</div></div>';
     }).join("");
     var more=events.length>MAX_EVENTS?'<div class="emp-hist-more">+'+(events.length-MAX_EVENTS)+" eventos listados abaixo</div>":"";

@@ -237,6 +237,9 @@
 .ph-faq summary::-webkit-details-marker { display:none; }
 .ph-faq p { margin:10px 0 0; font-size:12px; line-height:1.65; color:rgba(232,228,220,0.5); font-weight:300; }
 .ph-disclaimer { font-size:10px; line-height:1.6; color:rgba(232,228,220,0.32); max-width:72ch; margin:32px auto 0; text-align:center; padding:0 12px 24px; }
+.ph-signature { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:28px; opacity:0.5; }
+.ph-signature__icon { width:20px; height:20px; border:1px solid rgba(183,152,93,0.4); display:flex; align-items:center; justify-content:center; font-family:'Manrope',sans-serif; font-weight:700; font-size:8px; color:#B7985D; flex-shrink:0; }
+.ph-signature__text { font-family:'Manrope',sans-serif; font-size:10px; font-weight:300; letter-spacing:0.08em; color:rgba(232,228,220,0.45); }
 #publicHome.vix-landing-extended .ph-auth-container.visible { max-height:none !important; opacity:1 !important; margin:16px auto 0; }
 .ph-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
 .ph-pill { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(232,228,220,0.55); border:1px solid rgba(184,115,51,0.2); border-radius:999px; padding:8px 12px; }
@@ -3107,6 +3110,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
       <a class="ph-btn-entrar" id="phBtnEntrar" onclick="showLogin()">Acessar sistema</a>
       <button type="button" class="ph-btn-saiba" id="phBtnSaiba" onclick="VIX_goExtendedLanding()">Ainda não conhece? Veja como funciona</button>
     </div>
+    <div class="ph-signature"><span class="ph-signature__icon" aria-hidden="true">YS</span><span class="ph-signature__text">por Szuchmacher Consultoria</span></div>
   </div>
 
   <div class="ph-page ph-page--extended" id="phExtended" hidden>
@@ -3375,7 +3379,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
     <h3>11. Contato</h3>
     <p>Para dúvidas sobre estes Termos: <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f0838a8593989d9193989582b08699888291949182de939f9d">[email&#160;protected]</a>.</p>
   </div>
-  <div class="lgpd-footer"><span class="lgpd-footer-info">VIX Radar · Termos vigentes desde 13/04/2026 · © 2026 Szuchmacher Consultoria Ltda.</span></div>
+  <div class="lgpd-footer"><span class="ph-signature__icon" aria-hidden="true" style="width:16px;height:16px;font-size:6.5px;vertical-align:middle;margin-right:8px;display:inline-flex">YS</span><span class="lgpd-footer-info" style="vertical-align:middle">VIX Radar · Termos vigentes desde 13/04/2026 · © 2026 Szuchmacher Consultoria Ltda.</span></div>
 </div>
 </div>
 
@@ -3595,7 +3599,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
   <div id="status-right"></div>
 </div>
 
-<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.74";window.CACHE_VERSION="v201.74";const API_BASE="https://api.vixradar.com";
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.75";window.CACHE_VERSION="v201.75";const API_BASE="https://api.vixradar.com";
 /* P0-2026-05-11: WORKER_URL alias de API_BASE — corrige "[BRANDING] erro ao carregar: WORKER_URL is not defined" */
 const WORKER_URL=API_BASE;
 /* P0-2026-05-11: silenciar console.log/info/debug em producao — manter warn/error */
@@ -3674,9 +3678,12 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
       <!-- FOOTER -->
       <div style="border-top:1px solid #E9ECEF;padding-top:14px;margin-top:4px">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-          <div style="color:#9CA3AF;font-size:9px;line-height:1.7">
-            © 2026 Szuchmacher Consultoria Ltda. · Software registrado<br>
-            103 Emissores · Acesso autenticado · Uso sujeito aos termos acima
+          <div style="display:flex;align-items:center;gap:10px">
+            <span aria-hidden="true" style="width:20px;height:20px;border:1px solid #0D2438;display:inline-flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:700;font-size:8px;color:#0D2438;flex-shrink:0">YS</span>
+            <div style="color:#9CA3AF;font-size:9px;line-height:1.7">
+              © 2026 Szuchmacher Consultoria Ltda. · Software registrado<br>
+              103 Emissores · Acesso autenticado · Uso sujeito aos termos acima
+            </div>
           </div>
           <button onclick="toggleGuia()" style="background:#0D2438;color:#B7985D;border:none;border-radius:4px;padding:8px 20px;font-size:10px;font-family:inherit;cursor:pointer;font-weight:700">Fechar</button>
         </div>
