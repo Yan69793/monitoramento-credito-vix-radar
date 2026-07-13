@@ -178,6 +178,66 @@ function Parse-TokensFromOutput([string]$text) {
     return $total
 }
 
+function Get-BatchOkEmissores([string[]]$outputLines) {
+    # Robusto a formatacao markdown dos filhos claude -p (achado 2026-07-13): as linhas de
+    # resultado "OK|empresa|tier|classificacao|..." chegam encapsuladas de varias formas -
+    # cruas, com crase (`OK|...`), como linha de tabela (| OK | emp | tier | class |) ou como
+    # bullet com pipe escapado (- OK\|emp\|...). O parser antigo (ancora ^OK\|) so reconhecia a
+    # forma crua e falso-positivava silent_fail nas demais, gerando exit 6 espurio mesmo com
+    # todos os submits ok:true. Normaliza cada linha, casa OK| em qualquer um dos formatos e
+    # deduplica por emissor (evita dupla contagem quando o filho repete a linha crua + tabela).
+    $emissores = New-Object System.Collections.Generic.List[object]
+    $criticos = New-Object System.Collections.Generic.List[string]
+    $vistos = New-Object 'System.Collections.Generic.HashSet[string]'
+    if (-not $outputLines) { return @{ Emissores = $emissores; Criticos = $criticos } }
+    foreach ($raw in $outputLines) {
+        if ($null -eq $raw) { continue }
+        $n = ([string]$raw).Trim()
+        $n = $n -replace '`', ''            # remove crases (forma `OK|...`)
+        $n = $n -replace '^[>\*\-\s]+', ''  # remove prefixo de bullet/blockquote (- , * , > )
+        $n = $n -replace '\\\|', '|'        # desescapa \| -> | (forma bullet escapada)
+        if ($n.StartsWith('|')) {           # linha de tabela: colapsa bordas/espacos ao redor dos pipes
+            $n = $n -replace '\s*\|\s*', '|'
+            $n = $n.Trim('|')
+        }
+        if ($n -match '^OK\|([^|]+)\|([^|]+)\|([^|]+)\|') {
+            $emp = $Matches[1].Trim()
+            $cls = $Matches[3].Trim().ToUpper()
+            $chave = $emp.ToLower()
+            if ($vistos.Add($chave)) {
+                $emissores.Add($emp)
+                if ($cls -eq 'CRITICO') { $criticos.Add($emp) }
+            }
+        }
+    }
+    return @{ Emissores = $emissores; Criticos = $criticos }
+}
+
+function Get-BatchResumoOk([string[]]$outputLines) {
+    # Segundo sinal de cobertura, mais robusto que contar linhas (achado 2026-07-13): todo lote
+    # encerra com "LOTE_RESUMO|ok=N|fail=M|..." (ou posicional "LOTE_RESUMO|N|M|..."). Quando o
+    # filho reporta os emissores numa tabela com o nome na 1a coluna e o "ok" numa coluna final
+    # (visto no lote sonnet-1), a contagem por linha OK| subestima, mas o total do resumo nao.
+    # Retorna o N declarado, ou -1 se nao houver linha de resumo.
+    if (-not $outputLines) { return -1 }
+    foreach ($raw in $outputLines) {
+        if ($null -eq $raw) { continue }
+        $n = ([string]$raw).Trim() -replace '`', ''
+        $n = $n -replace '\\\|', '|'
+        if ($n.StartsWith('|')) { $n = ($n -replace '\s*\|\s*', '|').Trim('|') }
+        $i = $n.IndexOf('LOTE_RESUMO')
+        if ($i -ge 0) {
+            $partes = ($n.Substring($i)) -split '\|'
+            if ($partes.Count -ge 2) {
+                $p1 = $partes[1].Trim()
+                if ($p1 -match 'ok\s*=\s*(\d+)') { return [int]$Matches[1] }
+                if ($p1 -match '^(\d+)$') { return [int]$Matches[1] }
+            }
+        }
+    }
+    return -1
+}
+
 function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # Achado 2026-07-08 (identica a run_vixradar_noturno_claude.ps1/run_vixradar_verificacao_async.ps1):
     # claude.exe pode perder a sessao OAuth local (Task Scheduler roda sem console interativo) e
@@ -376,16 +436,15 @@ try {
             break
         }
 
-        $okLines = 0
         if ($result.Output) {
             $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) }
-            foreach ($line in $result.Output) {
-                if ($line -match '^OK\|([^|]+)\|([^|]+)\|([^|]+)\|') {
-                    $okLines++
-                    if ($Matches[3] -eq 'CRITICO') { $stats.criticos.Add($Matches[1]) }
-                }
-            }
         }
+        $parsed = Get-BatchOkEmissores $result.Output
+        foreach ($c in $parsed.Criticos) { $stats.criticos.Add($c) }
+        # Cobertura efetiva = maior sinal confiavel entre a contagem de linhas OK| (deduplicada)
+        # e o total declarado no LOTE_RESUMO. Elimina o silent_fail espurio quando o filho usa
+        # formato de tabela/markdown em vez das linhas cruas (exit 6 falso de 2026-07-13).
+        $okLines = [Math]::Max($parsed.Emissores.Count, [Math]::Max((Get-BatchResumoOk $result.Output), 0))
 
         $bt = Parse-TokensFromOutput ($result.Output -join "`n")
         if ($bt -gt 0) { $stats.tokens_total += $bt }

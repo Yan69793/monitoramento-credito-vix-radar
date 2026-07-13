@@ -4,6 +4,19 @@
 
 ---
 
+## v4.9.153 → v4.9.154 (13/07/2026) — DEPLOYADO
+
+**Validação de datas para fontes de rating que bloqueiam leitura (`validarDatasFontes`):**
+- **Causa raiz:** downgrade real da S&P sobre a Cosan (08/07) foi descartado na ingestão. `validarDatasFontes` tenta confirmar a data da fonte via `extrairDataDaURL` ou `fetch` do HTML; quando ambos falham e não há data legível, descarta o evento (`else { continue }`). A S&P (`spglobal.com`) retorna **403 a qualquer robô** — testado com UA `VixRadar/2.0` e com UA de Chrome real, ambos 403 (bot detection Akamai). Fitch (`fitchratings.com`) responde 200 normalmente e não é afetada.
+- **Fix:** novo `DOMINIOS_RATING_AGENCY_SET` (spglobal.com, fitchratings.com, moodyslocal.com.br, moodys.com, austinrating.com.br). No ramo de fonte inacessível, se o host é agência de rating **e** `data_evento` está na janela (`>= trintaDiasAtras && <= hoje`) e não é `nao_identificada`, o evento não é descartado: recebe `_data_fonte_bloqueada=true` e `_verif_forcar=true`, e é aceito para verificação. `deveVerificar` passa a honrar `if (ev._verif_forcar === true) return true;` como primeira condição, garantindo que vai para a fila adversarial (nunca auto-aprovado).
+- **Garantia de data (requisito do operador):** a certeza da data vem da **reconfirmação independente do verificador adversarial**, não do aceite da `data_evento` gerada pela IA. Se o verificador não confirmar, o evento é rejeitado. Comportamento conservador: prefere perder um alerta a gravar data não confirmada.
+- **Escopo/efeitos colaterais:** mudança isolada ao ramo `else` (fetch falhou) de `validarDatasFontes` — fontes acessíveis inalteradas; fontes não-rating bloqueadas mantêm descarte; Fitch inalterada. Log `[validarDatas][RATING_BLOQUEADO]` para auditoria.
+- **Validação:** `node --check v4.9.154.js` OK; deploy `wrangler deploy v4.9.154.js --no-autoconfig`; health duplo curl local + Sprite `versao:v4.9.154 ok:true bindings kv/rate_limiter/telemetria true verificador_ok:true`. Version ID `eedc8a47-dfd0-44b8-ba1d-60296bba7893`.
+- **Rollback:** `main = v4.9.153.js` no `wrangler.toml` + redeploy (arquivo preservado).
+- **Correção-irmã (não-Worker):** `scripts/run_vixradar_matinal_claude.ps1` ganhou parser robusto (`Get-BatchOkEmissores` + `Get-BatchResumoOk`) contra o falso `silent_fail`/exit 6 quando os lotes `claude -p` formatam o relatório em markdown. Aplicada, sem deploy, vigora na próxima matinal.
+
+---
+
 ## v4.5.0 → v4.5.1 (09/04/2026)
 
 **Fix privacidade emails (BCC):** `enviarResend()` enviava todos os destinatários no campo `to`, expondo emails entre si. Corrigido para `to: ["boletim@vixradar.com"]` + `bcc: destArray`. Afeta alertas críticos e newsletter.
