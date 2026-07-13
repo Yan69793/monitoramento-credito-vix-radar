@@ -1,5 +1,34 @@
 # Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)
 
+## Rodada 2 — caça preditiva + deploy (2026-07-13 ~04:00-04:41 BRT)
+
+Operador pediu explicitamente: aplicar tudo para não recorrer + caçar preditivamente outros bugs. 2 agentes despachados (Worker + rotinas PowerShell), ambos com evidência empírica (código lido linha a linha + testes isolados, não especulação).
+
+**Deploy em produção — Worker v4.9.151 (version `15963cbc-d452-44dc-90ae-788b49577a1c`), aprovado explicitamente pelo operador após apresentação de diff/risco/rollback:**
+- **HDASH1 corrigido:** `op=health-dashboard` trocou senha via querystring GET por `_exigeJwtAdmin`. Validado em produção pós-deploy: GET sem JWT e GET com senha antiga na query agora retornam 401 (curl confirmado).
+- **Bug real de dedup corrigido:** `isEventoDuplicadoSemantico` tinha `return false` dentro do loop de comparação — parava no 1º candidato não-conclusivo, deixando passar duplicata real de candidato posterior. Trocado por `continue`. Testado isolado fora do Worker: cenário com 2 títulos genéricos idênticos (1º fora da janela/fonte diferente, 2º duplicata real em 5 dias) — bug retornava `false` (duplicata passava), fix retorna `true`; controle sem duplicata real confirma sem falso positivo.
+- **2 pontos de `dispararAlertaCritico` sem rede de segurança corrigidos:** rota `consulta_empresa`/pulso manual (sem try/catch, podia derrubar resposta HTTP inteira mesmo com análise já persistida) e rota `admin_upsert_analise` (catch vazio, zero log). Ambos agora capturam+logam+telemetria sem afetar caminho de sucesso.
+- **`.gitignore` corrigido:** whitelist de bundles parava em `v4.9.149.js` — `v4.9.150.js` sobrevivia só por add manual anterior, `v4.9.151.js` ficaria invisível ao `git status` sem o fix. Adicionadas as 2 entradas.
+
+**Adiado deliberadamente do deploy** (risco/escopo maior — exigem design ou tocam caminho crítico no dia da validação do CHUNK1): RLADMIN1 (rate limit login/registrar/admin), CASEKEY1 (case-fold `empresa` em `receber_analise`), e os 2 achados P1 do Worker abaixo.
+
+**Rotinas locais — 2 fixes aplicados e commitados (sem deploy, script local):**
+- **Mutex no matinal** (`Global\vixradar-matinal-v2`, mesmo padrão do noturno desde 06/07) — matinal nunca teve proteção contra execução concorrente; existem gatilhos manuais (`-RunTask`/`-RunNowMatinal`) capazes de colidir com o disparo nativo das 10h. Aplicado antes do disparo de hoje.
+- **Detecção de falha PARCIAL de lote no matinal** — antes só detectava lote com 0 confirmações (`silent_fail`); lote com sucesso parcial (ex.: 4 de 6 emissores) passava sem log, sem retry, sem registro. Novo contador `partial_fail` + log `AVISO` com nomes dos emissores esperados + escalona exit code (mesma severidade de `silent_fail`).
+- **`Get-VeredictosArray` (verificação assíncrona) — mesmo padrão preventivo do CHUNK1:** `return $arr` → `return ,$arr`. Hoje inofensivo (só indexado em `[0]`), mas mesma classe de bug latente. Testado isolado: caso `esperado=1` (o que colapsava antes) e caso `esperado=3`, ambos corretos após fix.
+
+### Achados NOVOS não aplicados (P1 arquiteturais + P2/P3 — backlog)
+
+| ID | Sev | Achado | Evidência | Ação sugerida |
+|---|---|---|---|---|
+| RACEKV1 | **P1** | `radar:estado:{semana}` é 1 única chave KV para os 103 emissores; `persistirResultadoCompartilhado` faz read-modify-write sem lock/CAS. Escrita concorrente de 2 empresas na mesma semana → a última grava por cima, apaga a outra silenciosamente. Mesmo padrão em `mercado:anomalias:ativas` | `api/v4.9.151.js:7430-7495`, `:4120`, `:10629` | Chave por empresa (`radar:estado:{semana}:{empresa}`) ou serializar via Durable Object |
+| ANOMPROMO1 | **P1** | Anomalia promovida pelo admin reaparece no próximo cron — `recalcularTodasAnomalias` reconstrói do zero a cada matinal/noturno sem checar `KV_EVENTOS_PROMOVIDOS`. Condições monotônicas (iliquidez) sempre redetectam | `:10783-10800` (overwrite), `:10664-10719` (promote) | Merge preservando estado "promovida", ou checar log de promoções recentes antes de reinserir |
+| RETRYDROP1 | **P1** | Noturno: quando o retry-por-emissores-faltantes de um lote esbarra em auth failure, o `break` na linha do retry sai do loop ANTES de submeter os resultados já obtidos com sucesso na chamada principal do mesmo lote — tokens já pagos, resultados (potencialmente CRITICO) descartados sem log de perda | `scripts/run_vixradar_noturno_claude.ps1:528-570` (loop de submissão fica inacessível após o `break`) | Submeter `$parsed.Map` já obtido antes do `break`, ou mover loop de submissão para antes do bloco de retry |
+| — | P2 | `receber_analise`/newsletter/demais achados do Worker (janela de corrida no dedup do newsletter, cap 120 `ews:hist:`, `KV.list()` sem cursor em vários prefixos, cap 500 `promovidos`) | Ver relatório completo do agente (Worker) nesta sessão | Backlog, sem urgência imediata |
+| — | P2 | Rotinas: idempotência SKIP é código morto (`Submit-SkipEmissor` não loga `OK\|`), limpeza de task órfã reporta sucesso sem verificar, 2 registradores de task divergentes (`pwsh` vs `powershell.exe`) para os mesmos nomes, noturno aborta 100% da cobertura se total≠103 (matinal só avisa), feriados B3 do matinal hardcoded só até 2026 | Ver relatório completo do agente (rotinas) nesta sessão | Backlog, sem urgência imediata (feriado 2026 só vence em 2027) |
+
+**Validação em produção pós-deploy:** `WORKER_VERSAO` estava hardcoded desatualizada (`v4.9.150` dentro do `v4.9.151.js` recém-copiado) — achado durante a própria auditoria, corrigido e redeployado (version `d8251578-bd2a-4c97-87b3-4934dc79fcb0`). `GET /` health final: `ok:true, versao:"v4.9.151", bindings{kv,rate_limiter,telemetria}:true, verificador_ok:true` — confirmado via curl duplo (local + Sprite). Matinal 13/07 10h BRT e noturno 18h BRT são os primeiros testes reais de todo o pacote de hoje (CHUNK1 + mutex + migração de auth + v4.9.151).
+
 **Skill:** `/vix-radar-general-audit` (auditoria ampla de engenharia — complementar à `/vix-radar-audit`)
 **Modo:** Readonly. Nenhum deploy, secret ou POST destrutivo executado.
 **Escopo:** Worker `api/v4.9.150.js` (bundle ativo), `app/index.html` v201.75 + `app/admin/*.js`, scripts de rotina (`scripts/run_vixradar_*.ps1`), governança de repo, pesquisa externa de mercado.
