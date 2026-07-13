@@ -247,6 +247,18 @@ if ($feriados -contains $hoje.ToString('yyyy-MM-dd')) {
     return
 }
 
+# Mutex global (2026-07-13): impede execucao concorrente do matinal. Mesma classe do incidente
+# do noturno em 2026-07-06 (2 gatilhos disparando o mesmo PS1 sem exclusao mutua colidiram e
+# submeteram cobertura minima) - o matinal tem gatilhos manuais equivalentes
+# (register-all-routines-scheduler.ps1 -RunTask/-RunNowMatinal) sem essa protecao ate agora.
+# WaitOne(0) = nao-bloqueante: se outra instancia ja detem o mutex, esta sai limpa sem tocar
+# nos 15 emissores de maior EWS (o SO libera o mutex ao encerrar o processo).
+$__matinalMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-matinal-v2')
+if (-not $__matinalMutex.WaitOne(0)) {
+    Write-Log 'ABORT: outra instancia do matinal ja esta em execucao (mutex ocupado) - saindo limpo'
+    return
+}
+
 foreach ($f in @($HaikuSkill, $SonnetSkill)) {
     if (-not (Test-Path $f)) { Write-Log ('ERRO: skill ausente ' + $f); exit 1 }
 }
@@ -276,7 +288,7 @@ try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exi
 
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stats = @{
-    skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0; auth_fail = 0; silent_fail = 0
+    skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0; auth_fail = 0; silent_fail = 0; partial_fail = 0
     tokens_total = 0; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0
     batches_run = 0; sonnet_count = 0; haiku_count = 0
     criticos = New-Object System.Collections.Generic.List[string]
@@ -384,6 +396,12 @@ try {
         if ($okLines -eq 0) {
             $stats.silent_fail++
             Write-Log ('ERRO: lote ' + $label + ' sem linhas OK| - falha silenciosa (0 emissores confirmados)')
+        } elseif ($okLines -lt $job.Chunk.Count) {
+            # 2026-07-13: antes so detectava falha TOTAL (0 linhas OK|); falha PARCIAL (ex.: 4 de 6
+            # confirmados) passava sem log, sem retry, sem registro - os emissores faltantes ficavam
+            # sem cobertura naquele dia sem nenhum sinal no pipeline.
+            $stats.partial_fail++
+            Write-Log ('AVISO: lote ' + $label + ' confirmou apenas ' + $okLines + '/' + $job.Chunk.Count + ' emissores - possivel cobertura parcial (nomes esperados: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', ') + ')')
         }
 
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue

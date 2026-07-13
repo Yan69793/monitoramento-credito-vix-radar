@@ -190,7 +190,10 @@ function Get-VeredictosArray($outputLines, [int]$esperado) {
         Write-Log ("AVISO: modelo retornou " + $arr.Count + " veredictos para " + $esperado + " eventos - truncando para os primeiros " + $esperado)
         $arr = $arr[0..($esperado - 1)]
     }
-    return $arr
+    # 2026-07-13: mesmo padrao de array-unwrapping do Split-IntoChunks (return sem virgula unaria
+    # desembrulha array de 1 elemento) - hoje inofensivo pois o unico consumo indexa so [0], mas
+    # preventivo contra uso futuro (foreach, checagem de .Count) reativar a classe de bug.
+    return ,$arr
 }
 
 function Invoke-WorkerJsonUtf8 {

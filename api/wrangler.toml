@@ -1,6 +1,32 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.150)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.151)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.151.js = v4.9.150 + auditoria geral 2026-07-13 (nota 54 + caca preditiva):
+#   (1) SEC HDASH1: op=health-dashboard trocou senha via querystring GET
+#   (env.ADMIN_SENHA) por _exigeJwtAdmin (mesmo padrao ja usado em
+#   zscores_anbima/teste desde v4.9.148) - ADMIN_SENHA fica sem uso no codigo,
+#   secret pode ser removido/rotacionado (decisao do operador).
+#   (2) FIX dedup: isEventoDuplicadoSemantico fazia `return false` DENTRO do
+#   loop de existentes - parava de comparar no 1o candidato nao-conclusivo,
+#   deixando passar duplicata real de um candidato posterior. Trocado por
+#   `continue`. Validado isolado: cenario com 2 titulos genericos identicos
+#   (1o fora da janela/fonte diferente, 2o duplicata real em 5 dias) - bug
+#   retornava false (duplicata passava), fix retorna true corretamente.
+#   (3) OBS dispararAlertaCritico (rota admin_upsert_analise, :15090): catch
+#   vazio virou log+telemetria (evento alerta_critico_erro) - falha de alerta
+#   parava de ser 100% invisivel.
+#   (4) FIX dispararAlertaCritico (rota consulta_empresa/pulso manual, :15725):
+#   chamada sem try/catch dentro de __coreFetch (sem wrapper no fetch() do
+#   Worker) podia derrubar a resposta HTTP inteira com excecao nao tratada da
+#   plataforma mesmo apos o resultado da analise ja ter sido persistido -
+#   agora captura e loga, resposta de sucesso preservada.
+#   Adiados propositalmente (risco/escopo maior, exigem design, nao mecanicos):
+#   RLADMIN1 (rate limit login/registrar/admin), CASEKEY1 (case-fold empresa
+#   em receber_analise - adiado tambem p/ nao empilhar risco no pipeline de
+#   ingestao no mesmo dia da validacao do fix CHUNK1/scripts), race condition
+#   de escrita no blob semanal radar:estado (requer chave por empresa ou
+#   serializacao via DO), anomalia promovida reaparecendo no cron seguinte
+#   (requer merge/tombstone). Ver Obsidian nota 54 e PENDENCIAS.md.
 # v4.9.149.js = v4.9.148 + fix receber_analise (eventos pendentes de verificação
 #   persistidos em vez de descartados com n_eventos=0) + mesclarEventoVerificado
 #   substitui evento pendente pelo verificado. Deployado 09/07 ~15:21 BRT.
@@ -93,7 +119,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.150.js"
+main       = "v4.9.151.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
