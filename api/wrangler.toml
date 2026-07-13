@@ -1,6 +1,42 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.151)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.152)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.152.js = v4.9.151 + rodada 2 da auditoria 2026-07-13 (3 dos 5 P1
+#   adiados no v4.9.151, atacados a pedido explicito do operador):
+#   (1) FIX ANOMPROMO1: recalcularTodasAnomalias (cron, ~9 call-sites)
+#   recalculava do zero e sobrescrevia KV_ANOMALIAS_ATIVAS inteiro sem saber
+#   quais anomalias ja tinham sido promovidas por admin (handlePromoverAnomalia
+#   as remove da lista ativa e move para eventos:confirmados:promovidos). Se a
+#   condicao de mercado que gerou a anomalia continuasse verdadeira, a proxima
+#   execucao do cron detectava de novo e a promocao "sumia" da perspectiva do
+#   admin. Fix: carrega eventos:confirmados:promovidos 1x por execucao, filtra
+#   anomalias cujo empresa+tipo ja consta como promovido antes de gravar.
+#   Validado isolado (2 casos: anomalia promovida filtrada, anomalia nao
+#   promovida preservada).
+#   (2) FIX RLADMIN1: login e registrar nao tinham nenhum rate limit (so
+#   consulta_empresa/pulso usava checkRateLimitV2). Login sem limite = brute
+#   force de senha (inclusive conta admin) sem throttling de aplicacao. Fix:
+#   checkRateLimitV2 (mesmo DO RATE_LIMITER_DO ja usado em producao) aplicado
+#   no dispatch, antes de handleLogin/handleRegistrar - identidade por IP
+#   (RATE_LIMITS_ANONIMO) ja que nao ha JWT antes do login. Reaproveita padrao
+#   existente, sem infra nova.
+#   (3) FIX CASEKEY1: receber_analise usava body.empresa direto como chave em
+#   estado.results sem checar contra EMISSORES_LISTA - grafia divergente
+#   (case/espaco) fragmentaria o historico do emissor em 2 chaves distintas.
+#   Fix: match exato passa direto (caminho normal, rotinas ja usam nomes
+#   canonicos vindos do proprio /plano do Worker); match case-insensitive
+#   canonicaliza; sem match nenhum, rejeita 400 (mesmo padrao ja usado em
+#   admin_upsert_analise). Validado isolado (4 casos: exato, case diferente,
+#   espaco+case, inexistente).
+#   NAO aplicado (adiado por decisao tecnica, nao por falta de autorizacao):
+#   RACEKV1 (race condition no blob semanal radar:estado) - leitura-modificacao-
+#   escrita sem lock em persistirResultadoCompartilhado/rodarSweepRevalidacao.
+#   KV nao tem CAS; fix real exige Durable Object serializando escrita por
+#   semana (nova classe + migration + binding) OU quebrar o blob em chave por
+#   empresa (migracao de dado, toca 5 endpoints multi-semana). Ambos sao
+#   mudanca estrutural, nao cirurgica - decidido nao empilhar no mesmo deploy
+#   que ainda vai ser testado ao vivo pela 1a vez na matinal 10h e noturna 18h
+#   de hoje. Design completo em Obsidian nota 54, pronto para deploy dedicado.
 # v4.9.151.js = v4.9.150 + auditoria geral 2026-07-13 (nota 54 + caca preditiva):
 #   (1) SEC HDASH1: op=health-dashboard trocou senha via querystring GET
 #   (env.ADMIN_SENHA) por _exigeJwtAdmin (mesmo padrao ja usado em
@@ -119,7 +155,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.151.js"
+main       = "v4.9.152.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

@@ -101,6 +101,7 @@ api/v4.*.js
 !api/v4.9.149.js
 !api/v4.9.150.js
 !api/v4.9.151.js
+!api/v4.9.152.js
 
 # ---------- Agent local (não versionar) ----------
 .grok/

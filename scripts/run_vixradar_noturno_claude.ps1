@@ -488,6 +488,7 @@ try {
     }
 
     $ji = 0
+    $abortAfterSubmit = $false   # RETRYDROP1: sinaliza break apos submit (preserva resultados)
     foreach ($job in $jobs) {
         $ji++
 
@@ -548,21 +549,28 @@ try {
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
             $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
             if ($retryRes.AuthFailure) {
-                Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no retry do lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes.')
+                # RETRYDROP1 (fix 2026-07-13): break imediato descartava resultados ja parseados
+                # do lote principal em $parsed.Map (emissores com RESULTADO valido). Agora:
+                # 1. NAO faz merge do retry (que falhou) no $parsed.Map
+                # 2. Sinaliza abort apos submit (preserva resultados do lote principal)
+                # 3. Emissores faltantes recebem fallback "Falha de parse" no bloco de submit
+                Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no retry do lote ' + $label + ' - ' + $missing.Count + ' emissores faltantes receberao fallback. Resultados ja processados (' + ($job.Chunk.Count - $missing.Count) + ' emissor(es)) serao submetidos normalmente. Lotes restantes NAO serao processados.')
                 $exitCode = 7
                 $stats.batch_fail++
+                $abortAfterSubmit = $true
                 Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
-                break
+                # NAO da break - cai para o bloco de submit com $parsed.Map preservado
+            } else {
+                if ($retryRes.Output) { $retryRes.Output | ForEach-Object { Write-Log ('OUT-RETRY: ' + $_) } }
+                if ($retryRes.Tokens -gt 0) { $stats.tokens_total += $retryRes.Tokens }
+                $retryParsed = Get-ParsedResultados $retryRes.Output
+                foreach ($k in @($retryParsed.Map.Keys)) { $parsed.Map[$k] = $retryParsed.Map[$k] }
+                if ($retryParsed.Buscas -gt 0) {
+                    if ($buscasLote -lt 0) { $buscasLote = 0 }
+                    $buscasLote += $retryParsed.Buscas
+                }
+                Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
             }
-            if ($retryRes.Output) { $retryRes.Output | ForEach-Object { Write-Log ('OUT-RETRY: ' + $_) } }
-            if ($retryRes.Tokens -gt 0) { $stats.tokens_total += $retryRes.Tokens }
-            $retryParsed = Get-ParsedResultados $retryRes.Output
-            foreach ($k in @($retryParsed.Map.Keys)) { $parsed.Map[$k] = $retryParsed.Map[$k] }
-            if ($retryParsed.Buscas -gt 0) {
-                if ($buscasLote -lt 0) { $buscasLote = 0 }
-                $buscasLote += $retryParsed.Buscas
-            }
-            Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
         }
 
         # silent_fail: zero RESULTADO| parseados do output do modelo (cobre falhas alem da regex de
@@ -617,6 +625,10 @@ try {
 
         if ($loteFail -gt 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+        if ($abortAfterSubmit) {
+            Write-Log 'ABORT: retry AuthFailure - resultados deste lote submetidos, lotes restantes NAO processados'
+            break
+        }
     }
 
     foreach ($emp in $pendingDeferred) {
