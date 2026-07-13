@@ -12,11 +12,13 @@ Você acompanha mais de 100 emissores de crédito privado numa planilha.
 
 O rebaixamento aparece no home broker antes de aparecer na sua aba do Excel.
 
-Essa é a rotina real de muita mesa de crédito no Brasil: abrir CVM, ANBIMA, os sites das agências, a imprensa, um por um, toda manhã. Funciona para 10 emissores. Não escala para 100.
+Essa é a rotina real de muita mesa de crédito no Brasil: abrir CVM, ANBIMA, os sites das agências, a imprensa, um por um, toda manhã. Funciona para 10 emissores. Não escala para mais de 100.
 
 E o custo de perder um evento não é operacional. É o spread que já mexeu quando você leu a notícia.
 
 O trabalho de monitorar não é o trabalho de analisar. Só que ele consome as duas primeiras horas do dia de quem deveria estar decidindo.
+
+É esse trabalho que o VIX Radar automatiza: 103 emissores classificados por materialidade, todo dia útil. www.vixradar.com
 
 Como está a sua rotina de varredura hoje: no braço, terminal caro, ou nenhuma?
 
