@@ -258,14 +258,37 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     # $apiKey = Get-AnthropicApiKey
     # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
     if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
-    $out = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+    # --output-format json (v4.9.155): extrai envelope JSON do claude -p para capturar tokens
+    # reais (input+output+cache) em vez do Parse-TokensFromOutput que sempre retornava 0 com
+    # --output-format text. Mesmo padrao do run_vixradar_verificacao_async.ps1. stderr vai
+    # para arquivo separado (nao misturar no stdout — corromperia o parse do JSON).
+    $stderrFile = Join-Path $LogDir ('matinal_stderr_' + $DateTag + '_' + $PID + '.txt')
+    $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
         --model $Model `
         --add-dir $ScriptsDir `
         --add-dir $ScheduledTasks `
         --permission-mode bypassPermissions `
-        --output-format text 2>&1
-    $authFail = Test-ClaudeAuthFailure $out
-    return @{ Output = $out; ExitCode = $LASTEXITCODE; AuthFailure = $authFail }
+        --output-format json 2>>$stderrFile
+    $exitCode = $LASTEXITCODE
+    $textOut = @($raw)
+    $tokens = -1
+    try {
+        $jsonLine = @($raw) | Where-Object { ('' + $_).TrimStart().StartsWith('{') } | Select-Object -Last 1
+        if ($jsonLine) {
+            $json = $jsonLine | ConvertFrom-Json
+            if ($null -ne $json.result) { $textOut = @(('' + $json.result) -split "`n") }
+            if ($json.usage) {
+                $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
+                    + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
+            }
+        }
+    } catch {
+        # Parse do envelope JSON falhou — textOut fica com o raw, tokens fica -1.
+        # O resto do pipeline (Get-BatchOkEmissores, Test-ClaudeAuthFailure) opera sobre
+        # textOut e nao depende do parse JSON. Sempre foi assim com --output-format text.
+    }
+    $authFail = Test-ClaudeAuthFailure $textOut
+    return @{ Output = $textOut; ExitCode = $exitCode; AuthFailure = $authFail; Tokens = $tokens }
 }
 
 function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $routineKey, [switch]$Ultra) {
@@ -446,9 +469,8 @@ try {
         # formato de tabela/markdown em vez das linhas cruas (exit 6 falso de 2026-07-13).
         $okLines = [Math]::Max($parsed.Emissores.Count, [Math]::Max((Get-BatchResumoOk $result.Output), 0))
 
-        $bt = Parse-TokensFromOutput ($result.Output -join "`n")
-        if ($bt -gt 0) { $stats.tokens_total += $bt }
-        Write-Log ('Tokens lote=' + $bt + ' acum=' + $stats.tokens_total)
+        if ($result.Tokens -gt 0) { $stats.tokens_total += $result.Tokens }
+        Write-Log ('Tokens lote=' + $result.Tokens + ' acum=' + $stats.tokens_total)
 
         if ($result.ExitCode -ne 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
 
