@@ -1,9 +1,9 @@
 # run_vixradar_verificacao_async.ps1 - Dreno da fila de verificacao assincrona (radar:verif_fila:{data})
 # Roda via Claude Code (assinatura mensal) em vez do Worker chamar a API Anthropic paga por token.
-# NOTA (2026-07-10): ANTHROPIC_API_KEY esta setada no registro (User) nesta maquina - Get-AnthropicApiKey
-# retorna essa chave e o dreno roda cobrado por token hoje, nao por limite semanal de assinatura.
-# Confirmado rodando claude -p manual com a mesma chave. Guards de refusal (Fable 5) e --fallback-model
-# adicionados em Invoke-ClaudeBatch - ver comentarios la.
+# NOTA (2026-07-13): v4.9.152 — migrado de pay-per-token para assinatura Claude Code.
+# ANTHROPIC_API_KEY e removida do ambiente em Invoke-ClaudeBatch; claude -p usa OAuth.
+# Motivo: saldo pre-pago esgotou 3x em 10 dias (03/07, 04/07, 10/07), interrompendo cobertura.
+# Get-AnthropicApiKey e demais guards permanecem no codigo para eventual retorno a pay-per-token.
 # Programado para rodar pouco depois de vixradar-matinal (10h BRT) e vixradar-noturno (18h BRT).
 $ErrorActionPreference = 'Stop'
 # Encoding UTF-8 na captura do stdout do 'claude' (higiene, alinhado ao noturno/matinal).
@@ -45,7 +45,7 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # correto quanto ao efeito (erros_parse incrementa, exitCode vira 6), mas a causa fica oculta
     # no log (indistinguivel de JSON malformado/truncado por outro motivo).
     $texto = ($outputLines -join "`n")
-    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit'
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit|credit balance is too low|insufficient.*credit'
 }
 
 function Get-RoutineKey {
@@ -83,8 +83,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
-        $apiKey = Get-AnthropicApiKey
-        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+        # v4.9.152: assinatura Claude Code (sem pay-per-token). Remove ANTHROPIC_API_KEY do ambiente
+        # do processo filho para forcar fallback a assinatura OAuth. Get-AnthropicApiKey permanece
+        # no codigo para eventual retorno a pay-per-token (descomentar 2 linhas abaixo).
+        # $apiKey = Get-AnthropicApiKey
+        # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+        if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `

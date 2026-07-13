@@ -87,11 +87,12 @@ function Get-RoutineKey {
 }
 
 function Get-AnthropicApiKey {
-    # v4.9.150: usar API key (pay-per-token) em vez de assinatura Claude Code.
-    # Elimina o limite semanal recorrente. A chave ja existe no Cloudflare Worker.
-    # Basta setar 1x como env var do Windows:
-    #   [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY','sk-ant-...','User')
-    # A chave esta em https://console.anthropic.com/settings/keys
+    # v4.9.152: MIGRADO para assinatura Claude Code (OAuth) — ver Invoke-ClaudeBatch.
+    # Funcao preservada para retorno futuro a pay-per-token. Para reativar:
+    #   1. Descomentar as 2 linhas em Invoke-ClaudeBatch (todos os 3 scripts)
+    #   2. Remover o `if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }`
+    #   3. Setar chave: [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY','sk-ant-...','User')
+    # Chave em https://console.anthropic.com/settings/keys
     if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
     # Fallback: Task Scheduler/sessao nao-interativa pode nao popular $env: automaticamente
     # do registry User. Leitura direta do hive resolve.
@@ -209,7 +210,7 @@ function Split-IntoChunks($items, [int]$chunkSize) {
         $end = [Math]::Min($i + $chunkSize - 1, $list.Count - 1)
         $chunks += ,@($list[$i..$end])
     }
-    return $chunks
+    return ,$chunks
 }
 
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
@@ -235,8 +236,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         $OutputEncoding = [System.Text.Encoding]::UTF8
         # v4.9.150: usar API key (pay-per-token) elimina limite semanal da assinatura.
         # Se nao tiver ANTHROPIC_API_KEY, claude -p usa assinatura normalmente (fallback).
-        $apiKey = Get-AnthropicApiKey
-        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+        # v4.9.152: assinatura Claude Code (sem pay-per-token). Remove ANTHROPIC_API_KEY do ambiente
+        # do processo filho para forcar fallback a assinatura OAuth. Get-AnthropicApiKey permanece
+        # no codigo para eventual retorno a pay-per-token (descomentar 2 linhas abaixo).
+        # $apiKey = Get-AnthropicApiKey
+        # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+        if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `
@@ -467,6 +472,19 @@ try {
     }
     foreach ($chunk in (Split-IntoChunks $queues.Sonnet $SonnetChunk)) {
         $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false; Provedor = 'claude-sonnet-routine' })
+    }
+
+    # Guarda de regressao (2026-07-13): Split-IntoChunks ja teve bug de array-unwrapping do
+    # PowerShell (return $chunks sem virgula unaria) que devolvia 1 emissor por lote em vez de
+    # agrupados quando a fila cabia em 1 chunk - sintoma silencioso, so visivel lendo o log com
+    # atencao (numero de lotes = numero de emissores). Corrigido (return ,$chunks); esta checagem
+    # denuncia qualquer regressao futura em vez de deixar degradar silenciosamente de novo.
+    $haikuJobsCount = @($jobs | Where-Object { $_.Name -eq 'haiku' }).Count
+    $sonnetJobsCount = @($jobs | Where-Object { $_.Name -eq 'sonnet' }).Count
+    $haikuEsperado = if ($queues.Haiku.Count -eq 0) { 0 } else { [Math]::Ceiling($queues.Haiku.Count / $HaikuChunk) }
+    $sonnetEsperado = if ($queues.Sonnet.Count -eq 0) { 0 } else { [Math]::Ceiling($queues.Sonnet.Count / $SonnetChunk) }
+    if ($haikuJobsCount -ne $haikuEsperado -or $sonnetJobsCount -ne $sonnetEsperado) {
+        Write-Log ("AVISO CRITICO: agrupamento de lotes incorreto - haiku lotes=$haikuJobsCount esperado=$haikuEsperado, sonnet lotes=$sonnetJobsCount esperado=$sonnetEsperado (fila haiku=$($queues.Haiku.Count) sonnet=$($queues.Sonnet.Count)). Possivel regressao de Split-IntoChunks - revisar antes de continuar.")
     }
 
     $ji = 0

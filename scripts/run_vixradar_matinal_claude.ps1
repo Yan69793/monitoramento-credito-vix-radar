@@ -163,7 +163,7 @@ function Split-IntoChunks($items, [int]$chunkSize) {
         $end = [Math]::Min($i + $chunkSize - 1, $list.Count - 1)
         $chunks += ,@($list[$i..$end])
     }
-    return $chunks
+    return ,$chunks
 }
 
 function Parse-TokensFromOutput([string]$text) {
@@ -184,7 +184,7 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # imprimir esta mensagem em vez de analisar - exit code do processo continua 0, entao sem esta
     # checagem o lote falso-positiva como sucesso e a rotina degrada silenciosamente (0 analises).
     $texto = ($outputLines -join "`n")
-    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit'
+    return $texto -match '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit|credit balance is too low|insufficient.*credit'
 }
 
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
@@ -192,8 +192,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
-    $apiKey = Get-AnthropicApiKey
-    if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+    # v4.9.152: assinatura Claude Code (sem pay-per-token). Remove ANTHROPIC_API_KEY do ambiente
+    # do processo filho para forcar fallback a assinatura OAuth. Get-AnthropicApiKey permanece
+    # no codigo para eventual retorno a pay-per-token (descomentar 2 linhas abaixo).
+    # $apiKey = Get-AnthropicApiKey
+    # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+    if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
     $out = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
         --model $Model `
         --add-dir $ScriptsDir `
@@ -317,6 +321,19 @@ try {
     }
     foreach ($chunk in (Split-IntoChunks $queues.Haiku $HaikuChunk)) {
         $jobs.Add([ordered]@{ Name = 'haiku'; Model = $ModelHaiku; Chunk = @($chunk); Skill = $HaikuSkill; Ultra = $true })
+    }
+
+    # Guarda de regressao (2026-07-13): Split-IntoChunks ja teve bug de array-unwrapping do
+    # PowerShell (return $chunks sem virgula unaria) que devolvia 1 emissor por lote em vez de
+    # agrupados quando a fila cabia em 1 chunk - sintoma silencioso, so visivel lendo o log com
+    # atencao (numero de lotes = numero de emissores). Corrigido (return ,$chunks); esta checagem
+    # denuncia qualquer regressao futura em vez de deixar degradar silenciosamente de novo.
+    $haikuJobsCount = @($jobs | Where-Object { $_.Name -eq 'haiku' }).Count
+    $sonnetJobsCount = @($jobs | Where-Object { $_.Name -eq 'sonnet' }).Count
+    $haikuEsperado = if ($queues.Haiku.Count -eq 0) { 0 } else { [Math]::Ceiling($queues.Haiku.Count / $HaikuChunk) }
+    $sonnetEsperado = if ($queues.Sonnet.Count -eq 0) { 0 } else { [Math]::Ceiling($queues.Sonnet.Count / $SonnetChunk) }
+    if ($haikuJobsCount -ne $haikuEsperado -or $sonnetJobsCount -ne $sonnetEsperado) {
+        Write-Log ("AVISO CRITICO: agrupamento de lotes incorreto - haiku lotes=$haikuJobsCount esperado=$haikuEsperado, sonnet lotes=$sonnetJobsCount esperado=$sonnetEsperado (fila haiku=$($queues.Haiku.Count) sonnet=$($queues.Sonnet.Count)). Possivel regressao de Split-IntoChunks - revisar antes de continuar.")
     }
 
     $ji = 0
