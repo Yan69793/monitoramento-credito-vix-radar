@@ -11,18 +11,21 @@
 # tocar em nenhuma sessao Claude ou MCP.
 #
 # ENTREGA EM DOIS CANAIS:
-#   1) CANAL PRINCIPAL (garantido, SEM secret nenhum): cria/atualiza um GitHub
-#      Issue fixo com o status do dia usando o GITHUB_TOKEN nativo do Actions
-#      (sempre presente) e menciona o operador para gerar notificacao. Este
-#      canal NAO depende de nenhum secret e por isso NUNCA para de funcionar.
-#   2) CANAL OPCIONAL (e-mail bonito): se o secret RESEND_API_KEY existir,
-#      tambem manda o card HTML por e-mail via Resend. Se nao existir, apenas
-#      pula (sem falhar) — o canal 1 ja garantiu a entrega.
+#   1) PRINCIPAL (garantido, SEM secret nenhum): cria/atualiza um GitHub Issue
+#      fixo com o status do dia via GITHUB_TOKEN nativo do Actions (sempre
+#      presente) e menciona o operador para notificar. Nunca para por falta
+#      de secret nem por bug de OAuth/MCP.
+#   2) OPCIONAL (e-mail): se RESEND_API_KEY existir, tambem manda o card HTML
+#      por e-mail via Resend. Se nao existir, apenas pula (sem falhar).
 #
-# Ou seja: para o status diario voltar a chegar de forma confiavel, NAO e
-# preciso configurar NENHUM secret novo. O RESEND_API_KEY e so um bonus
-# estetico. ADMIN_PASSWORD (ja existente) continua sendo o unico secret usado
-# para ler os endpoints admin de leitura do Worker.
+# Para o status diario voltar a chegar de forma confiavel NAO e preciso
+# configurar NENHUM secret novo. ADMIN_PASSWORD (ja existente) e o unico
+# secret usado, para ler os endpoints admin de leitura do Worker.
+#
+# NOTA TECNICA: o corpo do Issue/e-mail e montado com blocos { echo ...; }
+# indentados (NAO heredoc). Heredoc com corpo na coluna 0 encerra o block
+# scalar YAML do `run:` e quebra o parser (workflow_dispatch some, name vira
+# o path). Os echo indentados evitam isso e mantem o YAML valido.
 
 name: Status Diario (Issue + e-mail opcional)
 
@@ -40,7 +43,7 @@ env:
   RESEND_FROM: "VIX Radar <boletim@vixradar.com>"
   ADMIN_EMAIL: "szuchmacheryan@gmail.com"
   GH_MENTION: "Yan69793"
-  ISSUE_TITLE: "📡 VIX Radar — Status Diário (automático)"
+  ISSUE_TITLE: "VIX Radar — Status Diario (automatico)"
   COBERTURA_MIN: "50"
   IDADE_MAX_H: "48"
 
@@ -69,12 +72,9 @@ jobs:
           fi
           echo "::add-mask::$ADMIN_PWD"
 
-          # ── 1) admin_health_check (frescor) ──────────────────────────────
-          HC=$(curl -s -X POST "$API/" \
-            -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$ADMIN_PWD\"}" \
-            --max-time 60)
-
+          # 1) admin_health_check (frescor)
+          HC=$(curl -s -X POST "$API/" -H "Content-Type: application/json" \
+            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$ADMIN_PWD\"}" --max-time 60)
           HC_OK=$(echo "$HC" | jq -r '.ok // false')
           EMP=$(echo "$HC" | jq -r '.checks.estado_semanal.empresas_com_dados // "null"')
           UPD=$(echo "$HC" | jq -r '.checks.estado_semanal.updated_at // "null"')
@@ -92,26 +92,24 @@ jobs:
             fi
           fi
 
-          # ── 2) admin_custo (gasto/prova de analise no dia) ───────────────
-          CT=$(curl -s -X POST "$API/" \
-            -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_custo\",\"admin_senha\":\"$ADMIN_PWD\"}" \
-            --max-time 60)
+          # 2) admin_custo
+          CT=$(curl -s -X POST "$API/" -H "Content-Type: application/json" \
+            -d "{\"action\":\"admin_custo\",\"admin_senha\":\"$ADMIN_PWD\"}" --max-time 60)
           CUSTO_DATA=$(echo "$CT" | jq -r '.data // "null"')
           DISJUNTOR=$(echo "$CT" | jq -r '.disjuntor_usd // "null"')
 
-          # ── 3) GET / publico (health + versao Worker) ────────────────────
+          # 3) GET / publico
           RESPONSE=$(curl -s "$API/" --max-time 30 -w "\n__HTTP:%{http_code}__")
           HTTP=$(echo "$RESPONSE" | grep -oP '__HTTP:\K\d+')
-          BODY=$(echo "$RESPONSE" | sed 's/__HTTP:.*//')
-          OK=$(echo "$BODY" | jq -r '.ok // false')
-          WORKER_V=$(echo "$BODY" | jq -r '.versao // "unknown"')
-          KV=$(echo "$BODY" | jq -r '.bindings.kv // false')
-          RL=$(echo "$BODY" | jq -r '.bindings.rate_limiter // false')
-          TEL2=$(echo "$BODY" | jq -r '.bindings.telemetria // false')
-          PROV=$(echo "$BODY" | jq -r '.providers_configurados // "?"')
+          RBODY=$(echo "$RESPONSE" | sed 's/__HTTP:.*//')
+          OK=$(echo "$RBODY" | jq -r '.ok // false')
+          WORKER_V=$(echo "$RBODY" | jq -r '.versao // "unknown"')
+          KV=$(echo "$RBODY" | jq -r '.bindings.kv // false')
+          RL=$(echo "$RBODY" | jq -r '.bindings.rate_limiter // false')
+          TEL2=$(echo "$RBODY" | jq -r '.bindings.telemetria // false')
+          PROV=$(echo "$RBODY" | jq -r '.providers_configurados // "?"')
 
-          # ── 4) Drift Worker (repo vs producao) ────────────────────────────
+          # 4) Drift Worker
           MAIN_JS=$(grep -oP '^\s*main\s*=\s*"\K[^"]+' api/wrangler.toml | head -1)
           EXPECTED_WORKER="${MAIN_JS%.js}"
           WORKER_DRIFT="nao"
@@ -119,132 +117,110 @@ jobs:
             WORKER_DRIFT="sim"
           fi
 
-          # ── 5) Drift Frontend (repo vs producao) ─────────────────────────
+          # 5) Drift Frontend
           EXPECTED_FRONTEND=$(jq -r '.version // "unknown"' app/version.json)
-          FRONTEND_JSON=$(curl -s https://vixradar.com/version.json --max-time 15)
-          PROD_FRONTEND=$(echo "$FRONTEND_JSON" | jq -r '.version // "unknown"')
+          PROD_FRONTEND=$(curl -s https://vixradar.com/version.json --max-time 15 | jq -r '.version // "unknown"')
           PROD_HTML_CV=$(curl -s https://vixradar.com/ --max-time 15 | grep -oP 'CACHE_VERSION\s*=\s*"\K[^"]+' | head -1)
           FRONTEND_DRIFT="nao"
           if [ "$PROD_FRONTEND" != "$EXPECTED_FRONTEND" ] || [ "$PROD_HTML_CV" != "$EXPECTED_FRONTEND" ]; then
             FRONTEND_DRIFT="sim"
           fi
 
-          # ── 6) Veredito determinístico ────────────────────────────────────
-          COR="verde"; EMOJI="🟢"; COR_HEX="#3fb950"
+          # 6) Veredito
+          COR="verde"; EMOJI="[VERDE]"; COR_HEX="#3fb950"
           VEREDITO="Tudo saudavel."
-
           if [ "$HTTP" != "200" ] || [ "$OK" != "true" ] || [ "$HC_OK" != "true" ]; then
-            COR="vermelho"; EMOJI="🔴"; COR_HEX="#f85149"
+            COR="vermelho"; EMOJI="[VERMELHO]"; COR_HEX="#f85149"
             VEREDITO="Producao degradada ou health check falhou."
           elif [ "$EMP" = "null" ] || { [ "$EMP" != "null" ] && [ "$EMP" -lt "$COBERTURA_MIN" ] 2>/dev/null; }; then
-            COR="vermelho"; EMOJI="🔴"; COR_HEX="#f85149"
+            COR="vermelho"; EMOJI="[VERMELHO]"; COR_HEX="#f85149"
             VEREDITO="Cobertura de dados baixa ($EMP de 103) — ingestao pode estar travada."
           elif [ "$IDADE_H" = "null" ] || { [ "$IDADE_H" != "null" ] && [ "$IDADE_H" -gt "$IDADE_MAX_H" ] 2>/dev/null; }; then
-            COR="vermelho"; EMOJI="🔴"; COR_HEX="#f85149"
+            COR="vermelho"; EMOJI="[VERMELHO]"; COR_HEX="#f85149"
             VEREDITO="Estado desatualizado (idade ${IDADE_H}h > ${IDADE_MAX_H}h) — noticias podem estar paradas."
           elif [ "$WORKER_DRIFT" = "sim" ] || [ "$FRONTEND_DRIFT" = "sim" ]; then
-            COR="amarelo"; EMOJI="🟡"; COR_HEX="#d29922"
+            COR="amarelo"; EMOJI="[AMARELO]"; COR_HEX="#d29922"
             VEREDITO="Producao saudavel e dados frescos, mas ha drift repo x producao pendente de reconciliar."
           fi
-
           echo "Veredito: $COR — $VEREDITO"
 
-          # ── 7) Montar corpo Markdown (para o Issue) ──────────────────────
-          cat > /tmp/status.md <<MDEOF
-## 📡 VIX Radar — Status ${AGORA}
+          # 7) Corpo Markdown do Issue (echo indentado = YAML-safe, sem heredoc)
+          {
+            echo "## VIX Radar — Status ${AGORA}"
+            echo ""
+            echo "**Veredito:** ${EMOJI} **${COR}** — ${VEREDITO}"
+            echo ""
+            echo "| Item | Valor |"
+            echo "|---|---|"
+            echo "| Worker (producao) | \`${WORKER_V}\` · HTTP ${HTTP} · ok:${OK} |"
+            echo "| Bindings | kv:${KV} · rate_limiter:${RL} · telemetria:${TEL2} · providers:${PROV} |"
+            echo "| Frescor da ingestao | **${EMP}** / 103 emissores · idade **${IDADE_H}h** (limite ${IDADE_MAX_H}h) |"
+            echo "| Ultima atualizacao do estado | ${UPD} |"
+            echo "| Semanas carregadas | ${WEEKS} |"
+            echo "| Anthropic / Resend / Telemetria | ${ANTHROPIC} / ${RESEND_OK} / ${TEL} |"
+            echo "| Drift Worker | repo=\`${EXPECTED_WORKER}\` vs prod=\`${WORKER_V}\` -> **${WORKER_DRIFT}** |"
+            echo "| Drift Frontend | repo=\`${EXPECTED_FRONTEND}\` vs prod=\`${PROD_FRONTEND}\` (CACHE_VERSION=${PROD_HTML_CV}) -> **${FRONTEND_DRIFT}** |"
+            echo "| Custo do dia | ${CUSTO_DATA} · disjuntor \$${DISJUNTOR} |"
+            echo ""
+            echo "<sub>cc @${GH_MENTION} · gerado pelo GitHub Actions (sem Claude/MCP) · run ${GITHUB_RUN_ID:-manual}</sub>"
+          } > /tmp/status.md
 
-**Veredito:** ${EMOJI} **${COR^^}** — ${VEREDITO}
-
-| Item | Valor |
-|---|---|
-| Worker (producao) | \`${WORKER_V}\` · HTTP ${HTTP} · ok:${OK} |
-| Bindings | kv:${KV} · rate_limiter:${RL} · telemetria:${TEL2} · providers:${PROV} |
-| Frescor da ingestao | **${EMP}** / 103 emissores · idade **${IDADE_H}h** (limite ${IDADE_MAX_H}h) |
-| Ultima atualizacao do estado | ${UPD} |
-| Semanas carregadas | ${WEEKS} |
-| Anthropic / Resend / Telemetria | ${ANTHROPIC} / ${RESEND_OK} / ${TEL} |
-| Drift Worker | repo=\`${EXPECTED_WORKER}\` vs prod=\`${WORKER_V}\` → **${WORKER_DRIFT}** |
-| Drift Frontend | repo=\`${EXPECTED_FRONTEND}\` vs prod=\`${PROD_FRONTEND}\` (CACHE_VERSION=${PROD_HTML_CV}) → **${FRONTEND_DRIFT}** |
-| Custo do dia | ${CUSTO_DATA} · disjuntor \$${DISJUNTOR} |
-
-<sub>cc @${GH_MENTION} · gerado pelo GitHub Actions (sem Claude/MCP) · run: \`${GITHUB_RUN_ID:-manual}\`</sub>
-MDEOF
-
-          # ── 8) CANAL PRINCIPAL: publicar/atualizar Issue (sem secret) ────
+          # 8) CANAL PRINCIPAL: publicar/atualizar Issue (sem secret)
           EXISTING=$(gh issue list --state open --search "${ISSUE_TITLE} in:title" \
             --json number,title \
             --jq "map(select(.title==\"${ISSUE_TITLE}\")) | .[0].number // empty" 2>/dev/null || true)
-
           if [ -z "$EXISTING" ]; then
             echo "Nenhum issue de status aberto — criando um novo."
             gh issue create --title "$ISSUE_TITLE" --body-file /tmp/status.md
           else
-            echo "Issue de status #${EXISTING} encontrado — adicionando comentario do dia."
+            echo "Issue de status #${EXISTING} — adicionando comentario do dia."
             gh issue comment "$EXISTING" --body-file /tmp/status.md
           fi
-          echo "Status publicado no Issue com sucesso (canal garantido, sem secret)."
+          echo "Status publicado no Issue (canal garantido, sem secret)."
 
-          # ── 9) CANAL OPCIONAL: e-mail HTML via Resend ────────────────────
+          # 9) CANAL OPCIONAL: e-mail HTML via Resend
           if [ -z "$RESEND_KEY" ]; then
-            echo "::notice::RESEND_API_KEY ausente — e-mail bonito pulado (opcional). O Issue ja entregou o status."
+            echo "::notice::RESEND_API_KEY ausente — e-mail opcional pulado. O Issue ja entregou o status."
             exit 0
           fi
+          {
+            echo "<!doctype html><html lang=\"pt-BR\"><head><meta charset=\"utf-8\"></head>"
+            echo "<body style=\"margin:0;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;padding:20px;line-height:1.4\">"
+            echo "<div style=\"max-width:680px;margin:0 auto\">"
+            echo "<h1 style=\"font-size:19px;margin:0 0 2px\">VIX Radar — Status Diario</h1>"
+            echo "<div style=\"color:#8b949e;font-size:12px;margin-bottom:16px\">Medido ao vivo · ${AGORA} · GitHub Actions (sem Claude/MCP)</div>"
+            echo "<div style=\"background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px\">"
+            echo "<div style=\"color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px\">Veredito</div>"
+            echo "<div style=\"font-size:22px;font-weight:700;color:${COR_HEX}\">${COR}</div>"
+            echo "<div style=\"color:#8b949e;font-size:13px;margin-top:4px\">${VEREDITO}</div></div>"
+            echo "<div style=\"background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px\">"
+            echo "<div style=\"color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:6px\">Worker</div>"
+            echo "<div style=\"font-size:14px\">${WORKER_V} · HTTP ${HTTP} · ok:${OK} · kv:${KV} · rate_limiter:${RL} · telemetria:${TEL2} · providers:${PROV}</div></div>"
+            echo "<div style=\"background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px\">"
+            echo "<div style=\"color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:6px\">Frescor</div>"
+            echo "<div style=\"font-size:14px\">Emissores: <b>${EMP}</b>/103 · idade ${IDADE_H}h (limite ${IDADE_MAX_H}h)</div>"
+            echo "<div style=\"font-size:14px\">Ultima atualizacao: ${UPD}</div>"
+            echo "<div style=\"font-size:14px\">Semanas: ${WEEKS} · Anthropic:${ANTHROPIC} Resend:${RESEND_OK} Telemetria:${TEL}</div></div>"
+            echo "<div style=\"background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px\">"
+            echo "<div style=\"color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:6px\">Drift repo x producao</div>"
+            echo "<div style=\"font-size:14px\">Worker: repo=${EXPECTED_WORKER} vs prod=${WORKER_V} — ${WORKER_DRIFT}</div>"
+            echo "<div style=\"font-size:14px\">Frontend: repo=${EXPECTED_FRONTEND} vs prod=${PROD_FRONTEND} — ${FRONTEND_DRIFT}</div></div>"
+            echo "<div style=\"background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px\">"
+            echo "<div style=\"color:#8b949e;font-size:11px;text-transform:uppercase;margin-bottom:6px\">Custo do dia</div>"
+            echo "<div style=\"font-size:14px\">Data: ${CUSTO_DATA} · Disjuntor: \$${DISJUNTOR}</div></div>"
+            echo "</div></body></html>"
+          } > /tmp/status.html
 
-          HTML=$(cat <<HTMLEOF
-<!doctype html>
-<html lang="pt-BR"><head><meta charset="utf-8"></head>
-<body style="margin:0;background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Inter,sans-serif;padding:20px;line-height:1.4">
-<div style="max-width:680px;margin:0 auto">
-  <h1 style="font-size:19px;margin:0 0 2px;letter-spacing:.3px">📡 VIX Radar — Status Diario</h1>
-  <div style="color:#8b949e;font-size:12px;margin-bottom:16px">Medido ao vivo · ${AGORA} · gerado pelo GitHub Actions (sem Claude/MCP)</div>
-  <div style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px">
-    <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Veredito</div>
-    <div style="font-size:22px;font-weight:700;color:${COR_HEX}">${COR^^}</div>
-    <div style="color:#8b949e;font-size:13px;margin-top:4px">${VEREDITO}</div>
-  </div>
-  <div style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px">
-    <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Worker — producao</div>
-    <div style="font-size:14px">${WORKER_V} · HTTP ${HTTP} · ok:${OK} · kv:${KV} · rate_limiter:${RL} · telemetria:${TEL2} · providers:${PROV}</div>
-  </div>
-  <div style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px">
-    <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Frescor da ingestao</div>
-    <div style="font-size:14px">Emissores com dados (de 103): <b>${EMP}</b></div>
-    <div style="font-size:14px">Ultima atualizacao: ${UPD} (idade ${IDADE_H}h, limite ${IDADE_MAX_H}h)</div>
-    <div style="font-size:14px">Semanas carregadas: ${WEEKS}</div>
-    <div style="font-size:14px">Anthropic:${ANTHROPIC} · Resend:${RESEND_OK} · Telemetria:${TEL}</div>
-  </div>
-  <div style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px">
-    <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Drift repo x producao</div>
-    <div style="font-size:14px">Worker: repo=${EXPECTED_WORKER} vs producao=${WORKER_V} — drift:${WORKER_DRIFT}</div>
-    <div style="font-size:14px">Frontend: repo=${EXPECTED_FRONTEND} vs producao=${PROD_FRONTEND} (CACHE_VERSION=${PROD_HTML_CV}) — drift:${FRONTEND_DRIFT}</div>
-  </div>
-  <div style="background:#161b22;border:1px solid #21262d;border-radius:12px;padding:14px;margin-bottom:10px">
-    <div style="color:#8b949e;font-size:11px;text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px">Custo do dia</div>
-    <div style="font-size:14px">Data: ${CUSTO_DATA} · Disjuntor: \$${DISJUNTOR}</div>
-  </div>
-  <div style="color:#8b949e;font-size:11px;margin-top:16px;text-align:center">VIX Radar · status diario automatico · GitHub Actions</div>
-</div>
-</body></html>
-HTMLEOF
-)
-          echo "$HTML" > /tmp/status.html
           SUBJECT="VIX Radar — Status diario ${HOJE} [${COR}]"
-          PAYLOAD=$(jq -n \
-            --arg from "$RESEND_FROM" \
-            --arg to "$ADMIN_EMAIL" \
-            --arg subject "$SUBJECT" \
-            --rawfile html /tmp/status.html \
+          PAYLOAD=$(jq -n --arg from "$RESEND_FROM" --arg to "$ADMIN_EMAIL" \
+            --arg subject "$SUBJECT" --rawfile html /tmp/status.html \
             '{from: $from, to: [$to], subject: $subject, html: $html}')
-
           RESEND_RESP=$(curl -s -X POST "https://api.resend.com/emails" \
-            -H "Authorization: Bearer $RESEND_KEY" \
-            -H "Content-Type: application/json" \
-            -d "$PAYLOAD" \
-            --max-time 30)
+            -H "Authorization: Bearer $RESEND_KEY" -H "Content-Type: application/json" \
+            -d "$PAYLOAD" --max-time 30)
           echo "Resposta Resend: $RESEND_RESP"
-
-          if ! echo "$RESEND_RESP" | jq -e '.id' >/dev/null 2>&1; then
-            echo "::warning::Resend nao retornou id — e-mail nao saiu, mas o Issue ja entregou o status. Verifique RESEND_API_KEY e o dominio ${RESEND_FROM}."
+          if echo "$RESEND_RESP" | jq -e '.id' >/dev/null 2>&1; then
+            echo "E-mail enviado (id: $(echo "$RESEND_RESP" | jq -r '.id'))."
           else
-            echo "E-mail enviado com sucesso (id: $(echo "$RESEND_RESP" | jq -r '.id'))."
+            echo "::warning::Resend nao retornou id — e-mail nao saiu, mas o Issue ja entregou o status. Verifique RESEND_API_KEY e o dominio ${RESEND_FROM}."
           fi
