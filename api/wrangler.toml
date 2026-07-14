@@ -1,6 +1,32 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.154)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.155)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.155.js = v4.9.154 + auditoria 2026-07-14 (queixa "cliente pediu acesso
+#   e nao apareceu no painel nem no email"): diagnostico concluiu que o caminho
+#   de registro estava funcional (cliente Pedro Stenzel nunca existiu no KV —
+#   nunca completou o formulario; queixa veio so por WhatsApp). Duas melhorias
+#   de robustez no handleRegistrar:
+#   (1) OBS registrar cego: os returns de falha (400 validacao, 409 ja existe)
+#   e o catch do email ao admin nao geravam telemetria nenhuma — um cadastro
+#   que falha era 100% invisivel. Agora emite evento "registrar_rejeitado"
+#   (motivo: campos_faltando/email_invalido/senha_curta/sem_consentimento/
+#   ja_pendente/ja_aprovado) e "registrar_email_admin_erro"; catch {} vazio do
+#   enviarResend virou log + telemetria.
+#   (2) PROD reinscricao: status "rejeitado" era beco sem saida (409 permanente
+#   "Solicitacao anterior recusada") — usuario rejeitado nunca mais conseguia
+#   se cadastrar e o unico sinal era uma mensagem na tela dele. Agora rejeitado
+#   que re-registra volta para "pendente" e re-notifica o admin (assunto
+#   "Reinscricao apos recusa"); putUser preserva _status_historico e created_at
+#   original, user ganha flag reinscricao. Admin mantem controle total (tem que
+#   reaprovar — ninguem entra sem aprovacao). Telemetria "registrar_reinscricao".
+#   (3) PROD aprovacao via WhatsApp: pedido explicito do operador ("quero que
+#   solicitacoes aparecam no meu whatsapp para eu aprovar"). enviarWhatsAppAdmin
+#   ja disparava a cada novo registro, mas so linkava pro painel (exige login).
+#   Reusa o MESMO mecanismo ja em producao no fluxo de email (link assinado
+#   HMAC-SHA256 via gerarTokenEmail/verificarTokenEmail, TTL 7 dias,
+#   action=aprovar_email/rejeitar_email) — corpo da mensagem WhatsApp passa a
+#   incluir os 2 links assinados (aprovar/rejeitar em 1 toque), com o link do
+#   painel como alternativa. Zero infra nova, zero endpoint novo.
 # v4.9.153.js = v4.9.152 + FIX STATELEAK1 (2026-07-13, investigação de queixa
 #   ao vivo do operador: "sistema continua sem estar atualizado até 10/07").
 #   Causa raiz confirmada por leitura direta do KV de produção (autorizada
@@ -175,7 +201,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.154.js"
+main       = "v4.9.156.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
