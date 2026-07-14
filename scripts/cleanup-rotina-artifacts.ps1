@@ -1,4 +1,4 @@
-# Limpa artefatos temporarios das rotinas (disco) — prompts, planos, testing/, lotes
+﻿# Limpa artefatos temporarios das rotinas (disco) — prompts, planos, testing/, lotes
 param(
     [int]$KeepDays = 7,
     [switch]$Aggressive,
@@ -19,7 +19,7 @@ function Remove-IfStale($path) {
     # Em modo agressivo, preservar o diretorio inteiro se houver qualquer artefato do dia.
     if ($item.PSIsContainer -and (Get-ChildItem $path -Recurse -File -ErrorAction SilentlyContinue |
         Where-Object { $_.LastWriteTime.Date -eq (Get-Date).Date } | Select-Object -First 1)) { return }
-    if ($Aggressive -or $item.LastWriteTime -lt $cutoff) {
+    if ($item.LastWriteTime -lt $cutoff) {
         $sz = if ($item.PSIsContainer) {
             (Get-ChildItem $path -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
         } else { $item.Length }
