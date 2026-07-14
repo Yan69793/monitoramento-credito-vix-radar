@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.156";
+var WORKER_VERSAO = "v4.9.157";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -8292,7 +8292,11 @@ async function montarPlanoRotina(env2222, opts) {
     if (modo === "matinal") {
       var overnightSince = new Date(agoraBRT.getTime() - 16 * 60 * 60 * 1e3).toISOString().split("T")[0];
       var cvmOvernight = _cvmNovosDesde(docs, overnightSince);
-      if (horasStale < 12 && cvmOvernight.length === 0 && ews.score < ROTINA_EWS_LIGHT && (!res || res._status !== "INCONCLUSIVO")) {
+      // v4.9.157: Financeiro sempre FULL (Sonnet) também na matinal.
+      if (setor === "Financeiro") {
+        tier = "FULL";
+        motivos.push("setor_financeiro_full");
+      } else if (horasStale < 12 && cvmOvernight.length === 0 && ews.score < ROTINA_EWS_LIGHT && (!res || res._status !== "INCONCLUSIVO")) {
         tier = "SKIP";
         motivos.push("scan_recente_sem_delta");
       } else if (ews.score >= ROTINA_EWS_FULL || cvmOvernight.length > 0 || horasStale > ROTINA_STALE_LIGHT_H || matMax >= 60) {
@@ -8306,7 +8310,12 @@ async function montarPlanoRotina(env2222, opts) {
         motivos.push("prioritario_padrao");
       }
     } else {
-      if (ews.score >= ROTINA_EWS_FULL || horasStale > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
+      // v4.9.157: Financeiro sempre FULL (Sonnet) — EWS estruturalmente baixo mascara risco real.
+      // Banco Pan, B3, Cielo, BTG, Itau, Bradesco etc. exigem busca profunda (9 rodadas + R4b).
+      if (setor === "Financeiro") {
+        tier = "FULL";
+        motivos.push("setor_financeiro_full");
+      } else if (ews.score >= ROTINA_EWS_FULL || horasStale > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
         tier = "FULL";
         if (ews.score >= ROTINA_EWS_FULL) motivos.push("ews_alto");
         if (horasStale > ROTINA_STALE_FULL_H) motivos.push("stale_5d");
