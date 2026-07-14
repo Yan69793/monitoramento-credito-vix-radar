@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.157";
+var WORKER_VERSAO = "v4.9.158";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -10277,7 +10277,22 @@ async function validarDatasFontes(eventos, trintaDiasAtras) {
     } catch {
     }
     if (dataFonte) {
+      // v4.9.158: data extraida do HTML pode divergir (ex.: gov.br com data de rodape antiga).
+      // Se o LLM confirmou data_evento na janela e a fonte eh de dominio confiavel, nao
+      // descartar — enviar para verificacao adversarial obrigatoria (_verif_forcar).
+      const _dtEv2 = ev.data_evento;
+      const _hostBloq2 = _hostnameFromUrl(url);
+      const _ehConfiavel2 = _hostBloq2 && _matchDominio(_hostBloq2, DOMINIOS_RATING_AGENCY_SET);
+      const _dtValida2 = _dtEv2 && _dtEv2 !== "nao_identificada" && _dtEv2 >= trintaDiasAtras && _dtEv2 <= hoje;
       if (dataFonte < trintaDiasAtras) {
+        if (_ehConfiavel2 && _dtValida2) {
+          console.log(`[validarDatas][DATA_FONTE_ANTIGA] emp=${(ev.empresa || "").slice(0, 25)} dataFonte=${dataFonte} data_evento=${_dtEv2} -> aceito com _verif_forcar`);
+          ev._data_fonte_bloqueada = true;
+          ev._verif_forcar = true;
+          ev._data_fonte_divergente = "dataFonte_antiga=" + dataFonte + " data_evento=" + _dtEv2;
+          validados.push(ev);
+          continue;
+        }
         continue;
       }
       const dtEvento = ev.data_evento;
@@ -10285,6 +10300,14 @@ async function validarDatasFontes(eventos, trintaDiasAtras) {
         const diffMs = Math.abs((/* @__PURE__ */ new Date(dtEvento + "T00:00:00Z")).getTime() - (/* @__PURE__ */ new Date(dataFonte + "T00:00:00Z")).getTime());
         const diffDias = diffMs / (24 * 60 * 60 * 1e3);
         if (diffDias > 60) {
+          if (_ehConfiavel2 && _dtValida2) {
+            console.log(`[validarDatas][DATA_DIVERGENTE] emp=${(ev.empresa || "").slice(0, 25)} dataFonte=${dataFonte} data_evento=${dtEvento} diff=${Math.round(diffDias)}d -> aceito com _verif_forcar`);
+            ev._data_fonte_bloqueada = true;
+            ev._verif_forcar = true;
+            ev._data_fonte_divergente = "diff_" + Math.round(diffDias) + "d dataFonte=" + dataFonte + " data_evento=" + dtEvento;
+            validados.push(ev);
+            continue;
+          }
           continue;
         }
       }
