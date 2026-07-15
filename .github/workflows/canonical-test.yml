@@ -1,4 +1,4 @@
-# VixRadar — Canonical Production Test
+        # VixRadar — Canonical Production Test
 # Valida a saúde de produção a cada 6h via health check anônimo (GET /).
 # NOTA: o endpoint POST de análise passou a exigir JWT (401 anônimo) desde a
 # reconciliação de 2026-06-01, por isso este teste usa o health check público
@@ -122,8 +122,12 @@ jobs:
             FAIL=1
           fi
 
-          # Confirma que o HTML servido declara o mesmo CACHE_VERSION
-          PROD_HTML_CV=$(curl -s https://vixradar.com/ --max-time 15 | grep -oP 'CACHE_VERSION\s*=\s*"\K[^"]+')
+          # Confirma que o HTML servido declara o mesmo CACHE_VERSION.
+          # head -1: a página declara CACHE_VERSION duas vezes (const CACHE_VERSION="..."
+          # e window.CACHE_VERSION="..."), então o grep sem head produzia um valor
+          # multi-linha que nunca batia com $EXPECTED_FRONTEND (falso positivo mesmo
+          # com produção e repo idênticos — visto em 2026-07-08/09/10).
+          PROD_HTML_CV=$(curl -s https://vixradar.com/ --max-time 15 | grep -oP 'CACHE_VERSION\s*=\s*"\K[^"]+' | head -1)
           if [ "$PROD_HTML_CV" != "$EXPECTED_FRONTEND" ]; then
             echo "::error::DRIFT CACHE_VERSION no HTML. Produção=$PROD_HTML_CV vs esperado=$EXPECTED_FRONTEND"
             FAIL=1
