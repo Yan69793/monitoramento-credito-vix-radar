@@ -9,6 +9,10 @@
 # EVENTOS - gate obrigatorio antes de criar evento CRITICO/RELEVANTE:
 # (a) fonte_primaria = URL profunda especifica (documento CVM com parametros, pagina de rating action, materia com slug).
 #     PROIBIDO: dominio raiz, homepage, URL de resultado de busca, link de download generico.
+#     Evento de recuperacao judicial/extrajudicial, default ou rebaixamento: SEMPRE checar rad.cvm.gov.br por Fato
+#     Relevante/Comunicado ao Mercado do proprio protocolo na janela antes de fechar com fonte de imprensa. Se achar,
+#     usar o Fato Relevante CVM como fonte_primaria (fonte_tipo=CVM_FATO_RELEVANTE); imprensa so como fontes_consultadas
+#     complementar. Sem Fato Relevante localizavel, manter imprensa como fonte_primaria normalmente (nao bloquear o evento).
 # (b) data_evento dentro da JANELA informada no cabecalho. Datas YYYY-MM-DD; nunca "nao_identificada" (usar data_aproximada:true).
 # Sem URL primaria valida OU fora da janela: registrar o achado em cobertura_nota (watchlist) e NAO criar evento.
 # CRITICO exige URL primaria sempre. ECO/NENHUM: cobertura_nota 1 frase, eventos=[].

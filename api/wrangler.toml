@@ -1,6 +1,40 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.160)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.161)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.161.js = v4.9.160 + FIX RESEARCHDOWN1 (2026-07-15, incidente relatado pelo operador:
+#   "aprovacao do PRE da Oncoclinicas, materia da InfoMoney, nao aparece no sistema" — a materia
+#   estava presente, mas rebaixada). Causa raiz confirmada por rastreamento completo do codigo
+#   (nao by hipotese): sanitizarPayloadRadar() rebaixa todo evento CRITICO para RELEVANTE quando
+#   classificarTipoDadoFonte(fonte_primaria) retorna "research" (:9624, [sanitizar][RESEARCH_REBAIXADO]).
+#   classificarTipoDadoFonte() derivava "research" de EXA_ALLOWED_DOMAINS_RESEARCH — lista criada
+#   para restringir o plugin de busca Exa/OpenRouter (cascade obsoleta desde v4.9.108) — que mistura
+#   sob um so rotulo portais de imprensa financeira mainstream (InfoMoney, Valor Economico, ADVFN,
+#   Money Times, Seu Dinheiro, IstoE Dinheiro) com casas de research/opiniao proprietaria (BTG, XP,
+#   Suno, Genial, Nord, Rico). O evento real (Oncoclinicas protocolou REX para R$5,1bi em 13-14/07,
+#   Fitch RD(bra), 37% de adesao inicial) foi corretamente classificado CRITICO pelo Sonnet na
+#   rotina noturna de 14/07 (fonte_primaria = br.advfn.com), mas caiu para RELEVANTE neste rebaixamento
+#   ANTES de chegar ao verificador assincrono — e nunca foi promovido de volta, mesmo o verificador
+#   tendo aprovado (veredicto APROVADO, confianca 0.75) citando a mesma URL da InfoMoney como fonte
+#   valida (aplicarCorrecaoVerificador so atua quando veredicto==="CORRIGIR"; para APROVADO o
+#   `||` do confirmar_verificacao current-shortcircuita e nunca eh chamado — descartado como causa
+#   depois de leitura completa do codigo). Efeito colateral adicional confirmado: o mesmo tipo_dado
+#   alimenta o toggle "ocultar research" do frontend (vix_hide_research, app/index.html ~:5165) —
+#   ou seja, a materia tambem podia ficar oculta por completo para quem usa o toggle, nao so
+#   rebaixada. Estes mesmos dominios (InfoMoney, Valor, Money Times, Seu Dinheiro) ja eram tratados
+#   como "imprensa financeira BR" em DOMINIOS_RATING_AGENCY_SET (comentario v4.9.157, ~30 linhas
+#   abaixo de EXA_ALLOWED_DOMAINS_RESEARCH) — o fix alinha classificarTipoDadoFonte ao mesmo criterio
+#   ja em uso ali. FIX: novo DOMINIOS_IMPRENSA_FINANCEIRA_SET (infomoney.com.br, valor.globo.com,
+#   moneytimes.com.br, bpmoney.com.br, seudinheiro.com, br.advfn.com, istoedinheiro.com.br) —
+#   classificarTipoDadoFonte checa este set ANTES de DOMINIOS_RESEARCH_SET e retorna "imprensa".
+#   EXA_ALLOWED_DOMAINS_RESEARCH/DOMINIOS_RESEARCH_SET nao foram tocados (continuam servindo o
+#   plugin Exa, path dormente, e as 6 casas de research/opiniao genuinas: BTG, XP, Suno, Genial,
+#   Nord, Rico — estas continuam sujeitas ao rebaixamento, que permanece correto para opiniao de
+#   casa). Validado isolado (14 casos, ver scratchpad test_classificar.mjs): todos os 7 dominios de
+#   imprensa retornam "imprensa", as 6 casas de research continuam "research", CVM continua "oficial".
+#   NAO reverte automaticamente o evento ja gravado da Oncoclinicas em producao (dado historico,
+#   nao recalculado por deploy) — correcao pontual desse evento via admin_upsert_analise, feita
+#   separadamente pelo operador (tem admin_senha). Escopo restrito: 1 novo Set + 1 linha em
+#   classificarTipoDadoFonte — nenhuma outra funcao tocada.
 # v4.9.160.js = v4.9.159 + ADR-040: proveniencia do _RJ_FLOOR. NENHUM PISO MUDOU
 #   de valor — nenhum score muda por esta versao. O que muda e a procedencia.
 #   Achado: a tabela _RJ_FLOOR (21 emissores, valores em R$ escritos a mao) era o
@@ -230,7 +264,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.160.js"
+main       = "v4.9.161.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

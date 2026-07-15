@@ -1,4 +1,4 @@
-# run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
+﻿# run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
 $ErrorActionPreference = 'Stop'
 # Mesma correcao de encoding do noturno (ver run_vixradar_noturno_claude.ps1) - stdout do
 # binario 'claude' sem console interativo pode decodificar em ANSI/OEM e corromper nomes
@@ -17,6 +17,7 @@ $LogDir         = Join-Path $ProjectRoot 'logs\routines'
 $DateTag        = Get-Date -Format 'yyyyMMdd'
 $LogFile        = Join-Path $LogDir ('vixradar-matinal_' + $DateTag + '.log')
 $MetricsFile    = Join-Path $LogDir ('matinal_metrics_' + $DateTag + '.json')
+$McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelHaiku     = 'claude-haiku-4-5-20251001'
 $ModelSonnet    = 'claude-sonnet-4-6'
@@ -29,6 +30,10 @@ $SonnetChunk    = 4
 $PauseSec       = 2
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+# MCP vazio (2026-07-14): sem isto o claude -p herdava todos os MCP servers da sessao interativa
+# (tradingview, firecrawl, canva, computer-use) no system prompt de cada lote - custo real de
+# tokens, nao so contagem. Mesmo arquivo compartilhado do run_vixradar_noturno_claude.ps1.
+Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
@@ -186,10 +191,14 @@ function Get-BatchOkEmissores([string[]]$outputLines) {
     # forma crua e falso-positivava silent_fail nas demais, gerando exit 6 espurio mesmo com
     # todos os submits ok:true. Normaliza cada linha, casa OK| em qualquer um dos formatos e
     # deduplica por emissor (evita dupla contagem quando o filho repete a linha crua + tabela).
+    #
+    # v4.9.161 (15/07): valida submit_ok (campo 7). Rejeita PENDENTE e variantes que indicam
+    # que o LLM nao submeteu (bloqueio de ferramenta POST). So aceita true, ok, ou 1.
     $emissores = New-Object System.Collections.Generic.List[object]
     $criticos = New-Object System.Collections.Generic.List[string]
     $vistos = New-Object 'System.Collections.Generic.HashSet[string]'
-    if (-not $outputLines) { return @{ Emissores = $emissores; Criticos = $criticos } }
+    $pendentes = New-Object System.Collections.Generic.List[string]
+    if (-not $outputLines) { return @{ Emissores = $emissores; Criticos = $criticos; Pendentes = $pendentes } }
     foreach ($raw in $outputLines) {
         if ($null -eq $raw) { continue }
         $n = ([string]$raw).Trim()
@@ -203,6 +212,14 @@ function Get-BatchOkEmissores([string[]]$outputLines) {
         if ($n -match '^OK\|([^|]+)\|([^|]+)\|([^|]+)\|') {
             $emp = $Matches[1].Trim()
             $cls = $Matches[3].Trim().ToUpper()
+            # Extrai submit_ok (campo 7) se presente. Rejeita PENDENTE e variantes.
+            $partes = $n -split '\|'
+            $submitOk = if ($partes.Count -ge 7) { $partes[6].Trim().ToLower() } else { '' }
+            $submitValido = ($submitOk -eq 'true' -or $submitOk -eq 'ok' -or $submitOk -eq '1')
+            if (-not $submitValido) {
+                $pendentes.Add("$emp ($submitOk)")
+                continue
+            }
             $chave = $emp.ToLower()
             if ($vistos.Add($chave)) {
                 $emissores.Add($emp)
@@ -210,7 +227,20 @@ function Get-BatchOkEmissores([string[]]$outputLines) {
             }
         }
     }
-    return @{ Emissores = $emissores; Criticos = $criticos }
+    return @{ Emissores = $emissores; Criticos = $criticos; Pendentes = $pendentes }
+}
+
+function Get-BatchBloqueioSubmit([string[]]$outputLines) {
+    # Detecta saida de LLM que tentou submeter mas nao tinha ferramenta POST (regressao 15/07).
+    # Frases: "BLOQUEIO DE SUBMISSAO", "POST nao executavel", "apenas WebFetch (GET)",
+    # "nao tenho ferramenta de POST". Retorna $true se encontrou o padrao.
+    if (-not $outputLines) { return $false }
+    $regex = 'BLOQUEIO\s+DE\s+SUBMISSÃO|BLOQUEIO\s+DE\s+SUBMISSAO|POST\s+n[ãa]o\s+execut[áa]vel|apenas\s+WebFetch|n[ãa]o\s+tenho\s+ferramenta\s+de\s+POST|Invoke-RestMethod.*n[ãa]o\s+execut[áa]vel'
+    foreach ($raw in $outputLines) {
+        if ($null -eq $raw) { continue }
+        if ([string]$raw -match $regex) { return $true }
+    }
+    return $false
 }
 
 function Get-BatchResumoOk([string[]]$outputLines) {
@@ -268,7 +298,9 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         --add-dir $ScriptsDir `
         --add-dir $ScheduledTasks `
         --permission-mode bypassPermissions `
-        --output-format json 2>>$stderrFile
+        --output-format json `
+        --tools 'WebSearch,WebFetch' `
+        --strict-mcp-config --mcp-config $McpConfigFile 2>>$stderrFile
     $exitCode = $LASTEXITCODE
     $textOut = @($raw)
     $tokens = -1
@@ -278,8 +310,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             $json = $jsonLine | ConvertFrom-Json
             if ($null -ne $json.result) { $textOut = @(('' + $json.result) -split "`n") }
             if ($json.usage) {
+                # cache_read excluido da soma (2026-07-14): e releitura de contexto (cobrada a 0.1x),
+                # nao trabalho novo. Somado, inflou o lote sonnet-1 para 966k tokens e estourou o
+                # hard cap de 180k logo no 1o lote, deixando 11/15 emissores em deferred (ledger vazio).
                 $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
-                    + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
+                    + [int]$json.usage.cache_creation_input_tokens
             }
         }
     } catch {
@@ -319,7 +354,7 @@ function Remove-BatchPrompts([string]$tag) {
 $hoje = Get-Date
 if ($hoje.DayOfWeek -in 'Saturday', 'Sunday') {
     Write-Log 'SKIP: fim de semana'
-    return
+    exit 0
 }
 $feriados = @(
     '2026-01-01', '2026-02-16', '2026-02-17', '2026-04-03', '2026-04-21', '2026-05-01',
@@ -327,7 +362,7 @@ $feriados = @(
 )
 if ($feriados -contains $hoje.ToString('yyyy-MM-dd')) {
     Write-Log 'SKIP: feriado B3'
-    return
+    exit 0
 }
 
 # Mutex global (2026-07-13): impede execucao concorrente do matinal. Mesma classe do incidente
@@ -339,7 +374,7 @@ if ($feriados -contains $hoje.ToString('yyyy-MM-dd')) {
 $__matinalMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-matinal-v2')
 if (-not $__matinalMutex.WaitOne(0)) {
     Write-Log 'ABORT: outra instancia do matinal ja esta em execucao (mutex ocupado) - saindo limpo'
-    return
+    exit 0
 }
 
 foreach ($f in @($HaikuSkill, $SonnetSkill)) {
@@ -386,7 +421,7 @@ try {
     if ($plano.ok -ne $true) { Write-Log 'ERRO: plano'; exit 5 }
     if ($plano.total -eq 0) {
         Write-Log 'SKIP: nenhum emissor prioritario'
-        return
+        exit 0
     }
     if ($plano.total -ne $TopN) { Write-Log ('AVISO: total=' + $plano.total + ' esperado=' + $TopN) }
 
@@ -464,6 +499,17 @@ try {
         }
         $parsed = Get-BatchOkEmissores $result.Output
         foreach ($c in $parsed.Criticos) { $stats.criticos.Add($c) }
+        # v4.9.161: loga emissores com submit_ok=PENDENTE (bloqueio de ferramenta POST)
+        if ($parsed.Pendentes -and $parsed.Pendentes.Count -gt 0) {
+            Write-Log ('ALERTA: lote ' + $label + ' - ' + $parsed.Pendentes.Count + ' emissor(es) com submit_ok=PENDENTE (bloqueio POST?): ' + ($parsed.Pendentes -join ', '))
+        }
+        # v4.9.161: detecta saida de bloqueio de POST (regressao 15/07). Se o LLM nao tinha
+        # ferramenta para submeter, o lote inteiro e tratado como auth_fail.
+        $bloqueioSubmit = Get-BatchBloqueioSubmit $result.Output
+        if ($bloqueioSubmit) {
+            Write-Log ('ERRO CRITICO: lote ' + $label + ' - LLM sem ferramenta POST (bloqueio de submissao). Nenhum submit real ocorreu.')
+            $stats.auth_fail++
+        }
         # Cobertura efetiva = maior sinal confiavel entre a contagem de linhas OK| (deduplicada)
         # e o total declarado no LOTE_RESUMO. Elimina o silent_fail espurio quando o filho usa
         # formato de tabela/markdown em vez das linhas cruas (exit 6 falso de 2026-07-13).
@@ -474,7 +520,9 @@ try {
 
         if ($result.ExitCode -ne 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
 
-        if ($okLines -eq 0) {
+        if ($bloqueioSubmit) {
+            # Lote ja tratado como auth_fail acima - nao conta como silent_fail adicional
+        } elseif ($okLines -eq 0) {
             $stats.silent_fail++
             Write-Log ('ERRO: lote ' + $label + ' sem linhas OK| - falha silenciosa (0 emissores confirmados)')
         } elseif ($okLines -lt $job.Chunk.Count) {
