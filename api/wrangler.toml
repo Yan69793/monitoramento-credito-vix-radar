@@ -1,6 +1,35 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.155)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.160)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.160.js = v4.9.159 + ADR-040: proveniencia do _RJ_FLOOR. NENHUM PISO MUDOU
+#   de valor — nenhum score muda por esta versao. O que muda e a procedencia.
+#   Achado: a tabela _RJ_FLOOR (21 emissores, valores em R$ escritos a mao) era o
+#   unico bloco do sistema sem fonte nenhuma, e ao mesmo tempo o que se declarava
+#   com o crachá mais alto: `fonte:{tipo:"CVM/B3", url:""}`, `tier:1`,
+#   `confianca:"alta"`, `data_evento: hoje`. Passava por cima da hierarquia do §18
+#   que o proprio sistema implementa — acima de eventos do LLM, que exigem URL
+#   profunda valida e passam por verificador adversarial. E os numeros ("Caixa
+#   R$518mi", "Prejuizo R$3.67bi em 2025") sao renderizados ao usuario DENTRO do
+#   painel que explica o calculo, onde leem-se como output de calculo.
+#   (1) PROV: cada entrada ganha `as_of` e `fonte_url` (null por ora — preencher
+#   com data/URL reais; inferir aqui seria repetir o defeito). Sem as_of
+#   verificado, o fator entra como tier 4 / confianca baixa / fonte
+#   "julgamento_interno", e o detalhe recebe prefixo "N/D — REQUER VERIFICACAO".
+#   O piso continua aplicando: pontua, mas para de mentir de onde veio.
+#   (2) DECAY: `data_evento: hoje` fazia exp(-0.046*d) nunca decair — o piso era
+#   permanente e eternamente "fresco". Passa a usar `as_of` quando existir.
+#   (3) MOJIBAKE (relacionado a STATELEAK1): `_RJ_FLOOR[empresa]` era match exato.
+#   Sob mojibake ("RaÃ­zen"), dava undefined e a Raizen — em recuperacao
+#   extrajudicial, S&P brCCC- — pontuava como emissor comum, sem erro e sem log:
+#   falha silenciosa para o lado errado. Agora _rjLookup normaliza (acento/caixa)
+#   e recupera UTF-8-lido-como-Latin-1 via TextDecoder. Nome com U+FFFD ("Ra�zen")
+#   e irrecuperavel — o byte foi destruido — entao NAO adivinha: emite
+#   console.warn "rj_floor_nome_corrompido" e nao aplica. Fail-loud, nao fail-silent.
+#   Raiz nao resolvida (segue em PENDENCIAS): identidade de emissor e string livre
+#   em vez de ID; UNIQUE(emissor_id) tornaria a classe inteira impossivel.
+#   PENDENTE DO OPERADOR: preencher as_of + fonte_url dos 21. Enquanto null, o
+#   painel passa a mostrar o piso como julgamento interno nao verificado — que e
+#   o que ele sempre foi.
 # v4.9.155.js = v4.9.154 + auditoria 2026-07-14 (queixa "cliente pediu acesso
 #   e nao apareceu no painel nem no email"): diagnostico concluiu que o caminho
 #   de registro estava funcional (cliente Pedro Stenzel nunca existiu no KV —
@@ -201,7 +230,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.159.js"
+main       = "v4.9.160.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
