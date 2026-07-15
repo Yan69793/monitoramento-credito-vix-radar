@@ -57,53 +57,20 @@ wrangler.toml.bak
 # Snapshots de evidência (bundles grandes puxados de prod via MCP; veredicto fica nos docs)
 api/_prod_snapshot_*.js
 
-# Worker bundles legado — versionar só releases ativas (demais ficam locais)
+# ---------- Worker bundles ----------
+# api/v4.*.js e ignorado por padrao: sao artefatos grandes (~800 KB cada) e
+# versionar os 74 do disco custaria ~60 MB, crescendo ~600 MB/ano.
+#
+# O bundle EM PRODUCAO e excecao obrigatoria e entra via `git add -f`, feito
+# automaticamente por scripts/deploy-worker.ps1. Nao ha allowlist manual aqui:
+# a que existia (45 linhas !api/v4.9.*.js, v4.9.109 a v4.9.154) era cerimonia
+# pura — 40 entradas apontavam para arquivos que o git ja rastreava (onde o
+# .gitignore nao tem efeito) e 5 para bundles inexistentes. Ela dava a ilusao
+# de politica enquanto o drift de 8 dias (07-15/07) acontecia por baixo: ela
+# parou em v4.9.154, exatamente onde o repo travou enquanto producao ia a
+# v4.9.159. Se voce esta lendo isso para adicionar uma linha nova, nao adicione
+# — use scripts/deploy-worker.ps1, que versiona o bundle vivo sozinho.
 api/v4.*.js
-!api/v4.9.109.js
-!api/v4.9.110.js
-!api/v4.9.111.js
-!api/v4.9.112.js
-!api/v4.9.113.js
-!api/v4.9.114.js
-!api/v4.9.115.js
-!api/v4.9.117.js
-!api/v4.9.118.js
-!api/v4.9.119.js
-!api/v4.9.120.js
-!api/v4.9.121.js
-!api/v4.9.122.js
-!api/v4.9.123.js
-!api/v4.9.124.js
-!api/v4.9.125.js
-!api/v4.9.126.js
-!api/v4.9.127.js
-!api/v4.9.128.js
-!api/v4.9.129.js
-!api/v4.9.130.js
-!api/v4.9.131.js
-!api/v4.9.132.js
-!api/v4.9.133.js
-!api/v4.9.134.js
-!api/v4.9.135.js
-!api/v4.9.136.js
-!api/v4.9.137.js
-!api/v4.9.138.js
-!api/v4.9.139.js
-!api/v4.9.140.js
-!api/v4.9.141.js
-!api/v4.9.142.js
-!api/v4.9.143.js
-!api/v4.9.144.js
-!api/v4.9.145.js
-!api/v4.9.146.js
-!api/v4.9.147.js
-!api/v4.9.148.js
-!api/v4.9.149.js
-!api/v4.9.150.js
-!api/v4.9.151.js
-!api/v4.9.152.js
-!api/v4.9.153.js
-!api/v4.9.154.js
 
 # ---------- Agent local (não versionar) ----------
 .grok/
