@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Deploy do frontend VIX Radar (Cloudflare Pages) — idempotente e validado.
 
@@ -23,7 +23,8 @@
 param(
   [string]$ProjectName = "radar-credito",
   [string]$Branch = "main",
-  [switch]$SkipValidation
+  [switch]$SkipValidation,
+  [switch]$SkipGit
 )
 
 $ErrorActionPreference = "Stop"
@@ -85,11 +86,15 @@ npx wrangler pages deploy "$zipDir" --project-name=$ProjectName --branch=$Branch
 if ($LASTEXITCODE -ne 0) { Fail "wrangler pages deploy falhou (exit $LASTEXITCODE)" }
 
 # --- 5. Validacao em producao ----------------------------------------------
-if ($SkipValidation) { Write-Host "`nValidacao pulada (-SkipValidation)." -ForegroundColor DarkGray; exit 0 }
+# NAO sai daqui: o passo 6 (sync com o git) precisa rodar mesmo sem validacao,
+# senao -SkipValidation reintroduz o drift que este script existe para evitar.
+$ok = $true
+if ($SkipValidation) {
+  Write-Host "`nValidacao pulada (-SkipValidation)." -ForegroundColor DarkGray
+} else {
 
 Write-Host "`nValidando producao..." -ForegroundColor Yellow
 Start-Sleep -Seconds 4
-$ok = $true
 try {
   $vj = Invoke-RestMethod -Uri "https://vixradar.com/version.json?_=$([guid]::NewGuid())" -Headers @{ "Cache-Control"="no-cache" }
   if ($vj.version -eq $ver) { Write-Host "  version.json apex: $($vj.version) OK" -ForegroundColor Green }
@@ -101,5 +106,46 @@ try {
   else { Write-Host "  CACHE_VERSION no HTML divergente do esperado ($ver)" -ForegroundColor Red; $ok = $false }
 } catch { Write-Host "  Falha ao ler index.html: $_" -ForegroundColor Red; $ok = $false }
 
-if ($ok) { Write-Host "`nDEPLOY OK — producao em $ver" -ForegroundColor Green; exit 0 }
-else { Write-Host "`nDEPLOY publicado mas validacao divergiu — investigar propagacao/cache." -ForegroundColor Red; exit 2 }
+}  # fim do else de -SkipValidation
+
+if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu — investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
+
+# --- 6. Sync com o git -----------------------------------------------------
+# O version.json e GERADO por este script (passo 2). Sem commitar, o repo fica
+# declarando a versao anterior enquanto producao ja avancou, e o canonical-test
+# acusa drift de frontend. Foi exatamente o que aconteceu com v201.75 (deploy
+# 13/07, repo em v201.74 ate 15/07). O deploy so termina quando o GitHub sabe.
+if ($SkipGit) {
+  Write-Host "`nGit pulado (-SkipGit)." -ForegroundColor DarkGray
+  Write-Host "ATENCAO: producao esta em $ver e o repo NAO sabe. O canonical-test vai acusar drift ate voce commitar." -ForegroundColor Yellow
+  exit 0
+}
+
+Write-Host "`nSincronizando o git..." -ForegroundColor Yellow
+Push-Location $root
+try {
+  git add "app/version.json" "app/deploy_zip/version.json" "app/index.html" "app/deploy_zip/index.html"
+  if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
+
+  $staged = git diff --cached --name-only
+  if (-not $staged) {
+    Write-Host "  Nada a commitar (repo ja sincronizado)." -ForegroundColor DarkGray
+  } else {
+    git commit -m "chore(frontend): deploy $ver em producao"
+    if ($LASTEXITCODE -ne 0) { Fail "git commit falhou (exit $LASTEXITCODE)." }
+    Write-Host "  commit criado" -ForegroundColor Green
+  }
+
+  git push origin HEAD
+  if ($LASTEXITCODE -ne 0) {
+    Write-Host "`nDEPLOY OK mas o PUSH FALHOU — o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
+    Write-Host "O canonical-test vai acusar drift ate o push passar. Resolva e rode: git push origin HEAD" -ForegroundColor Red
+    exit 3
+  }
+  Write-Host "  push OK" -ForegroundColor Green
+} finally {
+  Pop-Location
+}
+
+Write-Host "`nDEPLOY OK — producao em $ver, repo e GitHub sincronizados." -ForegroundColor Green
+exit 0

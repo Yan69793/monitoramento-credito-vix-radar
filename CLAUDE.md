@@ -98,14 +98,16 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.150** | `api/wrangler.toml` → **v4.9.150.js** (deployado 11/07 ~15:17 BRT — mojibake read path + fix porSetor briefing + preditivo quick wins) | https://api.vixradar.com |
-| Frontend | **v201.74** | `app/index.html` → **v201.74** (deployado 07/07 ~22h45 BRT) | https://vixradar.com |
-| Deploy Worker | `cd api && npx wrangler deploy v4.9.150.js --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name radar-credito-api` | — | — |
-| Deploy Pages | `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito` | — | — |
+| Worker | **v4.9.159** | `api/wrangler.toml` → **v4.9.159.js** (reconciliado 15/07 ~11h40 BRT) | https://api.vixradar.com |
+| Frontend | **v201.75** | `app/index.html` → **v201.75** (deployado 13/07 ~00h22 BRT) | https://vixradar.com |
+| Deploy Worker | `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.160` | — | — |
+| Deploy Pages | `pwsh ./scripts/deploy-pages.ps1` | — | — |
 
-Sem drift repo/prod. v4.9.150 = diff pendente de 10/07 (normalizarMojibake no read path + briefing com fix porSetor) + preditivo quick wins (filtro de liquidez ativo, `spread_rel_setor` shadow, features+`model_version` no payload `predictive_v1:latest`, leitura null-safe de `fundamentals:altman:latest`). Rotinas locais novas: `VIXRadar-Export-Historico` (diária 20h45 — fundação de dados preditiva, `data/historico/`) e `VIXRadar-Ranking-Mensal` (dia 1, 11h30 — alerta de ultrapassagem SEO). Ver notas 50 e 51 do vault.
+Sem drift repo/prod (reconciliado 15/07, canonical-test verde após 8 dias vermelho — ver nota de sessão). v4.9.150 = diff pendente de 10/07 (normalizarMojibake no read path + briefing com fix porSetor) + preditivo quick wins (filtro de liquidez ativo, `spread_rel_setor` shadow, features+`model_version` no payload `predictive_v1:latest`, leitura null-safe de `fundamentals:altman:latest`). Rotinas locais novas: `VIXRadar-Export-Historico` (diária 20h45 — fundação de dados preditiva, `data/historico/`) e `VIXRadar-Ranking-Mensal` (dia 1, 11h30 — alerta de ultrapassagem SEO). Ver notas 50 e 51 do vault.
 
-**Atenção Wrangler 4.x:** `--no-autoconfig` obrigatório — sem isso, o Wrangler detecta `E:\Diretorio\Claude\dashboard` como projeto e ignora `wrangler.toml`.
+**Deploy é pelos scripts, não na mão.** `deploy-worker.ps1` e `deploy-pages.ps1` deployam, validam produção e **commitam/pusham** numa tacada. O `wrangler deploy` cru deixa o git para trás: `api/v4.*.js` está no `.gitignore` (allowlist manual por release), então todo bundle novo nasce invisível ao `git status`. Foi assim que produção chegou a v4.9.159 com o repo declarando v4.9.154 e o canonical-test ficou 8 dias vermelho (07/07 a 15/07). Se precisar deployar cru, o passo obrigatório depois é `git add -f api/<versao>.js api/wrangler.toml && git commit && git push`.
+
+**Atenção Wrangler 4.x:** `--no-autoconfig` obrigatório — sem isso, o Wrangler detecta `E:\Diretorio\Claude\dashboard` como projeto e ignora `wrangler.toml`. Os scripts já passam a flag.
 
 Drift: conferir Obsidian antes de cada sessão — repo pode estar à frente ou atrás de produção.
 
