@@ -167,7 +167,7 @@ Testes em ordem de risco (preferir readonly):
 ## Bloco F — Rotinas e cobertura emissores
 
 - Rotina noturna: `vixradar-noturno` — 103 emissores (`EMISSORES_LISTA` no Worker)
-- Executar `scripts/audit-routine-staleness.ps1` desta skill. Gate saudável: `total=103`, `stale_24h=0`, `presos_data=0` e timestamp máximo dentro do SLA.
+- Executar `scripts/audit-routine-staleness.ps1` desta skill. Gate saudável: `total=103`, `stale_24h_real=0`, `presos_data=0` e timestamp máximo dentro do SLA. `stale_24h_inconclusivo` (emissor com `_status:"INCONCLUSIVO"`, clock pausado de propósito pelo mecanismo FIN1 até promoção a tier FULL — desde v4.9.159) **não** conta para o gate nem para severidade ALTO; é staleness intencional, não achado.
 - Cruzar: `listar_todos_emissores` (103) vs plano completo; amostra de `dados_para_analise` é evidência complementar, nunca substitui o gate dos 103.
 - Semana KV atual (`semanaISO`) e janela 30 dias
 
@@ -176,7 +176,7 @@ Testes em ordem de risco (preferir readonly):
 1. Receber a data reclamada em `-StuckDate YYYY-MM-DD` (ex.: `2026-06-26`).
 2. Rodar o verificador antes de qualquer correção e guardar o JSON bruto.
 3. Diferenciar `data_evento` (data do fato), `timestamp/_last_scanned_at` (data da análise) e `estado.updated_at` (última escrita no KV). Não corrigir o campo errado.
-4. Após reprocessar, rodar novamente. Não fechar se qualquer emissor permanecer em `stale_24h` ou `presos_data`.
+4. Após reprocessar, rodar novamente. Não fechar se qualquer emissor permanecer em `stale_24h_real` ou `presos_data`.
 5. Não avançar timestamp com payload fictício. Cobertura curta deve ser marcada explicitamente como inconclusiva e eventos só entram com fonte profunda verificável.
 
 ---
@@ -187,7 +187,7 @@ Testes em ordem de risco (preferir readonly):
 |---|---|
 | **CRÍTICO** | Ingestão cega, perda de dados, credencial inválida, drift prod/repo no bundle ativo |
 | **ALTO** | Telemetria off, verificador off, auth fail-open, cron quebrado |
-| **ALTO** | Data de análise presa, qualquer emissor `stale_24h`, ou relatório 103/103 sem prova de `_last_scanned_at` |
+| **ALTO** | Data de análise presa, qualquer emissor `stale_24h_real` (exclui `stale_24h_inconclusivo`), ou relatório 103/103 sem prova de `_last_scanned_at` |
 | **MÉDIO** | Documentação desatualizada, untracked sem impacto em prod |
 | **BAIXO** | Débito técnico, legado em `producao/` |
 
