@@ -1,5 +1,24 @@
 # Estado de Produção — VIX Radar
 
+> [!info] 16/07 (tarde) — **Auditoria de rotinas: 5 ativas, 1 neutralizada, documentação reconciliada.**
+> **Verificação completa** do diretório `Monitoramento de Credito` — tasks do Windows, definições em `routines/`, `.claude/routines/` e `CLAUDE.md`.
+> **Correções aplicadas (commit `48ec5f9`, push OK):**
+> - `VIXRadar-AgendaSemanal` → **desabilitada** no Task Scheduler (skill já neutralizada desde 14/07, task ficou ativa por omissão; `LastResult=1`).
+> - `routines/vixradar-matinal/SKILL.md` → horário 09h→**10h**, modelo Opus→**Haiku+Sonnet** (drift de documentação).
+> - `.claude/routines/vixradar-matinal.md` → **schedule removido** (neutralização que estava só no CLAUDE.md, não no arquivo).
+> - `CLAUDE.md` → trigger Verificacao-Async corrigido: "cron 20 10,18" → "Task Scheduler 10:20 + drenos inline".
+> - `routines/README.md` → **reescrito** refletindo migração Claude Code Desktop→Windows Task Scheduler.
+> - `.claude/routines/vixradar-noturno.md` → nota de schedule gerenciado pelo Windows.
+> **Estado final:** 5 tasks ativas (`Matinal` 10h, `Noturno` 18h, `Verificacao-Async` 10:20, `Export-Historico` 20:45, `Ranking-Mensal` dia 1 11:30) — todas com script existente, gatilho correto e `LastResult=0` nas que já rodaram. `Ranking-Mensal` nunca executou (trigger mensal, primeiro disparo 01/08/2026). Nenhum drift de documentação remanescente.
+
+> [!success] 15/07 (noite) — **v4.9.161 DEPLOYADO** (RESEARCHDOWN1). Health ersao:v4.9.161 ok:true kv/telemetria/verificador true.
+> **Gatilho:** cliente/operador: notícia InfoMoney Oncoclínicas RE R$5,1bi "não saía" como crítica.
+> **Causa:** DOMINIOS_RESEARCH_SET misturava imprensa financeira (InfoMoney/Valor/ADVFN/Money Times/Seu Dinheiro) com research houses; sanitizarPayloadRadar rebaixava todo CRITICO research→RELEVANTE.
+> **Fix:** DOMINIOS_IMPRENSA_FINANCEIRA_SET + classificarTipoDadoFonte retorna imprensa para esses domínios (bundle local já tinha o patch; WORKER_VERSAO estava errado como 160; bump + deploy).
+> **Validação:** smoke eceber_analise CRITICO + URL InfoMoney → **class=CRITICO** (não rebaixado). Oncoclínicas mantém CRITICO FR CVM 14/07 APROVADO mat=83.
+> **Git:** deploy com -SkipGit (commit/push pendente do operador). Version ID deploy: d12a19dc-4a4b-44a4-9440-f6ab72da4e7d.
+> **Complemento (sessão paralela, mesma tarde):** causa raiz completa rastreada linha a linha antes de qualquer fix (systematic-debugging) — `sanitizarPayloadRadar` rebaixa CRITICO→RELEVANTE quando `fonte_primaria` cai em `EXA_ALLOWED_DOMAINS_RESEARCH` (lista da cascade Exa/OpenRouter obsoleta, reaproveitada por engano como sinal de credibilidade); rebaixamento é anterior à verificação assíncrona e nunca revertido, mesmo com o verificador aprovando o evento com a mesma URL. Efeito colateral: mesmo `tipo_dado` alimenta o toggle "ocultar research" do frontend — evento podia ficar oculto por completo. Detalhe + evidência completa: [[59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15]]. **Git reconciliado** (commits `a64ed21` + `fb1f732`, WORKER_VERSAO alinhado ao bundle já no ar) — push ainda não feito, pendente de decisão do operador. **Achado pós-deploy (leitura direta do KV, não corrigido ainda):** semana 2026-W29 da Oncoclínicas ficou com **5 eventos** em vez de 3 — o smoke test da validação ("SMOKE RESEARCHDOWN1: RE R,1 bi via InfoMoney") vazou para o registro real e permanece visível no KV de produção, e o evento antigo via ADVFN (RELEVANTE, mat=34) não foi removido quando o novo evento via Fato Relevante CVM (CRITICO, mat=83) foi adicionado — ficam 2 cards sobre o mesmo fato, um CRITICO e um RELEVANTE, visíveis ao mesmo tempo no painel. Limpeza (remover os 2 registros indevidos, manter os 3 corretos) **bloqueada pelo classificador de segurança do Auto Mode** por falta de autorização explícita para escrita direta no KV de produção — aguardando decisão do operador.
+
 > [!success] 15/07 (manhã) — **Canonical-test verde após 8 dias vermelho.** Produção **v4.9.159** / frontend **v201.75**, repo e GitHub reconciliados. Health: `HTTP 200 (0.41s) ok:true kv/rate_limiter/telemetria true`, `Frontend: produção=v201.75 repo=v201.75 CACHE_VERSION=v201.75`.
 > **Reclamação do operador:** e-mail de falha do `Canonical Production Test` chegando "há 1 mês", já reclamado antes. **O CI estava certo o tempo todo** — falha ininterrupta desde 07/07 15:10 (54 falhas nas últimas 100 runs), acusando drift real: produção em v4.9.158/159 enquanto `origin/main` declarava v4.9.154.
 > **Causa raiz (dupla, e a segunda mascarava a primeira):**
