@@ -1,4 +1,4 @@
-# register-vixradar-tasks.ps1 — registra VIXRadar-Matinal e VIXRadar-Noturno no Task Scheduler
+﻿# register-vixradar-tasks.ps1 — registra VIXRadar-Matinal e VIXRadar-Noturno no Task Scheduler
 # Execute como Administrador uma vez.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'

@@ -1,4 +1,4 @@
-# run_claude_routine.ps1 — Runner generico Claude Code para scheduled-tasks
+﻿# run_claude_routine.ps1 — Runner generico Claude Code para scheduled-tasks
 param(
     [Parameter(Mandatory)]
     [string]$RoutineId,
@@ -11,7 +11,6 @@ $ErrorActionPreference = 'Stop'
 $ScheduledRoot = 'C:\Users\User\.claude\scheduled-tasks'
 $VixRoot       = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $SiteRoot      = 'E:\Diretorio\Claude\Site\site-producao'
-$FechamentoRoot = 'E:\Diretorio\Claude\relatorio-diario-mirabaud'
 $LogDir        = Join-Path $VixRoot 'logs\routines'
 $DateTag       = Get-Date -Format 'yyyyMMdd'
 $CleanupScript = Join-Path $VixRoot 'scripts\cleanup-rotina-artifacts.ps1'
@@ -29,13 +28,6 @@ $Catalog = @{
         ProjectRoot = $SiteRoot
         AddDirs     = @($SiteRoot, $ScheduledRoot)
         LogPrefix   = 'agenda-macro-szuchmacher'
-        Model       = $null
-    }
-    'fechamento-diario-szuchmacher' = @{
-        Skill       = Join-Path $ScheduledRoot 'fechamento-diario-szuchmacher\SKILL.md'
-        ProjectRoot = $FechamentoRoot
-        AddDirs     = @($FechamentoRoot, 'E:\Diretorio\Claude\Site\site-producao', $ScheduledRoot)
-        LogPrefix   = 'fechamento-szuchmacher'
         Model       = $null
     }
 }
@@ -58,7 +50,7 @@ function Write-Log([string]$msg) {
 $hoje = Get-Date
 if ($SkipWeekend -and $hoje.DayOfWeek -in 'Saturday', 'Sunday') {
     Write-Log 'SKIP: fim de semana'
-    return
+    exit 0
 }
 if ($SkipHolidayB3) {
     $feriados = @(
@@ -67,7 +59,7 @@ if ($SkipHolidayB3) {
     )
     if ($feriados -contains $hoje.ToString('yyyy-MM-dd')) {
         Write-Log 'SKIP: feriado B3'
-        return
+        exit 0
     }
 }
 

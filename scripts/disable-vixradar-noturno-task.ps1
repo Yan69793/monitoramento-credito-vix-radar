@@ -1,4 +1,4 @@
-# disable-vixradar-noturno-task.ps1
+﻿# disable-vixradar-noturno-task.ps1
 # Desabilita scheduled-task VIXRadar-Noturno para evitar duplicação com Task nativa
 # Execute como Administrador
 

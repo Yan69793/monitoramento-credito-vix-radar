@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Configura (ou rotaciona) a credencial Cloudflare para deploy do Pages.
 

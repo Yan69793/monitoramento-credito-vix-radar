@@ -1,4 +1,4 @@
-# Replay dos CRITICOs perdidos na rotina noturna 2026-07-06
+﻿# Replay dos CRITICOs perdidos na rotina noturna 2026-07-06
 # Extrai os JSONs do log e submete via API
 
 $keyLine = Get-Content "$PSScriptRoot\..\..\..\..\..\..\Users\User\.claude\scheduled-tasks\vixradar-noturno-v2.js" -Encoding UTF8 | Select-String "routine_key = '" | Select-Object -First 1

@@ -1,4 +1,4 @@
-# push-health.ps1 — publica health_vix.sh na Sprite VM site
+﻿# push-health.ps1 — publica health_vix.sh na Sprite VM site
 # Uso: .\scripts\sprite\push-health.ps1
 
 Set-StrictMode -Version Latest

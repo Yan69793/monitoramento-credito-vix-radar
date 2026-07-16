@@ -1,4 +1,4 @@
-# run_vixradar_verificacao_async.ps1 - Dreno da fila de verificacao assincrona (radar:verif_fila:{data})
+﻿# run_vixradar_verificacao_async.ps1 - Dreno da fila de verificacao assincrona (radar:verif_fila:{data})
 # Roda via Claude Code (assinatura mensal) em vez do Worker chamar a API Anthropic paga por token.
 # NOTA (2026-07-13): v4.9.152 — migrado de pay-per-token para assinatura Claude Code.
 # ANTHROPIC_API_KEY e removida do ambiente em Invoke-ClaudeBatch; claude -p usa OAuth.

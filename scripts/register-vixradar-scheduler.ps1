@@ -1,4 +1,4 @@
-# register-vixradar-scheduler.ps1 — atalho para registro completo VIX + Szuchmacher
+﻿# register-vixradar-scheduler.ps1 — atalho para registro completo VIX + Szuchmacher
 param(
     [switch]$Remove,
     [switch]$Status,

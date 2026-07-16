@@ -1,4 +1,4 @@
-# skills-audit.ps1 — alerta se skills crescerem além do limite seguro
+﻿# skills-audit.ps1 — alerta se skills crescerem além do limite seguro
 # Uso: pwsh -File scripts/skills-audit.ps1
 
 $ErrorActionPreference = 'Stop'

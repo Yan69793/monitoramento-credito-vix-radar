@@ -1,4 +1,4 @@
-# skills-index.ps1 — catálogo compacto de skills (projeto + global opcional)
+﻿# skills-index.ps1 — catálogo compacto de skills (projeto + global opcional)
 # Uso: pwsh -File scripts/skills-index.ps1 [-Global]
 
 param(

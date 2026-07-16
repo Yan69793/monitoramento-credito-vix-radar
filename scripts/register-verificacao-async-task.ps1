@@ -1,4 +1,4 @@
-# register-verificacao-async-task.ps1
+﻿# register-verificacao-async-task.ps1
 # Cria a task VIXRadar-Verificacao-Async no Windows Task Scheduler.
 # Roda 10:20 e 18:20 BRT diariamente — mesma janela do cron original do Claude Code.
 # Exige admin (Register-ScheduledTask).

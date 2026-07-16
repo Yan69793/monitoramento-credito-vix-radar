@@ -1,4 +1,4 @@
-# Valida artefatos rotina-v2 (local) e opcionalmente endpoint live pós-deploy
+﻿# Valida artefatos rotina-v2 (local) e opcionalmente endpoint live pós-deploy
 param(
     [switch]$Live,
     [string]$WorkerUrl = 'https://api.vixradar.com'

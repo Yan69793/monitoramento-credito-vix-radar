@@ -1,4 +1,4 @@
-# Dry-run rotina-v2: 1 emissor por tier (SKIP/LIGHT/FULL) via receber_analise
+﻿# Dry-run rotina-v2: 1 emissor por tier (SKIP/LIGHT/FULL) via receber_analise
 $ErrorActionPreference = 'Stop'
 
 $WorkerUrl = 'https://api.vixradar.com'

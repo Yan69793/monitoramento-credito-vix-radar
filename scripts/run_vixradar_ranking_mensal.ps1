@@ -1,4 +1,4 @@
-# run_vixradar_ranking_mensal.ps1
+﻿# run_vixradar_ranking_mensal.ps1
 # VIX Radar - monitor mensal de ranking SEO (Google BR via WebSearch do claude -p).
 # Mede a posicao de vixradar.com vs concorrentes num kit de keywords (scripts/seo/keywords.json),
 # compara com a baseline anterior (scripts/seo/ranking_state.json) e alerta em caso de:

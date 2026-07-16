@@ -1,6 +1,8 @@
 # posts_organicos.md — 10 posts (voz Yan Szuchmacher)
 
-Formato nativo LinkedIn: hook nas 2 primeiras linhas, parágrafos de 1-2 linhas, termina em pergunta. Sem emojis. Conteúdo informativo, não-recomendatório. Mix 80/20. Publicar no perfil pessoal do Yan; a página reforça.
+v2 — reescrito em 13/07/2026 com base em pesquisa real de mercado (ver `conhecimento/pesquisa-mercado.md`): ganchos tipo Story/Statement (superam pergunta genérica em engajamento medido), jargão correto de crédito privado, dados agregados de mercado reais, menção explícita a www.vixradar.com em todo post (gera card de link automático), preço nunca lidera a mensagem.
+
+Formato nativo LinkedIn: gancho forte na 1ª linha (nunca pergunta), parágrafos de 1-2 linhas, sem emojis. Conteúdo informativo, não-recomendatório. Mix 80/20. Publicar no perfil pessoal do Yan; a página reforça.
 
 Legenda de CTA: [NL] = newsletter (topo) · [MAT] = material/lead gen (meio) · [ACESSO] = solicitar acesso (fundo).
 
@@ -30,161 +32,140 @@ O default não manda aviso prévio.
 
 O spread, sim.
 
-Antes de um emissor virar manchete, o risco costuma aparecer em sinais dispersos: um aditamento de debênture, um comunicado de assembleia, um rebaixamento de perspectiva, uma queda de caixa no ITR.
+Antes de um emissor virar manchete, o risco já apareceu em sinais dispersos: um waiver pedido aos debenturistas, um covenant de alavancagem quase estourando, uma Assembleia Geral de Debenturistas convocada às pressas.
 
-Isoladamente, cada um parece pequeno. Juntos, formam um padrão.
+Isoladamente, cada sinal parece administrativo. Juntos, formam um padrão de deterioração.
 
-A ideia de um Early Warning Score é essa: transformar sinais dispersos num número que sobe antes da manchete, para dar tempo de olhar o emissor com atenção antes do mercado.
+O Early Warning Score do VIX Radar existe para isso: transformar sinais dispersos num número que sobe antes da manchete, nos 103 emissores que cobrimos.
 
-Não é bola de cristal. É leitura estruturada do que já é público, só que rápido e no lugar certo.
-
-Quando um emissor da sua carteira se deteriora, você costuma perceber pelo preço ou pelo fato relevante?
+Não é bola de cristal. É leitura estruturada do que já é público, rápido e no lugar certo. www.vixradar.com
 
 ---
 
-## Post 3 — Materialidade / filtro [NL]
+## Post 3 — Materialidade / filtro [Contrarian]
 
-Todo dia a CVM recebe dezenas de fatos relevantes e comunicados.
+Mais dado não é mais sinal. Às vezes é só mais ruído.
 
-A maioria não move preço nenhum.
+Todo dia a CVM recebe dezenas de fatos relevantes e comunicados de emissores de renda fixa. A maioria não move um centavo de spread.
 
-O problema de quem monitora crédito não é falta de informação. É excesso. Aprovação de ata, mudança de diretor sem impacto, recompra protocolar. Ruído com cara de sinal.
+Aprovação de ata, mudança de diretor sem impacto de crédito, recompra protocolar. Ruído com cara de sinal — e quem monitora manualmente lê tudo com o mesmo peso.
 
-O que importa é a materialidade: aquele evento muda a capacidade do emissor de pagar a dívida?
+O que separa um evento que importa de um que não importa é a materialidade: aquilo muda a capacidade do emissor de honrar a dívida, ou não muda nada?
 
-Um score de 0 a 100 por evento serve para isso. Ele não substitui o analista. Ele coloca na frente dele os 5 eventos que merecem os olhos, e empurra os 195 que não merecem para o fim da fila.
+No VIX Radar, cada evento recebe um score de materialidade de 0 a 100. Você lê os 5 que merecem atenção, não os 195 que não merecem. www.vixradar.com
 
-Ler menos, melhor.
-
-Qual proporção do que você lê sobre os seus emissores realmente muda alguma decisão?
+Qual fração do que você lê sobre seus emissores hoje realmente muda uma decisão?
 
 ---
 
-## Post 4 — Verificação adversarial [MAT]
+## Post 4 — Verificação adversarial [Story]
 
-IA de linguagem tem um problema conhecido em crédito: ela é confiante até quando está errada.
+Um modelo de IA afirmou um rebaixamento de rating que não tinha acontecido. Com toda a confiança do mundo.
 
-Se você deixa um modelo classificar sozinho um evento de crédito, uma hora ele vai afirmar um rebaixamento que não aconteceu, com toda a segurança do mundo.
+Isso não é hipotético — é o comportamento conhecido de qualquer LLM sem checagem: ele completa a lacuna com o que soa plausível, e soa plausível com a mesma firmeza de quando está certo.
 
-Num relatório de faculdade, tudo bem. Numa mesa de crédito, é caro.
+Num resumo de reunião, isso é irritante. Numa mesa de crédito, é caro: você reage a um evento que nunca existiu.
 
-A forma de reduzir isso não é confiar mais no modelo. É desconfiar de propósito.
+A forma de reduzir esse risco não é confiar mais no modelo. É desconfiar dele de propósito.
 
-No VIX Radar, todo evento crítico passa por um segundo modelo cujo trabalho é tentar derrubar o primeiro. Só o que sobrevive à contestação é publicado.
+No VIX Radar, todo evento crítico passa por um segundo modelo cujo único trabalho é tentar derrubar o primeiro. Só o que sobrevive à contestação chega até você. www.vixradar.com
 
-Verificação adversarial não elimina o erro. Reduz o tipo de erro mais perigoso: o falso positivo confiante.
-
-Você confiaria numa classificação de crédito feita por IA sem uma camada de checagem?
+Você confiaria numa classificação de crédito feita por IA sem uma segunda camada de checagem?
 
 ---
 
-## Post 5 — Lei Zero [NL]
+## Post 5 — Lei Zero [Statement]
 
-A regra número um do nosso sistema é chata de propósito:
+Prefiro um sistema que às vezes fica calado a um que inventa.
 
-Inventar dado é pior do que não ter dado.
+Essa é a regra número um do VIX Radar: um evento só entra no radar se tiver fonte primária verificável — URL real, documento real. Sem inferência, sem completar com o que "provavelmente" aconteceu.
 
-Na prática: um evento só entra no radar se tiver uma fonte primária verificável. URL real, documento real. Sem "provavelmente", sem inferência, sem completar a lacuna com o que soa plausível.
+Na prática, isso significa que às vezes o sistema diz: não encontrei nada de novo neste emissor. E é aí que a maioria dos produtos de IA erra — prefere encher a tela a admitir ausência.
 
-Isso significa que às vezes o sistema diz "não encontrei nada de novo neste emissor" em vez de encher a tela.
+Para marketing, silêncio é ruim. Para quem decide sobre risco de crédito, silêncio honesto vale mais que um alerta fabricado que te faz mexer numa posição à toa.
 
-Para marketing, silêncio é ruim. Para uma mesa de crédito, silêncio honesto vale mais do que um alerta inventado que faz você mexer numa posição à toa.
-
-Confiança se constrói mais rápido pelo que você se recusa a afirmar do que pelo que você afirma.
-
-Você prefere um monitoramento que erra para mais ou para menos?
+103 emissores, cobertos todo dia — com a mesma regra: dado real ou nada. www.vixradar.com
 
 ---
 
-## Post 6 — Caso setorial (público, não-recomendatório) [MAT]
+## Post 6 — Caso real de mercado [Story, com disclaimer]
 
-2026 foi um ano de aula sobre crédito privado no Brasil.
+Isto é observação de fato público, não recomendação sobre nenhum papel.
 
-Recuperações judiciais e extrajudiciais de nomes grandes, rebaixamentos em cadeia, reestruturações de dívida bilionária. Tudo público, tudo divulgado.
+Em junho, a Raízen convocou debenturistas para votar seu plano de recuperação extrajudicial — R$ 11,4 bilhões em dívidas vigentes na mesa, com aporte bilionário previsto no plano.
 
-O que separou quem reagiu a tempo de quem reagiu pelo jornal não foi acesso à informação. Era tudo público.
+Não foi surpresa para quem acompanhava os sinais prévios: pressão de covenant, sucessivas ações de rating, meses de negociação com credores antes do protocolo formal.
 
-Foi velocidade e triagem. Enxergar o padrão de deterioração enquanto ele se formava, no meio de centenas de comunicados que não importavam.
+2025 fechou com 5.680 empresas em recuperação judicial no Brasil — alta de 24,3% sobre 2024, segundo o Serasa. Não é ruído, é tendência estrutural do crédito privado brasileiro.
 
-Não é sobre prever o futuro. É sobre ler o presente rápido o suficiente para agir dentro dele.
-
-Isto aqui é observação de eventos públicos, não recomendação sobre nenhum ativo.
-
-Olhando para trás, qual desses casos você acha que dava sinais antes da manchete?
+O padrão se repete: o sinal aparece semanas antes do fato relevante que vira manchete. A diferença entre reagir a tempo e reagir tarde é ter alguém — ou algo — olhando os 103 emissores todos os dias. www.vixradar.com
 
 ---
 
-## Post 7 — Custo / posicionamento [NL]
+## Post 7 — Custo / posicionamento [Counterposicionamento]
 
-Cobrir crédito privado profissionalmente no Brasil costuma custar de R$ 2 a 3 mil por mês, por licença.
+Um terminal de dados financeiros robusto resolve muita coisa: renda variável, trading global, mensageria, research cross-asset.
 
-Faz sentido para um banco com mesa dedicada. Não faz sentido para uma tesouraria de empresa, um family office ou uma gestora média que carrega crédito privado mas não vive só disso.
+E custa como resolve tudo isso — na casa dos milhares de reais por mês, por licença.
 
-Esse pessoal fica no pior dos mundos: risco de crédito real na carteira, sem ferramenta à altura, resolvendo no Excel.
+Se o seu problema é mais estreito — saber quando um emissor de crédito privado brasileiro se deteriora — você está pagando por uma plataforma inteira para usar uma fração dela.
 
-A pergunta que me levou a construir o VIX Radar foi simples: por que monitorar mais de 100 emissores tem que custar o preço de um analista júnior?
+O VIX Radar não tenta substituir terminal nenhum. Ele resolve só essa fatia, com IA, e por isso custa uma fração: R$ 119/mês no plano Essencial, 103 emissores, alertas diários, EWS e materialidade.
 
-Sinal de crédito acionável não deveria ser artigo de luxo.
-
-Se você não tem terminal, como resolve o monitoramento de crédito hoje?
+Sem terminal. Sem licença de milhares. www.vixradar.com
 
 ---
 
-## Post 8 — Bastidor / como funciona [NL]
+## Post 8 — Bastidor / como funciona [Process transparency]
 
 O que acontece entre um comunicado da CVM às 19h e um alerta classificado no seu painel:
 
-Primeiro, a varredura. Depois do fechamento da B3, o sistema passa pelos 103 emissores, lendo CVM, ANBIMA, agências e imprensa.
+Primeiro, a varredura. Depois do fechamento da B3, o sistema passa pelos 103 emissores, lendo CVM, ANBIMA, agências de rating e imprensa financeira.
 
-Segundo, a leitura. A IA extrai o que é evento de crédito e descarta o protocolar.
+Segundo, a leitura. A IA extrai o que é evento de crédito de fato — um waiver, um covenant sob pressão, um rebaixamento — e descarta o protocolar.
 
-Terceiro, a classificação. Cada evento recebe um grau (crítico a ruído) e um score de materialidade.
+Terceiro, a classificação. Cada evento recebe um grau (crítico a ruído) e um score de materialidade de 0 a 100.
 
-Quarto, a contestação. O que é crítico passa por um segundo modelo que tenta derrubar.
+Quarto, a contestação. Todo evento crítico passa por um segundo modelo que tenta derrubá-lo.
 
-Quinto, a publicação. Só o que sobreviveu, com fonte, entra no radar.
-
-Nada disso é mágico. É engenharia sóbria em cima de fontes públicas.
+Quinto, a publicação. Só o que sobreviveu, com fonte, entra no radar. www.vixradar.com
 
 Que parte desse fluxo você acha mais difícil de acertar: a leitura, a classificação ou a checagem?
 
 ---
 
-## Post 9 — Comitê / decisão com fonte [ACESSO]
+## Post 9 — Comitê / decisão com fonte [PAS]
 
-A pior pergunta para se ouvir num comitê de investimento é: "de onde você tirou isso?"
+A pior pergunta para ouvir num comitê de investimento é "de onde você tirou isso?"
 
-Não porque a resposta seja difícil. Porque procurar a fonte na frente de todo mundo mina a decisão.
+Não porque a resposta seja difícil — porque procurar a fonte na frente de todo mundo mina a decisão que você acabou de defender.
 
-Monitoramento de crédito não serve só para você saber do evento. Serve para você sustentar a decisão depois, com rastreabilidade.
+Isso acontece porque a maioria monitora crédito lendo manchete e esquecendo de onde ela veio. Quando alguém pergunta a fonte três semanas depois, ninguém lembra o link.
 
-Todo alerta com a fonte primária anexada. O relatório com o nome do emissor, o setor, a data e o link. Exportável com a marca da sua casa.
+No VIX Radar, todo alerta carrega a fonte primária anexada — fato relevante, documento CVM, comunicado da agência de rating. O relatório sai com data, setor e link, exportável com a marca da sua casa.
 
-Decisão de crédito não é palpite. É tese com evidência.
-
-No seu processo, quanto tempo se gasta reconstruindo a fonte de uma decisão já tomada?
+Decisão de crédito não é palpite. É tese com evidência rastreável. www.vixradar.com
 
 ---
 
-## Post 10 — Pitch direto da newsletter [NL]
+## Post 10 — Pitch direto da newsletter [Founder-led]
 
-Uma vez por semana eu mando um recorte do que moveu o crédito privado brasileiro.
+Toda semana eu leio os eventos de crédito privado que mais importaram no Brasil e mando um recorte de graça.
 
-Não é newsletter de "mercado hoje". É especificamente sobre eventos de crédito: rebaixamentos, recuperações, reestruturações, eventos CVM materiais entre os principais emissores de renda fixa.
+Não é newsletter de "mercado hoje". É especificamente crédito: rebaixamentos, recuperações judiciais e extrajudiciais, waivers, covenants sob pressão — os eventos materiais dos principais emissores de renda fixa.
 
-Os que importam, com fonte, sem ruído.
-
-É de graça e é o mesmo filtro de materialidade que roda no produto pago, só que num resumo semanal.
+Uso o mesmo filtro de materialidade que roda no VIX Radar (103 emissores, 13 setores), só que resumido, uma vez por semana, sem custo.
 
 Se você opera ou acompanha crédito privado, é o tipo de coisa que economiza a sua varredura de segunda-feira.
 
-Quer receber? Comenta ou me chama que eu te coloco na lista.
+Assine em www.vixradar.com ou comenta aqui que eu te coloco na lista.
 
 ---
 
 ## Notas de uso
 
-- Não publicar os 10 de uma vez. Cadência 3-5/semana. Alternar ângulo (dor, método, prova, bastidor).
-- Os posts 4, 6 e 8 são os mais fortes candidatos a virar Thought Leader Ad se performarem.
-- Post 6: manter o disclaimer não-recomendatório sempre que citar casos reais.
-- Trocar a pergunta final por variações para testar engajamento.
+- Não publicar os 10 de uma vez. Cadência 3-5/semana. Alternar tipo de gancho (Story, Statement, Contrarian) — nunca abrir dois posts seguidos com pergunta.
+- Todo post cita www.vixradar.com — o LinkedIn gera automaticamente um card de link com o título/descrição do site (confirmado ao publicar o Post 1 em 13/07/2026).
+- Posts 4, 6 e 8 são os candidatos mais fortes a virar Thought Leader Ad se performarem bem organicamente.
+- Post 6 é o único com emissor nomeado (Raízen) — manter sempre o disclaimer de conteúdo não-recomendatório na primeira linha. Não adicionar mais emissores nomeados sem repetir esse cuidado.
+- Nenhum número deste arquivo é inventado — todos vêm de `conhecimento/product.md` (dados do produto) ou `conhecimento/pesquisa-mercado.md` (dados de mercado, com fonte). Antes de publicar uma variação nova, conferir contra esses dois arquivos.

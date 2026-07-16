@@ -1,4 +1,4 @@
-# run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
+﻿# run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
 $ErrorActionPreference = 'Stop'
 # Sem isso, stdout do binario nativo 'claude' pode ser decodificado com o codepage ANSI/OEM
 # em vez de UTF-8 quando o processo roda sem console interativo (scheduled task) - corrompe
@@ -24,6 +24,10 @@ $ModelHaiku     = 'claude-haiku-4-5-20251001'
 $ModelSonnet    = 'claude-sonnet-4-6'
 $TokenTarget    = 500000   # meta - passar um pouco OK
 $TokenHardCap   = 700000   # deferred só acima disto
+# Coeficientes da estimativa pre-lote (ver bloco do hard cap). Modelo aditivo: boot + n * unit.
+$TokenBootOverhead     = 15000   # piso fixo por invocacao do claude (medido ~13,6k - ver Invoke-ClaudeBatch)
+$TokenPerEmissorSonnet = 13000   # real 14/07: 11,3k/emissor (lote de 10 = 127.015 tokens)
+$TokenPerEmissorHaiku  = 4500    # real 14/07: 2,8k-4,1k/emissor em lotes de 15
 $SonnetEwsMin   = 38
 $HaikuChunk     = 15
 $SonnetChunk    = 11
@@ -266,8 +270,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             $json = $jsonLine | ConvertFrom-Json
             if ($null -ne $json.result) { $textOut = @(('' + $json.result) -split "`n") }
             if ($json.usage) {
+                # cache_read excluido da soma (2026-07-14): mesmo fix do run_vixradar_matinal_claude.ps1
+                # (releitura de contexto cobrada a 0.1x, nao trabalho novo; inflava o acumulado contra
+                # o hard cap de 700k sem refletir custo ou trabalho real).
                 $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
-                    + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
+                    + [int]$json.usage.cache_creation_input_tokens
             }
         }
     } catch {
@@ -361,7 +368,7 @@ foreach ($f in @($HaikuSkill, $SonnetSkill)) {
 $__noturnoMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-noturno-v2')
 if (-not $__noturnoMutex.WaitOne(0)) {
     Write-Log 'ABORT: outra instancia da noturna ja esta em execucao (mutex ocupado) - saindo limpo em 0 tokens'
-    return
+    exit 0
 }
 
 Write-Log "INICIO: noturno meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
@@ -493,10 +500,19 @@ try {
         $ji++
 
         # v4.9.151: estimar tokens ANTES de iniciar o lote.
-        # Dados reais de 09/07: Sonnet ~40k/emissor, Haiku ~8k/emissor (conservador).
         # Hard cap checado pre-lote evita ultrapassar o limite durante o processamento
         # (09/07: acum=635k, lote Light consumiu +141k e estourou o cap em 76k).
-        $estLote = if ($job.Name -eq 'sonnet') { $job.Chunk.Count * 40000 } else { $job.Chunk.Count * 8000 }
+        #
+        # Modelo aditivo (fix 2026-07-14): o custo NAO e' linear em n. Ha um piso fixo de boot por
+        # invocacao do claude (~13,6k - ver Invoke-ClaudeBatch) + custo por emissor. A formula linear
+        # anterior (n * 40k Sonnet / n * 8k Haiku, calibrada em 09/07) superestimava 3,1x e punia
+        # lotes grandes: em 14/07 15h ela deferiu o lote sonnet-8 INTEIRO (10 emissores, toda a fila
+        # EWS>=38 - o segmento de maior risco) com acum=339.304 + est=400.000 >= 700.000. O consumo
+        # real desses mesmos 10 emissores, medido as 18h, foi 127.015 (12,7k/emissor): teria fechado
+        # em ~466k, abaixo ate' da meta. So' nao virou gap de cobertura porque a 2a execucao do dia
+        # (idempotente) os processou. Coeficientes calibrados com os lotes reais de 14/07.
+        $unit = if ($job.Name -eq 'sonnet') { $TokenPerEmissorSonnet } else { $TokenPerEmissorHaiku }
+        $estLote = $TokenBootOverhead + ($job.Chunk.Count * $unit)
 
         if (($stats.tokens_total + $estLote) -ge $TokenHardCap) {
             $stats.tokens_hard_hit = $true

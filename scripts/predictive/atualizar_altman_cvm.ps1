@@ -1,4 +1,4 @@
-# atualizar_altman_cvm.ps1
+﻿# atualizar_altman_cvm.ps1
 # VIX Radar - Altman Z''-EM (variante para mercados emergentes) por emissor, a partir dos
 # dados abertos da CVM (DFP consolidado). Fase 3 do plano preditivo (nota 51).
 #

@@ -1,4 +1,4 @@
-# register-all-routines-scheduler.ps1 — Task Scheduler Windows (FALLBACK — exige PC ligado)
+﻿# register-all-routines-scheduler.ps1 — Task Scheduler Windows (FALLBACK — exige PC ligado)
 # Primario sem PC: Claude Code Routines Remote — scripts/register-cloud-routines.ps1 + REGISTRAR-CLOUD.md
 param(
     [switch]$Remove,
@@ -9,8 +9,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $Scripts = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts'
-$Fechamento = 'E:\Diretorio\Claude\relatorio-diario-mirabaud\scripts\run_fechamento_claude.ps1'
-$Watchdog = 'E:\Diretorio\Claude\relatorio-diario-mirabaud\scripts\briefing_watchdog.ps1'
+$Fechamento = 'E:\Diretorio\Claude\relatorio-diario-szuchmacher\scripts\run_fechamento_claude.ps1'
+$Watchdog = 'E:\Diretorio\Claude\relatorio-diario-szuchmacher\scripts\briefing_watchdog.ps1'
 
 $Tasks = @(
     @{
