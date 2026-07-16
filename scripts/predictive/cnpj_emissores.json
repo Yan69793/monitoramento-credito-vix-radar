@@ -17,7 +17,7 @@
     "JSL":  {
                 "cnpj":  "52.548.435/0001-79",
                 "denom":  "JSL S.A.",
-                "match":  "forte"
+                "match":  "forte - desempate por ativo"
             },
     "BRF":  {
                 "cnpj":  "01.838.723/0001-27",
@@ -25,9 +25,9 @@
                 "match":  "forte"
             },
     "Iguatemi":  {
-                     "cnpj":  "51.218.147/0001-93",
-                     "denom":  "IGUATEMI EMPRESA DE SHOPPING CENTERS S/A",
-                     "match":  "forte"
+                     "cnpj":  "60.543.816/0001-93",
+                     "denom":  "IGUATEMI S.A.",
+                     "match":  "forte - desempate por ativo"
                  },
     "Simpar":  {
                    "cnpj":  "07.415.333/0001-20",
@@ -47,7 +47,7 @@
     "Unidas":  {
                    "cnpj":  "75.609.123/0001-23",
                    "denom":  "UNIDAS LOCAÇÕES E SERVIÇOS S.A.",
-                   "match":  "forte"
+                   "match":  "forte - desempate por ativo"
                },
     "MRV Engenharia":  {
                            "cnpj":  "08.343.492/0001-20",
@@ -57,7 +57,7 @@
     "Compass Gás e Energia":  {
                                   "cnpj":  "21.389.501/0001-81",
                                   "denom":  "COMPASS GÁS E ENERGIA S.A.",
-                                  "match":  "forte"
+                                  "match":  "forte - desempate por ativo"
                               },
     "Tegma":  {
                   "cnpj":  "02.351.144/0001-18",
@@ -65,19 +65,19 @@
                   "match":  "forte"
               },
     "BRK Ambiental":  {
-                          "cnpj":  "39.580.673/0001-01",
-                          "denom":  "BRK AMBIENTAL - REGIÃO METROPOLITANA DE MACEIÓ S.A.",
-                          "match":  "forte"
+                          "cnpj":  "24.396.489/0001-20",
+                          "denom":  "BRK AMBIENTAL PARTICIPAÇÕES S.A.",
+                          "match":  "forte - desempate por ativo"
                       },
     "Energisa":  {
-                     "cnpj":  "15.413.826/0001-50",
-                     "denom":  "ENERGISA MATO GROSSO DO SUL - DIST DE ENERGIA S.A.",
-                     "match":  "forte"
+                     "cnpj":  "00.864.214/0001-06",
+                     "denom":  "ENERGISA SA",
+                     "match":  "forte - desempate por ativo"
                  },
     "Multiplan":  {
                       "cnpj":  "07.816.890/0001-53",
                       "denom":  "MULTIPLAN - EMPREEND IMOBILIARIOS S.A.",
-                      "match":  "forte"
+                      "match":  "forte - desempate por ativo"
                   },
     "Arteris":  {
                     "cnpj":  "02.919.555/0001-67",
@@ -105,9 +105,9 @@
                    "match":  "forte"
                },
     "Rumo":  {
-                 "cnpj":  "33.572.408/0001-97",
-                 "denom":  "RUMO MALHA CENTRAL S.A.",
-                 "match":  "forte"
+                 "cnpj":  "02.387.241/0001-60",
+                 "denom":  "RUMO S.A.",
+                 "match":  "forte - desempate por ativo"
              },
     "Iguá Saneamento":  {
                             "cnpj":  "08.159.965/0001-33",
@@ -117,7 +117,7 @@
     "Auren Energia":  {
                           "cnpj":  "28.594.234/0001-23",
                           "denom":  "AUREN ENERGIA S.A",
-                          "match":  "forte"
+                          "match":  "forte - desempate por ativo"
                       },
     "Marfrig":  {
                     "cnpj":  "03.853.896/0001-40",
@@ -127,17 +127,17 @@
     "Trisul":  {
                    "cnpj":  "08.811.643/0001-27",
                    "denom":  "TRISUL S/A",
-                   "match":  "forte"
+                   "match":  "forte - desempate por ativo"
                },
     "Vale":  {
                  "cnpj":  "33.592.510/0001-54",
                  "denom":  "VALE S.A.",
-                 "match":  "forte"
+                 "match":  "forte - desempate por ativo"
              },
     "Bradesco":  {
-                     "cnpj":  "47.509.120/0001-82",
-                     "denom":  "BRADESCO LEASING S.A. - ARRENDAMENTO MERCANTIL",
-                     "match":  "forte"
+                     "cnpj":  "60.746.948/0001-12",
+                     "denom":  "BANCO BRADESCO S.A.",
+                     "match":  "manual-cvm"
                  },
     "SLC Agrícola":  {
                          "cnpj":  "89.096.457/0001-55",
@@ -157,7 +157,7 @@
     "Grupo Mateus":  {
                          "cnpj":  "24.990.777/0001-09",
                          "denom":  "GRUPO MATEUS S.A.",
-                         "match":  "forte"
+                         "match":  "forte - desempate por ativo"
                      },
     "Camil Alimentos":  {
                             "cnpj":  "64.904.295/0001-03",
@@ -172,17 +172,17 @@
     "Hapvida":  {
                     "cnpj":  "05.197.443/0001-38",
                     "denom":  "HAPVIDA PARTICIPAÇÕES E INVESTIMENTOS S.A.",
-                    "match":  "forte"
+                    "match":  "forte - desempate por ativo"
                 },
     "Copel":  {
-                  "cnpj":  "04.368.898/0001-06",
-                  "denom":  "COPEL DISTRIBUIÇÃO S.A.",
-                  "match":  "forte"
+                  "cnpj":  "76.483.817/0001-20",
+                  "denom":  "COMPANHIA PARANAENSE DE ENERGIA COPEL",
+                  "match":  "manual-cvm"
               },
     "Cosan":  {
                   "cnpj":  "50.746.577/0001-15",
                   "denom":  "COSAN S.A.",
-                  "match":  "forte"
+                  "match":  "forte - desempate por ativo"
               },
     "Kora Saúde":  {
                        "cnpj":  "13.270.520/0001-66",
@@ -190,9 +190,9 @@
                        "match":  "forte"
                    },
     "BTG Pactual":  {
-                        "cnpj":  "04.626.426/0001-06",
-                        "denom":  "BTG PACTUAL COMMODITIES SERTRADING S.A.",
-                        "match":  "forte"
+                        "cnpj":  "30.306.294/0001-45",
+                        "denom":  "BANCO BTG PACTUAL S/A",
+                        "match":  "manual-cvm"
                     },
     "CSN Mineração":  {
                           "cnpj":  "08.902.291/0001-15",
@@ -202,7 +202,7 @@
     "Santos Brasil":  {
                           "cnpj":  "02.762.121/0001-04",
                           "denom":  "SANTOS BRASIL PARTICIPAÇÕES S.A.",
-                          "match":  "forte"
+                          "match":  "forte - desempate por ativo"
                       },
     "Cury Construtora":  {
                              "cnpj":  "08.797.760/0001-83",
@@ -210,9 +210,9 @@
                              "match":  "forte"
                          },
     "Raízen":  {
-                   "cnpj":  "08.070.508/0001-78",
-                   "denom":  "RAÍZEN ENERGIA S.A.",
-                   "match":  "forte"
+                   "cnpj":  "33.453.598/0001-23",
+                   "denom":  "RAÍZEN S.A.",
+                   "match":  "forte - desempate por ativo"
                },
     "Gerdau":  {
                    "cnpj":  "33.611.500/0001-19",
@@ -220,19 +220,19 @@
                    "match":  "forte"
                },
     "Suzano":  {
-                   "cnpj":  "60.651.809/0001-05",
-                   "denom":  "SUZANO HOLDING S.A.",
-                   "match":  "forte"
+                   "cnpj":  "16.404.287/0001-55",
+                   "denom":  "SUZANO S.A.",
+                   "match":  "manual-cvm"
                },
     "CEMIG":  {
-                  "cnpj":  "06.981.180/0001-16",
-                  "denom":  "CEMIG DISTRIBUIÇÃO S/A",
-                  "match":  "forte"
+                  "cnpj":  "17.155.730/0001-64",
+                  "denom":  "CIA ENERG MINAS GERAIS - CEMIG",
+                  "match":  "manual-cvm"
               },
     "Brava Energia":  {
                           "cnpj":  "12.091.809/0001-55",
                           "denom":  "BRAVA ENERGIA S.A.",
-                          "match":  "forte"
+                          "match":  "forte - desempate por ativo"
                       },
     "Boa Safra Sementes":  {
                                "cnpj":  "10.807.374/0001-77",
@@ -247,12 +247,12 @@
     "Movida":  {
                    "cnpj":  "21.314.559/0001-66",
                    "denom":  "MOVIDA PARTICIPAÇÕES S.A.",
-                   "match":  "forte"
+                   "match":  "forte - desempate por ativo"
                },
     "Engie Brasil Energia":  {
                                  "cnpj":  "02.474.103/0001-19",
                                  "denom":  "ENGIE BRASIL ENERGIA S.A.",
-                                 "match":  "forte"
+                                 "match":  "forte - desempate por ativo"
                              },
     "São Martinho":  {
                          "cnpj":  "51.466.860/0001-56",
@@ -270,9 +270,9 @@
                 "match":  "forte"
             },
     "CSN":  {
-                "cnpj":  "08.902.291/0001-15",
-                "denom":  "CSN MINERAÇÃO S.A.",
-                "match":  "forte"
+                "cnpj":  "33.042.730/0001-04",
+                "denom":  "CIA SIDERURGICA NACIONAL",
+                "match":  "manual-cvm"
             },
     "Fleury":  {
                    "cnpj":  "60.840.055/0001-31",
@@ -295,9 +295,9 @@
                          "match":  "forte"
                      },
     "Localiza":  {
-                     "cnpj":  "02.286.479/0001-08",
-                     "denom":  "LOCALIZA  FLEET S.A.",
-                     "match":  "forte"
+                     "cnpj":  "16.670.085/0001-55",
+                     "denom":  "LOCALIZA RENT A CAR SA",
+                     "match":  "forte - desempate por ativo"
                  },
     "Comerc Energia":  {
                            "cnpj":  "25.369.840/0001-57",
@@ -307,7 +307,7 @@
     "Itaúsa":  {
                    "cnpj":  "61.532.644/0001-15",
                    "denom":  "ITAUSA S.A.",
-                   "match":  "forte"
+                   "match":  "forte - desempate por ativo"
                },
     "Embraer":  {
                     "cnpj":  "07.689.002/0001-89",
@@ -317,7 +317,7 @@
     "ISA Energia":  {
                         "cnpj":  "02.998.611/0001-04",
                         "denom":  "ISA ENERGIA BRASIL S.A.",
-                        "match":  "forte"
+                        "match":  "forte - desempate por ativo"
                     },
     "Aegea Saneamento":  {
                              "cnpj":  "08.827.501/0001-58",
@@ -330,9 +330,9 @@
                            "match":  "forte"
                        },
     "PRIO":  {
-                 "cnpj":  "08.926.302/0001-05",
-                 "denom":  "PRIO FORTE S.A.",
-                 "match":  "forte"
+                 "cnpj":  "10.629.105/0001-68",
+                 "denom":  "PRIO S.A.",
+                 "match":  "forte - desempate por ativo"
              },
     "Eneva":  {
                   "cnpj":  "04.423.567/0001-21",
@@ -345,9 +345,9 @@
                    "match":  "forte"
                },
     "Light":  {
-                  "cnpj":  "01.917.818/0001-36",
-                  "denom":  "LIGHT ENERGIA S.A.",
-                  "match":  "forte"
+                  "cnpj":  "03.378.521/0001-75",
+                  "denom":  "LIGHT S.A. - EM RECUPERAÇÃO JUDICIAL",
+                  "match":  "forte - desempate por ativo"
               },
     "Direcional Engenharia":  {
                                   "cnpj":  "16.614.075/0001-00",
@@ -362,7 +362,7 @@
     "Vibra Energia":  {
                           "cnpj":  "34.274.233/0001-02",
                           "denom":  "VIBRA ENERGIA S/A",
-                          "match":  "forte"
+                          "match":  "forte - desempate por ativo"
                       },
     "Vamos":  {
                   "cnpj":  "23.373.000/0001-32",
@@ -375,19 +375,19 @@
                            "match":  "forte"
                        },
     "EcoRodovias":  {
-                        "cnpj":  "08.873.873/0001-10",
-                        "denom":  "ECORODOVIAS CONCESSÕES E SERVIÇOS S/A",
-                        "match":  "forte"
+                        "cnpj":  "04.149.454/0001-80",
+                        "denom":  "ECORODOVIAS INFRAESTRUTURA E LOGÍSTICA S.A.",
+                        "match":  "forte - desempate por ativo"
                     },
     "B3 S.A.":  {
                     "cnpj":  "09.346.601/0001-25",
                     "denom":  "B3 S.A. - BRASIL, BOLSA, BALCÃO",
-                    "match":  "forte"
+                    "match":  "forte - desempate por ativo"
                 },
     "TIM Brasil":  {
                        "cnpj":  "02.600.854/0001-34",
                        "denom":  "TIM BRASIL SERVIÇOS E PARTICIPAÇÕES S.A.",
-                       "match":  "forte"
+                       "match":  "forte - desempate por ativo"
                    },
     "Hidrovias do Brasil":  {
                                 "cnpj":  "12.648.327/0001-53",
@@ -402,6 +402,6 @@
     "CPFL Energia":  {
                          "cnpj":  "02.429.144/0001-93",
                          "denom":  "CPFL ENERGIA SA",
-                         "match":  "forte"
+                         "match":  "forte - desempate por ativo"
                      }
 }

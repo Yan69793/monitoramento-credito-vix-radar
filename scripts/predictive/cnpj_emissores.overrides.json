@@ -1,0 +1,76 @@
+{
+  "_doc": "Overrides manuais de entidade: nome do emissor no Radar -> entidade da CVM que carrega o risco de credito. Aplicados SEMPRE por cima da heuristica de nome do atualizar_altman_cvm.ps1, inclusive quando cnpj_emissores.json e regenerado do zero. Chaves iniciadas por _ sao ignoradas. Verificados um a um contra cad_cia_aberta.csv + DFP consolidado 2025 em 2026-07-16 (ver Obsidian 'Pesquisa e Ideias, Proveniencia de Fonte e Ground Truth CVM 2026-07-16').",
+  "_motivo": "A heuristica casa por prefixo de nome normalizado e pegava a primeira entidade na ordem do CSV da CVM, que costuma ser a subsidiaria operacional e nao a emissora da divida. Efeito medido: Light aparecia com Altman z_em 4.71 (zona cinzenta) medindo a LIGHT ENERGIA, subsidiaria de geracao com R$3.1bi de ativo, enquanto a holding em recuperacao judicial tem R$25.7bi e z_em 3.51 (distress).",
+  "_regra": "Nao remover entrada daqui sem verificar no cadastro CVM. Adicionar entrada nova quando a heuristica escolher subsidiaria, quando a denominacao social nao contiver o nome curto do emissor, ou quando o desempate por ativo total escolher a holding no lugar da emissora.",
+
+  "Light": {
+    "cnpj": "03.378.521/0001-75",
+    "denom": "LIGHT S.A. - EM RECUPERAÇÃO JUDICIAL",
+    "motivo": "heuristica pegava LIGHT ENERGIA S.A. (subsidiaria de geracao, R$3.1bi); a holding em RJ desde 2024 e a LIGHT S.A. (R$25.7bi). Ha 3 entidades Light no cadastro."
+  },
+  "Raízen": {
+    "cnpj": "33.453.598/0001-23",
+    "denom": "RAÍZEN S.A.",
+    "motivo": "heuristica pegava RAÍZEN ENERGIA S.A. (R$105.9bi, 55 docs); a RAÍZEN S.A. (R$141.0bi, 159 docs) e quem protocolou o Plano de Recuperacao Extrajudicial em jun/2026."
+  },
+  "CSN": {
+    "cnpj": "33.042.730/0001-04",
+    "denom": "CIA SIDERURGICA NACIONAL",
+    "motivo": "heuristica NUNCA acha: a denominacao social nao contem 'CSN' e Normalizar remove 'CIA'. Casava so CSN MINERAÇÃO, colidindo com o proprio emissor 'CSN Mineração' (mesmo CNPJ nos dois) e fazendo um sobrescrever o outro no cnpjSet."
+  },
+  "CEMIG": {
+    "cnpj": "17.155.730/0001-64",
+    "denom": "CIA ENERG MINAS GERAIS - CEMIG",
+    "motivo": "heuristica nao acha (Normalizar remove 'CIA', sobra 'ENERG MINAS GERAIS CEMIG', que nao comeca com 'CEMIG'). Casava so CEMIG DISTRIBUIÇÃO."
+  },
+  "Copel": {
+    "cnpj": "76.483.817/0001-20",
+    "denom": "COMPANHIA PARANAENSE DE ENERGIA COPEL",
+    "motivo": "heuristica nao acha (Normalizar remove 'COMPANHIA', sobra 'PARANAENSE DE ENERGIA COPEL'). Casava so COPEL DISTRIBUIÇÃO."
+  },
+  "Energisa": {
+    "cnpj": "00.864.214/0001-06",
+    "denom": "ENERGISA SA",
+    "motivo": "heuristica pegava ENERGISA MATO GROSSO DO SUL - DIST DE ENERGIA S.A., subsidiaria regional. A holding e a ENERGISA SA (R$83.5bi)."
+  },
+  "EcoRodovias": {
+    "cnpj": "04.149.454/0001-80",
+    "denom": "ECORODOVIAS INFRAESTRUTURA E LOGÍSTICA S.A.",
+    "motivo": "heuristica pegava ECORODOVIAS CONCESSÕES E SERVIÇOS. A listada (ECOR3) e a INFRAESTRUTURA E LOGÍSTICA."
+  },
+  "Localiza": {
+    "cnpj": "16.670.085/0001-55",
+    "denom": "LOCALIZA RENT A CAR SA",
+    "motivo": "heuristica pegava LOCALIZA FLEET S.A. (R$21.6bi). A operacional listada (RENT3) e a LOCALIZA RENT A CAR (R$85.6bi)."
+  },
+  "PRIO": {
+    "cnpj": "10.629.105/0001-68",
+    "denom": "PRIO S.A.",
+    "motivo": "heuristica pegava PRIO FORTE S.A. (subsidiaria). A listada (PRIO3) e a PRIO S.A."
+  },
+  "Rumo": {
+    "cnpj": "02.387.241/0001-60",
+    "denom": "RUMO S.A.",
+    "motivo": "heuristica pegava RUMO MALHA CENTRAL S.A. (subsidiaria de ferrovia). A listada (RAIL3) e a RUMO S.A."
+  },
+  "BRK Ambiental": {
+    "cnpj": "24.396.489/0001-20",
+    "denom": "BRK AMBIENTAL PARTICIPAÇÕES S.A.",
+    "motivo": "heuristica pegava BRK AMBIENTAL - REGIÃO METROPOLITANA DE MACEIÓ S.A., subsidiaria regional que nem tem DFP consolidado (por isso a BRK ficava fora do Altman)."
+  },
+  "Suzano": {
+    "cnpj": "16.404.287/0001-55",
+    "denom": "SUZANO S.A.",
+    "motivo": "CASO EM QUE O DESEMPATE POR ATIVO ERRA: SUZANO HOLDING (R$167.979bi) e marginalmente maior que SUZANO S.A. (R$167.935bi), mas a emissora da divida e a operacional listada SUZB3. Override obrigatorio."
+  },
+  "Bradesco": {
+    "cnpj": "60.746.948/0001-12",
+    "denom": "BANCO BRADESCO S.A.",
+    "motivo": "heuristica nao acha ('BANCO BRADESCO' nao comeca com 'BRADESCO') e pegava BRADESCO LEASING - ARRENDAMENTO MERCANTIL. Setor financeiro: nao entra no Altman, mas o CNPJ correto importa para reconciliacao com documentos da CVM."
+  },
+  "BTG Pactual": {
+    "cnpj": "30.306.294/0001-45",
+    "denom": "BANCO BTG PACTUAL S/A",
+    "motivo": "heuristica nao acha ('BANCO BTG PACTUAL' nao comeca com 'BTG PACTUAL') e pegava BTG PACTUAL COMMODITIES SERTRADING. Setor financeiro: idem Bradesco."
+  }
+}

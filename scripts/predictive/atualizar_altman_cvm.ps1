@@ -16,6 +16,15 @@
 # 1o ciclo: publica apenas matches FORTES nome->CNPJ; candidatos fracos vao para
 # scripts/predictive/cnpj_emissores.review.json (revisao manual do operador).
 #
+# ENTIDADE (2026-07-16): o match nome->CNPJ escolhe a entidade que carrega o risco de
+# credito, nao a primeira homonima do CSV da CVM. Duas camadas:
+#   1. desempate por maior ativo total consolidado entre candidatos fortes (secao 3);
+#   2. cnpj_emissores.overrides.json aplicado SEMPRE por cima (secao 3b), inclusive quando
+#      o mapa e regenerado do zero - cobre o que a heuristica nao acha (CSN/CEMIG/Copel/
+#      Bradesco/BTG: a denominacao social nao contem o nome curto) e o que ela erra
+#      (Suzano: a holding e maior que a operacional emissora).
+# Sem isso, apagar o cnpj_emissores.json reintroduzia 14 entidades erradas em silencio.
+#
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\predictive\atualizar_altman_cvm.ps1" [-AnoDfp 2025] [-Publicar]
 
 param(
@@ -35,6 +44,7 @@ $CacheDir    = Join-Path $ProjectRoot 'data\cvm'
 $PredDir     = Join-Path $ProjectRoot 'scripts\predictive'
 $MapPath     = Join-Path $PredDir 'cnpj_emissores.json'
 $ReviewPath  = Join-Path $PredDir 'cnpj_emissores.review.json'
+$OverrPath   = Join-Path $PredDir 'cnpj_emissores.overrides.json'
 $SaidaPath   = Join-Path $PredDir 'fundamentals_altman_latest.json'
 New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
 
@@ -67,7 +77,48 @@ $emissores = @($pred.emissores | ForEach-Object { [string]$_.name })
 Log ("Universo: {0} emissores (dump {1})" -f $emissores.Count, $dumpDirs[-1].Name)
 
 # ---------------------------------------------------------------
-# 2. Cadastro CVM -> mapa nome->CNPJ (usa mapa existente se houver)
+# 2. DFP consolidado (BPA/BPP/DRE) do exercicio
+#    Baixado ANTES do mapa: o desempate de entidade homonima (secao 3) precisa do ativo total.
+# ---------------------------------------------------------------
+$zipPath = Join-Path $CacheDir ("dfp_cia_aberta_{0}.zip" -f $AnoDfp)
+if (-not (Test-Path $zipPath)) {
+    Log ("Baixando DFP {0} (dados.cvm.gov.br)..." -f $AnoDfp)
+    Invoke-WebRequest -Uri ("https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_{0}.zip" -f $AnoDfp) -OutFile $zipPath -UseBasicParsing
+}
+$extractDir = Join-Path $CacheDir ("dfp_{0}" -f $AnoDfp)
+if (-not (Test-Path $extractDir)) {
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractDir)
+}
+
+# Ativo total (conta '1') por CNPJ, sem filtro de universo. Usado so para desempatar
+# homonimos na regeneracao do mapa (LIGHT ENERGIA vs LIGHT S.A.), nao no calculo.
+function Carregar-AtivoTotalPorCnpj {
+    $path = Join-Path $extractDir ("dfp_cia_aberta_BPA_con_{0}.csv" -f $AnoDfp)
+    $out = @{}
+    if (-not (Test-Path $path)) { Log 'AVISO: BPA ausente - desempate por ativo desabilitado'; return $out }
+    $reader = New-Object System.IO.StreamReader($path, [Text.Encoding]::GetEncoding('ISO-8859-1'))
+    try {
+        $header = $reader.ReadLine().Split(';')
+        $ix = @{}
+        for ($i = 0; $i -lt $header.Count; $i++) { $ix[$header[$i]] = $i }
+        while ($null -ne ($linha = $reader.ReadLine())) {
+            $c = $linha.Split(';')
+            if ($c[$ix['CD_CONTA']] -ne '1') { continue }
+            if ($c[$ix['ORDEM_EXERC']] -notmatch 'LTIMO') { continue }
+            $val = 0.0
+            if (-not [double]::TryParse($c[$ix['VL_CONTA']], [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$val)) { continue }
+            if ($c[$ix['ESCALA_MOEDA']] -match 'MIL') { $val = $val * 1000 }
+            $out[$c[$ix['CNPJ_CIA']]] = $val
+        }
+        return $out
+    } finally { $reader.Dispose() }
+}
+$ativoPorCnpj = Carregar-AtivoTotalPorCnpj
+Log ("Ativo total indexado: {0} entidades com DFP consolidado" -f $ativoPorCnpj.Count)
+
+# ---------------------------------------------------------------
+# 3. Cadastro CVM -> mapa nome->CNPJ (usa mapa existente se houver)
 # ---------------------------------------------------------------
 $mapa = @{}
 if (Test-Path $MapPath) {
@@ -89,15 +140,35 @@ if (Test-Path $MapPath) {
     foreach ($emp in $emissores) {
         $alvo = Normalizar $emp
         if (-not $alvo) { continue }
-        $forte = $null; $medio = $null
+        # Coleta TODOS os candidatos fortes e desempata por ativo total consolidado.
+        # O `break` no primeiro match (ate 2026-07-16) adotava a ordem do CSV da CVM como
+        # criterio de verdade, e a subsidiaria costuma vir antes da emissora: "LIGHT ENERGIA
+        # S.A." ganhava de "LIGHT S.A. - EM RECUPERACAO JUDICIAL" so por posicao no arquivo.
+        # O desempate resolve homonimo; o que ele NAO resolve esta em cnpj_emissores.overrides.json.
+        $fortes = @(); $medio = $null
         foreach ($cia in $ativas) {
             $denom = Normalizar ([string]$cia.DENOM_SOCIAL)
             if (-not $denom) { continue }
-            if ($denom -eq $alvo -or $denom.StartsWith($alvo + ' ')) { $forte = $cia; break }
+            if ($denom -eq $alvo -or $denom.StartsWith($alvo + ' ')) { $fortes += $cia; continue }
             if (-not $medio -and ($denom -like ('*' + $alvo + '*'))) { $medio = $cia }
         }
+        $forte = $null; $tipoMatch = 'forte'
+        if ($fortes.Count -eq 1) {
+            $forte = $fortes[0]
+        } elseif ($fortes.Count -gt 1) {
+            # entidade do risco = maior ativo consolidado entre homonimos. Quem nao tem DFP
+            # consolidado nao e candidato viavel (nao entraria no Altman de qualquer forma).
+            $comDfp = @($fortes | Where-Object { $ativoPorCnpj.ContainsKey($_.CNPJ_CIA) })
+            if ($comDfp.Count -ge 1) {
+                $forte = ($comDfp | Sort-Object { $ativoPorCnpj[$_.CNPJ_CIA] } -Descending)[0]
+                $tipoMatch = 'forte - desempate por ativo'
+            } else {
+                $forte = $fortes[0]
+                $tipoMatch = 'forte - sem DFP p/ desempate REVISAR'
+            }
+        }
         if ($forte) {
-            $mapa[$emp] = [pscustomobject]@{ cnpj = $forte.CNPJ_CIA; denom = $forte.DENOM_SOCIAL; match = 'forte' }
+            $mapa[$emp] = [pscustomobject]@{ cnpj = $forte.CNPJ_CIA; denom = $forte.DENOM_SOCIAL; match = $tipoMatch }
         } elseif ($medio) {
             $review[$emp] = [pscustomobject]@{ cnpj = $medio.CNPJ_CIA; denom = $medio.DENOM_SOCIAL; match = 'medio - REVISAR' }
         } else {
@@ -108,6 +179,38 @@ if (Test-Path $MapPath) {
     [System.IO.File]::WriteAllText($ReviewPath, (([pscustomobject]$review) | ConvertTo-Json -Depth 4), $Utf8NoBom)
     Log ("Match nome->CNPJ: {0} fortes (publicaveis), {1} para revisao ({2})" -f $mapa.Count, $review.Count, $ReviewPath)
 }
+
+# ---------------------------------------------------------------
+# 3b. Overrides manuais de entidade - SEMPRE por cima da heuristica
+# ---------------------------------------------------------------
+# Guard contra a regeneracao reintroduzir entidade errada. O desempate por ativo (secao 3)
+# resolve homonimo, mas nao cobre dois casos: (a) a denominacao social nao contem o nome
+# curto do emissor, entao nao ha candidato nenhum (CSN -> "CIA SIDERURGICA NACIONAL",
+# CEMIG, Copel, Bradesco, BTG); (b) a holding e maior que a operacional emissora, entao o
+# desempate escolhe a errada (Suzano). Roda tanto no caminho "mapa existe" quanto no
+# "regenerar do zero", e regrava o mapa quando corrige algo.
+$overAplicados = 0; $overDivergiu = @()
+if (Test-Path $OverrPath) {
+    $overJson = [System.IO.File]::ReadAllText($OverrPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+    foreach ($p in $overJson.PSObject.Properties) {
+        if ($p.Name.StartsWith('_')) { continue }   # _doc / _motivo / _regra
+        $atual = $mapa[$p.Name]
+        if ($atual -and $atual.cnpj -eq $p.Value.cnpj) { $overAplicados++; continue }
+        if ($atual) { $overDivergiu += ("{0}: {1} -> {2}" -f $p.Name, $atual.cnpj, $p.Value.cnpj) }
+        else        { $overDivergiu += ("{0}: (ausente) -> {1}" -f $p.Name, $p.Value.cnpj) }
+        $mapa[$p.Name] = [pscustomobject]@{ cnpj = $p.Value.cnpj; denom = $p.Value.denom; match = 'manual-cvm' }
+        $overAplicados++
+    }
+    Log ("Overrides de entidade: {0} aplicados" -f $overAplicados)
+    if ($overDivergiu.Count) {
+        foreach ($d in $overDivergiu) { Log ("  CORRIGIDO pelo override -> {0}" -f $d) }
+        [System.IO.File]::WriteAllText($MapPath, (([pscustomobject]$mapa) | ConvertTo-Json -Depth 4), $Utf8NoBom)
+        Log '  mapa regravado com os overrides aplicados'
+    }
+} else {
+    Log ('AVISO: {0} ausente - heuristica roda SEM guard de entidade' -f (Split-Path $OverrPath -Leaf))
+}
+
 $cnpjSet = @{}
 foreach ($k in $mapa.Keys) {
     if ($Financeiros -contains $k) { continue }
@@ -116,19 +219,8 @@ foreach ($k in $mapa.Keys) {
 Log ("CNPJs a processar (ex-financeiros): {0}" -f $cnpjSet.Count)
 
 # ---------------------------------------------------------------
-# 3. DFP consolidado (BPA/BPP/DRE) do exercicio
+# 4. Leitura das contas do DFP (arquivos ja baixados/extraidos na secao 2)
 # ---------------------------------------------------------------
-$zipPath = Join-Path $CacheDir ("dfp_cia_aberta_{0}.zip" -f $AnoDfp)
-if (-not (Test-Path $zipPath)) {
-    Log ("Baixando DFP {0} (dados.cvm.gov.br)..." -f $AnoDfp)
-    Invoke-WebRequest -Uri ("https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/DFP/DADOS/dfp_cia_aberta_{0}.zip" -f $AnoDfp) -OutFile $zipPath -UseBasicParsing
-}
-$extractDir = Join-Path $CacheDir ("dfp_{0}" -f $AnoDfp)
-if (-not (Test-Path $extractDir)) {
-    Add-Type -AssemblyName System.IO.Compression.FileSystem
-    [System.IO.Compression.ZipFile]::ExtractToDirectory($zipPath, $extractDir)
-}
-
 function Carregar-Contas([string]$arquivo, [hashtable]$contasAlvo) {
     # Le CSV latin-1 gigante em streaming; retorna map cnpj -> conta -> valor (escala aplicada, ORDEM_EXERC=ULTIMO)
     $path = Join-Path $extractDir $arquivo
@@ -173,7 +265,7 @@ $dre = Carregar-Contas ("dfp_cia_aberta_DRE_con_{0}.csv" -f $AnoDfp) @{ '3.05' =
 Log ("DRE: {0} cias" -f $dre.Count)
 
 # ---------------------------------------------------------------
-# 4. Z''-EM por emissor
+# 5. Z''-EM por emissor
 # ---------------------------------------------------------------
 $empresasOut = @{}
 $calculados = 0
@@ -232,7 +324,7 @@ foreach ($amostra in @('Petrobras','Vale','Oncoclínicas','Raízen')) {
 }
 
 # ---------------------------------------------------------------
-# 5. Publicar no KV (chave nova - so v4.9.150+ le; sem efeito no Worker atual)
+# 6. Publicar no KV (chave nova - so v4.9.150+ le; sem efeito no Worker atual)
 # ---------------------------------------------------------------
 if ($Publicar) {
     $ErrorActionPreference = 'Continue'
