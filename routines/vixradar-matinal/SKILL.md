@@ -1,10 +1,14 @@
 ---
 name: vixradar-matinal
-schedule: "0 9 * * 1-5"   # 09h00 BRT, dias úteis (America/Sao_Paulo)
-model: opus
+schedule: "0 10 * * 1-5"   # 10h00 BRT, dias úteis (America/Sao_Paulo)
+model: claude-haiku-4-5-20251001 + claude-sonnet-4-6  # Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4) — script: run_vixradar_matinal_claude.ps1
 ---
 
 # Rotina VIX Radar — Varredura Matinal (top 15 por EWS)
+
+> **Nota (2026-07-16):** schedule e modelo corrigidos para refletir a produção real.
+> Task nativa do Windows `VIXRadar-Matinal` dispara `run_vixradar_matinal_claude.ps1`
+> às 10h00 BRT (não 09h00). Modelo real: Haiku + Sonnet (não Opus).
 
 Você é o analista sênior de crédito privado do VIX Radar executando a varredura
 **matinal**. Objetivo: cobrir os 15 emissores mais prioritários por risco (EWS) e

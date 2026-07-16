@@ -1,60 +1,51 @@
-# Scheduled Routines — VIX Radar (fonte canônica versionada)
+# Rotinas Operacionais — VIX Radar (fonte canônica versionada)
 
-> **Por que esta pasta existe.** As rotinas `vixradar-matinal` e `vixradar-noturno`
-> são **Scheduled Tasks do Claude Code (desktop)**, não crons do Cloudflare Worker.
-> Historicamente os prompts viviam **apenas** em disco no desktop
-> (`C:\Users\User\.claude\scheduled-tasks\<nome>\SKILL.md`) — fora do git. Toda
-> reinstalação do Claude desktop **zera o registro do agendador** e os SKILL.md
-> ficam órfãos, fazendo as rotinas "saírem de lá" silenciosamente
-> (incidente 2026-06-15 documentado em `Obsidian VIX Radar/03 - Estado de Produção.md`).
+> **Atualizado 2026-07-16.** As rotinas são executadas pelo **Windows Task Scheduler**
+> via scripts PowerShell (`scripts/run_vixradar_*.ps1`), não mais pelo sistema de
+> scheduled tasks do Claude Code Desktop (neutralizado em 08/07/2026 após incidente
+> de duplicata e perda silenciosa de registro em reinstalações).
 >
-> A partir de agora **esta pasta é a fonte de verdade**. Se as rotinas sumirem do
-> agendador, reinstale a partir daqui — sem reconstruir prompt do zero.
+> Os arquivos `SKILL.md` nesta pasta são **referência documental e templates de prompt**
+> usados pelos scripts. A Task Scheduler é a fonte de verdade para agendamento;
+> os SKILL.md são a fonte de verdade para o contrato analítico.
 
-## O que cada rotina faz
+## Tasks ativas no Windows Task Scheduler
 
-| Routine | Cron (BRT) | Modelo | Universo | Endpoint de saída |
-|---|---|---|---|---|
-| `vixradar-matinal` | `0 9 * * 1-5` (9h, dias úteis) | Claude Opus | Top 15 por EWS (`listar_emissores_prioritarios` `top_n=15`) | `receber_analise` com `_matinal:true` → `_provedor=claude-opus-routine` |
-| `vixradar-noturno` | `0 18 * * *` (18h, diário) | Claude Sonnet 4.6 | 103/103 (`listar_todos_emissores`) | `receber_analise` → `_provedor=claude-sonnet-routine` |
+| Task | Gatilho | Script | Função |
+|------|---------|--------|--------|
+| `VIXRadar-Matinal` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4) |
+| `VIXRadar-Noturno` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, Haiku primeiro (lotes 15) + Sonnet depois (lotes 11) |
+| `VIXRadar-Verificacao-Async` | Diário 10:20 BRT | `run_vixradar_verificacao_async.ps1` | Dreno da fila `radar:verif_fila:{data}` (também acionado inline pós-matinal e pós-noturno) |
+| `VIXRadar-Export-Historico` | Diário 20:45 BRT | `run_vixradar_export_historico.ps1` | Exporta estado preditivo do KV para `data/historico/` |
+| `VIXRadar-Ranking-Mensal` | Dia 1, 11:30 BRT | `run_vixradar_ranking_mensal.ps1` | Monitor mensal de ranking SEO |
+| ~~`VIXRadar-AgendaSemanal`~~ | ~~Dom 03:00~~ | ~~`run_claude_routine.ps1`~~ | **Desabilitada 16/07/2026** — skill neutralizada desde 14/07, task ficou ativa por omissão |
 
-Ambas: para cada emissor → `dados_para_analise` (contexto CVM + histórico) →
-9 rodadas de WebSearch (protocolo no SKILL.md) → montam o JSON canônico →
-`POST receber_analise`. O gate de verdade graduada do Worker (verificação
-adversarial + checagem de data/fonte) decide o que persiste — a rotina **não**
-força entrada (Lei Zero: inventar dado é pior que não ter dado).
-
-## Contrato dos endpoints (Worker v4.9.141, autenticação `routine_key`)
+## Contrato dos endpoints
 
 Base URL: `https://api.vixradar.com` · método `POST` · `Content-Type: application/json`.
 Todos exigem `"routine_key": "<ROUTINE_API_KEY>"` no corpo (403 sem ela).
+
+Worker versão de referência: ver `CLAUDE.md` (tabela "Produção atual").
 
 - `listar_todos_emissores` → `{ ok, total, emissores:[{nome,setor}] }`
 - `listar_emissores_prioritarios` `{ top_n }` → `{ ok, total, emissores:[...] }`
 - `dados_para_analise` `{ empresa, setor }` → `{ ok, janela_inicio, janela_fim, cvm_documentos, eventos_historicos, contexto_historico, instrumentos_ativos }`
 - `receber_analise` `{ empresa, setor, resultado, _matinal? }` → `{ ok, empresa, semana, n_eventos, sem_eventos }`
 
-`resultado` segue o schema JSON da seção "FORMATO JSON" do SKILL.md.
+`resultado` segue o schema JSON da seção "FORMATO JSON" de cada SKILL.md.
 
-> **Segredo:** `ROUTINE_API_KEY` **não** é versionado. Vive como Wrangler secret
-> no Worker e em `memory/credenciais.md` (gitignored). No desktop, a rotina lê a
-> chave do ambiente/credenciais — nunca cole em texto claro neste repo.
+> **Segredo:** `ROUTINE_API_KEY` não é versionado. Vive como Wrangler secret
+> no Worker e em `memory/credenciais.md` (gitignored). Os scripts leem a
+> chave do ambiente/credenciais. Nunca cole em texto claro neste repo.
 
-## Como reinstalar no agendador (executar no Claude **desktop**)
+## Como recriar tasks (em caso de perda do Task Scheduler)
 
-> Este ambiente remoto (Claude Code na web) **não** tem as ferramentas
-> `create_scheduled_task` / `list_scheduled_tasks` — elas só existem no Claude
-> desktop, onde o agendador roda. Os passos abaixo são para a máquina do operador.
+As tasks do Windows são registradas via `Register-ScheduledTask` ou `schtasks /create`.
+Consulte os scripts em `scripts/` para os comandos exatos de cada task.
+Após recriar, validar com `Get-ScheduledTask -TaskName "VIXRadar-*"` e
+registrar no Obsidian (`03 - Estado de Produção.md`).
 
-1. Confirmar o estado atual: `list_scheduled_tasks` (se vier vazio, o registro foi zerado).
-2. Para cada rotina, `create_scheduled_task` com:
-   - **name**: `vixradar-matinal` / `vixradar-noturno`
-   - **schedule (cron)**: `0 9 * * 1-5` / `0 18 * * *` (timezone America/Sao_Paulo)
-   - **model**: Opus (matinal) / Sonnet 4.6 (noturno)
-   - **prompt**: o conteúdo integral do `SKILL.md` correspondente desta pasta.
-3. Validar: `list_scheduled_tasks` deve mostrar as 2 `enabled:true` com `nextRunAt`.
-4. Smoke manual (opcional): rodar a rotina uma vez e confirmar `receber_analise`
-   retornando `ok:true` para ≥1 emissor.
+## Histórico de mudanças
 
-Após reinstalar, registrar no Obsidian (`03 - Estado de Produção.md`) data/hora,
-`nextRunAt` e qualquer mudança de horário (regra operacional do projeto).
+- **2026-07-16:** README reescrito — migração Claude Code Desktop → Windows Task Scheduler documentada. Horários e modelos corrigidos. `VIXRadar-AgendaSemanal` desabilitada.
+- **2026-06-15:** Criação original — incidente de perda de registro do agendador Claude Desktop.
