@@ -8,7 +8,7 @@ O escopo virou, no meio do caminho, uma auditoria de dados: as verificações fe
 
 `PENDENCIAS.md` (atualizado 13/07), notas [[51 - Pesquisa Preditivo v2 2026-07-11]], [[57 - Auditoria Geral (Addendum IA-LLM e Runtime Workers) 2026-07-14]], [[58 - Auditoria Completa 2026-07-15]] e [[59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15]]; perfil do projeto no Jarvis (`data/projects/vixradar/context_summary.md`); código vivo `api/v4.9.160.js` e os artefatos de `scripts/predictive/`.
 
-Estado de partida: Worker v4.9.159 em produção, v4.9.161 no repo com deploy pendente de autorização (fix do RESEARCHDOWN1). Pendências relevantes ao tema: PRED3 (22 emissores sem CNPJ, marcado P3), a pendência aberta do RESEARCHDOWN1 de varrer outros eventos rebaixados pelo mesmo motivo, e a recomendação 4 da nota 51 (labels de treino a partir de evento real).
+Estado de partida: **Worker v4.9.161 e Frontend v201.75 em produção, sem drift** (confirmado ao vivo em 16/07 21:45Z: `ok:true, verificador_ok:true`, `app/version.json` = `vixradar.com/version.json`). O fix do RESEARCHDOWN1 já foi deployado, ao contrário do que a nota 59 e a primeira versão desta nota registravam como "deploy pendente" — ver commits `a64ed21` e `fb1f732`. Pendências relevantes ao tema: PRED3 (22 emissores sem CNPJ, marcado P3), a pendência aberta do RESEARCHDOWN1 de varrer outros eventos rebaixados pelo mesmo motivo, e a recomendação 4 da nota 51 (labels de treino a partir de evento real).
 
 ## Achados
 
