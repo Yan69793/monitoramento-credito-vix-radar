@@ -110,6 +110,11 @@ try {
 
 if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu — investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
 
+# --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
+# Mesmo racional do deploy-worker.ps1: sem isto a doc so atualiza se alguem
+# lembrar depois do deploy.
+& (Join-Path $PSScriptRoot "sync-version-docs.ps1") -FrontendVersion $ver
+
 # --- 6. Sync com o git -----------------------------------------------------
 # O version.json e GERADO por este script (passo 2). Sem commitar, o repo fica
 # declarando a versao anterior enquanto producao ja avancou, e o canonical-test
@@ -124,7 +129,7 @@ if ($SkipGit) {
 Write-Host "`nSincronizando o git..." -ForegroundColor Yellow
 Push-Location $root
 try {
-  git add "app/version.json" "app/deploy_zip/version.json" "app/index.html" "app/deploy_zip/index.html"
+  git add "app/version.json" "app/deploy_zip/version.json" "app/index.html" "app/deploy_zip/index.html" "CLAUDE.md" "README.md"
   if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
 
   $staged = git diff --cached --name-only

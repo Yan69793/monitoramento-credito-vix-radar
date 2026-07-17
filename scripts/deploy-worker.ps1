@@ -108,11 +108,17 @@ if ($SkipValidation) {
   Write-Host "  ok=true kv=true telemetria=true" -ForegroundColor Green
 }
 
+# --- 3.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
+# Sem isto, o bundle e o wrangler.toml ficam corretos mas a doc continua
+# declarando a versao anterior ate alguem lembrar de editar a mao — foi
+# assim que CLAUDE.md e README.md divergiram da producao mais de uma vez.
+& (Join-Path $PSScriptRoot "sync-version-docs.ps1") -WorkerVersion $ver
+
 # --- 4. Sync com o git -----------------------------------------------------
 if ($SkipGit) {
   Write-Host "`nGit pulado (-SkipGit)." -ForegroundColor DarkGray
   Write-Host "ATENCAO: producao esta em $ver e o repo NAO sabe. O canonical-test vai acusar drift ate voce commitar:" -ForegroundColor Yellow
-  Write-Host "  git add api/$bundle api/wrangler.toml && git commit && git push" -ForegroundColor Yellow
+  Write-Host "  git add api/$bundle api/wrangler.toml CLAUDE.md README.md && git commit && git push" -ForegroundColor Yellow
   exit 0
 }
 
@@ -120,7 +126,9 @@ Write-Host "`nSincronizando o git..." -ForegroundColor Yellow
 Push-Location $root
 try {
   # Sem -f: api/v4.*.js saiu do .gitignore, o bundle e rastreado normalmente.
-  git add "api/$bundle" "api/wrangler.toml"
+  # CLAUDE.md/README.md entram so se sync-version-docs.ps1 os alterou; git add
+  # em arquivo sem mudanca nao staga nada.
+  git add "api/$bundle" "api/wrangler.toml" "CLAUDE.md" "README.md"
   if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
 
   $staged = git diff --cached --name-only

@@ -21,11 +21,11 @@ próprio, sem banco de dados, sem manutenção de infraestrutura.
 
 ```
 api/
-  v4.9.162.js        ← bundle Worker em produção (bundle Wrangler, NÃO editar)
+  v4.9.164.js        ← bundle Worker em produção (bundle Wrangler, NÃO editar)
   wrangler.toml      ← config de deploy: main, bindings, cron triggers, custom domain
 
 app/
-  index.html         ← frontend canônico (CACHE_VERSION=v201.53)
+  index.html         ← frontend canônico (CACHE_VERSION=v201.76)
   _headers           ← headers HTTP do Pages (cache, segurança)
   _routes.json       ← roteamento do Pages
   deploy_zip/        ← artefato pronto para deploy (index.html + _headers + _routes.json + version.json)
@@ -82,8 +82,8 @@ research/            ← pesquisa e referências externas
 
 | Componente | Versão | Confirmada |
 |---|---|---|
-| Worker `radar-credito-api` | v4.9.162 | 2026-07-16 |
-| Frontend `vixradar.com` | v201.69 | 2026-06-18 |
+| Worker `radar-credito-api` | v4.9.164 | 2026-07-17 |
+| Frontend `vixradar.com` | v201.76 | 2026-07-17 |
 | Emissores monitorados | 103 empresas / 13 setores | — |
 
 ---
