@@ -8,14 +8,16 @@
     2. Aponta api/wrangler.toml main -> o bundle desta versao.
     3. Roda `wrangler deploy` (com --no-autoconfig, obrigatorio neste repo).
     4. Valida producao (GET /): versao viva == esperada, bindings kv/telemetria.
-    5. Sincroniza o git: add -f do bundle + wrangler.toml, commit e push.
+    5. Sincroniza o git: add do bundle + wrangler.toml (+ CLAUDE.md/README.md se
+       sync-version-docs.ps1 os alterou), commit e push.
 
-  POR QUE O PASSO 5 EXISTE: api/v4.*.js esta no .gitignore (allowlist manual
-  por release). Todo bundle novo nasce invisivel ao git — nao aparece em
-  `git status`, nao entra em `git add .`. Entre 08/07 e 15/07 isso produziu
-  8 dias de canonical-test vermelho: producao em v4.9.158/159 e o repo
-  declarando v4.9.154. O deploy so termina quando o GitHub sabe o que esta
-  no ar. Ver Obsidian notas 25/26 e o guard anti-drift do canonical-test.
+  POR QUE O PASSO 5 EXISTE: api/v4.*.js nao e mais ignorado pelo git (a regra
+  de allowlist manual saiu do .gitignore em 17/07), mas o commit do bundle
+  continua manual porque so deve acontecer DEPOIS do deploy validado — nunca
+  antes. Entre 08/07 e 15/07, quando o bundle nascia invisivel ao git, isso
+  produziu 8 dias de canonical-test vermelho: producao em v4.9.158/159 e o
+  repo declarando v4.9.154. O deploy so termina quando o GitHub sabe o que
+  esta no ar. Ver Obsidian notas 25/26 e o guard anti-drift do canonical-test.
 
   ORDEM IMPORTA: o git so e tocado DEPOIS do deploy validado. Se o deploy
   falhar, o repo nao passa a declarar uma versao que nao esta no ar.

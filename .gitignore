@@ -61,6 +61,43 @@ api/_prod_snapshot_*.js
 # api/v4.*.js NAO e ignorado: o bundle e o artefato deployado e precisa ser
 # auditavel. Ignorar obrigava `git add -f` no deploy e produziu 8 dias de drift
 # entre repo e producao. Se o repo nao sabe o que esta no ar, nao ha auditoria.
+#
+# Excecao: bundles ja superados por uma versao maior, sem valor de auditoria
+# (nao sao main nem rollback declarado no wrangler.toml). Ficam no disco por
+# historico local, mas nao versionados. Nova linha major.minor (ex.: v4.10.x)
+# comeca destravada por desenho: liste explicitamente aqui se superada.
+api/v4.5.2_prod.js
+api/v4.6.0.js
+api/v4.6.1.js
+api/v4.6.2.js
+api/v4.6.3.js
+api/v4.6.4.js
+api/v4.6.5.js
+api/v4.7.0.js
+api/v4.7.1.js
+api/v4.7.2.js
+api/v4.7.3.js
+api/v4.7.5.js
+api/v4.8.0.js
+api/v4.8.1.js
+api/v4.8.2.js
+api/v4.8.3.js
+api/v4.8.4.js
+api/v4.8.5.js
+api/v4.8.6.js
+api/v4.8.7.js
+api/v4.9.67.js
+api/v4.9.68.js
+api/v4.9.69.js
+api/v4.9.100.js
+api/v4.9.101.js
+api/v4.9.102.js
+api/v4.9.103.js
+api/v4.9.104.js
+api/v4.9.105.js
+api/v4.9.106.js
+api/v4.9.107.js
+api/v4.9.108.js
 
 # ---------- Agent local (não versionar) ----------
 .grok/
