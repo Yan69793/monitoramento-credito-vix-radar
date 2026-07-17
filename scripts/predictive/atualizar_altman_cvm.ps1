@@ -131,10 +131,32 @@ if (Test-Path $MapPath) {
         Log 'Baixando cadastro CVM (cad_cia_aberta.csv)...'
         Invoke-WebRequest -Uri 'https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv' -OutFile $cadPath -UseBasicParsing
     }
+    # FIX 2026-07-17: Import-Csv -Encoding Default (comentario antigo dizia "le ANSI/cp1252,
+    # suficiente p/ DENOM_SOCIAL") corrompe acentos para U+FFFD neste ambiente de execucao -
+    # confirmado por round-trip UTF-8 durante a pesquisa de PRED3 (nota Obsidian 60). O CSV da
+    # CVM e latin-1 de verdade; StreamReader explicito (mesmo padrao de reconciliar_ipe_cvm.ps1
+    # e da leitura do DFP logo acima nesta funcao) e o unico caminho confiavel.
     $latin1 = [Text.Encoding]::GetEncoding('ISO-8859-1')
-    $cad = Import-Csv -Path $cadPath -Delimiter ';' -Encoding Default
-    # Import-Csv -Encoding Default em PS 5.1 le ANSI (cp1252) - suficiente p/ DENOM_SOCIAL
-    $ativas = @($cad | Where-Object { $_.SIT -eq 'ATIVO' })
+    $cadReader = New-Object System.IO.StreamReader($cadPath, $latin1)
+    $ativas = New-Object System.Collections.ArrayList
+    try {
+        $cadHeader = $cadReader.ReadLine().Split(';')
+        $cadIx = @{}
+        for ($ci = 0; $ci -lt $cadHeader.Count; $ci++) { $cadIx[$cadHeader[$ci].Trim()] = $ci }
+        foreach ($col in @('DENOM_SOCIAL', 'CNPJ_CIA', 'SIT')) {
+            if (-not $cadIx.ContainsKey($col)) { Log ("ERRO: coluna {0} ausente no cadastro CVM" -f $col); exit 1 }
+        }
+        while ($null -ne ($cadLinha = $cadReader.ReadLine())) {
+            if ([string]::IsNullOrWhiteSpace($cadLinha)) { continue }
+            $cc = $cadLinha.Split(';')
+            if ($cc.Count -le $cadIx['SIT']) { continue }
+            if ($cc[$cadIx['SIT']].Trim() -ne 'ATIVO') { continue }
+            [void]$ativas.Add([pscustomobject]@{ DENOM_SOCIAL = $cc[$cadIx['DENOM_SOCIAL']].Trim(); CNPJ_CIA = $cc[$cadIx['CNPJ_CIA']].Trim(); SIT = 'ATIVO' })
+        }
+    } finally {
+        $cadReader.Dispose()
+    }
+    $ativas = @($ativas)
     Log ("Cadastro CVM: {0} cias ativas" -f $ativas.Count)
     $review = @{}
     foreach ($emp in $emissores) {

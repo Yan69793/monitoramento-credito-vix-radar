@@ -72,5 +72,88 @@
     "cnpj": "30.306.294/0001-45",
     "denom": "BANCO BTG PACTUAL S/A",
     "motivo": "heuristica nao acha ('BANCO BTG PACTUAL' nao comeca com 'BTG PACTUAL') e pegava BTG PACTUAL COMMODITIES SERTRADING. Setor financeiro: idem Bradesco."
+  },
+
+  "_doc2": "Bloco 2026-07-17: promocao de PRED3 (nota Obsidian 60, recomendacao 2) - 16 dos 22 emissores sem CNPJ mapeado (cnpj_emissores.review.json) resolvidos por busca manual no cadastro CVM completo (cad_cia_aberta.csv, ativas + canceladas), porque a heuristica de prefixo nunca tinha candidato algum para eles (denominacao social nao contem o nome curto do emissor - mesmo padrao de CSN/CEMIG/Copel do bloco anterior). Verificado com StreamReader ISO-8859-1 explicito: Import-Csv -Encoding Default corrompeu acentos (virou U+FFFD) neste ambiente de execucao - achado registrado para os scripts, nao afeta os overrides abaixo (verificados via leitura correta).",
+
+  "Assaí Atacadista": {
+    "cnpj": "06.057.223/0001-71",
+    "denom": "SENDAS DISTRIBUIDORA S.A.",
+    "motivo": "heuristica sem candidato: denominacao social nao contem 'ASSAI' nem 'ASSAÍ'. Unico candidato no cadastro (alias ja usado no sync ANBIMA do Worker: SYNC_ALIAS_TO_EMPRESA 'SENDAS DISTRIB')."
+  },
+  "Sanepar": {
+    "cnpj": "76.484.013/0001-45",
+    "denom": "CIA. DE SANEAMENTO DO PARANÁ - SANEPAR",
+    "motivo": "review.json ja tinha esse candidato como 'medio - REVISAR' (match por substring, nao prefixo). Confirmado como unico candidato ativo - promovido para forte."
+  },
+  "CBA": {
+    "cnpj": "61.409.892/0001-73",
+    "denom": "COMPANHIA BRASILEIRA DE ALUMINIO",
+    "motivo": "heuristica sem candidato: sigla 'CBA' nao aparece na denominacao social. Unico candidato ativo no cadastro."
+  },
+  "Minerva Foods": {
+    "cnpj": "67.620.377/0001-14",
+    "denom": "MINERVA S/A",
+    "motivo": "heuristica sem candidato: denominacao social e 'MINERVA S/A', nao contem 'FOODS' (marca comercial, nao razao social). Unico candidato ativo."
+  },
+  "Taesa": {
+    "cnpj": "07.859.971/0001-30",
+    "denom": "TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.",
+    "motivo": "heuristica sem candidato: sigla 'TAESA' nao aparece na denominacao social. Ha 9 subsidiarias regionais 'X TRANSMISSORA DE ENERGIA S.A.' no cadastro - a holding listada (TAEE11) e a TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA."
+  },
+  "Dasa": {
+    "cnpj": "61.486.650/0001-83",
+    "denom": "DIAGNOSTICOS DA AMERICA SA",
+    "motivo": "heuristica sem candidato: sigla 'DASA' nao aparece na denominacao social. Alias ja usado no sync ANBIMA do Worker (SYNC_ALIAS_TO_EMPRESA 'DASA' -> ver TOKENS_ROBUSTOS_ANBIMA 'DIAGNOSTICOS DA AMERICA'). Unico candidato ativo."
+  },
+  "Vivo (Telefônica Brasil)": {
+    "cnpj": "02.558.157/0001-62",
+    "denom": "TELEFÔNICA BRASIL S.A.",
+    "motivo": "heuristica sem candidato: nome do emissor comeca com 'Vivo' (marca comercial), a razao social e Telefônica Brasil. 'VIVO PARTICIPAÇÕES SA' (02.558.074/0001-73) existe no cadastro mas esta CANCELADA - a TELEFÔNICA BRASIL S.A. e a entidade ativa e listada (VIVT3)."
+  },
+  "Usiminas": {
+    "cnpj": "60.894.730/0001-05",
+    "denom": "USINAS SID DE MINAS GERAIS S.A.-USIMINAS",
+    "motivo": "review.json ja tinha esse candidato como 'medio - REVISAR'. Confirmado como unico candidato ativo - promovido para forte."
+  },
+  "Petrobras": {
+    "cnpj": "33.000.167/0001-01",
+    "denom": "PETRÓLEO BRASILEIRO  S.A.  - PETROBRAS",
+    "motivo": "review.json ja tinha esse candidato como 'medio - REVISAR' (match por substring 'PETROBRAS' no fim da denominacao, nao prefixo). Confirmado como unico candidato ativo - promovido para forte."
+  },
+  "Sabesp": {
+    "cnpj": "43.776.517/0001-80",
+    "denom": "CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO",
+    "motivo": "heuristica sem candidato: sigla 'SABESP' nao aparece na denominacao social. CNPJ recente (43.xxx) reflete a privatizacao de 2024 - nao confundir com CNPJ historico anterior a privatizacao, ja descontinuado."
+  },
+  "Copasa": {
+    "cnpj": "17.281.106/0001-03",
+    "denom": "COMPANHIA DE SANEAMENTO DE MINAS GERAIS",
+    "motivo": "heuristica sem candidato: sigla 'COPASA' nao aparece na denominacao social e Normalizar remove 'COMPANHIA'. Unico candidato ativo no cadastro (mesmo padrao de CEMIG/Copel)."
+  },
+  "Pão de Açúcar (GPA)": {
+    "cnpj": "47.508.411/0001-56",
+    "denom": "COMPANHIA BRASILEIRA DE DISTRIBUIÇÃO",
+    "motivo": "heuristica sem candidato: nome do emissor usa a marca 'GPA'/'Pao de Acucar', nao a razao social. Achado no reconciliador semanal (reconciliar_ipe_cvm.ps1, 2026-07-16) com Comunicado ao Mercado sobre Plano de Recuperacao Extrajudicial - emissor CRITICO recorrente com piso no _RJ_FLOOR."
+  },
+  "Eletrobras": {
+    "cnpj": "00.001.180/0001-26",
+    "denom": "AXIA ENERGIA S.A.",
+    "motivo": "heuristica sem candidato: 'ELETROBRAS' nao aparece na denominacao social apos o rebranding. Alias ja usado no sync ANBIMA do Worker (TOKENS_ROBUSTOS_ANBIMA 'CENTRAIS ELETRICAS BRASILEIRAS'). Ha 3 subsidiarias regionais 'AXIA ENERGIA {NORDESTE,NORTE,SUL} S.A.' - a holding e a AXIA ENERGIA S.A. (sem sufixo regional)."
+  },
+  "Equatorial Energia": {
+    "cnpj": "03.220.438/0001-73",
+    "denom": "EQUATORIAL S.A.",
+    "motivo": "heuristica sem candidato: 'ENERGIA' no nome do emissor nao aparece na denominacao social da holding. Ha 3 distribuidoras regionais 'EQUATORIAL {GOIAS,MARANHAO,PARA} DISTRIBUIDORA DE ENERGIA S.A.' - a holding listada (EQTL3) e a EQUATORIAL S.A."
+  },
+  "Natura &Co": {
+    "cnpj": "71.673.990/0001-77",
+    "denom": "NATURA COSMETICOS SA",
+    "motivo": "heuristica sem candidato: '&Co' e marca/branding pos-fusao com Avon, nao aparece na denominacao social. Unico candidato no cadastro (nenhuma entidade 'NATURA &CO HOLDING' separada encontrada) - diferente do padrao Light/Raizen onde a heuristica pegava a entidade errada entre varias; aqui so existe uma."
+  },
+  "Terra Santa Agro": {
+    "cnpj": "40.337.136/0001-06",
+    "denom": "TERRA SANTA PROPRIEDADES AGRÍCOLAS S.A.",
+    "motivo": "CONFIANCA MEDIA - REVISAR: a entidade historica 'TERRA SANTA AGRO S.A.' (05.799.312/0001-20, nome identico ao emissor do Radar) esta com registro CANCELADA no cadastro CVM. A 'TERRA SANTA PROPRIEDADES AGRICOLAS S.A.' e a unica entidade ativa com nome relacionado encontrada, mas nao foi confirmado se ela e a sucessora que carrega a divida (vs. subsidiaria patrimonial separada). Nao aplicar ao Altman sem validacao adicional (checar DFP consolidado e debentures B3 antes de promover para confianca forte)."
   }
 }

@@ -1,112 +1,40 @@
 {
-    "Assaí Atacadista":  {
-                             "cnpj":  null,
-                             "denom":  null,
-                             "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                         },
-    "Banco Pan":  {
-                      "cnpj":  null,
-                      "denom":  null,
-                      "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                  },
-    "AES Brasil":  {
-                       "cnpj":  "15.114.494/0001-02",
-                       "denom":  "CORREDOR LOGÍSTICA E INFRAESTRUTURA S.A.",
-                       "match":  "medio - REVISAR"
-                   },
-    "Sanepar":  {
-                    "cnpj":  "76.484.013/0001-45",
-                    "denom":  "CIA. DE SANEAMENTO DO PARANÁ - SANEPAR",
-                    "match":  "medio - REVISAR"
-                },
-    "CCR":  {
-                "cnpj":  null,
-                "denom":  null,
-                "match":  "sem candidato (fechada/nao-cia-aberta?)"
-            },
-    "Copasa":  {
-                   "cnpj":  null,
-                   "denom":  null,
-                   "match":  "sem candidato (fechada/nao-cia-aberta?)"
-               },
-    "CBA":  {
-                "cnpj":  null,
-                "denom":  null,
-                "match":  "sem candidato (fechada/nao-cia-aberta?)"
-            },
-    "Natura \u0026Co":  {
-                            "cnpj":  "71.673.990/0001-77",
-                            "denom":  "NATURA COSMETICOS SA",
-                            "match":  "medio - REVISAR"
-                        },
-    "Minerva Foods":  {
-                          "cnpj":  null,
-                          "denom":  null,
-                          "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                      },
-    "Taesa":  {
-                  "cnpj":  null,
-                  "denom":  null,
-                  "match":  "sem candidato (fechada/nao-cia-aberta?)"
-              },
-    "Dasa":  {
-                 "cnpj":  null,
-                 "denom":  null,
-                 "match":  "sem candidato (fechada/nao-cia-aberta?)"
-             },
-    "Vivo (Telefônica Brasil)":  {
-                                     "cnpj":  null,
-                                     "denom":  null,
-                                     "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                                 },
-    "Banco Votorantim":  {
-                             "cnpj":  null,
-                             "denom":  null,
-                             "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                         },
-    "Usiminas":  {
-                     "cnpj":  "60.894.730/0001-05",
-                     "denom":  "USINAS SID DE MINAS GERAIS S.A.-USIMINAS",
-                     "match":  "medio - REVISAR"
-                 },
-    "Nexa Resources":  {
-                           "cnpj":  null,
-                           "denom":  null,
-                           "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                       },
-    "Petrobras":  {
-                      "cnpj":  "33.000.167/0001-01",
-                      "denom":  "PETRÓLEO BRASILEIRO  S.A.  - PETROBRAS",
-                      "match":  "medio - REVISAR"
-                  },
-    "Terra Santa Agro":  {
-                             "cnpj":  null,
-                             "denom":  null,
-                             "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                         },
-    "Sabesp":  {
-                   "cnpj":  null,
-                   "denom":  null,
-                   "match":  "sem candidato (fechada/nao-cia-aberta?)"
-               },
-    "Eletrobras":  {
-                       "cnpj":  null,
-                       "denom":  null,
-                       "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                   },
-    "Pão de Açúcar (GPA)":  {
-                                "cnpj":  null,
-                                "denom":  null,
-                                "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                            },
-    "Omega Energia":  {
-                          "cnpj":  null,
-                          "denom":  null,
-                          "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                      },
-    "Equatorial Energia":  {
-                               "cnpj":  null,
-                               "denom":  null,
-                               "match":  "sem candidato (fechada/nao-cia-aberta?)"
-                           }
+  "_doc": "PRED3 (nota Obsidian 60, recomendacao 2). Reduzido de 22 para 6 em 2026-07-17 apos pesquisa manual no cadastro CVM completo (cad_cia_aberta.csv, ativas + canceladas, StreamReader ISO-8859-1 explicito - nao usar Import-Csv -Encoding Default, corrompeu acentos neste ambiente). Os 16 resolvidos foram para cnpj_emissores.overrides.json. Os 6 abaixo tem motivo especifico de por que a CVM nao tem candidato viavel - nao sao mais 'sem candidato (fechada/nao-cia-aberta?)' generico.",
+
+  "CCR": {
+    "cnpj": null,
+    "denom": null,
+    "match": "nao encontrado - registro nao localizado",
+    "motivo": "Nenhuma entidade contendo 'CCR' existe no cadastro CVM completo (cad_cia_aberta.csv), ativa ou cancelada - grep bruto no arquivo confirma zero ocorrencias da string 'CCR'. A holding listada (ticker CCRO3) deve estar registrada sob uma razao social que nao contem a sigla. Encontradas ~25 concessionarias regionais de rodovia ('CONCESSIONARIA...', 'ECO050', 'VIARONDON' etc) mas nenhuma identificavel como a holding CCR. Requer consulta direta ao RAD CVM ou B3 pelo codigo CVM/ticker, nao buscavel por substring de nome."
+  },
+  "Banco Pan": {
+    "cnpj": "59.285.411/0001-13",
+    "denom": "BANCO PAN SA",
+    "match": "encontrado mas CANCELADA - nao promover sem confirmar",
+    "motivo": "Unica entidade 'BANCO PAN' no cadastro tem SIT=CANCELADA. Banco Pan (ticker BPAN4) segue negociado na B3 - a divergencia sugere que o registro de companhia aberta pode ter sido reestruturado (ex: fusao com BTG Pactual, controlador desde 2021) sem atualizar a razao social no dataset, ou que o CNPJ ativo mudou. Nao aplicar como override sem confirmar a situacao atual via RI do Banco Pan ou B3."
+  },
+  "Banco Votorantim": {
+    "cnpj": null,
+    "denom": null,
+    "match": "nao encontrado - so entidade cancelada correlata",
+    "motivo": "Nenhuma entidade 'BANCO VOTORANTIM' ou 'BANCO BV' ativa no cadastro. Unico achado correlato: 'VOTORANTIM FINANCAS S/A' (01.386.256/0001-41), tambem CANCELADA. O banco rebrandeou para 'Banco BV' - pode ja nao ter registro de companhia aberta CVM independente (comum em bancos que mantem so registro BACEN + registro de emissor de valores mobiliarios de divida, categoria nao coberta pelo dataset cad_cia_aberta que e focado em capital aberto/acoes)."
+  },
+  "Nexa Resources": {
+    "cnpj": null,
+    "denom": null,
+    "match": "nao encontrado em nenhum status",
+    "motivo": "Zero ocorrencias de 'NEXA' no cadastro CVM completo (ativas ou canceladas). Nexa Resources e listada primariamente na TSX (Toronto) e NYSE como emissora estrangeira - a operacao brasileira (ex-Votorantim Metais) provavelmente nao tem registro CVM de companhia aberta independente. Reconciliacao via dataset IPE/cadastro CVM nao e viavel para este emissor; requereria fonte de dados SEC/TSX separada."
+  },
+  "Omega Energia": {
+    "cnpj": null,
+    "denom": null,
+    "match": "nao encontrado em nenhum status",
+    "motivo": "Zero ocorrencias de 'OMEGA' no cadastro CVM completo (ativas ou canceladas), sob nenhuma variacao (Omega Energia, Omega Geracao). Possivelmente fechou capital apos aquisicao/reestruturacao societaria sem deixar registro historico sob esse nome, ou emite divida via subsidiaria com razao social nao identificavel pelo nome comercial. Requer investigacao adicional fora do escopo desta rodada (ex: verificar CNPJ via B3/escritura de debenture diretamente)."
+  },
+  "AES Brasil": {
+    "cnpj": null,
+    "denom": null,
+    "match": "ambiguidade de fusao - nao promover sem decisao explicita",
+    "motivo": "Entidades historicas 'AES ELPA SA' (01.917.705/0001-30) e 'AES TIETE SA' (02.998.609/0001-27) existem no cadastro mas ambas CANCELADA. Encontrada 'AUREN ENERGIA S.A' (28.594.234/0001-23) ATIVA - AES Brasil e Auren fundiram-se em 2024. Risco: 'Auren Energia' ja e um emissor separado no Radar (EMISSORES_LISTA) - mapear 'AES Brasil' para o mesmo CNPJ da Auren criaria uma colisao de CNPJ entre dois nomes de emissor distintos no Radar, o que quebraria a premissa 1:1 do join usado no reconciliador semanal (reconciliar_ipe_cvm.ps1) e no Altman. Decisao de produto necessaria antes de mapear: tratar 'AES Brasil' como alias historico de 'Auren Energia' (e possivelmente remover como emissor distinto do Radar) ou manter como emissor sem CNPJ mapeavel."
+  }
 }

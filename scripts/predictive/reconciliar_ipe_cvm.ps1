@@ -120,7 +120,7 @@ try {
     $semCnpj = @()
     if (Test-Path $ReviewPath) {
         $reviewJson = [System.IO.File]::ReadAllText($ReviewPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
-        foreach ($p in $reviewJson.PSObject.Properties) { $semCnpj += $p.Name }
+        foreach ($p in $reviewJson.PSObject.Properties) { if ($p.Name.StartsWith('_')) { continue }; $semCnpj += $p.Name }
     }
     Write-Log ("Universo: {0} emissores com CNPJ mapeado, {1} sem CNPJ (gap informativo - PRED3)" -f $cnpjParaEmissor.Count, $semCnpj.Count)
 
