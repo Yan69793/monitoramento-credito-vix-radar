@@ -1,6 +1,14 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.161)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.162)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.162.js = v4.9.161 + nota Obsidian 60 (recomendacao 5, 2026-07-17): sanitizarPayloadRadar()
+#   mantem o gate binario (CRITICO->RELEVANTE quando tipo_dado==="research"), mas grava o
+#   rebaixamento no proprio evento (campo rebaixado_de) e emite telemetria (RADAR_USAGE_EVENTS,
+#   indice proveniencia_rebaixado) quando ha env2222 disponivel, em vez de existir so em
+#   console.log. env2222 e parametro opcional: passado nos 5 call sites de ingestao real
+#   (batch/noturno/matinal/receber_analise/pulso), omitido em corrigirDatasCvmEstadoKV() (correcao
+#   retroativa em lote sobre eventos historicos - evita duplicar telemetria de ocorrencias antigas
+#   a cada reprocessamento). Mudanca puramente aditiva, mesmo comportamento de classificacao.
 # v4.9.161.js = v4.9.160 + FIX RESEARCHDOWN1 (2026-07-15, incidente relatado pelo operador:
 #   "aprovacao do PRE da Oncoclinicas, materia da InfoMoney, nao aparece no sistema" — a materia
 #   estava presente, mas rebaixada). Causa raiz confirmada por rastreamento completo do codigo
@@ -264,7 +272,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.161.js"
+main       = "v4.9.162.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
