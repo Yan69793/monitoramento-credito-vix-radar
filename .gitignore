@@ -58,19 +58,9 @@ wrangler.toml.bak
 api/_prod_snapshot_*.js
 
 # ---------- Worker bundles ----------
-# api/v4.*.js e ignorado por padrao: sao artefatos grandes (~800 KB cada) e
-# versionar os 74 do disco custaria ~60 MB, crescendo ~600 MB/ano.
-#
-# O bundle EM PRODUCAO e excecao obrigatoria e entra via `git add -f`, feito
-# automaticamente por scripts/deploy-worker.ps1. Nao ha allowlist manual aqui:
-# a que existia (45 linhas !api/v4.9.*.js, v4.9.109 a v4.9.154) era cerimonia
-# pura — 40 entradas apontavam para arquivos que o git ja rastreava (onde o
-# .gitignore nao tem efeito) e 5 para bundles inexistentes. Ela dava a ilusao
-# de politica enquanto o drift de 8 dias (07-15/07) acontecia por baixo: ela
-# parou em v4.9.154, exatamente onde o repo travou enquanto producao ia a
-# v4.9.159. Se voce esta lendo isso para adicionar uma linha nova, nao adicione
-# — use scripts/deploy-worker.ps1, que versiona o bundle vivo sozinho.
-api/v4.*.js
+# api/v4.*.js NAO e ignorado: o bundle e o artefato deployado e precisa ser
+# auditavel. Ignorar obrigava `git add -f` no deploy e produziu 8 dias de drift
+# entre repo e producao. Se o repo nao sabe o que esta no ar, nao ha auditoria.
 
 # ---------- Agent local (não versionar) ----------
 .grok/

@@ -112,15 +112,15 @@ if ($SkipValidation) {
 if ($SkipGit) {
   Write-Host "`nGit pulado (-SkipGit)." -ForegroundColor DarkGray
   Write-Host "ATENCAO: producao esta em $ver e o repo NAO sabe. O canonical-test vai acusar drift ate voce commitar:" -ForegroundColor Yellow
-  Write-Host "  git add -f api/$bundle api/wrangler.toml && git commit && git push" -ForegroundColor Yellow
+  Write-Host "  git add api/$bundle api/wrangler.toml && git commit && git push" -ForegroundColor Yellow
   exit 0
 }
 
 Write-Host "`nSincronizando o git..." -ForegroundColor Yellow
 Push-Location $root
 try {
-  # -f obrigatorio: api/v4.*.js esta no .gitignore.
-  git add -f "api/$bundle" "api/wrangler.toml"
+  # Sem -f: api/v4.*.js saiu do .gitignore, o bundle e rastreado normalmente.
+  git add "api/$bundle" "api/wrangler.toml"
   if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
 
   $staged = git diff --cached --name-only
