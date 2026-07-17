@@ -1,6 +1,73 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.162)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.164)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.164.js = v4.9.163 + 3 correcoes P1 da auditoria 2026-07-17 (base de usuarios crescendo).
+#   Validado antes do deploy: node --check limpo; 35 assercoes comportamentais verdes contra o
+#   bundle real (2 suites .mjs: 23 dos fixes + 12 de regressao — ramo APROVADO do verificador,
+#   health e registro seguem intactos). NAO deployado ainda (aguarda aval do operador).
+#   Rollback: main = "v4.9.163.js" (bundle preservado). Produção estava em v4.9.162, entao este
+#   deploy tambem entrega o FIN1-REV (staleness de 84/103 emissores) e os fixes N1/N2/N3/ALRT1
+#   ja preparados no v4.9.163 mas nunca deployados.
+#   (1) FIX VERIFREJ1 (P1, o mais critico): confirmar_verificacao so agia no veredicto APROVADO
+#   (mesclarEventoVerificado). No REJEITADO emitia telemetria e removia da fila, mas NUNCA tocava
+#   radar:estado — um evento CRITICO alucinado, persistido otimista por receber_analise com
+#   _pendente_verificacao:true, ficava visivel no painel PARA SEMPRE mesmo depois do verificador
+#   adversarial reprova-lo. Era o "ACK falso" na sua forma mais grave: noticia que a propria
+#   verificacao classificou como FALSA seguia no ar. Nova funcao retratarEventoRejeitado espelha
+#   mesclarEventoVerificado removendo do array o evento pendente que casa _chaveDedupEvento —
+#   guarda _pendente_verificacao !== true preserva evento ja confirmado por outra via; sem_eventos
+#   recalculado; _last_scanned_at/_status intactos (nao reabre o FIN1-REV). Contador retratados
+#   no resultado + motivo/retratado em telemetria (extra).
+#   (2) FIX EMAILGET1 (P1): aprovar_email/rejeitar_email mutavam status do usuario num GET. Safe
+#   Links/Mimecast/Proofpoint fazem GET automatico de pre-fetch nos links do e-mail — aprovavam
+#   ou rejeitavam acessos sem clique humano. Agora o GET so valida o token e devolve pagina de
+#   confirmacao com <form method="POST">; a mutacao real exige o POST (handleEmailActionConfirm),
+#   que scanner nao dispara. Token vira single-use (KV email_action:consumido:{sig}, TTL 7d) —
+#   fecha tambem o P2 de link reutilizavel por 7 dias. 1 clique para o admin, imune a pre-fetch.
+#   (3) FIX RLADMIN2 (P1): o gate de rate limit do v4.9.163 cobria 5 actions nomeadas; os ~52
+#   handlers que comparam body.admin_senha !== ADMIN_PASSWORD (admin_listar, sync_cvm, etc.)
+#   ficavam sem throttle — bastava trocar o alvo de brute force. Agora qualquer request com
+#   admin_senha entra no mesmo checkRateLimitV2 por IP. Sem enumerar action, sem infra nova.
+#   P2 NAO incluidos (por decisao de risco, documentados no relatorio da auditoria): RACEKV
+#   (read-modify-write sem CAS no blob semanal — exige DO/D1, arquitetural); fila verif sem teto
+#   (descarte perde evento — decisao de produto); LLM01 prompt injection no verificador (delimitar
+#   campos — muda comportamento do modelo, exige validacao dedicada); XSS em renderEventoCard
+#   (P0 FRONTEND, app/index.html minificado — pipeline Pages separado, tratar em deploy proprio).
+# v4.9.163.js = v4.9.162 + auditoria 2026-07-17 (queixa do operador: "todos os dias tem erros").
+#   (1) FIX FIN1-REV (o achado central, causa raiz da recorrencia): 84 dos 103 emissores estavam
+#   em stale permanente (pior caso 78,7h) enquanto as rotinas relatavam submit_ok=103/deferred=0
+#   — ACK sem avanco de dado. Causa: o FIN1 (v4.9.159) congelava _last_scanned_at no caminho
+#   INCONCLUSIVO para forcar promocao por staleness, mas montarPlanoRotina (:8353) JA nega SKIP a
+#   _status==="INCONCLUSIVO" — o mecanismo era redundante. Como cobertura rasa e o caso COMUM
+#   (noturno-batch-haiku.md manda "classificar ECO/NENHUM com 1 busca" em baixo EWS; medido em
+#   16/07: dos 76 sem_eventos, 54 com 1 fonte e 22 com 2, ZERO atingem o minimo de 7), o
+#   congelamento era permanente: o emissor era varrido toda noite e exibido como abandonado ha 3
+#   dias, com o gate de auditoria e o frescor gritando falso. _last_scanned_at volta a registrar o
+#   fato (foi varrido); a qualidade segue em _status/_cobertura, que e onde ela pertence.
+#   O threshold NAO foi alterado de proposito: com 1 busca nao se comprova ausencia, e baixar de
+#   7 para 3 destravaria zero (testado contra o log real). O "/9" do log do INCONCLUSIVO denuncia
+#   a origem do numero: gate escrito para um desenho de 9 rodadas que o prompt nao implementa mais.
+#   Alinhar prompt e gate (cobertura mais profunda, ~5x token) fica como decisao de produto.
+#   (2) FIX N1: o handler scheduled rodava checkOpenRouterBalance + verificarDisjuntorDiario ANTES
+#   do despacho e abortava os 4 crons, inclusive o watchdog — unico agente que le heartbeats e
+#   avisa que o pipeline parou. O sistema emudecia o alarme exatamente no cenario para o qual ele
+#   existe. Agora os disjuntores so barram matinal/noturno (os que gastam LLM); watchdog e agenda
+#   rodam sempre. O gate de OpenRouter saiu: o provider deixou o cascade de analise no v4.9.108 e
+#   o pipeline inteiro estava refem do saldo de quem nao analisa mais nada. Era o unico call site
+#   de checkOpenRouterBalance — a funcao fica sem uso (corpo nao removido: diff cirurgico).
+#   (3) FIX N2/N3: o rate limit do RLADMIN1 (v4.9.152) cobria so registrar/login. admin_auto_login
+#   emite JWT role:"admin" (12h) atras de senha unica comparada em texto claro e era o unico login
+#   sem throttling; solicitar_reset faz KV.put + envio Resend real por request (email bombing).
+#   Ambos + resetar_senha entram no mesmo checkRateLimitV2 por IP. Sem infra nova.
+#   (4) FIX ALRT1 (parcial): o fallback de selecionarDestinatariosAlerta (ativo quando
+#   EMAIL_ALERTAS_FAVORITOS nao esta setado) fazia broadcast a todos os aprovados sem checar
+#   preferencia — era MAIS amplo que o caminho de favoritos, que respeita prefs.alertas (:4864).
+#   Assimetria, nao decisao. Os dois caminhos agora aplicam o mesmo filtro. EM ABERTO (produto):
+#   prefs.newsletter segue sem efeito sobre alerta critico.
+#   Validado antes do deploy: node --check limpo; 8 casos isolados contra o log real de 16/07
+#   (relogio avanca, INCONCLUSIVO preservado, INCONCLUSIVO segue negando SKIP, cobertura completa
+#   ainda ganha SKIP, evento real nao apagado por rodada rasa, abandono real ainda vira FULL).
+#   Rollback: main = "v4.9.162.js" (bundle preservado).
 # v4.9.162.js = v4.9.161 + nota Obsidian 60 (recomendacao 5, 2026-07-17): sanitizarPayloadRadar()
 #   mantem o gate binario (CRITICO->RELEVANTE quando tipo_dado==="research"), mas grava o
 #   rebaixamento no proprio evento (campo rebaixado_de) e emite telemetria (RADAR_USAGE_EVENTS,
@@ -272,7 +339,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.162.js"
+main       = "v4.9.164.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
