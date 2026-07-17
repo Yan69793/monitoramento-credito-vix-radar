@@ -155,5 +155,37 @@
     "cnpj": "40.337.136/0001-06",
     "denom": "TERRA SANTA PROPRIEDADES AGRÍCOLAS S.A.",
     "motivo": "CONFIANCA MEDIA - REVISAR: a entidade historica 'TERRA SANTA AGRO S.A.' (05.799.312/0001-20, nome identico ao emissor do Radar) esta com registro CANCELADA no cadastro CVM. A 'TERRA SANTA PROPRIEDADES AGRICOLAS S.A.' e a unica entidade ativa com nome relacionado encontrada, mas nao foi confirmado se ela e a sucessora que carrega a divida (vs. subsidiaria patrimonial separada). Nao aplicar ao Altman sem validacao adicional (checar DFP consolidado e debentures B3 antes de promover para confianca forte)."
+  },
+
+  "_doc3": "Bloco 2026-07-17 #2: 6 emissores restantes de PRED3 (cnpj_emissores.review.json). Nenhum existe no cadastro CVM (cad_cia_aberta.csv, ativas + canceladas) sob o nome do emissor. CNPJs obtidos via pesquisa web (fontes: CVM/RAD, B3, BACEN, SEC). Para bancos (Pan, Votorantim) o CNPJ serve para reconciliacao de documentos CVM mas nao para Altman (setor financeiro sem DFP). Para CCR/Nexa/Omega: entidade pode nao ser cia aberta CVM ou constar sob razao social diferente. AES Brasil: fundida com Auren; CNPJ historico mapeado com flag de conflito.",
+  "CCR": {
+    "cnpj": "02.846.056/0001-97",
+    "denom": "CCR S.A.",
+    "motivo": "PRED3: nao encontrada no cadastro CVM (zero ocorrencias de 'CCR'). CNPJ obtido via pesquisa web (MarketScreener/B3). Holding listada CCRO3 registrada sob razao social que nao contem a sigla - provavelmente 'GRUPO CCR S.A.' ou similar. CNPJ 02.846.056/0001-97 confirmado em multiplas fontes. Para Altman: sem DFP via CVM, nao computavel. Para reconciliacao: usar este CNPJ."
+  },
+  "Banco Pan": {
+    "cnpj": "59.285.411/0001-13",
+    "denom": "BANCO PAN SA",
+    "motivo": "PRED3: unica entidade 'BANCO PAN' no cadastro CVM com SIT=CANCELADA. Banco Pan (BPAN4) segue negociado na B3. CNPJ confirmado via BACEN e MarketScreener. Setor financeiro: nao entra no Altman (sem DFP CVM). Para reconciliacao de documentos CVM: usar este CNPJ com ressalva de status cancelado."
+  },
+  "Banco Votorantim": {
+    "cnpj": "59.588.111/0001-03",
+    "denom": "BANCO VOTORANTIM S/A",
+    "motivo": "PRED3: banco rebrandeado para 'Banco BV', sem registro CVM de cia aberta independente (comum em bancos com so registro BACEN + emissor de divida). CNPJ obtido via CVM (Termo de Compromisso RJ2013/4432) e confirmado. Setor financeiro: idem Banco Pan - CNPJ para reconciliacao, nao Altman."
+  },
+  "Nexa Resources": {
+    "cnpj": "42.416.651/0001-07",
+    "denom": "NEXA RECURSOS MINERAIS S.A.",
+    "motivo": "PRED3: zero ocorrencias de 'NEXA' no cadastro CVM. Nexa Resources e listada na TSX/NYSE (emissora estrangeira). Subsidiaria brasileira Nexa Recursos Minerais S.A. (CNPJ 42.416.651/0001-07) encontrada via cbonds/LEI. CONFIRMAR se esta entidade carrega a divida antes de usar em reconciliacao - pode ser apenas subsidiaria operacional."
+  },
+  "Omega Energia": {
+    "cnpj": "09.149.503/0001-06",
+    "denom": "OMEGA GERAÇÃO S.A.",
+    "motivo": "PRED3: zero ocorrencias de 'OMEGA' no cadastro CVM. Holding renomeada para Serena Energia S.A. (ticker OMGE3 → SRNA3?). CNPJ 09.149.503/0001-06 e da subsidiaria de geracao (Omega Geracao S.A., depois Serena Geracao S.A.), obtido via CVM/RAD (protocolo 906571). CONFIRMAR se a holding Serena Energia tem CNPJ diferente antes de usar em reconciliacao."
+  },
+  "AES Brasil": {
+    "cnpj": "37.663.076/0001-07",
+    "denom": "AES BRASIL ENERGIA S.A.",
+    "motivo": "PRED3: AES Brasil fundiu-se com Auren Energia em 2024. CNPJ 37.663.076/0001-07 obtido via CVM/RAD (protocolo 921055, Fato Relevante 30/11/2021 sobre incorporacao da AES Tiete). ATENCAO: 'Auren Energia' ja e emissor separado no Radar (CNPJ 28.594.234/0001-23). Nao mapear AES Brasil para o mesmo CNPJ da Auren - criaria colisao 1:1 no join do reconciliador. Se a fusao ja foi concluida e AES Brasil nao existe mais como entidade independente, considerar remover 'AES Brasil' como emissor distinto do Radar."
   }
 }
