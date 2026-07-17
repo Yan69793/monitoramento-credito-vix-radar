@@ -1,0 +1,80 @@
+﻿{
+    "timestamp":  "2026-07-17T07:00:03-03:00",
+    "erros":  [
+                  {
+                      "task":  "Monitor-TaskScheduler",
+                      "code":  267009,
+                      "codeHex":  "0x41301",
+                      "lastRun":  "2026-07-17 07:00",
+                      "ageDays":  0,
+                      "script":  "E:\\Diretorio\\Claude\\Monitoramento de Credito\\scripts\\monitor-tasks.ps1",
+                      "reason":  "exit code 267009 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-AgendaAgent",
+                      "code":  2147946720,
+                      "codeHex":  "0x800710E0",
+                      "lastRun":  "2026-07-16 09:47",
+                      "ageDays":  0,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\run-agenda-agent.ps1",
+                      "reason":  "exit code 2147946720 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-FechamentoDiario",
+                      "code":  1,
+                      "codeHex":  "0x1",
+                      "lastRun":  "2026-07-16 19:00",
+                      "ageDays":  0,
+                      "script":  "E:\\Diretorio\\Claude\\relatorio-diario-szuchmacher\\scripts\\run_fechamento_claude.ps1",
+                      "reason":  "exit code 1 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-FechamentoWatchdog",
+                      "code":  5,
+                      "codeHex":  "0x5",
+                      "lastRun":  "2026-07-16 19:20",
+                      "ageDays":  0,
+                      "script":  "E:\\Diretorio\\Claude\\relatorio-diario-szuchmacher\\scripts\\briefing_watchdog.ps1",
+                      "reason":  "exit code 5 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-MacroAgent",
+                      "code":  1,
+                      "codeHex":  "0x1",
+                      "lastRun":  "2026-07-10 18:00",
+                      "ageDays":  6,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\deploy-all.ps1",
+                      "reason":  "exit code 1 nao-benigno"
+                  }
+              ],
+    "warnings":  [
+                     {
+                         "task":  "Monitor-Panerai-PAM01356",
+                         "code":  2147942402,
+                         "codeHex":  "0x80070002",
+                         "lastRun":  "2026-07-17 04:49",
+                         "ageDays":  0,
+                         "script":  "C:\\Diretorio\\Pessoal\\Fotos\\Relogio\\monitor-panerai\\rodar.ps1",
+                         "reason":  "PROJETO EXTERNO/PESSOAL - verificar manualmente se necessario"
+                     },
+                     {
+                         "task":  "PME-Codex-Radar-Propostas",
+                         "code":  2147942402,
+                         "codeHex":  "0x80070002",
+                         "lastRun":  "2026-07-16 20:00",
+                         "ageDays":  0,
+                         "script":  "E:\\Diretorio\\Claude\\Agente Yan\\comercial-pmes-marketplaces\\scripts\\codex-radar-propostas.ps1",
+                         "reason":  "PROJETO EXTERNO/PESSOAL - verificar manualmente se necessario"
+                     },
+                     {
+                         "task":  "VIXRadar-AgendaSemanal",
+                         "code":  1,
+                         "codeHex":  "0x1",
+                         "lastRun":  "2026-07-13 03:00",
+                         "ageDays":  4,
+                         "script":  "E:\\Diretorio\\Claude\\Monitoramento de Credito\\scripts\\run_claude_routine.ps1",
+                         "reason":  "Credit balance too low (assinatura Claude Code)"
+                     }
+                 ],
+    "okCount":  10
+}
