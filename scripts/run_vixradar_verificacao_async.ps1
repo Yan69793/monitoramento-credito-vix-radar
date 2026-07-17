@@ -27,6 +27,27 @@ $ModelFallback    = 'claude-sonnet-4-6'  # --fallback-model quando ModelVerifica
 $ChunkSize        = 4
 $PauseSec         = 2
 
+# Orcamento de token (2026-07-17): esta rotina era a UNICA das quatro sem teto nenhum — o token
+# era somado para relatorio e nunca decidia nada. Medido em 16/07: 773.392 tokens para 18 eventos,
+# 55% do consumo do dia inteiro e mais que o hard cap da noturna (700k). Como o limite da assinatura
+# e semanal, o estouro nao aparece aqui: volta 1-2 dias depois como "weekly limit" abortando
+# matinal/noturna — o erro recorrente que o operador via.
+#
+# Calibragem (deliberada, contra o real de 16/07): 773.392 / 5 lotes = ~155k por lote de 4, ou seja
+# ~15k de boot + ~35k por evento. Um cap apertado (testado com 400k) deferiria 10 dos 18 eventos
+# TODO DIA — e como a fila recebe eventos novos diariamente, ela cresceria sem limite: trocaria o
+# estouro de token por uma fila que nunca drena, que e pior. Os 773k sao o custo legitimo de
+# verificar 18 eventos com Sonnet + busca web, e o verificador e o gate que impede evento errado
+# de entrar no painel: raciona-lo e desligar a qualidade para economizar.
+# Entao o teto protege contra ANOMALIA (fila represada, dreno duplicado, loop), nao raciona o dia
+# normal: 900k cobre a fila tipica com folga (~20 eventos); 1,3M corta so o que e anormal.
+# NAO RESOLVIDO AQUI (estrutural, fica em PENDENCIAS): ~35k/evento e caro, e parte da fila e
+# duplicata semantica do mesmo fato (W29 tem 7 eventos da Oncoclinicas para 2 fatos reais) — ou
+# seja, paga-se Sonnet para verificar o mesmo fato varias vezes. Atacar a dedup reduz o custo na
+# origem; mexer no cap so evita o desastre.
+$TokenTarget  = 900000
+$TokenHardCap = 1300000
+
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 # Ver run_vixradar_noturno_claude.ps1 para o achado completo: --mcp-config inline perdia as
 # aspas em contexto de execucao agendada, quebrando 100% das chamadas. Arquivo elimina a fragilidade.
@@ -209,7 +230,19 @@ function Invoke-WorkerJsonUtf8 {
     return ([System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json)
 }
 
-Write-Log 'INICIO: drenar fila de verificacao assincrona'
+# Mutex (2026-07-17): esta era a unica das rotinas sem exclusao mutua, e a com MAIS gatilhos
+# concorrentes: task VIXRadar-Verificacao-Async (10:20) + dreno inline pos-matinal + pos-noturno.
+# Quase-colisao real em 15/07: POS-MATINAL as 10:16:08 e task as 10:20:02, 4 min de folga — so
+# nao colidiu porque a fila estava vazia e o dreno durou 2s. Com fila cheia o dreno leva ~29 min
+# (16/07: 18:39:38 -> 19:08:43), entao qualquer atraso da matinal faz as duas instancias drenarem
+# os mesmos ids e pagarem o mesmo evento 2x. Mesmo padrao ja provado em noturno/matinal/export.
+$__verifMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-verifasync')
+if (-not $__verifMutex.WaitOne(0)) {
+    Write-Log 'ABORT: outra instancia do dreno ja esta em execucao (mutex ocupado) - saindo limpo em 0 tokens'
+    exit 0
+}
+
+Write-Log ('INICIO: drenar fila de verificacao assincrona meta=' + $TokenTarget + ' hard=' + $TokenHardCap)
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     Write-Log 'ERRO: claude.exe ausente'
@@ -226,7 +259,7 @@ try {
 
 try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exit 4 }
 
-$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0 }
+$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0; tokens_desconhecidos = 0; deferred = 0; token_hard_hit = $false }
 $exitCode = 0
 
 try {
@@ -249,6 +282,18 @@ try {
         $stats.lotes++
         $label = 'verifasync-' + $stats.lotes
 
+        # Hard cap PRE-lote (2026-07-17): mede antes de gastar, nao depois. Estimativa por lote =
+        # boot (~15k) + eventos * 35k, ambos medidos no real de 16/07 (773.392 / 5 lotes de 4).
+        # Deferir aqui e barato e reversivel: o item permanece na fila e o proximo dreno o pega —
+        # ao contrario de deferir emissor na noturna, onde a cobertura do dia se perde.
+        $estLote = 15000 + ($chunk.Count * 35000)
+        if (($stats.tokens_total + $estLote) -ge $TokenHardCap) {
+            Write-Log ('HARD CAP pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $TokenHardCap + ' - lote ' + $label + ' e restantes deferred (' + ($itens.Count - $i) + ' evento(s) ficam na fila)')
+            $stats.token_hard_hit = $true
+            $stats.deferred += ($itens.Count - $i)
+            break
+        }
+
         # Prompt construido pelo Worker (fonte unica de verdade das regras do verificador) so para os ids deste chunk -
         # evita duplicar o template do prompt em PowerShell e mantem o system_prompt/user_prompt alinhados ao chunk exato.
         $chunkIds = @($chunk | ForEach-Object { $_.id })
@@ -265,7 +310,18 @@ try {
 
         Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) - ' + (($chunk | ForEach-Object { $_.empresa }) -join ', '))
         $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
-        if ($result.Tokens -gt 0) { $stats.tokens_total += $result.Tokens }
+        if ($result.Tokens -gt 0) {
+            $stats.tokens_total += $result.Tokens
+        } else {
+            # NOVO-2 (2026-07-17): Tokens = -1 significa "parse do envelope falhou", nao "custo zero".
+            # O lote consumiu tokens de verdade. Somar 0 em silencio deixava o hard cap cego: uma
+            # sequencia de falhas de parse atravessava o teto sem nunca disparar. Cobra a estimativa
+            # (nao o zero) e contabiliza o buraco, para o cap errar por excesso de cautela e o
+            # desconhecido aparecer nas metricas em vez de sumir.
+            $stats.tokens_total += $estLote
+            $stats.tokens_desconhecidos++
+            Write-Log ('AVISO: tokens do lote ' + $label + ' DESCONHECIDOS (parse do envelope falhou) - cobrando estimativa ' + $estLote + ' contra o cap; acum=' + $stats.tokens_total)
+        }
 
         if ($result.AuthFailure) {
             Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
@@ -335,7 +391,7 @@ try {
         erros_parse = $stats.erros_parse; refusals = $stats.refusals; tokens_total_est = $stats.tokens_total
     } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
 
-    Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals)
+    Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos)
 
     if ($stats.erros_parse -gt 0) { $exitCode = 6 } elseif ($stats.refusals -gt 0) { $exitCode = 8 }
 } catch {

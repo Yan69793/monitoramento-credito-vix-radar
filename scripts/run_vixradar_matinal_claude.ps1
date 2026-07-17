@@ -243,6 +243,44 @@ function Get-BatchBloqueioSubmit([string[]]$outputLines) {
     return $false
 }
 
+function Get-NomeNormalizado([string]$s) {
+    $norm = $s.Normalize([Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($ch in $norm.ToCharArray()) {
+        if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) {
+            [void]$sb.Append($ch)
+        }
+    }
+    return $sb.ToString().Trim()
+}
+
+function Get-ParsedResultados($outputLines) {
+    # Protocolo do lote: RESULTADO|<empresa>|<json compacto> por emissor + LOTE_RESUMO|buscas=N
+    $map = @{}
+    $buscas = -1
+    foreach ($line in @($outputLines)) {
+        $t = ('' + $line).Trim()
+        if ($t -match '^RESULTADO\|([^|]+)\|(\{.*\})\s*$') {
+            $empName = Get-NomeNormalizado ($Matches[1].Trim())
+            try {
+                $obj = $Matches[2] | ConvertFrom-Json
+                if ($obj) { $map[$empName] = $obj }
+            } catch {
+                Write-Log ('AVISO: RESULTADO com JSON invalido para ' + $empName)
+            }
+        } elseif ($t -match '^LOTE_RESUMO\|buscas=(\d+)') {
+            $buscas = [int]$Matches[1]
+        } elseif ($t -match '^ANOTA\|(.+)$') {
+            Write-Log ('ANOTA: ' + $Matches[1])
+        }
+    }
+    return @{ Map = $map; Buscas = $buscas }
+}
+
+function Get-ResultadoEmissor($parsedMap, [string]$empresaPlano) {
+    return $parsedMap[(Get-NomeNormalizado $empresaPlano)]
+}
+
 function Get-BatchResumoOk([string[]]$outputLines) {
     # Segundo sinal de cobertura, mais robusto que contar linhas (achado 2026-07-13): todo lote
     # encerra com "LOTE_RESUMO|ok=N|fail=M|..." (ou posicional "LOTE_RESUMO|N|M|..."). Quando o
@@ -331,12 +369,13 @@ function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $routineKe
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
     $skill = (Get-Content $skillPath -Raw -Encoding UTF8).Trim()
     return @"
-Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais.
-ROUTINE_KEY=$routineKey
-_matinal=true obrigatorio em receber_analise.
-PROIBIDO: Task, listar_plano_rotina, testing/, narrativa longa.
-Reporte: OK|empresa|tier|classificacao|eventos_count|fontes_count|submit_ok
-Final: LOTE_RESUMO|ok|fail|buscas|criticos
+Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais. Sem chamadas HTTP de submit - o orquestrador grava os resultados.
+PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
+SAIDA - exatamente estas linhas e nada mais:
+1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
+Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
+Cada evento em CRITICO/RELEVANTE EXIGE: memo_acontecimento (2-3 frases, o que aconteceu), memo_importancia_credito (por que importa para o credito), memo_monitorar (o que observar a seguir). Sem esses 3 campos preenchidos o evento fica incompleto.
+Ultima linha: LOTE_RESUMO|buscas=<total de buscas executadas>
 
 JSON:
 $json
@@ -409,6 +448,7 @@ $stats = @{
     skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0; auth_fail = 0; silent_fail = 0; partial_fail = 0
     tokens_total = 0; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0
     batches_run = 0; sonnet_count = 0; haiku_count = 0
+    submit_ok = 0; submit_fail = 0; buscas_total = 0
     criticos = New-Object System.Collections.Generic.List[string]
 }
 $pendingDeferred = New-Object System.Collections.Generic.List[object]
@@ -447,10 +487,10 @@ try {
 
     $jobs = New-Object System.Collections.Generic.List[object]
     foreach ($chunk in (Split-IntoChunks $queues.Sonnet $SonnetChunk)) {
-        $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false })
+        $jobs.Add([ordered]@{ Name = 'sonnet'; Model = $ModelSonnet; Chunk = @($chunk); Skill = $SonnetSkill; Ultra = $false; Provedor = 'claude-sonnet-routine' })
     }
     foreach ($chunk in (Split-IntoChunks $queues.Haiku $HaikuChunk)) {
-        $jobs.Add([ordered]@{ Name = 'haiku'; Model = $ModelHaiku; Chunk = @($chunk); Skill = $HaikuSkill; Ultra = $true })
+        $jobs.Add([ordered]@{ Name = 'haiku'; Model = $ModelHaiku; Chunk = @($chunk); Skill = $HaikuSkill; Ultra = $true; Provedor = 'claude-haiku-routine' })
     }
 
     # Guarda de regressao (2026-07-13): Split-IntoChunks ja teve bug de array-unwrapping do
@@ -494,45 +534,87 @@ try {
             break
         }
 
-        if ($result.Output) {
-            $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) }
-        }
-        $parsed = Get-BatchOkEmissores $result.Output
-        foreach ($c in $parsed.Criticos) { $stats.criticos.Add($c) }
-        # v4.9.161: loga emissores com submit_ok=PENDENTE (bloqueio de ferramenta POST)
-        if ($parsed.Pendentes -and $parsed.Pendentes.Count -gt 0) {
-            Write-Log ('ALERTA: lote ' + $label + ' - ' + $parsed.Pendentes.Count + ' emissor(es) com submit_ok=PENDENTE (bloqueio POST?): ' + ($parsed.Pendentes -join ', '))
-        }
-        # v4.9.161: detecta saida de bloqueio de POST (regressao 15/07). Se o LLM nao tinha
-        # ferramenta para submeter, o lote inteiro e tratado como auth_fail.
-        $bloqueioSubmit = Get-BatchBloqueioSubmit $result.Output
-        if ($bloqueioSubmit) {
-            Write-Log ('ERRO CRITICO: lote ' + $label + ' - LLM sem ferramenta POST (bloqueio de submissao). Nenhum submit real ocorreu.')
-            $stats.auth_fail++
-        }
-        # Cobertura efetiva = maior sinal confiavel entre a contagem de linhas OK| (deduplicada)
-        # e o total declarado no LOTE_RESUMO. Elimina o silent_fail espurio quando o filho usa
-        # formato de tabela/markdown em vez das linhas cruas (exit 6 falso de 2026-07-13).
-        $okLines = [Math]::Max($parsed.Emissores.Count, [Math]::Max((Get-BatchResumoOk $result.Output), 0))
+        if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
 
-        if ($result.Tokens -gt 0) { $stats.tokens_total += $result.Tokens }
-        Write-Log ('Tokens lote=' + $result.Tokens + ' acum=' + $stats.tokens_total)
+        $bt = $result.Tokens
+        if ($bt -gt 0) { $stats.tokens_total += $bt; Write-Log ('Tokens lote=' + $bt + ' acum=' + $stats.tokens_total) }
+        else { Write-Log 'Tokens lote=DESCONHECIDO (parse falhou) - acum inalterado' }
 
-        if ($result.ExitCode -ne 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
+        $parsed = Get-ParsedResultados $result.Output
+        $buscasLote = $parsed.Buscas
 
-        if ($bloqueioSubmit) {
-            # Lote ja tratado como auth_fail acima - nao conta como silent_fail adicional
-        } elseif ($okLines -eq 0) {
+        # retry parcial: reprocessa somente emissores sem linha RESULTADO valida
+        $missing = @($job.Chunk | Where-Object { -not (Get-ResultadoEmissor $parsed.Map $_.empresa) })
+        if ($missing.Count -gt 0) {
+            Write-Log ('WARN: ' + $missing.Count + ' sem RESULTADO no lote ' + $label + ' - retry parcial: ' + (($missing | ForEach-Object { $_.empresa }) -join ', '))
+            $retryLabel = $label + '-retry'
+            $retryPrompt = New-BatchPrompt $missing $retryLabel $job.Model $job.Skill $routineKey -Ultra:$job.Ultra
+            $retryPath = Join-Path $LogDir ('matinal_' + $retryLabel + '_' + $DateTag + '.txt')
+            Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
+            $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
+            if ($retryRes.AuthFailure) {
+                Write-Log ('ERRO CRITICO: claude CLI nao autenticado no retry do lote ' + $label + ' - ' + $missing.Count + ' emissores faltantes receberao fallback. Resultados ja processados (' + ($job.Chunk.Count - $missing.Count) + ' emissor(es)) serao submetidos normalmente.')
+                $exitCode = 7
+                $stats.batch_fail++
+                Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
+            } else {
+                if ($retryRes.Output) { $retryRes.Output | ForEach-Object { Write-Log ('OUT-RETRY: ' + $_) } }
+                if ($retryRes.Tokens -gt 0) { $stats.tokens_total += $retryRes.Tokens }
+                $retryParsed = Get-ParsedResultados $retryRes.Output
+                foreach ($k in @($retryParsed.Map.Keys)) { $parsed.Map[$k] = $retryParsed.Map[$k] }
+                if ($retryParsed.Buscas -gt 0) {
+                    if ($buscasLote -lt 0) { $buscasLote = 0 }
+                    $buscasLote += $retryParsed.Buscas
+                }
+                Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
+            }
+        }
+
+        # silent_fail: zero RESULTADO| parseados
+        $parsedCount = 0
+        foreach ($emp in $job.Chunk) { if (Get-ResultadoEmissor $parsed.Map $emp.empresa) { $parsedCount++ } }
+        if ($parsedCount -eq 0) {
             $stats.silent_fail++
-            Write-Log ('ERRO: lote ' + $label + ' sem linhas OK| - falha silenciosa (0 emissores confirmados)')
-        } elseif ($okLines -lt $job.Chunk.Count) {
-            # 2026-07-13: antes so detectava falha TOTAL (0 linhas OK|); falha PARCIAL (ex.: 4 de 6
-            # confirmados) passava sem log, sem retry, sem registro - os emissores faltantes ficavam
-            # sem cobertura naquele dia sem nenhum sinal no pipeline.
-            $stats.partial_fail++
-            Write-Log ('AVISO: lote ' + $label + ' confirmou apenas ' + $okLines + '/' + $job.Chunk.Count + ' emissores - possivel cobertura parcial (nomes esperados: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', ') + ')')
+            Write-Log ('ERRO: lote ' + $label + ' sem RESULTADO| - falha silenciosa (0/' + $job.Chunk.Count + ' emissores com analise real)')
         }
 
+        # submit centralizado no PS1: schema garantido + retry por emissor
+        $loteOk = 0; $loteFail = 0; $loteCrit = 0
+        foreach ($emp in $job.Chunk) {
+            $res = Get-ResultadoEmissor $parsed.Map $emp.empresa
+            if (-not $res) {
+                Write-Log ('WARN: ' + $emp.empresa + '|sem RESULTADO apos retry - submit minimo de cobertura pendente')
+                $res = [pscustomobject]@{
+                    classificacao_geral = 'NENHUM'; sem_eventos = $true
+                    cobertura_nota = 'Falha de parse do agente apos retry - cobertura pendente, revisar manualmente.'
+                    eventos = @(); fontes_consultadas = @()
+                }
+            }
+            $classif = '' + $res.classificacao_geral
+            if (-not $classif) { $classif = if (@($res.eventos).Count -gt 0) { 'RELEVANTE' } else { 'ECO' } }
+            $subOk = $false; $nEv = 0
+            try {
+                $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor
+                if ($resp.ok -ne $true) {
+                    Start-Sleep -Seconds $PauseSec
+                    $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor
+                }
+                $subOk = ($resp.ok -eq $true)
+                if ($subOk) { $nEv = [int]$resp.n_eventos }
+                elseif ($resp.erro) { Write-Log ('SUBMIT_ERRO|' + $emp.empresa + '|' + $resp.erro) }
+            } catch {
+                Write-Log ('SUBMIT_EXC|' + $emp.empresa + '|' + $_.Exception.Message)
+            }
+            Write-Log ('OK|' + $emp.empresa + '|' + $emp.tier + '|' + $classif + '|' + $nEv + '|' + $subOk)
+            if ($subOk) { $loteOk++ } else { $loteFail++ }
+            if ($classif -eq 'CRITICO') { $loteCrit++; $stats.criticos.Add($emp.empresa) }
+        }
+        $stats.submit_ok += $loteOk
+        $stats.submit_fail += $loteFail
+        if ($buscasLote -ge 0) { $stats.buscas_total += $buscasLote }
+        Write-Log ('LOTE_FECHADO|' + $label + '|ok=' + $loteOk + '|fail=' + $loteFail + '|buscas=' + $buscasLote + '|criticos=' + $loteCrit)
+
+        if ($loteFail -gt 0) { $stats.batch_fail++ } else { $stats.batch_ok++ }
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
 
         if ($stats.tokens_total -ge $TokenTarget -and -not $stats.tokens_over_target) {
@@ -560,11 +642,13 @@ try {
         tokens_hard_hit = $stats.tokens_hard_hit; skip_ok = $stats.skip_ok
         sonnet_llm = $stats.sonnet_count; haiku_llm = $stats.haiku_count; deferred = $stats.deferred
         batches = $stats.batches_run; auth_fail = $stats.auth_fail; silent_fail = $stats.silent_fail
+        submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total
         criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
     } | ConvertTo-Json -Depth 5 | Set-Content $MetricsFile -Encoding UTF8
 
     Write-Log ('FIM: tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap +
         ' sonnet=' + $stats.sonnet_count + ' haiku=' + $stats.haiku_count +
+        ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count +
         ' auth_fail=' + $stats.auth_fail + ' silent_fail=' + $stats.silent_fail)
 
@@ -587,7 +671,7 @@ try {
     if ($stats.auth_fail -gt 0) {
         Write-Log 'ERRO FATAL: claude -p sem sessao autenticada em pelo menos 1 lote - rotina nao cobriu todos os emissores'
         $exitCode = 7
-    } elseif ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0) {
+    } elseif ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0 -or $stats.submit_fail -gt 0) {
         $exitCode = 6
     }
 } finally {

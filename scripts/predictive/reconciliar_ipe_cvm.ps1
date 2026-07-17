@@ -259,14 +259,22 @@ try {
             continue
         }
         try {
-            $estado = [System.IO.File]::ReadAllText($tmpPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
+            # -AsHashTable resolve case sensitivity de chaves no JSON (ex.: "teste" vs "Teste" no
+            # mesmo objeto quebrava ConvertFrom-Json padrao). Hashtable ignora casing.
+            $estado = [System.IO.File]::ReadAllText($tmpPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -AsHashTable
             $semanasLidas++
-            foreach ($p in $estado.results.PSObject.Properties) {
-                $emissor = $p.Name
-                $eventos = @($p.Value.eventos)
+            $results = $estado['results']
+            foreach ($kv in $results.GetEnumerator()) {
+                $emissor = $kv.Key
+                # Guard contra eventos null ou chave ausente: @($null) produz array com 1 elemento
+                # null em vez de array vazio no PowerShell, quebrando o foreach interno com
+                # "Cannot index into a null array" ao acessar $ev['classificacao'].
+                $eventosRaw = $kv.Value['eventos']
+                $eventos = if ($null -eq $eventosRaw) { @() } else { @($eventosRaw) }
                 foreach ($ev in $eventos) {
-                    if ($ev.classificacao -eq 'CRITICO') { $criticosPorEmissor[$emissor] = $true }
-                    elseif ($ev.classificacao -eq 'RELEVANTE') { $relevantesPorEmissor[$emissor] = $true }
+                    if ($null -eq $ev) { continue }
+                    if ($ev['classificacao'] -eq 'CRITICO') { $criticosPorEmissor[$emissor] = $true }
+                    elseif ($ev['classificacao'] -eq 'RELEVANTE') { $relevantesPorEmissor[$emissor] = $true }
                 }
             }
         } catch {
