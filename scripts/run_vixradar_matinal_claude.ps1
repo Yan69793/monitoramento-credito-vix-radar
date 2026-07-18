@@ -37,8 +37,19 @@ Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
-    Add-Content -Path $LogFile -Value $line -Encoding UTF8
     Write-Host $line
+    # Retry com backoff: incidente 2026-07-17 (noturna) - lock de arquivo por instancia concorrente
+    # fazia Add-Content sem try/catch derrubar a rotina inteira (ErrorActionPreference Stop).
+    # Lock persistente degrada para Write-Host (transcript captura), nunca derruba a rotina.
+    for ($i = 1; $i -le 5; $i++) {
+        try {
+            Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop
+            return
+        } catch {
+            if ($i -eq 5) { Write-Host "FALHA Write-Log (Add-Content, $i tentativas): $($_.Exception.Message)" }
+            else { Start-Sleep -Milliseconds 200 }
+        }
+    }
 }
 
 function Invoke-Cleanup([switch]$Aggressive) {

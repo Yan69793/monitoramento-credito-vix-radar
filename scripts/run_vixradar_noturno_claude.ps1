@@ -54,8 +54,18 @@ Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
     Write-Host $line
-    try { Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch {
-        Write-Host "FALHA Write-Log (Add-Content): $($_.Exception.Message)"
+    # Retry com backoff: incidente 2026-07-17 - segunda instancia pendurada segurou o handle do
+    # log por ~2h e TODAS as escritas desta funcao falharam ("arquivo em uso"), cegando a
+    # auditoria da rotina que rodou com sucesso. 5 tentativas x 200ms cobre lock transitorio;
+    # lock persistente ainda degrada para Write-Host (transcript captura), nunca derruba a rotina.
+    for ($i = 1; $i -le 5; $i++) {
+        try {
+            Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop
+            return
+        } catch {
+            if ($i -eq 5) { Write-Host "FALHA Write-Log (Add-Content, $i tentativas): $($_.Exception.Message)" }
+            else { Start-Sleep -Milliseconds 200 }
+        }
     }
 }
 
