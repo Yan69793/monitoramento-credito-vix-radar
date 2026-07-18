@@ -1,6 +1,30 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.164)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.165)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.165.js = v4.9.164 + FIX RACEKV1 (2026-07-18, design da auditoria 2026-07-13/
+#   nota Obsidian 54, nunca deployado por ser mudanca estrutural "sessao dedicada").
+#   persistirResultadoCompartilhado/mesclarEventoVerificado/retratarEventoRejeitado/
+#   rodarSweepRevalidacao faziam leitura-modificacao-escrita do blob semanal inteiro
+#   (radar:estado:{semana}, 103 emissores numa chave so) sem lock — 2 escritas
+#   concorrentes (ex.: dreno de verificacao sobrepondo receber_analise) faziam a ultima
+#   apagar silenciosamente a mutacao da outra. KV nao tem CAS; um lock check-then-set em
+#   KV foi tentado por sessao anterior e descartado (KV nao e fortemente consistente
+#   entre edges). FIX: nova Durable Object EstadoSemanaDO (1 instancia por semana via
+#   idFromName), cujo fetch() enfileira as chamadas numa cadeia de promises (FIFO real,
+#   nao depende dos gates de concorrencia do runtime). As 4 funcoes originais viraram
+#   *_Interno (corpo identico, nao tocado) e sao chamadas so pelo DO; os nomes originais
+#   agora sao wrappers finos que roteiam pelo DO com FAIL-OPEN deliberado — se o binding
+#   estiver ausente ou o DO erra, cai para a funcao *_Interno direta (mesma janela de
+#   corrida de hoje) em vez de descartar o dado. Os 9 call sites das 4 funcoes nao
+#   mudaram. Validado: node --check limpo; 8 asserções isoladas contra a logica de fila
+#   extraida (scratchpad test_estado_semana_do_queue.mjs) — FIFO sob concorrencia, fila
+#   nao emperra apos falha, fail-open sem binding preserva o dado. NAO validado ainda:
+#   comportamento real do binding ESTADO_SEMANA_DO em producao (exige o deploy + migration
+#   abaixo rodarem pelo menos uma vez). NAO deployado — aguarda aval do operador.
+#   Rollback: main = "v4.9.164.js" (bundle preservado); reverter tambem exigiria remover
+#   o binding/migration abaixo ou deixa-los inertes (nova classe sem call site nao quebra
+#   nada se o main voltar a v4.9.164, que nao referencia ESTADO_SEMANA_DO).
+
 # v4.9.164.js = v4.9.163 + 3 correcoes P1 da auditoria 2026-07-17 (base de usuarios crescendo).
 #   Validado antes do deploy: node --check limpo; 35 assercoes comportamentais verdes contra o
 #   bundle real (2 suites .mjs: 23 dos fixes + 12 de regressao — ramo APROVADO do verificador,
@@ -339,7 +363,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.164.js"
+main       = "v4.9.165.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
@@ -356,9 +380,18 @@ id      = "c6805b8d8a7b468e9f854ab4f91fb93a"
 name       = "RATE_LIMITER_DO"
 class_name = "RateLimiterDO"
 
+# RACEKV1 (v4.9.165): serializa leitura-modificacao-escrita do blob radar:estado:{semana}.
+[[durable_objects.bindings]]
+name       = "ESTADO_SEMANA_DO"
+class_name = "EstadoSemanaDO"
+
 [[migrations]]
 tag               = "v1"
 new_sqlite_classes = ["RateLimiterDO"]
+
+[[migrations]]
+tag               = "v2"
+new_sqlite_classes = ["EstadoSemanaDO"]
 
 # ─── ANALYTICS ENGINE ─────────────────────────────────────────────────
 [[analytics_engine_datasets]]
