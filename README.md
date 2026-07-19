@@ -25,7 +25,7 @@ api/
   wrangler.toml      ← config de deploy: main, bindings, cron triggers, custom domain
 
 app/
-  index.html         ← frontend canônico (CACHE_VERSION=v201.76)
+  index.html         ← frontend canônico (CACHE_VERSION=v201.78)
   _headers           ← headers HTTP do Pages (cache, segurança)
   _routes.json       ← roteamento do Pages
   deploy_zip/        ← artefato pronto para deploy (index.html + _headers + _routes.json + version.json)
@@ -83,7 +83,7 @@ research/            ← pesquisa e referências externas
 | Componente | Versão | Confirmada |
 |---|---|---|
 | Worker `radar-credito-api` | v4.9.165 | 2026-07-18 |
-| Frontend `vixradar.com` | v201.76 | 2026-07-17 |
+| Frontend `vixradar.com` | v201.78 | 2026-07-19 |
 | Emissores monitorados | 103 empresas / 13 setores | — |
 
 ---
