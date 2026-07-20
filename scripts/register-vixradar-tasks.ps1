@@ -1,5 +1,18 @@
 ﻿# register-vixradar-tasks.ps1 — registra VIXRadar-Matinal e VIXRadar-Noturno no Task Scheduler
 # Execute como Administrador uma vez.
+#
+# FIX 2026-07-20 (auditoria geral): faltavam -AllowStartIfOnBatteries/-DontStopIfGoingOnBatteries,
+# unicas entre TODOS os scripts register-*-task.ps1 do projeto sem essas flags (comparado com
+# register-all-routines-scheduler.ps1, register-export-historico-task.ps1,
+# register-reconciliacao-cvm-task.ps1, register-verificacao-async-task.ps1,
+# register-ranking-mensal-task.ps1 — todos com AllowStartIfOnBatteries+DontStopIfGoingOnBatteries
+# ou o equivalente XML). Confirmado ao vivo (Export-ScheduledTask): VIXRadar-Matinal e
+# VIXRadar-Noturno, as DUAS rotinas mais criticas do sistema (100% da ingestao diaria dos 103
+# emissores), estavam com DisallowStartIfOnBatteries=true/StopIfGoingOnBatteries=true — se a
+# maquina estivesse rodando na bateria no horario do trigger (10h/18h BRT), a rotina nao
+# iniciava (ou parava no meio) sem nenhum log, sem alerta. Nao aplicado ainda ao Task Scheduler
+# vivo (rodar este script como Administrador reaplica o registro com a config corrigida) —
+# mudanca so no script-fonte, para o operador decidir quando reexecutar.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
@@ -34,7 +47,9 @@ foreach ($t in $tasks) {
         -At "$($t.Hour):$($t.Minute.ToString('D2'))"
     $settings = New-ScheduledTaskSettingsSet `
         -ExecutionTimeLimit (New-TimeSpan -Minutes $t.TimeLimit) `
-        -StartWhenAvailable
+        -StartWhenAvailable `
+        -AllowStartIfOnBatteries `
+        -DontStopIfGoingOnBatteries
 
     if (Get-ScheduledTask -TaskName $t.Name -ErrorAction SilentlyContinue) {
         Unregister-ScheduledTask -TaskName $t.Name -Confirm:$false

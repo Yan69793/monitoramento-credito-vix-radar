@@ -58,14 +58,19 @@ function Write-Log([string]$msg) {
     Write-Host $line
     # Retry com backoff: incidente 2026-07-17 (noturna) - lock de arquivo por instancia concorrente
     # fazia Add-Content sem try/catch derrubar a rotina inteira (ErrorActionPreference Stop).
-    # Lock persistente degrada para Write-Host (transcript captura), nunca derruba a rotina.
-    for ($i = 1; $i -le 5; $i++) {
+    # Reincidencia sustentada 2026-07-18 (LOGLOCK1-REC, PENDENCIAS.md): lock ocupado 7+ min
+    # seguidos (suspeita OneDrive/SearchIndexer). Backoff exponencial ate 8 tentativas
+    # (200/400/800/1600/2000x4ms ~= 11s no pior caso) amplia a janela para locks curtos/medios
+    # sem travar a rotina. Lock persistente/de minutos ainda degrada para Write-Host (transcript
+    # captura), nunca derruba a rotina. Mitigacao parcial, nao a causa raiz (excluir logs/ do
+    # sync do OneDrive seria a correcao completa, fora do escopo de codigo).
+    for ($i = 1; $i -le 8; $i++) {
         try {
             Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop
             return
         } catch {
-            if ($i -eq 5) { Write-Host "FALHA Write-Log (Add-Content, $i tentativas): $($_.Exception.Message)" }
-            else { Start-Sleep -Milliseconds 200 }
+            if ($i -eq 8) { Write-Host "FALHA Write-Log (Add-Content, $i tentativas): $($_.Exception.Message)" }
+            else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
         }
     }
 }
