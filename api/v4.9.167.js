@@ -13178,7 +13178,7 @@ async function executarPipelinePreditivo(env2222, opts) {
     // ── Merton DD ───────────────────────────────────────────────────
     const volData = volMap[empresa];
     const eqVol = volData && volData.vol_anualizada ? volData.vol_anualizada : null;
-    const mktCap = altmanEmp && altmanEmp.market_cap ? altmanEmp.market_cap : (volData && volData.market_cap ? volData.market_cap : null);
+    const mktCap = altmanEmp && altmanEmp.market_cap ? altmanEmp.market_cap : (volData && volData.market_cap && volData.market_cap > 100 ? volData.market_cap : null) || (altmanEmp && altmanEmp.patrimônio_liquido ? altmanEmp.patrimônio_liquido : null);
     const debtCP = altmanEmp && altmanEmp.divida_cp != null ? altmanEmp.divida_cp : null;
     const debtLP = altmanEmp && altmanEmp.divida_lp != null ? altmanEmp.divida_lp : null;
     let mertonResult = null;
