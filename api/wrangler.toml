@@ -1,6 +1,40 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.165)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.167)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.167.js = v4.9.166 + FIX F002 (auditoria geral 2026-07-20, sessao autonoma sem
+#   supervisao — "corrigir tudo que for possivel", achado do TECH_DEBT_AUDIT.md
+#   2026-06-16 revalidado contra o bundle atual): dos 43 catch{} vazios originais do
+#   audit, restavam 7 no v4.9.166 (os outros 36 ja tinham sido corrigidos em versoes
+#   intermediarias sem registro explicito no changelog). Os 7 remanescentes agora logam
+#   a excecao em vez de engoli-la silenciosamente — mudanca puramente aditiva, nenhum
+#   catch mudou de comportamento (mesmo fallback/retorno em todos), so ganharam
+#   console.error com o contexto do handler:
+#   (1) montarAgendaProxima (:9461) — filtro da agenda no briefing; catch cai para
+#   agenda vazia, agora loga.
+#   (2) zscores_anbima (:15468) — leitura de cache KV anbima:zscores; catch cai para
+#   _zs=null (recalcula na hora), agora loga falha de KV.
+#   (3) health GET / (:15511) — calculo de _verificadorRealOk a partir do log de
+#   quarentena; falha aqui MASCARAVA degradacao do verificador no proprio health check
+#   sem nenhum sinal — o mais importante dos 7 pela funcao que protege (health publico
+#   que o operador e o monitor-tasks confiam para saber se o verificador esta ok).
+#   (4) health GET / (:15519) — mesma logica para _filaVerifAtrasada (fila de
+#   verificacao assincrona atrasada >12h).
+#   (5)(6) admin_upsert_analise (:15645-46) — 2 catches aninhados (erro ao emitir
+#   telemetria do proprio erro de alerta; erro ao emitir telemetria de sucesso) —
+#   telemetria-da-telemetria, criticidade baixa mas cobertura completa do F002.
+#   (7) consulta_empresa/pulso manual (:16288) — mesmo padrao aninhado do (5).
+#   + FIX F014 (mesma auditoria, mesmo TECH_DEBT_AUDIT.md 2026-06-16, quick win nunca
+#   aplicado): handleResendWebhook lia `await request.text()` sem nenhum limite de
+#   tamanho antes do JSON.parse/verificacao de assinatura Svix — payload arbitrariamente
+#   grande gastava memoria/CPU antes de qualquer validacao. Cap de 1MB (1e6 bytes),
+#   checado 2x: Content-Length antes de ler o body (curto-circuita sem buffer-la) e
+#   bodyText.length depois (cobre Content-Length ausente/incorreto) — 413 nos dois casos.
+#   Escopo: so o handler do webhook Resend; nenhum outro endpoint tocado.
+#   Validado: node --check limpo; diff vs v4.9.166 = 7 catches (F002) + 1 guard novo
+#   de 2 checks (F014), nenhuma outra linha tocada. NAO DEPLOYADO — sessao autonoma sem
+#   aprovacao do operador para deploy (limite duro do escopo desta sessao); aguarda
+#   `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.167`. Rollback trivial:
+#   main = "v4.9.166.js" (bundle preservado, nenhuma migration/binding nova).
 # v4.9.165.js = v4.9.164 + FIX RACEKV1 (2026-07-18, design da auditoria 2026-07-13/
 #   nota Obsidian 54, nunca deployado por ser mudanca estrutural "sessao dedicada").
 #   persistirResultadoCompartilhado/mesclarEventoVerificado/retratarEventoRejeitado/
@@ -363,7 +397,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.166.js"
+main       = "v4.9.167.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
