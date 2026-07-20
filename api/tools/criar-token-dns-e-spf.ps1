@@ -34,7 +34,13 @@ $ErrorActionPreference = 'Stop'
 $AccountId = '7ac79fb1030e4e81115ef33c21a9b070'
 $ZoneId = 'ea770942bf861c70bc0ce783c4ece5fa'
 $ZoneName = 'vixradar.com'
-$SpfContent = 'v=spf1 include:amazonses.com ~all'
+# SPF1 (PENDENCIAS.md): softfail ~all trocado para hardfail -all, alinhando com o dominio raiz
+# vixradar.com (ja -all). Nota: Ensure-SpfRecord abaixo so CRIA o registro se ausente - se
+# send.vixradar.com ja tem o TXT antigo (~all) publicado, rodar este script NAO atualiza o
+# valor ao vivo (a funcao ve "ja existe" e sai sem PATCH/PUT). Atualizar o registro existente
+# exige edicao manual no painel Cloudflare DNS ou uma chamada dns_records PATCH dedicada -
+# fora do escopo desta correcao (mudanca de DNS de producao exige aprovacao do operador).
+$SpfContent = 'v=spf1 include:amazonses.com -all'
 
 function Invoke-CfApi {
   param(
