@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.166";
+var WORKER_VERSAO = "v4.9.167";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -3489,7 +3489,7 @@ var CUSTO_PRECO = {
   web_search_por_uso: 0.01
 };
 var CUSTO_DISJUNTOR_USD_DIA = 25;
-var WORKER_DEPLOY_NOTE = "v4.9.166: renomeia campo de bookkeeping _ultima_janela_inicio/fim (nome confuso, parecia janela de busca de 1 dia) para _ultima_checagem_vazia_inicio/fim (claro: e so o registro de quando a ultima checagem sem_eventos:true foi feita; a busca em si usa janela de 30 dias, campo distinto em montarPlanoRotina). Puramente cosmetico, write-only, sem leitor no codigo. Achado na auditoria geral 2026-07-19. 2026-07-19.";
+var WORKER_DEPLOY_NOTE = "v4.9.167: F002 catch{} vazios remanescentes (7) com console.error + F014 cap 1MB webhook Resend com 413. Sobre v4.9.166 (bookkeeping rename). 2026-07-20.";
 var ANCORAS_SINTETICAS = [
   "Ra\xEDzen",
   "Petrobras",
