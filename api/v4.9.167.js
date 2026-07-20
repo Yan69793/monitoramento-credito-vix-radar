@@ -12983,11 +12983,90 @@ function scorePreditivoRuleV1(f) {
     drivers.push("desagio");
   }
   if ((f.setor_stress || 0) >= 0.3) score += 8;
+  // Merton DD contribution (v2 feature em shadow — peso ativo mas incremental)
+  if (f.merton_dd != null) {
+    score += scoreMertonToRisk(f.merton_dd);
+    if (f.merton_dd < 1.5) drivers.push("merton");
+  }
   score = Math.min(100, Math.round(score));
   const label = score >= 61 ? "alto" : score >= 36 ? "médio" : score >= 16 ? "baixo" : "neutro";
   return { score, label, drivers: [...new Set(drivers)] };
 }
 __name(scorePreditivoRuleV1, "scorePreditivoRuleV1");
+// ── Merton Distance to Default (v2 predictive) ──────────────────────────────
+// Modelo estrutural de crédito Merton (1974) + KMV.
+// DD = (ln(V/F) + (mu - sigmaV^2/2) * T) / (sigmaV * sqrt(T))
+// PD = N(-DD) via normal CDF (Abramowitz-Stegun aproximação 7.1.26)
+// Ref: Bharath & Shumway (2008), "Forecasting Default with the Merton DD Model"
+function normalCDF(x) {
+  const a1 = 0.254829592, a2 = -0.284496736, a3 = 1.421413741, a4 = -1.453152027, a5 = 1.061405429, p = 0.3275911;
+  const sign = x < 0 ? -1 : 1;
+  x = Math.abs(x) / Math.sqrt(2);
+  const t = 1 / (1 + p * x);
+  const y = 1 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+  return 0.5 * (1 + sign * y);
+}
+function normalPDF(x) {
+  return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+}
+__name(normalCDF, "normalCDF");
+__name(normalPDF, "normalPDF");
+// Merton DD iterativo (padrão KMV / Bharath-Shumway 2008)
+// Resolve o sistema E=V*N(d1)-F*e^(-rT)*N(d2), sigmaE=sigmaV*(V/E)*N(d1)
+// via Newton-Raphson. Inputs em R$ (não milhões).
+// Retorna { dd, pd_1y, asset_value_M, default_point_M, asset_vol, erro }
+function calcMertonDD(equityValue, debtCP, debtLP, equityVol, riskFree, horizonYears) {
+  if (!equityValue || equityValue <= 0 || !debtCP || !debtLP || !equityVol || equityVol <= 0) {
+    return { dd: null, pd_1y: null, asset_value_M: null, default_point_M: null, asset_vol: null, erro: "dados_insuficientes" };
+  }
+  const T = horizonYears || 1;
+  const F = (debtCP || 0) + 0.5 * (debtLP || 0);
+  const E = equityValue;
+  const sigmaE = equityVol;
+  const r = riskFree || 0.10;
+  if (F <= 0 || E <= 0) return { dd: null, pd_1y: null, asset_value_M: null, default_point_M: null, asset_vol: null, erro: "parametros_invalidos" };
+  let V = E + F;
+  let sigmaV = sigmaE * (E / V);
+  const maxIter = 20, tol = 1e-6;
+  let converged = false;
+  for (let iter = 0; iter < maxIter; iter++) {
+    const d1 = (Math.log(V / F) + (r + 0.5 * sigmaV * sigmaV) * T) / (sigmaV * Math.sqrt(T));
+    const d2 = d1 - sigmaV * Math.sqrt(T);
+    const Nd1 = normalCDF(d1);
+    const Nd2 = normalCDF(d2);
+    const E_theo = V * Nd1 - F * Math.exp(-r * T) * Nd2;
+    const dE_dV = Nd1;
+    const V_new = V - (E_theo - E) / dE_dV;
+    if (V_new <= 0) break;
+    V = V_new;
+    sigmaV = sigmaE * E / (V * Nd1);
+    if (sigmaV <= 0) break;
+    if (Math.abs(E_theo - E) / E < tol) { converged = true; break; }
+  }
+  if (!converged && V <= 0) return { dd: null, pd_1y: null, asset_value_M: null, default_point_M: null, asset_vol: null, erro: "nao_convergiu" };
+  const ddFinal = (Math.log(V / F) + (r - 0.5 * sigmaV * sigmaV) * T) / (sigmaV * Math.sqrt(T));
+  const pd = normalCDF(-ddFinal);
+  return {
+    dd: Math.round(ddFinal * 1e4) / 1e4,
+    pd_1y: Math.round(pd * 1e6) / 1e6,
+    asset_value_M: Math.round(V * 1e-6 * 100) / 100,
+    default_point_M: Math.round(F * 1e-6 * 100) / 100,
+    asset_vol: Math.round(sigmaV * 1e4) / 1e4,
+    erro: null
+  };
+}
+__name(calcMertonDD, "calcMertonDD");
+// scoreMertonToRisk: converte DD iterativo → contribuição de score (0-35 pontos)
+// Thresholds baseados na distribuição empírica do DD (KMV/Moody's)
+function scoreMertonToRisk(dd) {
+  if (dd == null) return 0;
+  if (dd < 0.5) return 30;   // distressed / default iminente
+  if (dd < 1.5) return 20;   // muito especulativo
+  if (dd < 2.5) return 10;   // especulativo
+  if (dd < 4.0) return 4;    // borderline
+  return 0;                   // investment grade
+}
+__name(scoreMertonToRisk, "scoreMertonToRisk");
 function scorePreditivoLogisticV2(f) {
   const x = -2.4 + 0.038 * (f.ews_score || 0) + 0.09 * (f.velocity_delta || 0) + 0.11 * (f.spread_score || 0) + 0.22 * (f.event_cluster || 0) + 0.85 * ((f.structural_floor || 0) >= 40 ? 1 : 0) + 0.45 * (f.setor_stress || 0);
   const prob30 = 1 / (1 + Math.exp(-x));
@@ -13024,12 +13103,13 @@ async function executarPipelinePreditivo(env2222, opts) {
   if (!env2222.RADAR_KV) return { ok: false, erro: "KV indisponivel" };
   const persistHist = !(opts && opts.skip_hist_persist);
   const dataISO = obterAgoraBRT().toISOString().split("T")[0];
-  const [estado, anomalias, flagsMap, zscoresKV, fundamentalsKV] = await Promise.all([
+  const [estado, anomalias, flagsMap, zscoresKV, fundamentalsKV, volatilidadeKV] = await Promise.all([
     carregarEstadoMultiSemana(env2222, 3),
     carregarAnomalias(env2222),
     _carregarMapaFlags(env2222),
     env2222.RADAR_KV.get("anbima:zscores", "json").catch(() => null),
-    env2222.RADAR_KV.get("fundamentals:altman:latest", "json").catch(() => null)
+    env2222.RADAR_KV.get("fundamentals:altman:latest", "json").catch(() => null),
+    env2222.RADAR_KV.get("cotacoes:volatilidade:v1", "json").catch(() => null)
   ]);
   const ewsCache = {};
   const eventosCache = {};
@@ -13042,6 +13122,8 @@ async function executarPipelinePreditivo(env2222, opts) {
   const srsMap = calcularSpreadRelSetorMap(zscoresKV);
   const liqMap = liquidezSerieMap(zscoresKV);
   const altmanMap = fundamentalsKV && fundamentalsKV.empresas && typeof fundamentalsKV.empresas === "object" ? fundamentalsKV.empresas : {};
+  const volMap = volatilidadeKV && volatilidadeKV.emissores && typeof volatilidadeKV.emissores === "object" ? volatilidadeKV.emissores : {};
+  const selicAnual = volatilidadeKV && volatilidadeKV.selic_anual ? volatilidadeKV.selic_anual : 0.1375; // default Selic ~13.75% a.a.
   const histMap = {};
   if (persistHist) {
     const histListed = await env2222.RADAR_KV.list({ prefix: "ews:hist:" }).catch(() => ({ keys: [] }));
@@ -13093,6 +13175,19 @@ async function executarPipelinePreditivo(env2222, opts) {
       peers_setor: srs ? srs.peers_setor : null,
       altman_z_em: altmanEmp && altmanEmp.z_em != null ? altmanEmp.z_em : null
     };
+    // ── Merton DD ───────────────────────────────────────────────────
+    const volData = volMap[empresa];
+    const eqVol = volData && volData.vol_anualizada ? volData.vol_anualizada : null;
+    const mktCap = altmanEmp && altmanEmp.market_cap ? altmanEmp.market_cap : (volData && volData.market_cap ? volData.market_cap : null);
+    const debtCP = altmanEmp && altmanEmp.divida_cp != null ? altmanEmp.divida_cp : null;
+    const debtLP = altmanEmp && altmanEmp.divida_lp != null ? altmanEmp.divida_lp : null;
+    let mertonResult = null;
+    if (mktCap && debtCP != null && debtLP != null && eqVol) {
+      mertonResult = calcMertonDD(mktCap, debtCP, debtLP, eqVol, selicAnual, 1);
+    }
+    features.merton_dd = mertonResult ? mertonResult.dd : null;
+    features.merton_pd_1y = mertonResult ? mertonResult.pd_1y : null;
+    features.merton_asset_vol = mertonResult ? mertonResult.asset_vol : null;
     const rule = scorePreditivoRuleV1(features);
     const logistic = scorePreditivoLogisticV2(features);
     const scoreFinal = Math.min(100, Math.round(rule.score * 0.55 + logistic.prob_30d * 100 * 0.45));
@@ -13111,7 +13206,9 @@ async function executarPipelinePreditivo(env2222, opts) {
         ews_score: ewsScore,
         velocity_7d: vel.delta,
         spread_rel_setor: features.spread_rel_setor,
-        liquidez_baixa: features.liquidez_baixa
+        liquidez_baixa: features.liquidez_baixa,
+        merton_dd: features.merton_dd,
+        merton_pd_1y: features.merton_pd_1y
       },
       features
     });
@@ -15665,6 +15762,23 @@ async function __coreFetch(request, env2222) {
       if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       if (!env2222.ANTHROPIC_API_KEY) return resp({ ok: false, erro: "ANTHROPIC_API_KEY nao configurada." }, 400, request);
       return resp(await rodarSweepRevalidacao(env2222), 200, request);
+    }
+    // admin_kv_put — grava chave KV genérica (prefixo restrito: cotacoes: | fundamentals: | data:)
+    if (body.action === "admin_kv_put") {
+      const { admin_senha, key, value, ttl } = body;
+      if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!key || typeof key !== "string" || key.length > 256) return resp({ ok: false, erro: "key invalida." }, 400, request);
+      const allowed = ["cotacoes:", "fundamentals:", "data:"];
+      if (!allowed.some(p => key.startsWith(p))) return resp({ ok: false, erro: "prefixo nao permitido. Use: " + allowed.join(", ") }, 400, request);
+      if (!value || typeof value !== "string" || value.length > 256 * 1024) return resp({ ok: false, erro: "value ausente, nao-string ou >256KB." }, 400, request);
+      const ttlNum = typeof ttl === "number" && ttl > 0 && ttl <= 86400 * 30 ? ttl : 86400;
+      try {
+        await env2222.RADAR_KV.put(key, value, { expirationTtl: ttlNum });
+        await tel(env2222, request, { evento: "admin_kv_put", status_code: 200, extra: { key, size: value.length, ttl: ttlNum } });
+        return resp({ ok: true, key, size: value.length, ttl: ttlNum }, 200, request);
+      } catch (e) {
+        return resp({ ok: false, erro: "KV put falhou: " + (e.message || "desconhecido") }, 500, request);
+      }
     }
     if (body.action === "admin_verificar_evento") {
       const { admin_senha, evento } = body;
