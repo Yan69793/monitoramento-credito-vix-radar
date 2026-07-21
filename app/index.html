@@ -3207,6 +3207,11 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
 .vix-toggle-research-btn.is-on { background: rgba(183, 152, 93, 0.07); border-color: rgba(183, 152, 93, 0.28); color: #B7985D; }
 </style>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">window.VIX_LANDING_EXTENDED=false;window.VIX_LANDING_P1=true;</script>
+<!-- Vercel Speed Insights -->
+<script>
+  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/speed-insights/script.js"></script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">function _normTituloDedup(t){if(!t)return'';return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(fato relevante|comunicado ao mercado|informa sobre|informa acerca de|informa acerca|informa que|comunica sobre|comunica que|informa|comunica|novo|nova|novos|novas|sobre|acerca de|acerca)\b/gi,' ').replace(/\bde\b/gi,' ').replace(/\b(rating)s\b/gi,'$1').replace(/^[^a-z0-9]+/,'').replace(/\s+/g,' ').trim().slice(0,70)}function _isDupSemantico(ev,existentes){const normA=_normTituloDedup(ev.titulo);if(!normA)return false;const empA=(ev.empresa||ev._empresa||'').toLowerCase();for(const ex of existentes){const empB=(ex.empresa||ex._empresa||'').toLowerCase();if(empA!==empB)continue;if((ev.titulo||'')===(ex.titulo||'')&&(ev.data_evento||'')===(ex.data_evento||'')&&empA===empB)return true;const normB=_normTituloDedup(ex.titulo);if(normA!==normB)continue;const dA=new Date(ev.data_evento||''),dB=new Date(ex.data_evento||'');if(isNaN(dA)||isNaN(dB))return true;const diff=Math.abs(dA-dB)/864e5;if(diff<=45)return true;const fA=(ev.fonte_primaria||'').split('?')[0].replace(/\/$/,''),fB=(ex.fonte_primaria||'').split('?')[0].replace(/\/$/,'');if(fA&&fB&&fA===fB)return true;return false}return false}</script></head>
 <body>
 
