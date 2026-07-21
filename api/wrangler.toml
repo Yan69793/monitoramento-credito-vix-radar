@@ -1,6 +1,12 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.167)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.168)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.168.js = v4.9.167 + FIX ADMINXSS1 (auditoria geral 2026-07-21): handleRegistrar
+#   rejeita '<'/'>' em nome/empresa/email (defense-in-depth na origem; o escape de
+#   exibicao vive no frontend v201.81 via h()). Fecha o stored XSS que rodava na
+#   sessao do admin ao abrir a lista de usuarios. NB: v4.9.167 foi publicada 3x com
+#   conteudos diferentes (VERSAO3X); build que estava no ar era 5af9b39 (Merton DD).
+#   Esta versao adota numero novo por deploy, como manda a regra pos-VERSAO3X.
 # v4.9.167.js = v4.9.166 + FIX F002 (auditoria geral 2026-07-20, sessao autonoma sem
 #   supervisao — "corrigir tudo que for possivel", achado do TECH_DEBT_AUDIT.md
 #   2026-06-16 revalidado contra o bundle atual): dos 43 catch{} vazios originais do
@@ -397,7 +403,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.167.js"
+main       = "v4.9.168.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
