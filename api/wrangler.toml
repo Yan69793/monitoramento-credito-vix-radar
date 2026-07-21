@@ -1,6 +1,38 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.170)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.171)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.171.js = v4.9.170 + FIX VERIFQ-ORFAO1 (2026-07-21, sessao remota sem acesso a
+#   producao/KV/DO reais — sandbox com egress bloqueado para api.vixradar.com/*.workers.dev e
+#   sem credencial wrangler/Cloudflare). Achado da auditoria geral do mesmo dia (PENDENCIAS.md):
+#   a fila radar:verif_fila:{data} nao tinha varredura de pendentes orfaos — se o dreno de
+#   verificacao parasse (gap de credito, auth-fail do OAuth, ou o TTL de 7 dias da propria fila
+#   expirando), um evento persistido otimista com _pendente_verificacao:true (receber_analise)
+#   ficava PUBLICO PARA SEMPRE sem retratacao, caso o verificador adversarial nunca chegasse a
+#   rejeita-lo — inclusive um CRITICO alucinado.
+#   FIX (aditivo, 2 partes):
+#   (1) receber_analise agora grava _pendente_desde (timestamp ISO) junto com
+#   _pendente_verificacao:true — campo novo, nao existia antes.
+#   (2) Nova funcao detectarPendentesOrfaos() varre os estados semanais recentes (default 3
+#   semanas) por eventos pendentes cuja idade (via _pendente_desde) excede um limite (default
+#   48h) E que ja nao constam na fila atual (radar:verif_fila, ultimos 7 dias) — ou seja,
+#   cairam da fila sem nunca terem sido processados. Exposta via novo endpoint admin
+#   admin_sweep_pendentes_orfaos (mesmo padrao de auth que admin_sweep_revalidacao/
+#   admin_verificar_evento: admin_senha === ADMIN_PASSWORD). DRY-RUN POR DEFAULT — só lista os
+#   detectados; retratacao real (via retratarEventoRejeitado, roteado pelo EstadoSemanaDO como
+#   as demais escritas de estado) exige confirmar:true explicito no body. Eventos pendentes
+#   anteriores a esta versao nao tem _pendente_desde — sao reportados a parte com motivo
+#   "sem_timestamp_pendente_desde" e NUNCA retratados automaticamente (idade desconhecida,
+#   decisao manual do operador). NAO wireado em nenhum cron — só invocacao manual.
+#   Validado nesta sessao: node --check limpo; 6 asserções isoladas contra a logica pura de
+#   classificacao extraida (scripts/test-verifq-orfao-sweep.mjs) — pendente recente ainda na
+#   janela é ignorado, pendente antigo mas ainda na fila é ignorado (dreno pode chegar),
+#   pendente antigo E fora da fila é marcado orfao, legado sem timestamp nunca é auto-retratado,
+#   limiar exato (>=) conta como orfao. NAO VALIDADO: comportamento contra KV/DO reais em
+#   producao (sandbox sem rede para api.vixradar.com nem credencial Cloudflare) — quem aplicar
+#   este deploy deve rodar admin_sweep_pendentes_orfaos em dry-run primeiro e inspecionar os
+#   itens antes de qualquer confirmar:true. NAO DEPLOYADO — aguarda aval do operador.
+#   Rollback: main = "v4.9.170.js" (bundle preservado); reverter e seguro, o endpoint novo e o
+#   campo _pendente_desde nao tem nenhum call site em versoes anteriores.
 # v4.9.170.js = v4.9.169 + polish lab preditivo (self-review 2026-07-21):
 #   (1) _exigeLabPreditivoAdmin unifica GET op=predictive_v1 e POST
 #       admin_executar_predictive: JWT admin OU ADMIN_PASSWORD
@@ -414,7 +446,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.170.js"
+main       = "v4.9.171.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
