@@ -1,5 +1,5 @@
 ---
-data: 2026-07-20
+data: 2026-07-21
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
 status: ativo
@@ -7,31 +7,33 @@ status: ativo
 
 # Estado Atual — VIX Radar
 
-> [!success] 20/07 16h00 BRT — Sistema 100% operacional. Ver [[63 - Recovery e Deploy 2026-07-20]].
+> [!success] 21/07 ~16h35 BRT — Worker v4.9.169 + frontend v201.82. Preditivo em lab interno (nao user-facing). Ver [[66 - Preditivo lab interno 2026-07-21]].
 
 ## Versões
 
 | Componente | Versão | Health |
 |---|---|---|
-| Worker | **v4.9.167** | `ok:true`, kv/telemetria/verificador ok |
-| Frontend | **v201.80** | `CACHE_VERSION=v201.80`, sem drift |
-| Git | `1842499` | pushado, `origin/main` sincronizado |
+| Worker | **v4.9.169** | `ok:true`, kv/telemetria/verificador ok |
+| Frontend | **v201.82** | `CACHE_VERSION=v201.82`, deploy_zip = app |
+| Git | `40ebc28` (worker `98ef89e` + pages) | prod alinhada |
 
 ## Cobertura
 
 | Métrica | Valor |
 |---|---|
-| Emissores | 103/103 |
-| Stale | 0 |
-| Último scan | 20/07 15:46 BRT (Matinal) |
-| Críticos ativos | 7 (Oncoclínicas, Kora Saúde, Raízen, Oi, Cosan, +2) |
+| Emissores | 103 (universo) |
+| Matinal 21/07 | submit_ok=18, dreno verif ok |
+| Noturno 20/07 | submit_ok=103 no run real; metrics JSON zerado no skip 18h (METRICSZERO1) |
+| Criticos (matinal) | Oncoclínicas, GPA, Cosan, CSN |
 
 ## Tasks Scheduler
 
-| Task | Trigger | StartWhenAvailable | Status |
-|---|---|---|---|
-| VIXRadar-Matinal | 10h seg-sex | true | OK |
-| VIXRadar-Noturno | 18h diário | true | OK |
+| Task | Trigger | Status recente |
+|---|---|---|
+| VIXRadar-Matinal | 10h seg-sex | 21/07 10:00 Result 0 |
+| VIXRadar-Noturno | 18h diario | 20/07 18:00 Result 0 (skip idempotente); proximo 21/07 18:00 |
+| VIXRadar-Coleta-Volatilidade | ~17h | 21/07 13:29 Result 0, mas cotacoes sucesso=0 (VOLFEED1) |
+| VIXRadar-Verificacao-Async | 10:20 | 21/07 Result 0 |
 
 ## Infra
 
@@ -40,20 +42,19 @@ status: ativo
 | RADAR_KV | ok |
 | RATE_LIMITER_DO | ok |
 | RADAR_USAGE_EVENTS | ok |
-| ESTADO_SEMANA_DO | ok |
+| ESTADO_SEMANA_DO | declarado + usado no bundle (nao exposto no health publico) |
 | Providers | 2/2 (Resend + Anthropic) |
 
-## Pendências ativas
+## Pendências ativas (topo)
 
-Ver [[PENDENCIAS.md]] no root. Resumo:
+Ver [[PENDENCIAS.md]]. Topo pos auditoria 65:
 
 | P | Item |
 |---|---|
-| P2 | SPF `send.vixradar.com` hardenizar para `-all` |
-| P2 | FOCUSTRAP1 — focus trap em 8 modais |
-| P3 | Consolidar ADMIN_SENHA / ADMIN_PASSWORD |
-| P3 | Decidir script canônico de registro (REGDRIFT1) |
+| P1 | MERTONLIVE1 — driver invisivel com score movendo |
+| P2 | VOLFEED1 — coleta sobe com 0 cotacoes novas |
+| P2 | METRICSZERO1, VERIFQ-ORFAO1, VERIFINJ1, DEDUPFILA1, ROUTINEKEY-PLAIN1, SPF1, FOCUSTRAP1 |
 
 ---
 
-*Snapshot gerado em 2026-07-20. Para changelog completo: [[03a - Changelog]]. Para detalhes de infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-07-21 (auditoria geral tarde). Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
