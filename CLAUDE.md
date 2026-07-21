@@ -98,7 +98,7 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.167** | `api/wrangler.toml` → **v4.9.167.js** (sincronizado automaticamente em 20/07 contra o health de produção) | https://api.vixradar.com |
+| Worker | **v4.9.169** | `api/wrangler.toml` → **v4.9.169.js** (sincronizado automaticamente em 21/07 contra o health de produção) | https://api.vixradar.com |
 | Frontend | **v201.80** | `app/index.html` → **v201.80** (sincronizado automaticamente em 19/07) | https://vixradar.com |
 | Deploy Worker | `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.160` | — | — |
 | Deploy Pages | `pwsh ./scripts/deploy-pages.ps1` | — | — |
@@ -140,3 +140,13 @@ Token Cloudflare: variável de ambiente do sistema — nunca no repo. Ver Obsidi
 Observe (logs, health, diff) → Orient (≥2 hipóteses) → Decide (ação reversível, ~70% confiança) → Act → re-Observe.
 
 Ação irreversível: mais dados antes de agir.
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
