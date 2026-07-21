@@ -7,15 +7,15 @@ status: ativo
 
 # Estado Atual — VIX Radar
 
-> [!success] 21/07 ~16h35 BRT — Worker v4.9.169 + frontend v201.82. Preditivo em lab interno (nao user-facing). Ver [[66 - Preditivo lab interno 2026-07-21]].
+> [!success] 21/07 — Worker v4.9.170 + frontend v201.83. Preditivo lab interno, gate unificado, UI limpa. Ver [[66 - Preditivo lab interno 2026-07-21]].
 
 ## Versões
 
 | Componente | Versão | Health |
 |---|---|---|
-| Worker | **v4.9.169** | `ok:true`, kv/telemetria/verificador ok |
-| Frontend | **v201.82** | `CACHE_VERSION=v201.82`, deploy_zip = app |
-| Git | `40ebc28` (worker `98ef89e` + pages) | prod alinhada |
+| Worker | **v4.9.170** | `ok:true`, kv/telemetria/verificador ok |
+| Frontend | **v201.83** | `CACHE_VERSION=v201.83` |
+| Git | `0ded699` (+ worker `6ac1f2f`) | prod alinhada |
 
 ## Cobertura
 
