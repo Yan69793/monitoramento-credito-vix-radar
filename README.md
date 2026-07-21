@@ -31,7 +31,7 @@ app/
   deploy_zip/        ← artefato pronto para deploy (index.html + _headers + _routes.json + version.json)
 ```
 
-**Deploy Worker:** `cd api && npx wrangler deploy`
+**Deploy Worker:** usar o canônico `pwsh scripts/deploy-worker.ps1` (commita e pusha, evitando o drift repo/produção de julho). Chamada direta exige `--no-autoconfig`: `cd api && npx wrangler deploy <bundle>.js --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name radar-credito-api`
 
 **Deploy Pages:** `npx wrangler pages deploy ./app/deploy_zip --project-name=radar-credito`
 
@@ -72,7 +72,7 @@ research/            ← pesquisa e referências externas
 | Rate Limiting | Cloudflare Durable Object (`RATE_LIMITER_DO`, SQLite) |
 | Telemetria | Cloudflare Analytics Engine (`RADAR_USAGE_EVENTS`) |
 | IA inline | `claude-haiku-4-5-20251001` via Anthropic API (Pulso manual) |
-| IA em lote | Opus (matinal top 15) + Sonnet 4.6 (noturno 103/103) via Scheduled Tasks |
+| IA em lote | Haiku + Sonnet 4.6 (matinal top 15 e noturno 103/103) via Scheduled Tasks — nenhuma rotina usa Opus |
 | Email | Resend (`boletim@vixradar.com`) |
 | Deploy | Cloudflare Pages + Workers + Wrangler CLI |
 

@@ -88,11 +88,11 @@ Não é reescrita. É extração: identificar grupos de `if (action === 'X') ret
 
 ## Quick wins (< 2h, zero risco de regressão)
 
-- [ ] **F003**: `wrangler secret put ADMIN_EMAIL` + substituir variável no bundle
-- [ ] **F004**: remover `|| "radar"` em `gerarIpPseudoanonimo()` linha 4965
+- [x] **F003** (resolvido, confirmado 21/07): `ADMIN_EMAIL` vem de `aplicarConfigRuntime` a partir de `env`; zero ocorrência de e-mail hardcoded no `v4.9.167.js`. Residual: valor segue em `wrangler.toml [vars]` como plaintext (PII baixa), não como secret.
+- [x] **F004** (resolvido, confirmado 21/07): sem `|| "radar"` no bundle ativo; sem `JWT_SECRET` a função lança.
 - [ ] **F005**: `gerarMessageId()` → `crypto.randomUUID()` (1 linha)
-- [ ] **F006**: adicionar `[observability]` ao `wrangler.toml`
-- [ ] **F015**: atualizar `compatibility_date` para data atual
+- [x] **F006** (resolvido, confirmado 21/07): `[observability] enabled=true` presente no `wrangler.toml`.
+- [x] **F015** (resolvido, confirmado 21/07): `compatibility_date = "2026-06-16"`.
 - [ ] **F022**: `method="get"` → `method="post"` no formulário admin_mercado
 - [ ] **F017**: adicionar `console.warn('[rl] bypass:', _bypass)` nos 3 paths fail-open
 

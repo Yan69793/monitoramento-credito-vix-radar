@@ -36,6 +36,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendências em [[PENDENCIAS.md
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[64 - Auditoria Geral 2026-07-21]] | 21/07 | Geral 4 camadas, 2 P1 novos (ADMINXSS1, VOLTASK1) + Merton confirmado |
 | [[62 - Auditoria Completa e Correcoes 2026-07-20]] | 20/07 | Auditoria + correções (F002, F014, INGEST-GAP1) |
 | [[63 - Recovery e Deploy 2026-07-20]] | 20/07 | Recovery pós INGEST-GAP1 + deploy v4.9.167 |
 | [[60 - Pesquisa e Ideias, Proveniência de Fonte e Ground Truth CVM 2026-07-16]] | 16/07 | Pesquisa CVM + proveniência |
