@@ -239,3 +239,7 @@ app/index.prod.html
 
 # cache de CSVs da CVM (grandes; regeneraveis via download)
 data/cvm/
+
+# Saidas de DryRun da reconciliacao CVM (teste local, regeneravel)
+data/reconciliacao/dryrun/
+Obsidian VIX Radar/Reconciliacao-CVM/dryrun/

@@ -1,3 +1,9 @@
+---
+data: 2026-07-11
+tipo: pesquisa
+tags: [vix-radar, seo, competitivo, marketing]
+status: ativo
+---
 # 50 - Análise Competitiva e Baseline SEO — 2026-07-11
 
 Escopo: concorrentes do VIX Radar no nicho de monitoramento de crédito privado/renda fixa corporativa no Brasil — sites, preços, posições de ranking (SERP), espaços de mercado não ocupados e mecanismo de alerta mensal de ultrapassagem. Consultas realizadas em 2026-07-11 ~02h-02h30 BRT. Classificação das afirmações: [CERTO] fato verificado com fonte · [PROVÁVEL] inferência forte · [HIPÓTESE] não validada.

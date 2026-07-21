@@ -1,3 +1,9 @@
+---
+data: 2026-07-07
+tipo: referencia
+tags: [vix-radar, frontend, versoes, historico]
+status: ativo
+---
 # Histórico de Versões Frontend
 
 **Notas:** Este arquivo centraliza o histórico detalhado de mudanças do frontend (index.html) versões v99–v112. O CLAUDE.md slim faz referência a este documento.

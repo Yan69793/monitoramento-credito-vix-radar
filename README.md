@@ -94,4 +94,4 @@ Leia [`CLAUDE.md`](CLAUDE.md) antes de qualquer ação — contém protocolo obr
 regras invioláveis de deploy, e o mapa completo do sistema.
 
 Decisões operacionais, estado de produção e histórico de deploys estão em
-[`Obsidian VIX Radar/03 - Estado de Produção.md`](Obsidian%20VIX%20Radar/03%20-%20Estado%20de%20Produ%C3%A7%C3%A3o.md).
+[`Obsidian VIX Radar/03 - Estado Atual.md`](Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).

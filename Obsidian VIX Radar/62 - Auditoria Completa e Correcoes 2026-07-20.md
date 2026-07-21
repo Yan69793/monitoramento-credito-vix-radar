@@ -1,4 +1,12 @@
+---
+data: 2026-07-20
+tipo: auditoria
+tags: [vix-radar, auditoria, ingest-gap1, correcoes, f002, f014]
+status: ativo
+---
 # Auditoria Completa + Correções — VIX Radar (2026-07-20)
+
+> [!success] **UPDATE 20/07 16h00 BRT — Recovery concluído, deploy aprovado, fix estrutural aplicado.** Ver [[63 - Recovery e Deploy 2026-07-20]].
 
 Sessão autônoma (sem supervisão em tempo real), disparada pelo operador com mandato amplo: "corrigir tudo que for possível" (bugs, código morto, dívida técnica, brechas de segurança, drift de documentação, rotina duplicada), rodando `/vix-radar-audit` + `/vix-radar-general-audit`. Limite duro: nenhum `wrangler deploy`/`wrangler pages deploy` — correções implementadas e commitadas localmente, deploy fica para aprovação do operador.
 

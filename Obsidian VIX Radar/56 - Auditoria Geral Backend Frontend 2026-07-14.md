@@ -1,3 +1,9 @@
+---
+data: 2026-07-14
+tipo: auditoria
+tags: [vix-radar, auditoria-geral, backend, frontend]
+status: ativo
+---
 # Auditoria Geral — VIX Radar (2026-07-14)
 
 Auditoria de engenharia multi-camada: backend Worker, frontend Pages, segurança, performance, acessibilidade, confiabilidade e produto/domínio. 3 agentes em paralelo + checks manuais.

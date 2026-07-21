@@ -1,3 +1,9 @@
+---
+data: 2026-07-11
+tipo: pesquisa
+tags: [vix-radar, preditivo, altman, dados]
+status: ativo
+---
 # 51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11
 
 Pesquisa na internet (Firecrawl) sobre como evoluir o VIX Radar de sistema reativo (captura de eventos publicados) para sistema de crédito mais preditivo, cruzada com o mapeamento completo do motor v1 em produção. Origem: pedido do operador em 11/07; escopo aprovado: **quick wins + fundação de dados** (plano em `~/.claude/plans/projeto-vix-radar-vixradar-com-twinkly-karp.md`).

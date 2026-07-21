@@ -1,3 +1,9 @@
+---
+data: 2026-07-13
+tipo: referencia
+tags: [vix-radar, worker, versoes, historico]
+status: ativo
+---
 # Histórico de Versões Worker
 
 **Notas:** Este arquivo centraliza o histórico detalhado de mudanças do Worker (CloudFlare) versões v4.5–v4.9. O CLAUDE.md slim faz referência a este documento.

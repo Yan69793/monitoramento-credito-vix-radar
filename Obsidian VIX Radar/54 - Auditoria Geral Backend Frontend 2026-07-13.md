@@ -1,3 +1,9 @@
+---
+data: 2026-07-13
+tipo: auditoria
+tags: [vix-radar, auditoria-geral, backend, frontend, seguranca]
+status: ativo
+---
 # Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)
 
 ## Rodada 4 — STATELEAK1 + colisão nova com sessão concorrente (2026-07-13 ~05:20-05:52 BRT)

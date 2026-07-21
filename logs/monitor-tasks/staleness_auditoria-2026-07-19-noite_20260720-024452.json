@@ -1,0 +1,630 @@
+{
+  "label": "auditoria-2026-07-19-noite",
+  "gerado_em": "2026-07-20T02:44:52.0523795Z",
+  "worker": "2026-W29",
+  "total": 103,
+  "fresh_le24h": 2,
+  "stale_24_48h": 101,
+  "stale_gt48h": 0,
+  "idade_max_h": 27.6,
+  "emissores": [
+    {
+      "empresa": "Oncoclínicas",
+      "last_scanned_at": "2026-07-18T23:46:32.0720000Z",
+      "idade_h": 27.0,
+      "status": "CRITICO"
+    },
+    {
+      "empresa": "Raízen",
+      "last_scanned_at": "2026-07-19T02:46:41.8060000Z",
+      "idade_h": 24.0,
+      "status": "CRITICO"
+    },
+    {
+      "empresa": "Cosan",
+      "last_scanned_at": "2026-07-18T23:46:44.7910000Z",
+      "idade_h": 27.0,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Light",
+      "last_scanned_at": "2026-07-18T23:46:43.0530000Z",
+      "idade_h": 27.0,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Oi",
+      "last_scanned_at": "2026-07-18T23:46:37.0660000Z",
+      "idade_h": 27.0,
+      "status": "CRITICO"
+    },
+    {
+      "empresa": "Vale",
+      "last_scanned_at": "2026-07-18T23:13:49.5670000Z",
+      "idade_h": 27.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Azul",
+      "last_scanned_at": "2026-07-19T02:09:24.7550000Z",
+      "idade_h": 24.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Even Construtora",
+      "last_scanned_at": "2026-07-19T02:25:18.2580000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "CSN",
+      "last_scanned_at": "2026-07-19T02:13:55.2240000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Grupo Mateus",
+      "last_scanned_at": "2026-07-18T23:25:28.2630000Z",
+      "idade_h": 27.3,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Simpar",
+      "last_scanned_at": "2026-07-19T02:09:08.9560000Z",
+      "idade_h": 24.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "BRK Ambiental",
+      "last_scanned_at": "2026-07-19T02:13:39.2900000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "Omega Energia",
+      "last_scanned_at": "2026-07-19T02:06:15.1670000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Brava Energia",
+      "last_scanned_at": "2026-07-18T23:13:45.3840000Z",
+      "idade_h": 27.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Equatorial Energia",
+      "last_scanned_at": "2026-07-19T02:03:01.9580000Z",
+      "idade_h": 24.7,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "CEMIG",
+      "last_scanned_at": "2026-07-19T02:06:01.2070000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Eletrobras",
+      "last_scanned_at": "2026-07-19T02:06:02.5130000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Engie Brasil Energia",
+      "last_scanned_at": "2026-07-18T23:06:05.1810000Z",
+      "idade_h": 27.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Energisa",
+      "last_scanned_at": "2026-07-19T02:06:07.0630000Z",
+      "idade_h": 24.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Copel",
+      "last_scanned_at": "2026-07-19T02:06:08.3890000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Aegea Saneamento",
+      "last_scanned_at": "2026-07-18T23:46:46.6470000Z",
+      "idade_h": 27.0,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Assaí Atacadista",
+      "last_scanned_at": "2026-07-19T02:25:25.6960000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "BRF",
+      "last_scanned_at": "2026-07-19T02:20:54.6850000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Compass Gás e Energia",
+      "last_scanned_at": "2026-07-19T02:13:48.2130000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "CSN Mineração",
+      "last_scanned_at": "2026-07-19T02:14:02.5040000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "Cury Construtora",
+      "last_scanned_at": "2026-07-19T02:25:16.8740000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Cyrela",
+      "last_scanned_at": "2026-07-19T02:25:14.1380000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Dasa",
+      "last_scanned_at": "2026-07-19T02:21:09.7580000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "EcoRodovias",
+      "last_scanned_at": "2026-07-18T23:09:14.3160000Z",
+      "idade_h": 27.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Embraer",
+      "last_scanned_at": "2026-07-19T02:09:18.8090000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Eneva",
+      "last_scanned_at": "2026-07-19T02:06:03.9320000Z",
+      "idade_h": 24.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Hapvida",
+      "last_scanned_at": "2026-07-19T02:21:06.9290000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Iguá Saneamento",
+      "last_scanned_at": "2026-07-19T02:09:27.4730000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Iguatemi",
+      "last_scanned_at": "2026-07-19T02:25:20.9600000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Itaúsa",
+      "last_scanned_at": "2026-07-19T02:17:44.9120000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "JBS",
+      "last_scanned_at": "2026-07-19T02:20:53.3340000Z",
+      "idade_h": 24.4,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Localiza",
+      "last_scanned_at": "2026-07-19T02:17:57.7460000Z",
+      "idade_h": 24.4,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Log Commercial Properties",
+      "last_scanned_at": "2026-07-19T02:25:24.0920000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Marfrig",
+      "last_scanned_at": "2026-07-19T02:20:56.0810000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Minerva Foods",
+      "last_scanned_at": "2026-07-19T02:20:57.4220000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Multiplan",
+      "last_scanned_at": "2026-07-19T02:25:22.3390000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Neoenergia",
+      "last_scanned_at": "2026-07-19T02:06:11.1980000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Petrobras",
+      "last_scanned_at": "2026-07-19T02:13:40.6140000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Rumo",
+      "last_scanned_at": "2026-07-19T02:06:20.8700000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Sabesp",
+      "last_scanned_at": "2026-07-19T02:09:26.1440000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "SLC Agrícola",
+      "last_scanned_at": "2026-07-19T02:21:00.1120000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Taesa",
+      "last_scanned_at": "2026-07-19T02:06:12.4920000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Terra Santa Agro",
+      "last_scanned_at": "2026-07-19T02:21:02.8330000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "TIM Brasil",
+      "last_scanned_at": "2026-07-19T02:21:11.1190000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Vamos",
+      "last_scanned_at": "2026-07-19T02:09:10.3300000Z",
+      "idade_h": 24.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Vivo (Telefônica Brasil)",
+      "last_scanned_at": "2026-07-19T02:25:09.9370000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Hidrovias do Brasil",
+      "last_scanned_at": "2026-07-19T02:09:16.2120000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Kora Saúde",
+      "last_scanned_at": "2026-07-18T23:46:35.2350000Z",
+      "idade_h": 27.0,
+      "status": "CRITICO"
+    },
+    {
+      "empresa": "MRV Engenharia",
+      "last_scanned_at": "2026-07-19T02:25:12.7160000Z",
+      "idade_h": 24.3,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Vibra Energia",
+      "last_scanned_at": "2026-07-19T02:13:44.1620000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "Rede D'Or",
+      "last_scanned_at": "2026-07-19T02:21:05.6090000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Fleury",
+      "last_scanned_at": "2026-07-19T02:21:08.2870000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Totvs",
+      "last_scanned_at": "2026-07-19T02:21:12.8280000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Brisanet",
+      "last_scanned_at": "2026-07-19T02:03:07.0330000Z",
+      "idade_h": 24.7,
+      "status": null
+    },
+    {
+      "empresa": "Algar Telecom",
+      "last_scanned_at": "2026-07-19T02:25:11.3250000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Direcional Engenharia",
+      "last_scanned_at": "2026-07-19T02:25:15.5020000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Trisul",
+      "last_scanned_at": "2026-07-19T02:25:19.6080000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Cogna Educação",
+      "last_scanned_at": "2026-07-19T02:25:27.0460000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "LWSA",
+      "last_scanned_at": "2026-07-19T02:25:30.5000000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Natura &Co",
+      "last_scanned_at": "2026-07-19T02:26:13.9130000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Ultrapar",
+      "last_scanned_at": "2026-07-19T02:26:15.2050000Z",
+      "idade_h": 24.3,
+      "status": null
+    },
+    {
+      "empresa": "Arteris",
+      "last_scanned_at": "2026-07-19T02:09:23.3800000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Copasa",
+      "last_scanned_at": "2026-07-19T02:09:28.8310000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Sanepar",
+      "last_scanned_at": "2026-07-19T02:13:37.9410000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "PRIO",
+      "last_scanned_at": "2026-07-19T02:13:42.8010000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "Gerdau",
+      "last_scanned_at": "2026-07-18T23:13:53.3790000Z",
+      "idade_h": 27.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Usiminas",
+      "last_scanned_at": "2026-07-19T02:13:56.6050000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "Tupy",
+      "last_scanned_at": "2026-07-19T02:13:58.4480000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "CBA",
+      "last_scanned_at": "2026-07-19T02:13:59.7800000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "Nexa Resources",
+      "last_scanned_at": "2026-07-19T02:14:01.1860000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "BTG Pactual",
+      "last_scanned_at": "2026-07-19T02:17:47.5570000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Banco Pan",
+      "last_scanned_at": "2026-07-19T02:17:48.8890000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Banco Daycoval",
+      "last_scanned_at": "2026-07-19T02:17:50.2560000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "CCR",
+      "last_scanned_at": "2026-07-19T02:06:19.1460000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "ISA Energia",
+      "last_scanned_at": "2026-07-19T02:06:09.7910000Z",
+      "idade_h": 24.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Auren Energia",
+      "last_scanned_at": "2026-07-19T02:06:13.8650000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "CPFL Energia",
+      "last_scanned_at": "2026-07-19T02:03:04.4700000Z",
+      "idade_h": 24.7,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Comerc Energia",
+      "last_scanned_at": "2026-07-19T02:06:16.4990000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "AES Brasil",
+      "last_scanned_at": "2026-07-19T02:06:17.8490000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "MRS Logística",
+      "last_scanned_at": "2026-07-19T02:09:11.7470000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Santos Brasil",
+      "last_scanned_at": "2026-07-19T02:09:13.0390000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "JSL",
+      "last_scanned_at": "2026-07-19T02:09:17.5250000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "VLI",
+      "last_scanned_at": "2026-07-18T23:09:20.0610000Z",
+      "idade_h": 27.6,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Tegma",
+      "last_scanned_at": "2026-07-19T02:09:22.1020000Z",
+      "idade_h": 24.6,
+      "status": null
+    },
+    {
+      "empresa": "Cielo",
+      "last_scanned_at": "2026-07-19T02:17:51.6340000Z",
+      "idade_h": 24.5,
+      "status": null
+    },
+    {
+      "empresa": "B3 S.A.",
+      "last_scanned_at": "2026-07-18T23:17:52.9200000Z",
+      "idade_h": 27.4,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Banco Votorantim",
+      "last_scanned_at": "2026-07-19T02:17:55.0270000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Bradesco",
+      "last_scanned_at": "2026-07-19T02:17:56.4000000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Movida",
+      "last_scanned_at": "2026-07-19T02:17:59.1550000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Unidas",
+      "last_scanned_at": "2026-07-19T02:18:00.5390000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Klabin",
+      "last_scanned_at": "2026-07-19T02:18:06.2460000Z",
+      "idade_h": 24.4,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Suzano",
+      "last_scanned_at": "2026-07-19T02:18:07.5280000Z",
+      "idade_h": 24.4,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Irani",
+      "last_scanned_at": "2026-07-19T02:18:08.9500000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "São Martinho",
+      "last_scanned_at": "2026-07-19T02:20:58.7640000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Boa Safra Sementes",
+      "last_scanned_at": "2026-07-19T02:21:01.4340000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Camil Alimentos",
+      "last_scanned_at": "2026-07-19T02:21:04.2690000Z",
+      "idade_h": 24.4,
+      "status": null
+    },
+    {
+      "empresa": "Itaú Unibanco",
+      "last_scanned_at": "2026-07-19T02:17:46.2110000Z",
+      "idade_h": 24.5,
+      "status": "RELEVANTE"
+    },
+    {
+      "empresa": "Pão de Açúcar (GPA)",
+      "last_scanned_at": "2026-07-19T02:46:39.5400000Z",
+      "idade_h": 24.0,
+      "status": "CRITICO"
+    }
+  ]
+}

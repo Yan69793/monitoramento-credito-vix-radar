@@ -1,3 +1,9 @@
+---
+data: 2026-06-18
+tipo: referencia
+tags: [vix-radar, metodo, auditoria, vistoria]
+status: ativo
+---
 # Metodo de Vistoria Operacional — VIX Radar
 
 Atualizado: 2026-06-18

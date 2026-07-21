@@ -1,0 +1,62 @@
+﻿{
+    "timestamp":  "2026-07-19T07:46:53-03:00",
+    "erros":  [
+                  {
+                      "task":  "Szuchmacher-AgendaAgent",
+                      "code":  2147946720,
+                      "codeHex":  "0x800710E0",
+                      "lastRun":  "2026-07-16 09:47",
+                      "ageDays":  2,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\run-agenda-agent.ps1",
+                      "reason":  "exit code 2147946720 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-FechamentoDiario",
+                      "code":  3221225786,
+                      "codeHex":  "0xC000013A",
+                      "lastRun":  "2026-07-17 19:00",
+                      "ageDays":  1,
+                      "script":  "E:\\Diretorio\\Claude\\relatorio-diario-szuchmacher\\scripts\\run_fechamento_claude.ps1",
+                      "reason":  "exit code 3221225786 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-MacroAgent",
+                      "code":  1,
+                      "codeHex":  "0x1",
+                      "lastRun":  "2026-07-17 18:00",
+                      "ageDays":  1,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\run-macro-agent.ps1",
+                      "reason":  "exit code 1 nao-benigno"
+                  }
+              ],
+    "warnings":  [
+                     {
+                         "task":  "Monitor-Panerai-PAM01356",
+                         "code":  2147942402,
+                         "codeHex":  "0x80070002",
+                         "lastRun":  "2026-07-19 04:49",
+                         "ageDays":  0,
+                         "script":  "C:\\Diretorio\\Pessoal\\Fotos\\Relogio\\monitor-panerai\\rodar.ps1",
+                         "reason":  "PROJETO EXTERNO/PESSOAL - verificar manualmente se necessario"
+                     },
+                     {
+                         "task":  "PME-Codex-Radar-Propostas",
+                         "code":  2147942402,
+                         "codeHex":  "0x80070002",
+                         "lastRun":  "2026-07-18 20:00",
+                         "ageDays":  0,
+                         "script":  "E:\\Diretorio\\Claude\\Agente Yan\\comercial-pmes-marketplaces\\scripts\\codex-radar-propostas.ps1",
+                         "reason":  "PROJETO EXTERNO/PESSOAL - verificar manualmente se necessario"
+                     },
+                     {
+                         "task":  "VIXRadar-AgendaSemanal",
+                         "code":  1,
+                         "codeHex":  "0x1",
+                         "lastRun":  "2026-07-13 03:00",
+                         "ageDays":  6,
+                         "script":  "E:\\Diretorio\\Claude\\Monitoramento de Credito\\scripts\\run_claude_routine.ps1",
+                         "reason":  "Credit balance too low (assinatura Claude Code)"
+                     }
+                 ],
+    "okCount":  12
+}

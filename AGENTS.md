@@ -4,4 +4,4 @@ Regras permanentes e protocolo operacional: **[CLAUDE.md](./CLAUDE.md)** (fonte 
 
 - Histórico arquivado: [docs/archived/CLAUDE-HISTORICO.md](./docs/archived/CLAUDE-HISTORICO.md)
 - Roteamento de skills: [.claude/SKILLS-ROUTER.md](./.claude/SKILLS-ROUTER.md)
-- Estado vivo: `Obsidian VIX Radar/03 - Estado de Produção.md`
+- Estado vivo: `Obsidian VIX Radar/03 - Estado Atual.md`

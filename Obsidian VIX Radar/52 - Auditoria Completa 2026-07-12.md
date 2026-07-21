@@ -1,3 +1,9 @@
+---
+data: 2026-07-12
+tipo: auditoria
+tags: [vix-radar, auditoria, operacional]
+status: ativo
+---
 # Auditoria Completa — VIX Radar (2026-07-12)
 
 **Data:** 2026-07-12 ~15h05 BRT

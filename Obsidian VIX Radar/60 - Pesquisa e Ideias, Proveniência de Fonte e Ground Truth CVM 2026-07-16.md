@@ -1,3 +1,9 @@
+---
+data: 2026-07-16
+tipo: pesquisa
+tags: [vix-radar, cvm, proveniencia, ground-truth, dados]
+status: ativo
+---
 # 60 - Pesquisa e Ideias, Proveniência de Fonte e Ground Truth CVM, 2026-07-16
 
 Pesquisa da rotação automática por projeto (skill `jarvis-project-researcher`, rodada 16/07). Lente escolhida a partir do incidente aberto mais recente, [[59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15]]: o Radar decide severidade com heurísticas de nome e de domínio, escritas à mão, sem data de referência e sem fonte. A pesquisa anterior ([[51 - Pesquisa Preditivo v2 2026-07-11]]) cobriu o eixo quantitativo/preditivo e a [[50 - Análise Competitiva e Baseline SEO 2026-07-11]] cobriu o competitivo, então nenhum dos dois é repetido aqui.

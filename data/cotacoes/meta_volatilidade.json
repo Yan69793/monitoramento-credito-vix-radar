@@ -1,0 +1,374 @@
+{
+  "gerado_em": "2026-07-20T19:12:44.0672456-03:00",
+  "total_listados": 94,
+  "sucesso": 73,
+  "falha": 21,
+  "cache_skip": 0,
+  "emissores": {
+    "Sabesp": {
+      "ticker": "SBSP3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.22981
+    },
+    "Localiza": {
+      "ticker": "RENT3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.460618
+    },
+    "CEMIG": {
+      "ticker": "CMIG4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.236077
+    },
+    "Hapvida": {
+      "ticker": "HAPV3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.513078
+    },
+    "Itaú Unibanco": {
+      "ticker": "ITUB4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.208221
+    },
+    "São Martinho": {
+      "ticker": "SMTO3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.357411
+    },
+    "PRIO": {
+      "ticker": "PRIO3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.350075
+    },
+    "Engie Brasil Energia": {
+      "ticker": "EGIE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.21479
+    },
+    "Ultrapar": {
+      "ticker": "UGPA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.354833
+    },
+    "BTG Pactual": {
+      "ticker": "BPAC11.SA",
+      "rows": 498,
+      "vol_anualizada": 0.276657
+    },
+    "Energisa": {
+      "ticker": "ENGI11.SA",
+      "rows": 498,
+      "vol_anualizada": 0.262167
+    },
+    "CSN Mineração": {
+      "ticker": "CMIN3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.416253
+    },
+    "LWSA": {
+      "ticker": "LWSA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.500105
+    },
+    "TIM Brasil": {
+      "ticker": "TIMS3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.272153
+    },
+    "Oncoclínicas": {
+      "ticker": "ONCO3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.909589
+    },
+    "Taesa": {
+      "ticker": "TAEE11.SA",
+      "rows": 498,
+      "vol_anualizada": 0.152695
+    },
+    "Bradesco": {
+      "ticker": "BBDC4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.290211
+    },
+    "Vale": {
+      "ticker": "VALE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.26103
+    },
+    "Fleury": {
+      "ticker": "FLRY3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.298335
+    },
+    "Light": {
+      "ticker": "LIGT3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.686705
+    },
+    "Dasa": {
+      "ticker": "DASA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.478206
+    },
+    "Vamos": {
+      "ticker": "VAMO3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.633606
+    },
+    "Suzano": {
+      "ticker": "SUZB3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.212422
+    },
+    "Minerva Foods": {
+      "ticker": "BEEF3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.484088
+    },
+    "Hidrovias do Brasil": {
+      "ticker": "HBSA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.459393
+    },
+    "Petrobras": {
+      "ticker": "PETR4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.235479
+    },
+    "Eneva": {
+      "ticker": "ENEV3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.278843
+    },
+    "Iguatemi": {
+      "ticker": "IGTI11.SA",
+      "rows": 498,
+      "vol_anualizada": 0.280388
+    },
+    "Brava Energia": {
+      "ticker": "BRAV3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.534047
+    },
+    "Movida": {
+      "ticker": "MOVI3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.701608
+    },
+    "Rumo": {
+      "ticker": "RAIL3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.302223
+    },
+    "EcoRodovias": {
+      "ticker": "ECOR3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.540898
+    },
+    "Camil Alimentos": {
+      "ticker": "CAML3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.394266
+    },
+    "Multiplan": {
+      "ticker": "MULT3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.247543
+    },
+    "ISA Energia": {
+      "ticker": "ISAE4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.16612
+    },
+    "Klabin": {
+      "ticker": "KLBN11.SA",
+      "rows": 498,
+      "vol_anualizada": 0.210787
+    },
+    "Pão de Açúcar (GPA)": {
+      "ticker": "PCAR3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.65876
+    },
+    "Trisul": {
+      "ticker": "TRIS3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.324694
+    },
+    "Direcional Engenharia": {
+      "ticker": "DIRR3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.319925
+    },
+    "Even Construtora": {
+      "ticker": "EVEN3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.350235
+    },
+    "Log Commercial Properties": {
+      "ticker": "LOGG3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.32509
+    },
+    "Vibra Energia": {
+      "ticker": "VBBR3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.298107
+    },
+    "Grupo Mateus": {
+      "ticker": "GMAT3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.329653
+    },
+    "Itaúsa": {
+      "ticker": "ITSA4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.205908
+    },
+    "CBA": {
+      "ticker": "CBAV3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.583427
+    },
+    "CPFL Energia": {
+      "ticker": "CPFE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.196708
+    },
+    "Cogna Educação": {
+      "ticker": "COGN3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.567427
+    },
+    "Tegma": {
+      "ticker": "TGMA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.253135
+    },
+    "Auren Energia": {
+      "ticker": "AURE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.280287
+    },
+    "MRV Engenharia": {
+      "ticker": "MRVE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.500319
+    },
+    "Totvs": {
+      "ticker": "TOTS3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.319769
+    },
+    "Rede D'Or": {
+      "ticker": "RDOR3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.273344
+    },
+    "Oi": {
+      "ticker": "OIBR3.SA",
+      "rows": 498,
+      "vol_anualizada": 1.399136
+    },
+    "Irani": {
+      "ticker": "RANI3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.27412
+    },
+    "CSN": {
+      "ticker": "CSNA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.476874
+    },
+    "JSL": {
+      "ticker": "JSLG3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.532399
+    },
+    "Cosan": {
+      "ticker": "CSAN3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.418105
+    },
+    "Usiminas": {
+      "ticker": "USIM5.SA",
+      "rows": 498,
+      "vol_anualizada": 0.494876
+    },
+    "Tupy": {
+      "ticker": "TUPY3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.31511
+    },
+    "Copasa": {
+      "ticker": "CSMG3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.308282
+    },
+    "Assaí Atacadista": {
+      "ticker": "ASAI3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.481894
+    },
+    "B3 S.A.": {
+      "ticker": "B3SA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.338879
+    },
+    "Raízen": {
+      "ticker": "RAIZ4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.418148
+    },
+    "Gerdau": {
+      "ticker": "GGBR4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.307759
+    },
+    "MRS Logística": {
+      "ticker": "MRSA6B.SA",
+      "rows": 497,
+      "vol_anualizada": 0.246907
+    },
+    "Cyrela": {
+      "ticker": "CYRE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.33774
+    },
+    "Cury Construtora": {
+      "ticker": "CURY3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.313541
+    },
+    "Sanepar": {
+      "ticker": "SAPR4.SA",
+      "rows": 498,
+      "vol_anualizada": 0.269812
+    },
+    "Equatorial Energia": {
+      "ticker": "EQTL3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.275301
+    },
+    "Vivo (Telefônica Brasil)": {
+      "ticker": "VIVT3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.245912
+    },
+    "Simpar": {
+      "ticker": "SIMH3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.636548
+    },
+    "SLC Agrícola": {
+      "ticker": "SLCE3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.236293
+    },
+    "Boa Safra Sementes": {
+      "ticker": "SOJA3.SA",
+      "rows": 498,
+      "vol_anualizada": 0.346865
+    }
+  }
+}

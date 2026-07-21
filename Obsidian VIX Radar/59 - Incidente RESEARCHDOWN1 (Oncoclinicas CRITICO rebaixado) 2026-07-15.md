@@ -1,3 +1,9 @@
+---
+data: 2026-07-15
+tipo: incidente
+tags: [vix-radar, incidente, researchdown1, oncoclinicas, classificacao]
+status: resolvido
+---
 # Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE
 
 **Data:** 2026-07-15

@@ -1,3 +1,9 @@
+---
+data: 2026-07-13
+tipo: auditoria
+tags: [vix-radar, auditoria, operacional, chunck1, financeiro]
+status: ativo
+---
 # Auditoria Completa — VIX Radar (2026-07-13 ~03:15 BRT)
 
 **Data:** 2026-07-13 ~03:15 BRT

@@ -354,7 +354,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         --permission-mode bypassPermissions `
         --output-format json `
         --tools 'WebSearch,WebFetch' `
-        --strict-mcp-config --mcp-config $McpConfigFile 2>>$stderrFile
+        --strict-mcp-config --mcp-config $McpConfigFile `
+        --setting-sources project `
+        --disable-slash-commands `
+        --no-session-persistence `
+        --exclude-dynamic-system-prompt-sections 2>>$stderrFile
     $exitCode = $LASTEXITCODE
     $textOut = @($raw)
     $tokens = -1
@@ -497,7 +501,27 @@ try {
     }
     Write-Log ('SKIP ' + $stats.skip_ok + ' via PS1')
 
-    $analyzeList = @($plano.emissores | Where-Object { $_.tier -ne 'SKIP' })
+    # Idempotencia (portado do noturno, v4.9.151): se a rotina reiniciou ou foi
+    # disparada duas vezes no mesmo dia, nao reprocessar emissor ja feito. O noturno
+    # ganhou isto depois de gastar ~180k tokens repetindo Oi e Oncoclinicas em 09/07;
+    # a matinal ficou sem, e em 15/07 rodou a mesma fila as 10h00 e de novo as 17h26.
+    # Mesmo formato de log (OK|nome|) e mesmo Get-NomeNormalizado dos dois lados.
+    $jaProcessados = @{}
+    if (Test-Path $LogFile) {
+        $linhasOk = Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|([^|]+)' }
+        foreach ($linha in $linhasOk) {
+            if ($linha -match 'OK\|([^|]+)') {
+                $jaProcessados[(Get-NomeNormalizado $Matches[1])] = $true
+            }
+        }
+        if ($jaProcessados.Count -gt 0) {
+            Write-Log ('Idempotencia: ' + $jaProcessados.Count + ' emissores ja processados hoje, pulando')
+        }
+    }
+
+    $analyzeList = @($plano.emissores | Where-Object {
+        $_.tier -ne 'SKIP' -and -not $jaProcessados[(Get-NomeNormalizado ('' + $_.empresa))]
+    })
     $queues = Build-LlmQueues $analyzeList
     Write-Log ('Filas: sonnet=' + $queues.Sonnet.Count + ' haiku=' + $queues.Haiku.Count)
 

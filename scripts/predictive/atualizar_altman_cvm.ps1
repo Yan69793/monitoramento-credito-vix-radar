@@ -280,7 +280,7 @@ Log 'Lendo BPA consolidado (streaming)...'
 $bpa = Carregar-Contas ("dfp_cia_aberta_BPA_con_{0}.csv" -f $AnoDfp) @{ '1' = 1; '1.01' = 1 }
 Log ("BPA: {0} cias" -f $bpa.Count)
 Log 'Lendo BPP consolidado (streaming)...'
-$bpp = Carregar-Contas ("dfp_cia_aberta_BPP_con_{0}.csv" -f $AnoDfp) @{ '2.01' = 1; '2.02' = 1; '2.03' = 1; '2.03.04' = 1; '2.03.05' = 1 }
+$bpp = Carregar-Contas ("dfp_cia_aberta_BPP_con_{0}.csv" -f $AnoDfp) @{ '2.01' = 1; '2.02' = 1; '2.03' = 1; '2.03.04' = 1; '2.03.05' = 1; '2.01.04' = 1; '2.02.01' = 1 }
 Log ("BPP: {0} cias" -f $bpp.Count)
 Log 'Lendo DRE consolidada (streaming)...'
 $dre = Carregar-Contas ("dfp_cia_aberta_DRE_con_{0}.csv" -f $AnoDfp) @{ '3.05' = 1 }
@@ -311,18 +311,23 @@ foreach ($cnpj in $cnpjSet.Keys) {
     $x3 = if ($null -ne $ebit) { $ebit / $at } else { 0 }
     $x4 = $pl / $exigivel
     $z  = 3.25 + 6.56 * $x1 + 3.26 * $x2 + 6.72 * $x3 + 1.05 * $x4
+    $dividaCP = if ($p -and $p.ContainsKey('2.01.04')) { $p['2.01.04'] } else { 0 }
+    $dividaLP = if ($p -and $p.ContainsKey('2.02.01')) { $p['2.02.01'] } else { 0 }
     $empresasOut[$emp] = [ordered]@{
         z_em = [Math]::Round($z, 2)
         x1_cg_at = [Math]::Round($x1, 4); x2_ret_at = [Math]::Round($x2, 4)
         x3_ebit_at = [Math]::Round($x3, 4); x4_pl_exig = [Math]::Round($x4, 4)
         ativo_total = $at
+        patrimônio_liquido = $pl
+        divida_cp = $dividaCP
+        divida_lp = $dividaLP
         dt_refer = $a['DT_REFER']
         cnpj = $cnpj
         aproximacoes = @(if ($null -eq $ebit) { 'ebit_ausente_x3_zero' })
     }
     $calculados++
 }
-foreach ($fin in $Financeiros) { $empresasOut[$fin] = [ordered]@{ z_em = $null; motivo = 'setor financeiro - Altman nao aplicavel' } }
+foreach ($fin in $Financeiros) { $empresasOut[$fin] = [ordered]@{ z_em = $null; divida_cp = $null; divida_lp = $null; patrimônio_liquido = $null; motivo = 'setor financeiro - Altman nao aplicavel' } }
 Log ("Z''-EM calculado para {0} emissores (+{1} financeiros = null)" -f $calculados, $Financeiros.Count)
 if ($calculados -lt 3) { Log 'ERRO: menos de 3 emissores calculados - abortando sem publicar'; exit 1 }
 
