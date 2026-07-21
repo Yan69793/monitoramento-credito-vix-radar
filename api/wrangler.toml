@@ -1,15 +1,16 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.169)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.170)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.170.js = v4.9.169 + polish lab preditivo (self-review 2026-07-21):
+#   (1) _exigeLabPreditivoAdmin unifica GET op=predictive_v1 e POST
+#       admin_executar_predictive: JWT admin OU ADMIN_PASSWORD
+#       (body/query/header x-admin-password | X-Admin-Auth).
+#   (2) model_version v4.9.170+lab_interno; resposta carrega auth_via.
+#   Frontend v201.83: remove dead code renderPredictiveBlock, tira
+#   carregarPredictiveV1 do boot, CSS pv1 morto. Pipeline/crons intactos.
+#   Rollback: main = "v4.9.169.js" + frontend v201.82.
 # v4.9.169.js = v4.9.168 + PREDITIVO LAB-INTERNO (decisao produto 2026-07-21):
-#   Pipeline preditivo (Merton DD + rule_v1 + logistic_v2) CONTINUA rodando nos
-#   crons matinal/noturno e grava `predictive_v1:latest` no KV para research e
-#   export historico. Deixa de ser produto user-facing:
-#   (1) op=predictive_v1 exige JWT admin (_exigeJwtAdmin); usuarios comuns 403.
-#   (2) payload com user_facing:false + lab_interno:true + model_version
-#       v4.9.169+lab_interno.
-#   (3) driver merton entra em drivers sempre que pontuar (so lab).
-#   Frontend v201.82 desliga fetch/UI do bloco preditivo. EWS e eventos intactos.
+#   Pipeline continua nos crons; op=predictive_v1 so admin; UI desligada.
 #   Rollback: main = "v4.9.168.js" + frontend v201.81.
 # v4.9.168.js = v4.9.167 + FIX ADMINXSS1 (auditoria geral 2026-07-21): handleRegistrar
 #   rejeita '<'/'>' em nome/empresa/email (defense-in-depth na origem; o escape de
@@ -413,7 +414,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.169.js"
+main       = "v4.9.170.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

@@ -98,12 +98,12 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.169** | `api/wrangler.toml` → **v4.9.169.js** (sincronizado automaticamente em 21/07 contra o health de produção) | https://api.vixradar.com |
-| Frontend | **v201.82** | `app/index.html` → **v201.82** (sincronizado automaticamente em 21/07) | https://vixradar.com |
+| Worker | **v4.9.170** | `api/wrangler.toml` → **v4.9.170.js** (sincronizado automaticamente em 21/07 contra o health de produção) | https://api.vixradar.com |
+| Frontend | **v201.83** | `app/index.html` → **v201.83** (UI preditiva removida; EWS intacto) | https://vixradar.com |
 | Deploy Worker | `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.160` | — | — |
 | Deploy Pages | `pwsh ./scripts/deploy-pages.ps1` | — | — |
 
-Sem drift repo/prod (reconciliado 15/07, canonical-test verde após 8 dias vermelho — ver nota de sessão). v4.9.150 = diff pendente de 10/07 (normalizarMojibake no read path + briefing com fix porSetor) + preditivo quick wins (filtro de liquidez ativo, `spread_rel_setor` shadow, features+`model_version` no payload `predictive_v1:latest`, leitura null-safe de `fundamentals:altman:latest`). Rotinas locais novas: `VIXRadar-Export-Historico` (diária 20h45 — fundação de dados preditiva, `data/historico/`) e `VIXRadar-Ranking-Mensal` (dia 1, 11h30 — alerta de ultrapassagem SEO). Ver notas 50 e 51 do vault.
+Sem drift repo/prod (reconciliado 15/07, canonical-test verde após 8 dias vermelho — ver nota de sessão). v4.9.150 = diff pendente de 10/07 (normalizarMojibake no read path + briefing com fix porSetor) + preditivo quick wins (filtro de liquidez ativo, `spread_rel_setor` shadow, features+`model_version` no payload `predictive_v1:latest`, leitura null-safe de `fundamentals:altman:latest`). Rotinas locais novas: `VIXRadar-Export-Historico` (diária 20h45 — fundação de dados preditiva, `data/historico/`) e `VIXRadar-Ranking-Mensal` (dia 1, 11h30 — alerta de ultrapassagem SEO). Ver notas 50 e 51 do vault. Preditivo e lab interno desde v4.9.169/170: pipeline nos crons grava KV; op=predictive_v1 so admin; painel sem score preditivo (v201.83).
 
 **Deploy é pelos scripts, não na mão.** `deploy-worker.ps1` e `deploy-pages.ps1` deployam, validam produção e **commitam/pusham** numa tacada. **RESOLVIDO em `a2e7d84`:** `api/v4.*.js` saiu do `.gitignore` — o bundle deployado é auditável no repo, sem allowlist manual e sem precisar de `-f`. Foi a ausência dessa linha que deixou produção chegar a v4.9.159 com o repo declarando v4.9.154 e o canonical-test 8 dias vermelho (07/07 a 15/07); não reintroduzir o ignore. Se precisar deployar cru, o passo depois é só `git add api/<versao>.js api/wrangler.toml && git commit && git push`.
 
