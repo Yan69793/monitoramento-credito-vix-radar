@@ -463,6 +463,9 @@ CLOUDFLARE_ACCOUNT_ID = "7ac79fb1030e4e81115ef33c21a9b070"
 ADMIN_EMAIL = "szuchmacheryan@gmail.com"
 # false = cron nao roda executarVarreduraMatinal/BatchComFila (Claude tiered v2 assume analise AI)
 VARREDURA_CRON_AI_ENABLED = "false"
+# 2026-07-23: habilita envio do boletim diario por email via Resend (estava desligado desde v4.9.119)
+RELATORIO_DIARIO_ENABLED = "1"
+EMAIL_ALERTAS_ENABLED = "1"
 
 # ─── CUSTOM DOMAIN ────────────────────────────────────────────────────
 # api.vixradar.com é o AG_API usado pelo frontend para login/auth.
