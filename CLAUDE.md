@@ -99,7 +99,7 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
 | Worker | **v4.9.170** | `api/wrangler.toml` → **v4.9.170.js** (sincronizado automaticamente em 21/07 contra o health de produção) | https://api.vixradar.com |
-| Frontend | **v201.83** | `app/index.html` → **v201.83** (UI preditiva removida; EWS intacto) | https://vixradar.com |
+| Frontend | **v201.84** | `app/index.html` → **v201.84** (sincronizado automaticamente em 23/07) | https://vixradar.com |
 | Deploy Worker | `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.160` | — | — |
 | Deploy Pages | `pwsh ./scripts/deploy-pages.ps1` | — | — |
 
