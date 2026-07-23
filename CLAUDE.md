@@ -24,6 +24,7 @@ Se conflito chat vs Obsidian: Obsidian prevalece, salvo evidência nova a regist
 - Profundidade staff; sem tutorial básico nem fluff
 - Perguntar antes de inventar dados
 - Proibido: jailbreak, `--dangerously-skip-permissions` como rotina
+- Para alterações não triviais, delegar a revisão final ao subagente `code-reviewer` (`.claude/agents/code-reviewer.md`). O agente implementador não pode substituir essa revisão por uma simples releitura própria. Após receber o parecer, corrigir todos os problemas materiais e rodar de novo as validações.
 
 ### Skills — roteamento leve
 
@@ -31,7 +32,7 @@ Se conflito chat vs Obsidian: Obsidian prevalece, salvo evidência nova a regist
 
 | Invocação | Uso |
 |-----------|-----|
-| `/vix-radar-briefing` | Abrir sessão |
+| `/vix-radar-session-briefing` | Abrir sessão |
 | `/sprite-health` | Health pós-deploy (com curl local) |
 | `/vix-radar-audit` | Auditoria (`--quick` por default) |
 | `/vix-radar-next-steps` | Priorização backlog |
@@ -98,7 +99,7 @@ Campos `openrouter`/`gemini`/`perplexity` no health são resíduo de schema — 
 
 | Componente | Produção | Repo local | URL |
 |------------|----------|------------|-----|
-| Worker | **v4.9.170** | `api/wrangler.toml` → **v4.9.170.js** (sincronizado automaticamente em 21/07 contra o health de produção) | https://api.vixradar.com |
+| Worker | **v4.9.172** | `api/wrangler.toml` → **v4.9.172.js** (sincronizado automaticamente em 23/07 contra o health de produção) | https://api.vixradar.com |
 | Frontend | **v201.84** | `app/index.html` → **v201.84** (sincronizado automaticamente em 23/07) | https://vixradar.com |
 | Deploy Worker | `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.160` | — | — |
 | Deploy Pages | `pwsh ./scripts/deploy-pages.ps1` | — | — |

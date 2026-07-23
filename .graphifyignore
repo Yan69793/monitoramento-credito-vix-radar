@@ -1,0 +1,5 @@
+# Bundles gerados pelo Wrangler — versionados no git para auditoria de deploy
+# (ver comentário em .gitignore), mas sem valor como mapa de arquitetura: cada
+# um e um build minificado quase identico ao anterior, e so infla o grafo com
+# nos duplicados sem sinal real de estrutura do codigo-fonte.
+api/v4.*.js

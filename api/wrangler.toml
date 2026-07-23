@@ -1,6 +1,13 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.170)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.172)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.172.js = v4.9.171 + FIX DEDUPFILA1: enfileirarVerificacaoAssincrona
+#   usava hashEventoKey (SHA-256 exato de empresa|titulo|fonte_primaria|data_evento)
+#   como chave de dedup na fila de verificacao. Trocado por _chaveDedupEvento
+#   (data_evento|empresa|fonte_base com normalizacao de titulo como fallback),
+#   mesma chave frouxa que mesclarEventoVerificadoInterno ja usa ha versoes.
+#   Economia estimada: ~170k tokens/dia (Cosan 4x, Oi 3x, Oncoclinicas 2x por run).
+# v4.9.171.js = v4.9.170 (sem changelog documentado; health confirma ok)
 # v4.9.170.js = v4.9.169 + polish lab preditivo (self-review 2026-07-21):
 #   (1) _exigeLabPreditivoAdmin unifica GET op=predictive_v1 e POST
 #       admin_executar_predictive: JWT admin OU ADMIN_PASSWORD
@@ -414,7 +421,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.171.js"
+main       = "v4.9.172.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
