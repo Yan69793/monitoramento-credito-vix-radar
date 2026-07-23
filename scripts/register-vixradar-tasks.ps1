@@ -1,4 +1,9 @@
 ﻿# register-vixradar-tasks.ps1 — registra VIXRadar-Matinal e VIXRadar-Noturno no Task Scheduler
+# DEPRECATED 2026-07-23 (REGDRIFT1): register-all-routines-scheduler.ps1 é o script canônico.
+#   Motivo: RestartCount, LogonType Interactive, WorkingDirectory, battery flags desde o início,
+#   e registra TODAS as 6 rotinas em vez de só 2. Este script foi corrigido pontualmente em
+#   20/07 (battery + StartWhenAvailable) mas não ganhou as features de resiliência do outro.
+#   Manter como referência de configuração mínima; não usar para registro de tasks novas.
 # Execute como Administrador uma vez.
 #
 # FIX 2026-07-20 (auditoria geral): faltavam -AllowStartIfOnBatteries/-DontStopIfGoingOnBatteries,

@@ -1,5 +1,5 @@
 ---
-data: 2026-07-20
+data: 2026-07-23
 tipo: changelog
 tags: [vix-radar, changelog, incidentes, deploys]
 status: ativo
@@ -10,6 +10,25 @@ status: ativo
 Registro cronológico de incidentes, deploys e eventos de produção. Cobertura: julho 2026. Para histórico anterior: [[_Arquivo/historico-03-2026-06]].
 
 ---
+
+> [!success] 23/07 08h50 — **Worker v4.9.172 + Frontend v201.85 em produção.**
+> Worker v4.9.172: DEDUPFILA1 — `enfileirarVerificacaoAssincrona` troca `hashEventoKey` (SHA-256 exato de empresa|titulo|fonte_primaria|data_evento) por `_chaveDedupEvento` (data_evento|empresa|fonte_base com normalização de título). Economia estimada ~170k tokens/dia eliminando duplicatas na fila de verificação. Diff de 1 linha, health duplo (curl local + Sprite) confirma `ok:true`, `versao:v4.9.172`.
+> Frontend v201.85: FOCUSTRAP1 — script focus-trap aditivo que intercepta Tab (cicla entre elementos focáveis) e Escape (fecha via função conhecida) em todos os 8 `[role="dialog"]`. Não modifica código existente. `CACHE_VERSION=v201.85` confirmado no apex e no HTML.
+
+> [!success] 23/07 08h30 — **Worker v4.9.171 + Frontend v201.84 em produção.**
+> Worker v4.9.171 deployado entre 21-23/07 (health confirma `versao:v4.9.171`, commit `6ac1f2f`). Frontend v201.84: tags `og:image` (1200x630, 52 KB, `og-vix-radar.jpg`) + `twitter:card=summary_large_image` no `index.html` para preview com cartão em WhatsApp e redes sociais. Deploy validado (imagem HTTP 200 image/jpeg, HTML com as tags, `CACHE_VERSION=v201.84`), commit `425196b`. Sem drift repo/prod.
+
+> [!success] 23/07 06h45 — **Matinal 23/07: submit_ok=15, 5 críticos, 150.912 tokens.**
+> Top 15 por EWS. Críticos: Oncoclínicas, Kora Saúde, Oi, Cosan, Rumo. Dreno de verificação ok. Disparo antecipado (04:39) via recovery.
+
+> [!info] 23/07 08h30 — **Falso alarme: dashboard mostra eventos até 21/07. Não é falha de ingestão.**
+> Investigado após relato de que o dashboard inicial só exibia dados até 21/07. Health check confirmou Worker saudável (v4.9.171, ok:true, verificador_ok:true), 103/103 emissores com `_last_scanned_at` de 22-23/07 (zero stale), briefing executivo gerado hoje com 162 eventos e 44 críticos. Análise de `data_evento` nos 162 eventos ativos do KV: o mais recente é 21/07 (Raízen vende Usina Caarapó por R$760M, Kora Saúde assembleia de debenturistas). Nenhum evento com data 22/07 ou 23/07. As noturnas de 21-22/07 e matinal de 23/07 processaram todos os emissores mas não capturaram notícias novas com data posterior a 21/07. Conclusão: sistema operando normalmente, gap percebido é ausência de notícias corporativas no período, não falha técnica. Vault atualizado com checklist pós-rotina e script `check-vault-drift.ps1` para prevenir drift documental.
+
+> [!success] 22/07 18h38 — **Noturna 22/07: submit_ok=92+11 SKIP=103/103, 5 críticos, 468.045 tokens.**
+> Críticos: GPA (REX R$4,5bi), Oncoclínicas, +3 outros. Dreno de verificação concluído. 11 SKIP (idempotente, dentro da janela). LastResult=0.
+
+> [!warning] 22/07 13h16 — **Matinal 22/07 atrasada (StartWhenAvailable).**
+> Submit_ok=13, 7 críticos, 132k tokens. Disparo normal 10h, executou 13h16. Causa provável: máquina em sleep após cold boot (INGEST-GAP1 recovery).
 
 > [!success] 21/07 13h30 — **v4.9.168 + v201.81: stored XSS da sessão admin fechado nas duas pontas.**
 > Auditoria geral do dia achou ADMINXSS1: o painel renderizava nome/email/empresa da lista de usuários via `innerHTML` sem escape, e o Worker gravava esses campos só com `.trim()`. Campo livre do auto-registro, então `empresa=<img onerror=…>` rodava JS na sessão do admin com o `radar_jwt` do localStorage ao alcance. Confirmado explorável (backend não sanitizava), não defense-in-depth. Frontend v201.81 escapa 16 pontos com `h()` (3 no painel admin + 13 no gerador de PDF, PDFXSS1 junto), protegendo inclusive dados legados no KV; Worker v4.9.168 rejeita `<>` no registro. Deploy validado ao vivo: sanitização barra o payload no cadastro, e no browser em produção `h()` escapa `<img src=x onerror=alert(1)>` para entities inertes, console limpo. v4.9.168 adota número novo por deploy, encerrando VERSAO3X. Commit `83dc22c`.

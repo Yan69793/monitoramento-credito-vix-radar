@@ -1,5 +1,5 @@
 ---
-data: 2026-07-20
+data: 2026-07-23
 tipo: indice
 tags: [vix-radar, moc, indice, mapa]
 status: ativo
@@ -7,15 +7,15 @@ status: ativo
 
 # VIX Radar — Índice (MOC)
 
-Mapa do vault. Atualizado 2026-07-20 16h30 BRT.
+Mapa do vault. Atualizado 2026-07-23 08h30 BRT.
 
 ## Estado atual
 
 | Componente | Versão |
 |---|---|
-| Worker | v4.9.167 |
-| Frontend | v201.80 |
-| Health | `ok:true`, verificador ok |
+| Worker | v4.9.171 |
+| Frontend | v201.84 |
+| Health | `ok:true`, verificador ok, providers 2/2 |
 | Cobertura | 103/103 emissores, 0 stale |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendências em [[PENDENCIAS.md]] (root do projeto).

@@ -1,5 +1,5 @@
 ---
-data: 2026-07-20
+data: 2026-07-23
 tipo: referencia
 tags: [vix-radar, infraestrutura, bindings, crons, cors, seguranca, auth]
 status: ativo
@@ -34,9 +34,10 @@ Referência estática de bindings, crons, CORS, segurança e auth. Para estado a
 |---|---|---|
 | VIXRadar-Matinal | 10h00 seg-sex | Top 15 EWS → análise → push ao Worker |
 | VIXRadar-Noturno | 18h00 diário | 103/103 emissores → análise → push ao Worker |
+| VIXRadar-Coleta-Volatilidade | ~17h diário | Coleta cotações de mercado (VOLCOLETA1 pendente) |
 | VIXRadar-Verificacao-Async | 10h20 diário | Dreno da fila de verificação adversarial |
 | VIXRadar-Export-Historico | 20h45 diário | Export de séries para `data/historico/` |
-| VIXRadar-AgendaSemanal | seg 12h30 | Atualização de calendário de divulgações |
+| VIXRadar-AgendaSemanal | seg 12h30 | Atualização de calendário de divulgações (desabilitada) |
 | VIXRadar-Reconciliacao-CVM | seg 12h32 | Reconciliação CNPJ vs CVM |
 | VIXRadar-Ranking-Mensal | dia 1 11h30 | Monitor de ranking SEO |
 
@@ -101,4 +102,4 @@ OpenRouter removido desde v4.9.108. Arrays de cascade usam apenas `claude-haiku-
 
 ---
 
-*Última atualização: 2026-07-20. Fonte: health público + `api/wrangler.toml` + Task Scheduler.*
+*Última atualização: 2026-07-23. Fonte: health público + `api/wrangler.toml` + Task Scheduler.*
