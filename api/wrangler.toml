@@ -1,6 +1,10 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.179)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.180)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.180.js = v4.9.179 + fecha pendencias residuais (HDASH1-RES, OPENROUTER-DEAD, ALRT1-RES):
+#   handleUso: remove fallback de senha em querystring (JWT admin ou _senha_validada).
+#   Remove probeOpenRouterSonarPro/probeOpenRouterExa (codigo morto).
+#   ALRT1-RES: documenta decisao de produto (alerta critico independente de prefs.newsletter).
 # v4.9.179.js = v4.9.178 + COOKIE-CLEAR1 (fecha CSRF-COOKIE1 por completo):
 #   remove Set-Cookie radar_token de handleLogin, handleAdminAutoLogin e
 #   handleRefreshCookie (este vira no-op com cookie_deprecated:true). Auth so
@@ -448,7 +452,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.179.js"
+main       = "v4.9.180.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

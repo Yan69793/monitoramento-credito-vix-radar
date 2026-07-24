@@ -11,6 +11,9 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
+> [!success] 24/07 — **Worker v4.9.180 + fila PENDENCIAS zerada.**
+> HDASH1-RES (handleUso sem senha em query), OPENROUTER-DEAD (probes removidos), ALRT1-RES fechado por decisao de produto (alerta critico independente de newsletter). P-CVM executado em producao: 91 empresas corrigidas em 5 semanas ISO (W26-W30). Health `v4.9.180`.
+
 > [!success] 24/07 — **Worker v4.9.179: COOKIE-CLEAR1 (sem Set-Cookie radar_token).**
 > Login, admin auto-login e `refresh_cookie` deixam de emitir cookie HttpOnly SameSite=None. Auth so via JSON `token` + `Authorization: Bearer`. Health `versao:v4.9.179`. Completa CSRF-COOKIE1 (v4.9.177 lia so header; 179 para de gravar cookie orfao).
 

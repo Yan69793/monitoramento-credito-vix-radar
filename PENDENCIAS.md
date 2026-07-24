@@ -1,11 +1,11 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-24 (COOKIE-CLEAR1 deployado v4.9.179) | **Producao:** Worker v4.9.179, Frontend v201.87
+**Atualizado:** 2026-07-24 (fila PENDENCIAS zerada, Worker v4.9.180) | **Producao:** Worker v4.9.180, Frontend v201.87
 
 ## Síntese executiva
 
-0. **Sprint 24/07 fechou o grosso de P1/P2 de seguranca e custo** (Etapas 1–3, CSRF-COOKIE1, PRED2, a11y Pages). Frontend v201.87. Ver entradas individuais e vault `03 - Estado Atual.md`.
-1. **Sistema operacional.** Health tipico: `ok:true`, bindings kv/rate_limiter/telemetria, `verificador_ok:true`. Merton DD ativo no score (MERTONLIVE1). VOLCOLETA1 e MONITORCEGO1 resolvidos 23/07.
+0. **Fila de pendencias abertas: zero.** Ultimo lote 24/07: HDASH1-RES, OPENROUTER-DEAD, ALRT1-RES (decisao produto), P-CVM (lote executado: 91 correcoes em 5 semanas). Worker v4.9.180, FE v201.87.
+1. **Sistema operacional.** Health: `ok:true`, bindings kv/rate_limiter/telemetria, `verificador_ok:true`. Merton DD ativo (MERTONLIVE1). VOLCOLETA1 e MONITORCEGO1 resolvidos 23/07.
 2. **Ingestão recuperada 18/07 23:46 BRT** (histórico, ver item 0 para o gap atual, distinto). Sessão OAuth do CLI `claude` expirou, noturna 18/07 18h abortou com `submit_ok:0` (95/103 sem análise). Operador reautenticou (`claude /login`) e agente disparou rerun manual: `submit_ok:100 + skip_ok:3 = 103/103`, `submit_fail:0`. Ver Obsidian `03 - Estado Atual.md` (nota 18/07 23:46).
 3. **Verificador async operacional** com mutex + token budget (commit d329510).
 4. **Monitor-TaskScheduler:** Falso positivo 0x41301 corrigido (commit 37e7e2f). Confirmado ainda funcionando nesta sessão (relatório 20/07 12:32 capturou o INGEST-GAP1 corretamente).
@@ -46,8 +46,9 @@
 | ENUM-LOGIN1 | **RESOLVIDO 24/07** (v4.9.173) | Seguranca / backend | `handleRegistrar`: mensagens unificadas para email existente (pendente/aprovado). `handleLogin`: delay aleatorio (80-200ms) para usuario inexistente, codigos PENDENTE/REJEITADO removidos, ambos retornam "Credenciais invalidas." Deploy Worker v4.9.173. | Nenhuma |
 | RLADMIN-GET1 | **RESOLVIDO 24/07** (v4.9.173) | Seguranca / backend | `checkRateLimitV2` adicionado antes da validacao de senha em `admin_agenda_rebuild` (`x-admin-password`) e `reprocessar_audit_pending` (`X-Admin-Auth`). Ambos agora respondem 429 se excederem limite. Deploy Worker v4.9.173. | Nenhuma |
 | INDEXNOSTORE | **RESOLVIDO 24/07 (deployado v201.86)** | Performance / frontend | `no-store` removido do `Cache-Control` em `/index.html`, `/` e `/version.json` (`app/_headers`). Mantido `no-cache, must-revalidate` — agora responde 304 com ETag quando nada mudou. Bundles admin atualizados de `?v=201.69` para `?v=201.85`. Deploy Pages v201.86. Confirmado em producao: `Cache-Control: no-cache, must-revalidate` (sem `no-store`). | Nenhuma |
-| HDASH1-RES | P3 | Backend / segurança | Registro estava desatualizado desde v4.9.151. Handler atual (`api/v4.9.164.js:15200-15213`) usa só `_exigeJwtAdmin`; testado ao vivo (18/07): `senha`/`admin_senha` por querystring retornam 401 em todos os casos. `handleUso` ainda lê `searchParams.get("senha")` (linha 5181) mas é código morto (único call site pré-valida via POST body). | Nenhuma. Considerar remover o fallback morto de `handleUso` por higiene (não é vulnerabilidade). |
-| ALRT1-RES | P3 | Backend / e-mail | Parte P1 (broadcast total sem filtro quando `EMAIL_ALERTAS_FAVORITOS` ausente) **já corrigida em v4.9.163/164** — confirmado ao vivo no bundle (`selecionarDestinatariosAlerta`, `api/v4.9.164.js:4840-4867`), os dois caminhos agora checam `prefs.alertas===false` simetricamente. Residual documentado no próprio código: `prefs.newsletter` não governa alerta crítico (decisão de produto deliberada, não bug). | Operador decidir se alerta crítico deve respeitar `prefs.newsletter` (hoje trata como canal independente) |
+| HDASH1-RES | **RESOLVIDO 24/07 (v4.9.180)** | Backend / segurança | `handleUso` nao aceita mais `senha` em querystring. Auth: JWT admin ou `opts._senha_validada` apos POST `action=uso` validar `admin_senha` no body. Call site POST deixa de copiar senha para a fake URL. | Nenhuma |
+| ALRT1-RES | **FECHADO 24/07 (decisao de produto, v4.9.180)** | Backend / e-mail | Parte P1 (broadcast) ja estava corrigida em v4.9.163/164 (`prefs.alertas===false`). Residual: **alerta critico e canal independente de `prefs.newsletter`**. Unsubscribe promete parar boletins/briefing, nao alertas de credito. Preferencia de alerta = so `prefs.alertas`. Documentado no codigo de `selecionarDestinatariosAlerta`. | Nenhuma |
+| OPENROUTER-DEAD | **RESOLVIDO 24/07 (v4.9.180)** | Backend / higiene | `probeOpenRouterSonarPro` e `probeOpenRouterExa` removidos do bundle (zero call sites desde OPENROUTERVIVO). | Nenhuma |
 | INGEST-GAP1 | **20/07 (resolvido)** | Recovery manual: Noturno 103/103 + Matinal 13/13. Causa raiz: máquina desligada, `StartWhenAvailable=false`. Fix estrutural: register reexecutado como Admin (`StartWhenAvailable=true`, sem bloqueio bateria, `RunLevel=HighestAvailable`). |
 | F002 (TECH_DEBT_AUDIT) | **20/07 (deployado v4.9.167)** | 7 `catch{}` vazios remanescentes no bundle. Todos passam a logar via `console.error`, mudança puramente aditiva. |
 | F014 (TECH_DEBT_AUDIT) | **20/07 (deployado v4.9.167)** | `handleResendWebhook` com cap de 1MB (Content-Length + tamanho pós-leitura), 413 se exceder. |
@@ -58,7 +59,7 @@
 | SPF1 | **RESOLVIDO 23/07** | DNS / deliverability | `send.vixradar.com` atualizado de `~all` (softfail) para `-all` (hardfail) via Cloudflare API (PATCH `cdf570273d7f6754e02bb2da65bc5c08`). `Resolve-DnsName` confirma `-all`. | Nenhuma |
 | FOCUSTRAP1 | **RESOLVIDO 23/07 (deployado v201.85)** | Frontend / acessibilidade | Script focus-trap adicionado ao final de `app/index.html`: intercepta Tab (cicla entre elementos focaveis do `[role="dialog"]` visivel) e Escape (fecha via funcao conhecida ou botao de close). Puramente aditivo, nao modifica codigo existente. 8 dialogs mapeados: guia-overlay, modal-varredura, config-modal-unsubscribe, modal-share, agenda-overlay, onb-overlay, cmdk-overlay, carteira-overlay. | Nenhuma |
 | PRED2 | **RESOLVIDO 24/07 (deployado v4.9.178)** | Ingestao / dados | `normalizarCaseEstado()` faz merge de entradas com capitalizacao divergente em `radar:estado:{semana}` (ex.: "Eletrobras" vs "ELETROBRAS"). Fire-and-forget no health check. Varre 6 semanas, normaliza contra `EMISSORES_LISTA`, dedup eventos mergeados, grava de volta. Self-healing: resolve dados antigos (pre-CASEKEY1) sem intervencao manual. Deploy Worker v4.9.178. | Nenhuma |
-| P-CVM | P3 | Dados / CVM | `admin_corrigir_datas_cvm_kv` em lote. Requer admin_senha. | Operador executar via painel |
+| P-CVM | **RESOLVIDO 24/07 (executado em producao)** | Dados / CVM | `admin_corrigir_datas_cvm_kv` com 5 semanas: ok, `empresas_corrigidas=91` (W30:25, W29:32, W28:15, W27:13, W26:6). Datas CVM re-resolvidas + sanitizarPayloadRadar no estado KV. | Nenhuma |
 | E-MT | **RESOLVIDO 23/07** | Email | Confirmado direto no KV (`email:modo_teste`, sem precisar de `ADMIN_PASSWORD`): estava `true` em produção. Efeito real: a newsletter diária (cron 18h30 BRT) vinha "enviando com sucesso" (heartbeat ok, dedup gravado) mas só para `ADMIN_EMAIL`, não para os 17 usuários com status aprovado. Envio de 22/07 18h31 BRT confirmado só chegou ao admin. Operador autorizou desativar; chave gravada como `false` via `wrangler kv key put` (confirmado por leitura de volta). Próximo cron (23/07 18h30 BRT) deve ir para a lista real. | Nenhuma. Acompanhar heartbeat/log do envio de 23/07 18h30 BRT para confirmar `modo:"aprovados"` (não `modo_teste`) e `destinatarios` > 1 |
 | ADMINSECRET1 | **RESOLVIDO 24/07** | Backend / seguranca | ADMIN_SENHA removido de api/.env. ADMIN_PASSWORD e o unico secret canonico no Cloudflare. Senha rotacionada e armazenada via DPAPI local (.admin_credencial.dat). Scripts atualizados para usar Get-VixAdminCredential.ps1. | Nenhuma |
 | LOGLOCK1-REC | **RESOLVIDO 24/07** | Rotinas / observabilidade | Tripla protecao: (1) `FILE_ATTRIBUTE_PINNED` (0x80000) removido de 6177 itens do projeto — OneDrive nao trata mais esses arquivos como gerenciados. Causa raiz: flag Pinned veio de localizacao anterior do projeto em pasta sincronizada (KFM Desktop/Documents) e foi preservado na mudanca para `E:\Diretorio\`. OneDrive nao estava configurado para sincronizar `E:\`; o atributo bastou para ele tratar os arquivos como seus. (2) `NOT_CONTENT_INDEXED` no `logs/` impede SearchIndexer de abrir os arquivos. (3) Fallback file com PID no `Write-Log` das 4 rotinas garante que nenhuma linha se perde mesmo se algum lock externo sobreviver. | Nenhuma |
@@ -116,9 +117,4 @@
 
 ## Próximos passos priorizados
 
-| P | Ação | Ref |
-|---|------|-----|
-| P3 | Corrigir datas CVM em lote (requer admin) | P-CVM |
-| P3 | Decidir se alerta critico deve respeitar `prefs.newsletter` | ALRT1-RES |
-| P3 | Higiene: remover fallback morto de `senha` em `handleUso` | HDASH1-RES |
-| P3 | Higiene: remover funcoes mortas `probeOpenRouter*` do bundle | OPENROUTER-DEAD |
+Nenhum. Fila zerada em 24/07 (Worker v4.9.180 + P-CVM executado). Novos itens entram so com evidencia nova.
