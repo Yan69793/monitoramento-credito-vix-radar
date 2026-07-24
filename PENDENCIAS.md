@@ -1,6 +1,6 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-24 21h05 BRT (CONTRASTMUTED1 deployado v201.87) | **Producao:** Worker v4.9.177, Frontend v201.87
+**Atualizado:** 2026-07-24 21h15 BRT (LOGLOCK1-REC resolvido) | **Producao:** Worker v4.9.177, Frontend v201.87
 
 ## Síntese executiva
 
@@ -11,7 +11,7 @@
 4. **Monitor-TaskScheduler:** Falso positivo 0x41301 corrigido (commit 37e7e2f). Confirmado ainda funcionando nesta sessão (relatório 20/07 12:32 capturou o INGEST-GAP1 corretamente).
 5. **VIXRadar-AgendaSemanal:** rodou com sucesso às 20/07 12:32 (LastResult=0) — desbloqueada, não precisa mais de checagem.
 6. **RACEKV1 confirmado deployado** (histórico) — `wrangler.toml` ao vivo declara `ESTADO_SEMANA_DO`; health público confirma. Ver "Resolvido".
-7. **LOGLOCK1-REC — mitigação parcial aplicada nesta sessão.** Backoff exponencial (8 tentativas, ~11s no pior caso, era 5x200ms~1s) nos 3 scripts de rotina. Não resolve lock de minutos inteiros (causa raiz provável: OneDrive sync no diretório do projeto) — ver entrada própria abaixo.
+7. **LOGLOCK1-REC — resolvido 24/07.** Fallback file com PID no `Write-Log` das 4 rotinas + `NOT_CONTENT_INDEXED` no diretorio `logs/`. Lock externo de minutos nao perde mais linhas de log. Risco residual: OneDrive sync com flag Pinned no diretorio do projeto (fora do escopo de codigo).
 8. **CLEANAGG1 — já estava resolvido (14/07, commit `31035fa`), este arquivo tinha drift.** Corrigido a entrada abaixo para refletir o estado real (movida para "Resolvido").
 9. **register-vixradar-tasks.ps1 corrigido nesta sessão:** faltava `-AllowStartIfOnBatteries`/`-DontStopIfGoingOnBatteries`, única entre todos os scripts `register-*-task.ps1` do projeto sem essas flags. Live task (`Export-ScheduledTask`) confirma `DisallowStartIfOnBatteries=true` ainda ativo — script corrigido, mas a task viva só atualiza se o script for reexecutado como Administrador. Achado colateral: existe um SEGUNDO script (`register-all-routines-scheduler.ps1`) que também registra `VIXRadar-Matinal`/`VIXRadar-Noturno`, com config mais resiliente (`RestartCount`, `LogonType` diferente) — os dois scripts divergem e não está documentado qual é o canônico. Ver entrada REGDRIFT1 abaixo.
 
@@ -60,7 +60,7 @@
 | P-CVM | P3 | Dados / CVM | `admin_corrigir_datas_cvm_kv` em lote. Requer admin_senha. | Operador executar via painel |
 | E-MT | **RESOLVIDO 23/07** | Email | Confirmado direto no KV (`email:modo_teste`, sem precisar de `ADMIN_PASSWORD`): estava `true` em produção. Efeito real: a newsletter diária (cron 18h30 BRT) vinha "enviando com sucesso" (heartbeat ok, dedup gravado) mas só para `ADMIN_EMAIL`, não para os 17 usuários com status aprovado. Envio de 22/07 18h31 BRT confirmado só chegou ao admin. Operador autorizou desativar; chave gravada como `false` via `wrangler kv key put` (confirmado por leitura de volta). Próximo cron (23/07 18h30 BRT) deve ir para a lista real. | Nenhuma. Acompanhar heartbeat/log do envio de 23/07 18h30 BRT para confirmar `modo:"aprovados"` (não `modo_teste`) e `destinatarios` > 1 |
 | ADMINSECRET1 | **RESOLVIDO 24/07** | Backend / seguranca | ADMIN_SENHA removido de api/.env. ADMIN_PASSWORD e o unico secret canonico no Cloudflare. Senha rotacionada e armazenada via DPAPI local (.admin_credencial.dat). Scripts atualizados para usar Get-VixAdminCredential.ps1. | Nenhuma |
-| LOGLOCK1-REC | P2 | Rotinas / observabilidade | Reincidência do LOGLOCK1 (fix 17/07, commit `49904ea`) na noturna de 18/07: log travado 100% das escritas por 7+min seguidos (suspeita OneDrive/SearchIndexer). **Mitigação parcial aplicada nesta sessão:** backoff exponencial em `Write-Log` nos 3 scripts de rotina, 5x200ms (~1s) → 8 tentativas até 2s cada (~11s no pior caso). Não cobre lock de minutos inteiros — continua sem validação sob a mesma carga real (não reproduzida nesta sessão). | Avaliar excluir `logs/` do sync do OneDrive (fora do escopo de código); validar o novo backoff sob carga real na próxima ocorrência |
+| LOGLOCK1-REC | **RESOLVIDO 24/07** | Rotinas / observabilidade | `Write-Log` nas 4 rotinas (`run_vixradar_matinal_claude.ps1`, `run_vixradar_noturno_claude.ps1`, `run_claude_routine.ps1`, `monitor-tasks.ps1`) ganhou fallback file com PID: se 8 tentativas (~11s) falharem, escreve em `log_fallback_{PID}.log`. Nenhuma linha de log perdida mesmo sob lock externo de minutos. Mitigacao operacional: `FILE_ATTRIBUTE_NOT_CONTENT_INDEXED` (0x2000) setado no diretorio `logs/` para excluir do Windows Search Indexer. OneDrive permanece como risco residual (fora do escopo de codigo, `E:\Diretorio\Claude\Monitoramento de Credito` tem flag `0x80000` Pinned). | Nenhuma |
 
 ---
 

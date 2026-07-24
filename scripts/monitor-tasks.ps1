@@ -19,8 +19,21 @@ New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
 function Write-Log([string]$msg) {
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $msg"
-    Add-Content -Path $LogFile -Value $line -Encoding UTF8
     if (-not $Quiet) { Write-Host $line }
+    # LOGLOCK1-REC (2026-07-24): backoff exponencial + fallback file com PID
+    for ($i = 1; $i -le 8; $i++) {
+        try {
+            Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop
+            return
+        } catch {
+            if ($i -eq 8) {
+                $fallbackFile = ([regex]::Replace($LogFile, '\.log$', "_fallback_$pid.log"))
+                Write-Host "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
+                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Host "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
+            }
+            else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
+        }
+    }
 }
 
 # Whitelist de LastTaskResult benignos
