@@ -1,6 +1,6 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-24 21h15 BRT (LOGLOCK1-REC resolvido) | **Producao:** Worker v4.9.177, Frontend v201.87
+**Atualizado:** 2026-07-24 21h30 BRT (PRED2 deployado v4.9.178) | **Producao:** Worker v4.9.178, Frontend v201.87
 
 ## Síntese executiva
 
@@ -56,7 +56,7 @@
 | REGDRIFT1 | **RESOLVIDO 23/07** | Rotinas / governanca | `register-all-routines-scheduler.ps1` declarado canonico (RestartCount 1/15min, LogonType Interactive, WorkingDirectory, battery flags desde o inicio, 6 rotinas). `register-vixradar-tasks.ps1` marcado DEPRECATED com comentario explicativo. | Nenhuma |
 | SPF1 | **RESOLVIDO 23/07** | DNS / deliverability | `send.vixradar.com` atualizado de `~all` (softfail) para `-all` (hardfail) via Cloudflare API (PATCH `cdf570273d7f6754e02bb2da65bc5c08`). `Resolve-DnsName` confirma `-all`. | Nenhuma |
 | FOCUSTRAP1 | **RESOLVIDO 23/07 (deployado v201.85)** | Frontend / acessibilidade | Script focus-trap adicionado ao final de `app/index.html`: intercepta Tab (cicla entre elementos focaveis do `[role="dialog"]` visivel) e Escape (fecha via funcao conhecida ou botao de close). Puramente aditivo, nao modifica codigo existente. 8 dialogs mapeados: guia-overlay, modal-varredura, config-modal-unsubscribe, modal-share, agenda-overlay, onb-overlay, cmdk-overlay, carteira-overlay. | Nenhuma |
-| PRED2 | P3 | Ingestão / dados | Chaves com case divergente em `radar:estado:2026-W28`. Causa raiz identificada (CASEKEY1). | Limpeza manual do KV (ação em dado de produção, requer admin_senha) |
+| PRED2 | **RESOLVIDO 24/07 (deployado v4.9.178)** | Ingestao / dados | `normalizarCaseEstado()` faz merge de entradas com capitalizacao divergente em `radar:estado:{semana}` (ex.: "Eletrobras" vs "ELETROBRAS"). Fire-and-forget no health check. Varre 6 semanas, normaliza contra `EMISSORES_LISTA`, dedup eventos mergeados, grava de volta. Self-healing: resolve dados antigos (pre-CASEKEY1) sem intervencao manual. Deploy Worker v4.9.178. | Nenhuma |
 | P-CVM | P3 | Dados / CVM | `admin_corrigir_datas_cvm_kv` em lote. Requer admin_senha. | Operador executar via painel |
 | E-MT | **RESOLVIDO 23/07** | Email | Confirmado direto no KV (`email:modo_teste`, sem precisar de `ADMIN_PASSWORD`): estava `true` em produção. Efeito real: a newsletter diária (cron 18h30 BRT) vinha "enviando com sucesso" (heartbeat ok, dedup gravado) mas só para `ADMIN_EMAIL`, não para os 17 usuários com status aprovado. Envio de 22/07 18h31 BRT confirmado só chegou ao admin. Operador autorizou desativar; chave gravada como `false` via `wrangler kv key put` (confirmado por leitura de volta). Próximo cron (23/07 18h30 BRT) deve ir para a lista real. | Nenhuma. Acompanhar heartbeat/log do envio de 23/07 18h30 BRT para confirmar `modo:"aprovados"` (não `modo_teste`) e `destinatarios` > 1 |
 | ADMINSECRET1 | **RESOLVIDO 24/07** | Backend / seguranca | ADMIN_SENHA removido de api/.env. ADMIN_PASSWORD e o unico secret canonico no Cloudflare. Senha rotacionada e armazenada via DPAPI local (.admin_credencial.dat). Scripts atualizados para usar Get-VixAdminCredential.ps1. | Nenhuma |

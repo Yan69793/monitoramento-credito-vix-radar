@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.177";
+var WORKER_VERSAO = "v4.9.178";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -7538,6 +7538,81 @@ function isEventoDuplicadoSemantico(ev, existentes) {
 __name(isEventoDuplicadoSemantico, "isEventoDuplicadoSemantico");
 __name2(isEventoDuplicadoSemantico, "isEventoDuplicadoSemantico");
 __name22(isEventoDuplicadoSemantico, "isEventoDuplicadoSemantico");
+// PRED2 (2026-07-24): self-healing de case divergente em radar:estado:{semana}.
+// CASEKEY1 (v4.9.152) corrigiu a causa raiz (receber_analise escrevia sem case-fold),
+// mas dados anteriores ao fix ainda podem ter entradas duplicadas com capitalizacao
+// diferente (ex.: "Eletrobras" e "ELETROBRAS" no mesmo results). Esta funcao normaliza
+// as chaves de results para a forma canonica de EMISSORES_LISTA e mergeia os registros.
+// Fire-and-forget chamado do health check, mesma estrategia do sweepFilaVerificacaoOrfaos.
+async function normalizarCaseEstado(env2222) {
+  if (!env2222 || !env2222.RADAR_KV) return { semanas_escaneadas: 0, corrigidas: 0 };
+  if (!Array.isArray(EMISSORES_LISTA) || EMISSORES_LISTA.length === 0) return { semanas_escaneadas: 0, corrigidas: 0 };
+  const agora = new Date();
+  let semanas = 0, corrigidas = 0;
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(agora.getTime() - i * 7 * 864e5);
+    const semana = semanaISO(d);
+    const key = chaveEstadoCompartilhado(semana);
+    try {
+      const raw = await env2222.RADAR_KV.get(key, "text");
+      if (!raw) continue;
+      semanas++;
+      const estado = JSON.parse(raw);
+      if (!estado || !estado.results || typeof estado.results !== "object") continue;
+      const results = estado.results;
+      const entries = Object.entries(results);
+      if (entries.length === 0) continue;
+      const normMap = {};
+      for (const [k] of entries) {
+        const nk = String(k).toLowerCase().trim();
+        if (!normMap[nk]) normMap[nk] = [];
+        normMap[nk].push(k);
+      }
+      const divergent = Object.entries(normMap).filter(function(_a) { return _a[1].length > 1; });
+      if (divergent.length === 0) continue;
+      var _corrigidasSemana = 0;
+      for (const [normKey, origKeys] of divergent) {
+        let canonical = origKeys[0];
+        for (const ok of origKeys) { if (EMISSORES_LISTA.includes(ok)) { canonical = ok; break; } }
+        if (!EMISSORES_LISTA.includes(canonical)) {
+          const found = EMISSORES_LISTA.find(function(e) { return e.toLowerCase().trim() === normKey; });
+          if (found) canonical = found;
+        }
+        const merged = Object.assign({}, results[canonical] || {});
+        merged.eventos = Array.isArray(merged.eventos) ? merged.eventos.slice() : [];
+        for (const ok of origKeys) {
+          if (ok === canonical) continue;
+          const other = results[ok];
+          if (other && Array.isArray(other.eventos)) {
+            for (const ev of other.eventos) { merged.eventos.push(ev); }
+          }
+          if (other && other.timestamp && (!merged.timestamp || other.timestamp > merged.timestamp)) merged.timestamp = other.timestamp;
+          if (other && other._last_scanned_at && (!merged._last_scanned_at || other._last_scanned_at > merged._last_scanned_at)) merged._last_scanned_at = other._last_scanned_at;
+          delete results[ok];
+        }
+        if (merged.eventos.length > 1) {
+          const seen = new Set();
+          merged.eventos = merged.eventos.filter(function(ev) {
+            var dk = (ev.titulo || "") + "|" + (ev.data_evento || "") + "|" + (ev.fonte_primaria || "");
+            if (seen.has(dk)) return false; seen.add(dk); return true;
+          });
+        }
+        results[canonical] = merged;
+        _corrigidasSemana++;
+      }
+      if (_corrigidasSemana > 0) {
+        estado.results = results;
+        estado._case_normalized_at = (/* @__PURE__ */ new Date()).toISOString();
+        estado._case_normalized_grupos = _corrigidasSemana;
+        await env2222.RADAR_KV.put(key, JSON.stringify(estado));
+        console.log("[case-norm] " + semana + ": " + _corrigidasSemana + " grupo(s) divergente(s) corrigido(s)");
+      }
+      corrigidas += _corrigidasSemana;
+    } catch (_cnErr) { console.error("[case-norm] " + semana + ":", _cnErr?.message ?? String(_cnErr)); }
+  }
+  return { semanas_escaneadas: semanas, corrigidas };
+}
+__name(normalizarCaseEstado, "normalizarCaseEstado");
 async function carregarEstadoMultiSemana(env2222, numSemanas) {
   if (!numSemanas) numSemanas = 5;
   const agora = obterAgoraBRT();
@@ -15753,6 +15828,9 @@ async function __coreFetch(request, env2222) {
       // VERIFQ-ORFAO1 (2026-07-24): sweep de orfaos >48h na fila de verificacao.
       // Fire-and-forget: nao bloqueia o health e nao afeta _verificadorRealOk.
       if (env2222.RADAR_KV) { sweepFilaVerificacaoOrfaos(env2222).catch(function(_sErr) { console.error("[health] sweep orfaos:", _sErr?.message ?? String(_sErr)); }); }
+      // PRED2 (2026-07-24): self-healing de case divergente no estado multi-semana.
+      // Normaliza chaves de results divergentes por capitalizacao (ex.: "Eletrobras" vs "ELETROBRAS").
+      if (env2222.RADAR_KV) { normalizarCaseEstado(env2222).catch(function(_cErr) { console.error("[health] case-norm:", _cErr?.message ?? String(_cErr)); }); }
       _verificadorRealOk = _verificadorRealOk && !_filaVerifAtrasada;
       const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _verificadorRealOk;
       if (!_healthUsr || _healthUsr.role !== "admin") {

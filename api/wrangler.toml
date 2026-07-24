@@ -1,8 +1,12 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.177)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.178)
 # ═══════════════════════════════════════════════════════════════════════
 # v4.9.177.js = v4.9.176 + CSRF-COOKIE1 (remove fallback de cookie do extractToken):
 #   extractToken agora so aceita Authorization header; cookie radar_token era caminho
+# v4.9.178.js = v4.9.177 + PRED2 (self-healing de case divergente em radar:estado):
+#   normalizarCaseEstado() faz merge de entradas com capitalizacao divergente no
+#   estado multi-semana (ex.: "Eletrobras" vs "ELETROBRAS"). Fire-and-forget no
+#   health check, mesma estrategia do sweepFilaVerificacaoOrfaos.
 #   residual com SameSite=None que permitia POST cross-site autenticado sem preflight.
 # v4.9.176.js = v4.9.175 + F013-RESIDUAL (elimina recarga redundante de estado):
 #   handleEWS e montarBriefingInterno aceitam _estado/_anomalias opcionais;
@@ -440,7 +444,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.177.js"
+main       = "v4.9.178.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
