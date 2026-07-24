@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.175";
+var WORKER_VERSAO = "v4.9.176";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -13362,10 +13362,10 @@ async function executarPipelinePreditivo(env2222, opts) {
   return { ok: true, ...kvPayload };
 }
 __name(executarPipelinePreditivo, "executarPipelinePreditivo");
-async function handleEWS(url, env2222, request) {
+async function handleEWS(url, env2222, request, _estado, _anomalias) {
   const empresa = url.searchParams.get("empresa");
-  const anomalias = await carregarAnomalias(env2222);
-  const estado = await carregarEstadoMultiSemana(env2222, 5);
+  const anomalias = _anomalias || await carregarAnomalias(env2222);
+  const estado = _estado || await carregarEstadoMultiSemana(env2222, 5);
   if (empresa) {
     const resultado = estado.results[empresa];
     const eventos = resultado?.eventos || [];
@@ -15052,11 +15052,11 @@ __name2(handleCoberturaStatus, "handleCoberturaStatus");
 __name22(handleCoberturaStatus, "handleCoberturaStatus");
 __name222(handleCoberturaStatus, "handleCoberturaStatus");
 __name2222(handleCoberturaStatus, "handleCoberturaStatus");
-async function montarBriefingInterno(env2222) {
+async function montarBriefingInterno(env2222, _estado) {
   var agora = obterAgoraBRT();
   var semana = semanaISO(agora);
   var hoje = agora.toISOString().split("T")[0];
-  var estado = await carregarEstadoMultiSemana(env2222, 5);
+  var estado = _estado || await carregarEstadoMultiSemana(env2222, 5);
   if (!estado.results || Object.keys(estado.results).length === 0) {
     return { data: hoje, semana, eventos_total: 0, mensagem: "Sem eventos nas ultimas 5 semanas." };
   }
@@ -15158,7 +15158,7 @@ async function handleBriefingExecutivo(env2222, request) {
   if (!estado.results || Object.keys(estado.results).length === 0) {
     return resp({ ok: true, briefing: { data: hoje, semana, eventos_total: 0, mensagem: "Sem eventos nas \xFAltimas 5 semanas." } }, 200, request);
   }
-  var briefing = await montarBriefingInterno(env2222);
+  var briefing = await montarBriefingInterno(env2222, estado);
   return resp({ ok: true, briefing }, 200, request);
 }
 __name(handleBriefingExecutivo, "handleBriefingExecutivo");
@@ -15226,7 +15226,7 @@ async function handleHistoricoEmissor(url, env2222, request) {
   try {
     var ewsUrl = new URL(request.url);
     ewsUrl.searchParams.set("empresa", empresa);
-    var ewsResp = await handleEWS(ewsUrl, env2222);
+    var ewsResp = await handleEWS(ewsUrl, env2222, undefined, estado, todasAnomalias);
     var ewsBody = await ewsResp.json();
     if (ewsBody && ewsBody.ok && ewsBody.ews) ewsEmissor = ewsBody.ews;
   } catch (e5) {
@@ -15330,7 +15330,7 @@ async function handleCompararEmissores(url, env2222, request) {
     try {
       var ewsUrl = new URL(request.url);
       ewsUrl.searchParams.set("empresa", emp);
-      var ewsResp = await handleEWS(ewsUrl, env2222);
+      var ewsResp = await handleEWS(ewsUrl, env2222, undefined, estado, anomalias);
       var ewsBody = await ewsResp.json();
       if (ewsBody && ewsBody.ok && ewsBody.ews) item.ews_score = ewsBody.ews.score;
     } catch (e2) {
