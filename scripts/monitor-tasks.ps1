@@ -26,9 +26,7 @@ function Write-Log([string]$msg) {
 # Whitelist de LastTaskResult benignos
 # 0            = sucesso (exit 0 ou return)
 # 267009       = 0x41301 = SCHED_S_TASK_RUNNING (task ainda executando quando verificada — falso positivo)
-# 267011       = 0x41303 = SCHED_S_TASK_HAS_NOT_RUN (task nunca executou/trigger futuro)
-# 2147942401   = 0x80070001 = file-not-found em runtime (tratado separadamente como erro brando)
-$BenignCodes = @(0, 267009, 267011)
+$BenignCodes = @(0, 267009)
 
 # Whitelist customizada (JSON externo, merge)
 if ($WhitelistFile -and (Test-Path $WhitelistFile)) {

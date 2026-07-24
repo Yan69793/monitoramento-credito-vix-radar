@@ -1,16 +1,16 @@
-# Graph Report - Monitoramento de Credito  (2026-07-21)
+# Graph Report - Monitoramento de Credito  (2026-07-23)
 
 ## Corpus Check
-- 420 files · ~518,243 words
+- 431 files · ~526,348 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3505 nodes · 4383 edges · 335 communities (311 shown, 24 thin omitted)
+- 3506 nodes · 4376 edges · 336 communities (313 shown, 23 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 278 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c8dea531`
+- Built from commit: `cdc06b25`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -31,6 +31,7 @@
 - [[_COMMUNITY_51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11|51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11]]
 - [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-07-06)|Auditoria Geral — VIX Radar (2026-07-06)]]
 - [[_COMMUNITY_Auditoria Geral, VIX Radar, 2026-07-21|Auditoria Geral, VIX Radar, 2026-07-21]]
+- [[_COMMUNITY_Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE|Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE]]
 - [[_COMMUNITY_prod-worker-2026-06-10.js|prod-worker-2026-06-10.js]]
 - [[_COMMUNITY_memory.py|memory.py]]
 - [[_COMMUNITY___coreFetch|__coreFetch]]
@@ -41,7 +42,6 @@
 - [[_COMMUNITY_Test-Driven Development (TDD)|Test-Driven Development (TDD)]]
 - [[_COMMUNITY_Estado de Produção — VIX Radar|Estado de Produção — VIX Radar]]
 - [[_COMMUNITY_13 - Metodo de Vistoria Operacional|13 - Metodo de Vistoria Operacional.md]]
-- [[_COMMUNITY_00 - Índice (MOC)|00 - Índice (MOC).md]]
 - [[_COMMUNITY_executarVarreduraBatchComFila|executarVarreduraBatchComFila]]
 - [[_COMMUNITY_Protocolo Operacional — VIX Radar|Protocolo Operacional — VIX Radar]]
 - [[_COMMUNITY_DEVELOPMENT — Radar de Crédito Privado|DEVELOPMENT — Radar de Crédito Privado]]
@@ -311,7 +311,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (335 total, 24 thin omitted)
+## Communities (336 total, 23 thin omitted)
 
 ### Community 0 - "v4.9.165.js"
 Cohesion: 0.17
@@ -326,7 +326,7 @@ Cohesion: 0.22
 Nodes (9): Acompanhamento do plano Claude — 2026-06-16, Aprendizados do acompanhamento 2026-06-16, Credenciais por endpoint (auditoria 24 — P2), Fontes lidas antes da vistoria, Formato minimo do relatorio, Metodo consolidado, Metodo de Vistoria Operacional — VIX Radar, Objetivo (+1 more)
 
 ### Community 3 - "v4.9.150.js"
-Cohesion: 0.20
+Cohesion: 0.22
 Nodes (9): Achados, Auditoria Completa — VIX Radar (2026-07-15), BAIXO, Lacunas, MÉDIO — RESOLVIDO nesta sessão (v4.9.159, deploy ~10:52 UTC), Próximos passos, Síntese executiva, Validação em produção (+1 more)
 
 ### Community 4 - "v4.9.143.js"
@@ -338,12 +338,12 @@ Cohesion: 0.33
 Nodes (5): Additional Copilot CLI tools, Async shell sessions, Copilot CLI Tool Mapping, Instructions file, Personal skills directory
 
 ### Community 7 - "v4.9.167.js"
-Cohesion: 0.25
+Cohesion: 0.33
 Nodes (6): Auditoria Geral — Addendum IA/LLM + Runtime Workers (2026-07-14), Conclusão, Drift de escopo (checagem da própria skill), IA generativa / cascade LLM (mapeado ao OWASP LLM Top 10 2025), Novos itens P3 (não estavam na nota 56), Padrões de runtime Workers (guia oficial Cloudflare 2026-02)
 
 ### Community 8 - "v4.9.168.js"
-Cohesion: 0.12
-Nodes (13): 51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11, Achados (com fonte e relevância), Contexto consultado, Decisões arquiteturais (validadas por agente de design em 11/07), Fontes principais, Fora do escopo agora (registrado para o v2), Recomendações acionáveis (viram execução no plano), Causa raiz (rastreada linha a linha, sem hipótese não verificada) (+5 more)
+Cohesion: 0.29
+Nodes (7): 51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11, Achados (com fonte e relevância), Contexto consultado, Decisões arquiteturais (validadas por agente de design em 11/07), Fontes principais, Fora do escopo agora (registrado para o v2), Recomendações acionáveis (viram execução no plano)
 
 ### Community 9 - "v4.9.146.js"
 Cohesion: 0.50
@@ -358,16 +358,16 @@ Cohesion: 0.29
 Nodes (7): Auditoria Geral — VIX Radar (2026-07-07), Backend (bundle v4.9.146 — 32 controles OK), Frontend, Próximos passos, Rotinas em tempo real (07/07), Top riscos, Veredito
 
 ### Community 12 - "Runbook — Deploy do Frontend (Cloudflare Pages)"
-Cohesion: 0.40
-Nodes (5): Credencial (configurar uma vez, e a cada rotação), Deploy normal (caso comum), Notas, Runbook — Deploy do Frontend (Cloudflare Pages), Validação manual pós-deploy (se quiser conferir à mão)
+Cohesion: 0.25
+Nodes (8): Auditoria Geral — VIX Radar (2026-07-03), Backend, Frontend, Lacunas, Próximos passos, Segurança, perf e a11y, Top riscos, Veredito
 
 ### Community 13 - "Auditoria Geral, VIX Radar, 2026-07-21 (tarde)"
 Cohesion: 0.17
 Nodes (11): Auditoria Geral, VIX Radar, 2026-07-21 (tarde), Backend, Frontend, IA / LLM (OWASP 2025), Lacunas desta rodada, Proximos passos, Rotinas, Skill general-audit (+3 more)
 
 ### Community 14 - "51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11"
-Cohesion: 0.29
-Nodes (6): Cobertura, Estado Atual — VIX Radar, Infra, Pendências ativas (topo), Tasks Scheduler, Versões
+Cohesion: 0.20
+Nodes (8): Checklist pós-rotina, Cobertura, Estado Atual — VIX Radar, Infra, Pendências ativas (topo), Tasks Scheduler, Versões, Changelog — VIX Radar
 
 ### Community 17 - "Auditoria Geral — VIX Radar (2026-07-06)"
 Cohesion: 0.29
@@ -376,6 +376,10 @@ Nodes (7): Auditoria Geral — VIX Radar (2026-07-06), Backend, Frontend, Próxi
 ### Community 18 - "Auditoria Geral, VIX Radar, 2026-07-21"
 Cohesion: 0.29
 Nodes (7): Auditoria Geral, VIX Radar, 2026-07-21, Confirmações desta sessão (não são achado), Drift de documentação corrigido nesta sessão, Manutenção da própria skill (lacunas descobertas), Próximos passos (ordem), Top riscos, Veredito
+
+### Community 19 - "Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE"
+Cohesion: 0.29
+Nodes (6): Causa raiz (rastreada linha a linha, sem hipótese não verificada), Correção do dado já gravado em produção, Diagnóstico (systematic-debugging, Fase 1 completa antes de qualquer fix), Fix (v4.9.161, commit local `a64ed21`, deploy pendente de autorização), Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE, Pendência aberta
 
 ### Community 30 - "prod-worker-2026-06-10.js"
 Cohesion: 0.02
@@ -542,7 +546,7 @@ Cohesion: 0.11
 Nodes (19): 1. Raízen — Petróleo, Gás e Combustíveis, 2. Cosan — Petróleo, Gás e Combustíveis, 3. Kora Saúde — Saúde, 4. Oncoclínicas — Saúde, 5. Oi — Telecom e Tecnologia, 6. Pão de Açúcar (GPA) — Varejo e Consumo, 7. Aegea Saneamento — Saneamento, 🔴 CRITICOs — Ação Requerida (+11 more)
 
 ### Community 427 - "Auditoria Completa — VIX Radar (2026-07-09 v2)"
-Cohesion: 0.11
+Cohesion: 0.10
 Nodes (19): Achados, ALTO, Auditoria Completa — VIX Radar (2026-07-09 v2), BAIXO, CRITICO, Endpoints e auth, Estado do working tree, Frontend e CSS (+11 more)
 
 ### Community 431 - "Code Review Reception"
@@ -898,8 +902,8 @@ Cohesion: 0.20
 Nodes (9): Como funciona (para quando a copy precisar de prova técnica), Em um parágrafo, Em uma frase, Funcionalidades vendáveis, Não prometer, Planos, product.md — VIX Radar, Prova / credibilidade (+1 more)
 
 ### Community 523 - "Oportunidades de Melhoria — 2026-06-11"
-Cohesion: 0.20
-Nodes (10): 1. Triagem dos exemplos sugeridos (verificado no código), 2. Técnicas — itens novos (T11–T15), 3. Produto — itens novos (P11–P15), 4. Priorização recomendada (valor ÷ esforço), 6. Rotina noturna 2026-06-12 — execução e achados do verificador, 7. Implementação 2026-06-12 — T16, P16, T15, Lacunas e Próximos Passos, Oportunidades de Melhoria — 2026-06-11 (+2 more)
+Cohesion: 0.11
+Nodes (15): 1. Triagem dos exemplos sugeridos (verificado no código), 2. Técnicas — itens novos (T11–T15), 3. Produto — itens novos (P11–P15), 4. Priorização recomendada (valor ÷ esforço), 6. Rotina noturna 2026-06-12 — execução e achados do verificador, 7. Implementação 2026-06-12 — T16, P16, T15, Lacunas e Próximos Passos, Oportunidades de Melhoria — 2026-06-11 (+7 more)
 
 ### Community 524 - "Rotina Matinal — 2026-06-22"
 Cohesion: 0.20
@@ -970,8 +974,8 @@ Cohesion: 0.22
 Nodes (8): Causa raiz confirmada (Onco / Kora — os mais graves), Contexto, Correção / próximos passos, Evidência objetiva, Impacto, Incidente 2026-06-18 — Varredura matinal: eventos críticos não persistidos (gate de verificação), Observação de ambiente (não-bloqueante), Resultado da persistência (n_eventos confirmado no POST)
 
 ### Community 543 - "Auditoria Geral — VIX Radar (2026-07-04)"
-Cohesion: 0.11
-Nodes (17): Auditoria Geral — VIX Radar (2026-07-03), Backend, Frontend, Lacunas, Próximos passos, Segurança, perf e a11y, Top riscos, Veredito (+9 more)
+Cohesion: 0.22
+Nodes (9): Addendum — verificação do painel de notícias (mesma sessão, login autenticado via Playwright), Auditoria Geral — VIX Radar (2026-07-04), Backend (v4.9.145), Frontend (v201.69), Lacunas, Próximos passos, Rotina (fixes de ontem, validados hoje), Top riscos (+1 more)
 
 ### Community 544 - "Auditoria Completa — VIX Radar (2026-07-06)"
 Cohesion: 0.22
@@ -1038,7 +1042,7 @@ Cohesion: 0.25
 Nodes (7): Achados por severidade, Auditoria Completa — 2026-06-14 (pós-deploy v4.9.110 + consolidação de diretório), Drift source control, Lacunas e Próximos Passos, Os 4 blocos obrigatórios, Status das 7 regras invioláveis, Versões reais (produção vs repo canônico E:\)
 
 ### Community 561 - "Auditoria Geral — VIX Radar (2026-06-22)"
-Cohesion: 0.25
+Cohesion: 0.22
 Nodes (8): Achados novos, Achados reconfirmados (herdados), Auditoria Geral — VIX Radar (2026-06-22), Conformidade regras invioláveis, F1 resolvido (confirmado), Lacunas, Próximos passos, Veredito
 
 ### Community 563 - "Auditoria Geral — VIX Radar (2026-07-05)"
@@ -1314,9 +1318,9 @@ Cohesion: 0.67
 Nodes (3): Atualização 2026-06-11 (reconciliação Worker + P11 implementado), Drift de artefato do Worker — RECONCILIADO (fecha achado de 2026-06-10), P11 — alerta crítico direcionado por favorito (Worker v4.9.103)
 
 ## Knowledge Gaps
-- **2068 isolated node(s):** `Versões`, `Cobertura`, `Tasks Scheduler`, `Infra`, `Pendências ativas (topo)` (+2063 more)
+- **2069 isolated node(s):** `Versões`, `Cobertura`, `Tasks Scheduler`, `Infra`, `Pendências ativas (topo)` (+2064 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **24 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
@@ -1324,14 +1328,14 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `Auditoria Completa + Correções — VIX Radar (2026-07-20)` connect `Auditoria Completa + Correções — VIX Radar (2026-07-20)` to `00 - Índice (MOC).md`?**
   _High betweenness centrality (0.006) - this node is a cross-community bridge._
 - **Why does `Auditoria Completa — VIX Radar (2026-06-16 v2)` connect `Auditoria Completa — VIX Radar (2026-06-16 v2)` to `v4.9.153.js`?**
-  _High betweenness centrality (0.006) - this node is a cross-community bridge._
-- **Why does `Email Relatório e Deliverability — 2026-06-17` connect `Email Relatório e Deliverability — 2026-06-17` to `v4.9.153.js`?**
-  _High betweenness centrality (0.004) - this node is a cross-community bridge._
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
 - **What connects `Versões`, `Cobertura`, `Tasks Scheduler` to the rest of the system?**
-  _2112 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `v4.9.168.js` be split into smaller, more focused modules?**
-  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
+  _2113 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `prod-worker-2026-06-10.js` be split into smaller, more focused modules?**
   _Cohesion score 0.023686405337781484 - nodes in this community are weakly interconnected._
 - **Should `memory.py` be split into smaller, more focused modules?**
   _Cohesion score 0.06861239119303636 - nodes in this community are weakly interconnected._
+- **Should `__coreFetch` be split into smaller, more focused modules?**
+  _Cohesion score 0.12303422756706753 - nodes in this community are weakly interconnected._
+- **Should `50 - Análise Competitiva e Baseline SEO — 2026-07-11` be split into smaller, more focused modules?**
+  _Cohesion score 0.125 - nodes in this community are weakly interconnected._

@@ -27,7 +27,7 @@
       "label": "Vers\u00f5es",
       "file_type": "document",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L12",
+      "source_location": "L15",
       "_origin": "ast",
       "id": "obsidian_vix_radar_03_estado_atual_vers\u00f5es",
       "community": 14,
@@ -37,7 +37,7 @@
       "label": "Cobertura",
       "file_type": "document",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L20",
+      "source_location": "L23",
       "_origin": "ast",
       "id": "obsidian_vix_radar_03_estado_atual_cobertura",
       "community": 14,
@@ -47,7 +47,7 @@
       "label": "Tasks Scheduler",
       "file_type": "document",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L29",
+      "source_location": "L35",
       "_origin": "ast",
       "id": "obsidian_vix_radar_03_estado_atual_tasks_scheduler",
       "community": 14,
@@ -57,7 +57,7 @@
       "label": "Infra",
       "file_type": "document",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L38",
+      "source_location": "L45",
       "_origin": "ast",
       "id": "obsidian_vix_radar_03_estado_atual_infra",
       "community": 14,
@@ -67,11 +67,161 @@
       "label": "Pend\u00eancias ativas (topo)",
       "file_type": "document",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L48",
+      "source_location": "L55",
       "_origin": "ast",
       "id": "obsidian_vix_radar_03_estado_atual_pend\u00eancias_ativas_topo",
       "community": 14,
       "norm_label": "pendencias ativas (topo)"
+    },
+    {
+      "label": "Checklist p\u00f3s-rotina",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
+      "source_location": "L66",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03_estado_atual_checklist_p\u00f3s_rotina",
+      "community": 14,
+      "norm_label": "checklist pos-rotina"
+    },
+    {
+      "label": "03a - Changelog.md",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03a_changelog",
+      "community": 14,
+      "norm_label": "03a - changelog.md"
+    },
+    {
+      "label": "Changelog \u2014 VIX Radar",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03a_changelog_changelog_vix_radar",
+      "community": 14,
+      "norm_label": "changelog \u2014 vix radar"
+    },
+    {
+      "label": "03b - Infraestrutura.md",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura",
+      "community": 14,
+      "norm_label": "03b - infraestrutura.md"
+    },
+    {
+      "label": "Infraestrutura \u2014 VIX Radar",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L8",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "community": 513,
+      "norm_label": "infraestrutura \u2014 vix radar"
+    },
+    {
+      "label": "Bindings (Worker `radar-credito-api`)",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L12",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_bindings_worker_radar_credito_api",
+      "community": 513,
+      "norm_label": "bindings (worker `radar-credito-api`)"
+    },
+    {
+      "label": "Crons Worker",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L22",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_crons_worker",
+      "community": 513,
+      "norm_label": "crons worker"
+    },
+    {
+      "label": "Scheduled Routines (Windows Task Scheduler)",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L31",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_scheduled_routines_windows_task_scheduler",
+      "community": 513,
+      "norm_label": "scheduled routines (windows task scheduler)"
+    },
+    {
+      "label": "CORS",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L46",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_cors",
+      "community": 513,
+      "norm_label": "cors"
+    },
+    {
+      "label": "Seguran\u00e7a",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L54",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_seguran\u00e7a",
+      "community": 513,
+      "norm_label": "seguranca"
+    },
+    {
+      "label": "Auth",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L65",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_auth",
+      "community": 513,
+      "norm_label": "auth"
+    },
+    {
+      "label": "Acesso Admin",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L73",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_acesso_admin",
+      "community": 513,
+      "norm_label": "acesso admin"
+    },
+    {
+      "label": "Multi-semana",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L82",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_multi_semana",
+      "community": 513,
+      "norm_label": "multi-semana"
+    },
+    {
+      "label": "Cascade AI",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L88",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_cascade_ai",
+      "community": 513,
+      "norm_label": "cascade ai"
+    },
+    {
+      "label": "Regra CSS",
+      "file_type": "document",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L99",
+      "_origin": "ast",
+      "id": "obsidian_vix_radar_03b_infraestrutura_regra_css",
+      "community": 513,
+      "norm_label": "regra css"
     },
     {
       "label": "PENDENCIAS.md",
@@ -117,7 +267,7 @@
       "label": "Resolvido desde 2026-07-13",
       "file_type": "document",
       "source_file": "PENDENCIAS.md",
-      "source_location": "L65",
+      "source_location": "L67",
       "_origin": "ast",
       "id": "pendencias_resolvido_desde_2026_07_13",
       "community": 582,
@@ -127,7 +277,7 @@
       "label": "Hist\u00f3rico resolvido (compacto, pr\u00e9-13/07)",
       "file_type": "document",
       "source_file": "PENDENCIAS.md",
-      "source_location": "L100",
+      "source_location": "L104",
       "_origin": "ast",
       "id": "pendencias_hist\u00f3rico_resolvido_compacto_pr\u00e9_13_07",
       "community": 582,
@@ -137,11 +287,291 @@
       "label": "Pr\u00f3ximos passos priorizados",
       "file_type": "document",
       "source_file": "PENDENCIAS.md",
-      "source_location": "L112",
+      "source_location": "L116",
       "_origin": "ast",
       "id": "pendencias_pr\u00f3ximos_passos_priorizados",
       "community": 582,
       "norm_label": "proximos passos priorizados"
+    },
+    {
+      "label": "register-vixradar-tasks.ps1",
+      "file_type": "code",
+      "source_file": "scripts/register-vixradar-tasks.ps1",
+      "source_location": "L1",
+      "_origin": "ast",
+      "id": "scripts_register_vixradar_tasks",
+      "community": 707,
+      "norm_label": "register-vixradar-tasks.ps1"
+    },
+    {
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "claude.md",
+      "id": "claude"
+    },
+    {
+      "label": "Protocolo Operacional \u2014 VIX Radar",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "protocolo operacional \u2014 vix radar",
+      "id": "claude_protocolo_operacional_vix_radar"
+    },
+    {
+      "label": "Mem\u00f3ria can\u00f4nica",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L5",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "memoria canonica",
+      "id": "claude_mem\u00f3ria_can\u00f4nica"
+    },
+    {
+      "label": "Regra central",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L15",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "regra central",
+      "id": "claude_regra_central"
+    },
+    {
+      "label": "Modo expert (default)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L21",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "modo expert (default)",
+      "id": "claude_modo_expert_default"
+    },
+    {
+      "label": "Skills \u2014 roteamento leve",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L29",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "skills \u2014 roteamento leve",
+      "id": "claude_skills_roteamento_leve"
+    },
+    {
+      "label": "Health check \u2014 dupla valida\u00e7\u00e3o",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L44",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "health check \u2014 dupla validacao",
+      "id": "claude_health_check_dupla_valida\u00e7\u00e3o"
+    },
+    {
+      "label": "P\u00f3s-edi\u00e7\u00e3o obrigat\u00f3rio",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L56",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "pos-edicao obrigatorio",
+      "id": "claude_p\u00f3s_edi\u00e7\u00e3o_obrigat\u00f3rio"
+    },
+    {
+      "label": "Regras inviol\u00e1veis",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L67",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "regras inviolaveis",
+      "id": "claude_regras_inviol\u00e1veis"
+    },
+    {
+      "label": "Teste padr\u00e3o (health p\u00fablico)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L75",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "teste padrao (health publico)",
+      "id": "claude_teste_padr\u00e3o_health_p\u00fablico"
+    },
+    {
+      "label": "Arquitetura de IA (revisada 2026-07-10 contra os scripts reais)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L83",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "arquitetura de ia (revisada 2026-07-10 contra os scripts reais)",
+      "id": "claude_arquitetura_de_ia_revisada_2026_07_10_contra_os_scripts_reais"
+    },
+    {
+      "label": "Produ\u00e7\u00e3o atual (fonte: Obsidian `03 - Estado Atual.md`)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L98",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "producao atual (fonte: obsidian `03 - estado atual.md`)",
+      "id": "claude_produ\u00e7\u00e3o_atual_fonte_obsidian_03_estado_atual_md"
+    },
+    {
+      "label": "Stack resumido",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L120",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "stack resumido",
+      "id": "claude_stack_resumido"
+    },
+    {
+      "label": "Deploy Pages \u2014 checklist",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L132",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "deploy pages \u2014 checklist",
+      "id": "claude_deploy_pages_checklist"
+    },
+    {
+      "label": "OODA (incidentes)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L140",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "ooda (incidentes)",
+      "id": "claude_ooda_incidentes"
+    },
+    {
+      "label": "graphify",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L146",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "graphify",
+      "id": "claude_graphify"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "readme.md",
+      "id": "readme"
+    },
+    {
+      "label": "Radar de Cr\u00e9dito Privado (VIX Radar)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "radar de credito privado (vix radar)",
+      "id": "readme_radar_de_cr\u00e9dito_privado_vix_radar"
+    },
+    {
+      "label": "Acesso",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L10",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "acesso",
+      "id": "readme_acesso"
+    },
+    {
+      "label": "Fontes Vivas (n\u00e3o editar diretamente \u2014 s\u00e3o bundles de produ\u00e7\u00e3o)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L20",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "fontes vivas (nao editar diretamente \u2014 sao bundles de producao)",
+      "id": "readme_fontes_vivas_n\u00e3o_editar_diretamente_s\u00e3o_bundles_de_produ\u00e7\u00e3o"
+    },
+    {
+      "label": "Estrutura do Reposit\u00f3rio",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L40",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "estrutura do repositorio",
+      "id": "readme_estrutura_do_reposit\u00f3rio"
+    },
+    {
+      "label": "Diret\u00f3rios fora do fluxo operacional",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L53",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "diretorios fora do fluxo operacional",
+      "id": "readme_diret\u00f3rios_fora_do_fluxo_operacional"
+    },
+    {
+      "label": "Stack T\u00e9cnico",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L65",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "stack tecnico",
+      "id": "readme_stack_t\u00e9cnico"
+    },
+    {
+      "label": "Vers\u00f5es em Produ\u00e7\u00e3o",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L81",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "versoes em producao",
+      "id": "readme_vers\u00f5es_em_produ\u00e7\u00e3o"
+    },
+    {
+      "label": "Para Desenvolvedores e IAs",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L91",
+      "_origin": "ast",
+      "community": 235,
+      "norm_label": "para desenvolvedores e ias",
+      "id": "readme_para_desenvolvedores_e_ias"
+    },
+    {
+      "label": "deploy-pages.ps1",
+      "file_type": "code",
+      "source_file": "scripts/deploy-pages.ps1",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 666,
+      "norm_label": "deploy-pages.ps1",
+      "id": "scripts_deploy_pages"
+    },
+    {
+      "label": "Fail()",
+      "file_type": "code",
+      "source_file": "scripts/deploy-pages.ps1",
+      "source_location": "L36",
+      "_origin": "ast",
+      "community": 666,
+      "norm_label": "fail()",
+      "id": "scripts_deploy_pages_fail"
     },
     {
       "label": "65 - Auditoria Geral 2026-07-21-tarde.md",
@@ -432,256 +862,6 @@
       "community": 16,
       "norm_label": "check()",
       "id": "scripts_test_lab_preditivo_policy_check"
-    },
-    {
-      "label": "CLAUDE.md",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "claude.md",
-      "id": "claude"
-    },
-    {
-      "label": "Protocolo Operacional \u2014 VIX Radar",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "protocolo operacional \u2014 vix radar",
-      "id": "claude_protocolo_operacional_vix_radar"
-    },
-    {
-      "label": "Mem\u00f3ria can\u00f4nica",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L5",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "memoria canonica",
-      "id": "claude_mem\u00f3ria_can\u00f4nica"
-    },
-    {
-      "label": "Regra central",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L15",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "regra central",
-      "id": "claude_regra_central"
-    },
-    {
-      "label": "Modo expert (default)",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L21",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "modo expert (default)",
-      "id": "claude_modo_expert_default"
-    },
-    {
-      "label": "Skills \u2014 roteamento leve",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L28",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "skills \u2014 roteamento leve",
-      "id": "claude_skills_roteamento_leve"
-    },
-    {
-      "label": "Health check \u2014 dupla valida\u00e7\u00e3o",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L43",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "health check \u2014 dupla validacao",
-      "id": "claude_health_check_dupla_valida\u00e7\u00e3o"
-    },
-    {
-      "label": "P\u00f3s-edi\u00e7\u00e3o obrigat\u00f3rio",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L55",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "pos-edicao obrigatorio",
-      "id": "claude_p\u00f3s_edi\u00e7\u00e3o_obrigat\u00f3rio"
-    },
-    {
-      "label": "Regras inviol\u00e1veis",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L66",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "regras inviolaveis",
-      "id": "claude_regras_inviol\u00e1veis"
-    },
-    {
-      "label": "Teste padr\u00e3o (health p\u00fablico)",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L74",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "teste padrao (health publico)",
-      "id": "claude_teste_padr\u00e3o_health_p\u00fablico"
-    },
-    {
-      "label": "Arquitetura de IA (revisada 2026-07-10 contra os scripts reais)",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L82",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "arquitetura de ia (revisada 2026-07-10 contra os scripts reais)",
-      "id": "claude_arquitetura_de_ia_revisada_2026_07_10_contra_os_scripts_reais"
-    },
-    {
-      "label": "Produ\u00e7\u00e3o atual (fonte: Obsidian `03 - Estado Atual.md`)",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L97",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "producao atual (fonte: obsidian `03 - estado atual.md`)",
-      "id": "claude_produ\u00e7\u00e3o_atual_fonte_obsidian_03_estado_atual_md"
-    },
-    {
-      "label": "Stack resumido",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L119",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "stack resumido",
-      "id": "claude_stack_resumido"
-    },
-    {
-      "label": "Deploy Pages \u2014 checklist",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L131",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "deploy pages \u2014 checklist",
-      "id": "claude_deploy_pages_checklist"
-    },
-    {
-      "label": "OODA (incidentes)",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L139",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "ooda (incidentes)",
-      "id": "claude_ooda_incidentes"
-    },
-    {
-      "label": "graphify",
-      "file_type": "document",
-      "source_file": "CLAUDE.md",
-      "source_location": "L145",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "graphify",
-      "id": "claude_graphify"
-    },
-    {
-      "label": "README.md",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "readme.md",
-      "id": "readme"
-    },
-    {
-      "label": "Radar de Cr\u00e9dito Privado (VIX Radar)",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "radar de credito privado (vix radar)",
-      "id": "readme_radar_de_cr\u00e9dito_privado_vix_radar"
-    },
-    {
-      "label": "Acesso",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L10",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "acesso",
-      "id": "readme_acesso"
-    },
-    {
-      "label": "Fontes Vivas (n\u00e3o editar diretamente \u2014 s\u00e3o bundles de produ\u00e7\u00e3o)",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L20",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "fontes vivas (nao editar diretamente \u2014 sao bundles de producao)",
-      "id": "readme_fontes_vivas_n\u00e3o_editar_diretamente_s\u00e3o_bundles_de_produ\u00e7\u00e3o"
-    },
-    {
-      "label": "Estrutura do Reposit\u00f3rio",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L40",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "estrutura do repositorio",
-      "id": "readme_estrutura_do_reposit\u00f3rio"
-    },
-    {
-      "label": "Diret\u00f3rios fora do fluxo operacional",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L53",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "diretorios fora do fluxo operacional",
-      "id": "readme_diret\u00f3rios_fora_do_fluxo_operacional"
-    },
-    {
-      "label": "Stack T\u00e9cnico",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L65",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "stack tecnico",
-      "id": "readme_stack_t\u00e9cnico"
-    },
-    {
-      "label": "Vers\u00f5es em Produ\u00e7\u00e3o",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L81",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "versoes em producao",
-      "id": "readme_vers\u00f5es_em_produ\u00e7\u00e3o"
-    },
-    {
-      "label": "Para Desenvolvedores e IAs",
-      "file_type": "document",
-      "source_file": "README.md",
-      "source_location": "L91",
-      "_origin": "ast",
-      "community": 235,
-      "norm_label": "para desenvolvedores e ias",
-      "id": "readme_para_desenvolvedores_e_ias"
     },
     {
       "label": "helper.js",
@@ -9062,26 +9242,6 @@
       "id": "scripts_collect_cotacoes"
     },
     {
-      "label": "deploy-pages.ps1",
-      "file_type": "code",
-      "source_file": "scripts/deploy-pages.ps1",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 666,
-      "norm_label": "deploy-pages.ps1",
-      "id": "scripts_deploy_pages"
-    },
-    {
-      "label": "Fail()",
-      "file_type": "code",
-      "source_file": "scripts/deploy-pages.ps1",
-      "source_location": "L36",
-      "_origin": "ast",
-      "community": 666,
-      "norm_label": "fail()",
-      "id": "scripts_deploy_pages_fail"
-    },
-    {
       "label": "deploy-worker.ps1",
       "file_type": "code",
       "source_file": "scripts/deploy-worker.ps1",
@@ -9440,16 +9600,6 @@
       "community": 706,
       "norm_label": "register-vixradar-scheduler.ps1",
       "id": "scripts_register_vixradar_scheduler"
-    },
-    {
-      "label": "register-vixradar-tasks.ps1",
-      "file_type": "code",
-      "source_file": "scripts/register-vixradar-tasks.ps1",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 707,
-      "norm_label": "register-vixradar-tasks.ps1",
-      "id": "scripts_register_vixradar_tasks"
     },
     {
       "label": "replay-criticos.ps1",
@@ -20710,146 +20860,6 @@
       "id": "obsidian_vix_radar_00_\u00edndice_moc_arquivos_externos_ao_vault"
     },
     {
-      "label": "03a - Changelog.md",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 213,
-      "norm_label": "03a - changelog.md",
-      "id": "obsidian_vix_radar_03a_changelog"
-    },
-    {
-      "label": "Changelog \u2014 VIX Radar",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L8",
-      "_origin": "ast",
-      "community": 213,
-      "norm_label": "changelog \u2014 vix radar",
-      "id": "obsidian_vix_radar_03a_changelog_changelog_vix_radar"
-    },
-    {
-      "label": "03b - Infraestrutura.md",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L1",
-      "_origin": "ast",
-      "community": 213,
-      "norm_label": "03b - infraestrutura.md",
-      "id": "obsidian_vix_radar_03b_infraestrutura"
-    },
-    {
-      "label": "Infraestrutura \u2014 VIX Radar",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L8",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "infraestrutura \u2014 vix radar",
-      "id": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar"
-    },
-    {
-      "label": "Bindings (Worker `radar-credito-api`)",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L12",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "bindings (worker `radar-credito-api`)",
-      "id": "obsidian_vix_radar_03b_infraestrutura_bindings_worker_radar_credito_api"
-    },
-    {
-      "label": "Crons Worker",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L22",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "crons worker",
-      "id": "obsidian_vix_radar_03b_infraestrutura_crons_worker"
-    },
-    {
-      "label": "Scheduled Routines (Windows Task Scheduler)",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L31",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "scheduled routines (windows task scheduler)",
-      "id": "obsidian_vix_radar_03b_infraestrutura_scheduled_routines_windows_task_scheduler"
-    },
-    {
-      "label": "CORS",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L45",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "cors",
-      "id": "obsidian_vix_radar_03b_infraestrutura_cors"
-    },
-    {
-      "label": "Seguran\u00e7a",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L53",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "seguranca",
-      "id": "obsidian_vix_radar_03b_infraestrutura_seguran\u00e7a"
-    },
-    {
-      "label": "Auth",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L64",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "auth",
-      "id": "obsidian_vix_radar_03b_infraestrutura_auth"
-    },
-    {
-      "label": "Acesso Admin",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L72",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "acesso admin",
-      "id": "obsidian_vix_radar_03b_infraestrutura_acesso_admin"
-    },
-    {
-      "label": "Multi-semana",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L81",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "multi-semana",
-      "id": "obsidian_vix_radar_03b_infraestrutura_multi_semana"
-    },
-    {
-      "label": "Cascade AI",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L87",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "cascade ai",
-      "id": "obsidian_vix_radar_03b_infraestrutura_cascade_ai"
-    },
-    {
-      "label": "Regra CSS",
-      "file_type": "document",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L98",
-      "_origin": "ast",
-      "community": 513,
-      "norm_label": "regra css",
-      "id": "obsidian_vix_radar_03b_infraestrutura_regra_css"
-    },
-    {
       "label": "04a - Auditoria 2026-06-07.md",
       "file_type": "document",
       "source_file": "Obsidian VIX Radar/04a - Auditoria 2026-06-07.md",
@@ -21575,7 +21585,7 @@
       "source_file": "Obsidian VIX Radar/08 - An\u00e1lise de Risco e Arquitetura de Confiabilidade.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 213,
+      "community": 523,
       "norm_label": "08 - analise de risco e arquitetura de confiabilidade.md",
       "id": "obsidian_vix_radar_08_an\u00e1lise_de_risco_e_arquitetura_de_confiabilidade"
     },
@@ -21785,7 +21795,7 @@
       "source_file": "Obsidian VIX Radar/09 - Auditoria 2026-06-10 (Pend\u00eancias).md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 213,
+      "community": 523,
       "norm_label": "09 - auditoria 2026-06-10 (pendencias).md",
       "id": "obsidian_vix_radar_09_auditoria_2026_06_10_pend\u00eancias"
     },
@@ -21875,7 +21885,7 @@
       "source_file": "Obsidian VIX Radar/10 - Oportunidades de Melhoria (2026-06-11).md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 213,
+      "community": 523,
       "norm_label": "10 - oportunidades de melhoria (2026-06-11).md",
       "id": "obsidian_vix_radar_10_oportunidades_de_melhoria_2026_06_11"
     },
@@ -21985,7 +21995,7 @@
       "source_file": "Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 213,
+      "community": 523,
       "norm_label": "11 - runbook deploy cloudflare pages.md",
       "id": "obsidian_vix_radar_11_runbook_deploy_cloudflare_pages"
     },
@@ -21995,7 +22005,7 @@
       "source_file": "Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md",
       "source_location": "L11",
       "_origin": "ast",
-      "community": 12,
+      "community": 523,
       "norm_label": "runbook \u2014 deploy do frontend (cloudflare pages)",
       "id": "obsidian_vix_radar_11_runbook_deploy_cloudflare_pages_runbook_deploy_do_frontend_cloudflare_pages"
     },
@@ -22005,7 +22015,7 @@
       "source_file": "Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md",
       "source_location": "L15",
       "_origin": "ast",
-      "community": 12,
+      "community": 523,
       "norm_label": "deploy normal (caso comum)",
       "id": "obsidian_vix_radar_11_runbook_deploy_cloudflare_pages_deploy_normal_caso_comum"
     },
@@ -22015,7 +22025,7 @@
       "source_file": "Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md",
       "source_location": "L33",
       "_origin": "ast",
-      "community": 12,
+      "community": 523,
       "norm_label": "credencial (configurar uma vez, e a cada rotacao)",
       "id": "obsidian_vix_radar_11_runbook_deploy_cloudflare_pages_credencial_configurar_uma_vez_e_a_cada_rota\u00e7\u00e3o"
     },
@@ -22025,7 +22035,7 @@
       "source_file": "Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md",
       "source_location": "L51",
       "_origin": "ast",
-      "community": 12,
+      "community": 523,
       "norm_label": "validacao manual pos-deploy (se quiser conferir a mao)",
       "id": "obsidian_vix_radar_11_runbook_deploy_cloudflare_pages_valida\u00e7\u00e3o_manual_p\u00f3s_deploy_se_quiser_conferir_\u00e0_m\u00e3o"
     },
@@ -22035,7 +22045,7 @@
       "source_file": "Obsidian VIX Radar/11 - Runbook Deploy Cloudflare Pages.md",
       "source_location": "L59",
       "_origin": "ast",
-      "community": 12,
+      "community": 523,
       "norm_label": "notas",
       "id": "obsidian_vix_radar_11_runbook_deploy_cloudflare_pages_notas"
     },
@@ -25325,7 +25335,7 @@
       "source_file": "Obsidian VIX Radar/33 - Auditoria Geral 2026-06-22.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 213,
+      "community": 561,
       "norm_label": "33 - auditoria geral 2026-06-22.md",
       "id": "obsidian_vix_radar_33_auditoria_geral_2026_06_22"
     },
@@ -25805,7 +25815,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "auditoria geral \u2014 vix radar (2026-07-03)",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_auditoria_geral_vix_radar_2026_07_03"
     },
@@ -25815,7 +25825,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L3",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "veredito",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_veredito"
     },
@@ -25825,7 +25835,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L7",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "top riscos",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_top_riscos"
     },
@@ -25835,7 +25845,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L17",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "backend",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_backend"
     },
@@ -25845,7 +25855,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L25",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "frontend",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_frontend"
     },
@@ -25855,7 +25865,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L31",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "seguranca, perf e a11y",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_seguran\u00e7a_perf_e_a11y"
     },
@@ -25865,7 +25875,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L37",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "proximos passos",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_pr\u00f3ximos_passos"
     },
@@ -25875,7 +25885,7 @@
       "source_file": "Obsidian VIX Radar/37 - Auditoria Geral Backend Frontend 2026-07-03.md",
       "source_location": "L45",
       "_origin": "ast",
-      "community": 543,
+      "community": 12,
       "norm_label": "lacunas",
       "id": "obsidian_vix_radar_37_auditoria_geral_backend_frontend_2026_07_03_lacunas"
     },
@@ -26795,7 +26805,7 @@
       "source_file": "Obsidian VIX Radar/47 - Auditoria Completa 2026-07-09 (v2).md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 213,
+      "community": 427,
       "norm_label": "47 - auditoria completa 2026-07-09 (v2).md",
       "id": "obsidian_vix_radar_47_auditoria_completa_2026_07_09_v2"
     },
@@ -27265,7 +27275,7 @@
       "source_file": "Obsidian VIX Radar/50 - An\u00e1lise Competitiva e Baseline SEO 2026-07-11.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 8,
+      "community": 213,
       "norm_label": "50 - analise competitiva e baseline seo 2026-07-11.md",
       "id": "obsidian_vix_radar_50_an\u00e1lise_competitiva_e_baseline_seo_2026_07_11"
     },
@@ -27395,7 +27405,7 @@
       "source_file": "Obsidian VIX Radar/51 - Pesquisa Preditivo v2 2026-07-11.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 8,
+      "community": 213,
       "norm_label": "51 - pesquisa preditivo v2 2026-07-11.md",
       "id": "obsidian_vix_radar_51_pesquisa_preditivo_v2_2026_07_11"
     },
@@ -28095,7 +28105,7 @@
       "source_file": "Obsidian VIX Radar/56 - Auditoria Geral Backend Frontend 2026-07-14.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 7,
+      "community": 213,
       "norm_label": "56 - auditoria geral backend frontend 2026-07-14.md",
       "id": "obsidian_vix_radar_56_auditoria_geral_backend_frontend_2026_07_14"
     },
@@ -28315,7 +28325,7 @@
       "source_file": "Obsidian VIX Radar/57 - Auditoria Geral (Addendum IA-LLM e Runtime Workers) 2026-07-14.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 7,
+      "community": 213,
       "norm_label": "57 - auditoria geral (addendum ia-llm e runtime workers) 2026-07-14.md",
       "id": "obsidian_vix_radar_57_auditoria_geral_addendum_ia_llm_e_runtime_workers_2026_07_14"
     },
@@ -28385,7 +28395,7 @@
       "source_file": "Obsidian VIX Radar/58 - Auditoria Completa 2026-07-15.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 3,
+      "community": 213,
       "norm_label": "58 - auditoria completa 2026-07-15.md",
       "id": "obsidian_vix_radar_58_auditoria_completa_2026_07_15"
     },
@@ -28485,7 +28495,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "59 - incidente researchdown1 (oncoclinicas critico rebaixado) 2026-07-15.md",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15"
     },
@@ -28495,7 +28505,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L7",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "incidente researchdown1 \u2014 evento critico da oncoclinicas rebaixado para relevante",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15_incidente_researchdown1_evento_critico_da_oncocl\u00ednicas_rebaixado_para_relevante"
     },
@@ -28505,7 +28515,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L12",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "diagnostico (systematic-debugging, fase 1 completa antes de qualquer fix)",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15_diagn\u00f3stico_systematic_debugging_fase_1_completa_antes_de_qualquer_fix"
     },
@@ -28515,7 +28525,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L16",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "causa raiz (rastreada linha a linha, sem hipotese nao verificada)",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15_causa_raiz_rastreada_linha_a_linha_sem_hip\u00f3tese_n\u00e3o_verificada"
     },
@@ -28525,7 +28535,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L39",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "fix (v4.9.161, commit local `a64ed21`, deploy pendente de autorizacao)",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15_fix_v4_9_161_commit_local_a64ed21_deploy_pendente_de_autoriza\u00e7\u00e3o"
     },
@@ -28535,7 +28545,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L47",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "correcao do dado ja gravado em producao",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15_corre\u00e7\u00e3o_do_dado_j\u00e1_gravado_em_produ\u00e7\u00e3o"
     },
@@ -28545,7 +28555,7 @@
       "source_file": "Obsidian VIX Radar/59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15.md",
       "source_location": "L51",
       "_origin": "ast",
-      "community": 8,
+      "community": 19,
       "norm_label": "pendencia aberta",
       "id": "obsidian_vix_radar_59_incidente_researchdown1_oncoclinicas_critico_rebaixado_2026_07_15_pend\u00eancia_aberta"
     },
@@ -28555,7 +28565,7 @@
       "source_file": "Obsidian VIX Radar/60 - Pesquisa e Ideias, Proveni\u00eancia de Fonte e Ground Truth CVM 2026-07-16.md",
       "source_location": "L1",
       "_origin": "ast",
-      "community": 8,
+      "community": 213,
       "norm_label": "60 - pesquisa e ideias, proveniencia de fonte e ground truth cvm 2026-07-16.md",
       "id": "obsidian_vix_radar_60_pesquisa_e_ideias_proveni\u00eancia_de_fonte_e_ground_truth_cvm_2026_07_16"
     },
@@ -35162,10 +35172,40 @@
       "confidence_score": 1.0
     },
     {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03_estado_atual",
+      "target": "obsidian_vix_radar_03a_changelog",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
+      "source_location": "L80",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03_estado_atual",
+      "target": "obsidian_vix_radar_03b_infraestrutura",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L20",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03_estado_atual_estado_atual_vix_radar",
+      "target": "obsidian_vix_radar_03_estado_atual_checklist_p\u00f3s_rotina",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
+      "source_location": "L23",
       "weight": 1.0,
       "source": "obsidian_vix_radar_03_estado_atual_estado_atual_vix_radar",
       "target": "obsidian_vix_radar_03_estado_atual_cobertura",
@@ -35175,7 +35215,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L38",
+      "source_location": "L45",
       "weight": 1.0,
       "source": "obsidian_vix_radar_03_estado_atual_estado_atual_vix_radar",
       "target": "obsidian_vix_radar_03_estado_atual_infra",
@@ -35185,7 +35225,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L48",
+      "source_location": "L55",
       "weight": 1.0,
       "source": "obsidian_vix_radar_03_estado_atual_estado_atual_vix_radar",
       "target": "obsidian_vix_radar_03_estado_atual_pend\u00eancias_ativas_topo",
@@ -35195,7 +35235,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L29",
+      "source_location": "L35",
       "weight": 1.0,
       "source": "obsidian_vix_radar_03_estado_atual_estado_atual_vix_radar",
       "target": "obsidian_vix_radar_03_estado_atual_tasks_scheduler",
@@ -35205,10 +35245,160 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "Obsidian VIX Radar/03 - Estado Atual.md",
-      "source_location": "L12",
+      "source_location": "L15",
       "weight": 1.0,
       "source": "obsidian_vix_radar_03_estado_atual_estado_atual_vix_radar",
       "target": "obsidian_vix_radar_03_estado_atual_vers\u00f5es",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/00 - \u00cdndice (MOC).md",
+      "source_location": "L30",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "obsidian_vix_radar_00_\u00edndice_moc",
+      "target": "obsidian_vix_radar_03a_changelog"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03a_changelog",
+      "target": "obsidian_vix_radar_03a_changelog_changelog_vix_radar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
+      "source_location": "L136",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03a_changelog",
+      "target": "obsidian_vix_radar_03b_infraestrutura",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/00 - \u00cdndice (MOC).md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "obsidian_vix_radar_00_\u00edndice_moc",
+      "target": "obsidian_vix_radar_03b_infraestrutura"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L8",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura",
+      "target": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L73",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_acesso_admin",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_auth",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L12",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_bindings_worker_radar_credito_api",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_cascade_ai",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L46",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_cors",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_crons_worker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L82",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_multi_semana",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L99",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_regra_css",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_scheduled_routines_windows_task_scheduler",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
+      "source_location": "L54",
+      "weight": 1.0,
+      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
+      "target": "obsidian_vix_radar_03b_infraestrutura_seguran\u00e7a",
       "confidence_score": 1.0
     },
     {
@@ -35225,7 +35415,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PENDENCIAS.md",
-      "source_location": "L100",
+      "source_location": "L104",
       "weight": 1.0,
       "source": "pendencias_pendencias_md_vix_radar",
       "target": "pendencias_hist\u00f3rico_resolvido_compacto_pr\u00e9_13_07",
@@ -35245,7 +35435,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PENDENCIAS.md",
-      "source_location": "L112",
+      "source_location": "L116",
       "weight": 1.0,
       "source": "pendencias_pendencias_md_vix_radar",
       "target": "pendencias_pr\u00f3ximos_passos_priorizados",
@@ -35255,7 +35445,7 @@
       "relation": "contains",
       "confidence": "EXTRACTED",
       "source_file": "PENDENCIAS.md",
-      "source_location": "L65",
+      "source_location": "L67",
       "weight": 1.0,
       "source": "pendencias_pendencias_md_vix_radar",
       "target": "pendencias_resolvido_desde_2026_07_13",
@@ -35270,6 +35460,266 @@
       "source": "pendencias_pendencias_md_vix_radar",
       "target": "pendencias_s\u00edntese_executiva",
       "confidence_score": 1.0
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "AGENTS.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "agents",
+      "target": "claude"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude",
+      "target": "claude_protocolo_operacional_vix_radar"
+    },
+    {
+      "relation": "references",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L93",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme",
+      "target": "claude"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L83",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_arquitetura_de_ia_revisada_2026_07_10_contra_os_scripts_reais"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L132",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_deploy_pages_checklist"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L146",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_graphify"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_mem\u00f3ria_can\u00f4nica"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_modo_expert_default"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L140",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_ooda_incidentes"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L98",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_produ\u00e7\u00e3o_atual_fonte_obsidian_03_estado_atual_md"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L56",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_p\u00f3s_edi\u00e7\u00e3o_obrigat\u00f3rio"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_regra_central"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L67",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_regras_inviol\u00e1veis"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L120",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_stack_resumido"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L75",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_protocolo_operacional_vix_radar",
+      "target": "claude_teste_padr\u00e3o_health_p\u00fablico"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L44",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_modo_expert_default",
+      "target": "claude_health_check_dupla_valida\u00e7\u00e3o"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "claude_modo_expert_default",
+      "target": "claude_skills_roteamento_leve"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme",
+      "target": "readme_radar_de_cr\u00e9dito_privado_vix_radar"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
+      "target": "readme_acesso"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L40",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
+      "target": "readme_estrutura_do_reposit\u00f3rio"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
+      "target": "readme_fontes_vivas_n\u00e3o_editar_diretamente_s\u00e3o_bundles_de_produ\u00e7\u00e3o"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L91",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
+      "target": "readme_para_desenvolvedores_e_ias"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L65",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
+      "target": "readme_stack_t\u00e9cnico"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L81",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
+      "target": "readme_vers\u00f5es_em_produ\u00e7\u00e3o"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L53",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "readme_estrutura_do_reposit\u00f3rio",
+      "target": "readme_diret\u00f3rios_fora_do_fluxo_operacional"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "scripts/deploy-pages.ps1",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "scripts_deploy_pages",
+      "target": "scripts_deploy_pages_fail"
     },
     {
       "relation": "contains",
@@ -35520,256 +35970,6 @@
       "confidence_score": 1.0,
       "source": "scripts_test_lab_preditivo_policy",
       "target": "scripts_test_lab_preditivo_policy_exigelabpreditivoadmin"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "AGENTS.md",
-      "source_location": "L3",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "agents",
-      "target": "claude"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude",
-      "target": "claude_protocolo_operacional_vix_radar"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L93",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme",
-      "target": "claude"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L82",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_arquitetura_de_ia_revisada_2026_07_10_contra_os_scripts_reais"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L131",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_deploy_pages_checklist"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L145",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_graphify"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L5",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_mem\u00f3ria_can\u00f4nica"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L21",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_modo_expert_default"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L139",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_ooda_incidentes"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L97",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_produ\u00e7\u00e3o_atual_fonte_obsidian_03_estado_atual_md"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L55",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_p\u00f3s_edi\u00e7\u00e3o_obrigat\u00f3rio"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L15",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_regra_central"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L66",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_regras_inviol\u00e1veis"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L119",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_stack_resumido"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L74",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_protocolo_operacional_vix_radar",
-      "target": "claude_teste_padr\u00e3o_health_p\u00fablico"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L43",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_modo_expert_default",
-      "target": "claude_health_check_dupla_valida\u00e7\u00e3o"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "CLAUDE.md",
-      "source_location": "L28",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "claude_modo_expert_default",
-      "target": "claude_skills_roteamento_leve"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L1",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme",
-      "target": "readme_radar_de_cr\u00e9dito_privado_vix_radar"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L10",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
-      "target": "readme_acesso"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L40",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
-      "target": "readme_estrutura_do_reposit\u00f3rio"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L20",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
-      "target": "readme_fontes_vivas_n\u00e3o_editar_diretamente_s\u00e3o_bundles_de_produ\u00e7\u00e3o"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L91",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
-      "target": "readme_para_desenvolvedores_e_ias"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L65",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
-      "target": "readme_stack_t\u00e9cnico"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L81",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_radar_de_cr\u00e9dito_privado_vix_radar",
-      "target": "readme_vers\u00f5es_em_produ\u00e7\u00e3o"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "README.md",
-      "source_location": "L53",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "readme_estrutura_do_reposit\u00f3rio",
-      "target": "readme_diret\u00f3rios_fora_do_fluxo_operacional"
     },
     {
       "relation": "contains",
@@ -54690,16 +54890,6 @@
     {
       "relation": "contains",
       "confidence": "EXTRACTED",
-      "source_file": "scripts/deploy-pages.ps1",
-      "source_location": "L36",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "scripts_deploy_pages",
-      "target": "scripts_deploy_pages_fail"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
       "source_file": "scripts/deploy-worker.ps1",
       "source_location": "L45",
       "weight": 1.0,
@@ -65615,26 +65805,6 @@
       "relation": "references",
       "confidence": "EXTRACTED",
       "source_file": "Obsidian VIX Radar/00 - \u00cdndice (MOC).md",
-      "source_location": "L30",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_00_\u00edndice_moc",
-      "target": "obsidian_vix_radar_03a_changelog"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/00 - \u00cdndice (MOC).md",
-      "source_location": "L31",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_00_\u00edndice_moc",
-      "target": "obsidian_vix_radar_03b_infraestrutura"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/00 - \u00cdndice (MOC).md",
       "source_location": "L130",
       "weight": 1.0,
       "confidence_score": 1.0,
@@ -66350,236 +66520,6 @@
       "confidence_score": 1.0,
       "source": "obsidian_vix_radar_00_\u00edndice_moc_notas_por_categoria",
       "target": "obsidian_vix_radar_00_\u00edndice_moc_subdiret\u00f3rios"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L8",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_03a_changelog_changelog_vix_radar"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L117",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_03b_infraestrutura"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L113",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_35_auditoria_completa_2026_07_02"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L110",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_39_auditoria_completa_2026_07_04"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L107",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_40_auditoria_geral_backend_frontend_2026_07_05"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L104",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_41_auditoria_completa_2026_07_06"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L98",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_46_auditoria_completa_2026_07_09"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L98",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_47_auditoria_completa_2026_07_09_v2"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L86",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_53_auditoria_completa_2026_07_13"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L86",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_54_auditoria_geral_backend_frontend_2026_07_13"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L35",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_62_auditoria_completa_e_correcoes_2026_07_20"
-    },
-    {
-      "relation": "references",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03a - Changelog.md",
-      "source_location": "L32",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03a_changelog",
-      "target": "obsidian_vix_radar_63_recovery_e_deploy_2026_07_20"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L8",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura",
-      "target": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L72",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_acesso_admin"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L64",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_auth"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L12",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_bindings_worker_radar_credito_api"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L87",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_cascade_ai"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L45",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_cors"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L22",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_crons_worker"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L81",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_multi_semana"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L98",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_regra_css"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L31",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_scheduled_routines_windows_task_scheduler"
-    },
-    {
-      "relation": "contains",
-      "confidence": "EXTRACTED",
-      "source_file": "Obsidian VIX Radar/03b - Infraestrutura.md",
-      "source_location": "L53",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "obsidian_vix_radar_03b_infraestrutura_infraestrutura_vix_radar",
-      "target": "obsidian_vix_radar_03b_infraestrutura_seguran\u00e7a"
     },
     {
       "relation": "contains",
@@ -80233,5 +80173,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "c8dea5312513b67355769ce4345000c7ef59c496"
+  "built_at_commit": "cdc06b2585b104a22106fdb588d0c8baab7b4fbe"
 }

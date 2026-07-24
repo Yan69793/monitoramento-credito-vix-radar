@@ -44,11 +44,42 @@ foreach ($prop in ($emissores | Get-Member -MemberType NoteProperty)) {
     $ticker = $tickerRaw -replace '\.SA$', ''
     $outFile = Join-Path $seriesDir "$ticker.json"
 
-    # Cache: skip if file < 24h old (unless -Force)
+    # Cache: skip if file < 24h old (unless -Force), but still populate meta from cached data
     if (-not $Force -and (Test-Path $outFile)) {
         $age = (Get-Date) - (Get-Item $outFile).LastWriteTime
         if ($age.TotalHours -lt 24) {
             $skipped++
+            try {
+                $cached = Get-Content $outFile -Raw | ConvertFrom-Json
+                $cachedRows = $cached.rows
+                $n = $cachedRows.Count
+                if ($n -ge 60) {
+                    $retornos = @()
+                    $limit = [Math]::Min($n, $Dias + 1)
+                    for ($j = 1; $j -lt $limit; $j++) {
+                        $p0 = $cachedRows[$j-1].adjclose
+                        $p1 = $cachedRows[$j].adjclose
+                        if ($p0 -gt 0 -and $p1 -gt 0) {
+                            $retornos += [Math]::Log($p1 / $p0)
+                        }
+                    }
+                    if ($retornos.Count -ge 30) {
+                        $std = [Math]::Sqrt(($retornos | ForEach-Object { $_ * $_ } | Measure-Object -Sum).Sum / $retornos.Count)
+                        $volAnual = [Math]::Round($std * [Math]::Sqrt(252), 6)
+                    } else {
+                        $volAnual = $null
+                    }
+                } else {
+                    $volAnual = $null
+                }
+                $meta[$emissor] = [PSCustomObject]@{
+                    ticker = "$ticker.SA"
+                    rows = $n
+                    vol_anualizada = $volAnual
+                }
+            } catch {
+                # Cache file corrupt/unreadable — will be re-fetched next run
+            }
             continue
         }
     }
@@ -153,8 +184,14 @@ $metaObj | ConvertTo-Json -Depth 3 | Set-Content $metaFile -Encoding UTF8
 Write-Host ""
 Write-Host "=== RESUMO ==="
 Write-Host "Sucesso: $sucesso | Falha: $falha | Cache skip: $skipped | Total: $total"
+Write-Host "Cobertura: $($sucesso + $skipped) de $total emissores no meta"
 Write-Host "Meta: $metaFile"
-if ($sucesso -gt 0) {
-    $comVol = ($meta.Values | Where-Object { $_.vol_anualizada }).Count
-    Write-Host "Com volatilidade: $comVol de $sucesso"
+$comVol = ($meta.Values | Where-Object { $_.vol_anualizada }).Count
+Write-Host "Com volatilidade: $comVol de $($meta.Count)"
+if ($falha -gt 0 -and ($sucesso + $skipped) -lt ($total - $falha)) {
+    Write-Host "AVISO: $($total - $falha - $sucesso - $skipped) emissores sem cobertura (nem cache nem fetch)"
 }
+if (($sucesso + $skipped) -lt ($total - $falha)) {
+    exit 2
+}
+exit 0

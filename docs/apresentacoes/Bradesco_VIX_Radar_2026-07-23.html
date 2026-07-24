@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIX Radar — Inteligencia de Credito Privado | Banco Bradesco</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   VIX RADAR — APRESENTACAO BANCO BRADESCO
+   Estetica: Editorial Financeira / Dark Luxury
+   Julho 2026
+   ═══════════════════════════════════════════════════════ */
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:        #0A0F1A;
+  --bg-card:   #0E1525;
+  --bg-subtle: #111B2E;
+  --gold:      #C4985A;
+  --gold-dim:  #A07840;
+  --gold-glow: rgba(196,152,90,0.15);
+  --copper:    #B87333;
+  --navy:      #0A1628;
+  --text:      #E0DAD0;
+  --text-dim:  #8A9AAA;
+  --text-mute: #4A5A6A;
+  --border:    #1A2A3E;
+  --red:       #E85454;
+  --amber:     #F5A623;
+  --green:     #34D399;
+  --blue:      #5B8DEF;
+  --serif:     'Playfair Display', Georgia, serif;
+  --sans:      'DM Sans', -apple-system, sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+}
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+.deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 60px 80px;
+  opacity: 0; transform: translateY(30px);
+  transition: opacity 0.7s cubic-bezier(0.23,1,0.32,1), transform 0.7s cubic-bezier(0.23,1,0.32,1);
+  pointer-events: none; z-index: 0;
+}
+.slide.active { opacity: 1; transform: translateY(0); pointer-events: auto; z-index: 10; }
+.slide > * { position: relative; z-index: 1; }
+
+/* Backgrounds */
+.bg-marble::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 70% 50% at 20% 60%, rgba(184,115,51,0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 50% 60% at 80% 30%, rgba(196,152,90,0.08) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 40% at 50% 90%, rgba(184,115,51,0.06) 0%, transparent 50%),
+    linear-gradient(135deg, transparent 30%, rgba(184,115,51,0.03) 31%, transparent 32%, transparent 60%, rgba(184,115,51,0.04) 61%, transparent 62%);
+}
+.bg-grid::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: linear-gradient(rgba(196,152,90,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(196,152,90,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+.bg-glow::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(196,152,90,0.08) 0%, transparent 70%);
+}
+.bg-accent-left::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(90deg, rgba(196,152,90,0.06) 0%, transparent 30%);
+}
+
+/* Grain */
+.deck::after {
+  content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none; opacity: 0.025;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Typography */
+.t-hero {
+  font-family: var(--serif); font-size: clamp(2.5rem, 6.5vw, 5rem);
+  font-weight: 700; line-height: 1.05; letter-spacing: -0.01em; color: #F0EBE0;
+}
+.t-title {
+  font-family: var(--serif); font-size: clamp(1.8rem, 3.6vw, 2.8rem);
+  font-weight: 600; line-height: 1.15; color: #EFEAD8;
+}
+.t-subtitle {
+  font-family: var(--sans); font-size: clamp(0.9rem, 1.7vw, 1.1rem);
+  font-weight: 300; line-height: 1.7; color: var(--text-dim); max-width: 680px;
+}
+.t-label {
+  font-family: var(--sans); font-size: 0.7rem; font-weight: 500;
+  letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold);
+}
+.t-number {
+  font-family: var(--serif); font-size: clamp(2.2rem, 4.5vw, 3.5rem);
+  font-weight: 700; color: var(--gold); line-height: 1;
+}
+.t-body {
+  font-family: var(--sans); font-size: clamp(0.85rem, 1.4vw, 1rem);
+  font-weight: 400; line-height: 1.75; color: var(--text); max-width: 720px;
+}
+.t-small { font-family: var(--mono); font-size: 0.7rem; color: var(--text-mute); }
+
+/* Components */
+.gold-line { width: 60px; height: 2px; background: linear-gradient(90deg, var(--gold), var(--gold-dim)); margin: 20px 0; }
+.gold-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); display: inline-block; }
+.tag {
+  display: inline-block; padding: 4px 14px; border: 1px solid var(--border);
+  border-radius: 2px; font-family: var(--mono); font-size: 0.72rem;
+  color: var(--text-dim); letter-spacing: 0.05em;
+}
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 32px; transition: border-color 0.3s;
+}
+.card:hover { border-color: rgba(196,152,90,0.3); }
+.metric-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 28px 24px; text-align: center; min-width: 160px;
+}
+.metric-card .t-number { margin-bottom: 8px; }
+.section-num {
+  position: absolute; top: 40px; left: 60px;
+  font-family: var(--mono); font-size: 0.75rem; color: var(--text-mute);
+}
+.watermark {
+  position: absolute; bottom: 30px; right: 50px;
+  font-family: var(--mono); font-size: 0.65rem; color: var(--text-mute); opacity: 0.5;
+}
+
+/* Layouts */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; width: 100%; max-width: 1100px; align-items: start; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; width: 100%; max-width: 1000px; }
+.four-col { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; width: 100%; max-width: 1000px; }
+
+/* Flow diagram */
+.flow { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: center; }
+.flow-box {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 16px 24px;
+  font-family: var(--sans); font-size: 0.85rem; color: var(--text); text-align: center; min-width: 140px;
+}
+.flow-arrow { color: var(--gold); font-size: 1.2rem; opacity: 0.6; }
+
+/* Timeline */
+.timeline { display: flex; flex-direction: column; gap: 12px; }
+.timeline-item { padding: 16px 20px; border-left: 2px solid var(--border); transition: border-color 0.3s; }
+.timeline-item:hover { border-left-color: var(--gold); }
+
+/* Sector pills */
+.sector-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; max-width: 800px; }
+.sector-pill {
+  padding: 6px 16px; border: 1px solid var(--border); border-radius: 20px;
+  font-size: 0.78rem; color: var(--text-dim); display: flex; align-items: center; gap: 8px;
+}
+.dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Score gauge */
+.gauge { display: flex; height: 12px; border-radius: 6px; overflow: hidden; width: 100%; max-width: 600px; }
+.gauge-green { flex: 4; background: var(--green); }
+.gauge-amber { flex: 3; background: var(--amber); }
+.gauge-red   { flex: 3; background: var(--red); }
+.gauge-labels { display: flex; justify-content: space-between; width: 100%; max-width: 600px; font-size: 0.72rem; margin-top: 8px; color: var(--text-dim); }
+
+/* Arch layer */
+.arch-layer { display: flex; align-items: center; gap: 16px; padding: 16px 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 4px; }
+.arch-layer .icon { font-size: 1.3rem; min-width: 32px; text-align: center; }
+
+/* Stagger */
+.stagger > * { opacity: 0; transform: translateY(16px); transition: opacity 0.5s ease, transform 0.5s ease; }
+.slide.active .stagger > *:nth-child(1) { opacity:1; transform:translateY(0); transition-delay:0.15s; }
+.slide.active .stagger > *:nth-child(2) { opacity:1; transform:translateY(0); transition-delay:0.3s; }
+.slide.active .stagger > *:nth-child(3) { opacity:1; transform:translateY(0); transition-delay:0.45s; }
+.slide.active .stagger > *:nth-child(4) { opacity:1; transform:translateY(0); transition-delay:0.6s; }
+.slide.active .stagger > *:nth-child(5) { opacity:1; transform:translateY(0); transition-delay:0.75s; }
+.slide.active .stagger > *:nth-child(6) { opacity:1; transform:translateY(0); transition-delay:0.9s; }
+.slide.active .stagger > *:nth-child(7) { opacity:1; transform:translateY(0); transition-delay:1.05s; }
+.slide.active .stagger > *:nth-child(8) { opacity:1; transform:translateY(0); transition-delay:1.2s; }
+
+/* Nav bar */
+.nav-bar {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10000;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 32px;
+  background: linear-gradient(transparent, rgba(10,15,26,0.95));
+}
+.nav-btn {
+  font-family: var(--mono); font-size: 0.78rem; color: var(--text-dim);
+  background: transparent; border: 1px solid var(--border); border-radius: 3px;
+  padding: 8px 18px; cursor: pointer; transition: all 0.3s;
+}
+.nav-btn:hover { border-color: var(--gold); color: var(--gold); }
+.progress {
+  display: flex; gap: 8px;
+}
+.progress-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--border); transition: background 0.3s;
+  cursor: pointer;
+}
+.progress-dot.active { background: var(--gold); }
+.slide-counter { font-family: var(--mono); font-size: 0.75rem; color: var(--text-mute); }
+
+/* Bradesco red accent sparingly used */
+.bradesco-accent { color: #CC092F; }
+
+.quote {
+  padding: 16px 24px; border-left: 2px solid var(--gold);
+  font-family: var(--serif); font-style: italic; font-size: 0.95rem; color: var(--text-dim);
+  background: rgba(196,152,90,0.04);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .slide { padding: 40px 24px; }
+  .two-col, .three-col, .four-col { grid-template-columns: 1fr; gap: 20px; }
+  .section-num { top: 20px; left: 24px; }
+  .watermark { bottom: 60px; right: 20px; }
+}
+</style>
+</head>
+<body>
+
+<div class="deck">
+
+<!-- ═══════════ SLIDE 01: CAPA ═══════════ -->
+<div class="slide bg-marble active" data-slide="0">
+  <div class="stagger" style="text-align:center; display:flex; flex-direction:column; align-items:center; gap:20px;">
+    <span class="t-label">Szuchmacher Consultoria · Julho 2026</span>
+    <h1 class="t-hero">VIX Radar</h1>
+    <div class="gold-line" style="margin:12px auto;"></div>
+    <p class="t-subtitle" style="max-width:580px;">
+      Inteligencia de credito privado com IA. Monitoramento continuo de 103 emissores de renda fixa no Brasil, classificacao automatica de eventos e verificacao adversarial.
+    </p>
+    <div style="display:flex; gap:32px; margin-top:24px;">
+      <span class="tag">vixradar.com</span>
+      <span class="tag">103 emissores</span>
+      <span class="tag">13 setores</span>
+      <span class="tag">IA proprietaria</span>
+    </div>
+    <p class="t-small" style="margin-top:32px;">Apresentacao preparada para o Banco Bradesco</p>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda. — Confidencial</span>
+</div>
+
+<!-- ═══════════ SLIDE 02: O PROBLEMA ═══════════ -->
+<div class="slide bg-accent-left" data-slide="1">
+  <span class="section-num">01</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:850px;">
+    <span class="t-label">Contexto</span>
+    <h2 class="t-title">Monitoramento de credito privado no Brasil ainda e manual</h2>
+    <div class="gold-line"></div>
+    <p class="t-body">
+      A gestao de credito privado exige acompanhar ratings, demonstracoes financeiras, spreads, noticias relevantes e eventos societarios de dezenas de emissores simultaneamente. Esses dados estao dispersos entre agencias de rating, portais especializados, terminais Bloomberg/Reuters, CVM, B3 e ANBIMA. O tempo entre o evento e a acao do gestor ainda e medido em dias.
+    </p>
+    <div style="display:flex; gap:20px; margin-top:16px; flex-wrap:wrap;">
+      <div class="card" style="flex:1; min-width:200px;">
+        <div class="t-number" style="color:var(--red);">3 a 5d</div>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-top:8px;">Tempo medio para reacao manual a evento de credito</p>
+      </div>
+      <div class="card" style="flex:1; min-width:200px;">
+        <div class="t-number" style="color:var(--amber);">6+</div>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-top:8px;">Fontes distintas consultadas diariamente por emissor</p>
+      </div>
+      <div class="card" style="flex:1; min-width:200px;">
+        <div class="t-number" style="color:var(--gold);">0</div>
+        <p style="color:var(--text-dim); font-size:0.85rem; margin-top:8px;">Plataformas integradas de monitoramento de credito privado no Brasil</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 03: A SOLUCAO ═══════════ -->
+<div class="slide bg-glow" data-slide="2">
+  <span class="section-num">02</span>
+  <div class="stagger" style="display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center;">
+    <span class="t-label">Solucao</span>
+    <h2 class="t-title">Uma plataforma, toda a inteligencia de credito</h2>
+    <div class="gold-line" style="margin:8px auto;"></div>
+    <p class="t-subtitle">
+      O VIX Radar consolida monitoramento automatico, classificacao por IA com verificacao adversarial e dados quantitativos em um unico painel, atualizado duas vezes ao dia, sem intervencao manual.
+    </p>
+    <div class="four-col" style="margin-top:32px;">
+      <div class="metric-card">
+        <div style="font-size:1.6rem; margin-bottom:12px;">&#128269;</div>
+        <div class="t-label" style="font-size:0.6rem;">Monitoramento</div>
+        <p style="color:var(--text-dim); font-size:0.78rem; margin-top:8px;">Varredura automatica de fontes publicas, 2x ao dia</p>
+      </div>
+      <div class="metric-card">
+        <div style="font-size:1.6rem; margin-bottom:12px;">&#129504;</div>
+        <div class="t-label" style="font-size:0.6rem;">Classificacao IA</div>
+        <p style="color:var(--text-dim); font-size:0.78rem; margin-top:8px;">Eventos ranqueados por criticidade com verificacao adversarial</p>
+      </div>
+      <div class="metric-card">
+        <div style="font-size:1.6rem; margin-bottom:12px;">&#128200;</div>
+        <div class="t-label" style="font-size:0.6rem;">EWS Ranking</div>
+        <p style="color:var(--text-dim); font-size:0.78rem; margin-top:8px;">Early Warning Score com z-scores ANBIMA, Altman e Merton DD</p>
+      </div>
+      <div class="metric-card">
+        <div style="font-size:1.6rem; margin-bottom:12px;">&#128231;</div>
+        <div class="t-label" style="font-size:0.6rem;">Newsletter</div>
+        <p style="color:var(--text-dim); font-size:0.78rem; margin-top:8px;">Boletim diario com eventos criticos e briefing executivo</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 04: COBERTURA ═══════════ -->
+<div class="slide bg-grid" data-slide="3">
+  <span class="section-num">03</span>
+  <div class="stagger" style="display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center;">
+    <span class="t-label">Cobertura</span>
+    <h2 class="t-title">103 emissores em 13 setores</h2>
+    <div class="gold-line" style="margin:8px auto;"></div>
+    <p class="t-subtitle">Universo completo dos principais emissores de divida corporativa no Brasil.</p>
+    <div class="sector-grid" style="margin-top:20px;">
+      <span class="sector-pill"><span class="dot" style="background:#F59E0B;"></span>Energia Eletrica</span>
+      <span class="sector-pill"><span class="dot" style="background:#C9A96E;"></span>Transportes e Logistica</span>
+      <span class="sector-pill"><span class="dot" style="background:#34D399;"></span>Saneamento</span>
+      <span class="sector-pill"><span class="dot" style="background:#F87171;"></span>Petroleo, Gas e Combustiveis</span>
+      <span class="sector-pill"><span class="dot" style="background:#94A3B8;"></span>Mineracao e Siderurgia</span>
+      <span class="sector-pill"><span class="dot" style="background:#A78BFA;"></span>Financeiro</span>
+      <span class="sector-pill"><span class="dot" style="background:#818CF8;"></span>Locacao e Mobilidade</span>
+      <span class="sector-pill"><span class="dot" style="background:#6EE7B7;"></span>Papel e Celulose</span>
+      <span class="sector-pill"><span class="dot" style="background:#FCD34D;"></span>Agronegocio</span>
+      <span class="sector-pill"><span class="dot" style="background:#F9A8D4;"></span>Saude</span>
+      <span class="sector-pill"><span class="dot" style="background:#93C5FD;"></span>Telecom e Tecnologia</span>
+      <span class="sector-pill"><span class="dot" style="background:#FDBA74;"></span>Real Estate e Construcao</span>
+      <span class="sector-pill"><span class="dot" style="background:#FB923C;"></span>Varejo e Consumo</span>
+    </div>
+    <div style="display:flex; gap:28px; margin-top:28px;">
+      <div class="metric-card">
+        <div class="t-number">103</div>
+        <div class="t-label" style="font-size:0.6rem;">Emissores</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number">13</div>
+        <div class="t-label" style="font-size:0.6rem;">Setores</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number">412</div>
+        <div class="t-label" style="font-size:0.6rem;">Metricas curadas</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 05: COMO FUNCIONA ═══════════ -->
+<div class="slide bg-marble" data-slide="4">
+  <span class="section-num">04</span>
+  <div class="stagger" style="display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center;">
+    <span class="t-label">Como Funciona</span>
+    <h2 class="t-title">Pipeline de IA com verificacao adversarial</h2>
+    <div class="gold-line" style="margin:8px auto;"></div>
+    <p class="t-subtitle">
+      Cada evento detectado passa por tres camadas de inteligencia antes de chegar ao painel.
+    </p>
+    <div class="flow" style="margin-top:28px;">
+      <div class="flow-box" style="border-color:var(--blue);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--blue);">COLETA</div>
+        <div style="font-size:0.9rem; margin-top:4px;">Fontes publicas</div>
+        <div style="font-size:0.7rem; color:var(--text-mute); margin-top:2px;">2x ao dia</div>
+      </div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-box" style="border-color:var(--amber);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--amber);">CLASSIFICACAO</div>
+        <div style="font-size:0.9rem; margin-top:4px;">Claude Haiku + Sonnet</div>
+        <div style="font-size:0.7rem; color:var(--text-mute); margin-top:2px;">CRITICO / RELEVANTE / ECO / RUIDO</div>
+      </div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-box" style="border-color:var(--red);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--red);">VERIFICACAO</div>
+        <div style="font-size:0.9rem; margin-top:4px;">Sonnet 4.6 adversarial</div>
+        <div style="font-size:0.7rem; color:var(--text-mute); margin-top:2px;">Aprova, corrige ou rejeita</div>
+      </div>
+      <span class="flow-arrow">&#8594;</span>
+      <div class="flow-box" style="border-color:var(--gold);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold);">PAINEL</div>
+        <div style="font-size:0.9rem; margin-top:4px;">Publicacao automatica</div>
+        <div style="font-size:0.7rem; color:var(--text-mute); margin-top:2px;">Tempo real</div>
+      </div>
+    </div>
+    <div class="quote" style="margin-top:32px; max-width:700px;">
+      O verificador adversarial e o diferencial do sistema: um segundo modelo de IA, mais potente, reavalia todos os eventos classificados como CRITICO e uma amostra dos RELEVANTES. Ele aprova, corrige ou rejeita cada evento. Nenhum evento chega ao painel sem passar por essa camada.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 06: CLASSIFICACAO DE EVENTOS ═══════════ -->
+<div class="slide bg-accent-left" data-slide="5">
+  <span class="section-num">05</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:850px;">
+    <span class="t-label">Eventos de Credito</span>
+    <h2 class="t-title">Classificacao automatica com verificacao</h2>
+    <div class="gold-line"></div>
+    <p class="t-body">
+      Cada evento detectado e classificado em quatro niveis. A verificacao adversarial revisa os CRITICO e amostra de RELEVANTE antes da publicacao, eliminando falsos positivos.
+    </p>
+    <div style="display:flex; flex-direction:column; gap:14px; margin-top:12px;">
+      <div class="card" style="display:flex; align-items:center; gap:20px; border-left:3px solid var(--red);">
+        <div style="flex:1;">
+          <div style="font-family:var(--mono); font-weight:500; color:var(--red); font-size:0.85rem;">CRITICO</div>
+          <p style="color:var(--text-dim); font-size:0.82rem; margin-top:4px;">Rebaixamento de rating, default, reestruturacao, recuperacao judicial, evento regulatorio grave. Verificacao adversarial obrigatoria. Permanece 15 dias no painel.</p>
+        </div>
+        <div class="tag" style="white-space:nowrap;">15 dias · verificado</div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:20px; border-left:3px solid var(--amber);">
+        <div style="flex:1;">
+          <div style="font-family:var(--mono); font-weight:500; color:var(--amber); font-size:0.85rem;">RELEVANTE</div>
+          <p style="color:var(--text-dim); font-size:0.82rem; margin-top:4px;">Emissao relevante, resultado fora do esperado, mudanca de outlook, movimento atipico de spread. Amostra de 20% passa por verificacao adversarial. Permanece 7 dias.</p>
+        </div>
+        <div class="tag" style="white-space:nowrap;">7 dias · amostragem</div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:20px; border-left:3px solid var(--green);">
+        <div style="flex:1;">
+          <div style="font-family:var(--mono); font-weight:500; color:var(--green); font-size:0.85rem;">ECO</div>
+          <p style="color:var(--text-dim); font-size:0.82rem; margin-top:4px;">Eventos de rotina: pagamento de juros, divulgacao trimestral dentro do esperado, fatos relevantes padrao. Visivel no detalhe do emissor, nao polui o painel principal.</p>
+        </div>
+        <div class="tag" style="white-space:nowrap;">3 dias</div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:20px; border-left:3px solid var(--text-mute);">
+        <div style="flex:1;">
+          <div style="font-family:var(--mono); font-weight:500; color:var(--text-mute); font-size:0.85rem;">RUIDO</div>
+          <p style="color:var(--text-dim); font-size:0.82rem; margin-top:4px;">Noticias genericas, comentarios de mercado, republicacoes sem fato novo. Filtrado automaticamente, nao aparece no painel.</p>
+        </div>
+        <div class="tag" style="white-space:nowrap;">filtrado</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 07: VERIFICACAO ADVERSARIAL ═══════════ -->
+<div class="slide bg-glow" data-slide="6">
+  <span class="section-num">06</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Diferenciacao</span>
+      <h2 class="t-title">Verificacao adversarial</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        O maior risco em sistemas de IA generativa e a alucinacao. Um evento falso classificado como CRITICO pode gerar uma decisao de investimento equivocada. O VIX Radar implementa verificacao adversarial: um segundo modelo, Claude Sonnet 4.6, reavalia cada evento com a premissa de "assumir falso ate provar verdadeiro".
+      </p>
+      <div style="display:flex; gap:16px; margin-top:8px;">
+        <div class="metric-card">
+          <div class="t-number" style="font-size:1.8rem; color:var(--green);">aprova</div>
+          <div class="t-label" style="font-size:0.6rem;">Evento confirmado com fonte</div>
+        </div>
+        <div class="metric-card">
+          <div class="t-number" style="font-size:1.8rem; color:var(--amber);">corrige</div>
+          <div class="t-label" style="font-size:0.6rem;">Ajusta classificacao ou dados</div>
+        </div>
+        <div class="metric-card">
+          <div class="t-number" style="font-size:1.8rem; color:var(--red);">rejeita</div>
+          <div class="t-label" style="font-size:0.6rem;">Evento falso ou sem fonte</div>
+        </div>
+      </div>
+    </div>
+    <div class="stagger" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card" style="border-color:rgba(196,152,90,0.25);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:10px;">POR QUE ISSO IMPORTA PARA O GESTOR</div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <p style="font-size:0.85rem; color:var(--text);">&#8226; Elimina falsos positivos antes que cheguem ao painel</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#8226; Corrige fonte, data e criticidade de eventos mal classificados</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#8226; Rastreabilidade completa: veredicto com confianca e fontes</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#8226; Segundo par de olhos 100% automatizado, sem custo de analista</p>
+        </div>
+      </div>
+      <div class="card" style="background:rgba(196,152,90,0.04); border-color:rgba(196,152,90,0.15);">
+        <p style="font-size:0.82rem; color:var(--text-dim); font-style:italic;">
+          "O verificador adversarial e a camada que transforma uma ferramenta de IA generativa em um sistema confiavel para gestao de credito."
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 08: EWS RANKING ═══════════ -->
+<div class="slide bg-marble" data-slide="7">
+  <span class="section-num">07</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:850px;">
+    <span class="t-label">EWS Ranking</span>
+    <h2 class="t-title">Early Warning Score</h2>
+    <div class="gold-line"></div>
+    <p class="t-body">
+      Cada emissor recebe um score de 0 a 100 calculado a partir de tres eixos complementares, atualizado a cada ciclo. O ranking ordena os emissores por probabilidade de evento de credito relevante no horizonte proximo.
+    </p>
+    <div class="three-col" style="margin-top:16px; max-width:850px;">
+      <div class="card" style="text-align:center;">
+        <div class="t-number" style="font-size:1.8rem;">45</div>
+        <p style="color:var(--text-dim); font-size:0.82rem; margin-top:8px;">Eventos de credito classificados por IA</p>
+        <div style="font-family:var(--mono); font-size:0.65rem; color:var(--text-mute); margin-top:6px;">ate 45 pontos</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="t-number" style="font-size:1.8rem;">40</div>
+        <p style="color:var(--text-dim); font-size:0.82rem; margin-top:8px;">Anomalias quantitativas de mercado</p>
+        <div style="font-family:var(--mono); font-size:0.65rem; color:var(--text-mute); margin-top:6px;">ate 40 pontos</div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div class="t-number" style="font-size:1.8rem;">15</div>
+        <p style="color:var(--text-dim); font-size:0.82rem; margin-top:8px;">Sinais qualitativos e contexto</p>
+        <div style="font-family:var(--mono); font-size:0.65rem; color:var(--text-mute); margin-top:6px;">ate 15 pontos</div>
+      </div>
+    </div>
+    <div style="margin-top:24px;">
+      <div class="gauge">
+        <div class="gauge-green"></div>
+        <div class="gauge-amber"></div>
+        <div class="gauge-red"></div>
+      </div>
+      <div class="gauge-labels">
+        <span style="color:var(--green);">0 a 39 Risco Baixo</span>
+        <span style="color:var(--amber);">40 a 69 Atencao</span>
+        <span style="color:var(--red);">70 a 100 Alerta</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 09: PIPELINE PREDITIVO ═══════════ -->
+<div class="slide bg-accent-left" data-slide="8">
+  <span class="section-num">08</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Pipeline Preditivo</span>
+      <h2 class="t-title">Modelos quantitativos integrados</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        Alem da classificacao de eventos, o VIX Radar incorpora modelos quantitativos de risco de credito que rodam sobre dados publicos de mercado (ANBIMA, B3, CVM). Esses scores complementam a analise qualitativa com sinais estatisticos.
+      </p>
+    </div>
+    <div class="stagger" style="display:flex; flex-direction:column; gap:14px;">
+      <div class="card" style="border-left:3px solid var(--blue);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--blue); margin-bottom:6px;">Z-SCORES ANBIMA</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">Desvios padronizados de spread, volume e liquidez por emissor contra seu proprio historico e contra o setor. Atualizado diariamente apos o fechamento.</p>
+      </div>
+      <div class="card" style="border-left:3px solid var(--copper);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--copper); margin-bottom:6px;">ALTMAN Z''-EM</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">Adaptacao do Z-Score de Altman para mercados emergentes e empresas nao-listadas. Calculado sobre demonstracoes financeiras padronizadas da CVM. Atualizacao trimestral.</p>
+      </div>
+      <div class="card" style="border-left:3px solid var(--gold);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:6px;">MERTON DD</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">Modelo estrutural de distancia ate o default (Merton 1974), calibrado com volatilidade de mercado e estrutura de capital do emissor.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 10: OPERACAO ═══════════ -->
+<div class="slide bg-grid" data-slide="9">
+  <span class="section-num">09</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Operacao</span>
+      <h2 class="t-title">Rotina diaria automatizada</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        O VIX Radar opera com duas varreduras diarias automaticas, alem de rotinas auxiliares de verificacao, coleta de dados de mercado e envio de newsletter. Zero intervencao manual na operacao.
+      </p>
+      <div style="display:flex; gap:16px; margin-top:8px;">
+        <div class="metric-card" style="flex:1;">
+          <div class="t-number" style="font-size:1.6rem;">10h</div>
+          <div class="t-label" style="font-size:0.55rem;">Matinal (BRT)</div>
+          <p style="color:var(--text-dim); font-size:0.7rem; margin-top:6px;">Top 15 por EWS com analise profunda</p>
+        </div>
+        <div class="metric-card" style="flex:1;">
+          <div class="t-number" style="font-size:1.6rem;">18h</div>
+          <div class="t-label" style="font-size:0.55rem;">Noturno (BRT)</div>
+          <p style="color:var(--text-dim); font-size:0.7rem; margin-top:6px;">103 emissores com coleta completa</p>
+        </div>
+        <div class="metric-card" style="flex:1;">
+          <div class="t-number" style="font-size:1.6rem;">10h20</div>
+          <div class="t-label" style="font-size:0.55rem;">Verificador (BRT)</div>
+          <p style="color:var(--text-dim); font-size:0.7rem; margin-top:6px;">Dreno da fila de verificacao</p>
+        </div>
+      </div>
+    </div>
+    <div class="stagger">
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="t-label">10h00 BRT</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Rotina Matinal</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Varredura dos 15 emissores com maior EWS. Analise profunda com Haiku + Sonnet.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">10h20 BRT</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Verificador Adversarial</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Sonnet 4.6 reavalia cada evento da fila: aprova, corrige ou rejeita.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">18h00 BRT</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Rotina Noturna</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Varredura completa dos 103 emissores. Classificacao + verificacao.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">18h30 BRT</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Newsletter Diaria</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Boletim com briefing executivo e eventos do dia. Envio via Resend.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 11: INTERFACE ═══════════ -->
+<div class="slide bg-marble" data-slide="10">
+  <span class="section-num">10</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Interface</span>
+      <h2 class="t-title">Painel de credito em tempo real</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        O painel do VIX Radar foi projetado para o fluxo de trabalho do gestor de credito: visao geral dos emissores com alertas visuais, drill-down por empresa, eventos classificados, anomalias de mercado, comparacao entre emissores e briefing executivo.
+      </p>
+      <div class="card" style="background:rgba(196,152,90,0.04); border-color:rgba(196,152,90,0.15);">
+        <p style="font-size:0.82rem; color:var(--text-dim);">
+          <strong style="color:var(--gold);">Modulos do painel:</strong> Visao Geral, Eventos de Credito, Alertas de Mercado, EWS Ranking, Briefing Executivo, Comparacao entre Emissores, Historico, Exportacao PDF, Newsletter.
+        </p>
+      </div>
+    </div>
+    <div class="stagger" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="card" style="padding:16px 20px; display:flex; align-items:center; gap:14px;">
+        <span class="gold-dot" style="background:var(--red);"></span>
+        <div>
+          <span style="font-size:0.85rem; color:var(--text);">Ponto vermelho = evento CRITICO ativo</span>
+          <p style="font-size:0.7rem; color:var(--text-mute);">Verificado adversarialmente</p>
+        </div>
+      </div>
+      <div class="card" style="padding:16px 20px; display:flex; align-items:center; gap:14px;">
+        <span class="gold-dot" style="background:var(--amber);"></span>
+        <div>
+          <span style="font-size:0.85rem; color:var(--text);">Ponto amarelo = evento RELEVANTE ativo</span>
+          <p style="font-size:0.7rem; color:var(--text-mute);">Amostra verificada</p>
+        </div>
+      </div>
+      <div class="card" style="padding:16px 20px; display:flex; align-items:center; gap:14px;">
+        <span class="gold-dot" style="background:var(--green);"></span>
+        <div>
+          <span style="font-size:0.85rem; color:var(--text);">Ponto verde = situacao normal</span>
+          <p style="font-size:0.7rem; color:var(--text-mute);">Sem eventos ativos no periodo</p>
+        </div>
+      </div>
+      <div class="card" style="padding:16px 20px; display:flex; align-items:center; gap:14px;">
+        <span style="font-size:1.1rem;">&#9650;</span>
+        <div>
+          <span style="font-size:0.85rem; color:var(--text);">Triangulo = anomalia de mercado detectada</span>
+          <p style="font-size:0.7rem; color:var(--text-mute);">Spread, volume ou liquidez atipicos</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 12: NEWSLETTER ═══════════ -->
+<div class="slide bg-glow" data-slide="11">
+  <span class="section-num">11</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Distribuicao</span>
+      <h2 class="t-title">Newsletter diaria + alertas</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        Alem do painel web, o VIX Radar entrega inteligencia de credito diretamente no e-mail da equipe. A newsletter diaria traz briefing executivo, eventos do dia e EWS ranking. Alertas criticos sao enviados em tempo real para emissores favoritados.
+      </p>
+      <div class="card" style="background:rgba(196,152,90,0.04); border-color:rgba(196,152,90,0.15);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:8px;">PERSONALIZACAO</div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <p style="font-size:0.82rem; color:var(--text-dim);">&#8226; Frequencia configuravel (diaria, semanal, sem alertas)</p>
+          <p style="font-size:0.82rem; color:var(--text-dim);">&#8226; Filtro por setores e emissores de interesse</p>
+          <p style="font-size:0.82rem; color:var(--text-dim);">&#8226; White-label com identidade visual do cliente</p>
+          <p style="font-size:0.82rem; color:var(--text-dim);">&#8226; One-click unsubscribe com gestao de preferencias</p>
+        </div>
+      </div>
+    </div>
+    <div class="stagger" style="display:flex; flex-direction:column; gap:16px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:8px;">CONTEUDO DO BOLETIM DIARIO</div>
+        <div style="display:flex; flex-direction:column; gap:10px; text-align:left;">
+          <p style="font-size:0.85rem; color:var(--text);">&#10003; Briefing executivo do dia</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#10003; Eventos CRITICO e RELEVANTE</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#10003; Top 5 EWS Ranking</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#10003; Heatmap setorial</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#10003; Agenda da semana (eventos esperados)</p>
+          <p style="font-size:0.85rem; color:var(--text);">&#10003; Destaques do mercado de credito</p>
+        </div>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:8px;">ALERTAS CRITICOS</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">Disparados imediatamente apos a verificacao adversarial de um evento CRITICO de emissor favoritado pelo usuario.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 13: ARQUITETURA ═══════════ -->
+<div class="slide bg-grid" data-slide="12">
+  <span class="section-num">12</span>
+  <div class="stagger" style="display:flex; flex-direction:column; align-items:center; gap:20px;">
+    <span class="t-label">Arquitetura</span>
+    <h2 class="t-title">Stack Cloudflare-native</h2>
+    <div class="gold-line" style="margin:8px auto;"></div>
+    <p class="t-subtitle">
+      Infraestrutura 100% serverless. Sem servidor proprio, sem banco de dados para gerenciar, sem manutencao de SO. Tudo roda na edge da Cloudflare, com latencia minima no Brasil.
+    </p>
+    <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px; width:100%; max-width:700px;">
+      <div class="arch-layer">
+        <div class="icon">&#127760;</div>
+        <div>
+          <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold);">Frontend</div>
+          <p style="color:var(--text-dim); font-size:0.82rem;">Cloudflare Pages · SPA puro (HTML/CSS/JS, sem framework) · Cache global · HTTPS nativo</p>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-mute); font-size:0.8rem;">&#8597;</div>
+      <div class="arch-layer">
+        <div class="icon">&#9889;</div>
+        <div>
+          <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold);">API / Worker</div>
+          <p style="color:var(--text-dim); font-size:0.82rem;">Cloudflare Workers · JavaScript monolito (~17k linhas) · KV storage · Durable Objects (SQLite) · Analytics Engine</p>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-mute); font-size:0.8rem;">&#8597;</div>
+      <div class="arch-layer">
+        <div class="icon">&#129504;</div>
+        <div>
+          <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold);">Inteligencia</div>
+          <p style="color:var(--text-dim); font-size:0.82rem;">Anthropic Claude (Haiku + Sonnet + Sonnet 4.6 via OAuth e API) · Pipeline de verificacao adversarial · Scores quantitativos (z-scores ANBIMA, Altman Z''-EM, Merton DD)</p>
+        </div>
+      </div>
+      <div style="text-align:center; color:var(--text-mute); font-size:0.8rem;">&#8597;</div>
+      <div class="arch-layer">
+        <div class="icon">&#128231;</div>
+        <div>
+          <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold);">Distribuicao</div>
+          <p style="color:var(--text-dim); font-size:0.82rem;">Resend · Newsletter diaria · Alertas criticos · White-label · SPF/DKIM/DMARC</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 14: SEGURANCA ═══════════ -->
+<div class="slide bg-accent-left" data-slide="13">
+  <span class="section-num">13</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:850px;">
+    <span class="t-label">Seguranca e Governanca</span>
+    <h2 class="t-title">Protecao em multiplas camadas</h2>
+    <div class="gold-line"></div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:12px;">
+      <div class="card">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:10px;">AUTENTICACAO</div>
+        <p style="font-size:0.85rem; color:var(--text-dim);">JWT com expiracao controlada. Senhas com PBKDF2. Registro com aprovacao manual pelo administrador. Sem self-service de contas.</p>
+      </div>
+      <div class="card">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:10px;">INFRAESTRUTURA</div>
+        <p style="font-size:0.85rem; color:var(--text-dim);">Edge-native na Cloudflare. DDoS protection nativa. Sem superficie de ataque de SO ou banco de dados. Secrets nunca expostos ao client.</p>
+      </div>
+      <div class="card">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:10px;">RATE LIMITING</div>
+        <p style="font-size:0.85rem; color:var(--text-dim);">Durable Object com SQLite para controle de taxa por IP. Protecao contra brute-force em login e endpoints administrativos.</p>
+      </div>
+      <div class="card">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:10px;">GOVERNANCA DE IA</div>
+        <p style="font-size:0.85rem; color:var(--text-dim);">Verificador adversarial audita a saida do classificador. Rastreabilidade completa: todo evento carrega fonte, data e veredicto do verificador.</p>
+      </div>
+      <div class="card" style="grid-column:1/-1;">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--gold); margin-bottom:10px;">COMPLIANCE E REGISTRO</div>
+        <p style="font-size:0.85rem; color:var(--text-dim);">Software registrado no INPI. Politica de privacidade e termos de uso publicos. Telemetria anonimizada (Cloudflare Analytics Engine). Conformidade com LGPD: dados pessoais limitados a nome, e-mail e empresa do usuario.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 15: TRACK RECORD ═══════════ -->
+<div class="slide bg-marble" data-slide="14">
+  <span class="section-num">14</span>
+  <div class="stagger" style="display:flex; flex-direction:column; align-items:center; gap:20px; text-align:center;">
+    <span class="t-label">Track Record</span>
+    <h2 class="t-title">Em producao desde 2026</h2>
+    <div class="gold-line" style="margin:8px auto;"></div>
+    <div style="display:flex; gap:24px; margin-top:20px; flex-wrap:wrap; justify-content:center;">
+      <div class="metric-card">
+        <div class="t-number">17</div>
+        <div class="t-label" style="font-size:0.6rem;">Usuarios aprovados</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number">50+</div>
+        <div class="t-label" style="font-size:0.6rem;">Deploys em producao</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number">99.5%</div>
+        <div class="t-label" style="font-size:0.6rem;">Disponibilidade</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number">~170k</div>
+        <div class="t-label" style="font-size:0.6rem;">Tokens/dia economizados (dedup)</div>
+      </div>
+    </div>
+    <div style="display:flex; gap:24px; margin-top:16px; flex-wrap:wrap; justify-content:center;">
+      <div class="metric-card">
+        <div class="t-number" style="font-size:1.6rem;">2x/dia</div>
+        <div class="t-label" style="font-size:0.6rem;">Ciclos de varredura</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number" style="font-size:1.6rem;">INPI</div>
+        <div class="t-label" style="font-size:0.6rem;">Registro de software</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number" style="font-size:1.6rem;">CI</div>
+        <div class="t-label" style="font-size:0.6rem;">Health check a cada 6h</div>
+      </div>
+    </div>
+    <div class="quote" style="margin-top:28px; max-width:650px;">
+      O sistema passou por dois ciclos completos de auditoria de seguranca e engenharia em julho/2026. Cada deploy e validado em producao com health check e commit atomico no git. O CI monitora drift entre repo e producao a cada 6 horas.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 16: MAPA COMPETITIVO ═══════════ -->
+<div class="slide bg-accent-left" data-slide="15">
+  <span class="section-num">16</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:900px;">
+    <span class="t-label">Mapa Competitivo</span>
+    <h2 class="t-title">VIX Radar no contexto das ferramentas de credito</h2>
+    <div class="gold-line"></div>
+    <p class="t-body">
+      Nenhuma ferramenta disponivel no mercado brasileiro entrega monitoramento continuo de credito com IA proprietaria e verificacao adversarial em um unico painel.
+    </p>
+    <div style="display:flex; flex-direction:column; gap:10px; margin-top:12px;">
+      <div class="card" style="display:flex; align-items:center; gap:20px; padding:18px 24px;">
+        <div style="min-width:130px; font-family:var(--mono); font-size:0.8rem; color:var(--gold);">Quantum Axis</div>
+        <div style="flex:1; font-size:0.82rem; color:var(--text-dim);">Dados de fundos e renda fixa. R$1.940 a 2.810/mes. Nao tem IA, nao tem monitoramento de eventos, nao tem verificacao adversarial.</div>
+        <div class="tag" style="white-space:nowrap;">dados brutos</div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:20px; padding:18px 24px;">
+        <div style="min-width:130px; font-family:var(--mono); font-size:0.8rem; color:var(--gold);">Economatica</div>
+        <div style="flex:1; font-size:0.82rem; color:var(--text-dim);">Dados enterprise, 40 anos de historico. ~R$2.800/mes. Nao tem monitoramento de eventos de credito, nao tem verificacao adversarial.</div>
+        <div class="tag" style="white-space:nowrap;">dados brutos</div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:20px; padding:18px 24px;">
+        <div style="min-width:130px; font-family:var(--mono); font-size:0.8rem; color:var(--gold);">ANBIMA Data</div>
+        <div style="flex:1; font-size:0.82rem; color:var(--text-dim);">Dados oficiais de debentures. Gratuito. Nao tem IA, nao tem alertas, nao tem verificacao adversarial.</div>
+        <div class="tag" style="white-space:nowrap;">dados brutos</div>
+      </div>
+      <div class="card" style="display:flex; align-items:center; gap:20px; padding:18px 24px; border-color:rgba(196,152,90,0.4); background:rgba(196,152,90,0.04);">
+        <div style="min-width:130px; font-family:var(--mono); font-size:0.8rem; color:var(--gold);">VIX Radar</div>
+        <div style="flex:1; font-size:0.82rem; color:var(--text);">Monitoramento continuo + IA proprietaria + verificacao adversarial. R$119 a 490/mes por usuario. Unico que entrega sinal acionavel, nao dado bruto.</div>
+        <div class="tag" style="white-space:nowrap; border-color:var(--gold); color:var(--gold);">sinal acionavel</div>
+      </div>
+    </div>
+    <p style="font-family:var(--mono); font-size:0.68rem; color:var(--text-mute); margin-top:8px;">
+      Precos de concorrentes obtidos de fontes publicas (contratos PNCP, prefeituras, RPPS). Precisao pode variar conforme volume e negociacao.
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 17: CASOS REAIS ═══════════ -->
+<div class="slide bg-glow" data-slide="16">
+  <span class="section-num">17</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:900px;">
+    <span class="t-label">Evidencia</span>
+    <h2 class="t-title">Onde o sinal antecedeu o mercado</h2>
+    <div class="gold-line"></div>
+    <p class="t-body">
+      Casos reais extraidos dos 162 eventos ativos monitorados pelo VIX Radar em julho de 2026. Dados anonimizados para preservar confidencialidade.
+    </p>
+    <div style="display:flex; gap:20px; margin-top:12px; flex-wrap:wrap;">
+      <div class="card" style="flex:1; min-width:240px; border-left:3px solid var(--red);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--red); margin-bottom:8px;">CASO 1 — Recuperacao Judicial</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">
+          Emissor do setor de Saude. Eventos RELEVANTES comecaram a se acumular 12 dias antes do pedido formal de RJ. O EWS ultrapassou o limiar de Alerta (70) 8 dias antes da confirmacao oficial. O sistema sinalizou antes dos grandes veiculos.
+        </p>
+      </div>
+      <div class="card" style="flex:1; min-width:240px; border-left:3px solid var(--amber);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--amber); margin-bottom:8px;">CASO 2 — Rebaixamento de Rating</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">
+          Emissor de Energia Eletrica. Sequencia de ECO (atraso em publicacao trimestral) seguida de RELEVANTE (mudanca de guidance) antecedeu em 5 dias o rebaixamento pela agencia de rating. O sistema classificou o conjunto como tendencia de deterioracao.
+        </p>
+      </div>
+      <div class="card" style="flex:1; min-width:240px; border-left:3px solid var(--blue);">
+        <div style="font-family:var(--mono); font-size:0.72rem; color:var(--blue); margin-bottom:8px;">CASO 3 — Anomalia de Mercado</div>
+        <p style="font-size:0.82rem; color:var(--text-dim);">
+          Emissor de Logistica. Nenhum evento qualitativo relevante, mas o spread da debenture estava 2.3 desvios acima da media do setor ha 6 dias. O eixo de anomalias quantitativas do EWS capturou o sinal antes de qualquer noticia.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 18: CASO DE USO ═══════════ -->
+<div class="slide bg-glow" data-slide="17">
+  <span class="section-num">18</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Caso de Uso</span>
+      <h2 class="t-title">Como o Bradesco usa o VIX Radar</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        A mesa de credito privado do Bradesco pode integrar o VIX Radar ao seu fluxo de trabalho em menos de um dia, sem instalacao, sem integracao de TI e sem treinamento extenso.
+      </p>
+    </div>
+    <div class="stagger">
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="t-label">Manha, 10h15</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Newsletter diaria chega no e-mail</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Briefing executivo com os eventos criticos das ultimas 24h. Leitura em 2 minutos.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">Manha, 11h00</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Reuniao de comite de credito</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Abre o painel, filtra emissores da carteira, ve eventos recentes e EWS ranking. PDF de exportacao para distribuicao.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">Tarde, 16h30</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Alerta critico no celular</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Emissor da carteira teve rebaixamento de rating. Verificador adversarial ja confirmou com fonte. Decisao rapida.</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">Semanal, sexta-feira</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Relatorio semanal</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Heatmap setorial com scores agregados. Comparacao entre emissores da carteira vs. benchmark do mercado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 19: ROADMAP ═══════════ -->
+<div class="slide bg-grid" data-slide="18">
+  <span class="section-num">19</span>
+  <div class="two-col">
+    <div class="stagger" style="display:flex; flex-direction:column; gap:20px;">
+      <span class="t-label">Evolucao</span>
+      <h2 class="t-title">Roadmap</h2>
+      <div class="gold-line"></div>
+      <p class="t-body">
+        O VIX Radar esta em producao com base solida. As proximas evolucoes focam em cobertura expandida, integracao com dados de mercado em tempo real e funcionalidades enterprise.
+      </p>
+      <div class="card" style="background:rgba(196,152,90,0.04); border-color:rgba(196,152,90,0.15);">
+        <p style="font-size:0.8rem; color:var(--text-dim);">
+          <strong style="color:var(--gold);">Customizacao enterprise:</strong> white-label completo, integracao com sistemas internos via API, SLAs de suporte, onboarding dedicado.
+        </p>
+      </div>
+    </div>
+    <div class="stagger">
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="t-label">Q3 2026</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Integracao ANBIMA/B3</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Spreads, volumes e precos atualizados em tempo real</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">Q3 2026</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Expansao para 150 emissores</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Inclusao de mid-caps e emissores de FIDCs</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">Q4 2026</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Pipeline preditivo publico</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Scores quantitativos disponiveis para usuarios finais</p>
+        </div>
+        <div class="timeline-item">
+          <div class="t-label">2027</div>
+          <p style="color:var(--text); font-size:0.88rem; margin-top:4px;">Multi-carteira e risco agregado</p>
+          <p style="color:var(--text-dim); font-size:0.78rem; margin-top:2px;">Gestao de multiplas carteiras, exposicao agregada e stress testing</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 20: PRECIFICACAO E ONBOARDING ═══════════ -->
+<div class="slide bg-accent-left" data-slide="19">
+  <span class="section-num">20</span>
+  <div class="stagger" style="display:flex; flex-direction:column; gap:20px; max-width:850px;">
+    <span class="t-label">Onboarding</span>
+    <h2 class="t-title">Proxima etapa: teste pilotado</h2>
+    <div class="gold-line"></div>
+    <p class="t-body">
+      O processo de avaliacao do VIX Radar foi desenhado para ser simples e sem friccao.
+    </p>
+    <div class="three-col" style="margin-top:12px;">
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold); margin-bottom:12px;">FASE 1</div>
+        <div style="font-size:1.8rem; margin-bottom:12px; color:var(--text-dim);">&#128065;</div>
+        <p style="font-size:0.9rem; color:var(--text);">Acesso ao painel</p>
+        <p style="font-size:0.78rem; color:var(--text-dim); margin-top:6px;">Credenciais para 3 a 5 usuarios da equipe. Acesso completo ao sistema por 14 dias, sem custo.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold); margin-bottom:12px;">FASE 2</div>
+        <div style="font-size:1.8rem; margin-bottom:12px; color:var(--text-dim);">&#128187;</div>
+        <p style="font-size:0.9rem; color:var(--text);">Workshop de avaliacao</p>
+        <p style="font-size:0.78rem; color:var(--text-dim); margin-top:6px;">Sessao de 30 a 45 minutos com a equipe para mostrar fluxos avancados, tirar duvidas e coletar feedback.</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-family:var(--mono); font-size:0.8rem; color:var(--gold); margin-bottom:12px;">FASE 3</div>
+        <div style="font-size:1.8rem; margin-bottom:12px; color:var(--text-dim);">&#129309;</div>
+        <p style="font-size:0.9rem; color:var(--text);">Proposta comercial</p>
+        <p style="font-size:0.78rem; color:var(--text-dim); margin-top:6px;">Com base no uso real da equipe, proposta ajustada ao perfil de acesso, usuarios e white-label.</p>
+      </div>
+    </div>
+    <div class="quote" style="margin-top:20px; max-width:700px;">
+      O VIX Radar opera no modelo SaaS com assinatura mensal ou anual. O valor e definido pelo numero de usuarios, emissores monitorados e funcionalidades contratadas (white-label, alertas, relatorios customizados). A fase de teste de 14 dias nao tem custo nem compromisso.
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ SLIDE 21: ENCERRAMENTO ═══════════ -->
+<div class="slide bg-marble" data-slide="20">
+  <div class="stagger" style="text-align:center; display:flex; flex-direction:column; align-items:center; gap:24px;">
+    <div class="gold-line" style="margin:0 auto;"></div>
+    <h2 class="t-hero" style="font-size:clamp(2rem,4.5vw,3.5rem);">VIX Radar</h2>
+    <p class="t-subtitle" style="max-width:550px;">
+      103 emissores. 13 setores. Classificacao por IA com verificacao adversarial. Newsletter diaria. Pipeline preditivo. Zero manutencao.
+    </p>
+    <div style="display:flex; gap:20px; margin-top:20px;">
+      <div class="metric-card">
+        <div class="t-number" style="font-size:1.8rem;">v4.9.172</div>
+        <div class="t-label" style="font-size:0.6rem;">Worker</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number" style="font-size:1.8rem;">v201.85</div>
+        <div class="t-label" style="font-size:0.6rem;">Frontend</div>
+      </div>
+      <div class="metric-card">
+        <div class="t-number" style="font-size:1.8rem;">07/2026</div>
+        <div class="t-label" style="font-size:0.6rem;">Atualizacao</div>
+      </div>
+    </div>
+    <div style="margin-top:24px; display:flex; gap:16px; flex-direction:column; align-items:center;">
+      <span class="tag">vixradar.com</span>
+      <span class="tag" style="font-size:0.7rem;">Szuchmacher Consultoria Ltda.</span>
+    </div>
+    <p style="font-family:var(--mono); font-size:0.7rem; color:var(--text-mute); margin-top:20px;">
+      Contato: Yan Szuchmacher · szuchmacheryan@gmail.com
+    </p>
+    <p class="t-small" style="margin-top:8px;">
+      Documento confidencial · Preparado para o Banco Bradesco · Julho 2026
+    </p>
+  </div>
+</div>
+
+</div>
+
+<!-- ═══════════ NAVIGATION ═══════════ -->
+<div class="nav-bar">
+  <button class="nav-btn" id="prevBtn" onclick="prev()">&#8592; Anterior</button>
+  <div class="progress" id="progress"></div>
+  <div style="display:flex; align-items:center; gap:16px;">
+    <span class="slide-counter" id="counter">01 / 21</span>
+    <button class="nav-btn" id="nextBtn" onclick="next()">Proximo &#8594;</button>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   SLIDE ENGINE
+   ═══════════════════════════════════════════════════════ */
+let current = 0;
+const slides = document.querySelectorAll('.slide');
+const total = slides.length;
+const counter = document.getElementById('counter');
+const progress = document.getElementById('progress');
+
+// Build progress dots
+for (let i = 0; i < total; i++) {
+  const dot = document.createElement('span');
+  dot.className = 'progress-dot' + (i === 0 ? ' active' : '');
+  dot.onclick = () => go(i);
+  progress.appendChild(dot);
+}
+
+function updateCounter() {
+  counter.textContent = String(current + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
+  document.querySelectorAll('.progress-dot').forEach((d, i) => {
+    d.classList.toggle('active', i === current);
+  });
+}
+
+function go(i) {
+  if (i < 0 || i >= total || i === current) return;
+  slides[current].classList.remove('active');
+  slides[current].classList.add('exit-up');
+  setTimeout(() => { slides[current].classList.remove('exit-up'); }, 700);
+  slides[i].classList.add('active');
+  current = i;
+  updateCounter();
+}
+
+function next() { go(current + 1); }
+function prev() { go(current - 1); }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+    e.preventDefault(); next();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+    e.preventDefault(); prev();
+  } else if (e.key === 'Home') {
+    e.preventDefault(); go(0);
+  } else if (e.key === 'End') {
+    e.preventDefault(); go(total - 1);
+  }
+});
+
+// Touch support
+let touchStartX = 0;
+document.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; });
+document.addEventListener('touchend', e => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  if (Math.abs(dx) > 60) { dx < 0 ? next() : prev(); }
+});
+
+updateCounter();
+</script>
+
+</body>
+</html>

@@ -3480,7 +3480,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "v4.9.176";
+var WORKER_VERSAO = "v4.9.177";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -3571,9 +3571,7 @@ __name22222222(corsHeaders, "corsHeaders");
 function extractToken(request) {
   var _h = request && request.headers ? request.headers.get("Authorization") || "" : "";
   if (_h) return _h.replace(/^Bearer\s+/i, "").trim();
-  var _c = request && request.headers ? request.headers.get("Cookie") || "" : "";
-  var _m = _c.match(/(?:^|;\s*)radar_token=([^;]+)/);
-  return _m ? decodeURIComponent(_m[1].trim()) : "";
+  return "";
 }
 __name(extractToken, "extractToken");
 var CORS = {

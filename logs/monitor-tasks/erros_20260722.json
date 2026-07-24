@@ -1,0 +1,80 @@
+﻿{
+    "timestamp":  "2026-07-22T13:16:12-03:00",
+    "erros":  [
+                  {
+                      "task":  "Szuchmacher-AgendaAgent",
+                      "code":  2147946720,
+                      "codeHex":  "0x800710E0",
+                      "lastRun":  "2026-07-20 12:32",
+                      "ageDays":  2,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\run-agenda-agent.ps1",
+                      "reason":  "exit code 2147946720 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-FechamentoDiario",
+                      "code":  1,
+                      "codeHex":  "0x1",
+                      "lastRun":  "2026-07-21 19:00",
+                      "ageDays":  0,
+                      "script":  "E:\\Diretorio\\Claude\\relatorio-diario-szuchmacher\\scripts\\launcher_fechamento.ps1",
+                      "reason":  "exit code 1 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-LeadNurture",
+                      "code":  2147946720,
+                      "codeHex":  "0x800710E0",
+                      "lastRun":  "2026-07-22 13:16",
+                      "ageDays":  0,
+                      "script":  "desconhecido",
+                      "reason":  "exit code 2147946720 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-MacroAgent",
+                      "code":  1,
+                      "codeHex":  "0x1",
+                      "lastRun":  "2026-07-17 18:00",
+                      "ageDays":  4,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\run-macro-agent.ps1",
+                      "reason":  "exit code 1 nao-benigno"
+                  },
+                  {
+                      "task":  "Szuchmacher-MacroCron",
+                      "code":  2147946720,
+                      "codeHex":  "0x800710E0",
+                      "lastRun":  "2026-07-20 12:32",
+                      "ageDays":  2,
+                      "script":  "E:\\Diretorio\\Claude\\Site\\site-producao\\scripts\\run-macro-cron.ps1",
+                      "reason":  "exit code 2147946720 nao-benigno"
+                  },
+                  {
+                      "task":  "VIXRadar-Reconciliacao-CVM",
+                      "code":  1,
+                      "codeHex":  "0x1",
+                      "lastRun":  "2026-07-20 12:32",
+                      "ageDays":  2,
+                      "script":  "E:\\Diretorio\\Claude\\Monitoramento de Credito\\scripts\\predictive\\reconciliar_ipe_cvm.ps1",
+                      "reason":  "exit code 1 nao-benigno"
+                  }
+              ],
+    "warnings":  [
+                     {
+                         "task":  "Monitor-Panerai-PAM01356",
+                         "code":  2147942402,
+                         "codeHex":  "0x80070002",
+                         "lastRun":  "2026-07-22 13:16",
+                         "ageDays":  0,
+                         "script":  "C:\\Diretorio\\Pessoal\\Fotos\\Relogio\\monitor-panerai\\rodar.ps1",
+                         "reason":  "PROJETO EXTERNO/PESSOAL - verificar manualmente se necessario"
+                     },
+                     {
+                         "task":  "PME-Codex-Radar-Propostas",
+                         "code":  2147942402,
+                         "codeHex":  "0x80070002",
+                         "lastRun":  "2026-07-22 13:16",
+                         "ageDays":  0,
+                         "script":  "E:\\Diretorio\\Claude\\Agente Yan\\comercial-pmes-marketplaces\\scripts\\codex-radar-propostas.ps1",
+                         "reason":  "PROJETO EXTERNO/PESSOAL - verificar manualmente se necessario"
+                     }
+                 ],
+    "okCount":  11
+}
