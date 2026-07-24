@@ -11,6 +11,9 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
+> [!success] 24/07 — **Worker v4.9.179: COOKIE-CLEAR1 (sem Set-Cookie radar_token).**
+> Login, admin auto-login e `refresh_cookie` deixam de emitir cookie HttpOnly SameSite=None. Auth so via JSON `token` + `Authorization: Bearer`. Health `versao:v4.9.179`. Completa CSRF-COOKIE1 (v4.9.177 lia so header; 179 para de gravar cookie orfao).
+
 > [!success] 24/07 18h30 — **Worker v4.9.178 + Frontend v201.87 em produção (sprint segurança/custo/a11y).**
 > Cadeia do dia: rotação de credenciais (Etapa 1) → Worker v4.9.173–178 (VERIFINJ1, OPENROUTERVIVO, RLADMIN-GET1, ENUM-LOGIN1, VERIFCACHE1, VERIFQ-ORFAO1, SKIP24H, CATCH60, F013-RESIDUAL, CSRF-COOKIE1, PRED2) e Pages v201.85–87 (FOCUSTRAP1, INDEXNOSTORE, TOGGLEA11Y1, CONTRASTMUTED1). Health: `ok:true`, `versao:v4.9.178`. Frontend `CACHE_VERSION=v201.87`. Git HEAD `99d0bed`. LOGLOCK1-REC: root cause OneDrive Pinned + fallback Write-Log por PID. Vault reconciliado nesta entrada (antes travado em v4.9.172 / v201.85).
 

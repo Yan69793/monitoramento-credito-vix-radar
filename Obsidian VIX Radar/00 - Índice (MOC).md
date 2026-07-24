@@ -13,7 +13,7 @@ Mapa do vault. Atualizado 2026-07-24 ~18h45 BRT.
 
 | Componente | Versão |
 |---|---|
-| Worker | v4.9.178 |
+| Worker | v4.9.179 |
 | Frontend | v201.87 |
 | Health | `ok:true`, verificador ok, providers 2/2 |
 | Cobertura | Noturno 24/07: 103/103 submit_ok, dreno verif ok |

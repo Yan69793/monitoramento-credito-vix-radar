@@ -1,11 +1,11 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-24 21h30 BRT (PRED2 deployado v4.9.178) | **Producao:** Worker v4.9.178, Frontend v201.87
+**Atualizado:** 2026-07-24 (COOKIE-CLEAR1 deployado v4.9.179) | **Producao:** Worker v4.9.179, Frontend v201.87
 
 ## Síntese executiva
 
-0. **[DEDUPFILA1 + FOCUSTRAP1 + REGDRIFT1 resolvidos 23/07; VERIFMODEL1 fechado; SPF1 bloqueado]** — ver entradas individuais abaixo. Worker v4.9.174 (DEDUPFILA1 incluso) e Frontend v201.85 (FOCUSTRAP1) deployados em producao.
-1. **Sistema operacional.** Worker v4.9.171, Frontend v201.84, health `ok:true` ~131 ms, bindings todos true, verificador_ok true, confirmado ao vivo nesta sessão. O Merton DD está ativo no score preditivo (MERTONLIVE1). VOLTASK1 (coleta de volatilidade quebrada) foi resolvido em duas etapas: (a) 21/07 — disparo corrigido (`LastTaskResult 0x0`), (b) 23/07 — **VOLCOLETA1 e MONITORCEGO1 resolvidos** (ver abaixo).
+0. **Sprint 24/07 fechou o grosso de P1/P2 de seguranca e custo** (Etapas 1–3, CSRF-COOKIE1, PRED2, a11y Pages). Frontend v201.87. Ver entradas individuais e vault `03 - Estado Atual.md`.
+1. **Sistema operacional.** Health tipico: `ok:true`, bindings kv/rate_limiter/telemetria, `verificador_ok:true`. Merton DD ativo no score (MERTONLIVE1). VOLCOLETA1 e MONITORCEGO1 resolvidos 23/07.
 2. **Ingestão recuperada 18/07 23:46 BRT** (histórico, ver item 0 para o gap atual, distinto). Sessão OAuth do CLI `claude` expirou, noturna 18/07 18h abortou com `submit_ok:0` (95/103 sem análise). Operador reautenticou (`claude /login`) e agente disparou rerun manual: `submit_ok:100 + skip_ok:3 = 103/103`, `submit_fail:0`. Ver Obsidian `03 - Estado Atual.md` (nota 18/07 23:46).
 3. **Verificador async operacional** com mutex + token budget (commit d329510).
 4. **Monitor-TaskScheduler:** Falso positivo 0x41301 corrigido (commit 37e7e2f). Confirmado ainda funcionando nesta sessão (relatório 20/07 12:32 capturou o INGEST-GAP1 corretamente).
@@ -42,6 +42,7 @@
 | CATCH60 | **RESOLVIDO 24/07 (deployado v4.9.175)** | Backend / observabilidade | 4 `catch{}` vazios corrigidos no bundle: sweepFilaVerificacaoOrfaos, briefing CVM docs, getCachedVerification na listagem, setCachedVerification na confirmacao. Todos passam a logar via `console.error`. Os 5 catch blocks de telemetria (`RADAR_USAGE_EVENTS.writeDataPoint`) permanecem silenciosos por design (degradacao suave). Claim original de "60 catch{} vazios" estava defasada — F002 e fixes subsequentes ja haviam tratado a maioria. | Nenhuma |
 | F013-RESIDUAL | **RESOLVIDO 24/07 (deployado v4.9.176)** | Performance / backend | `handleEWS` e `montarBriefingInterno` aceitam `_estado`/`_anomalias` opcionais. `handleCompararEmissores` (6 cargas -> 1), `handleHistoricoEmissor` (2->1), `handleBriefingExecutivo` (2->1). Router direto (`op=ews`) inalterado. | Nenhuma |
 | CSRF-COOKIE1 | **RESOLVIDO 24/07 (deployado v4.9.177)** | Segurança / backend | `extractToken` nao aceita mais cookie `radar_token` como fonte. O cookie era `HttpOnly` (invisivel ao JS do frontend) e o frontend sempre usou Bearer via `Authorization`. O fallback de cookie so servia como vetor de CSRF: `SameSite=None` permitia que site malicioso disparasse POST cross-site autenticado sem preflight. Remover o fallback elimina a superficie de ataque sem afetar nenhum fluxo real. | Nenhuma |
+| COOKIE-CLEAR1 | **RESOLVIDO 24/07 (deployado v4.9.179)** | Segurança / backend | Completa CSRF-COOKIE1: remove `Set-Cookie radar_token` de login, admin auto-login e `refresh_cookie` (no-op com `cookie_deprecated:true`). Auth so JSON + Bearer. Frontend nunca lia o cookie. | Nenhuma |
 | ENUM-LOGIN1 | **RESOLVIDO 24/07** (v4.9.173) | Seguranca / backend | `handleRegistrar`: mensagens unificadas para email existente (pendente/aprovado). `handleLogin`: delay aleatorio (80-200ms) para usuario inexistente, codigos PENDENTE/REJEITADO removidos, ambos retornam "Credenciais invalidas." Deploy Worker v4.9.173. | Nenhuma |
 | RLADMIN-GET1 | **RESOLVIDO 24/07** (v4.9.173) | Seguranca / backend | `checkRateLimitV2` adicionado antes da validacao de senha em `admin_agenda_rebuild` (`x-admin-password`) e `reprocessar_audit_pending` (`X-Admin-Auth`). Ambos agora respondem 429 se excederem limite. Deploy Worker v4.9.173. | Nenhuma |
 | INDEXNOSTORE | **RESOLVIDO 24/07 (deployado v201.86)** | Performance / frontend | `no-store` removido do `Cache-Control` em `/index.html`, `/` e `/version.json` (`app/_headers`). Mantido `no-cache, must-revalidate` — agora responde 304 com ETag quando nada mudou. Bundles admin atualizados de `?v=201.69` para `?v=201.85`. Deploy Pages v201.86. Confirmado em producao: `Cache-Control: no-cache, must-revalidate` (sem `no-store`). | Nenhuma |
@@ -117,9 +118,7 @@
 
 | P | Ação | Ref |
 |---|------|-----|
-| P2 | Investigar causa raiz do LOGLOCK1-REC (lock de minutos no log, suspeita OneDrive) | LOGLOCK1-REC |
-| P3 | Adicionar `role="switch"` + `aria-checked` + `aria-label` nos toggles e labels nos selects | TOGGLEA11Y1 |
-| P3 | Clarear token muted (#4E6070) ou escurecer fundo do texto pequeno | CONTRASTMUTED1 |
-| P3 | Remover `no-store` do `/index.html` para habilitar ETag/304 | INDEXNOSTORE |
-| P3 | Limpar chaves duplicadas por case no KV (requer admin_senha) | PRED2 |
-| P3 | Corrigir datas CVM em lote (requer admin_senha) | P-CVM |
+| P3 | Corrigir datas CVM em lote (requer admin) | P-CVM |
+| P3 | Decidir se alerta critico deve respeitar `prefs.newsletter` | ALRT1-RES |
+| P3 | Higiene: remover fallback morto de `senha` em `handleUso` | HDASH1-RES |
+| P3 | Higiene: remover funcoes mortas `probeOpenRouter*` do bundle | OPENROUTER-DEAD |
