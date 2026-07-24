@@ -23,14 +23,15 @@ if (-not (Test-Path $MetaFile)) {
 }
 
 if (-not $AdminSenha) {
-    $envFile = Join-Path $ROOT 'api\.env'
-    if (Test-Path $envFile) {
-        $match = Select-String -Path $envFile -Pattern '^ADMIN_SENHA=(.+)$'
-        if ($match) { $AdminSenha = $match.Matches[0].Groups[1].Value }
+    $helper = Join-Path $ROOT 'api\Get-VixAdminCredential.ps1'
+    if (Test-Path $helper) {
+        $AdminSenha = & $helper -AsPlainText 2>$null
+        if (-not $AdminSenha) { Write-Host "AVISO: DPAPI retornou vazio, tentando env var ADMIN_PASSWORD" }
     }
+    if (-not $AdminSenha -and $env:ADMIN_PASSWORD) { $AdminSenha = $env:ADMIN_PASSWORD }
 }
 if (-not $AdminSenha) {
-    Write-Host "ERRO: ADMIN_SENHA não encontrada. Passe -AdminSenha ou configure api/.env"
+    Write-Host "ERRO: Senha admin nao encontrada. Passe -AdminSenha, configure ADMIN_PASSWORD env var, ou verifique api/.admin_credencial.dat"
     exit 1
 }
 

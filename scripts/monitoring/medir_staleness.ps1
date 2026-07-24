@@ -20,10 +20,13 @@ param(
 $ErrorActionPreference = "Stop"
 # scripts/monitoring/ -> sobe 2 niveis ate a raiz do projeto
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
-$envFile = Join-Path $root "api\.env"
-if (-not (Test-Path $envFile)) { Write-Host "ERRO: api/.env nao encontrado" -ForegroundColor Red; exit 1 }
-$senha = ((Get-Content $envFile | Where-Object { $_ -match '^ADMIN_SENHA=' } | Select-Object -First 1) -replace '^ADMIN_SENHA=','').Trim().Trim('"')
-if (-not $senha) { Write-Host "ERRO: ADMIN_SENHA vazia em api/.env" -ForegroundColor Red; exit 1 }
+# 2026-07-24: migrado de ADMIN_SENHA em api/.env para DPAPI
+$helper = Join-Path $root "api\Get-VixAdminCredential.ps1"
+if (Test-Path $helper) {
+    $senha = & $helper -AsPlainText 2>$null
+}
+if (-not $senha -and $env:ADMIN_PASSWORD) { $senha = $env:ADMIN_PASSWORD }
+if (-not $senha) { Write-Host "ERRO: senha admin nao encontrada (DPAPI ou ADMIN_PASSWORD env var)" -ForegroundColor Red; exit 1 }
 
 $API = "https://api.vixradar.com"
 $tok = (Invoke-RestMethod -Uri "$API/" -Method Post -ContentType 'application/json' -Body (@{ action='admin_auto_login'; admin_senha=$senha } | ConvertTo-Json) -TimeoutSec 30).token

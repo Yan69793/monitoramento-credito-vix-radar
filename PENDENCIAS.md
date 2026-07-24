@@ -1,6 +1,6 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-23 09h15 BRT (sessao godmode: DEDUPFILA1 + FOCUSTRAP1 + REGDRIFT1 + VERIFMODEL1 resolvidos; SPF1 bloqueado) | **Producao:** Worker v4.9.171, Frontend v201.84 | **Pronto pra deploy:** Worker v4.9.172 (DEDUPFILA1), Frontend v201.85 (FOCUSTRAP1)
+**Atualizado:** 2026-07-24 05h45 BRT (Etapa 1 security fix: C1/C2/C3/M5 resolvidos) | **Producao:** Worker v4.9.171, Frontend v201.84 | **Pronto pra deploy:** Worker v4.9.172 (DEDUPFILA1), Frontend v201.85 (FOCUSTRAP1)
 
 ## Síntese executiva
 
@@ -58,8 +58,8 @@
 | FOCUSTRAP1 | **RESOLVIDO 23/07** (v201.85, nao deployado) | Frontend / acessibilidade | Script focus-trap adicionado ao final de `app/index.html`: intercepta Tab (cicla entre elementos focaveis do `[role="dialog"]` visivel) e Escape (fecha via funcao conhecida ou botao de close). Puramente aditivo, nao modifica codigo existente. 8 dialogs mapeados: guia-overlay, modal-varredura, config-modal-unsubscribe, modal-share, agenda-overlay, onb-overlay, cmdk-overlay, carteira-overlay. | Deploy Pages |
 | PRED2 | P3 | Ingestão / dados | Chaves com case divergente em `radar:estado:2026-W28`. Causa raiz identificada (CASEKEY1). | Limpeza manual do KV (ação em dado de produção, requer admin_senha) |
 | P-CVM | P3 | Dados / CVM | `admin_corrigir_datas_cvm_kv` em lote. Requer admin_senha. | Operador executar via painel |
-| E-MT | P3 | Email | Confirmar se `email_modo_teste` ativado. Endpoint `email_modo_teste_status` exige `ADMIN_PASSWORD` (secret só no Worker, não presente em `api/.env` local — confirmado nesta sessão que não dá para checar sem a credencial do operador). | Operador verificar |
-| ADMINSECRET1 | P3 | Backend / segurança | Dois secrets admin paralelos: `ADMIN_SENHA` (usado por `admin_auto_login`, presente em `api/.env` local) e `ADMIN_PASSWORD` (usado por ~52 handlers que comparam `body.admin_senha` direto, incl. `email_modo_teste_*`, `admin_upsert_analise`; só existe como secret do Worker). Já apontado em auditoria de 13/07 (nota 54), ainda não consolidado. | Decisão de produto/segurança: consolidar em 1 secret ou documentar por que são 2 |
+| E-MT | **RESOLVIDO 23/07** | Email | Confirmado direto no KV (`email:modo_teste`, sem precisar de `ADMIN_PASSWORD`): estava `true` em produção. Efeito real: a newsletter diária (cron 18h30 BRT) vinha "enviando com sucesso" (heartbeat ok, dedup gravado) mas só para `ADMIN_EMAIL`, não para os 17 usuários com status aprovado. Envio de 22/07 18h31 BRT confirmado só chegou ao admin. Operador autorizou desativar; chave gravada como `false` via `wrangler kv key put` (confirmado por leitura de volta). Próximo cron (23/07 18h30 BRT) deve ir para a lista real. | Nenhuma. Acompanhar heartbeat/log do envio de 23/07 18h30 BRT para confirmar `modo:"aprovados"` (não `modo_teste`) e `destinatarios` > 1 |
+| ADMINSECRET1 | **RESOLVIDO 24/07** | Backend / seguranca | ADMIN_SENHA removido de api/.env. ADMIN_PASSWORD e o unico secret canonico no Cloudflare. Senha rotacionada e armazenada via DPAPI local (.admin_credencial.dat). Scripts atualizados para usar Get-VixAdminCredential.ps1. | Nenhuma |
 | LOGLOCK1-REC | P2 | Rotinas / observabilidade | Reincidência do LOGLOCK1 (fix 17/07, commit `49904ea`) na noturna de 18/07: log travado 100% das escritas por 7+min seguidos (suspeita OneDrive/SearchIndexer). **Mitigação parcial aplicada nesta sessão:** backoff exponencial em `Write-Log` nos 3 scripts de rotina, 5x200ms (~1s) → 8 tentativas até 2s cada (~11s no pior caso). Não cobre lock de minutos inteiros — continua sem validação sob a mesma carga real (não reproduzida nesta sessão). | Avaliar excluir `logs/` do sync do OneDrive (fora do escopo de código); validar o novo backoff sob carga real na próxima ocorrência |
 
 ---

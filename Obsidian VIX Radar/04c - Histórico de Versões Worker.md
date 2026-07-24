@@ -35,7 +35,7 @@ status: ativo
 - Função `enviarWhatsAppAdmin()` chamada em `handleRegistrar()` após tentativa de email Resend.
 - Envia mensagem formatada com nome, email, empresa, hora BRT e link direto `vixradar.com/admin?highlight=<email>`.
 - Usa Twilio REST API (Basic Auth com SID+Token).
-- Destino atual: sandbox `+1 415 523 8886` → `whatsapp:+5521981088992`.
+- Destino atual: sandbox `+1 415 523 8886` → `whatsapp:+55[REDACTED-2026-07-24]`.
 - Latência ~1s.
 - Secrets: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_FROM`, `ADMIN_WHATSAPP_TO`.
 - Code join sandbox: `join spent-negative` (renovar a cada 72h de inatividade).
@@ -67,7 +67,7 @@ Patch cirúrgico, puramente infraestrutural. **Não contém Ledoit-Wolf, ERC nem
 **Validação:** Deploy em 2026-04-11T02:31:34Z via `npx wrangler deploy` a partir de `worker/wrangler.toml` apontando `main = "v4.6.2.js"`. Health check `GET /` OK em 93ms (openrouter, gemini, perplexity, resend, kv todos `true`).
 
 **Gate de dados para prosseguir à Fase 1 (Risk Budgeting v4.7.0):**
-- Credencial ANBIMA produção liberada (email enviado para `dados@anbima.com.br`, APP `2r1Gywm4kZTM` — **aguardando resposta**).
+- Credencial ANBIMA produção liberada (email enviado para `dados@anbima.com.br`, APP `[REDACTED-2026-07-24]` — **aguardando resposta**).
 - Após secret `ANBIMA_API_TOKEN` colocado, forçar `sync_anbima` e backfill histórico (se ANBIMA aceitar `?date=` retroativo).
 - Critério de entrada: ≥60% dos 100 emissores com ≥252 registros reais, `duration` populado em ≥80% dos registros recentes, `?action=status_mercado` mostrando `com_anomalias > 0`.
 

@@ -40,14 +40,13 @@ function Get-AdminPassword {
       return $Matches[1].Trim().Trim('"').Trim("'")
     }
   }
-  # Nao usar ADMIN_SENHA por padrao (secret distinto no Worker). Opt-in:
-  if ($env:SMOKE_USE_ADMIN_SENHA -eq "1") {
-    foreach ($line in Get-Content $envFile -Encoding UTF8) {
-      if ($line -match '^\s*ADMIN_SENHA\s*=\s*(.+)\s*$') {
-        return $Matches[1].Trim().Trim('"').Trim("'")
-      }
-    }
+  # 2026-07-24: migrado para DPAPI. Tenta helper, fallback ADMIN_PASSWORD env var.
+  $helper = Join-Path (Split-Path -Parent $PSScriptRoot) 'api\Get-VixAdminCredential.ps1'
+  if (Test-Path $helper) {
+    $pwd = & $helper -AsPlainText 2>$null
+    if ($pwd) { return $pwd }
   }
+  if ($env:ADMIN_PASSWORD) { return $env:ADMIN_PASSWORD }
   return $null
 }
 

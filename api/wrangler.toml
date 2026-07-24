@@ -460,7 +460,8 @@ dataset = "radar_usage_events"
 [vars]
 ENVIRONMENT = "production"
 CLOUDFLARE_ACCOUNT_ID = "7ac79fb1030e4e81115ef33c21a9b070"
-ADMIN_EMAIL = "szuchmacheryan@gmail.com"
+# ADMIN_EMAIL movido para wrangler secret em 2026-07-24 (Etapa 1 security fix)
+# O Worker le de env.ADMIN_EMAIL em runtime — o secret precisa existir no Cloudflare
 # false = cron nao roda executarVarreduraMatinal/BatchComFila (Claude tiered v2 assume analise AI)
 VARREDURA_CRON_AI_ENABLED = "false"
 # 2026-07-23: habilita envio do boletim diario por email via Resend (estava desligado desde v4.9.119)

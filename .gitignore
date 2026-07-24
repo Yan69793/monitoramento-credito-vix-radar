@@ -202,6 +202,8 @@ _historico/
 
 # ---------- Credenciais (nunca versionar) ----------
 memory/credenciais.md
+api/.admin_credencial.dat
+api/Get-VixAdminCredential.ps1
 
 # ---------- Protótipos e dados não-código ----------
 auth/
