@@ -1,5 +1,5 @@
 ---
-data: 2026-07-23
+data: 2026-07-24
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
 status: ativo
@@ -7,75 +7,76 @@ status: ativo
 
 # Estado Atual — VIX Radar
 
-> [!success] 21/07 — Worker v4.9.170 + frontend v201.83. Preditivo lab interno, gate unificado, UI limpa. Ver [[66 - Preditivo lab interno 2026-07-21]].
-> [!success] 23/07 — Frontend v201.84: preview de link agora mostra cartão com imagem no WhatsApp e redes. Adicionadas as tags `og:image` (mais `secure_url`/`type`/`width`/`height`/`alt`), `twitter:card=summary_large_image` e `twitter:image` no `index.html`, servindo `og-vix-radar.jpg` (1200x630, 52 KB, composto com a identidade do site) na raiz do Pages. Higgsfield foi descartado por falta de crédito; card feito por composição HTML→Edge headless. Deploy validado (imagem HTTP 200 image/jpeg, HTML com as tags, `CACHE_VERSION=v201.84`), commit `425196b` pushado, sem drift.
-> [!success] 23/07 — Worker v4.9.171 em produção (deploy entre 21/07 e 23/07, health confirma `versao:v4.9.171`). Sem drift repo/prod.
-> [!success] 23/07 10h15 — **Boletim diário reativado.** Diagnóstico mostrou que `RELATORIO_DIARIO_ENABLED` e `EMAIL_ALERTAS_ENABLED` não estavam setados no `[vars]` do `wrangler.toml`. Eram secrets remotos no dashboard CF que um deploy anterior removeu. Adicionadas as duas vars versionadas, redeploy `v4.9.172` (commit `87c167a`), sem alteração de bundle. Primeiro envio previsto para o cron das 18h30 BRT de hoje.
-> [!info] 23/07 08h30 — **Diagnóstico: dashboard mostra eventos até 21/07 por falta de notícias novas, não por falha de ingestão.** Verificado: Worker saudável, 103/103 emissores com `_last_scanned_at` de 22-23/07, briefing executivo gerado hoje (162 eventos, 44 críticos), distribuição de `data_evento` no KV confirma que o evento mais recente é de 21/07 (Raízen: venda Usina Caarapó; Kora Saúde: assembleia de debenturistas). Noturnas de 21-22/07 e matinal de 23/07 processaram todos os emissores mas não acharam eventos com data 22/07 ou 23/07. Sistema operando normalmente — ausência de notícias corporativas novas no período.
+> [!success] 24/07 18h30 — **Worker v4.9.178 + Frontend v201.87 em produção, sem drift repo/prod.** Sprint de segurança e custo (Etapas 1–3 + CSRF-COOKIE1 + CATCH60 + F013 + PRED2) e a11y/cache no Pages (FOCUSTRAP1, INDEXNOSTORE, TOGGLEA11Y1, CONTRASTMUTED1). Health ao vivo: `ok:true`, `versao:v4.9.178`, kv/rate_limiter/telemetria true, `verificador_ok:true`, providers 2/2. Frontend `version.json` e `CACHE_VERSION=v201.87`. Git `99d0bed`. Detalhe: [[03a - Changelog]], [[PENDENCIAS.md]].
+> [!success] 24/07 18h14 — **Noturno 24/07: submit_ok=103, skip_ok=0, submit_fail=0, 488.116 tokens, 6 críticos.** Críticos: CSN, Kora Saúde, Oi, Oncoclínicas, Pão de Açúcar (GPA), Raízen. Dreno verificação async exit 0: fila 14, aprovados 13, rejeitados 1, erros_parse 0, ~636k tokens.
+> [!success] 24/07 — **LOGLOCK1-REC resolvido.** Causa raiz: `FILE_ATTRIBUTE_PINNED` em 6177 itens (OneDrive). Flag removido + `NOT_CONTENT_INDEXED` em `logs/` + fallback file por PID no `Write-Log` das 4 rotinas.
+> [!success] 23/07 — Frontend v201.84: preview de link com `og:image` (1200x630). Worker v4.9.171–172 e FE v201.85 (FOCUSTRAP1) na cadeia do dia 23; superados pelo deploy 24/07.
+> [!success] 23/07 10h15 — **Boletim diário reativado** (`RELATORIO_DIARIO_ENABLED` + `EMAIL_ALERTAS_ENABLED` no `[vars]`).
+> [!info] 23/07 08h30 — Dashboard com eventos até 21/07 naquele momento era ausência de notícias novas, não falha de ingestão (revalidar se o painel parecer “parado”).
 
 ## Versões
 
 | Componente | Versão | Health |
 |---|---|---|
-| Worker | **v4.9.172** | `ok:true`, kv/telemetria/verificador ok. DEDUPFILA1 fix |
-| Frontend | **v201.85** | `CACHE_VERSION=v201.85`, focus-trap 8 dialogs |
-| Git | `cf1bffe` (frontend) + worker deploy | prod alinhada |
+| Worker | **v4.9.178** | `ok:true`, kv/rate_limiter/telemetria true, `verificador_ok:true`, providers 2/2 |
+| Frontend | **v201.87** | `CACHE_VERSION=v201.87`, `version.json` deployed_at 2026-07-24T21:04:21Z |
+| Git | `99d0bed` (PRED2 / v4.9.178) | `main` limpa, alinhada a `origin/main` |
 
 ## Cobertura
 
 | Métrica | Valor |
 |---|---|
 | Emissores | 103 (universo) |
+| Noturno 24/07 | submit_ok=103, skip_ok=0, submit_fail=0, 488.116 tokens (meta 500k, hard 700k sem hit), 6 críticos, ~51 min, dreno verif ok |
+| Verificação async 24/07 (pós-noturno) | fila 14, aprovados 13, rejeitados 1, erros_parse 0, refusals 0, ~636k tokens, exit 0 |
 | Matinal 23/07 | submit_ok=15 (top 15 por EWS), 5 críticos, 150.912 tokens, dreno verif ok |
-| Matinal 22/07 | submit_ok=13, 7 críticos, 132k tokens (atrasada, StartWhenAvailable) |
-| Noturno 22/07 | submit_ok=92 + 11 SKIP = 103/103, 5 críticos, 468.045 tokens, dreno verif ok |
-| Noturno 21/07 | submit_ok=103/103 (SKIP=0), 9 críticos, dreno verif ok |
-| Eventos ativos (briefing 23/07 11:14Z) | 162 total, 44 críticos, 111 relevantes, 13 setores. Evento mais recente: 21/07 |
-| Criticos ativos (matinal 23/07) | Oncoclínicas, Kora Saúde, Oi, Cosan, Rumo |
+| Noturno 22/07 | submit_ok=92 + 11 SKIP = 103/103, 5 críticos, 468.045 tokens |
+| Críticos noturno 24/07 | CSN, Kora Saúde, Oi, Oncoclínicas, Pão de Açúcar (GPA), Raízen |
 
 ## Tasks Scheduler
 
 | Task | Trigger | Status recente |
 |---|---|---|
-| VIXRadar-Matinal | 10h seg-sex | 23/07 04:39 Result 0 (disparo antecipado via recovery); 22/07 13:16 Result 0 (StartWhenAvailable) |
-| VIXRadar-Noturno | 18h diario | 22/07 18:00 Result 0 (submit_ok=92+11 SKIP=103); proximo 23/07 18:00 |
-| VIXRadar-Coleta-Volatilidade | ~17h | 22/07 17:02 Result 0; cotacoes sucesso=0 persiste (VOLCOLETA1, ver PENDENCIAS.md) |
-| VIXRadar-Verificacao-Async | 10:20 | 23/07 05:03 Result 0 (dreno pos-matinal); 22/07 18:51 Result 0 (dreno pos-noturno) |
-| VIXRadar-Export-Historico | 20:45 diario | 22/07 20:47 Result 0; 23/07 previsto 20:45 |
+| VIXRadar-Matinal | 10h seg-sex | 23/07 Result 0 (submit_ok=15); 24/07 sem log matinal no diretório (fim de semana ou sem disparo no path de logs) |
+| VIXRadar-Noturno | 18h diario | **24/07 18:04–18:14 Result 0** (submit_ok=103, dreno exit 0) |
+| VIXRadar-Coleta-Volatilidade | ~17h | VOLCOLETA1/MONITORCEGO1 resolvidos 23/07; validar LastTaskResult em sessão Admin se necessário |
+| VIXRadar-Verificacao-Async | 10:20 + dreno inline | 24/07 18:14 dreno pós-noturno exit 0 |
+| VIXRadar-Export-Historico | 20:45 diario | 22/07 20:47 Result 0 |
 
 ## Infra
 
 | Binding | Status |
 |---|---|
-| RADAR_KV | ok |
-| RATE_LIMITER_DO | ok |
-| RADAR_USAGE_EVENTS | ok |
-| ESTADO_SEMANA_DO | declarado + usado no bundle (nao exposto no health publico) |
-| Providers | 2/2 (Resend + Anthropic) |
+| RADAR_KV | ok (health) |
+| RATE_LIMITER_DO | ok (health) |
+| RADAR_USAGE_EVENTS | ok (telemetria:true) |
+| ESTADO_SEMANA_DO | declarado no `wrangler.toml` + usado no bundle (não exposto no health público) |
+| Providers | 2/2 (Resend + Anthropic); probes OpenRouter removidos do health (OPENROUTERVIVO) |
 
 ## Pendências ativas (topo)
 
-Ver [[PENDENCIAS.md]]. Topo pos auditoria 21/07:
+Ver [[PENDENCIAS.md]]. Após sprint 24/07 a maior parte dos P1/P2 de segurança e custo está **RESOLVIDO**. Residuais úteis:
 
 | P | Item |
 |---|---|
-| P1 | VOLCOLETA1 — coleta sobe com objeto vazio e reporta sucesso (causa raiz isolada, fix pendente) |
-| P1 | MONITORCEGO1 — monitor classifica falha da coleta como benigna |
-| P2 | METRICSZERO1, VERIFQ-ORFAO1, VERIFINJ1, DEDUPFILA1, ROUTINEKEY-PLAIN1, SPF1, FOCUSTRAP1, REGDRIFT1 |
-| P3 | OPENROUTERVIVO (gasto diario recorrente com provider obsoleto), DOCBILL1 (nota 49 sob OAuth) |
+| P3 | HDASH1-RES — código morto `handleUso` / senha em query (não é bypass) |
+| P3 | ALRT1-RES — alerta crítico vs `prefs.newsletter` (decisão de produto) |
+| P3 | P-CVM — `admin_corrigir_datas_cvm_kv` em lote (requer admin) |
+| P3 higiene | `Set-Cookie radar_token` ainda emitido no login embora `extractToken` ignore cookie (CSRF-COOKIE1) |
+| P3 higiene | Remover funções mortas `probeOpenRouter*` do bundle |
 
 ## Checklist pós-rotina
 
 Após cada noturna (ou evento de produção significativo), verificar:
 
-- [ ] `03 - Estado Atual.md` — atualizar tabelas de Cobertura e Tasks com dados da execução recém-concluída
-- [ ] `03a - Changelog.md` — entrada para deploy, incidente ou resultado anormal da rotina
-- [ ] `03b - Infraestrutura.md` — se houve mudança de binding, cron, task ou versão
-- [ ] `00 - Índice (MOC).md` — versões de Worker e Frontend batem com o health ao vivo
-- [ ] `CLAUDE.md` — tabela de Produção atual reflete os dois componentes
+- [x] `03 - Estado Atual.md` — atualizado 24/07 (esta nota)
+- [x] `03a - Changelog.md` — entrada sprint 24/07
+- [ ] `03b - Infraestrutura.md` — só se mudou binding/cron (sem mudança de binding nesta sprint)
+- [x] `00 - Índice (MOC).md` — versões Worker/Frontend
+- [x] `CLAUDE.md` — tabela Produção já em v4.9.178 / v201.87
 
 Script de drift: `pwsh ./scripts/check-vault-drift.ps1` compara vault contra health ao vivo e reporta divergências. Execute após cada deploy ou se suspeitar de desalinhamento.
 
 ---
 
-*Snapshot gerado em 2026-07-23 06:45 BRT (health ao vivo + logs de rotina). Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-07-24 ~18h45 BRT (health ao vivo + metrics noturno/verif 24/07 + git 99d0bed). Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*

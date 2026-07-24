@@ -1,5 +1,5 @@
 ---
-data: 2026-07-23
+data: 2026-07-24
 tipo: changelog
 tags: [vix-radar, changelog, incidentes, deploys]
 status: ativo
@@ -10,6 +10,12 @@ status: ativo
 Registro cronológico de incidentes, deploys e eventos de produção. Cobertura: julho 2026. Para histórico anterior: [[_Arquivo/historico-03-2026-06]].
 
 ---
+
+> [!success] 24/07 18h30 — **Worker v4.9.178 + Frontend v201.87 em produção (sprint segurança/custo/a11y).**
+> Cadeia do dia: rotação de credenciais (Etapa 1) → Worker v4.9.173–178 (VERIFINJ1, OPENROUTERVIVO, RLADMIN-GET1, ENUM-LOGIN1, VERIFCACHE1, VERIFQ-ORFAO1, SKIP24H, CATCH60, F013-RESIDUAL, CSRF-COOKIE1, PRED2) e Pages v201.85–87 (FOCUSTRAP1, INDEXNOSTORE, TOGGLEA11Y1, CONTRASTMUTED1). Health: `ok:true`, `versao:v4.9.178`. Frontend `CACHE_VERSION=v201.87`. Git HEAD `99d0bed`. LOGLOCK1-REC: root cause OneDrive Pinned + fallback Write-Log por PID. Vault reconciliado nesta entrada (antes travado em v4.9.172 / v201.85).
+
+> [!success] 24/07 18h14 — **Noturno 24/07: 103/103, 6 críticos, dreno verif 13 aprovados / 1 rejeitado.**
+> Metrics: submit_ok=103, submit_fail=0, tokens_est=488116 (meta 500k), sonnet=8, haiku=95, buscas=177. Críticos: CSN, Kora Saúde, Oi, Oncoclínicas, GPA, Raízen. Verificação async: total_fila=14, aprovados=13, rejeitados=1, erros_parse=0, exit 0.
 
 > [!warning] 23/07 09h20 — **E-MT resolvido: `email:modo_teste` estava `true` em produção, newsletter só chegava ao admin.**
 > Investigação disparada por pergunta direta do operador ("o VIX Radar está enviando os relatórios do dia para a lista de emails?"). Confirmado via KV (`wrangler kv key get email:modo_teste`, sem precisar de `ADMIN_PASSWORD`) que a flag estava `true`. Efeito: `executarNewsletter` (cron `30 21 * * *`, 18h30 BRT diário) rodava normalmente — heartbeat `ok`, dedup `newsletter:enviada:2026-07-22` gravado às 18h31 BRT — mas em `isModoTesteEmail()=true` o destinatário vira só `ADMIN_EMAIL`. Base real: 30 usuários cadastrados (`user:*`), 17 com status aprovado. Ou seja, o boletim de 22/07 foi gerado e "enviado com sucesso" mas só chegou ao operador, não aos 17 assinantes aprovados (inclui contas `@mirabaud.com.br`). Pendência já constava como E-MT (P3) desde antes, mas ninguém tinha confirmado o valor da flag por falta da credencial admin local. Operador autorizou desativar; gravado `email:modo_teste=false` via `wrangler kv key put --remote`, confirmado por leitura de volta. Próximo cron (23/07 18h30 BRT) deve ir para a lista real — checar `modo:"aprovados"` no log do próximo envio. SPF de `send.vixradar.com` já estava corrigido para `-all` (SPF1, resolvido mais cedo hoje), então a entregabilidade do envio real não deve ser penalizada por isso.
