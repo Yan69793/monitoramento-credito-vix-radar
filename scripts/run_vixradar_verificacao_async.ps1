@@ -90,9 +90,9 @@ function Get-RoutineKey {
     $skillPath = Join-Path $ScheduledTasks 'vixradar-noturno\SKILL.md'
     if (Test-Path $skillPath) {
         $raw = Get-Content $skillPath -Raw -Encoding UTF8
-        if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') { return $Matches[1] }
+        if ($raw -match 'ROUTINE_KEY\s*=\s*([A-Za-z0-9_\-]{30,50})') { return $Matches[1] }
     }
-    throw 'ROUTINE_KEY nao encontrada'
+    throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }
 
 function Get-AnthropicApiKey {

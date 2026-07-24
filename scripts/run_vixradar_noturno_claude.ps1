@@ -100,9 +100,9 @@ function Get-RoutineKey {
     $skillPath = Join-Path $ScheduledTasks 'vixradar-noturno\SKILL.md'
     if (Test-Path $skillPath) {
         $raw = Get-Content $skillPath -Raw -Encoding UTF8
-        if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') { return $Matches[1] }
+        if ($raw -match 'ROUTINE_KEY\s*=\s*([A-Za-z0-9_\-]{30,50})') { return $Matches[1] }
     }
-    throw 'ROUTINE_KEY nao encontrada'
+    throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }
 
 function Get-AnthropicApiKey {
@@ -671,15 +671,29 @@ try {
     }
 
     $sw.Stop()
-    @{
-        data = $DateTag; token_target = $TokenTarget; token_hard_cap = $TokenHardCap
-        tokens_total_est = $stats.tokens_total; tokens_over_target = $stats.tokens_over_target
-        tokens_hard_hit = $stats.tokens_hard_hit; skip_ok = $stats.skip_ok
-        sonnet_llm = $stats.sonnet_count; haiku_llm = $stats.haiku_count; deferred = $stats.deferred
-        submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total
-        silent_fail = $stats.silent_fail
-        batches = $stats.batches_run; criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
-    } | ConvertTo-Json -Depth 5 | Set-Content $MetricsFile -Encoding UTF8
+    # METRICSZERO1 (2026-07-24): skip idempotente nao pode sobrescrever metrics de execucao real
+    # com submit_ok:0. Se nao houve processamento novo e o arquivo ja registra submit_ok>0, preserva.
+    $gravarMetrics = $true
+    if ($stats.submit_ok -eq 0 -and $stats.skip_ok -eq 0 -and (Test-Path $MetricsFile)) {
+        try {
+            $existente = Get-Content $MetricsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($existente.submit_ok -gt 0) {
+                Write-Log ('METRICSZERO1: metrics preservado (submit_ok=' + $existente.submit_ok + ', atual zerado por skip idempotente)')
+                $gravarMetrics = $false
+            }
+        } catch {}
+    }
+    if ($gravarMetrics) {
+        @{
+            data = $DateTag; token_target = $TokenTarget; token_hard_cap = $TokenHardCap
+            tokens_total_est = $stats.tokens_total; tokens_over_target = $stats.tokens_over_target
+            tokens_hard_hit = $stats.tokens_hard_hit; skip_ok = $stats.skip_ok
+            sonnet_llm = $stats.sonnet_count; haiku_llm = $stats.haiku_count; deferred = $stats.deferred
+            submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total
+            silent_fail = $stats.silent_fail
+            batches = $stats.batches_run; criticos = @($stats.criticos); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
+        } | ConvertTo-Json -Depth 5 | Set-Content $MetricsFile -Encoding UTF8
+    }
 
     Write-Log ('FIM: tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap +
         ' sonnet=' + $stats.sonnet_count + ' haiku=' + $stats.haiku_count +
