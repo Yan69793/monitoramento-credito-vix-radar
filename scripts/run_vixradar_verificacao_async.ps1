@@ -320,68 +320,107 @@ try {
             Start-Sleep -Seconds $PauseSec
             continue
         }
-        $promptTexto = $chunkFila.system_prompt + "`n`n" + $chunkFila.user_prompt + "`n`nResponda SOMENTE com o array JSON de veredictos, um por evento, na mesma ordem em que os eventos foram listados acima. Nenhum texto antes ou depois do JSON."
-        $promptPath = Join-Path $LogDir ('verifasync_' + $label + '_' + $DateTag + '.txt')
-        Set-Content $promptPath -Value $promptTexto -Encoding UTF8
 
-        Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) - ' + (($chunk | ForEach-Object { $_.empresa }) -join ', '))
-        $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
-        if ($result.Tokens -gt 0) {
-            $stats.tokens_total += $result.Tokens
-        } else {
-            # NOVO-2 (2026-07-17): Tokens = -1 significa "parse do envelope falhou", nao "custo zero".
-            # O lote consumiu tokens de verdade. Somar 0 em silencio deixava o hard cap cego: uma
-            # sequencia de falhas de parse atravessava o teto sem nunca disparar. Cobra a estimativa
-            # (nao o zero) e contabiliza o buraco, para o cap errar por excesso de cautela e o
-            # desconhecido aparecer nas metricas em vez de sumir.
-            $stats.tokens_total += $estLote
-            $stats.tokens_desconhecidos++
-            Write-Log ('AVISO: tokens do lote ' + $label + ' DESCONHECIDOS (parse do envelope falhou) - cobrando estimativa ' + $estLote + ' contra o cap; acum=' + $stats.tokens_total)
-        }
-
-        if ($result.AuthFailure) {
-            Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
-            $stats.erros_parse++
-            $exitCode = 7
-            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-            break
-        }
-
-        if ($result.Refusal) {
-            $categoria = if ($result.RefusalCategory) { $result.RefusalCategory } else { 'desconhecida (stop_details ausente no envelope)' }
-            # Salva a saida bruta (mesmo padrao do branch de parse-falhou): se stop_details vier
-            # ausente, o rawout e a unica evidencia para diagnosticar qual evento disparou o classificador.
-            $rawOutPath = Join-Path $LogDir ('verifasync_rawout_refusal_' + $label + '_' + $DateTag + '.txt')
-            Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
-            Write-Log ('AVISO: classificador de seguranca recusou o lote ' + $label + ' (' + $chunk.Count + ' evento(s); stop_reason=refusal, categoria=' + $categoria + ', modelo=' + $ModelVerificador + ') - possivel falso-positivo. Recusa e por conteudo do evento, nao por sessao - prosseguindo para o proximo lote. Itens deste lote ficam na fila (janela de releitura: 3 dias). Saida bruta em ' + $rawOutPath)
-            if ($result.RefusalExplanation) { Write-Log ('  explicacao do classificador: ' + $result.RefusalExplanation) }
-            $stats.refusals++
-            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds $PauseSec
-            continue
-        }
-
-        $veredictos = Get-VeredictosArray $result.Output $chunk.Count
-        if (-not $veredictos) {
-            # Observabilidade: salva a saida bruta do modelo para diagnosticar o motivo do parse falhar
-            # (contagem, JSON malformado, preambulo, truncamento). Sem isso o erro era cego.
-            $rawOutPath = Join-Path $LogDir ('verifasync_rawout_' + $label + '_' + $DateTag + '.txt')
-            Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
-            Write-Log ('ERRO: parse de veredictos falhou ou contagem nao bate no lote ' + $label +
-                ' (esperado=' + $chunk.Count + ') - saida bruta em ' + $rawOutPath + ' - itens ficam na fila')
-            $stats.erros_parse++
-            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-            Start-Sleep -Seconds $PauseSec
-            continue
-        }
-
+        # VERIFCACHE1 (2026-07-24): cache de verificacao no fluxo real.
+        # O Worker retorna cache_hits (mapa id->veredicto). Itens com cache hit pulam o LLM
+        # e vao direto para confirmar_verificacao, economizando ~35k tokens/evento.
         $confirmarItens = @()
-        for ($j = 0; $j -lt $chunk.Count; $j++) {
-            $confirmarItens += @{
-                id = $chunk[$j].id; empresa = $chunk[$j].empresa; semana = $chunk[$j].semana
-                setor = $chunk[$j].setor; data_fila = $chunk[$j].data_fila; evento = $chunk[$j].evento
-                veredicto = $veredictos[$j]
+        $cachedIds = @{}
+        if ($chunkFila.cache_hits) {
+            $chunkFila.cache_hits.PSObject.Properties | ForEach-Object { $cachedIds[$_.Name] = $_.Value }
+        }
+        $cacheHitCount = 0
+        foreach ($item in $chunk) {
+            if ($cachedIds.ContainsKey($item.id)) {
+                $confirmarItens += @{
+                    id = $item.id; empresa = $item.empresa; semana = $item.semana
+                    setor = $item.setor; data_fila = $item.data_fila; evento = $item.evento
+                    veredicto = $cachedIds[$item.id]
+                }
+                $cacheHitCount++
             }
+        }
+        if ($cacheHitCount -gt 0) {
+            Write-Log ('CACHE_HITS|' + $label + '|' + $cacheHitCount + ' evento(s) do cache - ' + (($chunk | Where-Object { $cachedIds.ContainsKey($_.id) } | ForEach-Object { $_.empresa }) -join ', '))
+            if (-not $stats.cache_hits) { $stats.cache_hits = 0 }
+            $stats.cache_hits += $cacheHitCount
+        }
+
+        # Itens sem cache: fluxo LLM normal
+        $nonCached = @($chunk | Where-Object { -not $cachedIds.ContainsKey($_.id) })
+        if ($nonCached.Count -gt 0) {
+            $nonCachedIds = @($nonCached | ForEach-Object { $_.id })
+            # Se todo o chunk era cache hit, nao precisa de prompt LLM
+            if ($nonCachedIds.Count -eq $chunkIds.Count) {
+                # Nenhum cache hit — usa o prompt ja obtido (contem todos os itens)
+                $promptChunkIds = $chunkIds
+                $promptChunkFila = $chunkFila
+            } else {
+                # Cache parcial — re-obtem prompt so para os nao-cached
+                $promptChunkIds = $nonCachedIds
+                $promptChunkFila = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_fila_verificacao'; routine_key = $routineKey; ids = $nonCachedIds } -TimeoutSec 60
+            }
+            if ($promptChunkFila.ok -ne $true -or -not $promptChunkFila.system_prompt) {
+                Write-Log ('ERRO: nao consegui montar prompt do lote ' + $label + ' (non-cached) - itens ficam na fila')
+                $stats.erros_parse++
+                Start-Sleep -Seconds $PauseSec
+                continue
+            }
+            $promptTexto = $promptChunkFila.system_prompt + "`n`n" + $promptChunkFila.user_prompt + "`n`nResponda SOMENTE com o array JSON de veredictos, um por evento, na mesma ordem em que os eventos foram listados acima. Nenhum texto antes ou depois do JSON."
+            $promptPath = Join-Path $LogDir ('verifasync_' + $label + '_' + $DateTag + '.txt')
+            Set-Content $promptPath -Value $promptTexto -Encoding UTF8
+
+            Write-Log ('Lote ' + $label + ': ' + $nonCached.Count + ' evento(s) [cache=' + $cacheHitCount + '] - ' + (($nonCached | ForEach-Object { $_.empresa }) -join ', '))
+            $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
+            if ($result.Tokens -gt 0) {
+                $stats.tokens_total += $result.Tokens
+            } else {
+                $stats.tokens_total += $estLote
+                $stats.tokens_desconhecidos++
+                Write-Log ('AVISO: tokens do lote ' + $label + ' DESCONHECIDOS (parse do envelope falhou) - cobrando estimativa ' + $estLote + ' contra o cap; acum=' + $stats.tokens_total)
+            }
+
+            if ($result.AuthFailure) {
+                Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
+                $stats.erros_parse++
+                $exitCode = 7
+                Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                break
+            }
+
+            if ($result.Refusal) {
+                $categoria = if ($result.RefusalCategory) { $result.RefusalCategory } else { 'desconhecida (stop_details ausente no envelope)' }
+                $rawOutPath = Join-Path $LogDir ('verifasync_rawout_refusal_' + $label + '_' + $DateTag + '.txt')
+                Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
+                Write-Log ('AVISO: classificador de seguranca recusou o lote ' + $label + ' (' + $nonCached.Count + ' evento(s); stop_reason=refusal, categoria=' + $categoria + ', modelo=' + $ModelVerificador + ') - possivel falso-positivo. Recusa e por conteudo do evento, nao por sessao - prosseguindo para o proximo lote. Itens deste lote ficam na fila (janela de releitura: 3 dias). Saida bruta em ' + $rawOutPath)
+                if ($result.RefusalExplanation) { Write-Log ('  explicacao do classificador: ' + $result.RefusalExplanation) }
+                $stats.refusals++
+                Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds $PauseSec
+                continue
+            }
+
+            $veredictos = Get-VeredictosArray $result.Output $nonCached.Count
+            if (-not $veredictos) {
+                $rawOutPath = Join-Path $LogDir ('verifasync_rawout_' + $label + '_' + $DateTag + '.txt')
+                Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
+                Write-Log ('ERRO: parse de veredictos falhou ou contagem nao bate no lote ' + $label +
+                    ' (esperado=' + $nonCached.Count + ') - saida bruta em ' + $rawOutPath + ' - itens ficam na fila')
+                $stats.erros_parse++
+                Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds $PauseSec
+                continue
+            }
+
+            for ($j = 0; $j -lt $nonCached.Count; $j++) {
+                $confirmarItens += @{
+                    id = $nonCached[$j].id; empresa = $nonCached[$j].empresa; semana = $nonCached[$j].semana
+                    setor = $nonCached[$j].setor; data_fila = $nonCached[$j].data_fila; evento = $nonCached[$j].evento
+                    veredicto = $veredictos[$j]
+                }
+            }
+        } else {
+            Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) TODOS do cache - sem chamada LLM')
         }
 
         try {
@@ -389,7 +428,7 @@ try {
             if ($confirmResp.ok -eq $true) {
                 $stats.aprovados += [int]$confirmResp.resultado.aprovados
                 $stats.rejeitados += [int]$confirmResp.resultado.rejeitados
-                Write-Log ('LOTE_FECHADO|' + $label + '|aprovados=' + $confirmResp.resultado.aprovados + '|rejeitados=' + $confirmResp.resultado.rejeitados + '|erros=' + $confirmResp.resultado.erros)
+                Write-Log ('LOTE_FECHADO|' + $label + '|aprovados=' + $confirmResp.resultado.aprovados + '|rejeitados=' + $confirmResp.resultado.rejeitados + '|erros=' + $confirmResp.resultado.erros + '|cache=' + $cacheHitCount)
             } else {
                 Write-Log ('ERRO: confirmar_verificacao falhou no lote ' + $label + ' - ' + $confirmResp.erro)
             }
