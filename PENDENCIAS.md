@@ -1,6 +1,6 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-24 18h30 BRT (Etapa 3: VERIFCACHE1, VERIFQ-ORFAO1, SKIP24H, DOCBILL1 resolvidos) | **Producao:** Worker v4.9.174, Frontend v201.85 | **Pronto pra deploy:** Worker v4.9.174, Frontend v201.85 (FOCUSTRAP1)
+**Atualizado:** 2026-07-24 18h30 BRT (Etapa 3: VERIFCACHE1, VERIFQ-ORFAO1, SKIP24H, DOCBILL1 resolvidos) | **Producao:** Worker v4.9.174, Frontend v201.85
 
 ## Síntese executiva
 
