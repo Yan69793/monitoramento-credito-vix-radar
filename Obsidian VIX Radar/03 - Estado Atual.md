@@ -1,5 +1,5 @@
 ---
-data: 2026-07-24
+data: 2026-07-25
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
 status: ativo
@@ -7,7 +7,7 @@ status: ativo
 
 # Estado Atual — VIX Radar
 
-> [!success] 24/07 — **Worker v4.9.180 + Frontend v201.87. Fila PENDENCIAS zerada.** v4.9.180: HDASH1-RES, OPENROUTER-DEAD, ALRT1-RES (produto). P-CVM executado (91 correcoes / 5 semanas). COOKIE-CLEAR1 em 179. Health: `ok:true`, `versao:v4.9.180`. Detalhe: [[03a - Changelog]], [[PENDENCIAS.md]].
+> [!success] 25/07 16h00 — **Worker v4.9.181 + Frontend v201.88. Fila PENDENCIAS zerada.** v4.9.181: email_enviar (apresentacao Igor/Bradesco BBI), VERSAO3X fix (WORKER_VERSAO agora bate com nome do arquivo), guard no deploy-worker.ps1 (rejeita deploy se WORKER_VERSAO divergir do filename). Health: `ok:true`, `versao:v4.9.181`, 802ms. Cron 7132d3dd (27/07 09:57 BRT) agora coberto. Auditoria geral: [[67 - Auditoria Geral 2026-07-25]]. Detalhe: [[03a - Changelog]], [[PENDENCIAS.md]].
 > [!success] 24/07 18h14 — **Noturno 24/07: submit_ok=103, skip_ok=0, submit_fail=0, 488.116 tokens, 6 críticos.** Críticos: CSN, Kora Saúde, Oi, Oncoclínicas, Pão de Açúcar (GPA), Raízen. Dreno verificação async exit 0: fila 14, aprovados 13, rejeitados 1, erros_parse 0, ~636k tokens.
 > [!success] 24/07 — **LOGLOCK1-REC resolvido.** Causa raiz: `FILE_ATTRIBUTE_PINNED` em 6177 itens (OneDrive). Flag removido + `NOT_CONTENT_INDEXED` em `logs/` + fallback file por PID no `Write-Log` das 4 rotinas.
 > [!success] 23/07 — Frontend v201.84: preview de link com `og:image` (1200x630). Worker v4.9.171–172 e FE v201.85 (FOCUSTRAP1) na cadeia do dia 23; superados pelo deploy 24/07.
@@ -18,9 +18,9 @@ status: ativo
 
 | Componente | Versão | Health |
 |---|---|---|
-| Worker | **v4.9.180** | `ok:true`, kv/rate_limiter/telemetria true, `verificador_ok:true`, providers 2/2 |
-| Frontend | **v201.87** | `CACHE_VERSION=v201.87`, `version.json` deployed_at 2026-07-24T21:04:21Z |
-| Git | post-v4.9.180 (fila PENDENCIAS zerada) | main apos commit/push desta entrega |
+| Worker | **v4.9.181** | `ok:true`, kv/rate_limiter/telemetria true, `verificador_ok:true`, providers 2/2 |
+| Frontend | **v201.88** | `CACHE_VERSION=v201.88`, `version.json` deployed_at 2026-07-24T22:01:35Z |
+| Git | v4.9.181 (fila PENDENCIAS zerada) | main, commit `8dcb7d3`, working tree limpo |
 
 ## Cobertura
 
@@ -71,4 +71,4 @@ Script de drift: `pwsh ./scripts/check-vault-drift.ps1` compara vault contra hea
 
 ---
 
-*Snapshot gerado em 2026-07-24 ~18h45 BRT (health ao vivo + metrics noturno/verif 24/07 + git 99d0bed). Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-07-25 ~16h00 BRT (deploy v4.9.181 + health ao vivo 802ms + git 8dcb7d3). Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*

@@ -1,5 +1,5 @@
 ---
-data: 2026-07-24
+data: 2026-07-25
 tipo: indice
 tags: [vix-radar, moc, indice, mapa]
 status: ativo
@@ -7,14 +7,14 @@ status: ativo
 
 # VIX Radar — Índice (MOC)
 
-Mapa do vault. Atualizado 2026-07-24 ~18h45 BRT.
+Mapa do vault. Atualizado 2026-07-25 ~16h00 BRT.
 
 ## Estado atual
 
 | Componente | Versão |
 |---|---|
-| Worker | v4.9.180 |
-| Frontend | v201.87 |
+| Worker | v4.9.181 |
+| Frontend | v201.88 |
 | Health | `ok:true`, verificador ok, providers 2/2 |
 | Cobertura | Noturno 24/07: 103/103 submit_ok, dreno verif ok |
 
@@ -36,6 +36,9 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendências em [[PENDENCIAS.md
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[67 - Auditoria Geral 2026-07-25]] | 25/07 | Geral, drift FE v201.88 + VERSAO3X recorrente + notas 65/66 ausentes do MOC |
+| [[66 - Preditivo lab interno 2026-07-21]] | 21/07 | Decisao: preditivo so interno, pesquisa/backtest |
+| [[65 - Auditoria Geral 2026-07-21-tarde]] | 21/07 | Geral pos-deploy v4.9.168/v201.81, OPENROUTERVIVO, Merton |
 | [[64 - Auditoria Geral 2026-07-21]] | 21/07 | Geral 4 camadas, 2 P1 novos (ADMINXSS1, VOLTASK1) + Merton confirmado |
 | [[62 - Auditoria Completa e Correcoes 2026-07-20]] | 20/07 | Auditoria + correções (F002, F014, INGEST-GAP1) |
 | [[63 - Recovery e Deploy 2026-07-20]] | 20/07 | Recovery pós INGEST-GAP1 + deploy v4.9.167 |
