@@ -1,6 +1,6 @@
 # PENDENCIAS.md — VIX Radar
 
-**Atualizado:** 2026-07-24 (fila PENDENCIAS zerada, Worker v4.9.180) | **Producao:** Worker v4.9.180, Frontend v201.87
+**Atualizado:** 2026-07-25 (fila PENDENCIAS zerada, Worker v4.9.180) | **Producao:** Worker v4.9.180, Frontend v201.88
 
 ## Síntese executiva
 

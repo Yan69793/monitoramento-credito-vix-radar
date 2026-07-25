@@ -59,7 +59,25 @@ if (-not (Test-Path $bundlePath)) { Fail "Bundle nao existe: $bundlePath" }
 $sizeKB = [math]::Round((Get-Item $bundlePath).Length / 1KB)
 Write-Host "Bundle: $bundle ($sizeKB KB)" -ForegroundColor Cyan
 
-# --- 1. Aponta wrangler.toml main ------------------------------------------
+# --- 1. Check WORKER_VERSAO bate com nome do arquivo (VERSAO3X guard) -------
+# Regra: "um numero por deploy, nunca reusa". Se WORKER_VERSAO dentro do bundle
+# nao bater com o nome do arquivo, o health publico mente sobre qual codigo esta
+# rodando — incidente recorrente (21/07 e 25/07). Este check trava o deploy.
+$matchLine = Select-String -Path $bundlePath -Pattern 'var WORKER_VERSAO = "v[\d.]+"' | Select-Object -First 1
+if ($matchLine) {
+  $m = [regex]::Match($matchLine.Line, '"v([\d.]+)"')
+  if ($m.Success) {
+    $bundleWorkerVersao = "v" + $m.Groups[1].Value
+    if ($bundleWorkerVersao -ne $ver) {
+      Fail "WORKER_VERSAO no bundle (`"$bundleWorkerVersao`") nao bate com o nome do arquivo ($ver). Corrija o WORKER_VERSAO no bundle antes de deployar (VERSAO3X)."
+    }
+    Write-Host "WORKER_VERSAO: $bundleWorkerVersao (confere com arquivo)" -ForegroundColor DarkGray
+  }
+} else {
+  Write-Host "AVISO: nao foi possivel extrair WORKER_VERSAO do bundle (formato mudou?)." -ForegroundColor Yellow
+}
+
+# --- 2. Aponta wrangler.toml main ------------------------------------------
 $tomlRaw = Get-Content $toml -Raw
 $m = [regex]::Match($tomlRaw, '(?m)^(\s*main\s*=\s*")([^"]+)(")')
 if (-not $m.Success) { Fail "Nao encontrei a chave 'main' em $toml" }
@@ -73,7 +91,7 @@ if ($mainAtual -ne $bundle) {
   Write-Host "wrangler.toml main ja aponta $bundle" -ForegroundColor DarkGray
 }
 
-# --- 2. Deploy -------------------------------------------------------------
+# --- 3. Deploy -------------------------------------------------------------
 # --no-autoconfig obrigatorio: sem ele o Wrangler 4.x detecta outro diretorio
 # como projeto e ignora este wrangler.toml.
 Write-Host "`nDeployando Worker ($WorkerName / $bundle)..." -ForegroundColor Yellow
@@ -86,7 +104,7 @@ try {
 }
 if ($deployExit -ne 0) { Fail "wrangler deploy falhou (exit $deployExit). wrangler.toml foi alterado mas NADA foi commitado." }
 
-# --- 3. Validacao em producao ----------------------------------------------
+# --- 4. Validacao em producao ----------------------------------------------
 if ($SkipValidation) {
   Write-Host "`nValidacao pulada (-SkipValidation)." -ForegroundColor DarkGray
 } else {
@@ -110,13 +128,13 @@ if ($SkipValidation) {
   Write-Host "  ok=true kv=true telemetria=true" -ForegroundColor Green
 }
 
-# --- 3.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
+# --- 4.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
 # Sem isto, o bundle e o wrangler.toml ficam corretos mas a doc continua
 # declarando a versao anterior ate alguem lembrar de editar a mao — foi
 # assim que CLAUDE.md e README.md divergiram da producao mais de uma vez.
 & (Join-Path $PSScriptRoot "sync-version-docs.ps1") -WorkerVersion $ver
 
-# --- 4. Sync com o git -----------------------------------------------------
+# --- 5. Sync com o git -----------------------------------------------------
 if ($SkipGit) {
   Write-Host "`nGit pulado (-SkipGit)." -ForegroundColor DarkGray
   Write-Host "ATENCAO: producao esta em $ver e o repo NAO sabe. O canonical-test vai acusar drift ate voce commitar:" -ForegroundColor Yellow
