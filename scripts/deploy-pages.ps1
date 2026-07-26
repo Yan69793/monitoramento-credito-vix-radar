@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-  Deploy do frontend VIX Radar (Cloudflare Pages) — idempotente e validado.
+  Deploy do frontend VIX Radar (Cloudflare Pages) â€” idempotente e validado.
 
 .DESCRIPTION
   1. Sincroniza app/index.html -> app/deploy_zip/ (a raiz vence).
@@ -80,8 +80,8 @@ foreach ($af in @("vr-admin-shared.js","vr-admin-modules.js","vr-admin-engajamen
 }
 
 # --- 4. Deploy -------------------------------------------------------------
-Write-Host "`nDeployando para Cloudflare Pages ($ProjectName / production)..." -ForegroundColor Yellow
-npx wrangler pages deploy "$zipDir" --project-name=$ProjectName --production --commit-dirty=true
+Write-Host "`nDeployando para Cloudflare Pages ($ProjectName / main)..." -ForegroundColor Yellow
+npx wrangler pages deploy "$zipDir" --project-name=$ProjectName --branch=main --commit-dirty=true
 if ($LASTEXITCODE -ne 0) { Fail "wrangler pages deploy falhou (exit $LASTEXITCODE)" }
 
 # --- 5. Validacao em producao ----------------------------------------------
@@ -107,7 +107,7 @@ try {
 
 }  # fim do else de -SkipValidation
 
-if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu — investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
+if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu â€” investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
 
 # --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
 # Mesmo racional do deploy-worker.ps1: sem isto a doc so atualiza se alguem
@@ -142,7 +142,7 @@ try {
 
   git push origin HEAD
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nDEPLOY OK mas o PUSH FALHOU — o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
+    Write-Host "`nDEPLOY OK mas o PUSH FALHOU â€” o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
     Write-Host "O canonical-test vai acusar drift ate o push passar. Resolva e rode: git push origin HEAD" -ForegroundColor Red
     exit 3
   }
@@ -151,5 +151,5 @@ try {
   Pop-Location
 }
 
-Write-Host "`nDEPLOY OK — producao em $ver, repo e GitHub sincronizados." -ForegroundColor Green
+Write-Host "`nDEPLOY OK â€” producao em $ver, repo e GitHub sincronizados." -ForegroundColor Green
 exit 0
