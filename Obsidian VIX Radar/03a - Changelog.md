@@ -11,9 +11,6 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
-> [!warning] 26/07 — **BUNDLEDRIFT1: arquivos `api/v4.9.*.js` do repo nao batiam com o codigo deployado.**
-> Achado pelo check-up semanal automatico. Producao esta correta (`v4.9.181`, health `ok:true`), o problema e de arquivamento: os bundles commitados carregam marcador de build interno `// v4.9.98.js` e uma geracao antiga dos shims `unenv` do Wrangler. Padrao confirmado em v4.9.150, .160, .165, .168-.171, .178-.181 — ou seja, ha varias versoes o arquivo salvo no repo nao e o artefato realmente publicado. Diff do bundle ao vivo (Cloudflare MCP `workers_get_worker_code`) contra `api/v4.9.181.js`: 5049 linhas, 17.601 vs 17.130 linhas. `wrangler.toml` ja apontava para `v4.9.181.js` (sem alteracao necessaria). Corrigido so o `v4.9.181.js` nesta branch (`claude/auditoria-radar-credito-PVL91`), extraido do Worker ao vivo, `node --check` limpo. **Por que passou despercebido:** o guard anti-drift do `canonical-test.yml` compara apenas a *string* de versao (`WORKER_VERSAO` vs `main` do `wrangler.toml`), nunca o conteudo do arquivo — os dois batiam o tempo todo. **Risco real:** um rollback ou um rebuild a partir do repo publicaria codigo diferente do que esta no ar. Bundles anteriores a v4.9.181 seguem defasados no repo.
-
 > [!success] 24/07 — **Worker v4.9.180 + fila PENDENCIAS zerada.**
 > HDASH1-RES (handleUso sem senha em query), OPENROUTER-DEAD (probes removidos), ALRT1-RES fechado por decisao de produto (alerta critico independente de newsletter). P-CVM executado em producao: 91 empresas corrigidas em 5 semanas ISO (W26-W30). Health `v4.9.180`.
 
