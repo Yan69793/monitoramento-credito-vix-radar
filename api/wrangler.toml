@@ -1,6 +1,18 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.181)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.182)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.182.js = v4.9.181 + SECRETMISS1: ADMIN_EMAIL entra na condicao _okHealth
+#   e vira o campo publico admin_email_ok. Guarda para a classe "secret
+#   obrigatorio some e o sistema degrada em silencio". De 24/07 a 27/07 o
+#   secret nao existiu (o commit dfa6854 tirou do [vars] e nunca criou no
+#   Cloudflare) e o health seguiu ok:true por 3 dias, enquanto handleRegistrar
+#   lancava "Sem destinatarios." em todo e-mail ao admin e handleLogin nunca
+#   atribuia role:"admin" ao JWT. O painel de aprovacao nao caiu junto porque
+#   autentica por ADMIN_PASSWORD, e foi por isso que ninguem percebeu.
+#   Valida formato, nao so presenca: "" e " " tambem derrubam o health.
+#   EFEITO COLATERAL PRETENDIDO: deploy-worker.ps1 aborta em ok:false, entao
+#   secret obrigatorio ausente passa a travar deploy tambem. E o ponto.
+#   Guarda irma no scripts/apply-security-rotation.ps1, passo [7/8].
 # v4.9.181.js = v4.9.180 + endpoint admin email_enviar (envio de email personalizado):
 #   action=email_enviar (admin): assunto, html, destinatario(s) — chama enviarResend.
 # v4.9.180.js = v4.9.179 + fecha pendencias residuais (HDASH1-RES, OPENROUTER-DEAD, ALRT1-RES):
@@ -454,7 +466,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.181.js"
+main       = "v4.9.182.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
