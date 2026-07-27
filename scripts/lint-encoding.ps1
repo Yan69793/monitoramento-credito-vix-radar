@@ -71,10 +71,16 @@ function Add-UTF8BOM([string]$File, [byte[]]$Bytes) {
 # linter funcionar em worktree, clone novo e CI, ao contrario do caminho fixo anterior.
 if (-not $Path -or $Path.Count -eq 0) {
     $repoRoot = & git rev-parse --show-toplevel 2>$null
-    if ($LASTEXITCODE -ne 0 -or -not $repoRoot) {
-        $repoRoot = Split-Path -Parent $PSScriptRoot
+    if ($LASTEXITCODE -eq 0 -and $repoRoot) {
+        $repoRoot = $repoRoot -replace '/', '\'
+        # Somente os .ps1 que o git rastreia. Varrer o diretorio pegaria outros worktrees,
+        # _historico e copias legadas: 21 falsos positivos em 23. Detector ruidoso e
+        # detector ignorado, que foi como a versao anterior deste script morreu.
+        $Path = @(& git ls-files '*.ps1' | ForEach-Object { Join-Path $repoRoot ($_ -replace '/', '\') })
+        if (-not $Path -or $Path.Count -eq 0) { $Path = @($repoRoot) }
+    } else {
+        $Path = @((Split-Path -Parent $PSScriptRoot))
     }
-    $Path = @(($repoRoot -replace '/', '\'))
 }
 
 # Aceita tanto -Path a,b (array) quanto -Path "a,b" (string unica), porque o hook
