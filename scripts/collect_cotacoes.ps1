@@ -1,5 +1,5 @@
-# collect_cotacoes.ps1 — Coleta séries históricas de cotações B3 via Yahoo Finance
-# Uso: pwsh ./scripts/collect_cotacoes.ps1 [-Dias 252] [-OutputDir data/cotacoes]
+﻿# collect_cotacoes.ps1, Coleta séries históricas de cotações B3 via Yahoo Finance
+# Uso: powershell.exe -NoProfile -File ./scripts/collect_cotacoes.ps1 [-Dias 252] [-OutputDir data/cotacoes]
 # Yahoo Finance v8 API é gratuita, sem autenticação.
 # Dados são cacheados por ticker em JSON individual.
 
@@ -78,7 +78,7 @@ foreach ($prop in ($emissores | Get-Member -MemberType NoteProperty)) {
                     vol_anualizada = $volAnual
                 }
             } catch {
-                # Cache file corrupt/unreadable — will be re-fetched next run
+                # Cache file corrupt/unreadable, will be re-fetched next run
             }
             continue
         }
@@ -87,7 +87,18 @@ foreach ($prop in ($emissores | Get-Member -MemberType NoteProperty)) {
     $url = "https://query1.finance.yahoo.com/v8/finance/chart/${ticker}.SA?range=2y&interval=1d&includePrePost=false"
     try {
         Write-Host -NoNewline "  $emissor ($ticker.SA)... "
-        $response = Invoke-RestMethod -Uri $url -TimeoutSec 30 -MaximumRetryCount 2 -RetryIntervalSec 2
+        # -MaximumRetryCount/-RetryIntervalSec so existem no PS 6.1+; este laco reproduz
+        # o mesmo comportamento sob powershell.exe 5.1, que e quem roda no Task Scheduler.
+        $response = $null
+        for ($tentativa = 0; $tentativa -le 2; $tentativa++) {
+            try {
+                $response = Invoke-RestMethod -Uri $url -TimeoutSec 30
+                break
+            } catch {
+                if ($tentativa -eq 2) { throw }
+                Start-Sleep -Seconds 2
+            }
+        }
         $result = $response.chart.result[0]
         if (-not $result -or -not $result.timestamp) {
             Write-Host "SEM DADOS"
@@ -161,7 +172,8 @@ foreach ($prop in ($emissores | Get-Member -MemberType NoteProperty)) {
             vol_anualizada = $volAnual
         }
 
-        Write-Host "$n barras, vol=$($volAnual ? "$([Math]::Round($volAnual*100,2))%" : 'N/A')"
+        $volTxt = if ($volAnual) { "$([Math]::Round($volAnual*100,2))%" } else { 'N/A' }
+        Write-Host "$n barras, vol=$volTxt"
         $sucesso++
     }
     catch {

@@ -1,5 +1,5 @@
-# upload_volatilidade_kv.ps1 — Sobe dados de volatilidade para o KV do Worker
-# Uso: pwsh ./scripts/upload_volatilidade_kv.ps1 [-AdminSenha $senha]
+﻿# upload_volatilidade_kv.ps1, Sobe dados de volatilidade para o KV do Worker
+# Uso: powershell.exe -NoProfile -File ./scripts/upload_volatilidade_kv.ps1 [-AdminSenha $senha]
 # Pré-requisito: collect_cotacoes.ps1 já rodou (data/cotacoes/meta_volatilidade.json existe)
 #
 # Monta payload { emissores: { "Nome": { vol_anualizada, market_cap } }, selic_anual }
@@ -62,7 +62,7 @@ foreach ($prop in ($metaRaw.emissores | Get-Member -MemberType NoteProperty)) {
         $lastRow = $series.rows | Select-Object -Last 1
         $regularMarketPrice = $series.regularMarketPrice
         if ($regularMarketPrice -and $regularMarketPrice -gt 0) {
-            $mktCap = $regularMarketPrice # preço; market cap real = preço × shares outstanding
+            $mktCap = $regularMarketPrice # preço; market cap real = preço x shares outstanding
         }
     }
 
@@ -75,7 +75,7 @@ foreach ($prop in ($metaRaw.emissores | Get-Member -MemberType NoteProperty)) {
     $comVol++
 }
 
-# Selic atual ~13.75% (jul/2026) — pode ser atualizado via BCB API
+# Selic atual ~13.75% (jul/2026), pode ser atualizado via BCB API
 $selicAnual = 0.1375
 
 $payload = [PSCustomObject]@{
@@ -100,13 +100,13 @@ $body = @{
     action = "admin_kv_put"
     key = "cotacoes:volatilidade:v1"
     value = $payloadJson
-    ttl = 86400  # 24h — re-rodar diariamente com o collector
+    ttl = 86400  # 24h, re-rodar diariamente com o collector
 } | ConvertTo-Json -Compress
 
 try {
     $response = Invoke-RestMethod -Uri "https://api.vixradar.com/" -Method POST -Body $body -ContentType "application/json" -TimeoutSec 30
     if ($response.ok) {
-        Write-Host "OK — volatilidade publicada no KV (TTL 24h)"
+        Write-Host "OK, volatilidade publicada no KV (TTL 24h)"
     } else {
         Write-Host "ERRO: $($response.erro)"
     }

@@ -1,6 +1,6 @@
-<#
+﻿<#
 .SYNOPSIS
-  Deploy do frontend VIX Radar (Cloudflare Pages) — idempotente e validado.
+  Deploy do frontend VIX Radar (Cloudflare Pages), idempotente e validado.
 
 .DESCRIPTION
   1. Sincroniza app/index.html -> app/deploy_zip/ (a raiz vence).
@@ -107,7 +107,7 @@ try {
 
 }  # fim do else de -SkipValidation
 
-if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu — investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
+if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu, investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
 
 # --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
 # Mesmo racional do deploy-worker.ps1: sem isto a doc so atualiza se alguem
@@ -142,7 +142,7 @@ try {
 
   git push origin HEAD
   if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nDEPLOY OK mas o PUSH FALHOU — o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
+    Write-Host "`nDEPLOY OK mas o PUSH FALHOU, o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
     Write-Host "O canonical-test vai acusar drift ate o push passar. Resolva e rode: git push origin HEAD" -ForegroundColor Red
     exit 3
   }
@@ -151,5 +151,5 @@ try {
   Pop-Location
 }
 
-Write-Host "`nDEPLOY OK — producao em $ver, repo e GitHub sincronizados." -ForegroundColor Green
+Write-Host "`nDEPLOY OK, producao em $ver, repo e GitHub sincronizados." -ForegroundColor Green
 exit 0

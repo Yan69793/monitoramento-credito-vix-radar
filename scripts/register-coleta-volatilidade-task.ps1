@@ -1,6 +1,6 @@
-# register-coleta-volatilidade-task.ps1
+﻿# register-coleta-volatilidade-task.ps1
 # Cria a task VIXRadar-Coleta-Volatilidade no Windows Task Scheduler.
-# Roda DIARIAMENTE as 17:00 (hora local BRT) — apos fechamento do pregao, antes da noturna 18:00.
+# Roda DIARIAMENTE as 17:00 (hora local BRT), apos fechamento do pregao, antes da noturna 18:00.
 # Reversao: Unregister-ScheduledTask -TaskName 'VIXRadar-Coleta-Volatilidade' -Confirm:$false
 #
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-coleta-volatilidade-task.ps1"

@@ -1,4 +1,4 @@
-# run_coleta_volatilidade.ps1 — Rotina diária: coleta cotações Yahoo Finance + upload KV
+﻿# run_coleta_volatilidade.ps1, Rotina diária: coleta cotações Yahoo Finance + upload KV
 # Registrada como VIXRadar-Coleta-Volatilidade (Task Scheduler)
 # Horário: 17:00 BRT (após fechamento do pregão, antes da noturna 18:00)
 # Pré-requisito: atualizar_altman_cvm.ps1 -Publicar deve rodar antes (semanal ou sob demanda)

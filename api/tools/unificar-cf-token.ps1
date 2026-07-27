@@ -69,7 +69,7 @@ if (-not ($dnsOk -and $workerOk)) {
   Write-Host '  - Account > Workers Scripts > Edit'
   Write-Host '  - Account > Workers KV Storage > Edit'
   Write-Host '  - Account > Workers Routes > Edit'
-  Write-Host '  - Zone > Zone > Read (vixradar.com) — ja deve existir'
+  Write-Host '  - Zone > Zone > Read (vixradar.com), ja deve existir'
   Write-Host ''
   Write-Host 'Modo dual-token: deploy usa CLOUDFLARE_API_TOKEN, DNS usa CLOUDFLARE_DNS_TOKEN.'
   Write-Host 'Status: .\tools\cf-token-status.ps1'

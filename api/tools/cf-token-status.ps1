@@ -54,7 +54,7 @@ $results | ForEach-Object {
 $anyUnified = $results | Where-Object { $_.unified }
 if ($anyUnified) {
   Write-Host ''
-  Write-Host 'Token unificado disponivel — use CLOUDFLARE_API_TOKEN para tudo.' -ForegroundColor Green
+  Write-Host 'Token unificado disponivel, use CLOUDFLARE_API_TOKEN para tudo.' -ForegroundColor Green
 } else {
   Write-Host ''
   Write-Host 'Modo dual-token ativo: deploy/wrangler -> CLOUDFLARE_API_TOKEN | DNS -> CLOUDFLARE_DNS_TOKEN' -ForegroundColor Yellow

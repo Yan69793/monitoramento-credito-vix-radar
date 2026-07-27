@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Mede o staleness (_last_scanned_at) dos 103 emissores do VIX Radar via op=state.
 .DESCRIPTION
@@ -54,7 +54,7 @@ $m2448 = ($comLs | Where-Object { $_.idade_h -gt 24 -and $_.idade_h -le 48 }).Co
 $gt48  = ($comLs | Where-Object { $_.idade_h -gt 48 }).Count
 $idadeMax = ($comLs | Measure-Object idade_h -Maximum).Maximum
 
-Write-Host "=== STALENESS ($Label) — $($now.ToString('o')) ===" -ForegroundColor Cyan
+Write-Host "=== STALENESS ($Label), $($now.ToString('o')) ===" -ForegroundColor Cyan
 Write-Host "total: $($rows.Count) | com _last_scanned_at: $($comLs.Count)"
 Write-Host "FRESCOS (<=24h): $fresh" -ForegroundColor Green
 Write-Host "STALE 24-48h:   $m2448" -ForegroundColor Yellow

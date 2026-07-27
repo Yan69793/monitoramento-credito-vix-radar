@@ -1,4 +1,4 @@
-# apply-security-rotation.ps1 — Etapa 1: Rotacao de credenciais VIX Radar
+﻿# apply-security-rotation.ps1, Etapa 1: Rotacao de credenciais VIX Radar
 # Gerado em 2026-07-24
 # Executar como Administrador em PowerShell 7+ com CLOUDFLARE_API_TOKEN definido
 #
@@ -24,12 +24,12 @@ $ErrorActionPreference = 'Stop'
 $ROOT = $PSScriptRoot | Split-Path -Parent
 
 Write-Host "============================================" -ForegroundColor Cyan
-Write-Host " VIX RADAR — Rotacao de Credenciais (Etapa 1)" -ForegroundColor Cyan
+Write-Host " VIX RADAR, Rotacao de Credenciais (Etapa 1)" -ForegroundColor Cyan
 Write-Host " Data: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss BRT')" -ForegroundColor Cyan
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host ""
 
-# ─── Verificar pré-requisitos ──────────────────────────────────────────
+# --- Verificar pré-requisitos ------------------------------------------
 Write-Host "[1/6] Verificando pre-requisitos..." -ForegroundColor Yellow
 
 if (-not (Get-Command npx -ErrorAction SilentlyContinue)) {
@@ -46,7 +46,7 @@ if (-not $env:CLOUDFLARE_API_TOKEN) {
 Write-Host "  npx: OK" -ForegroundColor Green
 Write-Host "  CLOUDFLARE_API_TOKEN: presente ($($env:CLOUDFLARE_API_TOKEN.Length) chars)" -ForegroundColor Green
 
-# ─── Ler nova senha do DPAPI ───────────────────────────────────────────
+# --- Ler nova senha do DPAPI -------------------------------------------
 Write-Host "[2/6] Lendo nova senha admin do DPAPI..." -ForegroundColor Yellow
 
 $helper = Join-Path $ROOT 'api\Get-VixAdminCredential.ps1'
@@ -64,7 +64,7 @@ if (-not $NOVA_SENHA) {
 
 Write-Host "  Senha recuperada: $($NOVA_SENHA.Length) chars (prefixo: $($NOVA_SENHA.Substring(0,4))...)" -ForegroundColor Green
 
-# ─── Atualizar ADMIN_PASSWORD ──────────────────────────────────────────
+# --- Atualizar ADMIN_PASSWORD ------------------------------------------
 Write-Host "[3/6] Atualizando ADMIN_PASSWORD no Cloudflare..." -ForegroundColor Yellow
 
 $apiDir = Join-Path $ROOT 'api'
@@ -85,7 +85,7 @@ if ($DryRun) {
     Write-Host "  ADMIN_PASSWORD: ATUALIZADO" -ForegroundColor Green
 }
 
-# ─── Configurar ADMIN_EMAIL como secret ────────────────────────────────
+# --- Configurar ADMIN_EMAIL como secret --------------------------------
 Write-Host "[4/6] Configurando ADMIN_EMAIL como Cloudflare secret..." -ForegroundColor Yellow
 
 if ($DryRun) {
@@ -103,7 +103,7 @@ if ($DryRun) {
 
 Pop-Location
 
-# ─── Verificar que ADMIN_EMAIL saiu do [vars] ──────────────────────────
+# --- Verificar que ADMIN_EMAIL saiu do [vars] --------------------------
 Write-Host "[5/6] Validando wrangler.toml..." -ForegroundColor Yellow
 
 $tomlContent = Get-Content (Join-Path $apiDir 'wrangler.toml') -Raw
@@ -113,7 +113,7 @@ if ($tomlContent -match 'ADMIN_EMAIL\s*=\s*"szuchmacheryan') {
     Write-Host "  wrangler.toml [vars]: ADMIN_EMAIL removido" -ForegroundColor Green
 }
 
-# ─── Health check ──────────────────────────────────────────────────────
+# --- Health check ------------------------------------------------------
 if (-not $SkipHealthCheck) {
     Write-Host "[6/6] Verificando health da API..." -ForegroundColor Yellow
 
@@ -128,7 +128,7 @@ if (-not $SkipHealthCheck) {
     }
 }
 
-# ─── Próximos passos ───────────────────────────────────────────────────
+# --- Próximos passos ---------------------------------------------------
 Write-Host ""
 Write-Host "============================================" -ForegroundColor Cyan
 Write-Host " PROXIMOS PASSOS" -ForegroundColor Cyan
@@ -154,7 +154,7 @@ Write-Host "   pwsh ./scripts/deploy-worker.ps1 -Version v4.9.172" -ForegroundCo
 Write-Host ""
 Write-Host "5. Plano de reversao (se necessario):" -ForegroundColor White
 Write-Host "   - Restaurar api/wrangler.toml do backup: _backup_security_fix_*/api_wrangler.toml.bak" -ForegroundColor White
-Write-Host "   - Restaurar ADMIN_PASSWORD anterior (era: Dinheiro@10 — considerar comprometida)" -ForegroundColor White
+Write-Host "   - Restaurar ADMIN_PASSWORD anterior (valor no backup DPAPI, considerar comprometida)" -ForegroundColor White
 Write-Host "   - Restaurar api/.env do backup" -ForegroundColor White
 Write-Host "   - Redeploy Worker" -ForegroundColor White
 Write-Host ""
