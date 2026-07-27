@@ -68,7 +68,7 @@ status: ativo
 
 ## Pendencias ativas (topo)
 
-Ver [[PENDENCIAS.md]]. **Fila aberta: 10 itens acionaveis** (3 P1, 5 P2, 2 P3), mais 1 P4 ja executado. Atualizado 27/07 01h35, apos revisao do diagnostico de rotinas (entraram: registrador da Monitor-Tasks, guard no `register-all-routines-scheduler.ps1`, consolidacao dos dois `PENDENCIAS.md`).
+Ver [[PENDENCIAS.md]]. **Fila aberta: 8 itens acionaveis** (1 P1, 5 P2, 2 P3), mais 1 P4, a Monitor-Tasks e a consolidacao dos PENDENCIAS.md ja executadas e fechadas. Atualizado 27/07 07h04, apos validar o primeiro disparo real da Monitor-Tasks (rodou 07:00:00, exit=7, log e json gerados, vigia confirmado funcional) e achar de quebra que a AgendaSemanal falhou no disparo das 03:00 (exit=1, ver PENDENCIAS.md).
 
 ## Checklist pos-rotina
 
