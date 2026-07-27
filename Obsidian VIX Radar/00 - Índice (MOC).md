@@ -84,6 +84,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Incidente |
 |---|---|---|
+| [[70 - Incidente Encoding e Compatibilidade PowerShell 5.1 2026-07-27]] | 27/07 | Deploy quebrado por UTF-8 sem BOM, mais sintaxe PS7 em script rodado pelo 5.1, guarda no pre-commit |
 | [[63 - Recovery e Deploy 2026-07-20]] | 20/07 | INGEST-GAP1 recovery |
 | [[59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15]] | 15/07 | Classificação incorreta |
 | [[23b - Incidente 2026-06-18 Verificador reprova matinal]] | 18/06 | Verificador falso-positivo |
@@ -93,6 +94,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 | Nota | Descrição |
 |---|---|
 | [[13 - Metodo de Vistoria Operacional]] | Protocolo `/vix-radar-audit` |
+| [[70 - Incidente Encoding e Compatibilidade PowerShell 5.1 2026-07-27]] | Regra: todo `.ps1` tem que parsear no `powershell.exe` 5.1. Guarda em `scripts/lint-encoding.ps1` mais pre-commit |
 | [[11 - Runbook Deploy Cloudflare Pages]] | Deploy do frontend |
 | [[10 - Oportunidades de Melhoria (2026-06-11)]] | Backlog de melhorias |
 | [[08 - Análise de Risco e Arquitetura de Confiabilidade]] | Matriz de risco, pipeline |

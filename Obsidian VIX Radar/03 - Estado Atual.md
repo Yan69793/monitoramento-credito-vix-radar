@@ -44,19 +44,28 @@ status: ativo
 | Criticos noturno 25/07 | Aegea Saneamento, Kora Saude, Oi, Oncoclinicas, Raizen |
 | Criticos noturno 24/07 | CSN, Kora Saude, Oi, Oncoclinicas, Pao de Acucar (GPA), Raizen |
 
-## Tasks Scheduler (estado real em 27/07 12h09 BRT, pos-auditoria e recriacao)
+## Tasks Scheduler (estado real em 27/07 13h30 BRT, releitura direta da maquina)
 
-| Task | Estado | Ultima execucao | Resultado | Situacao |
-|---|---|---|---|---|
-| VIXRadar-Noturno | Ready | 26/07 18:00 | 0x0 (ok) | Proximo: 27/07 18:00. [Risco] pode falhar com mesmo padrao exit=1 |
-| VIXRadar-Matinal | Ready | 27/07 10:00 | 0x1 (falha) | Morreu ao invocar claude -p. Log truncado apos "Lote sonnet-1". stderr vazio. Proximo: 28/07 10:00 |
-| VIXRadar-AgendaSemanal | Ready | 27/07 03:00 | 0x1 (falha) | Log com 2 linhas, morreu ao invocar claude -p. RESCHEDULE: 22:00 (off-peak China). Proximo: 27/07 22:00 |
-| VIXRadar-Verificacao-Async | N/A (inline) | 26/07 18:53 | exit 0 | Executa inline pos-noturno e pos-matinal |
-| VIXRadar-Coleta-Volatilidade | Ready | 23/07 17:02 | ultimo log ok | RECRIADA 27/07 ~12:09. Proximo: 27/07 17:00 (hoje). Script corrigido: pwsh -> powershell.exe |
-| VIXRadar-Export-Historico | Ready | 22/07 20:47 | ultimo log ok | RECRIADA 27/07 ~12:09. Proximo: 27/07 20:45 |
-| VIXRadar-Reconciliacao-CVM | Ready | 21/07 12:31 | ultimo exit 1 | RECRIADA 27/07 ~12:09. Proximo: 03/08 08:00 (segunda) |
-| VIXRadar-Ranking-Mensal | REMOVIDA | Nunca | N/A | Decisao pendente: implementar ou remover de vez (P3) |
-| Monitor-Tasks | Ready | 27/07 07:00 | 0x7 (funcional) | RECRIADA e funcional. Escaneou 12 tasks. Proximo: 28/07 07:00 |
+| Task | Estado | LastRunTime (Scheduler) | Resultado | Proxima | Situacao |
+|---|---|---|---|---|---|
+| VIXRadar-Noturno | Ready | 26/07 18:00 | 0x0 (ok) | 27/07 18:00 | Teste real da correcao de roteamento em escala |
+| VIXRadar-Matinal | Ready | 27/07 10:00 | 0x1 (falha) | 28/07 10:00 | Falhou as 10:00 ao invocar `claude -p`. Reexecutada manualmente 27/07 13:17, passou do ponto de morte |
+| VIXRadar-AgendaSemanal | Ready | 27/07 03:00 | 0x1 (falha) | 27/07 22:00 | Log com 2 linhas, morreu ao invocar `claude -p`. Gatilho movido de seg 03h00 para seg 22h00 em 12h50 (`b6c8312`) |
+| VIXRadar-Coleta-Volatilidade | Ready | nunca (1999) | 0x41303 | 27/07 17:00 | RECRIADA 27/07 12:23:51. Script corrigido: `pwsh` -> `powershell.exe` |
+| VIXRadar-Export-Historico | Ready | nunca (1999) | 0x41303 | 27/07 20:45 | RECRIADA 27/07 12:23:58 |
+| VIXRadar-Reconciliacao-CVM | Ready | nunca (1999) | 0x41303 | 03/08 08:00 | RECRIADA 27/07 12:24:08. Gatilho e seg 08h00, nao 12h32 |
+| Monitor-Tasks | Ready | 27/07 07:00 | 0x7 | 28/07 07:00 | Existe e funciona. `0x7` e a **contagem de erros achados**, nao codigo de falha |
+| VIXRadar-Verificacao-Async | nao e task | 26/07 18:53 | exit 0 | inline | Executa inline pos-noturno e pos-matinal. Nunca foi registrada |
+| VIXRadar-Ranking-Mensal | nao existe | nunca | N/A | nenhuma | Confirmado ausente na listagem completa da raiz. Decisao pendente (P3) |
+
+**Leia a coluna LastRunTime com cuidado.** Para as 3 tasks recriadas o Scheduler reporta
+30/11/1999 e `0x41303` (SCHED_S_TASK_HAS_NOT_RUN) porque **re-registrar zera o historico da
+task**, nao porque a rotina nunca rodou. Os logs em `logs\routines\` mostram execucoes reais
+ate 23/07 (Coleta), 22/07 (Export) e 21/07 (Reconciliacao). Scheduler e log sao duas fontes
+diferentes: a task e nova, a rotina nao e.
+
+**Origem dos carimbos de recriacao:** `CreationTime` do arquivo XML em `C:\Windows\System32\Tasks\<nome>`,
+que e reescrito a cada registro. Nao e estimativa.
 
 ## Infra
 
@@ -70,18 +79,22 @@ status: ativo
 
 ## Pendencias ativas (topo)
 
-Ver [[PENDENCIAS.md]]. **Fila aberta: 10 itens acionaveis** (2 P1, 5 P2, 2 P3, 1 P4). Atualizado 27/07 12h09 pos-auditoria. Achado critico: AgendaSemanal 03:00 e Matinal 10:00 falharam com mesmo padrao exit=1 ao invocar `claude -p`. Padrao consistente: processo morre sem erro no stderr, CLI funcional em probe manual 12:09. [Risco] Noturno 18:00 pode repetir.
+Ver [[PENDENCIAS.md]]. **Fila aberta: 10 itens acionaveis** (2 P1, 5 P2, 2 P3, 1 P4). Atualizado 27/07 13h30. Achado critico do dia: AgendaSemanal 03:00 e Matinal 10:00 falharam com mesmo padrao exit=1 ao invocar `claude -p`, processo morrendo com stderr de 0 bytes. Causa raiz confirmada e corrigida (roteamento DeepSeek no `settings.json`), ver analise de falha abaixo. [Validar] Noturno 18:00 e a confirmacao em escala.
 
 ## Checklist pos-rotina
 
 Apos cada noturna (ou evento de producao significativo), verificar:
 
-- [x] `03 - Estado Atual.md` — atualizado 27/07 12h09 (auditoria completa pos-matinal)
+- [x] `03 - Estado Atual.md` — atualizado 27/07 13h30 (releitura do Scheduler)
 - [ ] `03a - Changelog.md` — atualizar com noturnos 25 e 26/07
-- [ ] `03b - Infraestrutura.md` — so se mudou binding/cron (sem mudanca de binding)
+- [x] `03b - Infraestrutura.md` — tabela de gatilhos refeita 27/07 13h30 a partir do Scheduler
 - [x] `00 - Indice (MOC).md` — pendente atualizar com dados deste diagnostico
 - [x] `CLAUDE.md` — tabela Producao em v4.9.181 / v201.88 (sem alteracao)
-- [x] `PENDENCIAS.md` — atualizado 27/07 12h09 (2 itens fechados, novos achados)
+- [x] `PENDENCIAS.md` — atualizado 27/07 13h30 (itens de task sincronizados com a realidade)
+
+**Regra de sincronia (nova, 27/07):** mexeu em task do Scheduler, atualiza `03b - Infraestrutura`
+**e** varre `PENDENCIAS.md` por item que afirme estado dessa task. Foi a falta disso que
+deixou "task removida" escrito em cima de task viva por uma hora.
 
 Script de drift: `pwsh ./scripts/check-vault-drift.ps1` compara vault contra health ao vivo e reporta divergencias. Execute apos cada deploy ou se suspeitar de desalinhamento.
 
@@ -109,7 +122,10 @@ VIXRadar-Noturno        Ready  LastRun 26.jul.2026 18:00:01  0x0  NextRun 27.jul
 Monitor-Tasks           Ready  LastRun 27.jul.2026 07:00:00  0x7  NextRun 28.jul.2026 07:00:00
 ```
 
-**Tasks removidas e recriadas em 27/07 ~12:09 (3):** VIXRadar-Coleta-Volatilidade, VIXRadar-Export-Historico, VIXRadar-Reconciliacao-CVM.
+**Tasks removidas e recriadas em 27/07 (3):** VIXRadar-Coleta-Volatilidade (12:23:51),
+VIXRadar-Export-Historico (12:23:58), VIXRadar-Reconciliacao-CVM (12:24:08). O carimbo
+"~12:09" que constava aqui era o horario **da auditoria**, nao o do registro. Corrigido em
+13h30 com o `CreationTime` real do XML de cada task.
 
 **Health Worker (27/07 12:09 BRT):** ver portao de verificacao abaixo.
 
@@ -120,8 +136,20 @@ Ambas falharam com **mesmo padrao**: processo morre ao invocar `claude -p`, sem 
 - **AgendaSemanal** (`run_claude_routine.ps1`): log tem 2 linhas (cleanup + INICIO). Sem linha "CLAUDE:" e sem "ERRO:". Processo morreu durante `$fullPrompt | & claude @claudeArgs 2>&1`.
 - **Matinal** (`run_vixradar_matinal_claude.ps1`): log tem 8 linhas, para em "Lote sonnet-1 [claude-sonnet-4-6]: Oncoclinicas, Oi, Kora Saude, Pão de Açúcar (GPA)". Funcao `Invoke-ClaudeBatch` chamou `claude -p` com `--output-format json`, stderr redirecionado para arquivo (vazio, 0 bytes).
 - **Probe 12:09**: `claude -p "pong"` respondeu normalmente com Sonnet. CLI funcional.
-- **[Hipotese]** Erro transitorio de autenticacao/quota na API Anthropic via OAuth do Claude Code. A CLI tenta login OAuth, falha silenciosamente, e o wrapper PowerShell interpreta saida vazia + exit code do processo como falha.
-- **[Risco]** Noturno 18:00 usa `run_vixradar_noturno_claude.ps1` com `Invoke-ClaudeBatch` — mesma funcao que falhou na Matinal. Se a condicao que causou o bloqueio entre 03:00 e 10:00 voltar, a Noturno falha tambem.
+- ~~**[Hipotese]** Erro transitorio de autenticacao/quota na API Anthropic via OAuth.~~
+  **DESCARTADA em 27/07 13h.** O probe das 12:09 rodou em sessao interativa, que carrega o
+  override de base URL do app desktop. Nao reproduzia a condicao do agendador.
+- **[Fato] Causa raiz confirmada:** `~/.claude/settings.json` recebeu em 26/07 17:59 um bloco
+  `env` de roteamento DeepSeek com todos os aliases de modelo trocados. Em runtime a base URL
+  voltava para a Anthropic (sobrescrita pelo app), sobrando nomes de modelo DeepSeek batendo
+  num endpoint que nao os conhece. Processos do Scheduler leem o `settings.json` sem esse
+  override, entao `claude -p` morria com stderr de 0 bytes. Monitor-Tasks das 07:00, a unica
+  rotina que nao usa `claude -p`, rodou normal. E isso que isola a causa.
+- **[Fato] Correcao e validacao:** bloco removido, backup em `settings.json.bak-20260727`.
+  Probe em processo limpo, com `ANTHROPIC_*` e `CLAUDE_CODE_SUBAGENT_MODEL` apagados,
+  dependendo so do arquivo: exit 0. Matinal reexecutada 27/07 13:17 passou de `Lote sonnet-1`
+  com `ok=4|fail=0`, exatamente a linha onde morria as 10:00.
+- **[Validar]** Noturno 27/07 18:00 e o teste em escala (103 emissores, `Invoke-ClaudeBatch`).
 
 ### Divergencias vault vs realidade (antes da correcao)
 
@@ -130,6 +158,38 @@ Ambas falharam com **mesmo padrao**: processo morre ao invocar `claude -p`, sem 
 3. Vault dizia que Matinal nunca executou (LastRun 1999). [Fato] Executou 27/07 10:00, falhou exit=1.
 4. Vault listava 5 tasks removidas. [Fato] Eram 4: Coleta-Volatilidade, Export-Historico, Reconciliacao-CVM, Ranking-Mensal. Monitor-Tasks ja estava recriada.
 5. Vault dizia fila de pendencias com 8 itens. [Fato] Apos auditoria: 2 fechados, 2 novos, 10 abertos.
+
+### Releitura 27/07 13h30: "o vault diz removidas, mas elas existem"
+
+Divergencia levantada apos a auditoria. **Resolvida: as tasks foram recriadas depois, o
+diagnostico da madrugada estava certo quando foi escrito.** Nao houve erro de diagnostico.
+
+Linha do tempo, cada carimbo medido e nao inferido:
+
+| Hora | Evento | Fonte |
+|---|---|---|
+| 27/07 01:39 | Diagnostico da madrugada registra as tasks como removidas | commit `76720a7` |
+| 27/07 12:09 | Auditoria confirma ausencia das 3 no Scheduler | `03 - Estado Atual` |
+| 27/07 12:23:51 | `VIXRadar-Coleta-Volatilidade` registrada | `CreationTime` do XML |
+| 27/07 12:23:58 | `VIXRadar-Export-Historico` registrada | `CreationTime` do XML |
+| 27/07 12:24:08 | `VIXRadar-Reconciliacao-CVM` registrada | `CreationTime` do XML |
+| 27/07 12:29 | Recriacao commitada | commit `04a8fef` |
+
+O que ficou errado nao foi o diagnostico, foi a **propagacao**: `03 - Estado Atual` foi
+atualizado com a recriacao, `PENDENCIAS.md` nao. Os itens la continuaram dizendo "task
+removida" em cima de tasks vivas, com um deles se contradizendo no mesmo paragrafo. Quem
+lesse a fila de pendencias iria recriar task que ja existe.
+
+**Causa raiz:** duas notas descrevem o mesmo estado do Scheduler e nada as amarra. A
+atualizacao de uma nao obriga a da outra.
+**Guarda:** `03b - Infraestrutura` passa a ser a unica tabela de gatilhos, derivada do
+`Get-ScheduledTask`, e `PENDENCIAS.md` deve citar situacao de task por referencia a ela em
+vez de reafirmar estado por conta propria. Item de checklist adicionado abaixo.
+
+**Nao apuravel:** o que removeu as tasks entre 23 e 24/07 continua sem explicacao. O log
+`Microsoft-Windows-TaskScheduler/Operational` esta com `IsEnabled=False` nesta maquina, ou
+seja nao existe registro de evento 141 para consultar. A acao de investigacao que constava
+em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 
 ### Impacto acumulado
 
@@ -141,4 +201,7 @@ Ambas falharam com **mesmo padrao**: processo morre ao invocar `claude -p`, sem 
 
 ---
 
-*Snapshot gerado em 2026-07-27 ~12h09 BRT (auditoria completa, pos-falha Matinal). Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-07-27 12h09 BRT (auditoria completa, pos-falha Matinal), revisado em
+13h30 BRT com releitura direta do Scheduler: carimbos de recriacao corrigidos, hipotese de
+quota/OAuth descartada e substituida pela causa raiz confirmada, tabela de tasks refeita.
+Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*

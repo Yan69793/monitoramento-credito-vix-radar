@@ -30,18 +30,31 @@ Referência estática de bindings, crons, CORS, segurança e auth. Para estado a
 
 ## Scheduled Routines (Windows Task Scheduler)
 
-| Task | Horário | Função |
+Gatilhos lidos direto do Scheduler (`Get-ScheduledTask ... .Triggers`) em 27/07 13h30. Esta
+tabela é derivada da máquina, não de memória de sessão: se divergir, o Scheduler prevalece.
+
+| Task | Gatilho real | Função |
 |---|---|---|
-| VIXRadar-Matinal | 10h00 seg-sex | Top 15 EWS → análise → push ao Worker |
-| VIXRadar-Noturno | 18h00 diário | 103/103 emissores → análise → push ao Worker |
-| VIXRadar-Coleta-Volatilidade | ~17h diário | Coleta cotações de mercado (VOLCOLETA1 pendente) |
-| VIXRadar-Verificacao-Async | 10h20 diário | Dreno da fila de verificação adversarial |
-| VIXRadar-Export-Historico | 20h45 diário | Export de séries para `data/historico/` |
-| VIXRadar-AgendaSemanal | seg 12h30 | Atualização de calendário de divulgações (desabilitada) |
-| VIXRadar-Reconciliacao-CVM | seg 12h32 | Reconciliação CNPJ vs CVM |
-| VIXRadar-Ranking-Mensal | dia 1 11h30 | Monitor de ranking SEO |
+| Monitor-Tasks | diário 07h00 | Varre tasks do Scheduler e reporta exit codes |
+| VIXRadar-Matinal | seg-sex 10h00 | Top 15 EWS → análise → push ao Worker |
+| VIXRadar-Coleta-Volatilidade | diário 17h00 | Coleta cotações de mercado (VOLCOLETA1 pendente) |
+| VIXRadar-Noturno | diário 18h00 | 103/103 emissores → análise → push ao Worker |
+| VIXRadar-Export-Historico | diário 20h45 | Export de séries para `data/historico/` |
+| VIXRadar-AgendaSemanal | seg 22h00 | Atualização de calendário de divulgações |
+| VIXRadar-Reconciliacao-CVM | seg 08h00 | Reconciliação CNPJ vs CVM |
 
 Todas registradas com `StartWhenAvailable=true`, `AllowStartIfOnBatteries=true`, `RunLevel=HighestAvailable`.
+
+**Não existem como task (não confundir com "quebradas"):**
+
+| Nome | Situação real |
+|---|---|
+| VIXRadar-Verificacao-Async | Nunca foi task. Roda inline ao fim da Noturna e da Matinal. `scripts\register-verificacao-async-task.ps1` existe mas não está aplicado |
+| VIXRadar-Ranking-Mensal | Removida e não recriada. Funcionalidade nunca entregue. Decisão pendente em `PENDENCIAS.md` |
+
+**Horários que mudaram e por quê:** AgendaSemanal saiu de segunda 03h00 para segunda 22h00 em
+27/07 12h50 (commit `b6c8312`), depois da falha das 03h00. Reconciliacao-CVM está em segunda
+08h00, não 12h32 como esta nota afirmava desde julho.
 
 ## CORS
 
