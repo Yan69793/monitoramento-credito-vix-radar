@@ -48,9 +48,10 @@ jobs:
           API="https://api.vixradar.com"
 
           echo "=== 1) admin_health_check (estado semanal / frescor) ==="
+          BODY1=$(jq -n --arg pw "$PWD" '{action:"admin_health_check",admin_senha:$pw}')
           HC=$(curl -s -X POST "$API/" \
             -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$PWD\"}" \
+            -d "$BODY1" \
             --max-time 60)
           echo "$HC" | jq '{
             ok: .ok,
@@ -65,9 +66,10 @@ jobs:
 
           echo ""
           echo "=== 2) admin_custo (gasto de hoje — prova de análise no dia) ==="
+          BODY2=$(jq -n --arg pw "$PWD" '{action:"admin_custo",admin_senha:$pw}')
           CT=$(curl -s -X POST "$API/" \
             -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_custo\",\"admin_senha\":\"$PWD\"}" \
+            -d "$BODY2" \
             --max-time 60)
           echo "$CT" | jq '{ data: .data, resumo: .resumo, disjuntor_usd: .disjuntor_usd }' 2>/dev/null || echo "$CT"
 

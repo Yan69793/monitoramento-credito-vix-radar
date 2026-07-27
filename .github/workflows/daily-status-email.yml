@@ -73,8 +73,9 @@ jobs:
           echo "::add-mask::$ADMIN_PWD"
 
           # 1) admin_health_check (frescor)
+          BODY1=$(jq -n --arg pw "$ADMIN_PWD" '{action:"admin_health_check",admin_senha:$pw}')
           HC=$(curl -s -X POST "$API/" -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$ADMIN_PWD\"}" --max-time 60)
+            -d "$BODY1" --max-time 60)
           echo "DEBUG HC raw response: $HC"
           HC_OK=$(echo "$HC" | jq -r '.ok // false')
           EMP=$(echo "$HC" | jq -r '.checks.estado_semanal.empresas_com_dados // "null"')
@@ -94,8 +95,9 @@ jobs:
           fi
 
           # 2) admin_custo
+          BODY2=$(jq -n --arg pw "$ADMIN_PWD" '{action:"admin_custo",admin_senha:$pw}')
           CT=$(curl -s -X POST "$API/" -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_custo\",\"admin_senha\":\"$ADMIN_PWD\"}" --max-time 60)
+            -d "$BODY2" --max-time 60)
           echo "DEBUG CT raw response: $CT"
           CUSTO_DATA=$(echo "$CT" | jq -r '.data // "null"')
           DISJUNTOR=$(echo "$CT" | jq -r '.disjuntor_usd // "null"')

@@ -60,9 +60,10 @@ jobs:
           echo "::add-mask::$ADMIN_PASSWORD"
 
           API="https://api.vixradar.com"
+          BODY1=$(jq -n --arg pw "$ADMIN_PASSWORD" '{action:"admin_health_check",admin_senha:$pw}')
           HC=$(curl -s -X POST "$API/" \
             -H "Content-Type: application/json" \
-            -d "{\"action\":\"admin_health_check\",\"admin_senha\":\"$ADMIN_PASSWORD\"}" \
+            -d "$BODY1" \
             --max-time 60)
 
           echo "$HC" | jq '{
