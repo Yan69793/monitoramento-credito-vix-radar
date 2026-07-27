@@ -50,7 +50,7 @@ status: ativo
 |---|---|---|---|---|
 | VIXRadar-Noturno | Ready | 26/07 18:00 | 0x0 (ok) | Proximo: 27/07 18:00. [Risco] pode falhar com mesmo padrao exit=1 |
 | VIXRadar-Matinal | Ready | 27/07 10:00 | 0x1 (falha) | Morreu ao invocar claude -p. Log truncado apos "Lote sonnet-1". stderr vazio. Proximo: 28/07 10:00 |
-| VIXRadar-AgendaSemanal | Ready | 27/07 03:00 | 0x1 (falha) | Log com 2 linhas, morreu ao invocar claude -p. Proximo: 03/08 03:00 |
+| VIXRadar-AgendaSemanal | Ready | 27/07 03:00 | 0x1 (falha) | Log com 2 linhas, morreu ao invocar claude -p. RESCHEDULE: 22:00 (off-peak China). Proximo: 27/07 22:00 |
 | VIXRadar-Verificacao-Async | N/A (inline) | 26/07 18:53 | exit 0 | Executa inline pos-noturno e pos-matinal |
 | VIXRadar-Coleta-Volatilidade | Ready | 23/07 17:02 | ultimo log ok | RECRIADA 27/07 ~12:09. Proximo: 27/07 17:00 (hoje). Script corrigido: pwsh -> powershell.exe |
 | VIXRadar-Export-Historico | Ready | 22/07 20:47 | ultimo log ok | RECRIADA 27/07 ~12:09. Proximo: 27/07 20:45 |

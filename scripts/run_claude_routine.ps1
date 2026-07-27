@@ -109,13 +109,30 @@ try {
     foreach ($dir in $cfg.AddDirs) {
         if (Test-Path $dir) { $claudeArgs += @('--add-dir', $dir) }
     }
-    if ($cfg.Model) { $claudeArgs += @('--model', $cfg.Model) }
 
-    $out = $fullPrompt | & claude @claudeArgs 2>&1
-    $exit = $LASTEXITCODE
+    # RETRY1 (2026-07-27): retry com backoff + fallback Haiku na ultima tentativa.
+    # Mesmo padrao do Invoke-ClaudeBatch nos scripts noturno/matinal.
+    $retryModel = if ($cfg.Model) { $cfg.Model } else { $null }
+    $retryDelays = @(0, 30, 60)
+    $out = $null; $exit = 1
+    for ($attempt = 0; $attempt -lt $retryDelays.Count; $attempt++) {
+        if ($attempt -gt 0) {
+            $delay = $retryDelays[$attempt]
+            Write-Log ('RETRY: tentativa ' + ($attempt+1) + '/' + $retryDelays.Count + ' aguardando ' + $delay + 's')
+            Start-Sleep -Seconds $delay
+        }
+        $attemptArgs = $claudeArgs.Clone()
+        if ($attempt -eq $retryDelays.Count - 1 -and $attemptArgs -notcontains '--model') {
+            Write-Log ('RETRY: fallback para Haiku (ultima tentativa)')
+            $attemptArgs += @('--model', 'claude-haiku-4-5-20251001')
+        }
+        $out = $fullPrompt | & claude @attemptArgs 2>&1
+        $exit = $LASTEXITCODE
+        if ($exit -eq 0) { break }
+    }
     if ($out) { $out | ForEach-Object { Write-Log ('CLAUDE: ' + $_) } }
     if ($exit -ne 0) {
-        Write-Log ('ERRO: claude exit ' + $exit)
+        Write-Log ('ERRO: claude exit ' + $exit + ' (esgotadas ' + $retryDelays.Count + ' tentativas com backoff)')
         exit $exit
     }
     Write-Log 'FIM: concluido'

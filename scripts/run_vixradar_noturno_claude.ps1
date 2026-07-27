@@ -263,17 +263,38 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # $apiKey = Get-AnthropicApiKey
         # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
         if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
-        $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
-            --model $Model `
-            --permission-mode bypassPermissions `
-            --output-format json `
-            --tools 'WebSearch,WebFetch' `
-            --strict-mcp-config --mcp-config $McpConfigFile `
-            --setting-sources project `
-            --disable-slash-commands `
-            --no-session-persistence `
-            --exclude-dynamic-system-prompt-sections 2>>$stderrFile
-        $exitCode = $LASTEXITCODE
+        # RETRY1 (2026-07-27): retry com backoff + fallback Haiku na ultima tentativa.
+        # DeepSeek API (ANTHROPIC_BASE_URL) congestiona em horario de pico Chines (03:00-10:00 BRT),
+        # causando exit=1 silencioso sem stderr. Backoff progressivo (0s/30s/60s) fura rate-limit
+        # transitorio. Ultima tentativa troca Sonnet->Haiku (payload menor, menos tokens, maior
+        # chance de passar em API congestionada).
+        $retryModels = @($Model)
+        if ($Model -ne 'claude-haiku-4-5-20251001') { $retryModels += 'claude-haiku-4-5-20251001' }
+        $retryDelays = @(0, 30, 60)
+        $retryLog = @()
+        for ($attempt = 0; $attempt -lt $retryDelays.Count; $attempt++) {
+            if ($attempt -gt 0) {
+                $delay = $retryDelays[$attempt]
+                Write-Log ('RETRY: tentativa ' + ($attempt+1) + '/' + $retryDelays.Count + ' aguardando ' + $delay + 's (batch morreu na anterior)')
+                Start-Sleep -Seconds $delay
+            }
+            $tryModel = if ($attempt -eq $retryDelays.Count - 1 -and $retryModels.Count -gt 1) { $retryModels[1] } else { $retryModels[0] }
+            if ($tryModel -ne $Model) { Write-Log ('RETRY: fallback ' + $Model + '->' + $tryModel + ' (ultima tentativa)') }
+            $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+                --model $tryModel `
+                --permission-mode bypassPermissions `
+                --output-format json `
+                --tools 'WebSearch,WebFetch' `
+                --strict-mcp-config --mcp-config $McpConfigFile `
+                --setting-sources project `
+                --disable-slash-commands `
+                --no-session-persistence `
+                --exclude-dynamic-system-prompt-sections 2>>$stderrFile
+            $exitCode = $LASTEXITCODE
+            $retryLog += ('t' + ($attempt+1) + ':exit=' + $exitCode + ':model=' + $tryModel)
+            if ($exitCode -eq 0) { break }
+        }
+        if ($retryLog.Count -gt 1) { Write-Log ('RETRY log: ' + ($retryLog -join ' ')) }
     } catch {
         Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
     } finally {

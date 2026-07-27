@@ -19,7 +19,7 @@ $Tasks = @(
         Script      = Join-Path $Scripts 'run_claude_routine.ps1'
         ArgList     = @('-RoutineId', 'vixradar-agenda-semanal')
         DaysOfWeek  = 'Monday'
-        At          = '03:00'
+        At          = '22:00'
         Daily       = $false
     },
     @{
