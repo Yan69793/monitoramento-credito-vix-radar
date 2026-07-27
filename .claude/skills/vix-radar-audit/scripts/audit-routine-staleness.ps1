@@ -25,7 +25,7 @@ if ($plan.ok -ne $true) { throw ('listar_plano_rotina falhou: ' + $plan.erro) }
 
 $items = @($plan.emissores)
 $staleAll = @($items | Where-Object { [double]$_.horas_stale -ge $MaxAgeHours })
-# STALE-GATE1 (v4.9.159): _status/inconclusivo vem do Worker — distingue staleness
+# STALE-GATE1 (v4.9.159): _status/inconclusivo vem do Worker, distingue staleness
 # genuina de INCONCLUSIVO (clock pausado de proposito pelo mecanismo FIN1, aguardando
 # promocao a tier FULL). So stale_real deve contar como severidade ALTO.
 $staleReal = @($staleAll | Where-Object { -not $_.inconclusivo })

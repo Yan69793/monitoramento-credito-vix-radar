@@ -1,0 +1,32 @@
+#!/bin/sh
+# Reprova commit com .ps1 que nao roda sob powershell.exe 5.1.
+#
+# Motivo: em 2026-07-27 o deploy quebrou porque deploy-pages.ps1 estava sem BOM com
+# travessoes; o 5.1 leu o arquivo como CP1252 e o travessao virou aspa curva, que
+# termina string. O lint-encoding.ps1 ja existia desde 2026-07-16 e teria pego o caso,
+# mas nao estava ligado a gatilho nenhum. Este hook e o gatilho que faltava.
+#
+# Instalar (uma vez; .git/hooks e compartilhado com os worktrees):
+#   powershell.exe -NoProfile -File scripts/install-hooks.ps1
+#
+# Emergencia: git commit --no-verify
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '\.ps1$' || true)
+[ -z "$STAGED" ] && exit 0
+
+LINTER="scripts/lint-encoding.ps1"
+[ -f "$LINTER" ] || exit 0
+
+# Caminhos relativos a raiz do repo, que e o cwd de um hook do git. Evita traduzir
+# caminho MSYS (/c/...) para Windows, que o powershell.exe nao entende.
+LISTA=$(echo "$STAGED" | tr '\n' ',' | sed 's/,$//')
+
+if ! powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$LINTER" -Path "$LISTA"; then
+    echo ""
+    echo "COMMIT BLOQUEADO: .ps1 acima nao passa no parser do powershell.exe 5.1."
+    echo "  Encoding (nao-ASCII sem BOM): powershell.exe -NoProfile -File scripts/lint-encoding.ps1 -Fix"
+    echo "  Sintaxe PS 6/7 (ternario, ??, ?., -MaximumRetryCount): reescrever para 5.1, -Fix nao resolve."
+    exit 1
+fi
+
+exit 0

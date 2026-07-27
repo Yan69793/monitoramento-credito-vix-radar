@@ -22,7 +22,8 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $ROOT = Split-Path -Parent $PSScriptRoot
-$PWSH = (Get-Command pwsh -ErrorAction SilentlyContinue)?.Source
+$PWSHCmd = Get-Command pwsh -ErrorAction SilentlyContinue
+$PWSH = if ($PWSHCmd) { $PWSHCmd.Source } else { $null }
 if (-not $PWSH) { $PWSH = 'pwsh' }
 
 $tasks = @(

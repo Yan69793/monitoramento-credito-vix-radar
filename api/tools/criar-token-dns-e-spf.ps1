@@ -4,7 +4,7 @@
   Cria API Token Cloudflare com DNS Edit (zona vixradar.com) e publica SPF em send.vixradar.com.
 
 .DESCRIPTION
-  O CLOUDFLARE_API_TOKEN atual so tem worker:edit + zone:read — nao edita DNS nem tokens.
+  O CLOUDFLARE_API_TOKEN atual so tem worker:edit + zone:read, nao edita DNS nem tokens.
   Este script usa Global API Key + Email (perfil Cloudflare) para:
     1) Criar token "VIX Radar DNS+Workers" com DNS Edit + Workers (zona vixradar.com)
     2) Criar TXT SPF em send.vixradar.com se ausente
@@ -149,7 +149,7 @@ if (-not $SkipTokenCreate) {
 
   $newToken = $created.result.value
   Write-Host ''
-  Write-Host '=== NOVO TOKEN (copie agora — so aparece uma vez) ===' -ForegroundColor Green
+  Write-Host '=== NOVO TOKEN (copie agora, so aparece uma vez) ===' -ForegroundColor Green
   Write-Host $newToken
   Write-Host ''
   Write-Host 'Atualize a variavel de ambiente (PowerShell permanente):'

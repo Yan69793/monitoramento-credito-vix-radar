@@ -1,7 +1,7 @@
-<#
+﻿<#
 .SYNOPSIS
   Sincroniza a versao declarada em CLAUDE.md e README.md com a versao real do
-  deploy — chamado por deploy-worker.ps1 e deploy-pages.ps1, nunca a mao.
+  deploy, chamado por deploy-worker.ps1 e deploy-pages.ps1, nunca a mao.
 
 .DESCRIPTION
   A causa do drift de documentacao nao era falta de disciplina: era a
