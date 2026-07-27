@@ -287,6 +287,71 @@ e 24/07 que segue ausente. Script `scripts\run_vixradar_ranking_mensal.ps1` e
 **Acao:** Ja corrigido no `03 - Estado Atual.md` em 27/07.
 **Validacao:** Corrigido.
 
+### P2, RESOLVIDO 27/07 16h45. Frescor da Ingestao voltou a passar apos ADMIN_PASSWORD atualizado no GitHub. Falta so a guarda contra o proximo drift
+
+**Origem:** Usuario trouxe screenshot da falha do workflow "Frescor da Ingestao" #44 (27/07, commit `8bfc786`). Causa raiz apurada nesta sessao por leitura do bundle Worker, do workflow YAML e do historico git, sem acesso a GitHub Actions no momento do diagnostico.
+
+**O que aconteceu.** O commit `dfa6854` (24/07, "rotaciona credenciais expostas, Etapa 1") trocou a senha ADMIN_PASSWORD no Cloudflare Worker via `scripts/apply-security-rotation.ps1`. Esse script atualiza o secret so no Cloudflare (`wrangler secret put ADMIN_PASSWORD`), nao existe em nenhum lugar do repo um passo ou script que atualize o secret equivalente no GitHub Actions. Os tres workflows que dependem de `secrets.ADMIN_PASSWORD` (`frescor-check.yml`, `daily-status-email.yml`, `scan-emergencia.yml`) continuaram enviando a senha antiga.
+
+**Causa raiz confirmada por leitura de codigo.** O handler `admin_health_check` no Worker (`api/v4.9.181.js:16047`) so retorna `ok:false, erro:"Acesso negado"` em duas condicoes, senha vazia ou `admin_senha !== env.ADMIN_PASSWORD`. `wrangler secret list` confirmou que `ADMIN_PASSWORD` estava configurado no Worker, entao nao era ausencia de secret do lado Cloudflare. O commit `8bfc786`, do mesmo dia 27/07, corrigiu um bug real e separado, escaping de JSON quebrado quando a senha tinha caracter especial, mas nao mudava qual senha era enviada. A run #44 rodou exatamente nesse commit ja corrigido e falhou com a mesma mensagem, confirmando que o problema era o valor da senha, nao o encoding.
+
+**Validado com evidencia real apos o usuario atualizar o secret.** Sessao ganhou acesso de leitura ao GitHub Actions via PAT fine-grained (`GH_TOKEN`, escopo Actions/Contents/Issues read-only, so este repo). Runs do `frescor-check.yml` via API:
+
+| Run | Evento | Resultado |
+|---|---|---|
+| 45 | workflow_dispatch, 27/07 16h45 | sucesso |
+| 44 | workflow_dispatch, 27/07 16h38 | falha |
+| 43 | workflow_dispatch, 27/07 16h35 | falha |
+| 42 | schedule, 27/07 05h28 | falha |
+| 41 | schedule, 26/07 05h02 | falha |
+
+Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T16:39:49.946Z`, `weeks_loaded:["2026-W31","2026-W30"]`, `anthropic:true`, `resend:true`, `telemetria:true`, idade do estado 0h, `FRESCOR: OK, 103 emissores com dados`.
+
+**Risco que motivou o P1 original, ainda vale como licao.** `scan-emergencia.yml` usa o mesmo `admin_health_check` como gate de staleness e, ao receber `ok:false`, tratava como "nao consigo avaliar" e saia com warning (`exit 0`), sem falhar o job. Entre 24/07 e 27/07 16h45 o paraquedas que dispara varredura de emergencia esteve mudo sem alertar ninguem, porque a falha de senha se disfarcava de "nada a fazer". Nao verificado se `daily-status-email.yml` reportou vermelho nesse periodo, historico de Issues ainda nao consultado.
+
+**Acao (o resto ja esta feito e validado):**
+1. Guarda, ainda nao aplicada: acrescentar `.erro` e o status HTTP na saida `jq` de `frescor-check.yml` e `scan-emergencia.yml`, para o log de falha mostrar a causa real da API em vez de exigir leitura do bundle para descobrir.
+2. Guarda, ainda nao aplicada: acrescentar um passo explicito de atualizar o secret do GitHub Actions dentro da propria `apply-security-rotation.ps1`, para a proxima rotacao de ADMIN_PASSWORD nao repetir este drift.
+3. Opcional: revisar o Issue fixo do `daily-status-email.yml` entre 24 e 27/07 para confirmar se reportou vermelho, agora que ha acesso de leitura ao GitHub.
+
+**Validacao:** feita. Run manual #45 com `ok:true` e `empresas_com_dados:103` no log, confirmado via API do GitHub, nao so inferido pelo codigo.
+
+---
+
+### P2 — Guarda para secret obrigatorio ausente. ADMIN_EMAIL sumiu por 3 dias e so a telemetria viu
+
+**Origem:** Usuario relatou 27/07 que uma solicitacao de acesso nao gerou aviso nem por WhatsApp nem por e-mail. O relato em si tinha outra causa (item abaixo), mas a investigacao achou este defeito separado e ativo.
+
+**Correcao ja aplicada 27/07 18h01:** secret `ADMIN_EMAIL` criado no Worker com `szuchmacheryan@gmail.com`, valor recuperado do commit `dfa6854` que o removeu. Confirmado em `wrangler secret list`. Health check segue `ok:true`. Nao exigiu deploy de codigo.
+
+**O que aconteceu.** O commit `dfa6854` (24/07, rotacao Etapa 1, o mesmo que quebrou o ADMIN_PASSWORD do GitHub Actions) removeu `ADMIN_EMAIL` do `[vars]` do wrangler.toml, mas o secret correspondente nunca chegou a existir no Cloudflare. O `scripts/apply-security-rotation.ps1` tem o passo [4/6] que cria esse secret (linha 95) e aborta se falhar, entao a hipotese mais provavel e que o commit de codigo foi feito sem a execucao real do passo, ou com `-DryRun`. Nao apuravel em retrospecto.
+
+**Efeito, confirmado por leitura de codigo e por telemetria.** `var ADMIN_EMAIL = ""` (`api/v4.9.181.js:3584`) nao tem valor reserva, e `aplicarConfigRuntime` so o preenche se `env.ADMIN_EMAIL` existir. Com a string vazia, `handleRegistrar` (`:5643`) chamava `enviarResend(..., [""], ...)`, o `.filter(Boolean)` de `enviarResend` (`:5448`) esvaziava o array e a linha seguinte lancava `"Sem destinatarios."`. A telemetria do ultimo cadastro real, 25/07 06:02:40, registra exatamente `registrar_email_admin_erro` com esse texto. O WhatsApp salvou aquele cadastro, enviado 2 segundos depois com HTTP 201.
+
+**Alcance maior que o cadastro.** Com `ADMIN_EMAIL` vazio, `handleLogin` (`:5721`) nunca atribuia `role: "admin"` ao JWT, derrubando as rotas que dependem de `_exigeJwtAdmin` (`:5162`). O painel de aprovacao nao foi afetado porque `handleAdminAprovar` e `handleAdminListar` autenticam por `ADMIN_PASSWORD`, nao por JWT, e por isso o problema passou 3 dias despercebido.
+
+**Causa raiz, e a mesma do item do GitHub Actions.** A rotacao de 24/07 mexeu em credencial em varios destinos e nada verifica, depois do fato, que cada destino ficou consistente. Some com um secret obrigatorio e o unico sinal e um evento de telemetria que ninguem le. O health check valida `RESEND_API_KEY` e os bindings, mas nao valida `ADMIN_EMAIL`.
+
+**Acao, as guardas que faltam:**
+1. Incluir `ADMIN_EMAIL` na condicao `_okHealth` do health check (`api/v4.9.181.js:15784`), do mesmo jeito que `RESEND_API_KEY` ja entra. Secret obrigatorio ausente passa a derrubar `ok:false` em vez de degradar em silencio. Exige deploy de Worker.
+2. Acrescentar passo final em `apply-security-rotation.ps1` que roda `wrangler secret list` e compara com a lista esperada, falhando se faltar algum. Resolve a classe inteira, nao so este secret, e casa com a guarda 2 do item do GitHub Actions.
+
+**Validacao pendente:** proximo cadastro real de usuario deve gerar e-mail ao admin sem `registrar_email_admin_erro` na telemetria.
+
+---
+
+### P2 — Cadastro de conta ja existente responde "aguarde aprovacao" e nao notifica ninguem
+
+**Origem:** E a causa real do relato do usuario em 27/07. Diagnostico por telemetria do Analytics Engine.
+
+**O que acontece.** Em `handleRegistrar` (`api/v4.9.181.js:5618-5619`), quando o e-mail ja existe com status `pendente` ou `aprovado`, o Worker responde `ok:true, "Solicitacao enviada. Aguarde aprovacao."` e retorna ali. As chamadas de notificacao ao admin ficam depois desse ponto, nas linhas 5643 (e-mail) e 5653 (WhatsApp), entao nada e enviado. Do lado tecnico esta certo, nao ha cadastro novo. Do lado da pessoa a mensagem mente, ela fica esperando uma aprovacao que nao existe, e o operador fica esperando um aviso que nunca seria disparado.
+
+**Caso observado.** 27/07 14h31 BRT, tentativa com uma conta `aprovado` desde 11/06, telemetria `registrar_rejeitado` motivo `ja_aprovado` http 200. Foi o unico evento de cadastro nas 48h anteriores.
+
+**Acao:** diferenciar a resposta. Conta `aprovado` deve receber "voce ja tem acesso, faca login" com atalho para recuperacao de senha. Conta `pendente` deve receber "sua solicitacao ja esta na fila" e, [Recomendacao] a avaliar, reenviar a notificacao ao admin com dedup por janela de tempo, porque hoje um reenvio legitimo apos falha de entrega nao tem como chegar. Exige deploy de Worker e ajuste no `app/index.html`.
+
+**Nota de seguranca, ler antes de implementar.** Hoje a resposta e identica para conta inexistente, pendente e aprovada, o que evita enumeracao de usuarios. Ao diferenciar a mensagem na tela isso se perde. [Recomendacao] manter texto neutro na tela e resolver pelo e-mail ao dono da conta, ou exigir rate limit por IP nesse caminho antes de mudar o texto.
+
 ---
 
 ## Fechadas (historico recente)
