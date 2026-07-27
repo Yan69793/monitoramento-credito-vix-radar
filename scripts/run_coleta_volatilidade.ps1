@@ -26,7 +26,7 @@ Write-Log "INICIO: coleta_volatilidade"
 # Etapa 1: Coletar cotações
 Write-Log "Etapa 1/2: collect_cotacoes.ps1"
 try {
-    $collectOutput = & pwsh -NoProfile -ExecutionPolicy Bypass -File $Collector -Dias 252 2>&1
+    $collectOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Collector -Dias 252 2>&1
     $collectOk = ($collectOutput | Select-String "Sucesso: (\d+)" | ForEach-Object { $_.Matches.Groups[1].Value })
     Write-Log "Coletor: sucesso=$collectOk"
 } catch {
@@ -36,7 +36,7 @@ try {
 # Etapa 2: Upload ao KV
 Write-Log "Etapa 2/2: upload_volatilidade_kv.ps1"
 try {
-    $uploadOutput = & pwsh -NoProfile -ExecutionPolicy Bypass -File $Uploader 2>&1
+    $uploadOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Uploader 2>&1
     $uploadOk = ($uploadOutput | Select-String "OK" | Measure-Object).Count
     Write-Log "Upload: ok=$uploadOk"
 } catch {

@@ -30,7 +30,7 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 ### P2 — Recriar task VIXRadar-Coleta-Volatilidade no Scheduler
 
 **Origem:** Diagnostico de rotinas 27/07.
-**Descricao:** Task removida. Ultimo log 23/07 com 281 bytes (provavelmente ok). Scores de volatilidade no dashboard podem estar desatualizados apos 4 dias sem coleta.
+**Descricao:** Task removida. Ultimo log 23/07 com 281 bytes (provavelmente ok). Task recriada 27/07 ~12:09, primeiro disparo 27/07 17:00. Script `run_coleta_volatilidade.ps1` corrigido: `pwsh` -> `powershell.exe` (linhas 29 e 39) — `pwsh` nao existe no PATH do sistema e causaria falha silenciosa.
 **Acao:** Criar `scripts\register-coleta-volatilidade-task.ps1` + executar para recriar task diaria 17:00.
 **Validacao:** Log `logs\routines\coleta_volatilidade_*.log` gerado no dia seguinte.
 
