@@ -332,9 +332,12 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 **Causa raiz, e a mesma do item do GitHub Actions.** A rotacao de 24/07 mexeu em credencial em varios destinos e nada verifica, depois do fato, que cada destino ficou consistente. Some com um secret obrigatorio e o unico sinal e um evento de telemetria que ninguem le. O health check valida `RESEND_API_KEY` e os bindings, mas nao valida `ADMIN_EMAIL`.
 
-**Acao, as guardas que faltam:**
-1. Incluir `ADMIN_EMAIL` na condicao `_okHealth` do health check (`api/v4.9.181.js:15784`), do mesmo jeito que `RESEND_API_KEY` ja entra. Secret obrigatorio ausente passa a derrubar `ok:false` em vez de degradar em silencio. Exige deploy de Worker.
-2. Acrescentar passo final em `apply-security-rotation.ps1` que roda `wrangler secret list` e compara com a lista esperada, falhando se faltar algum. Resolve a classe inteira, nao so este secret, e casa com a guarda 2 do item do GitHub Actions.
+**Guardas aplicadas 27/07 19h57, as duas.**
+
+1. **Health check (SECRETMISS1), no ar em `v4.9.182`.** `ADMIN_EMAIL` entra na condicao `_okHealth` e vira o campo publico `admin_email_ok`. Valida formato por regex, nao so presenca, entao `""` e `" "` tambem derrubam o health. Sem o campo exposto o `ok:false` nao teria motivo legivel. Health pos-deploy: `ok:true`, `versao:v4.9.182`, `admin_email_ok:true`, 0,79s. Efeito colateral pretendido: `deploy-worker.ps1` aborta em `ok:false`, entao secret obrigatorio ausente passa a travar deploy tambem.
+2. **`apply-security-rotation.ps1`, passo `[7/8]`.** Roda `wrangler secret list`, recorta o JSON da saida (o npx mistura ruido antes) e compara com duas listas: 5 obrigatorios (`ADMIN_EMAIL`, `ADMIN_PASSWORD`, `JWT_SECRET`, `RESEND_API_KEY`, `ANTHROPIC_API_KEY`) que abortam por `throw`, e 7 recomendados (Twilio, ANBIMA, webhook) que so avisam, refletindo que o WhatsApp degrada em silencio e o Resend lanca erro. Testado contra a saida real: 19 secrets lidos, passa no estado atual e detecta a ausencia quando se remove `ADMIN_EMAIL` da lista. Sintaxe validada no parser e `lint-encoding.ps1` 50/50.
+
+**O que as duas guardas ainda nao cobrem.** Ambas so disparam quando alguem roda o script de rotacao ou olha o health. Nenhuma vigia sozinha. O sinal automatico depende do `frescor-check.yml` e do `monitor-tasks`, que leem o health, entao a deteccao passa a existir mas continua sendo diaria, nao imediata.
 
 **Validacao pendente:** proximo cadastro real de usuario deve gerar e-mail ao admin sem `registrar_email_admin_erro` na telemetria.
 
