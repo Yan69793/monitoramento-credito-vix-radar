@@ -1,24 +1,24 @@
 ---
-data: 2026-07-25
+data: 2026-07-27
 tipo: indice
 tags: [vix-radar, moc, indice, mapa]
 status: ativo
 ---
 
-# VIX Radar — Índice (MOC)
+# VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-07-25 ~16h00 BRT.
+Mapa do vault. Atualizado 2026-07-27 ~01h20 BRT.
 
 ## Estado atual
 
-| Componente | Versão |
+| Componente | Versao |
 |---|---|
 | Worker | v4.9.181 |
 | Frontend | v201.88 |
-| Health | `ok:true`, verificador ok, providers 2/2 |
-| Cobertura | Noturno 24/07: 103/103 submit_ok, dreno verif ok |
+| Health | `ok:true`, verificador ok, providers 2/2 (27/07 01:20) |
+| Cobertura | Noturno 26/07: 90+13=103/103 submit_ok, dreno verif ok. Ultimos 3 dias: 24, 25 e 26/07 todos com cobertura completa |
 
-Ver [[03 - Estado Atual]] para snapshot completo. Pendências em [[PENDENCIAS.md]] (root do projeto).
+Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
 ## Notas por categoria
 
@@ -36,6 +36,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendências em [[PENDENCIAS.md
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[68 - Avaliação Claude Fable 5 para Otimização do Sistema (2026-07-26)]] | 26/07 | Pesquisa, Fable 5 nao recomendado para producao, fix compliance na politica de privacidade |
 | [[67 - Auditoria Geral 2026-07-25]] | 25/07 | Geral, drift FE v201.88 + VERSAO3X recorrente + notas 65/66 ausentes do MOC |
 | [[66 - Preditivo lab interno 2026-07-21]] | 21/07 | Decisao: preditivo so interno, pesquisa/backtest |
 | [[65 - Auditoria Geral 2026-07-21-tarde]] | 21/07 | Geral pos-deploy v4.9.168/v201.81, OPENROUTERVIVO, Merton |
@@ -73,6 +74,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendências em [[PENDENCIAS.md
 
 | Nota | Data | Tema |
 |---|---|---|
+| [[68 - Avaliação Claude Fable 5 para Otimização do Sistema (2026-07-26)]] | 26/07 | Reavaliacao Fable 5 (segue nao recomendado), correcao de arquitetura de IA desatualizada, proposta de piloto shadow-mode |
 | [[60 - Pesquisa e Ideias, Proveniência de Fonte e Ground Truth CVM 2026-07-16]] | 16/07 | CVM ground truth, CNPJ matching |
 | [[51 - Pesquisa Preditivo v2 2026-07-11]] | 11/07 | Roadmap preditivo, Altman Z''-EM |
 | [[50 - Análise Competitiva e Baseline SEO 2026-07-11]] | 11/07 | Concorrência, SERP, preços |
@@ -159,12 +161,11 @@ Fonte: `.claude/skills/` no repo. Ver `CLAUDE.md` para lista completa.
 
 ## Arquivos externos ao vault
 
-| Arquivo | Localização | Função |
+| Arquivo | Localizacao | Funcao |
 |---|---|---|
-| `PENDENCIAS.md` | Root do projeto | Lista viva de pendências priorizadas |
-| `CLAUDE.md` | Root do projeto | Instruções do agente + deploy |
+| `CLAUDE.md` | Root do projeto | Instrucoes do agente + deploy |
 | `PROMPTS-RADAR.md` | Root do projeto | Prompts do sistema |
-| `README.md` | Root do projeto | Documentação pública |
+| `README.md` | Root do projeto | Documentacao publica |
 
 ---
 

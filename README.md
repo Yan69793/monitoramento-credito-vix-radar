@@ -41,13 +41,12 @@ app/
 
 ```
 .github/workflows/   ← CI: canonical-test.yml (health check a cada 6h)
-Obsidian VIX Radar/  ← memória documental canônica (estado de produção, auditorias, decisões)
+Obsidian VIX Radar/  ← memória documental canônica (estado de produção, auditorias, decisões, PENDENCIAS.md)
 docs/                ← documentação técnica de referência
 memory/              ← notas de sessão (memory/credenciais.md é gitignored)
 scripts/             ← automações de deploy
 CLAUDE.md            ← protocolo operacional obrigatório para IAs e devs
 AGENTS.md            ← regras permanentes de desenvolvimento
-PENDENCIAS.md        ← backlog técnico aberto
 ```
 
 ### Diretórios fora do fluxo operacional
