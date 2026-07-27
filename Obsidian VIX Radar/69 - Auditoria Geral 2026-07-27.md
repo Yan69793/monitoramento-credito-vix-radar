@@ -23,6 +23,43 @@ foram feitas em serie pelo loop principal, com menos profundidade. Backend,
 frontend, IA e performance receberam varredura dirigida por grep e leitura de
 trechos; nao houve leitura exaustiva do bundle de 16k linhas. Ver "Cobertura" no fim.
 
+## Adendo 13h40: a auditoria estava mirando no lugar errado
+
+Escrito depois do relatorio abaixo, e ele merece ser lido com esta ressalva na frente.
+
+A camada de "veracidade da UI" criada hoje parte de uma premissa boa (rotulo que afirma o
+que o codigo nao apurou) e de uma implementacao estreita: o detector so le HTML. Nas horas
+seguintes a mesma doenca apareceu duas vezes **fora** do HTML, e as duas mais graves que a
+original:
+
+| # | Onde | O que afirma | O que realmente apura |
+|---|---|---|---|
+| 1 | `app/index.html`, card "Cobertura 62%" | cobertura de varredura | emissores sem alerta em 30d |
+| 2 | `scripts/monitor-tasks.ps1:158` | "Credit balance too low" | nada, deduz pelo **nome da task** |
+| 3 | `scripts/run_vixradar_matinal_claude.ps1:421` | `buscas=<executadas>` | numero **autodeclarado pelo modelo** |
+
+O caso 3 nao e teorico. Em 27/07 13:32 a matinal fechou com `buscas=12` num lote onde as 12
+buscas retornaram "WebSearch indisponivel", e gravou 18 emissores em producao com zero
+rodadas do protocolo, tres deles classificados CRITICO. Todos os indicadores de saude da
+rotina ficaram verdes: `submit_fail=0`, `auth_fail=0`, `silent_fail=0`. Detalhe completo em
+[[PENDENCIAS]], item P1 "A matinal reportou sucesso com 100% das buscas falhando".
+
+**A generalizacao correta do achado do card nao e "auditar rotulo de HTML".** E:
+
+> Toda metrica que o sistema exibe ou registra precisa ter uma fonte apurada. Se o numero vem
+> de autodeclaracao (do modelo, do nome de um objeto, de uma constante), ele nao e metrica,
+> e legenda. Auditar significa achar a distancia entre o nome e a fonte.
+
+Aplicado a rotina, isso tem um teste barato: pegar cada contador que a rotina emite no `FIM:`
+e perguntar quem produziu aquele numero. `tokens` vem do envelope JSON da CLI, apurado.
+`submit_ok` vem da resposta do Worker, apurado. `buscas` vem do texto que o modelo escreveu,
+**nao apurado**. Levou trinta segundos e nao estava no escopo da auditoria.
+
+**Consequencia para a skill:** `audit-ui-metrics.mjs` cobre so o caso 1 e continua util, mas
+a camada precisa de um irmao que varra scripts de rotina procurando contador cuja origem seja
+saida de LLM ou constante, nao medicao. Sem isso a auditoria repete o erro de hoje: aprova o
+sistema olhando os numeros que o proprio sistema escolheu contar.
+
 ## Achados
 
 ### P3, painel de anomalias pinta valor com sinal sempre de vermelho

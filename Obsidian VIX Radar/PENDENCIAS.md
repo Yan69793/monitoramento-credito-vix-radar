@@ -129,10 +129,48 @@ metrica de rotina, ver [[69 - Auditoria Geral 2026-07-27]].
 e obter aborto antes do primeiro submit, com exit code proprio, `submit_ok=0`. Rodar em
 seguida com `-Force` e confirmar que reprocessa emissor ja marcado como OK.
 
-**Remediacao do incidente:** matinal reprocessada em 27/07 ~13:40 com ambiente higienizado.
-Probe de WebSearch previo retornou `OK-SEARCH` exit 0. Plano do Worker confirmado com
-FULL:8, LIGHT:9, SKIP:2 antes do relancamento, ou seja o reprocessamento sobrescreve os
-emissores contaminados em vez de virar no-op.
+### Remediacao do incidente, concluida 27/07 14:40
+
+Duas tentativas foram necessarias. A primeira, as 13:38, foi **no-op nos contaminados**: a
+trava de idempotencia leu as linhas `OK|` da execucao suja e pulou os 18, processando apenas
+3 emissores que ainda nao tinham sido tocados. Foi assim que o defeito 4 acima apareceu.
+
+A segunda, as 14:03, funcionou depois de rotacionar o log para
+`logs\routines\vixradar-matinal_20260727_CONTAMINADO_1317.log` (renomeado, nao apagado: e a
+evidencia do incidente). Resultado:
+
+```
+14:16:25 FIM: tokens=123782 sonnet=7 haiku=7 submit_ok=14 submit_fail=0
+              deferred=0 criticos=6 auth_fail=0 silent_fail=0
+```
+
+**Verificacao de que a cobertura foi real desta vez**, e nao autodeclarada: 31 rodadas
+registradas no log, **0 ocorrencias de "deepseek"**, e 0 rodadas com resultado de falha. O
+unico hit do grep de falha era falso positivo do proprio grep, a palavra "encerrou" contem
+"erro". As buscas voltaram com dado substantivo ("Fitch perspectiva negativa; alavancagem
+5,7x", "covenant violado 2024", "57,49% creditos aderidos; projecao reducao R$2B").
+
+**O sinal mais forte de que a diferenca e real esta no verificador adversarial:**
+
+| Rodada | Fila | Aprovados | Rejeitados |
+|---|---|---|---|
+| Contaminada (13:32) | 5 | 1 | **4** |
+| Reprocessada (14:16) | 8 | **6** | 2 |
+
+O verificador retratou 4 dos 5 eventos da rodada sem busca, via `retratarEventoRejeitado`,
+que remove o evento do estado publicado. Ou seja a camada de verificacao **fez o trabalho
+dela** e limpou a maior parte do estrago dos CRITICOs antes mesmo do reprocessamento. O que
+ela nao alcanca sao os ECO e RELEVANTE, que nao entram na fila de verificacao, e esses
+dependiam do reprocessamento.
+
+**Licao que fica, e nao e sobre o DeepSeek.** A rodada contaminada exibiu
+`submit_fail=0 auth_fail=0 silent_fail=0` e `buscas=12`. Todo indicador verde. O unico lugar
+do sistema que percebeu o problema foi o verificador adversarial, que e caro e roda depois.
+Uma checagem de tres linhas comparando `fontes_consultadas[].resultado` contra um padrao de
+falha teria abortado antes do primeiro submit, de graca. Ver acao 3.
+
+**Custo do incidente:** 120638 tokens na rodada perdida, 575214 no dreno que verificou dado
+ruim, 123782 no reprocessamento, 261945 no dreno seguinte. Ver [[project_rotina_ambiente_limpo]].
 
 ### P2 — VIXRadar-Reconciliacao-CVM: task recriada, exit 1 continua aberto
 
