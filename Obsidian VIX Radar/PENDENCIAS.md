@@ -394,3 +394,28 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 ---
 
 *Atualizado em 2026-07-27 12h09 BRT (pos-auditoria: 2 itens fechados, 2 novos P1/P2, tasks recriadas). Fila aberta: 10 itens acionaveis (2 P1, 5 P2, 2 P3, 1 P4).*
+
+---
+
+## Adendo 28/07 — Registro canonico da auditoria tecnica completa
+
+A auditoria de 28/07 consolidou os achados em registro canonico com IDs, taxonomia de certeza e rubrica P0-P3: `00-AUDITORIA-SISTEMA-COMPLETA.md` na raiz do repo (mais relatorios 01 a 04). Esta secao so aponta, o detalhe mora la. Itens ja existentes desta fila ganharam ID e continuam donos do proprio plano: OPS-001 (matinal autodeclarada, o P1 da matinal acima), OPS-003 (idempotencia, acao 4 do mesmo item), OPS-004 (monitor-tasks), SEC-002 (cadastro existente), SEC-003 (WhatsApp/StatusCallback), SEC-001 e ENC-001 (resolvidos com guarda).
+
+Itens novos abertos pela auditoria (detalhe, evidencia e criterio de aceite no registro):
+
+- **CAL-002 (P0 ATIVO)** — datas 2T26 de Bradesco e Vale divergem da fonte oficial e o dashboard exibe as erradas com selo de certeza. RI do Bradesco: divulgacao 05/08/2026 apos o fechamento (B3 e NYSE), videoconferencia 06/08, periodo de silencio 22/07 a 05/08; o sistema mostra 28/07 como AGENDADO, dia em que o banco esta formalmente impedido de divulgar. Vale: divulgacao 30/07/2026 apos o fechamento; o sistema mostra "Ultima divulgacao 24/07", resultado que oficialmente ainda nao saiu (o evento de 21/07 era producao e vendas). Petrobras: nao confirmada, segue exibida como AGENDADO sem respaldo. Contencao recomendada no relatorio 04 secao 1. Correcao e Gate C, nada executado.
+- **CAL-001 (P1)** — data estimada exibida como AGENDADO na UI e como evento sem ressalva na agenda. E o mecanismo que transformou a extrapolacao errada de CAL-002 em afirmacao com selo de certeza, e que hoje faz o mesmo com as outras 18 estimativas do 2T26.
+- **CAL-003 (P2)** — `op=calendario` ignora overrides de KV, so a agenda le o merge.
+- **CAL-004 (P2)** — calendario congelado desde 2026-05-09, cobertura 20/103, staleness sem consumidor automatico. Taxa de erro medida da extrapolacao: 2 de 2 datas testadas contra RI oficial estavam erradas.
+- **VOL-001 (P2)** — campo `market_cap` carrega preco por acao, guarda `> 100` invertida, Merton rodando com PL contabil sem contrato.
+- **VOL-002 (P3)** — estimador de volatilidade (RMS nao centralizado) sem contrato, formula duplicada.
+- **VOL-003 (P2)** — SELIC hardcoded 13,75% sem `as_of`, erro comprovado contra o BCB em 28/07 (meta 14,25%, efetiva 14,15%), e contradicao interna com "SELIC a 15%" no proprio bundle.
+- **DEC-001 (decisao)** — definir o que "SELIC" significa no produto antes de escolher serie do BCB.
+- **OPS-002 (P2)** — `run_coleta_volatilidade.ps1` nao propaga falha dos filhos nem le `$LASTEXITCODE`; cobertura 73/103 sem alerta.
+- **CI-001 (P2)** — secret ausente encerra workflows de vigilancia com exit 0 por design; revisitar politica para runs agendadas.
+- **CI-002 (P2)** — scan-emergencia sai limpo com `ok:false` (paraquedas mudo 24-27/07); frescor ja falha, o scan nao.
+- **CI-003 (P3)** — rotacao multi-destino com passo GitHub manual sem verificacao pos-fato.
+
+Este adendo adiciona 12 itens acionaveis (1 P0, 1 P1, 7 P2, 2 P3, 1 decisao) aos 11 da fila acima. Ordenacao e sequenciamento em `04-PLANO-CORRECAO-PRIORIZADO.md`. Nada executa sem Gate C.
+
+*Adendo gravado em 2026-07-28, sessao da auditoria tecnica completa (Gate A). Ver [[71 - Auditoria Tecnica Completa 2026-07-28]].*
