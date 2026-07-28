@@ -1,0 +1,35 @@
+# O backend é publicado no Cloudflare Worker (api.vixradar.com).
+# Estes artefatos não são funções Vercel e não devem ser compilados como Node.
+api/**
+
+# Histórico e materiais locais não fazem parte do site estático.
+_backup_security_fix_2026-07-24_054124/**
+_historico/**
+.claude/**
+.codex/**
+.devin/**
+.forja/**
+.grok/**
+.playwright-mcp/**
+.wrangler/**
+agent-tools/**
+archive/**
+data/**
+dados/**
+diagnosticos/**
+docs/**
+logs/**
+marketing/**
+mcps/**
+memory/**
+Obsidian VIX Radar/**
+oportunidades-mercado/**
+producao/**
+research/**
+routines/**
+scans/**
+terminals/**
+vixradar/**
+Projetos Claude/**
+scripts/**
+tests/**
