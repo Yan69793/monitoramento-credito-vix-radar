@@ -1,6 +1,10 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.182)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.183)
 # ═══════════════════════════════════════════════════════════════════════
+# v4.9.183.js = fonte canonica api/src/worker.js + build deterministico sem rebundle:
+#   CAL-003 aplica calendario:overrides:v1 em state e op=calendario; VOL-001
+#   impede preco por acao/patrimonio contabil como market cap; VOL-003 usa somente
+#   Selic efetiva validada do KV; CI/rotinas falham visivelmente fora do bundle.
 # v4.9.182.js = v4.9.181 + SECRETMISS1: ADMIN_EMAIL entra na condicao _okHealth
 #   e vira o campo publico admin_email_ok. Guarda para a classe "secret
 #   obrigatorio some e o sistema degrada em silencio". De 24/07 a 27/07 o
@@ -466,7 +470,8 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.182.js"
+main       = "v4.9.183.js"
+no_bundle  = true
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

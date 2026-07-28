@@ -41,9 +41,13 @@ $LogFile = Join-Path $LogDir ($cfg.LogPrefix + '_' + $DateTag + '.log')
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
+function Write-Safe([string]$msg) {
+    try { Write-Host $msg -ErrorAction Stop } catch { }
+}
+
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
-    Write-Host $line
+    Write-Safe $line
     # LOGLOCK1-REC (2026-07-24): backoff exponencial + fallback file com PID.
     # Lock persistente por OneDrive/SearchIndexer pode durar minutos — se todas as
     # tentativas falharem, escreve em arquivo alternativo para nao perder linha.
@@ -54,8 +58,8 @@ function Write-Log([string]$msg) {
         } catch {
             if ($i -eq 8) {
                 $fallbackFile = ([regex]::Replace($LogFile, '\.log$', "_fallback_$pid.log"))
-                Write-Host "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
-                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Host "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
+                Write-Safe "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
+                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Safe "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
             }
             else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
         }
@@ -88,6 +92,18 @@ if (-not (Test-Path $cfg.Skill)) {
 }
 
 $prompt = Get-Content $cfg.Skill -Raw -Encoding UTF8
+if ($RoutineId -eq 'vixradar-agenda-semanal') {
+    $routineKey = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
+    if (-not $routineKey) { $routineKey = $env:ROUTINE_API_KEY }
+    if (-not $routineKey) { Write-Log 'ERRO: ROUTINE_API_KEY ausente'; exit 3 }
+    $env:ROUTINE_API_KEY = $routineKey
+    # Nunca enviar ao Claude uma chave literal que tenha ficado em uma definicao antiga.
+    $keyPattern = '(?i)(\\?"routine_key\\?"\s*:\s*\\?")[^"\\]+(\\?")'
+    $prompt = [regex]::Replace($prompt, $keyPattern, {
+        param($m)
+        $m.Groups[1].Value + '$env:ROUTINE_API_KEY' + $m.Groups[2].Value
+    })
+}
 if ($prompt -match '(?s)^---\r?\n.*?\r?\n---\r?\n(.*)$') {
     $prompt = $Matches[1].Trim()
 }
@@ -126,8 +142,18 @@ try {
             Write-Log ('RETRY: fallback para Haiku (ultima tentativa)')
             $attemptArgs += @('--model', 'claude-haiku-4-5-20251001')
         }
-        $out = $fullPrompt | & claude @attemptArgs 2>&1
-        $exit = $LASTEXITCODE
+        $previousEap = $ErrorActionPreference
+        try {
+            # Stderr nativo nao vira excecao antes de lermos o exit code.
+            $ErrorActionPreference = 'Continue'
+            $out = $fullPrompt | & claude @attemptArgs 2>&1
+            $exit = $LASTEXITCODE
+        } catch {
+            $out = @($_.Exception.Message)
+            $exit = 1
+        } finally {
+            $ErrorActionPreference = $previousEap
+        }
         if ($exit -eq 0) { break }
     }
     if ($out) { $out | ForEach-Object { Write-Log ('CLAUDE: ' + $_) } }

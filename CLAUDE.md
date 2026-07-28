@@ -15,7 +15,8 @@ Repo: `monitoramento-credito-vix-radar.git` (branch `main`).
 - Worker: `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.XXX`. Nunca `wrangler deploy` direto.
 - Pages: `pwsh ./scripts/deploy-pages.ps1`. Sincroniza `app/deploy_zip/` antes.
 - Wrangler 4.x: sempre `--no-autoconfig`. Sem isso detecta `E:\Diretorio\Claude\dashboard` como projeto.
-- Bundles `api/v4.*.js` são artefatos Wrangler — não editar diretamente.
+- Fonte do Worker: `api/src/worker.js`; gerar com `pwsh ./scripts/build-worker.ps1 -Version v4.9.XXX`.
+- Bundles `api/v4.*.js` são artefatos gerados — não editar diretamente; publicar com `no_bundle=true`.
 - Fonte viva do frontend: `app/index.html` → sincronizar `app/deploy_zip/` antes do deploy.
 - Token Cloudflare: variável de ambiente do sistema, nunca no repo.
 

@@ -1,5 +1,6 @@
 ﻿# run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
 $ErrorActionPreference = 'Stop'
+# PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
 # Mesma correcao de encoding do noturno (ver run_vixradar_noturno_claude.ps1) - stdout do
 # binario 'claude' sem console interativo pode decodificar em ANSI/OEM e corromper nomes
 # acentuados, quebrando o match de RESULTADO por emissor.
@@ -30,6 +31,15 @@ $SonnetChunk    = 4
 $PauseSec       = 2
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+
+# PIPE1 (2026-07-28): Write-Host sob -WindowStyle Hidden do Task Scheduler quebrava o pipe do
+# console apos ~28 min de execucao (ERROR_PIPE_NOT_CONNECTED 0xE9). Esta funcao absorve o crash
+# silenciosamente — o log em arquivo (Write-Log) ja registrou a linha; a perda no console e
+# irrelevante em execucao agendada.
+function Write-Safe([string]$msg) {
+    try { Write-Host $msg } catch { }
+}
+
 # MCP vazio (2026-07-14): sem isto o claude -p herdava todos os MCP servers da sessao interativa
 # (tradingview, firecrawl, canva, computer-use) no system prompt de cada lote - custo real de
 # tokens, nao so contagem. Mesmo arquivo compartilhado do run_vixradar_noturno_claude.ps1.
@@ -37,7 +47,7 @@ Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
-    Write-Host $line
+    Write-Safe $line
     # Retry com backoff: incidente 2026-07-17 (noturna) - lock de arquivo por instancia concorrente
     # fazia Add-Content sem try/catch derrubar a rotina inteira (ErrorActionPreference Stop).
     # Reincidencia sustentada 2026-07-18 (LOGLOCK1-REC, PENDENCIAS.md): lock ocupado 7+ min
@@ -51,8 +61,8 @@ function Write-Log([string]$msg) {
         } catch {
             if ($i -eq 8) {
                 $fallbackFile = ([regex]::Replace($LogFile, '\.log$', "_fallback_$pid.log"))
-                Write-Host "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
-                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Host "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
+                Write-Safe "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
+                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Safe "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
             }
             else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
         }
@@ -84,7 +94,7 @@ function Get-AnthropicApiKey {
     if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
     $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
     if ($fromRegistry) { return $fromRegistry }
-    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
+    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''<configure-no-ambiente>'',''User'')'
     return $null
 }
 
