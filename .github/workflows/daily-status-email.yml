@@ -67,8 +67,8 @@ jobs:
           AGORA=$(date -u +"%Y-%m-%d %H:%MZ")
 
           if [ -z "$ADMIN_PWD" ]; then
-            echo "::warning::Sem ADMIN_PASSWORD configurado. Saindo limpo (sem falha)."
-            exit 0
+            echo "::error::ADMIN_PASSWORD ausente nos secrets — impossivel consultar o Worker."
+            exit 1
           fi
           echo "::add-mask::$ADMIN_PWD"
 

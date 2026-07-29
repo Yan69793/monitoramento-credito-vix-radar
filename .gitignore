@@ -29,8 +29,11 @@ API_TOKENS/
 *secret.json
 scripts/azul_payload.json
 *_payload.json
+recovery-codes.txt
+scripts/setup-deploy-credential.ps1
 
 # ---------- Config local e ferramentas pessoais ----------
+.codex/
 .claude/*
 !.claude/SKILLS-ROUTER.md
 !.claude/skills/
@@ -123,6 +126,7 @@ Obsidian VIX Radar/.obsidian/
 
 # ---------- Node, builds, dependencias ----------
 node_modules/
+package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -150,7 +154,7 @@ env/
 .ruff_cache/
 
 # ---------- Logs, temporarios, dumps ----------
-logs/routines/
+logs/
 *.log
 deploy_log_*.txt
 deploy_err.txt
