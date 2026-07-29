@@ -71,12 +71,20 @@ Um artefato só é equivalente ao publicado quando as três condições valem ao
 3. Os bindings de `api/wrangler.toml` seguem presentes, `RADAR_KV`, `RATE_LIMITER_DO`,
    `ESTADO_SEMANA_DO` e `RADAR_USAGE_EVENTS`, com `telemetria:true` no health pós-deploy.
 
-## Pendência conhecida e deliberada
+## Ponteiro de deploy
 
-Este commit não altera `api/wrangler.toml`, que segue declarando `main = "v4.9.182.js"`.
-Enquanto essa linha não for corrigida para `v4.9.183.js` com `no_bundle = true`, um deploy
-disparado a partir do repositório republica a v4.9.182 e reverte produção. É decisão de
-configuração de deploy e ficou fora do escopo desta preservação.
+`api/wrangler.toml` declarava `main = "v4.9.182.js"` mesmo com a v4.9.183 em produção.
+Enquanto isso valeu, qualquer deploy disparado a partir do repositório republicava a v4.9.182
+e revertia produção em silêncio. Corrigido no commit seguinte a esta preservação, que aponta
+`main = "v4.9.183.js"` e acrescenta `no_bundle = true`.
+
+O `no_bundle` não é acessório. Sem ele o Wrangler reempacota o arquivo antes de subir, os bytes
+publicados deixam de ser os bytes do repositório, e o critério de equivalência por hash descrito
+acima perde validade. Foi assim que a linhagem se perdeu na v4.9.99, quando cada publicação
+acrescentava mais uma camada de wrapper sobre a anterior.
+
+Com o ponteiro correto, um deploy a partir desta branch republica exatamente o que já está no
+ar. O acidente destrutivo vira operação inócua.
 
 ## Correções que a v4.9.183 já entrega em produção
 
