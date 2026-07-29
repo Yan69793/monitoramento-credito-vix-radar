@@ -1,13 +1,9 @@
-﻿# upload_volatilidade_kv.ps1, Sobe dados de volatilidade para o KV do Worker
-# Uso: powershell.exe -NoProfile -File ./scripts/upload_volatilidade_kv.ps1 [-AdminSenha $senha]
-# Pré-requisito: collect_cotacoes.ps1 já rodou (data/cotacoes/meta_volatilidade.json existe)
-#
-# Monta payload { emissores: { "Nome": { vol_anualizada, market_cap } }, selic_anual }
-# e faz PUT em cotacoes:volatilidade:v1 via endpoint admin do Worker.
-
+# upload_volatilidade_kv.ps1 - publica volatilidade e Selic efetiva no KV do Worker.
+[CmdletBinding()]
 param(
     [string]$AdminSenha = $null,
-    [string]$MetaFile = $null
+    [string]$MetaFile = $null,
+    [switch]$DryRun
 )
 
 Set-StrictMode -Version Latest
@@ -15,108 +11,111 @@ $ErrorActionPreference = 'Stop'
 
 $ROOT = Split-Path -Parent $PSScriptRoot
 if (-not $MetaFile) { $MetaFile = Join-Path $ROOT 'data\cotacoes\meta_volatilidade.json' }
-$tickersFile = Join-Path $ROOT 'data\cotacoes\tickers_emissores.json'
-
-if (-not (Test-Path $MetaFile)) {
-    Write-Host "ERRO: $MetaFile não encontrado. Rode collect_cotacoes.ps1 primeiro."
-    exit 1
+if (-not (Test-Path -LiteralPath $MetaFile)) {
+    throw "Meta de volatilidade ausente: $MetaFile. Rode collect_cotacoes.ps1 primeiro."
 }
 
-if (-not $AdminSenha) {
+if (-not $DryRun -and -not $AdminSenha) {
     $helper = Join-Path $ROOT 'api\Get-VixAdminCredential.ps1'
-    if (Test-Path $helper) {
+    if (Test-Path -LiteralPath $helper) {
         $AdminSenha = & $helper -AsPlainText 2>$null
-        if (-not $AdminSenha) { Write-Host "AVISO: DPAPI retornou vazio, tentando env var ADMIN_PASSWORD" }
     }
     if (-not $AdminSenha -and $env:ADMIN_PASSWORD) { $AdminSenha = $env:ADMIN_PASSWORD }
 }
-if (-not $AdminSenha) {
-    Write-Host "ERRO: Senha admin nao encontrada. Passe -AdminSenha, configure ADMIN_PASSWORD env var, ou verifique api/.admin_credencial.dat"
-    exit 1
+if (-not $DryRun -and -not $AdminSenha) {
+    throw 'Senha admin ausente. Configure ADMIN_PASSWORD ou a credencial DPAPI.'
 }
 
-$metaRaw = Get-Content $MetaFile -Raw | ConvertFrom-Json
-$tickersRaw = Get-Content $tickersFile -Raw | ConvertFrom-Json
+function Repair-Mojibake([string]$Value) {
+    if (-not $Value -or $Value -cnotmatch '[ÃÂ]') { return $Value }
+    $bytes = [Text.Encoding]::GetEncoding(1252).GetBytes($Value)
+    return [Text.Encoding]::UTF8.GetString($bytes)
+}
 
-# Construir payload para KV
+$metaRaw = Get-Content -LiteralPath $MetaFile -Raw -Encoding UTF8 | ConvertFrom-Json
+if (-not $metaRaw.emissores) { throw 'Meta de volatilidade sem o objeto emissores.' }
+
 $emissoresPayload = @{}
 $comVol = 0
 $semVol = 0
-
 foreach ($prop in ($metaRaw.emissores | Get-Member -MemberType NoteProperty)) {
-    $emissor = $prop.Name
-    $dados = $metaRaw.emissores.$emissor
-    $tickerInfo = $tickersRaw.emissores.$emissor
-
-    if (-not $dados.vol_anualizada) {
+    $emissor = Repair-Mojibake $prop.Name
+    $dados = $metaRaw.emissores.PSObject.Properties[$prop.Name].Value
+    if ($null -eq $dados.vol_anualizada -or [double]$dados.vol_anualizada -le 0) {
         $semVol++
         continue
     }
 
-    # Tentar obter market cap da série de preços (último close)
-    $ticker = $dados.ticker -replace '\.SA$', ''
-    $seriesFile = Join-Path $ROOT "data\cotacoes\series\$ticker.json"
-    $mktCap = $null
-    if (Test-Path $seriesFile) {
-        $series = Get-Content $seriesFile -Raw | ConvertFrom-Json
-        $lastRow = $series.rows | Select-Object -Last 1
-        $regularMarketPrice = $series.regularMarketPrice
-        if ($regularMarketPrice -and $regularMarketPrice -gt 0) {
-            $mktCap = $regularMarketPrice # preço; market cap real = preço x shares outstanding
-        }
-    }
-
+    # Nao publicar preco por acao como market cap. Merton exige valor de mercado real.
     $emissoresPayload[$emissor] = [PSCustomObject]@{
         ticker = $dados.ticker
-        vol_anualizada = $dados.vol_anualizada
+        vol_anualizada = [double]$dados.vol_anualizada
         rows = $dados.rows
-        market_cap = $mktCap
     }
     $comVol++
 }
 
-# Selic atual ~13.75% (jul/2026), pode ser atualizado via BCB API
-$selicAnual = 0.1375
+# Taxa livre de risco: Selic efetiva anualizada, fonte oficial BCB SGS 1178.
+# Falha fechada: sem dado atual da fonte primaria, nao publica taxa velha.
+$selicUrl = 'https://api.bcb.gov.br/dados/serie/bcdata.sgs.1178/dados/ultimos/1?formato=json'
+try {
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    $selicResp = Invoke-RestMethod -Uri $selicUrl -TimeoutSec 30
+    $selicItem = @($selicResp)[0]
+    if (-not $selicItem -or -not $selicItem.valor -or -not $selicItem.data) {
+        throw 'Resposta SGS 1178 sem data ou valor.'
+    }
+    $selicPct = [decimal]::Parse([string]$selicItem.valor, [Globalization.CultureInfo]::InvariantCulture)
+    if ($selicPct -le 0 -or $selicPct -ge 100) { throw "Valor fora de faixa: $selicPct" }
+    $selicAnual = [double]($selicPct / 100)
+    $selicDate = [DateTime]::ParseExact([string]$selicItem.data, 'dd/MM/yyyy', [Globalization.CultureInfo]::InvariantCulture)
+    $selicAgeDays = ((Get-Date).Date - $selicDate.Date).TotalDays
+    if ($selicAgeDays -lt -1 -or $selicAgeDays -gt 10) { throw "Data Selic stale ou futura: $($selicItem.data)" }
+    $selicAsOf = $selicDate.ToString('yyyy-MM-dd')
+} catch {
+    throw "Falha ao obter Selic efetiva no BCB SGS 1178: $($_.Exception.Message)"
+}
 
 $payload = [PSCustomObject]@{
-    schema_v = 1
-    gerado_em = (Get-Date).ToString('o')
+    schema_v = 2
+    gerado_em = (Get-Date).ToUniversalTime().ToString('o')
     selic_anual = $selicAnual
+    selic_fonte = 'BCB_SGS_1178'
+    selic_as_of = $selicAsOf
     total_com_volatilidade = $comVol
     total_sem_volatilidade = $semVol
     emissores = $emissoresPayload
 }
+$payloadJson = $payload | ConvertTo-Json -Depth 5 -Compress
 
-$payloadJson = $payload | ConvertTo-Json -Depth 4 -Compress
-$payloadSizeKB = [Math]::Round($payloadJson.Length / 1KB, 1)
-Write-Host "Payload: $payloadSizeKB KB | Emissores com vol: $comVol | Sem vol: $semVol"
-Write-Host "Selic: $($selicAnual*100)% a.a."
-Write-Host ""
+# Invariantes que impedem a regressao de preco por acao como market cap.
+if ($payloadJson -match '"market_cap"') { throw 'Payload invalido: market_cap nao pode vir do coletor de precos.' }
+if ($payloadJson -cmatch '[ÃÂ]') {
+    $idx = $payloadJson.IndexOf($Matches[0])
+    $start = [Math]::Max(0, $idx - 30)
+    $ctx = $payloadJson.Substring($start, [Math]::Min(100, $payloadJson.Length - $start))
+    throw "Payload invalido: mojibake perto de: $ctx"
+}
+if (-not ($payload.selic_anual -gt 0 -and $payload.selic_anual -lt 1)) { throw 'Payload invalido: selic_anual fora de faixa.' }
 
-# Upload via admin endpoint
-Write-Host "Enviando para KV (cotacoes:volatilidade:v1)..."
+Write-Host "PAYLOAD_OK emissores=$comVol sem_vol=$semVol selic=$selicAnual fonte=BCB_SGS_1178 as_of=$selicAsOf"
+if ($DryRun) {
+    Write-Output $payloadJson
+    exit 0
+}
+
 $body = @{
     admin_senha = $AdminSenha
-    action = "admin_kv_put"
-    key = "cotacoes:volatilidade:v1"
+    action = 'admin_kv_put'
+    key = 'cotacoes:volatilidade:v1'
     value = $payloadJson
-    ttl = 86400  # 24h, re-rodar diariamente com o collector
+    ttl = 86400
 } | ConvertTo-Json -Compress
 
 try {
-    $response = Invoke-RestMethod -Uri "https://api.vixradar.com/" -Method POST -Body $body -ContentType "application/json" -TimeoutSec 30
-    if ($response.ok) {
-        Write-Host "OK, volatilidade publicada no KV (TTL 24h)"
-    } else {
-        Write-Host "ERRO: $($response.erro)"
-    }
+    $response = Invoke-RestMethod -Uri 'https://api.vixradar.com/' -Method POST -Body $body -ContentType 'application/json' -TimeoutSec 30
 } catch {
-    Write-Host "ERRO HTTP: $_"
+    throw "Falha HTTP ao publicar volatilidade: $($_.Exception.Message)"
 }
-
-Write-Host ""
-Write-Host "Top 10 por volatilidade:"
-$emissoresPayload.GetEnumerator() |
-    Sort-Object { $_.Value.vol_anualizada } -Descending |
-    Select-Object -First 10 |
-    ForEach-Object { "  $($_.Key): $([Math]::Round($_.Value.vol_anualizada*100,1))%" }
+if (-not $response.ok) { throw "Worker recusou publicacao: $($response.erro)" }
+Write-Host 'UPLOAD_OK key=cotacoes:volatilidade:v1 ttl=86400'

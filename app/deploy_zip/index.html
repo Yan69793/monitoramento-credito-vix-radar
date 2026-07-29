@@ -3695,7 +3695,7 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
   <div id="status-right"></div>
 </div>
 
-<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.92";window.CACHE_VERSION="v201.92";const API_BASE="https://api.vixradar.com";
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","AES Brasil"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=103,CACHE_VERSION="v201.93";window.CACHE_VERSION="v201.93";const API_BASE="https://api.vixradar.com";
 /* P0-2026-05-11: WORKER_URL alias de API_BASE — corrige "[BRANDING] erro ao carregar: WORKER_URL is not defined" */
 const WORKER_URL=API_BASE;
 /* P0-2026-05-11: silenciar console.log/info/debug em producao — manter warn/error */
@@ -4866,10 +4866,18 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     var ult  = dados.ultima_divulgacao_prevista;
     var html = "";
     if (prox && prox.data_prevista) {
-      var statusLbl = prox.status === "divulgado" ? "DIVULGADO" : "AGENDADO";
-      html = "Próxima divulgação " + (prox.periodo || "") + ": " + _fmtDataBr(prox.data_prevista) + _horarioLabel(prox.horario) + " · " + statusLbl;
+      if (prox.status === "estimado") {
+        html = "Divulgação " + (prox.periodo || "") + " · ESTIMATIVA NÃO CONFIRMADA";
+      } else {
+        var statusLbl = prox.status === "divulgado" ? "DIVULGADO" : "AGENDADO";
+        html = "Próxima divulgação " + (prox.periodo || "") + ": " + _fmtDataBr(prox.data_prevista) + _horarioLabel(prox.horario) + " · " + statusLbl;
+      }
     } else if (ult && ult.data_prevista) {
-      html = "Última divulgação " + (ult.periodo || "") + ": " + _fmtDataBr(ult.data_prevista) + _horarioLabel(ult.horario);
+      if (ult.status === "estimado") {
+        html = "Divulgação " + (ult.periodo || "") + " · ESTIMATIVA NÃO CONFIRMADA";
+      } else {
+        html = "Última divulgação " + (ult.periodo || "") + ": " + _fmtDataBr(ult.data_prevista) + _horarioLabel(ult.horario);
+      }
     } else {
       info.style.display = "none";
       return;

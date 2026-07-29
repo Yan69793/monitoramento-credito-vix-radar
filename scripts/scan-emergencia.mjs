@@ -20,9 +20,9 @@
 //   `dados_para_analise`, e o schema JSON canônico do campo `resultado`.
 //   Provedor resultante no Worker: claude-sonnet-routine (sem `_matinal`).
 //
-// FALHA LIMPA
-//   Sem ANTHROPIC_API_KEY ou ROUTINE_API_KEY → aviso + exit 0 (nunca falha por
-//   secret ausente). O workflow também protege por ausência de secret.
+// FALHA VISIVEL
+//   Sem ANTHROPIC_API_KEY ou ROUTINE_API_KEY -> erro + exit 1; o fallback ausente
+//   precisa ficar visivel no workflow.
 //
 // Node 20+ (fetch nativo). Sem dependências npm externas.
 // ---------------------------------------------------------------------------
@@ -39,14 +39,14 @@ const WEB_SEARCH_TOOL = { type: "web_search_20260209", name: "web_search", max_u
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ROUTINE_API_KEY = process.env.ROUTINE_API_KEY;
 
-function warnExitClean(msg) {
-  console.log(`::warning::${msg}`);
-  console.log("Saindo limpo (exit 0) — fallback não executado.");
-  process.exit(0);
+function failMissingSecret(msg) {
+  console.log(`::error::${msg}`);
+  console.log("Fallback obrigatorio nao executado.");
+  process.exit(1);
 }
 
-if (!ANTHROPIC_API_KEY) warnExitClean("ANTHROPIC_API_KEY ausente nos secrets do repo.");
-if (!ROUTINE_API_KEY) warnExitClean("ROUTINE_API_KEY ausente nos secrets do repo.");
+if (!ANTHROPIC_API_KEY) failMissingSecret("ANTHROPIC_API_KEY ausente nos secrets do repo.");
+if (!ROUTINE_API_KEY) failMissingSecret("ROUTINE_API_KEY ausente nos secrets do repo.");
 
 // ── Chamada ao Worker (endpoints das rotinas, auth via routine_key) ──────────
 async function worker(action, extra = {}) {
@@ -231,7 +231,10 @@ async function main() {
 
   console.log("=== Resumo ===");
   console.log(`Processados: ${processados}/${emissores.length} | eventos somados: ${eventosTotais} | falhas: ${falhas}`);
-  // Não falhar o job por falhas pontuais de emissor — é um fallback best-effort.
+  if (falhas > 0) {
+    console.log(`::error::Fallback incompleto: ${falhas} emissor(es) falharam.`);
+    process.exit(1);
+  }
   process.exit(0);
 }
 

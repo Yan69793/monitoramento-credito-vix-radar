@@ -1,10 +1,10 @@
-﻿<#
+<#
 .SYNOPSIS
   Deploy do Worker VIX Radar (Cloudflare Workers) — atomico com o git.
 
 .DESCRIPTION
   Colapsa em um comando o ritual de 4 passos que gerava drift repo/producao:
-    1. Confere pre-requisitos (token, bundle existe).
+    1. Confere pre-requisitos e gera o bundle a partir de api/src/worker.js.
     2. Aponta api/wrangler.toml main -> o bundle desta versao.
     3. Roda `wrangler deploy` (com --no-autoconfig, obrigatorio neste repo).
     4. Valida producao (GET /): versao viva == esperada, bindings kv/telemetria.
@@ -54,7 +54,14 @@ if (-not (Test-Path $toml)) { Fail "Nao achei $toml" }
 $ver    = $Version -replace '\.js$', ''
 $bundle = "$ver.js"
 $bundlePath = Join-Path $apiDir $bundle
-if (-not (Test-Path $bundlePath)) { Fail "Bundle nao existe: $bundlePath" }
+$buildScript = Join-Path $PSScriptRoot "build-worker.ps1"
+if (-not (Test-Path $buildScript)) { Fail "Build do Worker ausente: $buildScript" }
+
+# api/src/worker.js e a fonte canonica. O artefato versionado nunca e editado a mao.
+& $buildScript -Version $ver
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bundlePath)) {
+  Fail "Build do Worker falhou ou nao gerou $bundlePath"
+}
 
 $sizeKB = [math]::Round((Get-Item $bundlePath).Length / 1KB)
 Write-Host "Bundle: $bundle ($sizeKB KB)" -ForegroundColor Cyan
@@ -148,7 +155,7 @@ try {
   # Sem -f: api/v4.*.js saiu do .gitignore, o bundle e rastreado normalmente.
   # CLAUDE.md/README.md entram so se sync-version-docs.ps1 os alterou; git add
   # em arquivo sem mudanca nao staga nada.
-  git add "api/$bundle" "api/wrangler.toml" "CLAUDE.md" "README.md"
+  git add "api/$bundle" "api/src/worker.js" "api/wrangler.toml" "scripts/build-worker.ps1" "scripts/deploy-worker.ps1" "CLAUDE.md" "README.md"
   if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
 
   $staged = git diff --cached --name-only

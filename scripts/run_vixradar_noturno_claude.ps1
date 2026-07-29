@@ -1,5 +1,7 @@
 ﻿# run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
 $ErrorActionPreference = 'Stop'
+# PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
+
 # Sem isso, stdout do binario nativo 'claude' pode ser decodificado com o codepage ANSI/OEM
 # em vez de UTF-8 quando o processo roda sem console interativo (scheduled task) - corrompe
 # nomes de emissores acentuados (ex.: "Raizen"->"Ra┬íen") e quebra o match em Get-ResultadoEmissor,
@@ -33,15 +35,24 @@ $HaikuChunk     = 15
 $SonnetChunk    = 11
 $PauseSec       = 2
 
+New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
+
+# PIPE1 (2026-07-28): Write-Host sob -WindowStyle Hidden do Task Scheduler quebrava o pipe do
+# console apos ~28 min de execucao (ERROR_PIPE_NOT_CONNECTED 0xE9). Esta funcao absorve o crash
+# silenciosamente — o log em arquivo (Write-Log) ja registrou a linha; a perda no console e
+# irrelevante em execucao agendada.
+function Write-Safe([string]$msg) {
+    try { Write-Host $msg } catch { }
+}
+
 # v4.9.151: Start-Transcript captura TODO o output do script (stdout+stderr do processo),
 # incluindo crashes que o try/catch nao alcanca (ex.: claude.exe matando o processo pai).
 # Sem isso, 5 reinicios em 09/07 ficaram sem diagnostico (stderr vazio).
 $TranscriptFile = Join-Path $LogDir ('noturno_transcript_' + $DateTag + '_' + $PID + '.txt')
 try { Start-Transcript -Path $TranscriptFile -Append -Force -ErrorAction Stop } catch {
-    Write-Host "AVISO: Start-Transcript falhou ($($_.Exception.Message)) - continuando sem transcript"
+    Write-Safe "AVISO: Start-Transcript falhou ($($_.Exception.Message)) - continuando sem transcript"
 }
 
-New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 # --mcp-config recebia JSON inline ('{"mcpServers":{}}') - em execucao agendada (scheduled task,
 # possivelmente via powershell.exe 5.1 em vez de pwsh) as aspas embutidas eram perdidas na
 # serializacao do argumento nativo, chegando ao claude.exe como {mcpServers:{}} sem aspas -> CLI
@@ -53,7 +64,7 @@ Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
-    Write-Host $line
+    Write-Safe $line
     # Retry com backoff: incidente 2026-07-17 - segunda instancia pendurada segurou o handle do
     # log por ~2h e TODAS as escritas desta funcao falharam ("arquivo em uso"), cegando a
     # auditoria da rotina que rodou com sucesso. Reincidencia sustentada 2026-07-18 (LOGLOCK1-REC,
@@ -68,8 +79,8 @@ function Write-Log([string]$msg) {
         } catch {
             if ($i -eq 8) {
                 $fallbackFile = ([regex]::Replace($LogFile, '\.log$', "_fallback_$pid.log"))
-                Write-Host "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
-                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Host "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
+                Write-Safe "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
+                try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Safe "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
             }
             else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
         }
@@ -112,14 +123,14 @@ function Get-AnthropicApiKey {
     # Funcao preservada para retorno futuro a pay-per-token. Para reativar:
     #   1. Descomentar as 2 linhas em Invoke-ClaudeBatch (todos os 3 scripts)
     #   2. Remover o `if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }`
-    #   3. Setar chave: [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY','sk-ant-...','User')
+    #   3. Setar chave: [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY','<configure-no-ambiente>','User')
     # Chave em https://console.anthropic.com/settings/keys
     if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
     # Fallback: Task Scheduler/sessao nao-interativa pode nao popular $env: automaticamente
     # do registry User. Leitura direta do hive resolve.
     $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
     if ($fromRegistry) { return $fromRegistry }
-    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
+    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''<configure-no-ambiente>'',''User'')'
     return $null
 }
 
@@ -745,11 +756,11 @@ try {
 } catch {
     $errMsg = 'ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message
     $stackMsg = 'STACK: ' + $_.Exception.StackTrace
-    Write-Host $errMsg
-    Write-Host $stackMsg
+    Write-Safe $errMsg
+    Write-Safe $stackMsg
     if ($_.Exception.InnerException) {
         $innerMsg = 'INNER: ' + $_.Exception.InnerException.Message
-        Write-Host $innerMsg
+        Write-Safe $innerMsg
     }
     # Gravar no log via caminho seguro (sem Write-Log que pode falhar e mascarar o erro)
     try { Add-Content -Path $LogFile -Value ((Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $errMsg) -Encoding UTF8 -ErrorAction Stop } catch {}
