@@ -1,0 +1,8 @@
+# Fonte e artefato do Worker publicados com no_bundle=true.
+# O Wrangler envia os bytes como estao, entao o SHA-256 do arquivo precisa bater
+# com o do modulo lido em /workers/scripts/radar-credito-api/content/v2.
+# Sem -text o git normaliza CRLF para LF na gravacao e o hash deixa de bater
+# fora do Windows. Escopo restrito de proposito, os bundles antigos ja estao
+# gravados com LF e nao devem ser reescritos.
+/api/src/worker.js -text
+/api/v4.9.183.js  -text

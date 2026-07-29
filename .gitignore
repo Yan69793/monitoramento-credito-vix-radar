@@ -224,6 +224,10 @@ tmp_in.json
 untracked-auditoria.txt
 
 src/
+# api/src/ e a fonte canonica do Worker e precisa ser versionada.
+# A regra src/ acima e generica e casa qualquer diretorio src em qualquer nivel.
+!api/src/
+!api/src/**
 Obsidian VIX Radar/Sem t*.canvas
 
 
