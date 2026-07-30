@@ -1,12 +1,14 @@
 ---
-data: 2026-07-27
+data: 2026-07-30
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
-status: ativo
+status: degradado
 ---
 
 # Estado Atual — VIX Radar
 
+> [!warning] 30/07 16h30 — **Worker ok:false, verificador_ok:false. Rotinas Claude paradas desde 29/07 10:00 por bug de OAuth no Task Scheduler.** Causa raiz encontrada e corrigida. Reprocessamento pendente.
+> [!success] 28/07 23h33 — **Deploy v4.9.183 + v201.93.** Build deterministico, Merton/Selic corrigidos, CI fail-closed. Dia 28 totalmente operacional: matinal 14 submites (4 criticos), noturno 93 emissores, verificador async 2x (fila zerada, 1.5M tokens).
 > [!success] 27/07 19h57 — **Worker v4.9.182 no ar. As duas guardas do ADMIN_EMAIL aplicadas.** (1) SECRETMISS1: `ADMIN_EMAIL` entra na condicao `_okHealth` e vira o campo publico `admin_email_ok`, validando formato e nao so presenca. Secret obrigatorio ausente passa a derrubar `ok:false` em vez de degradar em silencio, e como o `deploy-worker.ps1` aborta em `ok:false`, tambem trava deploy. Health pos-deploy: `ok:true`, `versao:v4.9.182`, `admin_email_ok:true`, 0,79s. Push `bce5ddc`. (2) `apply-security-rotation.ps1` ganhou o passo `[7/8]`, que roda `wrangler secret list` e aborta se faltar qualquer um dos 5 secrets obrigatorios, avisando sobre os 7 recomendados. Testado contra a saida real (19 secrets) e contra a ausencia simulada do `ADMIN_EMAIL`. Limite conhecido: nenhuma das duas vigia sozinha, dependem de alguem rodar o script ou ler o health. Detalhe: [[PENDENCIAS.md]].
 > [!success] 27/07 18h01 — **Secret `ADMIN_EMAIL` restaurado. E-mail ao admin estava morto desde 24/07.** O commit `dfa6854` (rotacao Etapa 1) removeu `ADMIN_EMAIL` do `[vars]` do wrangler.toml e o secret nunca foi criado no Cloudflare. Como `var ADMIN_EMAIL = ""` nao tem valor reserva, todo e-mail ao admin lancava `"Sem destinatarios."` (telemetria confirma no cadastro de 25/07) e nenhum login recebia `role: "admin"` no JWT. O painel de aprovacao nao foi afetado porque autentica por `ADMIN_PASSWORD`, e foi por isso que passou 3 dias despercebido. Mesma raiz do drift do ADMIN_PASSWORD no GitHub Actions: a rotacao de 24/07 nao tem verificacao pos-fato de que cada destino ficou consistente. WhatsApp nunca falhou, 4 envios HTTP 201 em 30 dias. As duas guardas que faltavam foram aplicadas as 19h57, ver o callout acima.
 > [!warning] 27/07 12h09 — **Auditoria de rotinas: AgendaSemanal 03:00 exit=1, Matinal 10:00 exit=1. Ambas falharam ao invocar `claude -p`. Probe 12:09 mostra CLI funcional — bloqueio foi transitorio.** 3 tasks recriadas (Reconciliacao-CVM, Coleta-Volatilidade, Export-Historico). Worker saudavel. Risco imediato: Noturno 18:00 repetir falha. Detalhe: [[03 - Estado Atual#Diagnostico 27-07 12h09|Diagnostico 27/07 12h09]].
@@ -21,13 +23,53 @@ status: ativo
 > [!success] 23/07 10h15 — **Boletim diario reativado** (`RELATORIO_DIARIO_ENABLED` + `EMAIL_ALERTAS_ENABLED` no `[vars]`).
 > [!info] 23/07 08h30 — Dashboard com eventos ate 21/07 naquele momento era ausencia de noticias novas, nao falha de ingestao (revalidar se o painel parecer “parado”).
 
+## Diagnostico 30/07 16h30 — Rotinas Claude paradas por OAuth expirado no Task Scheduler
+
+**Causa raiz:** Tres scripts (`run_vixradar_matinal_claude.ps1`, `run_vixradar_noturno_claude.ps1`, `run_vixradar_verificacao_async.ps1`) apagavam `$env:ANTHROPIC_API_KEY` antes de invocar `claude -p`, forcando autenticacao OAuth. No Task Scheduler nao existe sessao interativa do desktop app — o token OAuth expira em ~24h e as rotinas morrem com exit 1 (stderr vazio) ou 0x40010004 (NativeCommandError). Padrao identico ao incidente de 27/07, mas a causa e diferente (nao era DeepSeek no settings.json).
+
+**Correcao aplicada 30/07 ~16h30:** Descomentadas as 2 linhas que injetam `$env:ANTHROPIC_API_KEY` via `Get-AnthropicApiKey` (busca env var → registry User) e comentada a linha que nullificava. Pay-per-token restaurado, autenticacao passa a funcionar sem OAuth. Scripts alterados: matinal (linha 351-356), noturno (271-276), verificacao async (124-128). Sintaxe validada nos 3.
+
+**O que ainda precisa acontecer:** Reprocessar a matinal de hoje (30/07, perdeu o disparo das 10:00) e o noturno de ontem (29/07, processou so 15 de ~93 emissores). O verificador async tambem nao rodou desde 28/07 10:38. A fila `radar:verif_fila:*` acumulou itens do noturno 29/07 (lote haiku-1, 15 emissores) e esta >12h stale, causando `verificador_ok:false`.
+
+## Operacao 28/07 — Ultimo dia totalmente operacional
+
+| Metrica | Valor |
+|---|---|
+| Worker | v4.9.182 (madrugada) / v4.9.183 (noite, deploy 23h33) |
+| Frontend | v201.93 (deploy 21h53) |
+| Matinal 28/07 10:00 | submit_ok=14, skip_ok=4, submit_fail=0, auth_fail=0, silent_fail=0, 165.672 tokens, 4 criticos (Oi, Raizen, Cosan, Rumo), 873s |
+| Noturno 28/07 02:44 | 93 emissores processados (10 skip, ~83 analisados), 1 critico (Rumo — Moody's Ba3), metrics: submit_ok=0, skip_ok=10 |
+| Verificador async 28/07 03:19 (pos-noturno) | Fila 8, aprovados 6, rejeitados 2, 581k tokens, shadow Fable 5: 1 comparacao, concordou |
+| Verificador async 28/07 10:14 (pos-matinal) | Fila 17, aprovados 11, rejeitados 6, 949k tokens, shadow Fable 5: 3 comparacoes, 1 divergencia (fable_aprovou=0), teto 300k atingido |
+| Noturno 28/07 18:00 (fallback) | Idempotente: tudo skip, 808 bytes de log |
+| Coleta Volatilidade 28/07 17:01 | Log existe (284 bytes) |
+| Export Historico 28/07 20:31 e 20:46 | Dois disparos, ambos com log |
+
+## Operacao 29/07 — Inicio da falha em cascata
+
+| Metrica | Valor |
+|---|---|
+| Matinal 29/07 10:00 | **FALHOU**: exit 0x1, log truncado com 9 linhas, morreu no lote sonnet-1, stderr 0 bytes |
+| Coleta Volatilidade 29/07 17:00 | **FALHOU**: exit 0x1, log existe (414 bytes) mas Task Scheduler reporta falha |
+| Noturno 29/07 18:00 | **FALHOU**: processou lote haiku-1 (15/15, 54k tokens, 0 criticos), morreu no haiku-2, exit 0x40010004. Stderr: “claude.ai connectors are disabled because ANTHROPIC_API_KEY or another auth source is set” + NativeCommandError |
+| Verificador async 29/07 | **NAO RODOU** — sem log |
+
+## Operacao 30/07 — Falha continua (ate a correcao)
+
+| Metrica | Valor |
+|---|---|
+| Export Historico 30/07 01:46 | **FALHOU**: exit 0x1 |
+| Monitor-Tasks 30/07 07:00 | 8 erros detectados (4 VIX Radar + 3 Szuchmacher + 1 PME), exit 0x8. AgendaSemanal classificado incorretamente como “Credit balance too low” (bug P2 de 27/07 ativo) |
+| Matinal 30/07 10:00 | **FALHOU**: exit 0x1, mesmo padrao — log com 9 linhas, morreu no lote sonnet-1, stderr 0 bytes |
+| Health 30/07 16:22 | ok:false, verificador_ok:false (fila >12h ou quarentena no KV). Bindings saudaveis, admin_email_ok:true, providers 2/2 |
+
 ## Versoes
 
 | Componente | Versao | Health |
 |---|---|---|
-| Worker | **v4.9.182** | `ok:true`, kv/rate_limiter/telemetria true, `admin_email_ok:true`, `verificador_ok:true`, providers 2/2 |
-| Frontend | **v201.92** | `version.json` deployed_at 2026-07-27T15:43:21Z (12h43 BRT). Vault declarava v201.88 ate 20h; drift pego pelo `check-vault-drift.ps1`. O que mudou de v201.89 a v201.92 nao esta registrado em lugar nenhum do vault |
-| Git | v4.9.182 | main sincronizado com o GitHub pelo deploy (`bce5ddc`, push ok). Working tree ainda sujo: guarda da rotacao, 2 workflows e shadow Fable 5 sem commit |
+| Worker | **v4.9.183** | `ok:false`, kv/rate_limiter/telemetria true, `admin_email_ok:true`, `verificador_ok:false`, providers 2/2. ok:false causado por verificador_ok:false (fila de verificacao >12h stale ou entrada de quarentena no KV). Bindings saudaveis. |
+| Frontend | **v201.93** | `version.json` deployed_at 2026-07-28T21:53:12Z. Deploy junto com v4.9.183 no commit `12f2490`. |
+| Git | v4.9.183 | main no commit `12f2490` (28/07). Working tree sujo: correcoes dos 3 scripts (OAuth→pay-per-token), skill files novos, volatilidade. PR #18 aberta. |
 
 ## Cobertura
 
@@ -46,19 +88,17 @@ status: ativo
 | Criticos noturno 25/07 | Aegea Saneamento, Kora Saude, Oi, Oncoclinicas, Raizen |
 | Criticos noturno 24/07 | CSN, Kora Saude, Oi, Oncoclinicas, Pao de Acucar (GPA), Raizen |
 
-## Tasks Scheduler (estado real em 27/07 13h30 BRT, releitura direta da maquina)
+## Tasks Scheduler (estado real em 30/07 16h30 BRT)
 
 | Task | Estado | LastRunTime (Scheduler) | Resultado | Proxima | Situacao |
 |---|---|---|---|---|---|
-| VIXRadar-Noturno | Ready | 26/07 18:00 | 0x0 (ok) | 27/07 18:00 | Teste real da correcao de roteamento em escala |
-| VIXRadar-Matinal | Ready | 27/07 10:00 | 0x1 (falha) | 28/07 10:00 | Falhou as 10:00 ao invocar `claude -p`. Reexecutada manualmente 27/07 13:17, passou do ponto de morte |
-| VIXRadar-AgendaSemanal | Ready | 27/07 03:00 | 0x1 (falha) | 27/07 22:00 | Log com 2 linhas, morreu ao invocar `claude -p`. Gatilho movido de seg 03h00 para seg 22h00 em 12h50 (`b6c8312`) |
-| VIXRadar-Coleta-Volatilidade | Ready | nunca (1999) | 0x41303 | 27/07 17:00 | RECRIADA 27/07 12:23:51. Script corrigido: `pwsh` -> `powershell.exe` |
-| VIXRadar-Export-Historico | Ready | nunca (1999) | 0x41303 | 27/07 20:45 | RECRIADA 27/07 12:23:58 |
-| VIXRadar-Reconciliacao-CVM | Ready | nunca (1999) | 0x41303 | 03/08 08:00 | RECRIADA 27/07 12:24:08. Gatilho e seg 08h00, nao 12h32 |
-| Monitor-Tasks | Ready | 27/07 07:00 | 0x7 | 28/07 07:00 | Existe e funciona. `0x7` e a **contagem de erros achados**, nao codigo de falha |
-| VIXRadar-Verificacao-Async | nao e task | 26/07 18:53 | exit 0 | inline | Executa inline pos-noturno e pos-matinal. Nunca foi registrada |
-| VIXRadar-Ranking-Mensal | nao existe | nunca | N/A | nenhuma | Confirmado ausente na listagem completa da raiz. Decisao pendente (P3) |
+| VIXRadar-Noturno | Ready | 29/07 18:00 | 0x40010004 (excecao) | 30/07 18:00 | Processou 15/93 emissores, morreu no lote haiku-2. Correcao aplicada, aguardando disparo das 18:00 |
+| VIXRadar-Matinal | Ready | 30/07 10:00 | 0x1 (falha) | 31/07 10:00 | Falhou hoje. Correcao aplicada. [Acao] Reprocessar manualmente |
+| VIXRadar-AgendaSemanal | Ready | 27/07 22:00 | 0x1 (falha) | 03/08 22:00 | Falhou 27/07. Monitor-Tasks classifica como "Credit balance too low" (bug P2 — regra hardcoded, nao le stderr) |
+| VIXRadar-Coleta-Volatilidade | Ready | 29/07 17:00 | 0x1 (falha) | 30/07 17:00 | Falhou 29/07. Script nao usa claude -p, falha por outro motivo |
+| VIXRadar-Export-Historico | Ready | 30/07 01:46 | 0x1 (falha) | 30/07 20:45 | Falhou hoje. Script nao usa claude -p |
+| VIXRadar-Reconciliacao-CVM | Ready | nunca (1999) | 0x41303 | 03/08 08:00 | Nunca rodou desde a recriacao em 27/07 |
+| Monitor-Tasks | Ready | 30/07 07:00 | 0x8 (8 erros) | 31/07 07:00 | Funcionando. Detectou os 4 erros VIX Radar + 3 Szuchmacher + 1 PME |
 
 **Leia a coluna LastRunTime com cuidado.** Para as 3 tasks recriadas o Scheduler reporta
 30/11/1999 e `0x41303` (SCHED_S_TASK_HAS_NOT_RUN) porque **re-registrar zera o historico da
@@ -77,7 +117,7 @@ que e reescrito a cada registro. Nao e estimativa.
 | RATE_LIMITER_DO | ok (health 27/07: rate_limiter:true) |
 | RADAR_USAGE_EVENTS | ok (health 27/07: telemetria:true) |
 | ESTADO_SEMANA_DO | declarado no `wrangler.toml` + usado no bundle (nao exposto no health publico) |
-| Providers | 2/2 (Resend + Anthropic); probes OpenRouter removidos do health (OPENROUTERVIVO) |
+| Providers | 2/2 (Resend + Anthropic); OpenRouter probes removidos do health (OPENROUTERVIVO). **ANTHROPIC_API_KEY ativa (35 chars, confirmada no ambiente), mas scripts apagavam antes do claude -p — corrigido 30/07.** |
 
 ## Pendencias ativas (topo)
 
@@ -87,7 +127,7 @@ Ver [[PENDENCIAS.md]]. **Fila aberta: 10 itens acionaveis** (2 P1, 5 P2, 2 P3, 1
 
 Apos cada noturna (ou evento de producao significativo), verificar:
 
-- [x] `03 - Estado Atual.md` — atualizado 27/07 13h30 (releitura do Scheduler)
+- [x] `03 - Estado Atual.md` — atualizado 30/07 16h30 (diagnostico + correcao OAuth→pay-per-token + dados 28-30/07)
 - [ ] `03a - Changelog.md` — atualizar com noturnos 25 e 26/07
 - [x] `03b - Infraestrutura.md` — tabela de gatilhos refeita 27/07 13h30 a partir do Scheduler
 - [x] `00 - Indice (MOC).md` — pendente atualizar com dados deste diagnostico
@@ -203,7 +243,4 @@ em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 
 ---
 
-*Snapshot gerado em 2026-07-27 12h09 BRT (auditoria completa, pos-falha Matinal), revisado em
-13h30 BRT com releitura direta do Scheduler: carimbos de recriacao corrigidos, hipotese de
-quota/OAuth descartada e substituida pela causa raiz confirmada, tabela de tasks refeita.
-Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-07-30 16h30 BRT (auditoria geral + diagnostico de falha em cascata + correcao OAuth→pay-per-token). Dias 28-30/07 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*

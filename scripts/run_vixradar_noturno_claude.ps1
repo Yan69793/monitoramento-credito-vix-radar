@@ -268,12 +268,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         $OutputEncoding = [System.Text.Encoding]::UTF8
         # v4.9.150: usar API key (pay-per-token) elimina limite semanal da assinatura.
         # Se nao tiver ANTHROPIC_API_KEY, claude -p usa assinatura normalmente (fallback).
-        # v4.9.152: assinatura Claude Code (sem pay-per-token). Remove ANTHROPIC_API_KEY do ambiente
-        # do processo filho para forcar fallback a assinatura OAuth. Get-AnthropicApiKey permanece
-        # no codigo para eventual retorno a pay-per-token (descomentar 2 linhas abaixo).
-        # $apiKey = Get-AnthropicApiKey
-        # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
-        if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
+        # v4.9.152→v4.9.184: restaurado pay-per-token. OAuth expira em 24h e o Task Scheduler
+        # nao tem sessao interativa para renovar, derrubando toda rotina apos 1 dia (incidente 29-30/07).
+        # Get-AnthropicApiKey busca na env var, depois no registry (User), e falha logando aviso.
+        $apiKey = Get-AnthropicApiKey
+        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+        # if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
         # RETRY1 (2026-07-27): retry com backoff + fallback Haiku na ultima tentativa.
         # DeepSeek API (ANTHROPIC_BASE_URL) congestiona em horario de pico Chines (03:00-10:00 BRT),
         # causando exit=1 silencioso sem stderr. Backoff progressivo (0s/30s/60s) fura rate-limit

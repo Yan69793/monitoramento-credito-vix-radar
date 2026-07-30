@@ -122,10 +122,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         $OutputEncoding = [System.Text.Encoding]::UTF8
         # v4.9.152: assinatura Claude Code (sem pay-per-token). Remove ANTHROPIC_API_KEY do ambiente
         # do processo filho para forcar fallback a assinatura OAuth. Get-AnthropicApiKey permanece
-        # no codigo para eventual retorno a pay-per-token (descomentar 2 linhas abaixo).
-        # $apiKey = Get-AnthropicApiKey
-        # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
-        if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
+        # v4.9.152→v4.9.184: restaurado pay-per-token. OAuth expira em 24h e o Task Scheduler
+        # nao tem sessao interativa para renovar. Get-AnthropicApiKey busca na env var, depois
+        # no registry (User), e falha logando aviso.
+        $apiKey = Get-AnthropicApiKey
+        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+        # if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `

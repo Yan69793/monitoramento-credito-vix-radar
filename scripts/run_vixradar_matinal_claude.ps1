@@ -348,12 +348,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
-    # v4.9.152: assinatura Claude Code (sem pay-per-token). Remove ANTHROPIC_API_KEY do ambiente
-    # do processo filho para forcar fallback a assinatura OAuth. Get-AnthropicApiKey permanece
-    # no codigo para eventual retorno a pay-per-token (descomentar 2 linhas abaixo).
-    # $apiKey = Get-AnthropicApiKey
-    # if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
-    if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
+    # v4.9.152→v4.9.184: restaurado pay-per-token. OAuth expira em 24h e o Task Scheduler
+    # nao tem sessao interativa para renovar, derrubando toda rotina apos 1 dia (incidente 29-30/07).
+    # Get-AnthropicApiKey busca na env var, depois no registry (User), e falha logando aviso.
+    $apiKey = Get-AnthropicApiKey
+    if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
+    # if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
     # --output-format json (v4.9.155): extrai envelope JSON do claude -p para capturar tokens
     # reais (input+output+cache) em vez do Parse-TokensFromOutput que sempre retornava 0 com
     # --output-format text. Mesmo padrao do run_vixradar_verificacao_async.ps1. stderr vai
