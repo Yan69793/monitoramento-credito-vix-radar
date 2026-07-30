@@ -78,11 +78,30 @@ maquina herdava, incluindo Task Scheduler e o app desktop, cada um resolvendo de
 **Guarda:** provedor fixado dentro do script, nunca herdado. Configuracao de provedor barato
 fica por projeto, nunca em `HKCU:\Environment`.
 
+## Verificacao de 30/07 22h (pos-correcao)
+
+O teste que expos o problema foi refeito lendo o campo `model` da resposta HTTP:
+
+```
+PEDIDO: claude-haiku-4-5-20251001  ->  SERVIDOR DEVOLVEU model=claude-haiku-4-5-20251001
+PEDIDO: claude-sonnet-4-6          ->  SERVIDOR DEVOLVEU model=claude-sonnet-4-6
+```
+
+`HKCU:\Environment` nao tem mais nenhuma variavel `ANTHROPIC_*` nem override de modelo.
+Restaram `DEEPSEEK_API_KEY` e `DEEPSEEK_BASE_URL`, que nao roteiam nada sozinhas.
+`~/.claude/settings.json` sem bloco `env` e sem chave `model`.
+
+`claude -p --model claude-sonnet-4-6` em `powershell.exe -NoProfile -NonInteractive`, que
+e a condicao do Task Scheduler, retornou exit 0 em 4,1s com custo calculado em tabela
+Anthropic e `service_tier: standard`. Correcao commitada em `4615b58`.
+
 ## Pendencias
 
-- [ ] **P0.** Definir `VIXRADAR_ANTHROPIC_API_KEY`. Sem ela a matinal de 31/07 as 10:00 falha.
-      As rotinas agora falham alto em vez de rodar com provedor errado.
+- [x] **P0.** ~~Definir `VIXRADAR_ANTHROPIC_API_KEY`~~. Definida, prefixo `sk-ant-api03`,
+      validada contra a API real em 30/07 22h. A matinal de 31/07 as 10:00 tem chave.
 - [ ] **P0.** Rotacionar a chave Anthropic exposta em transcricao de sessao em 30/07.
+      **Nao verificavel daqui:** a chave configurada tem formato correto e funciona, mas
+      nao da para saber se e a nova ou a exposta. Confirmar no console da Anthropic.
 - [ ] **P1.** Rotacionar a chave DeepSeek, tambem exposta em 30/07.
 - [ ] **P1.** Decidir o reprocessamento do noturno de 30/07 e de quaisquer datas contaminadas.
 - [ ] **P2.** `Jornada Interior/.claude/settings.local.json` perdeu a chave que herdava do
