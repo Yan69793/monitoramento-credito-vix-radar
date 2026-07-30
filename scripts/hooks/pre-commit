@@ -6,6 +6,12 @@
 # termina string. O lint-encoding.ps1 ja existia desde 2026-07-16 e teria pego o caso,
 # mas nao estava ligado a gatilho nenhum. Este hook e o gatilho que faltava.
 #
+# 2026-07-30: o hook lintava o arquivo do WORKING TREE, nao o conteudo em staging.
+# Com staging por hunk os dois divergem, e foi assim que upload_volatilidade_kv.ps1
+# entrou sem BOM em 12f2490 (28/07) com o hook ativo e o arquivo em disco correto.
+# O parse morria na linha 30 col 49 e derrubou a Coleta-Volatilidade de 30/07.
+# Agora materializa o blob do indice e linta a copia, que e o que de fato vira commit.
+#
 # Instalar (uma vez; .git/hooks e compartilhado com os worktrees):
 #   powershell.exe -NoProfile -File scripts/install-hooks.ps1
 #
@@ -17,16 +23,42 @@ STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '\.ps1$' || 
 LINTER="scripts/lint-encoding.ps1"
 [ -f "$LINTER" ] || exit 0
 
-# Caminhos relativos a raiz do repo, que e o cwd de um hook do git. Evita traduzir
-# caminho MSYS (/c/...) para Windows, que o powershell.exe nao entende.
-LISTA=$(echo "$STAGED" | tr '\n' ',' | sed 's/,$//')
+# Copia dentro do repo, nunca em /tmp: caminho MSYS (/c/...) nao e entendido pelo
+# powershell.exe. O cwd de um hook e a raiz do repo, entao caminho relativo resolve.
+STAGEDIR=".git/lint-staged"
+rm -rf "$STAGEDIR"
+
+LISTA=""
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    mkdir -p "$STAGEDIR/$(dirname "$f")" || continue
+    git cat-file blob ":$f" > "$STAGEDIR/$f" 2>/dev/null || continue
+    if [ -z "$LISTA" ]; then
+        LISTA="$STAGEDIR/$f"
+    else
+        LISTA="$LISTA,$STAGEDIR/$f"
+    fi
+done <<STAGED_EOF
+$STAGED
+STAGED_EOF
+
+if [ -z "$LISTA" ]; then
+    rm -rf "$STAGEDIR"
+    exit 0
+fi
 
 if ! powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$LINTER" -Path "$LISTA"; then
+    rm -rf "$STAGEDIR"
     echo ""
     echo "COMMIT BLOQUEADO: .ps1 acima nao passa no parser do powershell.exe 5.1."
+    echo "Os caminhos exibidos sao copias do conteudo EM STAGING. O arquivo real e o"
+    echo "mesmo caminho sem o prefixo $STAGEDIR/."
     echo "  Encoding (nao-ASCII sem BOM): powershell.exe -NoProfile -File scripts/lint-encoding.ps1 -Fix"
+    echo "  Depois do -Fix, 'git add' de novo e obrigatorio: sem isso o indice mantem o blob velho"
+    echo "  e o commit continua reprovando, porque o que vale aqui e o staging, nao o disco."
     echo "  Sintaxe PS 6/7 (ternario, ??, ?., -MaximumRetryCount): reescrever para 5.1, -Fix nao resolve."
     exit 1
 fi
 
+rm -rf "$STAGEDIR"
 exit 0

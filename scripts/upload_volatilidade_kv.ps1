@@ -1,4 +1,4 @@
-# upload_volatilidade_kv.ps1 - publica volatilidade e Selic efetiva no KV do Worker.
+﻿# upload_volatilidade_kv.ps1 - publica volatilidade e Selic efetiva no KV do Worker.
 [CmdletBinding()]
 param(
     [string]$AdminSenha = $null,

@@ -35,6 +35,9 @@ $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 $ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $ApiDir      = Join-Path $ProjectRoot 'api'
 $NamespaceId = 'c6805b8d8a7b468e9f854ab4f91fb93a'   # RADAR_KV (api/wrangler.toml)
+# Marca 401/403 vindo da API. Declarado aqui e nao so dentro de Get-KvValue para o script
+# seguir correto caso alguem adicione Set-StrictMode depois.
+$script:KvAuthFalhou = $false
 $HealthUrl   = 'https://radar-credito-api.prospects-intel.workers.dev'
 $LogDir      = Join-Path $ProjectRoot 'logs\routines'
 
@@ -91,8 +94,23 @@ function Get-KvValue([string]$Key) {
         Pop-Location
         if ($code -ne 0 -or [string]::IsNullOrWhiteSpace($raw)) {
             $errHead = ''
-            if (Test-Path $stderrFile) { $errHead = ((Get-Content $stderrFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' | ') }
+            $errFull = ''
+            if (Test-Path $stderrFile) {
+                $errHead = ((Get-Content $stderrFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' | ')
+                # Casar o padrao no arquivo inteiro, nao no $errHead. O PS 5.1 quebra o stderr
+                # nativo na largura do console, e o '- 401: Unauthorized' do wrangler cai na
+                # terceira linha, fora das duas que vao para o log.
+                $errFull = (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)
+            }
             Write-Log ("  kvget '{0}': exit={1}, len={2}, stderr: {3}" -f $Key, $code, ([string]$raw).Trim().Length, $errHead)
+            # 2026-07-30: em 30/07 01:46 esta funcao devolveu $null por 401 Unauthorized e o
+            # chamador acusou "pipeline nao rodou?", mandando o diagnostico para o lado errado.
+            # Falha de credencial e falha de dado exigem acoes opostas, entao separam-se aqui.
+            if ($errFull -match '\b401\b|\b403\b|Unauthorized|Forbidden|Authentication') {
+                $script:KvAuthFalhou = $true
+                Write-Log '  CAUSA: credencial recusada pela API (401/403). Nao e ausencia de dado no KV.'
+                Write-Log '  Verificar CLOUDFLARE_API_TOKEN: precisa da permissao Workers KV Storage na conta.'
+            }
             return $null
         }
         # wrangler pode prefixar banner - extrair do primeiro delimitador JSON em diante
@@ -136,7 +154,15 @@ try {
         if (-not $npx) { Write-Log 'ERRO: npx ausente no PATH'; exit 1 }
 
         $predRaw = Get-KvValue 'predictive_v1:latest'
-        if (-not $predRaw) { Write-Log 'ERRO: predictive_v1:latest ausente/ilegivel no KV - sem base para o dump (pipeline nao rodou?)'; exit 1 }
+        if (-not $predRaw) {
+            if ($script:KvAuthFalhou) {
+                Write-Log 'ERRO: sem acesso ao KV (credencial recusada). O dado pode existir - nao concluir que o pipeline falhou.'
+                Write-Log 'ACAO: conceder Workers KV Storage ao CLOUDFLARE_API_TOKEN e reexecutar.'
+            } else {
+                Write-Log 'ERRO: predictive_v1:latest ausente/ilegivel no KV - sem base para o dump (pipeline nao rodou?)'
+            }
+            exit 1
+        }
 
         $zscoresRaw = Get-KvValue 'anbima:zscores'
         if (-not $zscoresRaw) { $erros += 'anbima:zscores ausente (TTL 7d vencido ou sync nao rodou)'; Write-Log 'AVISO: anbima:zscores ausente' }
