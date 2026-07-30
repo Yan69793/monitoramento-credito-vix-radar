@@ -33,6 +33,16 @@ $zipDir  = Join-Path $appDir "deploy_zip"
 $indexSrc = Join-Path $appDir "index.html"
 
 function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
+function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
+
+# Compara duas versoes de frontend (vNNN.MMM). Retorna -1, 0 ou 1.
+function Compare-FrontendVersion($a, $b) {
+  $na = [int]($a -replace '^v', '' -replace '\.', '')
+  $nb = [int]($b -replace '^v', '' -replace '\.', '')
+  if ($na -lt $nb) { return -1 }
+  if ($na -gt $nb) { return 1 }
+  return 0
+}
 
 # --- 0. Pre-requisitos ----------------------------------------------------
 if (-not $env:CLOUDFLARE_API_TOKEN) {
@@ -43,12 +53,59 @@ if (-not $env:CLOUDFLARE_ACCOUNT_ID) {
 }
 if (-not (Test-Path $indexSrc)) { Fail "Nao achei $indexSrc" }
 
+# --- 0.1 GATE ANTI-REGRESSAO: versao em producao ---------------------------
+try {
+  $prodVerJson = Invoke-RestMethod -Uri "https://vixradar.com/version.json?_=$(Get-Date -Format 'yyyyMMddHHmmss')" -TimeoutSec 10 -Headers @{ "Cache-Control"="no-cache" }
+  $prodVersion = $prodVerJson.version
+  if ($prodVersion) {
+    # So compara depois de extrair CACHE_VERSION do index.html (passo 1),
+    # porque precisamos da versao local para comparar.
+    $script:prodVersion = $prodVersion
+    Write-Host "Gate pre-deploy: producao reporta $prodVersion" -ForegroundColor DarkGray
+  }
+} catch {
+  Warn "Falha ao consultar version.json de producao: $_. Prosseguindo sem o gate anti-regressao."
+  $script:prodVersion = $null
+}
+
+# --- 0.2 GATE WORKING TREE: sem alteracoes nao commitadas ------------------
+$trackedFiles = @(
+  "app/index.html",
+  "app/version.json",
+  "app/deploy_zip/index.html",
+  "app/deploy_zip/version.json",
+  "scripts/deploy-pages.ps1"
+)
+$dirty = git diff --name-only -- $trackedFiles 2>$null
+if ($dirty) {
+  $dirtyList = ($dirty | ForEach-Object { "  $_" }) -join "`n"
+  Fail "Working tree sujo nos arquivos do deploy. Faça commit ou stash antes de deployar:`n$dirtyList"
+}
+$stagedDirty = git diff --cached --name-only -- $trackedFiles 2>$null
+if ($stagedDirty) {
+  $stagedList = ($stagedDirty | ForEach-Object { "  $_" }) -join "`n"
+  Fail "Arquivos staged mas nao commitados. Commit ou unstage antes de deployar:`n$stagedList"
+}
+Write-Host "Gate working tree: limpo" -ForegroundColor Green
+
 # --- 1. CACHE_VERSION ------------------------------------------------------
 $html = Get-Content $indexSrc -Raw
 $m = [regex]::Match($html, 'CACHE_VERSION\s*=\s*"(v[0-9.]+)"')
 if (-not $m.Success) { Fail "Nao encontrei CACHE_VERSION em index.html" }
 $ver = $m.Groups[1].Value
 Write-Host "CACHE_VERSION detectada: $ver" -ForegroundColor Cyan
+
+# --- 1.5 Gate anti-regressao (compara com producao) -----------------------
+if ($script:prodVersion) {
+  $cmp = Compare-FrontendVersion $ver $script:prodVersion
+  if ($cmp -lt 0) {
+    Fail "PRODUCAO ESTA A FRENTE DO REPO. Producao=$($script:prodVersion), voce esta tentando deployar $ver. Recupere o bundle de producao, commite e so entao faca novo deploy. NAO deploye — regrediria producao."
+  }
+  if ($cmp -eq 0) {
+    Warn "Producao ja esta em $($script:prodVersion) — deploy e no-op. Use -SkipValidation se for re-deploy intencional."
+  }
+  Write-Host "Gate pre-deploy: producao=$($script:prodVersion), deploy=$ver OK" -ForegroundColor Green
+}
 
 # --- 2. Sincroniza deploy_zip (raiz vence) ---------------------------------
 Copy-Item -Force $indexSrc (Join-Path $zipDir "index.html")

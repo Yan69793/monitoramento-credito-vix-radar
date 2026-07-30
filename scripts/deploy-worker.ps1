@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Deploy do Worker VIX Radar (Cloudflare Workers) — atomico com o git.
 
@@ -43,6 +43,16 @@ $apiDir = Join-Path $root "api"
 $toml   = Join-Path $apiDir "wrangler.toml"
 
 function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
+function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
+
+# Compara duas versoes de Worker (v4.9.NNN). Retorna -1, 0 ou 1.
+function Compare-WorkerVersion($a, $b) {
+  $na = [int]($a -replace '^v4\.9\.', '')
+  $nb = [int]($b -replace '^v4\.9\.', '')
+  if ($na -lt $nb) { return -1 }
+  if ($na -gt $nb) { return 1 }
+  return 0
+}
 
 # --- 0. Pre-requisitos -----------------------------------------------------
 if (-not $env:CLOUDFLARE_API_TOKEN) {
@@ -56,6 +66,54 @@ $bundle = "$ver.js"
 $bundlePath = Join-Path $apiDir $bundle
 $buildScript = Join-Path $PSScriptRoot "build-worker.ps1"
 if (-not (Test-Path $buildScript)) { Fail "Build do Worker ausente: $buildScript" }
+
+# --- 0.1 GATE ANTI-REGRESSAO: versao em producao ---------------------------
+# Consulta o health publico ANTES do deploy. Se producao estiver em versao
+# mais nova que a que estamos subindo, aborta — deploy regrediria producao.
+# Isto fecha o cenario: alguem deploya v4.9.184, voce esta com o repo em
+# v4.9.183, faz deploy e regride sem saber.
+$healthUrl = "https://api.vixradar.com/?_=$(Get-Date -Format 'yyyyMMddHHmmss')"
+try {
+  $prodHealth = Invoke-RestMethod -Uri $healthUrl -TimeoutSec 10 -Headers @{ "Cache-Control" = "no-cache" }
+  $prodVersion = $prodHealth.versao
+  if ($prodVersion) {
+    $cmp = Compare-WorkerVersion $ver $prodVersion
+    if ($cmp -lt 0) {
+      Fail "PRODUCAO ESTA A FRENTE DO REPO. Producao=$prodVersion, voce esta tentando deployar $ver. Recupere o bundle de producao via Cloudflare MCP, commite e so entao faca novo deploy. NAO deploye — regrediria producao."
+    }
+    if ($cmp -eq 0) {
+      Warn "Producao ja esta em $prodVersion — deploy e no-op. Use -SkipValidation se for re-deploy intencional."
+    }
+    Write-Host "Gate pre-deploy: producao=$prodVersion, deploy=$ver OK" -ForegroundColor Green
+  } else {
+    Warn "Nao foi possivel extrair versao de producao do health endpoint. Prosseguindo sem o gate anti-regressao."
+  }
+} catch {
+  Warn "Falha ao consultar health de producao ($healthUrl): $_. Prosseguindo sem o gate anti-regressao."
+}
+
+# --- 0.2 GATE WORKING TREE: sem alteracoes nao commitadas ------------------
+# Arquivos que o deploy vai alterar ou commitar precisam estar limpos.
+# Se houver sujeira, o commit do passo 5 embaralharia mudancas nao relacionadas
+# com o deploy, ou pior: commitaria pela metade.
+$trackedFiles = @(
+  "api/src/worker.js",
+  "api/wrangler.toml",
+  "scripts/build-worker.ps1",
+  "scripts/deploy-worker.ps1"
+)
+$dirty = git diff --name-only -- $trackedFiles 2>$null
+if ($dirty) {
+  $dirtyList = ($dirty | ForEach-Object { "  $_" }) -join "`n"
+  Fail "Working tree sujo nos arquivos do deploy. Faça commit ou stash antes de deployar:`n$dirtyList"
+}
+# Staged mas nao commitados tambem trava (git diff --cached).
+$stagedDirty = git diff --cached --name-only -- $trackedFiles 2>$null
+if ($stagedDirty) {
+  $stagedList = ($stagedDirty | ForEach-Object { "  $_" }) -join "`n"
+  Fail "Arquivos staged mas nao commitados. Commit ou unstage antes de deployar:`n$stagedList"
+}
+Write-Host "Gate working tree: limpo" -ForegroundColor Green
 
 # api/src/worker.js e a fonte canonica. O artefato versionado nunca e editado a mao.
 & $buildScript -Version $ver
