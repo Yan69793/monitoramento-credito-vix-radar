@@ -55,10 +55,30 @@ Nao estava espalhada por projeto. Tres lugares apenas.
   com exit 0, rodou com o env do registry, portanto foi servido por `deepseek-v4-flash`.
   103 emissores. Log carimba `Lote haiku-1 [claude-haiku-4-5-20251001]` ate `Lote sonnet-7
   [claude-sonnet-4-6]`.
-- **A apurar:** execucoes anteriores. Ate 30/07 os scripts apagavam `ANTHROPIC_API_KEY` antes
-  de chamar `claude -p`, forcando OAuth, o que provavelmente batia na Anthropic real. A janela
-  exata de contaminacao depende de quando as variaveis do registry foram criadas, o que nao foi
-  determinado. **Nao afirmar cobertura Claude para nenhuma data sem verificar.**
+- ~~**A apurar:** execucoes anteriores. Ate 30/07 os scripts apagavam `ANTHROPIC_API_KEY`
+  antes de chamar `claude -p`, forcando OAuth, o que provavelmente batia na Anthropic real.~~
+
+> [!warning] Correcao de 30/07 20h. A frase acima estava errada e subestimava a janela.
+> Apagar `ANTHROPIC_API_KEY` **nao muda o destino da requisicao**. Quem decide o destino e
+> `ANTHROPIC_BASE_URL`, que apontava para o agregador. Forcar OAuth muda a credencial, nao
+> a rota.
+
+Tres fatos que juntos fecham o ponto:
+
+1. O registry tinha tambem `ANTHROPIC_AUTH_TOKEN`, que o CLI usa como bearer contra a base
+   URL configurada. Remover so a `ANTHROPIC_API_KEY` deixava esse caminho de pe.
+2. O commit `74a92a7` (30/07 17:23) restaurou pay-per-token justamente porque **o OAuth
+   estava expirando no Task Scheduler**. Essa e a premissa do proprio commit.
+3. O log de 30/07 registra lotes concluidos as 16:43, 16:48, 16:57, 17:01, 17:04, 17:12 e
+   17:19, todos anteriores as 17:23. Se o OAuth estava vencido, um lote que **teve sucesso**
+   as 16:43 nao pode ter sido servido por OAuth.
+
+Ou seja, no periodo em que o sistema se dizia "assinatura", as chamadas continuavam indo
+para o agregador. A janela de contaminacao vai de quando `ANTHROPIC_BASE_URL` foi criada no
+registry ate 30/07 19:10 (commit `4615b58`), e nao apenas o noturno das 18:00.
+
+**Nao afirmar cobertura Claude para nenhuma data anterior a 30/07 19:10.** A data de criacao
+das variaveis do registry continua nao determinada, e sem ela o inicio da janela fica aberto.
 
 ## Correcao aplicada em 30/07
 
@@ -94,6 +114,33 @@ Restaram `DEEPSEEK_API_KEY` e `DEEPSEEK_BASE_URL`, que nao roteiam nada sozinhas
 `claude -p --model claude-sonnet-4-6` em `powershell.exe -NoProfile -NonInteractive`, que
 e a condicao do Task Scheduler, retornou exit 0 em 4,1s com custo calculado em tabela
 Anthropic e `service_tier: standard`. Correcao commitada em `4615b58`.
+
+## Politica de credencial (30/07 20h, commit `5c8dc4f`)
+
+A escolha deixou de ser fixa. `Initialize-VixClaudeAuth` sonda a assinatura uma vez por
+execucao e so cai na chave paga se o OAuth nao responder. A sondagem e gratuita nos dois
+desfechos, porque roda com `ANTHROPIC_API_KEY` limpa: ou passa pelo OAuth, ou falha na
+autenticacao consumindo 0 token. Nunca toca a API paga.
+
+Se o OAuth vencer no meio de uma rotina longa, `Invoke-VixClaudeAuthEscalate` troca para a
+chave paga e os lotes seguintes continuam. Antes disso a rotina inteira morria a partir do
+lote em que o token vencia, que foi 29-30/07.
+
+Toda execucao agora carimba no log qual credencial serviu:
+
+```
+AUTH: assinatura (OAuth) respondeu - rodando sem custo por token.
+AUTH: assinatura indisponivel (sessao OAuth expirada ou deslogada). Caindo para chave paga.
+```
+
+Isso e proveniencia verificavel, que e exatamente o que faltava neste incidente. A logica
+saiu dos tres scripts e vive em `scripts/lib/vixradar-claude-auth.ps1`, motivo pelo qual a
+correcao de provedor precisou ser escrita tres vezes.
+
+**Estado em 30/07 20h:** OAuth desta maquina esta vencido e nao renova
+(`Failed to authenticate: OAuth session expired and could not be refreshed`). As tres
+rotinas rodam em chave paga. Para voltar a assinatura, `claude login` num terminal
+interativo. Sem isso, cada dia de rotina e pago.
 
 ## Pendencias
 
