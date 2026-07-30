@@ -90,28 +90,14 @@ function Get-RoutineKey {
     throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }
 
+# Auth do `claude -p` mora em um lugar so (2026-07-30). Antes disso a mesma logica estava
+# copiada nos tres scripts de rotina, e a correcao do incidente 73 teve que ser aplicada
+# tres vezes. Politica: assinatura primeiro, chave paga so quando o OAuth nao responde.
+. (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
+
 function Get-AnthropicApiKey {
-    # PROVEDOR FIXADO (2026-07-30). Este script SEMPRE fala com a API oficial da Anthropic.
-    # Motivo: HKCU:\Environment tinha ANTHROPIC_BASE_URL apontando para agregador que aceita
-    # nome de modelo Claude e serve outro modelo, sem erro e sem aviso. Teste direto na API:
-    # pedido claude-sonnet-4-6 -> servidor devolveu model=deepseek-v4-flash.
-    # Guarda: so aceita chave no formato Anthropic. Chave de agregador e recusada e logada.
-    # Configurar: [Environment]::SetEnvironmentVariable('VIXRADAR_ANTHROPIC_API_KEY','sk-ant-...','User')
-    $candidatos = @(
-        $env:VIXRADAR_ANTHROPIC_API_KEY,
-        [Environment]::GetEnvironmentVariable('VIXRADAR_ANTHROPIC_API_KEY', 'User'),
-        $env:ANTHROPIC_API_KEY,
-        [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
-    )
-    foreach ($c in $candidatos) {
-        if ($c -and $c.StartsWith('sk-ant-')) { return $c }
-        if ($c) {
-            $pref = $c.Substring(0, [Math]::Min(7, $c.Length))
-            Write-Log ('AVISO: chave ignorada, prefixo ' + $pref + ' nao e Anthropic (esperado sk-ant-).')
-        }
-    }
-    Write-Log 'AVISO: VIXRADAR_ANTHROPIC_API_KEY ausente - claude -p usara assinatura OAuth, que expira em 24h no Task Scheduler. Configure: [Environment]::SetEnvironmentVariable(''VIXRADAR_ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
-    return $null
+    # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
+    return (Get-VixAnthropicApiKey)
 }
 
 function Get-CvmResumo($docs) {
@@ -364,16 +350,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
     [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
     $OutputEncoding = [System.Text.Encoding]::UTF8
-    # v4.9.152→v4.9.184: restaurado pay-per-token. OAuth expira em 24h e o Task Scheduler
-    # nao tem sessao interativa para renovar, derrubando toda rotina apos 1 dia (incidente 29-30/07).
-    # PROVEDOR FIXADO (2026-07-30): nunca herdar base URL de agregador do ambiente. Sem isto,
-    # ANTHROPIC_BASE_URL do registry redirecionava o lote inteiro para outro modelo mantendo
-    # o carimbo de Claude no log. Ver Get-AnthropicApiKey.
-    $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
-    $env:ANTHROPIC_AUTH_TOKEN = $null
-    # Get-AnthropicApiKey busca na env var, depois no registry (User), e falha logando aviso.
-    $apiKey = Get-AnthropicApiKey
-    if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey } else { $env:ANTHROPIC_API_KEY = $null }
+    # Auth resolvida no boot por Initialize-VixClaudeAuth: assinatura primeiro, chave paga
+    # so se o OAuth nao responder. Reaplicada a cada lote porque o ambiente do processo
+    # pode ter sido mexido no meio. Fixa a base URL oficial junto (incidente 73).
+    Set-VixClaudeAuthEnv
     # --output-format json (v4.9.155): extrai envelope JSON do claude -p para capturar tokens
     # reais (input+output+cache) em vez do Parse-TokensFromOutput que sempre retornava 0 com
     # --output-format text. Mesmo padrao do run_vixradar_verificacao_async.ps1. stderr vai
@@ -411,6 +391,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         $exitCode = $LASTEXITCODE
         $retryLog += ('t' + ($attempt+1) + ':exit=' + $exitCode + ':model=' + $tryModel)
         if ($exitCode -eq 0) { break }
+        # O OAuth pode vencer no meio de uma rotina longa. Se a falha foi de credencial,
+        # escala para a chave paga agora, e a proxima tentativa ja sai no modo novo. Sem
+        # isto todos os lotes seguintes morriam, que foi o comportamento de 29-30/07.
+        $saidaFalha = ('' + $raw)
+        if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
+        if (Invoke-VixClaudeAuthEscalate $saidaFalha) { $retryLog += 'auth:escalado-para-api' }
     }
     if ($retryLog.Count -gt 1) { Write-Log ('RETRY log: ' + ($retryLog -join ' ')) }
     $textOut = @($raw)
@@ -494,6 +480,9 @@ foreach ($f in @($HaikuSkill, $SonnetSkill)) {
 }
 
 Write-Log "INICIO: matinal top=$TopN meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
+# Sonda a assinatura uma vez e registra no log qual credencial serviu a execucao. A linha
+# importa para proveniencia: em 30/07 o log carimbava Claude sem que isso fosse verificavel.
+Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
 Invoke-Cleanup
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
