@@ -1,10 +1,17 @@
 # ═══════════════════════════════════════════════════════════════════════
 # RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.183)
 # ═══════════════════════════════════════════════════════════════════════
-# v4.9.183.js = fonte canonica api/src/worker.js + build deterministico sem rebundle:
-#   CAL-003 aplica calendario:overrides:v1 em state e op=calendario; VOL-001
-#   impede preco por acao/patrimonio contabil como market cap; VOL-003 usa somente
-#   Selic efetiva validada do KV; CI/rotinas falham visivelmente fora do bundle.
+# v4.9.183.js = bundle real de produção, recuperado fiel via Cloudflare MCP
+#   (workers_get_worker_code) em 2026-07-30 — resolve o drift prod v4.9.183
+#   vs repo v4.9.182 detectado pelo guard anti-drift do CI entre 2026-07-28
+#   e 2026-07-29 (deploy feito sem commit correspondente). WORKER_VERSAO
+#   confirmado no bundle recuperado. Changelog exato do que mudou vs
+#   v4.9.182 não documentado no momento do deploy original — o único sinal
+#   disponível é o comentário de topo do próprio bundle: "CAL-003 (overrides
+#   em state/calendario), VOL-001/VOL-003 (Merton sem substitutos invalidos;
+#   Selic efetiva do KV), build deterministico sem rebundle." Conteúdo exato
+#   não auditado linha a linha nesta reconciliação — só a recuperação fiel
+#   do bundle via API foi validada (WORKER_VERSAO bate).
 # v4.9.182.js = v4.9.181 + SECRETMISS1: ADMIN_EMAIL entra na condicao _okHealth
 #   e vira o campo publico admin_email_ok. Guarda para a classe "secret
 #   obrigatorio some e o sistema degrada em silencio". De 24/07 a 27/07 o
@@ -471,7 +478,6 @@
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
 main       = "v4.9.183.js"
-no_bundle  = true
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
