@@ -96,10 +96,27 @@ function Get-RoutineKey {
 }
 
 function Get-AnthropicApiKey {
-    if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
-    $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
-    if ($fromRegistry) { return $fromRegistry }
-    Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
+    # PROVEDOR FIXADO (2026-07-30). Este script SEMPRE fala com a API oficial da Anthropic.
+    # Critico aqui: a verificacao adversarial pressupoe um SEGUNDO modelo desafiando o
+    # primeiro. Com base URL de agregador, Haiku e Sonnet colapsavam no mesmo modelo e a
+    # verificacao virava o modelo se auditando. Teste direto na API: pedido
+    # claude-sonnet-4-6 -> servidor devolveu model=deepseek-v4-flash.
+    # Guarda: so aceita chave no formato Anthropic. Chave de agregador e recusada e logada.
+    # Configurar: [Environment]::SetEnvironmentVariable('VIXRADAR_ANTHROPIC_API_KEY','sk-ant-...','User')
+    $candidatos = @(
+        $env:VIXRADAR_ANTHROPIC_API_KEY,
+        [Environment]::GetEnvironmentVariable('VIXRADAR_ANTHROPIC_API_KEY', 'User'),
+        $env:ANTHROPIC_API_KEY,
+        [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
+    )
+    foreach ($c in $candidatos) {
+        if ($c -and $c.StartsWith('sk-ant-')) { return $c }
+        if ($c) {
+            $pref = $c.Substring(0, [Math]::Min(7, $c.Length))
+            Write-Log ('AVISO: chave ignorada, prefixo ' + $pref + ' nao e Anthropic (esperado sk-ant-).')
+        }
+    }
+    Write-Log 'AVISO: VIXRADAR_ANTHROPIC_API_KEY ausente - claude -p usara assinatura OAuth, que expira em 24h no Task Scheduler. Configure: [Environment]::SetEnvironmentVariable(''VIXRADAR_ANTHROPIC_API_KEY'',''sk-ant-...'',''User'')'
     return $null
 }
 
@@ -125,9 +142,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # v4.9.152→v4.9.184: restaurado pay-per-token. OAuth expira em 24h e o Task Scheduler
         # nao tem sessao interativa para renovar. Get-AnthropicApiKey busca na env var, depois
         # no registry (User), e falha logando aviso.
+        # PROVEDOR FIXADO (2026-07-30): nunca herdar base URL de agregador do ambiente. Critico
+        # aqui porque a verificacao adversarial pressupoe um SEGUNDO modelo desafiando o primeiro.
+        $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+        $env:ANTHROPIC_AUTH_TOKEN = $null
         $apiKey = Get-AnthropicApiKey
-        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
-        # if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
+        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey } else { $env:ANTHROPIC_API_KEY = $null }
         $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
             --model $Model `
             --permission-mode bypassPermissions `

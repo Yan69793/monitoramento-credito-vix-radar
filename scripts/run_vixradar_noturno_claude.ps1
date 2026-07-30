@@ -125,11 +125,23 @@ function Get-AnthropicApiKey {
     #   2. Remover o `if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }`
     #   3. Setar chave: [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY','<configure-no-ambiente>','User')
     # Chave em https://console.anthropic.com/settings/keys
-    if ($env:ANTHROPIC_API_KEY) { return $env:ANTHROPIC_API_KEY }
-    # Fallback: Task Scheduler/sessao nao-interativa pode nao popular $env: automaticamente
-    # do registry User. Leitura direta do hive resolve.
-    $fromRegistry = [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
-    if ($fromRegistry) { return $fromRegistry }
+    # PROVEDOR FIXADO (2026-07-30): so aceita chave Anthropic. Teste direto na API mostrou que
+    # base URL de agregador aceita nome de modelo Claude e devolve outro modelo, sem erro:
+    # pedido claude-sonnet-4-6 -> servidor devolveu model=deepseek-v4-flash.
+    # Configurar: [Environment]::SetEnvironmentVariable('VIXRADAR_ANTHROPIC_API_KEY','sk-ant-...','User')
+    $candidatos = @(
+        $env:VIXRADAR_ANTHROPIC_API_KEY,
+        [Environment]::GetEnvironmentVariable('VIXRADAR_ANTHROPIC_API_KEY', 'User'),
+        $env:ANTHROPIC_API_KEY,
+        [Environment]::GetEnvironmentVariable('ANTHROPIC_API_KEY', 'User')
+    )
+    foreach ($c in $candidatos) {
+        if ($c -and $c.StartsWith('sk-ant-')) { return $c }
+        if ($c) {
+            $pref = $c.Substring(0, [Math]::Min(7, $c.Length))
+            Write-Log ('AVISO: chave ignorada, prefixo ' + $pref + ' nao e Anthropic (esperado sk-ant-).')
+        }
+    }
     Write-Log 'AVISO: ANTHROPIC_API_KEY ausente - claude -p usara assinatura (limite semanal). Para resolver: [Environment]::SetEnvironmentVariable(''ANTHROPIC_API_KEY'',''<configure-no-ambiente>'',''User'')'
     return $null
 }
@@ -271,9 +283,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # v4.9.152→v4.9.184: restaurado pay-per-token. OAuth expira em 24h e o Task Scheduler
         # nao tem sessao interativa para renovar, derrubando toda rotina apos 1 dia (incidente 29-30/07).
         # Get-AnthropicApiKey busca na env var, depois no registry (User), e falha logando aviso.
+        # PROVEDOR FIXADO (2026-07-30): nunca herdar base URL de agregador do ambiente.
+        $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+        $env:ANTHROPIC_AUTH_TOKEN = $null
         $apiKey = Get-AnthropicApiKey
-        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey }
-        # if ($env:ANTHROPIC_API_KEY) { $env:ANTHROPIC_API_KEY = $null }
+        if ($apiKey) { $env:ANTHROPIC_API_KEY = $apiKey } else { $env:ANTHROPIC_API_KEY = $null }
         # RETRY1 (2026-07-27): retry com backoff + fallback Haiku na ultima tentativa.
         # DeepSeek API (ANTHROPIC_BASE_URL) congestiona em horario de pico Chines (03:00-10:00 BRT),
         # causando exit=1 silencioso sem stderr. Backoff progressivo (0s/30s/60s) fura rate-limit
