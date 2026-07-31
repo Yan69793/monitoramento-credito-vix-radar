@@ -65,7 +65,10 @@ function Test-VixClaudeAuthFailure([string]$Saida) {
     # Distingue falha de credencial de qualquer outro exit != 0 (rate limit, timeout,
     # congestionamento). So falha de credencial justifica trocar de modo de auth.
     if (-not $Saida) { return $false }
-    return ($Saida -match 'OAuth session expired|Failed to authenticate|not authenticated|Invalid API key|authentication_error|invalid_api_key')
+    # 'Not logged in' entrou em 30/07 20h: o CLI usa essa mensagem quando nao ha credencial
+    # NENHUMA, e 'OAuth session expired' so quando havia uma e venceu. Sem cobrir as duas, um
+    # logout classificava como falha generica e a escalada de meio de execucao nao disparava.
+    return ($Saida -match 'OAuth session expired|Failed to authenticate|not authenticated|Not logged in|Please run /login|Invalid API key|authentication_error|invalid_api_key')
 }
 
 function Get-VixAnthropicAuthToken {
