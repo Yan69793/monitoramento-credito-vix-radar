@@ -1,7 +1,20 @@
 # vixradar-claude-auth.ps1 - Decide como o `claude -p` se autentica nas rotinas.
 # ASCII puro por design: e dot-sourced por scripts que rodam sob powershell.exe 5.1.
 #
-# Politica: assinatura (OAuth) primeiro, chave paga so quando o OAuth nao responde.
+# Politica, nesta ordem:
+#   1. VIXRADAR_ANTHROPIC_AUTH_TOKEN  token longevo de `claude setup-token`. Nao expira em
+#      24h, entao e o unico modo de assinatura que sobrevive ao Task Scheduler.
+#   2. OAuth do credential store do CLI (`claude login`). Expira em ~24h.
+#   3. VIXRADAR_ANTHROPIC_API_KEY     chave paga, pay-per-token. Ultimo recurso.
+#
+# Configurar o token longevo:
+#   claude setup-token
+#   [Environment]::SetEnvironmentVariable('VIXRADAR_ANTHROPIC_AUTH_TOKEN','<token>','User')
+#
+# Por que variavel propria e nao ANTHROPIC_AUTH_TOKEN: o incidente 73 nasceu justamente de
+# um ANTHROPIC_AUTH_TOKEN herdado do registry apontando para agregador. A guarda continua
+# apagando o que vem do ambiente. Token que o operador colocou na variavel propria e
+# intencao explicita, e so pode chegar na API oficial porque a base URL e reescrita sempre.
 #
 # Por que existe:
 #   - Ate 2026-07-30 a escolha era binaria e ficava triplicada nos tres scripts de
@@ -55,34 +68,40 @@ function Test-VixClaudeAuthFailure([string]$Saida) {
     return ($Saida -match 'OAuth session expired|Failed to authenticate|not authenticated|Invalid API key|authentication_error|invalid_api_key')
 }
 
+function Get-VixAnthropicAuthToken {
+    # Token longevo de assinatura, gerado por `claude setup-token`. Lido de uma variavel
+    # PROPRIA e nunca do ANTHROPIC_AUTH_TOKEN ambiente.
+    #
+    # A distincao e o ponto: o incidente 73 nasceu de ANTHROPIC_AUTH_TOKEN herdado do
+    # registry apontando para agregador. A guarda continua apagando o que vem do ambiente.
+    # Um token que o operador colocou aqui de proposito e outra coisa, e so pode ir para a
+    # API oficial, porque ANTHROPIC_BASE_URL e reescrito em toda invocacao.
+    $candidatos = @(
+        $env:VIXRADAR_ANTHROPIC_AUTH_TOKEN,
+        [Environment]::GetEnvironmentVariable('VIXRADAR_ANTHROPIC_AUTH_TOKEN', 'User')
+    )
+    foreach ($c in $candidatos) { if ($c) { return $c } }
+    return $null
+}
+
 function Set-VixClaudeAuthEnv {
     # Aplica o modo ja decidido. Chamar antes de CADA invocacao do claude, porque o
     # ambiente do processo pode ter sido mexido entre lotes.
     $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
-    $env:ANTHROPIC_AUTH_TOKEN = $null
-    if ($script:VixAuthModo -eq 'assinatura') {
-        $env:ANTHROPIC_API_KEY = $null
-    } else {
-        $env:ANTHROPIC_API_KEY = $script:VixAuthChave
-    }
-}
-
-function Initialize-VixClaudeAuth {
-    # Decide UMA vez por execucao. Chamado de novo, devolve a decisao em cache, para nao
-    # sondar a cada lote.
-    param(
-        [string]$ModeloSonda = 'claude-haiku-4-5-20251001',
-        [string]$McpConfigFile
-    )
-
-    if ($script:VixAuthDecidido) { return $script:VixAuthModo }
-
-    $script:VixAuthChave = Get-VixAnthropicApiKey
-
-    $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+    # Zera sempre primeiro: o que vale e o que este helper decidir, nunca o herdado.
     $env:ANTHROPIC_AUTH_TOKEN = $null
     $env:ANTHROPIC_API_KEY = $null
+    if ($script:VixAuthModo -eq 'assinatura-token') {
+        $env:ANTHROPIC_AUTH_TOKEN = $script:VixAuthToken
+    } elseif ($script:VixAuthModo -eq 'api') {
+        $env:ANTHROPIC_API_KEY = $script:VixAuthChave
+    }
+    # Modo 'assinatura' fica sem as duas: o CLI usa o proprio credential store do OAuth.
+}
 
+function Test-VixClaudeSonda([string]$ModeloSonda, [string]$McpConfigFile) {
+    # Chamada trivial so para saber se a credencial em vigor e aceita. Devolve um objeto
+    # com o resultado e a saida crua, para o chamador nomear o motivo da recusa.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $saida = ''
@@ -101,21 +120,62 @@ function Initialize-VixClaudeAuth {
     } finally {
         $ErrorActionPreference = $prevEAP
     }
+    return [PSCustomObject]@{
+        Ok    = ($code -eq 0 -and $saida -notmatch '"is_error"\s*:\s*true')
+        Code  = $code
+        Saida = $saida
+    }
+}
 
-    $sondaOk = ($code -eq 0 -and $saida -notmatch '"is_error"\s*:\s*true')
+function Initialize-VixClaudeAuth {
+    # Decide UMA vez por execucao. Chamado de novo, devolve a decisao em cache, para nao
+    # sondar a cada lote.
+    param(
+        [string]$ModeloSonda = 'claude-haiku-4-5-20251001',
+        [string]$McpConfigFile
+    )
 
-    if ($sondaOk) {
-        $script:VixAuthModo = 'assinatura'
+    if ($script:VixAuthDecidido) { return $script:VixAuthModo }
+
+    $script:VixAuthChave = Get-VixAnthropicApiKey
+    $script:VixAuthToken = Get-VixAnthropicAuthToken
+
+    # Ordem: token longevo de assinatura, depois OAuth do credential store, depois chave
+    # paga. As duas primeiras nao cobram por token, e a sonda de cada uma e gratuita: ou
+    # e aceita pela assinatura, ou e recusada consumindo 0 token. Nenhuma toca a API paga.
+
+    if ($script:VixAuthToken) {
+        $script:VixAuthModo = 'assinatura-token'
+        Set-VixClaudeAuthEnv
+        $r = Test-VixClaudeSonda $ModeloSonda $McpConfigFile
+        if ($r.Ok) {
+            Write-VixAuthLog 'AUTH: token longevo de assinatura aceito - rodando sem custo por token.'
+            $script:VixAuthDecidido = $true
+            return $script:VixAuthModo
+        }
+        # Token configurado e recusado e sintoma, nao detalhe: alguem colocou ali de
+        # proposito e ele parou de valer. Nomear no log em vez de degradar em silencio.
+        Write-VixAuthLog 'AVISO AUTH: VIXRADAR_ANTHROPIC_AUTH_TOKEN esta configurado mas foi recusado. Regerar com `claude setup-token`.'
+    }
+
+    $script:VixAuthModo = 'assinatura'
+    Set-VixClaudeAuthEnv
+    $r = Test-VixClaudeSonda $ModeloSonda $McpConfigFile
+    if ($r.Ok) {
         Write-VixAuthLog 'AUTH: assinatura (OAuth) respondeu - rodando sem custo por token.'
-    } elseif ($script:VixAuthChave) {
+        $script:VixAuthDecidido = $true
+        return $script:VixAuthModo
+    }
+
+    if ($script:VixAuthChave) {
         $script:VixAuthModo = 'api'
-        $motivo = if (Test-VixClaudeAuthFailure $saida) { 'sessao OAuth expirada ou deslogada' } else { ('sonda falhou exit=' + $code) }
+        $motivo = if (Test-VixClaudeAuthFailure $r.Saida) { 'sessao OAuth expirada ou deslogada' } else { ('sonda falhou exit=' + $r.Code) }
         Write-VixAuthLog ('AUTH: assinatura indisponivel (' + $motivo + '). Caindo para chave paga (pay-per-token).')
-        Write-VixAuthLog 'AUTH: para voltar a assinatura, rodar `claude login` num terminal interativo.'
+        Write-VixAuthLog 'AUTH: para voltar a assinatura, rodar `claude setup-token` (token longevo, sobrevive ao Task Scheduler) ou `claude login`.'
     } else {
         $script:VixAuthModo = 'nenhum'
         Write-VixAuthLog 'ERRO AUTH: assinatura indisponivel e nenhuma chave sk-ant- configurada.'
-        Write-VixAuthLog 'ERRO AUTH: rodar `claude login`, ou definir VIXRADAR_ANTHROPIC_API_KEY. A rotina vai falhar nos lotes.'
+        Write-VixAuthLog 'ERRO AUTH: rodar `claude setup-token`, ou definir VIXRADAR_ANTHROPIC_API_KEY. A rotina vai falhar nos lotes.'
     }
 
     $script:VixAuthDecidido = $true
@@ -124,18 +184,20 @@ function Initialize-VixClaudeAuth {
 }
 
 function Invoke-VixClaudeAuthEscalate([string]$Saida) {
-    # Escalada no meio da execucao: o OAuth pode vencer durante um lote longo. Troca para
-    # a chave paga e devolve $true para o chamador repetir a tentativa. Sem isso a rotina
-    # perderia todos os lotes restantes, que foi o comportamento de 29-30/07.
-    if ($script:VixAuthModo -ne 'assinatura') { return $false }
+    # Escalada no meio da execucao: a credencial de assinatura pode vencer durante um lote
+    # longo. Troca para a chave paga e devolve $true para o chamador repetir a tentativa.
+    # Sem isso a rotina perderia todos os lotes restantes, que foi o de 29-30/07.
+    # Cobre os DOIS modos de assinatura: OAuth do credential store e token longevo.
+    if ($script:VixAuthModo -ne 'assinatura' -and $script:VixAuthModo -ne 'assinatura-token') { return $false }
     if (-not (Test-VixClaudeAuthFailure $Saida)) { return $false }
+    $modoAnterior = $script:VixAuthModo
     if (-not $script:VixAuthChave) {
-        Write-VixAuthLog 'AUTH: OAuth caiu no meio da execucao e nao ha chave paga para assumir.'
+        Write-VixAuthLog ('AUTH: ' + $modoAnterior + ' caiu no meio da execucao e nao ha chave paga para assumir.')
         return $false
     }
     $script:VixAuthModo = 'api'
     Set-VixClaudeAuthEnv
-    Write-VixAuthLog 'AUTH: OAuth caiu no meio da execucao. Escalado para chave paga; lotes seguintes sao pay-per-token.'
+    Write-VixAuthLog ('AUTH: ' + $modoAnterior + ' caiu no meio da execucao. Escalado para chave paga; lotes seguintes sao pay-per-token.')
     return $true
 }
 
