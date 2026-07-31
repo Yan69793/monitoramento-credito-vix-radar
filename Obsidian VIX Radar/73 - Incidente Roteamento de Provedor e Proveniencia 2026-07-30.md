@@ -137,10 +137,17 @@ Isso e proveniencia verificavel, que e exatamente o que faltava neste incidente.
 saiu dos tres scripts e vive em `scripts/lib/vixradar-claude-auth.ps1`, motivo pelo qual a
 correcao de provedor precisou ser escrita tres vezes.
 
-**Estado em 30/07 20h:** OAuth desta maquina esta vencido e nao renova
-(`Failed to authenticate: OAuth session expired and could not be refreshed`). As tres
-rotinas rodam em chave paga. Para voltar a assinatura, `claude login` num terminal
-interativo. Sem isso, cada dia de rotina e pago.
+**Estado em 30/07 22h:** esta maquina nao tem credencial de assinatura. `claude auth status`
+devolve `loggedIn: false, authMethod: none`. Duas tentativas de `claude login` e
+`claude setup-token` ao longo da noite nao completaram, e a mensagem do CLI migrou de
+`OAuth session expired` para `Not logged in`, ou seja limparam a sessao vencida sem criar
+uma nova. As tres rotinas rodam em chave paga ate haver login.
+
+> [!note] Pista falsa que custou tempo, registrada para nao se repetir
+> `~/.claude/.credentials.json` cresceu para 10 KB e passou a ser reescrito com frequencia,
+> o que parecia login bem-sucedido. Nao era. As chaves de topo do arquivo sao **so**
+> `mcpOAuth`, com 25 entradas de conectores MCP. O bloco `claudeAiOauth` nao existe mais.
+> Tamanho e mtime desse arquivo **nao servem** como sinal de login. Use `claude auth status`.
 
 ## Pendencias
 
@@ -150,7 +157,15 @@ interativo. Sem isso, cada dia de rotina e pago.
       **Nao verificavel daqui:** a chave configurada tem formato correto e funciona, mas
       nao da para saber se e a nova ou a exposta. Confirmar no console da Anthropic.
 - [ ] **P1.** Rotacionar a chave DeepSeek, tambem exposta em 30/07.
-- [ ] **P1.** Decidir o reprocessamento do noturno de 30/07 e de quaisquer datas contaminadas.
+- [ ] **P1.** Reprocessar o noturno de 30/07. **Decidido em 30/07 22h: fazer, mas na
+      assinatura**, portanto bloqueado no `claude login`. Dois pre-requisitos mecanicos:
+      mover `logs/routines/vixradar-noturno_20260730.log` para
+      `vixradar-noturno_20260730.contaminado.log`, senao a idempotencia le as 95 linhas
+      `OK|` e pula tudo (aconteceu tres vezes, sempre com `tokens=0`); e confirmar na linha
+      `AUTH:` do log que a execucao saiu mesmo pela assinatura antes de deixar os lotes
+      rodarem. Meta de 500k tokens, teto de 700k.
+- [ ] **P1.** Decidir o reprocessamento de datas anteriores a 30/07, agora que a janela de
+      contaminacao se mostrou maior do que a nota registrava.
 - [ ] **P2.** `Jornada Interior/.claude/settings.local.json` perdeu a chave que herdava do
       registry. Atualizar para OpenRouter ou tornar a config autossuficiente.
 - [ ] **P2.** Revisar se `product.md`, `README.md` de marketing, landing e apresentacao precisam
