@@ -41,7 +41,7 @@ Vistoria operacional multi-camada do VIX Radar. Protocolo canônico: `Obsidian V
 ## Antes de começar — ler obrigatoriamente
 
 1. `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\00 - Índice (MOC).md`
-2. `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado de Produção.md`
+2. `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado Atual.md`
 3. Última auditoria no vault (`14 - Auditoria Completa *.md` ou `09/12 - Auditoria *.md`)
 4. **Carregar skill** `workers-best-practices` — aplicar checklist Worker (bindings, secrets, `waitUntil`, promises, observabilidade)
 
@@ -66,7 +66,7 @@ Use quando o operador pedir "verificação em loop de 40 segundos", "loop do cod
 2. Executar ciclos de 40s registrando horário BRT, HTTP, tempo total, `versao`, `ok`, `kv`, `telemetria`, `verificador_ok`.
 3. Não considerar "qualquer Codex vivo" como critério de bloqueio, pois a própria sessão mantém processos `Codex/codex`. Se não houver alvo local inequívoco, usar saúde de produção + instrução explícita do operador como critério.
 4. Se qualquer ciclo falhar, coletar bruto: resposta, HTTP, erro de rede, tempo, e repetir uma vez antes de concluir incidente.
-5. Ao final, registrar a tabela curta em `Obsidian VIX Radar/03 - Estado de Produção.md`; se houve falha, criar nota de auditoria/incidente no vault.
+5. Ao final, registrar a tabela curta em `Obsidian VIX Radar/03 - Estado Atual.md`; se houve falha, criar nota de auditoria/incidente no vault.
 
 Comando base:
 
@@ -232,7 +232,7 @@ Modo caveman permitido na síntese; achados exigem evidência reproduzível.
 ## Pós-auditoria — registrar no vault
 
 1. Criar `Obsidian VIX Radar/NN - Auditoria Completa YYYY-MM-DD.md` (próximo número livre; nota 13 = método, não sobrescrever).
-2. Atualizar `03 - Estado de Produção.md` se houve mudança de versão, incidente ou validação.
+2. Atualizar `03 - Estado Atual.md` se houve mudança de versão, incidente ou validação.
 3. Atualizar `00 - Índice (MOC).md` — link para nova auditoria + pendências.
 
 ---

@@ -48,7 +48,7 @@ Próximos passos:
 ## Lógica interna
 
 1. **Lê Obsidian**
-   - `03 - Estado de Produção.md` → versão Worker, Frontend, status incidente
+   - `03 - Estado Atual.md` → versão Worker, Frontend, status incidente
    - `00 - Índice (MOC).md` → pendências abertas (parse list)
 
 2. **Health check live**
@@ -79,7 +79,7 @@ Próximos passos:
 O comando invoca:
 ```bash
 # Lê Obsidian
-cat "$HOME/Diretorio/Claude/Monitoramento de Credito/Obsidian VIX Radar/03 - Estado de Produção.md" | grep -A2 "Versões confirmadas"
+cat "$HOME/Diretorio/Claude/Monitoramento de Credito/Obsidian VIX Radar/03 - Estado Atual.md" | grep -A2 "Versões confirmadas"
 cat "$HOME/Diretorio/Claude/Monitoramento de Credito/Obsidian VIX Radar/00 - Índice (MOC).md" | grep -A5 "Pendências abertas"
 
 # Health check (3s timeout)
@@ -93,7 +93,7 @@ curl -s --max-time 3 https://radar-credito-api.prospects-intel.workers.dev | jq 
 
 ## Referências canônicas
 
-- Obsidian Estado: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado de Produção.md`
+- Obsidian Estado: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado Atual.md`
 - Obsidian MOC: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\00 - Índice (MOC).md`
 - Health endpoint: `https://radar-credito-api.prospects-intel.workers.dev`
 - CLAUDE.md: `E:\Diretorio\Claude\Monitoramento de Credito\CLAUDE.md`

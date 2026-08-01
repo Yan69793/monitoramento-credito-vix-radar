@@ -14,7 +14,7 @@ Analisa pendências abertas e sugere próximos passos priorizados por impacto ×
 ## Fontes de dados
 
 1. `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\00 - Índice (MOC).md` — lista de pendências abertas
-2. `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado de Produção.md` — estado Worker + frontend + incidentes
+2. `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado Atual.md` — estado Worker + frontend + incidentes
 3. `E:\Diretorio\Claude\Monitoramento de Credito\CLAUDE.md` — regras invioláveis + arquitetura atual
 
 ## Formato de saída
@@ -39,7 +39,7 @@ QUICK WINS (< 1h, sem risco):
 ## Lógica interna
 
 1. Lê `00 - Índice (MOC).md` seção "Pendências abertas"
-2. Lê `03 - Estado de Produção.md` seção de incidentes e próximos passos
+2. Lê `03 - Estado Atual.md` seção de incidentes e próximos passos
 3. Classifica cada pendência:
    - **P0**: incidentes ativos, falhas de segurança, bloqueadores de produção
    - **P1**: alto impacto para usuários finais, baixo esforço ou debloqueiam outros itens
@@ -73,5 +73,5 @@ Baixo impacto:
 ## Referências canônicas
 
 - Obsidian MOC: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\00 - Índice (MOC).md`
-- Estado: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado de Produção.md`
+- Estado: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\03 - Estado Atual.md`
 - CLAUDE.md: `E:\Diretorio\Claude\Monitoramento de Credito\CLAUDE.md`
