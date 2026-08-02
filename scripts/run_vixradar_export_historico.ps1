@@ -47,6 +47,20 @@ $DataRef = $NowBrt.ToString('yyyy-MM-dd')
 $Stamp   = $NowBrt.ToString('yyyyMMdd_HHmmss')
 $Domingo = ($NowBrt.DayOfWeek -eq 'Sunday')
 
+# Garantir que CLOUDFLARE_API_TOKEN e o do registry, nao o herdado do processo.
+# O env var do processo pode conter token antigo (sem permissao KV Storage) enquanto
+# o registry User ja foi atualizado. O wrangler le o env var primeiro, depois o OAuth
+# de ~/.wrangler/config/default.toml (que expira em ~24h). Fonte da verdade: registry.
+$tokenDoRegistry = [Environment]::GetEnvironmentVariable('CLOUDFLARE_API_TOKEN', 'User')
+if (-not $tokenDoRegistry) {
+    $tokenDoRegistry = [Environment]::GetEnvironmentVariable('CLOUDFLARE_API_TOKEN', 'Machine')
+}
+if ($tokenDoRegistry) {
+    $env:CLOUDFLARE_API_TOKEN = $tokenDoRegistry
+} elseif (-not $env:CLOUDFLARE_API_TOKEN) {
+    Write-Log 'AVISO: CLOUDFLARE_API_TOKEN ausente no registry e no ambiente. Wrangler dependera de OAuth.'
+}
+
 $OutRoot = Join-Path $ProjectRoot 'data\historico'
 if ($DryRun) { $OutRoot = Join-Path $ProjectRoot 'data\historico\.dryrun' }
 $OutDir  = Join-Path $OutRoot $DataRef
