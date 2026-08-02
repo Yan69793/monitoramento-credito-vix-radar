@@ -100,6 +100,7 @@ function Get-RoutineKey {
 # Haiku e Sonnet colapsavam no mesmo modelo, virando o modelo se auditando. O helper fixa a
 # API oficial em toda invocacao. Politica: assinatura primeiro, chave paga se o OAuth falhar.
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
+. (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 
 function Get-AnthropicApiKey {
     # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
@@ -276,6 +277,13 @@ if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
     Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
     Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
     exit 5
+}
+$ambientViolacao = Test-VixClaudeAmbienteLimpo
+if ($ambientViolacao) {
+    Write-Log "ERRO FATAL: ambiente contaminado detectado — $ambientViolacao"
+    Write-Log 'ERRO FATAL: variavel de ambiente ou settings.json aponta para agregador/modelo nao-Claude.'
+    Write-Log 'ERRO FATAL: corrija o ambiente e reexecute. Verificar: registry User/Machine, settings.json, env vars do processo.'
+    exit 6
 }
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
