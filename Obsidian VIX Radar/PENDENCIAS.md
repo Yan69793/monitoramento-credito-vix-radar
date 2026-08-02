@@ -71,72 +71,19 @@ As rotinas chamam `claude -p --model claude-sonnet-4-6`. Num processo do Task Sc
 **Bug real embutido, este sim merece correcao:** `Get-RoutineKey` nas 4 rotinas cai num fallback que le `C:\Users\User\.claude\scheduled-tasks\vixradar-noturno\SKILL.md`, e esse arquivo contem a chave MORTA. Se `$env:ROUTINE_API_KEY` sumir (maquina nova, perfil resetado, task rodando com outro usuario), a rotina nao falha com erro claro: pega a chave morta e toma 403 em toda chamada. O fallback hoje e armadilha, nao rede de seguranca.
 **Acao:** remover a chave morta dos 5 arquivos e dos SKILL.md; trocar o fallback por `throw` explicito. Historico do git pode ficar, a chave esta morta.
 
-### P1 — A matinal reportou sucesso com 100% das buscas falhando, e gravou em producao
+### P1 — A matinal reportou sucesso com 100% das buscas falhando, e gravou em producao: RESOLVIDO 02/08
 
-**Origem:** Incidente 27/07 13:32, causado por execucao manual a partir de sessao contaminada.
+**Fechado em:** 02/08. Commits `950f818`, `41930d9`, `0c8d9ea`, `75708fc`.
 
-**O que aconteceu.** A matinal foi relancada as 13:17 a partir do shell de uma sessao do
-Claude Code que ainda tinha as variaveis DeepSeek exportadas. Corrigir o `settings.json` em
-disco nao limpa o ambiente de um processo ja em execucao. O `--model claude-sonnet-4-6`
-explicito protegeu o modelo principal, entao os lotes fecharam normalmente, mas o
-**WebSearch usa o alias Haiku default**, que estava em `deepseek-v4-flash`. Todas as rodadas
-de busca falharam. Mesmo assim:
+**As 4 acoes foram implementadas:**
 
-```
-13:32:08 FIM: tokens=120638 sonnet=8 haiku=10 submit_ok=18 submit_fail=0
-                deferred=0 criticos=3 auth_fail=0 silent_fail=0
-```
+1. **Pre-flight de ambiente** (commit `950f818`): Nova lib `vixradar-ambient-check.ps1` com `Test-VixClaudeAmbienteLimpo`. Checa `ANTHROPIC_BASE_URL`, `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_HAIKU_MODEL`, `ANTHROPIC_DEFAULT_SONNET_MODEL`, `CLAUDE_CODE_SUBAGENT_MODEL` no registry e no `settings.json`. Se qualquer um apontar para agregador/modelo nao-Claude, aborta com exit 6 antes de consumir um token.
 
-18 emissores gravados em producao com **zero das 9 rodadas** do protocolo, incluindo CRITICO
-para Oi, Kora Saude e Light, e `sem_eventos:true` para GPA e CSN sem nenhuma busca. Todo
-indicador de saude da rotina ficou verde: `submit_fail=0`, `auth_fail=0`, `silent_fail=0`.
+2. **Probe de WebSearch** (commit `41930d9`): `Test-VixWebSearchProbe` na mesma lib. Executa busca trivial (cotacao IBOVESPA) com WebSearch+WebFetch e valida resposta substantiva. Se falhar, aborta com exit 7 antes do primeiro submit. Custo ~2k tokens.
 
-**Causa raiz, e nao e o DeepSeek.** O roteamento foi o gatilho. O defeito e que
-**a rotina nao mede o que declara medir**. Linha 421 de `run_vixradar_matinal_claude.ps1`:
+3. **Contador real de buscas** (commit `0c8d9ea`): O script agora percorre `fontes_consultadas` de cada emissor e conta resultados validos. Emissores FULL com zero buscas efetivas sao degradados para INCONCLUSIVO com `sem_eventos:true`. O `LOTE_FECHADO` reporta o contador real, nao o autodeclarado.
 
-```
-Ultima linha: LOTE_RESUMO|buscas=<total de buscas executadas>
-```
-
-O contador `buscas` e **autodeclarado pelo modelo**, nao apurado pelo script. O lote
-`sonnet-1` reportou `buscas=12` enquanto as 12 buscas retornavam
-"WebSearch indisponivel (modelo deepseek-v4-flash)". A metrica de cobertura vem de quem
-esta sendo medido. Nao existe guarda que compare `fontes_consultadas[].resultado` com um
-padrao de falha antes de submeter.
-
-**Terceira ocorrencia da mesma familia hoje.** Um rotulo afirmando algo que o codigo nunca
-apurou:
-1. Card "Cobertura 62%" no dashboard, media outra coisa. Corrigido.
-2. `monitor-tasks.ps1` deduzindo "Credit balance too low" pelo nome da task. Aberto.
-3. `buscas=N` na matinal, contando rodadas declaradas e nao rodadas bem-sucedidas. Este.
-
-O detector de veracidade da UI criado hoje so cobre o caso 1, porque so olha HTML. Os casos
-2 e 3 sao a mesma doenca em PowerShell. A auditoria precisa de um check equivalente para
-metrica de rotina, ver [[69 - Auditoria Geral 2026-07-27]].
-
-**Acao (3 partes, nenhuma opcional):**
-1. **Pre-flight de ambiente** no inicio das 4 rotinas: abortar com exit distinto se
-   `ANTHROPIC_MODEL`, `ANTHROPIC_DEFAULT_*_MODEL` ou `CLAUDE_CODE_SUBAGENT_MODEL` tiverem
-   valor que nao seja modelo Anthropic conhecido. Falhar cedo e barato, 120k tokens nao.
-2. **Probe de WebSearch** antes do primeiro lote, custo aproximado 2k tokens: se a busca nao
-   voltar, abortar antes de qualquer submit em vez de degradar em silencio.
-3. **Parar de confiar no contador do modelo.** O script deve contar
-   `fontes_consultadas` cujo `resultado` **nao** case com
-   `indispon[ií]vel|falha|erro|n[aã]o execut` e submeter esse numero. Se buscas efetivas for
-   0 num tier FULL, marcar o emissor como INCONCLUSIVO em vez de gravar classificacao.
-
-4. **Dar saida ao dia envenenado.** A trava de idempotencia (linhas 527-547) monta a lista de
-   "ja processados" lendo as linhas `OK|<nome>` **do proprio arquivo de log do dia**. Isso
-   protege contra disparo duplo, que era o objetivo, mas cria uma armadilha: uma execucao
-   ruim marca os emissores como feitos e **nao existe forma suportada de reprocessar**. Foi
-   exatamente o que aconteceu aqui, o relancamento das 13:38 pulou os 18 contaminados e so
-   processou 3. A saida foi renomear o log na mao. Adicionar `-Force` que ignora a trava, ou
-   melhor, gravar as linhas `OK|` com o tier e um marcador de cobertura efetiva, para que a
-   trava pule apenas execucao com cobertura valida.
-
-**Validacao:** rodar a matinal com `ANTHROPIC_DEFAULT_HAIKU_MODEL` propositalmente invalido
-e obter aborto antes do primeiro submit, com exit code proprio, `submit_ok=0`. Rodar em
-seguida com `-Force` e confirmar que reprocessa emissor ja marcado como OK.
+4. **Parametro -Force** (commit `75708fc`): `-Force` ignora a trava de idempotencia e reprocessa todos os emissores. Nao precisa mais renomear log manualmente apos execucao contaminada.
 
 ### Remediacao do incidente, concluida 27/07 14:40
 
@@ -222,13 +169,13 @@ Nao propor troca de script: REGDRIFT1 (resolvido 23/07) declarou este o registra
 **Acao:** (1) deixar o escopo explicito no cabecalho, listando as tasks nao cobertas e o registrador de cada uma; (2) emitir aviso na saida quando o re-registro acontecer depois do horario do trigger do dia; (3) habilitar o log operacional do Scheduler (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`) para que uma proxima remocao seja rastreavel, ja que esta nao foi.
 **Validacao:** Cabecalho e saida do script declaram o escopo e o efeito de perder o disparo. Rodar com `-Status` nao altera nada. Log operacional com `IsEnabled=True`.
 
-### P2 — monitor-tasks.ps1 inventa a causa da falha da AgendaSemanal: PARCIAL 02/08
+### P2 — monitor-tasks.ps1 inventa a causa da falha da AgendaSemanal: RESOLVIDO 02/08
 
-**Atualizado:** 02/08. Commit `8f0b25b`.
+**Fechado em:** 02/08. Commits `8f0b25b` (staleness) + `e9068b8` (leitura real).
 **O que foi feito:**
-1. Monitor agora detecta tasks que NAO RODARAM (antes so via tasks que rodaram e falharam). Compara LastRunTime com o ciclo esperado (~24h) e flag como warning "nao rodou no ciclo esperado". Matinal 01/08 teria sido detectada.
-2. Regra hardcoded "Credit balance too low" para AgendaSemanal (linhas 158-160) **ainda existe**. Nao foi trocada por leitura real do log. A staleness detection cobre o caso de a task nao rodar, mas se rodar e falhar com exit 1 por OUTRO motivo, o rotulo "Credit balance too low" continua errado.
-**Acao remanescente:** Trocar a regra por leitura real do stderr/log (ver item original).
+1. Monitor detecta tasks que NAO RODARAM comparando LastRunTime com ciclo esperado.
+2. Regra hardcoded "Credit balance too low" substituida por leitura do log real em `logs/routines/vixradar-agenda-semanal_<data>.log`. Casa contra padroes: credit balance, API key invalida, roteamento agregador. Se nenhum casar, reporta "exit 1 sem causa identificada" como ERRO (nao warning).
+3. Sem a leitura real, o monitor mentia sobre a causa. Agora ou reporta a causa confirmada no log, ou admite que nao sabe.
 
 ### P2 — Probe CLI antes da Noturno 18:00: RESOLVIDO 02/08. Sistema recuperado.
 

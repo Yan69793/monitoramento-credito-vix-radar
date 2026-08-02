@@ -7,7 +7,7 @@ status: saudavel
 
 # Estado Atual — VIX Radar
 
-> [!success] 02/08 19h10 — **Worker ok:true, verificador_ok:true. Sistema totalmente operacional.** Noturno 02/08 completo: 88/103 submit, 6 CRITICO (Rumo, Cosan, Oncoclinicas, GPA, Raizen, Kora Saude). Verificador async drenou 9 eventos (7 aprovados, 2 rejeitados, 255k tokens). Coleta-Volatilidade 5o dia consecutivo com exit 0. Export-Historico segue quebrado (token sem permissao Workers KV Storage). AgendaSemanal proximo disparo 22:00 hoje. Reconciliacao-CVM amanha 08:00.
+> [!success] 02/08 20h18 — **Worker ok:true, verificador_ok:true. 4 guardas estruturais implementadas.** Pre-flight de ambiente (exit 6), probe WebSearch (exit 7), contador real de buscas + INCONCLUSIVO, parametro -Force para saida de dia envenenado. Monitor-Tasks le causa real em log. Export-Historico resolvido (token KV ok). Noturno 02/08 completo: 88/103 submit, 6 CRITICO (Rumo, Cosan, Oncoclinicas, GPA, Raizen, Kora Saude). Verificador async drenou 9 eventos (7 aprovados, 2 rejeitados, 255k tokens). Coleta-Volatilidade 5o dia consecutivo com exit 0. Export-Historico segue quebrado (token sem permissao Workers KV Storage). AgendaSemanal proximo disparo 22:00 hoje. Reconciliacao-CVM amanha 08:00.
 > [!warning] 30/07 16h30 — **Worker ok:false, verificador_ok:false. Rotinas Claude paradas desde 29/07 10:00 por bug de OAuth no Task Scheduler.** Causa raiz encontrada e corrigida. Reprocessamento pendente.
 > [!warning] 31/07 — **Incidente de API key 401.** Matinal e Noturno afetados. Emissores do dia ficaram com classificacao NENHUM. Causa raiz do 401 nao investigada (key simplesmente invalida naquele dia, voltou a funcionar 01/08).
 ## Recuperacao 30/07 a 02/08
@@ -299,4 +299,21 @@ em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 
 ---
 
-*Snapshot gerado em 2026-08-02 19h10 BRT (pos-Noturno 02/08, sistema totalmente operacional). Dias 28/07 a 02/08 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+## Guardas estruturais implementadas (02/08)
+
+| Guarda | Exit | O que impede | Commits |
+|---|---|---|---|
+| Auth probe (chave paga) | 5 | Rotina iniciar com API key invalida (31/07) | `8f0b25b` |
+| Pre-flight de ambiente | 6 | Agregador/modelo nao-Claude no env/settings.json (27/07) | `950f818` |
+| Probe WebSearch | 7 | Buscas falhando silenciosamente, cobertura zero (27/07) | `41930d9` |
+| Contador real de buscas | — | Modelo mentir sobre buscas, NENHUM com cobertura zero | `0c8d9ea` |
+| INCONCLUSIVO (FULL + 0 buscas) | — | Dado nao verificavel entrar como classificacao | `0c8d9ea` |
+| -Force (idempotencia) | — | Dia envenenado sem saida (27/07) | `75708fc` |
+| Monitor: staleness | — | Task nao rodar e ninguem ver (01/08) | `8f0b25b` |
+| Monitor: leitura real | — | Inventar causa de falha (Credit balance) | `e9068b8` |
+| Export: pre-voo KV | 5 | Token sem permissao KV Storage (30/07-02/08) | `4bfab4e` |
+| Export: token do registry | — | Env var herdado com token antigo | `4bfab4e` |
+
+---
+
+*Snapshot gerado em 2026-08-02 20h18 BRT (4 guardas estruturais implementadas). Dias 28/07 a 02/08 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
