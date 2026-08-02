@@ -153,16 +153,23 @@ try {
         $npx = Get-Command npx -ErrorAction SilentlyContinue
         if (-not $npx) { Write-Log 'ERRO: npx ausente no PATH'; exit 1 }
 
+        # Pre-voo KV: valida acesso antes de qualquer operacao de dados. O erro 401/403
+        # aparece so no segundo kvget em diante (o primeiro as vezes e cacheado), e sem
+        # esta guarda o script descobre a falha so depois de parcialmente executado.
+        # Custa ~2s e evita o cenario de 30/07: 4 dias falhando com a mesma causa.
+        Write-Log 'Pre-voo KV: validando acesso...'
         $predRaw = Get-KvValue 'predictive_v1:latest'
+        if ($script:KvAuthFalhou) {
+            Write-Log 'ERRO FATAL: token CLOUDFLARE_API_TOKEN sem permissao Workers KV Storage.'
+            Write-Log 'ERRO FATAL: abrir https://dash.cloudflare.com, conta Szuchmacher, conceder Workers KV Storage ao token.'
+            Write-Log 'ERRO FATAL: export cancelado. Nada foi gravado.'
+            exit 5
+        }
         if (-not $predRaw) {
-            if ($script:KvAuthFalhou) {
-                Write-Log 'ERRO: sem acesso ao KV (credencial recusada). O dado pode existir - nao concluir que o pipeline falhou.'
-                Write-Log 'ACAO: conceder Workers KV Storage ao CLOUDFLARE_API_TOKEN e reexecutar.'
-            } else {
-                Write-Log 'ERRO: predictive_v1:latest ausente/ilegivel no KV - sem base para o dump (pipeline nao rodou?)'
-            }
+            Write-Log 'ERRO: predictive_v1:latest ausente/ilegivel no KV - sem base para o dump (pipeline preditivo nao rodou?)'
             exit 1
         }
+        Write-Log 'Pre-voo KV: OK.'
 
         $zscoresRaw = Get-KvValue 'anbima:zscores'
         if (-not $zscoresRaw) { $erros += 'anbima:zscores ausente (TTL 7d vencido ou sync nao rodou)'; Write-Log 'AVISO: anbima:zscores ausente' }

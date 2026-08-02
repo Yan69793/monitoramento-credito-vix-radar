@@ -175,6 +175,21 @@ function Initialize-VixClaudeAuth {
         $motivo = if (Test-VixClaudeAuthFailure $r.Saida) { 'sessao OAuth expirada ou deslogada' } else { ('sonda falhou exit=' + $r.Code) }
         Write-VixAuthLog ('AUTH: assinatura indisponivel (' + $motivo + '). Caindo para chave paga (pay-per-token).')
         Write-VixAuthLog 'AUTH: para voltar a assinatura, rodar `claude setup-token` (token longevo, sobrevive ao Task Scheduler) ou `claude login`.'
+
+        # Probe a chave paga antes de confiar nela. A sonda da assinatura nao cobra token,
+        # mas a da chave paga consome ~2k tokens. Custo aceitavel: a alternativa e perder
+        # 120k+ tokens num lote que vai falhar com 401 em 3 retries, como em 31/07.
+        Set-VixClaudeAuthEnv
+        $keyProbe = Test-VixClaudeSonda $ModeloSonda $McpConfigFile
+        if ($keyProbe.Ok) {
+            Write-VixAuthLog 'AUTH: chave paga validada. Prosseguindo pay-per-token.'
+        } else {
+            $errPreview = $keyProbe.Saida -replace "[`n`r]+", ' '
+            if ($errPreview.Length -gt 200) { $errPreview = $errPreview.Substring(0, 200) }
+            Write-VixAuthLog ('ERRO AUTH: chave paga recusada (exit=' + $keyProbe.Code + '). ' + $errPreview)
+            Write-VixAuthLog 'ERRO AUTH: nenhuma credencial disponivel. A rotina vai falhar nos lotes.'
+            $script:VixAuthModo = 'nenhum'
+        }
     } else {
         $script:VixAuthModo = 'nenhum'
         Write-VixAuthLog 'ERRO AUTH: assinatura indisponivel e nenhuma chave sk-ant- configurada.'

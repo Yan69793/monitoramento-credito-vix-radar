@@ -420,6 +420,11 @@ Write-Log "INICIO: noturno meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet
 # Sonda a assinatura uma vez e registra no log qual credencial serviu a execucao. A linha
 # importa para proveniencia: em 30/07 o log carimbava Claude sem que isso fosse verificavel.
 Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
+if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
+    Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
+    Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
+    exit 5
+}
 Invoke-Cleanup
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {

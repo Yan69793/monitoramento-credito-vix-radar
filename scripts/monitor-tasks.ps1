@@ -126,6 +126,52 @@ foreach ($task in $allTasks) {
         }
     }
 
+    # Staleness check: tasks que nao rodaram no periodo esperado. Roda mesmo quando
+    # LastTaskResult=0, porque o que importa aqui e que a task NAO EXECUTOU, nao que a
+    # ultima execucao falhou. Matinal 01/08 nao rodou e ninguem viu porque o codigo de
+    # saida da ultima execucao bem-sucedida (31/07) era 0.
+    $staleHours = $null
+    $staleMsg = ''
+    $dailyTasks = @{
+        'VIXRadar-Noturno'            = @{ hours = 18; weekdays = $false }
+        'VIXRadar-Matinal'            = @{ hours = 10; weekdays = $true  }
+        'VIXRadar-Coleta-Volatilidade' = @{ hours = 17; weekdays = $false }
+        'VIXRadar-Export-Historico'   = @{ hours = 20; weekdays = $false }
+        'VIXRadar-Verificacao-Async'  = @{ hours = 10; weekdays = $false }
+    }
+    if ($dailyTasks.ContainsKey($name)) {
+        $cfg = $dailyTasks[$name]
+        $now = Get-Date
+        $hoursSince = [Math]::Round(($now - $lastRun).TotalHours, 1)
+        # Tarefa rodou hoje? LastRun no mesmo dia do calendario.
+        $rodouHoje = ($lastRun.Date -eq $now.Date)
+        # Se nao rodou hoje e o horario previsto ja passou (com 2h de graca), flag.
+        # Monitor roda as 07:00, entao para tarefas das 18:00 ou 20:45, a checagem
+        # cai sobre ontem: se a ultima execucao foi antes de ontem, faltou um ciclo.
+        $esperadoHoje = ($now.Hour -ge ($cfg.hours + 2))
+        if (-not $rodouHoje -and $esperadoHoje) {
+            $ontemFoiDiaUtil = $true
+            if ($cfg.weekdays) {
+                $ontem = $now.AddDays(-1)
+                $ontemFoiDiaUtil = ($ontem.DayOfWeek -notin 'Saturday', 'Sunday')
+            }
+            if ($ontemFoiDiaUtil) {
+                $staleHours = $hoursSince
+                $staleMsg = "nao rodou no ciclo esperado (ultimo ha ${hoursSince}h, periodo ~24h)"
+            }
+        }
+    }
+    # Stale com exit code benigno e o caso mais perigoso: task simplesmente nao
+    # disparou e ninguem percebeu (Matinal 01/08). Reportar como warning distinto.
+    if ($staleHours -and $code -in $BenignCodes) {
+        $warnings += [ordered]@{
+            task = $name; code = $code; codeHex = '0x{0:X}' -f $code
+            lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm'); ageDays = $ageDays
+            script = $scriptPath; reason = $staleMsg
+        }
+        continue
+    }
+
     # Classifica severidade
     $ageDays = ((Get-Date) - $lastRun).Days
     $action = $task.Actions | Select-Object -First 1
