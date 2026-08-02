@@ -680,8 +680,11 @@ try {
 
         # submit centralizado no PS1: schema garantido + retry por emissor
         $loteOk = 0; $loteFail = 0; $loteCrit = 0
+        $buscasReaisLote = 0
+        $iAgudo = [char]0x00ED
         foreach ($emp in $job.Chunk) {
             $res = Get-ResultadoEmissor $parsed.Map $emp.empresa
+            $buscasEfetivas = 0
             if (-not $res) {
                 Write-Log ('WARN: ' + $emp.empresa + '|sem RESULTADO apos retry - submit minimo de cobertura pendente')
                 $res = [pscustomobject]@{
@@ -689,9 +692,30 @@ try {
                     cobertura_nota = 'Falha de parse do agente apos retry - cobertura pendente, revisar manualmente.'
                     eventos = @(); fontes_consultadas = @()
                 }
+            } else {
+                # Contar fontes_consultadas com resultado valido. O contador autodeclarado
+                # (LOTE_RESUMO|buscas=N) e escrito pelo modelo e pode reportar 12 buscas
+                # enquanto todas falharam (incidente 27/07). Aqui contamos nos mesmos.
+                $fontes = @($res.fontes_consultadas)
+                foreach ($f in $fontes) {
+                    $r = '' + $f.resultado
+                    if ($r -and $r -notmatch "indisponivel|indispon${iAgudo}vel|falha|erro|n[aã]o execut|timeout|^vazio$|^$") {
+                        $buscasEfetivas++
+                    }
+                }
             }
+            $buscasReaisLote += $buscasEfetivas
             $classif = '' + $res.classificacao_geral
             if (-not $classif) { $classif = if (@($res.eventos).Count -gt 0) { 'RELEVANTE' } else { 'ECO' } }
+            # Emissor FULL com zero buscas efetivas: cobertura nao verificavel. Degradar
+            # para INCONCLUSIVO em vez de gravar NENHUM ou ECO baseado em dado inexistente.
+            # CRITICO preservado (vem de evento estrutural, nao depende de busca).
+            if ($emp.tier -eq 'FULL' -and $buscasEfetivas -eq 0 -and $classif -ne 'CRITICO') {
+                Write-Log ('WARN: ' + $emp.empresa + '|FULL com 0 buscas efetivas -> INCONCLUSIVO')
+                $classif = 'INCONCLUSIVO'
+                $res.sem_eventos = $true
+                if (-not $res.cobertura_nota) { $res.cobertura_nota = 'Zero buscas efetivas - cobertura nao verificavel (falha de ferramenta ou modelo).' }
+            }
             $subOk = $false; $nEv = 0
             try {
                 $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor
@@ -711,6 +735,10 @@ try {
         }
         $stats.submit_ok += $loteOk
         $stats.submit_fail += $loteFail
+        # Contador real de buscas (fontes_consultadas com resultado valido), nao o
+        # autodeclarado pelo modelo. O autodeclarado (LOTE_RESUMO|buscas=N) pode
+        # reportar N quando todas as buscas falharam (incidente 27/07).
+        if ($buscasReaisLote -gt 0 -or $buscasLote -lt 0) { $buscasLote = $buscasReaisLote }
         if ($buscasLote -ge 0) { $stats.buscas_total += $buscasLote }
         Write-Log ('LOTE_FECHADO|' + $label + '|ok=' + $loteOk + '|fail=' + $loteFail + '|buscas=' + $buscasLote + '|criticos=' + $loteCrit)
 
