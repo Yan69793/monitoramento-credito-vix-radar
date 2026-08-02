@@ -1,4 +1,5 @@
 ﻿# run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
+param([switch]$Force)
 $ErrorActionPreference = 'Stop'
 # PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
 
@@ -489,8 +490,9 @@ try {
 
     # v4.9.151: idempotencia - se a rotina reiniciou, nao reprocessar emissores ja feitos neste dia.
     # Oi e Oncoclínicas foram processadas 2x em 09/07 (~180k tokens desperdicados) por falta disto.
+    # -Force ignora a trava: util apos execucao contaminada.
     $jaProcessados = @{}
-    if (Test-Path $LogFile) {
+    if (-not $Force -and (Test-Path $LogFile)) {
         $linhasOk = Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|([^|]+)\|' }
         foreach ($linha in $linhasOk) {
             if ($linha -match 'OK\|([^|]+)\|') {
@@ -511,6 +513,8 @@ try {
         if ($jaProcessados.Count -gt 0) {
             Write-Log ('Idempotencia: ' + $jaProcessados.Count + ' emissores ja processados hoje, pulando')
         }
+    } elseif ($Force) {
+        Write-Log 'AVISO: -Force ativo. Trava de idempotencia ignorada. Todos os emissores serao reprocessados.'
     }
 
     $janIni = '' + $plano.emissores[0].janela_inicio

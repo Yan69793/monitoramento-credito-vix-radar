@@ -1,4 +1,5 @@
 ﻿# run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
+param([switch]$Force)
 $ErrorActionPreference = 'Stop'
 # PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
 # Mesma correcao de encoding do noturno (ver run_vixradar_noturno_claude.ps1) - stdout do
@@ -566,8 +567,10 @@ try {
     # ganhou isto depois de gastar ~180k tokens repetindo Oi e Oncoclinicas em 09/07;
     # a matinal ficou sem, e em 15/07 rodou a mesma fila as 10h00 e de novo as 17h26.
     # Mesmo formato de log (OK|nome|) e mesmo Get-NomeNormalizado dos dois lados.
+    # -Force ignora a trava: util apos execucao contaminada (ex.: buscas falharam,
+    # emissores foram submetidos com cobertura zero e precisam ser reprocessados).
     $jaProcessados = @{}
-    if (Test-Path $LogFile) {
+    if (-not $Force -and (Test-Path $LogFile)) {
         $linhasOk = Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|([^|]+)' }
         foreach ($linha in $linhasOk) {
             if ($linha -match 'OK\|([^|]+)') {
@@ -577,6 +580,8 @@ try {
         if ($jaProcessados.Count -gt 0) {
             Write-Log ('Idempotencia: ' + $jaProcessados.Count + ' emissores ja processados hoje, pulando')
         }
+    } elseif ($Force) {
+        Write-Log 'AVISO: -Force ativo. Trava de idempotencia ignorada. Todos os emissores serao reprocessados.'
     }
 
     $analyzeList = @($plano.emissores | Where-Object {
