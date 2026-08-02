@@ -285,6 +285,11 @@ if ($ambientViolacao) {
     Write-Log 'ERRO FATAL: corrija o ambiente e reexecute. Verificar: registry User/Machine, settings.json, env vars do processo.'
     exit 6
 }
+if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+    Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
+    Write-Log 'ERRO FATAL: verificar modelo configurado e conectividade. A execucao foi abortada antes do primeiro evento.'
+    exit 7
+}
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     Write-Log 'ERRO: claude.exe ausente'

@@ -55,3 +55,47 @@ function Test-VixClaudeAmbienteLimpo {
 
     return $null
 }
+
+function Test-VixWebSearchProbe([string]$McpConfigFile) {
+    # Probe de WebSearch: busca trivial para validar que a ferramenta de busca
+    # esta funcional antes de queimar tokens em lotes. Em 27/07 todas as buscas
+    # retornavam "WebSearch indisponivel (modelo deepseek-v4-flash)" e os emissores
+    # foram submetidos com cobertura zero. Esta sonda teria abortado em 3s.
+    # Custo: ~2k tokens. Devolve $true se ok, $false se falhou.
+
+    $prevEAP = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    $ok = $false
+    try {
+        Set-VixClaudeAuthEnv
+        $probePrompt = 'Qual a cotacao de fechamento do IBOVESPA hoje? Responda so com o valor numerico.'
+        $stderrFile = Join-Path $env:TEMP ('wsprobe_' + $PID + '.txt')
+        $claudeArgs = @('-p', '--model', 'claude-haiku-4-5-20251001', '--output-format', 'json',
+            '--tools', 'WebSearch,WebFetch', '--no-session-persistence')
+        if ($McpConfigFile -and (Test-Path -LiteralPath $McpConfigFile)) {
+            $claudeArgs += @('--strict-mcp-config', '--mcp-config', $McpConfigFile)
+        }
+        $saida = ($probePrompt | & claude @claudeArgs 2>$stderrFile | Out-String)
+        $code = $LASTEXITCODE
+
+        if ($code -eq 0 -and $saida) {
+            # Sonda bem-sucedida: o modelo respondeu com algo. Validar que nao e
+            # mensagem de indisponibilidade da ferramenta de busca.
+            $iAgudo = [char]0x00ED
+            $falhaBusca = ($saida -match "indisponivel|indispon${iAgudo}vel|WebSearch.*indispon|search.*unavailable|ferramenta.*busca.*falha")
+            if (-not $falhaBusca) {
+                $ok = $true
+            }
+        }
+        if (-not $ok) {
+            # Guardar saida para diagnostico
+            $probeErrFile = Join-Path $env:TEMP ('wsprobe_err_' + $PID + '.txt')
+            $saida | Out-File -FilePath $probeErrFile -Encoding UTF8
+        }
+    } catch {
+        $ok = $false
+    } finally {
+        $ErrorActionPreference = $prevEAP
+    }
+    return $ok
+}
