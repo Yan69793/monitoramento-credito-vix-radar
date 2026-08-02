@@ -202,9 +202,31 @@ foreach ($task in $allTasks) {
         $entry.reason = 'SCRIPT AUSENTE (file-not-found em runtime)'
         $warnings += $entry
     } elseif ($code -eq 1 -and $name -eq 'VIXRadar-AgendaSemanal') {
-        # Credit balance too low no claude -p (quota de assinatura Claude Code)
-        $entry.reason = 'Credit balance too low (assinatura Claude Code)'
-        $warnings += $entry
+        # Antes hardcoded como 'Credit balance too low'. Agora le o log real
+        # para determinar a causa. Se nao encontrar evidencia, reporta como
+        # 'causa nao identificada' e mantem como ERRO (nao warning).
+        $staleReason = $null
+        $rotinaLogDir = Join-Path $VixRoot 'logs\routines'
+        $logPattern = Join-Path $rotinaLogDir ('vixradar-agenda-semanal_' + $lastRun.ToString('yyyyMMdd') + '.log')
+        if (Test-Path $logPattern) {
+            try {
+                $logContent = Get-Content $logPattern -Raw -Encoding UTF8 -ErrorAction Stop
+                if ($logContent -match 'credit balance is too low|Credit balance too low|insufficient.*credit|quota exceeded') {
+                    $staleReason = 'Credit balance too low (confirmado no log)'
+                } elseif ($logContent -match 'invalid x-api-key|invalid.*api.key|HTTP 401|401.*Unauthorized|authentication_error') {
+                    $staleReason = 'API key invalida (confirmado no log)'
+                } elseif ($logContent -match 'ANTHROPIC_BASE_URL|deepseek|agregador') {
+                    $staleReason = 'roteamento de agregador detectado no log'
+                }
+            } catch { }
+        }
+        if ($staleReason) {
+            $entry.reason = $staleReason
+            $warnings += $entry
+        } else {
+            $entry.reason = 'exit 1 sem causa identificada (log nao contem padrao conhecido)'
+            $erros += $entry
+        }
     } elseif ($code -ne 0) {
         $entry.reason = "exit code $code nao-benigno"
         $erros += $entry
