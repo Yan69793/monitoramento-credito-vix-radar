@@ -201,13 +201,14 @@ existir e o proximo disparo real e so em 03/08, ha margem.
 **Descricao:** Task recriada em 27/07. Executou com sucesso em 27/07, 30/07, 31/07, 01/08 e 02/08 — 5 dias consecutivos com exit 0. Coleta e upload estaveis. Script compativel com PowerShell 5.1. Nada mais a fazer aqui.
 **Evidencia:** `logs\routines\coleta_volatilidade_20260802.log` com "FIM: coleta_volatilidade OK".
 
-### P2 — VIXRadar-Export-Historico: token sem permissao Workers KV Storage desde 30/07
+### P2 — VIXRadar-Export-Historico: RESOLVIDO 02/08. Token atualizado, export funcionando.
 
-**Origem:** Diagnostico de rotinas 27/07, atualizado 02/08.
-**Estado real (medido):** task **existe**, Ready, gatilho diario 20h45. Falhando com exit 1 desde 30/07.
-**Melhoria aplicada 02/08 (commit `8f0b25b`):** Pre-voo KV adicionado no inicio do script. Valida acesso antes de qualquer operacao de dados, aborta com exit 5 e instrucoes claras se o token nao tem permissao. Antes o script falhava no meio da execucao.
-**Acao (nao depende de codigo):** Abrir Cloudflare Dashboard, conceder permissao Workers KV Storage ao token `CLOUDFLARE_API_TOKEN`.
-**Validacao:** `logs\routines\vixradar-export_*.log` com exit 0 e kvget sem erro 401/403.
+**Fechado em:** 02/08. Commits `4bfab4e` + `45e8cf9`.
+**O que foi feito:**
+1. Token `CLOUDFLARE_API_TOKEN` substituido no registry User por um com permissao Workers KV Storage.
+2. Script corrigido para sempre ler o token do registry, nao depender do env var herdado (que continha o token antigo sem a permissao).
+3. Export 02/08 executado com sucesso: 103 emissores no predictive, 78 com serie, 4 arquivos em `data/historico/2026-08-02/`, 199s, 0 avisos.
+**Evidencia:** `logs\routines\vixradar-export_20260802_195824.log` com "FIM: ok".
 
 ### P2 - Guard em register-all-routines-scheduler.ps1, o nome engana e o script derruba o disparo do dia
 

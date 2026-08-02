@@ -60,7 +60,7 @@ As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth.
 | Noturno 18:00 | **Completo.** submit_ok=88, skip_ok=15, submit_fail=0, silent_fail=0. 494k tokens, 44min (2668s), 7 lotes (79 haiku + 9 sonnet). 6 CRITICO: Rumo (rebaixamento S&P brAAA→brAA+ CreditWatch negativo), Cosan (rebaixamento BB-→B+), Oncoclinicas, Pao de Acucar (GPA), Raizen, Kora Saude. |
 | Verificador async 18:44 | **Completo.** Fila 9, aprovados 7, rejeitados 2, erros_parse 0, refusals 0. 255k tokens. Fila zerada. |
 | Coleta-Volatilidade 17:01 | exit=0 (5o dia consecutivo normalizado) |
-| Export-Historico 20:45 | Pendente. Deve falhar de novo — token sem permissao Workers KV Storage desde 30/07. |
+| Export-Historico 19:59 | **Resolvido.** Token Cloudflare atualizado (permissao Workers KV Storage concedida). Script corrigido para ler token do registry. Export 02/08 concluido: 103 emissores, 78 series, 4 arquivos, 199s, 0 avisos. |
 | AgendaSemanal 22:00 | Pendente. Primeiro disparo apos falha de 27/07. |
 
 > [!success] 28/07 23h33 — **Deploy v4.9.183 + v201.93.** Build deterministico, Merton/Selic corrigidos, CI fail-closed. Dia 28 totalmente operacional: matinal 14 submites (4 criticos), noturno 93 emissores, verificador async 2x (fila zerada, 1.5M tokens).
