@@ -6817,39 +6817,8 @@ __name22222(buildSystemPromptNewsletter, "buildSystemPromptNewsletter");
 __name222222(buildSystemPromptNewsletter, "buildSystemPromptNewsletter");
 __name2222222(buildSystemPromptNewsletter, "buildSystemPromptNewsletter");
 __name22222222(buildSystemPromptNewsletter, "buildSystemPromptNewsletter");
-async function chamarOpenRouter(apiKey, sys, usr, model = "perplexity/sonar") {
-  if (!apiKey) throw new Error("CHAVE_NAO_CONFIGURADA");
-  let _lastErr;
-  for (let _try = 0; _try < 2; _try++) {
-    if (_try > 0) await new Promise((_r) => setTimeout(_r, 2e3));
-    const c = new AbortController();
-    const t = setTimeout(() => c.abort(), 55e3);
-    let r;
-    try {
-      r = await fetch("https://openrouter.ai/api/v1/chat/completions", { method: "POST", headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json", "HTTP-Referer": FRONTEND_URL, "X-Title": "Radar" }, signal: c.signal, body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: usr }], max_tokens: 4e3, temperature: 0.1 }) });
-    } catch (e) {
-      clearTimeout(t);
-      if (e.name === "AbortError") { _lastErr = new Error("PROVEDOR_INDISPONIVEL: Timeout."); continue; }
-      throw new Error("PROVEDOR_INDISPONIVEL: " + (e.name || "NoName") + ": " + String(e.message || "NoMessage").slice(0, 200));
-    }
-    clearTimeout(t);
-    if (r.status === 401 || r.status === 403) throw new Error("CHAVE_INVALIDA");
-    if (r.status === 429) throw new Error("RATE_LIMIT");
-    if (r.status >= 500) { _lastErr = new Error("PROVEDOR_INDISPONIVEL: 5xx"); continue; }
-    if (!r.ok) throw new Error(`PROVEDOR_INDISPONIVEL: ${r.status}`);
-    return (await r.json())?.choices?.[0]?.message?.content?.trim() ?? "";
-  }
-  throw _lastErr || new Error("PROVEDOR_INDISPONIVEL: retries esgotados");
-}
-__name(chamarOpenRouter, "chamarOpenRouter");
-__name2(chamarOpenRouter, "chamarOpenRouter");
-__name22(chamarOpenRouter, "chamarOpenRouter");
-__name222(chamarOpenRouter, "chamarOpenRouter");
-__name2222(chamarOpenRouter, "chamarOpenRouter");
-__name22222(chamarOpenRouter, "chamarOpenRouter");
-__name222222(chamarOpenRouter, "chamarOpenRouter");
-__name2222222(chamarOpenRouter, "chamarOpenRouter");
-__name22222222(chamarOpenRouter, "chamarOpenRouter");
+// chamarOpenRouter removido (OPENROUTER-DEAD-CLEANUP, auditoria 2026-07-30): OpenRouter desligado desde v4.9.108;
+// funcao e call sites removidos. Se OPENROUTER_API_KEY existir como secret, nao e mais consumido.
 function extrairCustoAnthropic(data, modelo) {
   const usage = data && data.usage || {};
   const inputTok = Number(usage.input_tokens || 0) + Number(usage.cache_creation_input_tokens || 0) + Number(usage.cache_read_input_tokens || 0);
@@ -7159,58 +7128,7 @@ __name(classificarTipoDadoFonte, "classificarTipoDadoFonte");
 __name2(classificarTipoDadoFonte, "classificarTipoDadoFonte");
 __name22(classificarTipoDadoFonte, "classificarTipoDadoFonte");
 __name222(classificarTipoDadoFonte, "classificarTipoDadoFonte");
-async function chamarOpenRouterExa(apiKey, sys, usr, opts = {}) {
-  if (!apiKey) throw new Error("CHAVE_NAO_CONFIGURADA");
-  const model = opts.model || "openai/gpt-4o-mini";
-  const allowedDomains = Array.isArray(opts.allowed_domains) ? opts.allowed_domains : EXA_ALLOWED_DOMAINS_DEFAULT;
-  const maxResults = typeof opts.max_results === "number" ? opts.max_results : 5;
-  const c = new AbortController();
-  const t = setTimeout(() => c.abort(), 55e3);
-  let r;
-  try {
-    r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": FRONTEND_URL,
-        "X-Title": "Radar-Exa"
-      },
-      signal: c.signal,
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "system", content: sys }, { role: "user", content: usr }],
-        max_tokens: 4e3,
-        temperature: 0.1,
-        plugins: [{
-          id: "web",
-          engine: "exa",
-          max_results: maxResults,
-          allowed_domains: allowedDomains
-        }]
-      })
-    });
-  } catch (e) {
-    clearTimeout(t);
-    if (e.name === "AbortError") throw new Error("PROVEDOR_INDISPONIVEL: Timeout.");
-    throw new Error("PROVEDOR_INDISPONIVEL: " + (e.name || "NoName") + ": " + String(e.message || "NoMessage").slice(0, 200));
-  }
-  clearTimeout(t);
-  if (r.status === 401 || r.status === 403) throw new Error("CHAVE_INVALIDA");
-  if (r.status === 429) throw new Error("RATE_LIMIT");
-  if (r.status >= 500) throw new Error(`PROVEDOR_INDISPONIVEL: 5xx`);
-  if (!r.ok) throw new Error(`PROVEDOR_INDISPONIVEL: ${r.status}`);
-  return (await r.json())?.choices?.[0]?.message?.content?.trim() ?? "";
-}
-__name(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name2(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name22(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name222(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name2222(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name22222(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name222222(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name2222222(chamarOpenRouterExa, "chamarOpenRouterExa");
-__name22222222(chamarOpenRouterExa, "chamarOpenRouterExa");
+// chamarOpenRouterExa removido (OPENROUTER-DEAD-CLEANUP, auditoria 2026-07-30)
 function claudeAuditTrigger(motivo, contexto, env2222) {
   try {
     if (env2222 && env2222.RADAR_USAGE_EVENTS && typeof env2222.RADAR_USAGE_EVENTS.writeDataPoint === "function") {
@@ -9732,11 +9650,7 @@ async function testarProviders(env2222) {
 Setor: Petroleo | Data: ${h}
 Retorne JSON minimo sem_eventos:true.`;
   const r = {};
-  const probes = [
-    ["perplexity_primario", (k, s, u) => chamarOpenRouter(k, s, u, "perplexity/sonar"), env2222.OPENROUTER_API_KEY],
-    ["openrouter_web_search_exa", (k, s, u) => chamarOpenRouterExa(k, s, u, { max_results: 1 }), env2222.OPENROUTER_API_KEY],
-    ["openrouter", chamarOpenRouter, env2222.OPENROUTER_API_KEY]
-  ];
+  const probes = [];
   if (env2222.PERPLEXITY_API_KEY) {
     probes.push(["perplexity_direto_legado", chamarPerplexity, env2222.PERPLEXITY_API_KEY]);
   }
@@ -9749,11 +9663,6 @@ Retorne JSON minimo sem_eventos:true.`;
       r[n] = { ok: false, erro: e.message, ms: Date.now() - t };
     }
   }
-  r.perplexity = r.perplexity_primario;
-  r._provider_primario = "perplexity/sonar via openrouter";
-  r._provider_secundario = "openrouter_web_search_exa";
-  r._allowed_domains_exa = EXA_ALLOWED_DOMAINS_DEFAULT;
-  r._contrato = "v4.9.22 D20: PERPLEXITY_API_KEY direta e legado opcional, nao gate. Rota Exa secundaria disponivel para acionamento por trigger.";
   r.resend = { configurado: !!env2222.RESEND_API_KEY };
   return resp({ ok: true, providers: r, ts: (/* @__PURE__ */ new Date()).toISOString() });
 }

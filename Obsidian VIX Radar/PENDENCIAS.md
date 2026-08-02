@@ -1,5 +1,5 @@
 ---
-data: 2026-07-27
+data: 2026-08-02
 tipo: pendencia
 tags: [vix-radar, backlog, acoes]
 status: ativo
@@ -11,7 +11,13 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
-## Abertas (27/07 13h30)
+## Abertas (02/08 19h10 — pos-recuperacao 30/07 a 02/08)
+
+### Status geral
+
+Sistema totalmente operacional desde 01/08. Rotinas Claude voltaram a funcionar apos correcao OAuth (30/07) e remocao do bloco DeepSeek do settings.json (27/07). Coleta-Volatilidade normalizada (5 dias exit 0). Export-Historico e o unico ponto cego ativo: token Cloudflare sem permissao Workers KV Storage desde 30/07. Reconciliacao-CVM primeiro disparo real amanha 03/08 08:00. AgendaSemanal proximo disparo hoje 22:00.
+
+Fila aberta: 8 itens (0 P1, 4 P2, 3 P3, 1 P4). Dois P1 fechados na recuperacao. Dois itens fechados (Coleta normalizada, Export-Historico diagnosticado).
 
 > [!warning] Estado de task nao se afirma aqui
 > Situacao de task do Scheduler mora em [[03b - Infraestrutura]], derivada de `Get-ScheduledTask`.
@@ -186,34 +192,19 @@ disparar. Sem reconciliacao correta, dados podem divergir dos protocolos CVM sem
 existir e o proximo disparo real e so em 03/08, ha margem.
 **Validacao:** log `logs\routines\vixradar-reconciliacao-cvm_*.log` de 03/08 com exit 0.
 
-### P3 — VIXRadar-Coleta-Volatilidade: recriada, falta ver o primeiro disparo real
+### P3 — VIXRadar-Coleta-Volatilidade: RESOLVIDO 02/08. 5 dias consecutivos exit 0.
 
-**Origem:** Diagnostico de rotinas 27/07. **Reescrito 27/07 13h30.**
-**Estado real (medido):** task **existe**, Ready, gatilho diario 17h00, registrada em
-27/07 12:23:51. Recriacao **feita**. O `LastRunTime` que o Scheduler mostra e 30/11/1999
-porque re-registrar zera o historico, nao porque a rotina nunca rodou: o ultimo log real e
-de 23/07.
-**Correcao junto:** `run_coleta_volatilidade.ps1` linhas 29 e 39, `pwsh` trocado por
-`powershell.exe`. Vale manter mesmo agora que o PowerShell 7 foi instalado nesta maquina,
-porque a instalacao e via Store e o `pwsh` nao resolve no contexto do Task Scheduler. Ver
-memoria `project_powershell_5_1_e_pwsh7`.
-**Atencao, corrigido 27/07 ~13h20:** essa troca de interpretador, sozinha, **teria
-derrubado o disparo das 17h00**. `collect_cotacoes.ps1` usava ternario (linha 164) e
-`-MaximumRetryCount`, sintaxe que so existe no PS7, e `upload_volatilidade_kv.ps1` estava
-sem BOM com travessao dentro de string: os dois falhavam no parse sob 5.1. Pior, falhariam
-em **silencio**, porque o `try/catch` do chamador nao captura falha de processo filho, e a
-rotina logaria "sucesso=" vazio e seguiria. Corrigido em `642e599`. Detalhe completo em
-[[70 - Incidente Encoding e Compatibilidade PowerShell 5.1 2026-07-27]].
-**Acao:** observar o disparo de hoje 17h00. Se falhar, a causa e outra, nao esta.
-**Validacao:** `logs\routines\coleta_volatilidade_20260727*.log` existir com exit 0.
+**Fechado em:** 02/08.
+**Descricao:** Task recriada em 27/07. Executou com sucesso em 27/07, 30/07, 31/07, 01/08 e 02/08 — 5 dias consecutivos com exit 0. Coleta e upload estaveis. Script compativel com PowerShell 5.1. Nada mais a fazer aqui.
+**Evidencia:** `logs\routines\coleta_volatilidade_20260802.log` com "FIM: coleta_volatilidade OK".
 
-### P3 — VIXRadar-Export-Historico: recriada, falta ver o primeiro disparo real
+### P2 — VIXRadar-Export-Historico: token sem permissao Workers KV Storage desde 30/07
 
-**Origem:** Diagnostico de rotinas 27/07. **Reescrito 27/07 13h30.**
-**Estado real (medido):** task **existe**, Ready, gatilho diario 20h45, registrada em
-27/07 12:23:58. Recriacao **feita**. Backups pararam entre 22/07 e hoje, 5 dias sem export.
-**Acao:** so observar o disparo de hoje 20h45.
-**Validacao:** `logs\routines\vixradar-export_20260727*.log` existir com exit 0.
+**Origem:** Diagnostico de rotinas 27/07, atualizado 02/08.
+**Estado real (medido):** task **existe**, Ready, gatilho diario 20h45. Falhando com exit 1 desde 30/07. **Nao e mais o problema de recriacao** — a task foi recriada e dispara normalmente. O problema e que o `CLOUDFLARE_API_TOKEN` nao tem permissao Workers KV Storage. O erro e claro: `Failed to fetch https://api.cloudflare.com/client/v4/accounts/.../storage/kv/namespaces/.../values/...` com credencial recusada (401/403).
+**Tentativas:** 30/07 01:46 (exit 1), 30/07 20:45 (exit 1), 31/07 20:45 (exit 1), 01/08 20:45 (exit 1). Proximo disparo hoje 02/08 20:45 — deve falhar de novo.
+**Acao:** Abrir Cloudflare Dashboard, conceder permissao Workers KV Storage ao token `CLOUDFLARE_API_TOKEN`. Nao depende de codigo, deploy nem script.
+**Validacao:** `logs\routines\vixradar-export_*.log` com exit 0 e kvget sem erro 401/403.
 
 ### P2 - Guard em register-all-routines-scheduler.ps1, o nome engana e o script derruba o disparo do dia
 
@@ -254,12 +245,10 @@ Nunca inferir causa a partir do nome da task.
 **Validacao:** rodar `monitor-tasks.ps1` contra a falha de hoje 03h00 e obter
 "causa nao identificada" em ERROS, nao "Credit balance too low" em WARNINGS.
 
-### P2 — Probe CLI antes da Noturno 18:00 + verificar pos-execucao
+### P2 — Probe CLI antes da Noturno 18:00: RESOLVIDO 02/08. Sistema recuperado.
 
-**Origem:** Auditoria 27/07 12h09.
-**Descricao:** AgendaSemanal e Matinal falharam ao invocar `claude -p`. CLI funcional as 12:09, mas nao se sabe se o bloqueio volta as 18:00. A Noturno processa 103 emissores — e a rotina mais critica do dia.
-**Acao:** Entre 17:00 e 17:55: executar probe `claude -p` com `--output-format json`, `--strict-mcp-config`, `--mcp-config`, mesmo modelo Sonnet. Se falhar, notificar e abortar preventivamente com diagnostico. Apos 18:00: monitorar log `logs\routines\vixradar-noturno_20260727.log`.
-**Validacao:** Noturno com exit 0 e submit_ok nos 103 emissores.
+**Fechado em:** 02/08.
+**Descricao:** Apos correcao do settings.json (27/07) e OAuth (30/07), as rotinas voltaram a funcionar. Noturno 01/08 e 02/08 rodaram com exit 0 e cobertura completa. Nao ha mais risco imediato de falha silenciosa do CLI.
 
 ### P3 — SHADOW1: Revisao manual do shadow Fable 5 apos 2-4 semanas
 
@@ -396,4 +385,4 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 ---
 
-*Atualizado em 2026-07-27 12h09 BRT (pos-auditoria: 2 itens fechados, 2 novos P1/P2, tasks recriadas). Fila aberta: 10 itens acionaveis (2 P1, 5 P2, 2 P3, 1 P4).*
+*Atualizado em 2026-08-02 19h10 BRT (pos-recuperacao: 2 P1 fechados, 2 itens resolvidos, 1 reclassificado, Export-Historico diagnosticado). Fila aberta: 8 itens (0 P1, 4 P2, 3 P3, 1 P4).*

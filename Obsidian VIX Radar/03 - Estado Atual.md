@@ -1,13 +1,68 @@
 ---
-data: 2026-07-30
+data: 2026-08-02
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
-status: degradado
+status: saudavel
 ---
 
 # Estado Atual — VIX Radar
 
+> [!success] 02/08 19h10 — **Worker ok:true, verificador_ok:true. Sistema totalmente operacional.** Noturno 02/08 completo: 88/103 submit, 6 CRITICO (Rumo, Cosan, Oncoclinicas, GPA, Raizen, Kora Saude). Verificador async drenou 9 eventos (7 aprovados, 2 rejeitados, 255k tokens). Coleta-Volatilidade 5o dia consecutivo com exit 0. Export-Historico segue quebrado (token sem permissao Workers KV Storage). AgendaSemanal proximo disparo 22:00 hoje. Reconciliacao-CVM amanha 08:00.
 > [!warning] 30/07 16h30 — **Worker ok:false, verificador_ok:false. Rotinas Claude paradas desde 29/07 10:00 por bug de OAuth no Task Scheduler.** Causa raiz encontrada e corrigida. Reprocessamento pendente.
+> [!warning] 31/07 — **Incidente de API key 401.** Matinal e Noturno afetados. Emissores do dia ficaram com classificacao NENHUM. Causa raiz do 401 nao investigada (key simplesmente invalida naquele dia, voltou a funcionar 01/08).
+## Recuperacao 30/07 a 02/08
+
+### 30/07 — Correcao OAuth e primeiro reprocessamento
+
+Apos a correcao dos 3 scripts as 16h30 (restauracao do `ANTHROPIC_API_KEY`), o sistema comecou a responder:
+
+| Metrica | Valor |
+|---|---|
+| Worker health 16h22 | ok:false, verificador_ok:false |
+| Worker health 17h42 (pos-correcao) | ok:true, verificador_ok:true |
+| Matinal 16:12 (rerun manual) | sonnet-1 completo: Oncoclinicas CRITICO, Oi CRITICO, Kora Saude RELEVANTE, GPA RELEVANTE. 46k tokens. Processo interrompido apos lote 1 (4/18 emissores) |
+| Noturno 18:00 | Completo. submit_ok=??, 3 CRITICO. Log de 83k, dreno verificador executado |
+| Verificador async 16:29 | Fila 12, aprovados 9, rejeitados 3, 557k tokens. **verificador_ok flipou de false para true** |
+| Verificador async 18:05 | Fila 12 (novos, do noturno), aprovados 11, rejeitados 1, 670k tokens. Fila zerada |
+| Coleta-Volatilidade 17:02 | exit=0 (normalizada) |
+| Export-Historico 01:46 | FALHOU: exit=0x1. **Nova falha, causa diferente.** |
+
+### 31/07 — Incidente de API key 401
+
+As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth. O script detectou que a sessao OAuth estava expirada e caiu para pay-per-token, mas a API key em si estava invalida (401 API key is invalid). Todos os lotes Haiku e Sonnet falharam com 3 retries cada, e o fallback classificou os emissores como NENHUM com cobertura minima.
+
+| Metrica | Valor |
+|---|---|
+| Matinal 10:00 | 19 emissores, 3 lotes (sonnet-1, sonnet-2, haiku-3). **Todos falharam com 401.** 0 analise real. Classificacao NENHUM para todos. |
+| Noturno 18:00 | Iniciou 103 emissores. **Haiku-1 e Haiku-2 falharam com 401** (3 retries cada, 30 emissores com NENHUM). Script parece ter continuado com lotes restantes usando OAuth recuperada. |
+| Coleta-Volatilidade 17:01 | exit=0 (normal) |
+| Export-Historico 20:45 | FALHOU: mesmo erro de permissao KV Storage |
+| Verificador async | Rodou mas metrics com 75 bytes (provavelmente fila vazia ou erro) |
+
+**Causa raiz do 401:** Ainda nao investigada. O script tenta OAuth primeiro, falha, cai para `ANTHROPIC_API_KEY`. Se a key falhou com 401, pode ser: (a) key expirada/rotacionada, (b) key sem creditos, (c) key mal carregada do ambiente. Em 01/08 e 02/08 OAuth voltou a funcionar normalmente.
+
+### 01/08 — Recuperacao parcial
+
+| Metrica | Valor |
+|---|---|
+| **Matinal** | **NAO RODOU.** Sexta-feira dia util, deveria ter disparado 10:00. Sem log. Causa nao investigada. |
+| Noturno 11:24 | Disparo duplo (11:24 e 11:26, colisao de trigger). Primeiro run abortou, segundo completou com OAuth funcional. 90k de log. submit_ok≈83, skip=20. Cobertura completa. |
+| Verificador async 12:25 | Fila 7, aprovados 5, rejeitados 2, 230k tokens |
+| Verificador async 18:02 | Fila vazia (zerada pelo run das 12:25) |
+| Coleta-Volatilidade 17:02 | exit=0 |
+| Export-Historico 20:45 | FALHOU: `CLOUDFLARE_API_TOKEN` sem permissao Workers KV Storage. **Erro persiste desde 30/07.** |
+
+### 02/08 — Dia totalmente operacional
+
+| Metrica | Valor |
+|---|---|
+| Worker health 19:00 | ok:true, verificador_ok:true, bindings todos true, providers 2/2. HTTP 200, 0,67s. |
+| Noturno 18:00 | **Completo.** submit_ok=88, skip_ok=15, submit_fail=0, silent_fail=0. 494k tokens, 44min (2668s), 7 lotes (79 haiku + 9 sonnet). 6 CRITICO: Rumo (rebaixamento S&P brAAA→brAA+ CreditWatch negativo), Cosan (rebaixamento BB-→B+), Oncoclinicas, Pao de Acucar (GPA), Raizen, Kora Saude. |
+| Verificador async 18:44 | **Completo.** Fila 9, aprovados 7, rejeitados 2, erros_parse 0, refusals 0. 255k tokens. Fila zerada. |
+| Coleta-Volatilidade 17:01 | exit=0 (5o dia consecutivo normalizado) |
+| Export-Historico 20:45 | Pendente. Deve falhar de novo — token sem permissao Workers KV Storage desde 30/07. |
+| AgendaSemanal 22:00 | Pendente. Primeiro disparo apos falha de 27/07. |
+
 > [!success] 28/07 23h33 — **Deploy v4.9.183 + v201.93.** Build deterministico, Merton/Selic corrigidos, CI fail-closed. Dia 28 totalmente operacional: matinal 14 submites (4 criticos), noturno 93 emissores, verificador async 2x (fila zerada, 1.5M tokens).
 > [!success] 27/07 19h57 — **Worker v4.9.182 no ar. As duas guardas do ADMIN_EMAIL aplicadas.** (1) SECRETMISS1: `ADMIN_EMAIL` entra na condicao `_okHealth` e vira o campo publico `admin_email_ok`, validando formato e nao so presenca. Secret obrigatorio ausente passa a derrubar `ok:false` em vez de degradar em silencio, e como o `deploy-worker.ps1` aborta em `ok:false`, tambem trava deploy. Health pos-deploy: `ok:true`, `versao:v4.9.182`, `admin_email_ok:true`, 0,79s. Push `bce5ddc`. (2) `apply-security-rotation.ps1` ganhou o passo `[7/8]`, que roda `wrangler secret list` e aborta se faltar qualquer um dos 5 secrets obrigatorios, avisando sobre os 7 recomendados. Testado contra a saida real (19 secrets) e contra a ausencia simulada do `ADMIN_EMAIL`. Limite conhecido: nenhuma das duas vigia sozinha, dependem de alguem rodar o script ou ler o health. Detalhe: [[PENDENCIAS.md]].
 > [!success] 27/07 18h01 — **Secret `ADMIN_EMAIL` restaurado. E-mail ao admin estava morto desde 24/07.** O commit `dfa6854` (rotacao Etapa 1) removeu `ADMIN_EMAIL` do `[vars]` do wrangler.toml e o secret nunca foi criado no Cloudflare. Como `var ADMIN_EMAIL = ""` nao tem valor reserva, todo e-mail ao admin lancava `"Sem destinatarios."` (telemetria confirma no cadastro de 25/07) e nenhum login recebia `role: "admin"` no JWT. O painel de aprovacao nao foi afetado porque autentica por `ADMIN_PASSWORD`, e foi por isso que passou 3 dias despercebido. Mesma raiz do drift do ADMIN_PASSWORD no GitHub Actions: a rotacao de 24/07 nao tem verificacao pos-fato de que cada destino ficou consistente. WhatsApp nunca falhou, 4 envios HTTP 201 em 30 dias. As duas guardas que faltavam foram aplicadas as 19h57, ver o callout acima.
@@ -88,17 +143,18 @@ status: degradado
 | Criticos noturno 25/07 | Aegea Saneamento, Kora Saude, Oi, Oncoclinicas, Raizen |
 | Criticos noturno 24/07 | CSN, Kora Saude, Oi, Oncoclinicas, Pao de Acucar (GPA), Raizen |
 
-## Tasks Scheduler (estado real em 30/07 16h30 BRT)
+## Tasks Scheduler (estado real em 02/08 19h10 BRT)
 
 | Task | Estado | LastRunTime (Scheduler) | Resultado | Proxima | Situacao |
 |---|---|---|---|---|---|
-| VIXRadar-Noturno | Ready | 29/07 18:00 | 0x40010004 (excecao) | 30/07 18:00 | Processou 15/93 emissores, morreu no lote haiku-2. Correcao aplicada, aguardando disparo das 18:00 |
-| VIXRadar-Matinal | Ready | 30/07 10:00 | 0x1 (falha) | 31/07 10:00 | Falhou hoje. Correcao aplicada. [Acao] Reprocessar manualmente |
-| VIXRadar-AgendaSemanal | Ready | 27/07 22:00 | 0x1 (falha) | 03/08 22:00 | Falhou 27/07. Monitor-Tasks classifica como "Credit balance too low" (bug P2 — regra hardcoded, nao le stderr) |
-| VIXRadar-Coleta-Volatilidade | Ready | 29/07 17:00 | 0x1 (falha) | 30/07 17:00 | Falhou 29/07. Script nao usa claude -p, falha por outro motivo |
-| VIXRadar-Export-Historico | Ready | 30/07 01:46 | 0x1 (falha) | 30/07 20:45 | Falhou hoje. Script nao usa claude -p |
-| VIXRadar-Reconciliacao-CVM | Ready | nunca (1999) | 0x41303 | 03/08 08:00 | Nunca rodou desde a recriacao em 27/07 |
-| Monitor-Tasks | Ready | 30/07 07:00 | 0x8 (8 erros) | 31/07 07:00 | Funcionando. Detectou os 4 erros VIX Radar + 3 Szuchmacher + 1 PME |
+| VIXRadar-Noturno | Ready | 02/08 18:00 | 0x0 (sucesso) | 03/08 18:00 | 88 submit + 15 skip, 6 criticos. Operacional. |
+| VIXRadar-Matinal | Ready | 01/08 — | nao rodou | 03/08 10:00 | 01/08 nao disparou (sexta, dia util). Causa nao investigada. Proximo disparo 03/08. |
+| VIXRadar-AgendaSemanal | Ready | 27/07 22:00 | 0x1 (falha) | 02/08 22:00 | Falhou 27/07 (DeepSeek no settings.json). Proximo disparo hoje 22:00. |
+| VIXRadar-Coleta-Volatilidade | Ready | 02/08 17:00 | 0x0 (sucesso) | 03/08 17:00 | 5 dias consecutivos com exit 0. Normalizada. |
+| VIXRadar-Export-Historico | Ready | 01/08 20:45 | 0x1 (falha) | 02/08 20:45 | Falhando desde 30/07: token sem permissao Workers KV Storage. |
+| VIXRadar-Reconciliacao-CVM | Ready | nunca (1999) | 0x41303 | 03/08 08:00 | Nunca rodou desde recriacao em 27/07. Primeiro disparo real amanha. |
+| VIXRadar-Verificacao-Async | Ready | 02/08 18:44 | 0x0 (sucesso) | 03/08 10:20 | Fila drenada (9 eventos, 7 aprovados). Operacional. |
+| Monitor-Tasks | Ready | 02/08 07:00 | — | 03/08 07:00 | Funcionando. |
 
 **Leia a coluna LastRunTime com cuidado.** Para as 3 tasks recriadas o Scheduler reporta
 30/11/1999 e `0x41303` (SCHED_S_TASK_HAS_NOT_RUN) porque **re-registrar zera o historico da
@@ -127,12 +183,12 @@ Ver [[PENDENCIAS.md]]. **Fila aberta: 10 itens acionaveis** (2 P1, 5 P2, 2 P3, 1
 
 Apos cada noturna (ou evento de producao significativo), verificar:
 
-- [x] `03 - Estado Atual.md` — atualizado 30/07 16h30 (diagnostico + correcao OAuth→pay-per-token + dados 28-30/07)
-- [ ] `03a - Changelog.md` — atualizar com noturnos 25 e 26/07
+- [x] `03 - Estado Atual.md` — atualizado 02/08 19h10 (pos-Noturno, todas as rotinas)
+- [x] `03a - Changelog.md` — atualizado 02/08 com noturnos 25-26/07 e 02/08
 - [x] `03b - Infraestrutura.md` — tabela de gatilhos refeita 27/07 13h30 a partir do Scheduler
-- [x] `00 - Indice (MOC).md` — pendente atualizar com dados deste diagnostico
-- [x] `CLAUDE.md` — tabela Producao em v4.9.181 / v201.88 (sem alteracao)
-- [x] `PENDENCIAS.md` — atualizado 27/07 13h30 (itens de task sincronizados com a realidade)
+- [x] `00 - Indice (MOC).md` — atualizado 02/08 com status corrente
+- [x] `CLAUDE.md` — atualizado com status de producao
+- [x] `PENDENCIAS.md` — atualizado 02/08 com status real pos-recuperacao
 
 **Regra de sincronia (nova, 27/07):** mexeu em task do Scheduler, atualiza `03b - Infraestrutura`
 **e** varre `PENDENCIAS.md` por item que afirme estado dessa task. Foi a falta disso que
@@ -243,4 +299,4 @@ em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 
 ---
 
-*Snapshot gerado em 2026-07-30 16h30 BRT (auditoria geral + diagnostico de falha em cascata + correcao OAuth→pay-per-token). Dias 28-30/07 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-08-02 19h10 BRT (pos-Noturno 02/08, sistema totalmente operacional). Dias 28/07 a 02/08 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*

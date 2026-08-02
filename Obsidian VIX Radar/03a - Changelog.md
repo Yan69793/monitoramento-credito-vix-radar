@@ -1,5 +1,5 @@
 ---
-data: 2026-07-24
+data: 2026-08-02
 tipo: changelog
 tags: [vix-radar, changelog, incidentes, deploys]
 status: ativo
@@ -10,6 +10,30 @@ status: ativo
 Registro cronológico de incidentes, deploys e eventos de produção. Cobertura: julho 2026. Para histórico anterior: [[_Arquivo/historico-03-2026-06]].
 
 ---
+
+> [!success] 02/08 19h10 — **Sistema totalmente operacional. Noturno 02/08: 88/103 submit, 6 críticos.**
+> Noturno: submit_ok=88, skip_ok=15, submit_fail=0, silent_fail=0. 494k tokens, 44min, 7 lotes (79 haiku + 9 sonnet). 6 CRITICO: Rumo (rebaixamento S&P brAAA→brAA+ CreditWatch negativo), Cosan (rebaixamento BB-→B+), Oncoclínicas, Pão de Açúcar (GPA), Raízen, Kora Saúde. Verificador async: fila 9, aprovados 7, rejeitados 2, 255k tokens, fila zerada. Coleta-Volatilidade 5o dia consecutivo exit 0. Export-Historico segue quebrado (token sem permissao KV Storage). Health: ok:true, verificador_ok:true, v4.9.183.
+
+> [!warning] 31/07 — **Incidente de API key 401. Matinal e Noturno com cobertura zero real.**
+> Todos os lotes Haiku e Sonnet falharam com 401 API key is invalid. Fallback classificou emissores como NENHUM com cobertura minima. Causa raiz nao investigada: key simplesmente invalida naquele dia, voltou a funcionar 01/08. Verificador async processou metrics vazias (75 bytes). Coleta-Volatilidade e Export-Historico mantiveram o padrao: coleta ok, export quebrado por KV.
+
+> [!warning] 30/07 — **Bug de OAuth corrigido as 16h30. Recuperacao parcial.**
+> Rotinas Claude paradas desde 29/07 10:00. Causa raiz: scripts apagavam `ANTHROPIC_API_KEY` antes de invocar `claude -p`, forçando OAuth que expira no Task Scheduler. Correcao: descomentada a injecao da key nos 3 scripts. Matinal reprocessada manualmente (lote 1 apenas, Oncoclinicas CRITICO, Oi CRITICO). Noturno completo com 3 CRITICO. Verificador async drenou 12+12 eventos (2 runs, 1.2M tokens combinados).
+
+> [!warning] 29/07 — **Inicio da falha em cascata.**
+> Matinal falhou exit 0x1 (morreu no lote sonnet-1). Coleta-Volatilidade falhou exit 0x1. Noturno processou so 15/93 emissores (lote haiku-1), morreu no haiku-2 com 0x40010004. Verificador async nao rodou. Mesma causa raiz do OAuth, diagnosticada no dia seguinte.
+
+> [!success] 28/07 — **Ultimo dia totalmente operacional antes da falha em cascata.**
+> Matinal: submit_ok=14, 4 criticos (Oi, Raizen, Cosan, Rumo), 165k tokens. Noturno: 93 emissores, 1 critico (Rumo). Verificador async 2x (pos-noturno: fila 8, 6 aprovados; pos-matinal: fila 17, 11 aprovados, 949k tokens). Deploy v4.9.183 + v201.93 a noite. Shadow Fable 5: 4 comparacoes no dia, 1 divergencia.
+
+> [!success] 27/07 — **Noturno recuperado apos correcao do settings.json (DeepSeek).**
+> Noturno 18:00 rodou com exit 0 apos remocao do bloco DeepSeek do settings.json as 13h. Causa raiz: `ANTHROPIC_BASE_URL` apontando para api.deepseek.com com modelos Claude — o Task Scheduler le o settings.json sem override do app desktop. Matinal reexecutada as 14:03 (14 submit, 6 criticos, 123k tokens) apos rodada contaminada das 13:17 (120k tokens perdidos, WebSearch quebrou pelo modelo DeepSeek). agendaSemanal 03:00 falhou com mesmo padrao.
+
+> [!success] 26/07 — **Noturno 26/07: submit_ok=90, skip_ok=13, submit_fail=0, 396k tokens, 3 criticos.**
+> Críticos: Arteris, Oi, Oncoclínicas. Dreno verificacao async exit 0: fila 9, aprovados 6, rejeitados 3, 505k tokens. Shadow Fable 5 estreou em producao: 1 comparacao (Arteris), ambos APROVADO, teto 300k atingido no lote 2.
+
+> [!success] 25/07 — **Noturno 25/07: submit_ok=91, skip_ok=12, submit_fail=0, 377k tokens, 5 criticos.**
+> Críticos: Aegea Saneamento, Kora Saude, Oi, Oncoclinicas, Raizen. Dreno verificacao async exit 0: fila 13, aprovados 8, rejeitados 5, 505k tokens. Worker v4.9.181 + Frontend v201.88. Fila PENDENCIAS zerada.
 
 > [!success] 24/07 — **Worker v4.9.180 + fila PENDENCIAS zerada.**
 > HDASH1-RES (handleUso sem senha em query), OPENROUTER-DEAD (probes removidos), ALRT1-RES fechado por decisao de produto (alerta critico independente de newsletter). P-CVM executado em producao: 91 empresas corrigidas em 5 semanas ISO (W26-W30). Health `v4.9.180`.

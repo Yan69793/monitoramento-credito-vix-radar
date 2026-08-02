@@ -1,5 +1,5 @@
 ---
-data: 2026-07-27
+data: 2026-08-02
 tipo: indice
 tags: [vix-radar, moc, indice, mapa]
 status: ativo
@@ -7,16 +7,16 @@ status: ativo
 
 # VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-07-27 ~01h20 BRT.
+Mapa do vault. Atualizado 2026-08-02 19h10 BRT.
 
 ## Estado atual
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.181 |
-| Frontend | v201.88 |
-| Health | `ok:true`, verificador ok, providers 2/2 (27/07 01:20) |
-| Cobertura | Noturno 26/07: 90+13=103/103 submit_ok, dreno verif ok. Ultimos 3 dias: 24, 25 e 26/07 todos com cobertura completa |
+| Worker | v4.9.183 |
+| Frontend | v201.93 |
+| Health | `ok:true`, verificador_ok:true, providers 2/2, admin_email_ok:true (02/08 19:00, HTTP 200 0,67s) |
+| Cobertura | Noturno 02/08 completo: 88 submit + 15 skip = 103/103, 6 CRITICO. Verificador async fila zerada (9 eventos, 7 aprovados). Coleta-Volatilidade 5o dia exit 0. Export-Historico quebrado (KV). AgendaSemanal pendente 22:00. Reconciliacao-CVM pendente 03/08 08:00. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
