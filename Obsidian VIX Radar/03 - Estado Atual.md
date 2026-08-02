@@ -39,7 +39,7 @@ As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth.
 | Export-Historico 20:45 | FALHOU: mesmo erro de permissao KV Storage |
 | Verificador async | Rodou mas metrics com 75 bytes (provavelmente fila vazia ou erro) |
 
-**Causa raiz do 401:** Ainda nao investigada. O script tenta OAuth primeiro, falha, cai para `ANTHROPIC_API_KEY`. Se a key falhou com 401, pode ser: (a) key expirada/rotacionada, (b) key sem creditos, (c) key mal carregada do ambiente. Em 01/08 e 02/08 OAuth voltou a funcionar normalmente.
+**Causa raiz do 401, investigada 02/08:** O script tenta OAuth primeiro, falha, cai para `ANTHROPIC_API_KEY` obtida via `Get-AnthropicApiKey` (env var → registry User). Em 30/07 a key pay-per-token funcionou normalmente (momento da correcao OAuth). Em 31/07 a mesma key retornou 401. Em 01/08 e 02/08 o OAuth voltou a funcionar, entao o caminho da API key nao foi exercitado — nao sabemos se a key continua invalida ou foi um evento transitorio. [Risco] Se o OAuth expirar de novo, o sistema pode cair no mesmo 401. [Recomendacao] Validar a `ANTHROPIC_API_KEY` no registry e no env var, verificar creditos no console Anthropic, e considerar rodar `claude setup-token` para token longevo como backup do OAuth.
 
 ### 01/08 — Recuperacao parcial
 
