@@ -249,6 +249,40 @@ try {
     $criticosPorEmissor = @{}
     $relevantesPorEmissor = @{}
     $semanasLidas = 0
+
+    # Wrangler KV helper com fallback OAuth (TASK-20, 2026-08-02).
+    # CLOUDFLARE_API_TOKEN pode estar setado mas sem permissao User:Details/Memberships.
+    # Nesse caso limpamos a env var e deixamos o Wrangler usar OAuth do credential store.
+    function Invoke-WranglerKVGet([string]$Key, [string]$OutFile, [string]$ErrFile) {
+        $tokenBackup = $env:CLOUDFLARE_API_TOKEN
+        try {
+            $env:CLOUDFLARE_API_TOKEN = $null
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            & npx wrangler kv key get $Key --namespace-id $NamespaceId --remote 2>$ErrFile | Out-File -FilePath $OutFile -Encoding utf8
+            $code = $LASTEXITCODE
+            $ErrorActionPreference = $prev
+            return $code
+        } finally {
+            $env:CLOUDFLARE_API_TOKEN = $tokenBackup
+        }
+    }
+
+    function Invoke-WranglerKVPut([string]$Key, [string]$Path, [string]$ErrFile) {
+        $tokenBackup = $env:CLOUDFLARE_API_TOKEN
+        try {
+            $env:CLOUDFLARE_API_TOKEN = $null
+            $prev = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            & npx wrangler kv key put $Key --path $Path --namespace-id $NamespaceId --remote 2>$ErrFile
+            $code = $LASTEXITCODE
+            $ErrorActionPreference = $prev
+            return $code
+        } finally {
+            $env:CLOUDFLARE_API_TOKEN = $tokenBackup
+        }
+    }
+
     Push-Location $ApiDir
     foreach ($sem in $semanas) {
         $tmpPath = Join-Path $env:TEMP ("radar_estado_{0}.json" -f $sem)
@@ -258,10 +292,7 @@ try {
         # nao-zero vira erro terminante e o guard logo abaixo nunca roda: semana
         # ISO corrente ainda sem chave no KV (tipico na segunda de manha) matava a
         # rotina inteira, depois de ja ter casado os documentos severos da CVM.
-        $ErrorActionPreference = 'Continue'
-        & npx wrangler kv key get "radar:estado:$sem" --namespace-id $NamespaceId --remote 2>$errFile | Out-File -FilePath $tmpPath -Encoding utf8
-        $kvGetCode = $LASTEXITCODE
-        $ErrorActionPreference = 'Stop'
+        $kvGetCode = Invoke-WranglerKVGet "radar:estado:$sem" $tmpPath $errFile
         if ($kvGetCode -ne 0 -or -not (Test-Path $tmpPath) -or (Get-Item $tmpPath).Length -eq 0) {
             Write-Log ("AVISO: leitura de radar:estado:{0} falhou ou vazia - {1}" -f $sem, ((Get-Content $errFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' '))
             continue
@@ -341,13 +372,10 @@ try {
     Write-Log ("Relatorio gravado: {0}" -f $relPath)
 
     if (-not $DryRun) {
-        $ErrorActionPreference = 'Continue'
         Push-Location $ApiDir
         $kvErrFile = Join-Path $env:TEMP 'reconciliacao_kvput.err'
-        & npx wrangler kv key put 'radar:reconciliacao_cvm:latest' --path $relPath --namespace-id $NamespaceId --remote 2>$kvErrFile
-        $kvCode = $LASTEXITCODE
+        $kvCode = Invoke-WranglerKVPut 'radar:reconciliacao_cvm:latest' $relPath $kvErrFile
         Pop-Location
-        $ErrorActionPreference = 'Stop'
         if ($kvCode -ne 0) { Write-Log ('AVISO: kv put radar:reconciliacao_cvm:latest falhou - ' + ((Get-Content $kvErrFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' ')) }
         else { Write-Log 'Publicado: radar:reconciliacao_cvm:latest no KV de producao' }
     } else {

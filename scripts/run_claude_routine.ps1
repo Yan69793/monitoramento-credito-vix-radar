@@ -1,39 +1,49 @@
-﻿# run_claude_routine.ps1 — Runner generico Claude Code para scheduled-tasks
+﻿# run_claude_routine.ps1 - Runner generico Claude Code para scheduled-tasks.
+# ASCII puro (powershell.exe 5.1). Hardenizado 2026-08-02 com pre-flight de
+# ambiente + probe WebSearch (TASK-18, TASK-19 do pacote de recuperacao pos-27/07).
 param(
     [Parameter(Mandatory)]
     [string]$RoutineId,
     [switch]$SkipWeekend,
-    [switch]$SkipHolidayB3
+    [switch]$SkipHolidayB3,
+    [switch]$SkipPreFlight
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 $ScheduledRoot = 'C:\Users\User\.claude\scheduled-tasks'
 $VixRoot       = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $SiteRoot      = 'E:\Diretorio\Claude\Site\site-producao'
+$LibDir        = Join-Path $VixRoot 'scripts\lib'
 $LogDir        = Join-Path $VixRoot 'logs\routines'
 $DateTag       = Get-Date -Format 'yyyyMMdd'
 $CleanupScript = Join-Path $VixRoot 'scripts\cleanup-rotina-artifacts.ps1'
+$AmbientCheck  = Join-Path $LibDir 'vixradar-ambient-check.ps1'
+$ClaudeAuth    = Join-Path $LibDir 'vixradar-claude-auth.ps1'
+$McpConfig     = Join-Path $env:USERPROFILE '.claude\mcp-config.json'
 
 $Catalog = @{
     'vixradar-agenda-semanal' = @{
-        Skill       = Join-Path $ScheduledRoot 'vixradar-agenda-semanal\SKILL.md'
-        ProjectRoot = $VixRoot
-        AddDirs     = @((Join-Path $VixRoot 'scripts'), $ScheduledRoot)
-        LogPrefix   = 'vixradar-agenda-semanal'
-        Model       = $null
+        Skill             = Join-Path $ScheduledRoot 'vixradar-agenda-semanal\SKILL.md'
+        ProjectRoot       = $VixRoot
+        AddDirs           = @((Join-Path $VixRoot 'scripts'), $ScheduledRoot)
+        LogPrefix         = 'vixradar-agenda-semanal'
+        Model             = $null
+        RequiresWebSearch = $true
     }
     'atualizar-agenda-macro-szuchmacher' = @{
-        Skill       = Join-Path $ScheduledRoot 'atualizar-agenda-macro-szuchmacher\SKILL.md'
-        ProjectRoot = $SiteRoot
-        AddDirs     = @($SiteRoot, $ScheduledRoot)
-        LogPrefix   = 'agenda-macro-szuchmacher'
-        Model       = $null
+        Skill             = Join-Path $ScheduledRoot 'atualizar-agenda-macro-szuchmacher\SKILL.md'
+        ProjectRoot       = $SiteRoot
+        AddDirs           = @($SiteRoot, $ScheduledRoot)
+        LogPrefix         = 'agenda-macro-szuchmacher'
+        Model             = $null
+        RequiresWebSearch = $false
     }
 }
 
 if (-not $Catalog.ContainsKey($RoutineId)) {
     Write-Error "RoutineId desconhecido: $RoutineId"
+    exit 2
 }
 
 $cfg = $Catalog[$RoutineId]
@@ -49,7 +59,7 @@ function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
     Write-Safe $line
     # LOGLOCK1-REC (2026-07-24): backoff exponencial + fallback file com PID.
-    # Lock persistente por OneDrive/SearchIndexer pode durar minutos — se todas as
+    # Lock persistente por OneDrive/SearchIndexer pode durar minutos. Se todas as
     # tentativas falharem, escreve em arquivo alternativo para nao perder linha.
     for ($i = 1; $i -le 8; $i++) {
         try {
@@ -58,12 +68,59 @@ function Write-Log([string]$msg) {
         } catch {
             if ($i -eq 8) {
                 $fallbackFile = ([regex]::Replace($LogFile, '\.log$', "_fallback_$pid.log"))
-                Write-Safe "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
+                Write-Safe "FALHA Write-Log ($i tentativas), fallback: $fallbackFile - $($_.Exception.Message)"
                 try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Safe "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
             }
             else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
         }
     }
+}
+
+# --- Pre-flight de ambiente (TASK-18, 2026-08-02) ---
+# Dot-source das libs de guarda. Se ausentes, seguir sem abortar (nao vamos quebrar
+# rotina por falta de lib, mas logamos o aviso).
+$temAmbientCheck = $false
+$temClaudeAuth   = $false
+if (Test-Path -LiteralPath $AmbientCheck) {
+    try { . $AmbientCheck; $temAmbientCheck = $true } catch { Write-Log "AVISO: dot-source $AmbientCheck falhou: $_" }
+} else { Write-Log "AVISO: $AmbientCheck ausente" }
+if (Test-Path -LiteralPath $ClaudeAuth) {
+    try { . $ClaudeAuth; $temClaudeAuth = $true } catch { Write-Log "AVISO: dot-source $ClaudeAuth falhou: $_" }
+} else { Write-Log "AVISO: $ClaudeAuth ausente" }
+
+if (-not $SkipPreFlight) {
+    # 1. Ambiente: detectar roteamento para agregador de LLM (incidente 27/07)
+    if ($temAmbientCheck) {
+        try {
+            $violacao = Test-VixClaudeAmbienteLimpo
+            if ($violacao) {
+                Write-Log "ERRO PRE-FLIGHT: ambiente contaminado - $violacao"
+                Write-Log 'ABORTANDO: roteamento de agregador detectado (risco de queimar tokens sem analise real)'
+                exit 6
+            }
+            Write-Log 'PRE-FLIGHT: ambiente limpo (sem roteamento de agregador)'
+        } catch {
+            Write-Log "AVISO: pre-flight ambiente falhou (nao abortando): $_"
+        }
+    }
+
+    # 2. WebSearch probe: validar que a ferramenta de busca funciona (incidente 27/07)
+    if ($cfg.RequiresWebSearch -and $temAmbientCheck -and $temClaudeAuth) {
+        try {
+            Write-Log 'PRE-FLIGHT: sondando WebSearch...'
+            $probeOk = Test-VixWebSearchProbe -McpConfigFile $McpConfig
+            if (-not $probeOk) {
+                Write-Log 'ERRO PRE-FLIGHT: WebSearch indisponivel'
+                Write-Log 'ABORTANDO: busca indisponivel (risco de submeter analise sem cobertura)'
+                exit 5
+            }
+            Write-Log 'PRE-FLIGHT: WebSearch funcional'
+        } catch {
+            Write-Log "AVISO: probe WebSearch falhou (nao abortando): $_"
+        }
+    }
+} else {
+    Write-Log 'PRE-FLIGHT: suprimido por -SkipPreFlight'
 }
 
 $hoje = Get-Date
@@ -124,6 +181,19 @@ try {
     $claudeArgs = @('-p', '--permission-mode', 'bypassPermissions', '--output-format', 'text')
     foreach ($dir in $cfg.AddDirs) {
         if (Test-Path $dir) { $claudeArgs += @('--add-dir', $dir) }
+    }
+
+    # Auth + tools: aplicar credencial decidida pela lib de auth e garantir que
+    # WebSearch/WebFetch estao disponiveis (incidente 27/07: sem --tools explicito,
+    # o CLI pode herdar configuracao de ferramentas quebrada do settings.json).
+    if ($temClaudeAuth) {
+        try { Set-VixClaudeAuthEnv } catch { Write-Log "AVISO: Set-VixClaudeAuthEnv falhou: $_" }
+    }
+    if ($cfg.RequiresWebSearch) {
+        $claudeArgs += @('--tools', 'WebSearch,WebFetch')
+        if (Test-Path -LiteralPath $McpConfig) {
+            $claudeArgs += @('--strict-mcp-config', '--mcp-config', $McpConfig)
+        }
     }
 
     # RETRY1 (2026-07-27): retry com backoff + fallback Haiku na ultima tentativa.
