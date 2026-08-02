@@ -249,3 +249,4 @@ data/cvm/
 # Saidas de DryRun da reconciliacao CVM (teste local, regeneravel)
 data/reconciliacao/dryrun/
 Obsidian VIX Radar/Reconciliacao-CVM/dryrun/
+.cloudflare-typescript-temp/
