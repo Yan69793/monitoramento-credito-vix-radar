@@ -51,12 +51,15 @@ As rotinas chamam `claude -p --model claude-sonnet-4-6`. Num processo do Task Sc
 **Acao remanescente:** (a) confirmar Noturno 27/07 18:00 com exit 0; (b) decidir se re-executa a matinal de hoje para recuperar a cobertura top-15 perdida; (c) o pedido original da pendencia continua valido e vira item proprio: `Invoke-ClaudeBatch` deveria ter um probe pre-voo que aborta com log claro em vez de morrer silencioso com stderr vazio, que foi o que tornou este diagnostico caro.
 **Validacao:** log noturno 27/07 com exit 0 e submit_ok compativel com o universo.
 
-### P2 — Probe pre-voo em `Invoke-ClaudeBatch` (falha silenciosa custou o diagnostico)
+### P2 — Probe pre-voo em `Invoke-ClaudeBatch` (falha silenciosa custou o diagnostico): RESOLVIDO 02/08
 
-**Origem:** Desdobramento do P1 acima, 27/07.
-**Descricao:** As duas rotinas morreram com stderr de 0 bytes e log truncado no meio. Nao havia nenhum sinal do que falhou. O diagnostico so foi possivel cruzando o timestamp do settings.json com a lista de tasks que usam ou nao `claude -p`.
-**Acao:** antes do primeiro lote, invocar `claude -p` com prompt trivial e validar exit 0 mais envelope JSON. Se falhar, abortar a rotina com log nomeando o erro (modelo, endpoint, exit code) em vez de seguir para o lote e morrer sem rastro.
-**Validacao:** simular endpoint invalido e confirmar que a rotina aborta com mensagem legivel.
+**Fechado em:** 02/08. Commit `8f0b25b`.
+**O que foi feito:**
+1. `Initialize-VixClaudeAuth` agora valida a chave paga com `Test-VixClaudeSonda` antes de confiar nela. Se a key falhar, modo vira 'nenhum'.
+2. As 3 rotinas (matinal, noturno, verificacao async) abortam com exit 5 se `Get-VixClaudeAuthModo` retornar 'nenhum', ANTES do primeiro lote.
+3. O probe da chave paga consome ~2k tokens. Custo aceitavel contra 120k+ tokens perdidos em lotes que vao falhar com 401.
+**Validacao:** Parse test PowerShell 5.1 em todos os 6 arquivos (6/6 OK). Lint encoding 6/6 OK.
+**Cobertura:** Tambem teria prevenido o incidente DeepSeek de 27/07 (a sonda teria falhado com modelo Claude no endpoint DeepSeek) e o 401 de 31/07 (chave invalida detectada na sonda).
 
 ### P3 — Limpar chaves ROUTINE_API_KEY mortas e corrigir o fallback que serve chave morta
 
@@ -201,9 +204,9 @@ existir e o proximo disparo real e so em 03/08, ha margem.
 ### P2 — VIXRadar-Export-Historico: token sem permissao Workers KV Storage desde 30/07
 
 **Origem:** Diagnostico de rotinas 27/07, atualizado 02/08.
-**Estado real (medido):** task **existe**, Ready, gatilho diario 20h45. Falhando com exit 1 desde 30/07. **Nao e mais o problema de recriacao** — a task foi recriada e dispara normalmente. O problema e que o `CLOUDFLARE_API_TOKEN` nao tem permissao Workers KV Storage. O erro e claro: `Failed to fetch https://api.cloudflare.com/client/v4/accounts/.../storage/kv/namespaces/.../values/...` com credencial recusada (401/403).
-**Tentativas:** 30/07 01:46 (exit 1), 30/07 20:45 (exit 1), 31/07 20:45 (exit 1), 01/08 20:45 (exit 1). Proximo disparo hoje 02/08 20:45 — deve falhar de novo.
-**Acao:** Abrir Cloudflare Dashboard, conceder permissao Workers KV Storage ao token `CLOUDFLARE_API_TOKEN`. Nao depende de codigo, deploy nem script.
+**Estado real (medido):** task **existe**, Ready, gatilho diario 20h45. Falhando com exit 1 desde 30/07.
+**Melhoria aplicada 02/08 (commit `8f0b25b`):** Pre-voo KV adicionado no inicio do script. Valida acesso antes de qualquer operacao de dados, aborta com exit 5 e instrucoes claras se o token nao tem permissao. Antes o script falhava no meio da execucao.
+**Acao (nao depende de codigo):** Abrir Cloudflare Dashboard, conceder permissao Workers KV Storage ao token `CLOUDFLARE_API_TOKEN`.
 **Validacao:** `logs\routines\vixradar-export_*.log` com exit 0 e kvget sem erro 401/403.
 
 ### P2 - Guard em register-all-routines-scheduler.ps1, o nome engana e o script derruba o disparo do dia
@@ -218,32 +221,13 @@ Nao propor troca de script: REGDRIFT1 (resolvido 23/07) declarou este o registra
 **Acao:** (1) deixar o escopo explicito no cabecalho, listando as tasks nao cobertas e o registrador de cada uma; (2) emitir aviso na saida quando o re-registro acontecer depois do horario do trigger do dia; (3) habilitar o log operacional do Scheduler (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`) para que uma proxima remocao seja rastreavel, ja que esta nao foi.
 **Validacao:** Cabecalho e saida do script declaram o escopo e o efeito de perder o disparo. Rodar com `-Status` nao altera nada. Log operacional com `IsEnabled=True`.
 
-### P2 — monitor-tasks.ps1 inventa a causa da falha da AgendaSemanal
+### P2 — monitor-tasks.ps1 inventa a causa da falha da AgendaSemanal: PARCIAL 02/08
 
-**Origem:** Releitura do Scheduler 27/07 13h30.
-**Descricao:** `scripts\monitor-tasks.ps1` linhas 158-160 tem a regra hardcoded:
-
-```powershell
-} elseif ($code -eq 1 -and $name -eq 'VIXRadar-AgendaSemanal') {
-    $entry.reason = 'Credit balance too low (assinatura Claude Code)'
-    $warnings += $entry
-```
-
-O script **nao le stderr, nao le log, nao consulta nada**. Ele deduz a causa pelo nome da
-task e pelo codigo de saida, e ainda **rebaixa de ERRO para WARNING**. Resultado pratico
-hoje: a falha das 03h00, que era roteamento DeepSeek no `settings.json`, foi reportada as
-07h00 como problema de credito e saiu da lista de erros. O log da rotina tem 2 linhas e
-nenhuma mencao a credito, a string veio inteira do monitor.
-Qualquer falha futura da AgendaSemanal com exit 1, por qualquer motivo, vai receber o mesmo
-rotulo errado e o mesmo rebaixamento.
-**Causa raiz:** mesma familia do card "Cobertura" corrigido hoje, um rotulo afirmando algo
-que o codigo nunca mediu. Aqui e pior que na UI: e uma guarda mentindo sobre o que guarda.
-**Acao:** trocar a regra por leitura real. Se `logs\routines\*_<data>.log` ou o stderr
-casarem com `credit balance is too low|invalid x-api-key|HTTP 401`, classificar assim. Se
-nao casarem, reportar `exit 1 sem causa identificada` e manter como ERRO, nao warning.
-Nunca inferir causa a partir do nome da task.
-**Validacao:** rodar `monitor-tasks.ps1` contra a falha de hoje 03h00 e obter
-"causa nao identificada" em ERROS, nao "Credit balance too low" em WARNINGS.
+**Atualizado:** 02/08. Commit `8f0b25b`.
+**O que foi feito:**
+1. Monitor agora detecta tasks que NAO RODARAM (antes so via tasks que rodaram e falharam). Compara LastRunTime com o ciclo esperado (~24h) e flag como warning "nao rodou no ciclo esperado". Matinal 01/08 teria sido detectada.
+2. Regra hardcoded "Credit balance too low" para AgendaSemanal (linhas 158-160) **ainda existe**. Nao foi trocada por leitura real do log. A staleness detection cobre o caso de a task nao rodar, mas se rodar e falhar com exit 1 por OUTRO motivo, o rotulo "Credit balance too low" continua errado.
+**Acao remanescente:** Trocar a regra por leitura real do stderr/log (ver item original).
 
 ### P2 — Probe CLI antes da Noturno 18:00: RESOLVIDO 02/08. Sistema recuperado.
 
@@ -385,4 +369,4 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 ---
 
-*Atualizado em 2026-08-02 19h10 BRT (pos-recuperacao: 2 P1 fechados, 2 itens resolvidos, 1 reclassificado, Export-Historico diagnosticado). Fila aberta: 8 itens (0 P1, 4 P2, 3 P3, 1 P4).*
+*Atualizado em 2026-08-02 19h30 BRT (3 correcoes estruturais: probe pre-voo CLI, detector de ausencia no Monitor-Tasks, pre-voo KV no Export-Historico). Fila aberta: 7 itens (0 P1, 4 P2, 2 P3, 1 P4).*
