@@ -7,9 +7,12 @@
 # Sem este registrador, "recriar a task Monitor-Tasks" nao era um comando
 # unico - o script monitor-tasks.ps1 sempre existiu, mas nao tinha task.
 #
-# -SendEmail nao e usado aqui: exige scripts\monitor_send_email.py, que
-# nao existe no repo nesta data. Adicionar '-SendEmail' ao ArgList abaixo
-# se/quando esse script for criado.
+# MONITORCEGO2 (2026-08-02): -SendEmail RELIGADO. O comentario antigo aqui
+# dizia que ele exigia scripts\monitor_send_email.py, que nunca existiu. Com
+# a task registrada sem -SendEmail, o caminho de alerta estava desligado, nao
+# so quebrado, e nenhum log acusava porque o bloco de envio nem era alcancado.
+# Hoje as 07:00 a task saiu com LastTaskResult=5 e ninguem foi avisado. O envio
+# agora passa pelo action=email_enviar do Worker (ver monitor-tasks.ps1).
 #
 # Reversao: Unregister-ScheduledTask -TaskName 'Monitor-Tasks' -Confirm:$false
 #
@@ -21,7 +24,11 @@ $ScriptPath  = Join-Path $ProjectRoot 'scripts\monitor-tasks.ps1'
 
 if (-not (Test-Path $ScriptPath)) { throw "Script nao encontrado: $ScriptPath" }
 
-$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`" -Quiet"
+# LogonType Interactive e obrigatorio para o -SendEmail funcionar: a senha admin
+# vem do DPAPI em escopo CurrentUser (api\Get-VixAdminCredential.ps1) e so
+# decripta com o perfil do usuario carregado. Trocar para S4U ou Password quebra
+# o alerta em silencio, que e exatamente o que estamos consertando.
+$action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`" -Quiet -SendEmail"
 $trigger = New-ScheduledTaskTrigger -Daily -At '07:00'
 $principal = New-ScheduledTaskPrincipal -UserId 'User' -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 10)

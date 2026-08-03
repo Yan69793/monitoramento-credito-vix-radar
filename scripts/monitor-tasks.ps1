@@ -1,10 +1,12 @@
-﻿# monitor-tasks.ps1 — Alerta de falha silenciosa em Task Scheduler
+﻿# monitor-tasks.ps1 - Alerta de falha silenciosa em Task Scheduler
 # Roda diario 07h BRT, varre tasks do workspace, reporta LastTaskResult != benigno.
 # ASCII puro (roda no powershell.exe 5.1 sem risco de parse).
 param(
     [switch]$Quiet,          # suprime output se nenhum erro encontrado
-    [switch]$SendEmail,      # envia e-mail se houver erros (requer monitor_send_email.py)
-    [string]$WhitelistFile   # JSON externo de whitelist (opcional)
+    [switch]$SendEmail,      # envia e-mail se houver erros (via action=email_enviar do Worker)
+    [string]$WhitelistFile,  # JSON externo de whitelist (opcional)
+    [string]$To = 'szuchmacheryan@gmail.com',        # destinatario do alerta
+    [string]$WorkerUrl = 'https://api.vixradar.com/' # endpoint do action=email_enviar
 )
 
 $ErrorActionPreference = 'Stop'
@@ -28,7 +30,7 @@ function Write-Log([string]$msg) {
         } catch {
             if ($i -eq 8) {
                 $fallbackFile = ([regex]::Replace($LogFile, '\.log$', "_fallback_$pid.log"))
-                Write-Host "FALHA Write-Log ($i tentativas), fallback: $fallbackFile — $($_.Exception.Message)"
+                Write-Host "FALHA Write-Log ($i tentativas), fallback: $fallbackFile, $($_.Exception.Message)"
                 try { Add-Content -Path $fallbackFile -Value $line -Encoding UTF8 -ErrorAction Stop } catch { Write-Host "FALHA Write-Log IRRECUPERAVEL: $($_.Exception.Message)" }
             }
             else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
@@ -38,7 +40,7 @@ function Write-Log([string]$msg) {
 
 # Whitelist de LastTaskResult benignos
 # 0            = sucesso (exit 0 ou return)
-# 267009       = 0x41301 = SCHED_S_TASK_RUNNING (task ainda executando quando verificada — falso positivo)
+# 267009       = 0x41301 = SCHED_S_TASK_RUNNING (task ainda executando quando verificada, falso positivo)
 $BenignCodes = @(0, 267009)
 
 # Whitelist customizada (JSON externo, merge)
@@ -268,20 +270,77 @@ if ($warnings.Count -gt 0) {
 }
 
 # Alerta por e-mail se houver erros e -SendEmail ativado
+#
+# MONITORCEGO2 (2026-08-02): daqui saia uma chamada para
+# scripts\monitor_send_email.py, que nunca existiu no repo. O vigia de falha
+# silenciosa falhava em silencio. Pior, register-monitor-tasks.ps1 nem passava
+# -SendEmail, entao o caminho estava desligado e nao so quebrado. Hoje as 07:00
+# a task saiu com LastTaskResult=5 (cinco falhas detectadas) e ninguem soube.
+#
+# Agora usa action=email_enviar do proprio Worker (api\src\worker.js), com
+# admin_senha lida do DPAPI via api\Get-VixAdminCredential.ps1. Sem dependencia
+# de Python nova e sem espalhar RESEND_API_KEY pela maquina.
+#
+# RISCO ACEITO 1: usa credencial de admin humano num caller automatizado,
+# misturando os dois niveis que o projeto normalmente separa (admin_senha vs
+# routine_key). O endpoint email_enviar so aceita admin_senha, entao nao ha
+# alternativa sem mexer no Worker.
+# RISCO ACEITO 2: o alerta depende do Worker estar de pe. Se o que quebrou for o
+# proprio Worker, o alarme cai junto. Opcao B, documentada e nao adotada, e
+# chamar a Resend direto como faz .github\workflows\daily-status-email.yml, o
+# que exigiria uma API key dedicada guardada nesta maquina.
+#
+# Todo o bloco vive dentro de try/catch: falha de e-mail nunca pode derrubar o
+# monitor nem mascarar o exit code com a contagem de erros reais.
 if ($SendEmail -and $erros.Count -gt 0) {
-    $sendScript = Join-Path $VixRoot 'scripts\monitor_send_email.py'
-    if (Test-Path $sendScript) {
-        $errJson = $ErrFile
-        $py = (Get-Command python -ErrorAction SilentlyContinue).Source
-        if (-not $py) { $py = 'python' }
-        try {
-            & $py $sendScript $errJson
-            Write-Log "Alerta enviado por e-mail"
-        } catch {
-            Write-Log "AVISO: falha ao enviar e-mail: $_"
+    try {
+        $credScript = Join-Path $VixRoot 'api\Get-VixAdminCredential.ps1'
+        if (-not (Test-Path $credScript)) { throw "credencial ausente: $credScript" }
+        $adminSenha = & $credScript -AsPlainText
+        if (-not $adminSenha) { throw 'Get-VixAdminCredential.ps1 devolveu vazio' }
+
+        $linhas = ''
+        foreach ($e in $erros) {
+            $linhas += '<tr><td>' + $e.task + '</td><td>' + $e.code + ' (' + $e.codeHex + ')</td><td>' + $e.lastRun + '</td><td>' + $e.reason + '</td><td>' + $e.script + '</td></tr>'
         }
-    } else {
-        Write-Log "AVISO: $sendScript ausente - sem envio de e-mail"
+        $html = '<h2>VIX Radar - falha em task agendada</h2>' +
+                '<p>' + $erros.Count + ' task(s) com LastTaskResult nao-benigno na maquina ' + $env:COMPUTERNAME + '.</p>' +
+                '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">' +
+                '<tr><th>Task</th><th>Exit</th><th>Ultima execucao</th><th>Motivo</th><th>Script</th></tr>' +
+                $linhas + '</table>' +
+                '<p>Warnings nesta rodada: ' + $warnings.Count + '. Relatorio completo em ' + $ErrFile + '</p>'
+
+        $payload = @{
+            action       = 'email_enviar'
+            admin_senha  = $adminSenha
+            assunto      = 'VIX Radar - ' + $erros.Count + ' task(s) com falha'
+            html         = $html
+            destinatario = $To
+        }
+        # Bytes UTF-8 na ida e decode UTF-8 explicito na volta: o Worker responde
+        # application/json SEM charset e o PS 5.1 assumiria ISO-8859-1, corrompendo
+        # acento (P0 nota 43, 2026-07-07). Mesmo padrao de Invoke-WorkerJsonUtf8.
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Depth 6 -Compress))
+        $resp = Invoke-WebRequest -Uri $WorkerUrl -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 30 -UseBasicParsing
+        $data = [System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json
+        if ($data.ok) {
+            Write-Log "Alerta enviado por e-mail para $To ($($data.destinatarios) destinatario(s))"
+        } else {
+            Write-Log "AVISO: Worker recusou o envio: $($data.erro)"
+        }
+    } catch {
+        # 403 (senha errada) e o modo de falha mais provavel e a mensagem generica
+        # do PS nao diz nada util. Le o corpo da resposta quando existir.
+        $detalhe = ''
+        try {
+            $r = $_.Exception.Response
+            if ($r -and $r.GetResponseStream) {
+                $sr = New-Object System.IO.StreamReader($r.GetResponseStream())
+                $detalhe = ' | corpo: ' + $sr.ReadToEnd()
+                $sr.Close()
+            }
+        } catch { }
+        Write-Log "AVISO: falha ao enviar alerta por e-mail: $($_.Exception.Message)$detalhe"
     }
 }
 
