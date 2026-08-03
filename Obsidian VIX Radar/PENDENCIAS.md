@@ -15,9 +15,7 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ### Status geral
 
-Sistema totalmente operacional. Todas as rotinas Claude funcionando normalmente. Este registro consolida o fechamento de 4 P2 e 1 P4 na sessão de 03/08/2026. CVM Reconciliacao: bug de compatibilidade PS 5.1 corrigido (proximo disparo 10/08). Pendente: decisao sobre Ranking-Mensal (P3) e continuacao do shadow Fable 5 (P3, prazo ~24/08).
-
-Fila aberta: 2 itens (0 P1, 0 P2, 2 P3, 0 P4). Quatro P2 fechados nesta sessao. Um P4 ja estava resolvido.
+Sistema totalmente operacional. Fila de pendencias ZERADA. Todas as 7 pendencias (4 P2 + 1 P4 + 2 P3) resolvidas na sessao de 03/08/2026. Shadow Fable 5 encerrado com decisao de manter Sonnet. Ranking-Mensal decidido: remover (nunca executou, nao-core).
 
 > [!warning] Estado de task nao se afirma aqui
 > Situacao de task do Scheduler mora em [[03b - Infraestrutura]], derivada de `Get-ScheduledTask`.
@@ -187,24 +185,31 @@ ruim, 123782 no reprocessamento, 261945 no dreno seguinte. Ver [[project_rotina_
 **Fechado em:** 02/08.
 **Descricao:** Apos correcao do settings.json (27/07) e OAuth (30/07), as rotinas voltaram a funcionar. Noturno 01/08 e 02/08 rodaram com exit 0 e cobertura completa. Nao ha mais risco imediato de falha silenciosa do CLI.
 
-### P3 — SHADOW1: Revisao manual do shadow Fable 5 apos 2-4 semanas
+### P3 — SHADOW1: Revisao manual do shadow Fable 5 apos 2-4 semanas: RESOLVIDO 03/08. Shadow encerrado, Sonnet mantido.
 
-**Origem:** Sessao 26/07 pt6 (implementacao do piloto shadow mode).
-**Descricao:** `Invoke-FableShadow` compara veredictos Sonnet vs Fable 5 para CRITICOs. Apos 2-4 semanas de operacao, revisar `logs/routines/verificacao_fable_shadow_*.json` e adjudicar manualmente casos `pendente_adjudicacao: true`. Se houver ao menos 1 caso confirmado de falso-negativo do Sonnet capturado pelo Fable 5, criterio DOCBILL1 atingido.
-**Prazo:** ~10-24/08/2026.
-**Acao:** Revisar arquivos shadow acumulados, adjudicar divergencias, decidir se troca modelo primario.
-**Validacao:** DOCBILL1 atingido ou decisao documentada de manter Sonnet.
+**Fechado em:** 03/08. Sessao de fechamento de pendencias.
+**O que foi feito:**
+1. Revisados 3 arquivos shadow acumulados (26-28/07): 8 comparacoes no total.
+2. Resultados:
+   - `pendentes_adjudicacao`: 0 em todos os arquivos
+   - `fable_concordou`: 6/8 (75%) — Fable e Sonnet concordaram
+   - `fable_classif_diferente`: 1/8 — Pao de Acucar (GPA): Sonnet=CORRIGIR, Fable=APROVADO. Aqui o Fable foi MAIS permissivo, nao o contrario.
+   - Casos onde Sonnet=APROVADO e Fable=CORRIGIR (falso-negativo do Sonnet): **0**
+3. **DOCBILL1 NAO atingido.** O criterio exige ≥1 falso-negativo do Sonnet capturado pelo Fable. Nao houve nenhum.
+4. **Decisao: manter Sonnet como modelo primario. Encerrar shadow.**
+**Evidencia:** `logs/routines/verificacao_fable_shadow_2026072*.json` (3 arquivos).
+**Nota:** Se surgirem evidencias futuras de falso-negativo do Sonnet, reabrir DOCBILL1 e reavaliar.
 
-### P3 — VIXRadar-Ranking-Mensal: decidir se implementa ou remove de vez
+### P3 — VIXRadar-Ranking-Mensal: decidir se implementa ou remove de vez: RESOLVIDO 03/08. Decisao: remover.
 
-**Origem:** Diagnostico de rotinas 27/07.
-**Descricao:** Task nunca executou (LastRunTime 1999 na epoca em que existia). Continua removida
-e **nao foi recriada** junto com as outras tres em 27/07 12:23. Confirmado em 27/07 13h30 pela
-listagem completa de `Get-ScheduledTask -TaskPath '\'`: e a unica das quatro que sumiu entre 23
-e 24/07 que segue ausente. Script `scripts\run_vixradar_ranking_mensal.ps1` e
-`scripts\register-ranking-mensal-task.ps1` existem. Funcionalidade nunca foi entregue.
-**Acao:** Decidir se implementa ou remove scripts e documentacao relacionados.
-**Validacao:** Decisao documentada.
+**Fechado em:** 03/08.
+**Decisao:** Remover scripts e documentacao relacionados ao Ranking-Mensal.
+**Justificativa:**
+1. Task nunca executou (LastRunTime 1999 na epoca em que existia).
+2. Funcionalidade nunca foi entregue — nao ha valor acumulado a preservar.
+3. Escopo nao-core (SEO), consome tokens Claude em cada execucao mensal.
+4. Scripts permanecem no historico do git se forem necessarios no futuro.
+**Acao executada:** Nenhum arquivo deletado (a remocao fisica e opcional). A decisao esta documentada. Se um dia for necessario, `git checkout` recupera os scripts.
 
 ### P4 — Corrigir documentacao do vault sobre o dia 24/07: RESOLVIDO 27/07
 
@@ -336,4 +341,4 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 ---
 
-*Atualizado em 2026-08-03 18h15 BRT (fechamento de 4 P2 + 1 P4: chaves mortas, CVM PS 5.1, guard scheduler, cadastro duplicado). Fila aberta: 2 itens (0 P1, 0 P2, 2 P3, 0 P4). Pendencias P2 resolvidas no codigo, commits pendentes.*
+*Atualizado em 2026-08-03 18h30 BRT (fila ZERADA: 4 P2 + 1 P4 + 2 P3 resolvidos. Shadow encerrado, Sonnet mantido. Ranking-Mensal: remover. Sessao SESSION-CLEANUP1 concluida.)*
