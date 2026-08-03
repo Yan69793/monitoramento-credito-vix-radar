@@ -189,10 +189,15 @@ if ($mainAtual -ne $bundle) {
 # hora do deploy e falha se node_modules nao existir. Antes disso o package.json
 # era decorativo (express/openai nunca foram importados pelo worker) e nenhum
 # install rodava aqui.
-Write-Host "`nInstalando dependencias do bundle (npm ci)..." -ForegroundColor Yellow
+# VITEST1: --omit=dev desde que api/package.json ganhou devDependencies reais
+# (vitest + @cloudflare/vitest-pool-workers, que baixa o binario nativo do
+# workerd, ~90MB). Nenhum dos dois e importado por worker.js — sem o filtro,
+# todo deploy de producao baixaria esse peso a toa. dependencies (inclusive
+# @sentry/cloudflare) continuam instalados normalmente.
+Write-Host "`nInstalando dependencias do bundle (npm ci --omit=dev)..." -ForegroundColor Yellow
 Push-Location $apiDir
 try {
-  npm ci --no-audit --no-fund
+  npm ci --omit=dev --no-audit --no-fund
   $npmExit = $LASTEXITCODE
 } finally {
   Pop-Location
