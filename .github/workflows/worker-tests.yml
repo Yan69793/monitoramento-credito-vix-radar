@@ -1,0 +1,50 @@
+# Testes de integracao do Worker (@cloudflare/vitest-pool-workers).
+# Roda o Worker de verdade (api/src/worker.js) num runtime workerd local via
+# Miniflare, sem tocar producao nem exigir nenhum secret real.
+#
+# NAO roda local nesta maquina: Windows Smart App Control bloqueia workerd.exe
+# por assinatura nao reconhecida (Event Log CodeIntegrity id 3077/3033,
+# 2026-08-02). GitHub Actions nao tem essa politica. Ver api/test/.
+
+name: Worker Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/**'
+      - '.github/workflows/worker-tests.yml'
+  pull_request:
+    paths:
+      - 'api/**'
+      - '.github/workflows/worker-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: worker-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  worker-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund
+
+      - name: Rodar testes (vitest-pool-workers)
+        run: npm test

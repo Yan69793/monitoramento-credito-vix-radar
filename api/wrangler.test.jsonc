@@ -1,0 +1,50 @@
+{
+  // wrangler.test.jsonc - config isolado para @cloudflare/vitest-pool-workers.
+  // NUNCA aponta para producao: sem account_id, sem [[routes]], sem [triggers],
+  // sem KV/DO/Analytics Engine reais. Miniflare simula tudo localmente, storage
+  // isolado por teste (fecha e reabre do zero a cada test()).
+  //
+  // Os valores abaixo em "vars" (JWT_SECRET, ADMIN_PASSWORD, RESEND_API_KEY,
+  // ANTHROPIC_API_KEY, SENTRY_DSN) sao secrets em producao (wrangler secret put).
+  // Aqui sao texto plano de proposito: este arquivo nunca sai da maquina local/CI,
+  // os valores nao autenticam nada real, e nao ha alternativa pratica (Miniflare
+  // nao le `wrangler secret` local para testes isolados). Nao reusar nenhum
+  // destes valores fora deste arquivo.
+  "name": "radar-credito-api-test",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-06-16",
+  "compatibility_flags": ["nodejs_compat"],
+
+  "kv_namespaces": [
+    { "binding": "RADAR_KV", "id": "test-kv-radar" }
+  ],
+
+  "durable_objects": {
+    "bindings": [
+      { "name": "RATE_LIMITER_DO", "class_name": "RateLimiterDO" },
+      { "name": "ESTADO_SEMANA_DO", "class_name": "EstadoSemanaDO" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["RateLimiterDO"] },
+    { "tag": "v2", "new_sqlite_classes": ["EstadoSemanaDO"] }
+  ],
+
+  "analytics_engine_datasets": [
+    { "binding": "RADAR_USAGE_EVENTS", "dataset": "radar_usage_events_test" }
+  ],
+
+  "vars": {
+    "ENVIRONMENT": "test",
+    "CLOUDFLARE_ACCOUNT_ID": "test-account-id",
+    "VARREDURA_CRON_AI_ENABLED": "false",
+    "RELATORIO_DIARIO_ENABLED": "0",
+    "EMAIL_ALERTAS_ENABLED": "0",
+    "ADMIN_EMAIL": "admin-test@example.com",
+    "JWT_SECRET": "test-jwt-secret-nao-usar-em-producao",
+    "ADMIN_PASSWORD": "test-admin-password-nao-usar-em-producao",
+    "RESEND_API_KEY": "test-resend-key-dummy",
+    "ANTHROPIC_API_KEY": "test-anthropic-key-dummy",
+    "SENTRY_DSN": "https://testpublickey@o0.ingest.sentry.io/1"
+  }
+}

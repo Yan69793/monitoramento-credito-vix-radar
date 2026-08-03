@@ -1,7 +1,18 @@
 {
+  "scripts": {
+    "test": "vitest run"
+  },
   "dependencies": {
     "@sentry/cloudflare": "^10.69.0",
     "express": "^5.2.1",
     "openai": "^6.33.0"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.20.1",
+    "vitest": "^4.1.10"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260730.1": true
   }
 }
