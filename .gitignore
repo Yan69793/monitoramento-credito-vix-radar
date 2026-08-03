@@ -232,7 +232,15 @@ out*.json
 tmp_in.json
 untracked-auditoria.txt
 
-src/
+# DRIFT-GITADD1 (v4.9.184): ancorado na raiz. Sem a barra inicial, `src/` casava
+# com QUALQUER diretorio src em qualquer nivel, inclusive api/src, que e a fonte
+# canonica do Worker. O arquivo continuava rastreado (ignore nao afeta arquivo ja
+# rastreado), mas `git add api/src/worker.js` passava a devolver exit 1 so por
+# aviso, e o deploy-worker.ps1 abortava DEPOIS do deploy validado. Producao em
+# v4.9.184 com o repo declarando v4.9.183, o drift exato que o script combate.
+# Os demais src/ do disco ficam cobertos por regras proprias (research/,
+# Projetos Claude/, _historico/, .cloudflare-typescript-temp/).
+/src/
 Obsidian VIX Radar/Sem t*.canvas
 
 

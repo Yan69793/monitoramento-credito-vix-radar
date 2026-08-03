@@ -263,8 +263,24 @@ try {
   # Sem -f: api/v4.*.js saiu do .gitignore, o bundle e rastreado normalmente.
   # CLAUDE.md/README.md entram so se sync-version-docs.ps1 os alterou; git add
   # em arquivo sem mudanca nao staga nada.
+  # DRIFT-GITADD1 (v4.9.184): nao abortar por exit code do `git add`. Ele
+  # devolve 1 por AVISO, nao so por erro. Aconteceu no deploy do v4.9.184: um
+  # pathspec casou com regra do .gitignore (api/src via `src/` sem ancora), os
+  # arquivos foram TODOS stageados com sucesso, e mesmo assim o script morreu
+  # aqui, depois do deploy validado. Producao nova, repo declarando a versao
+  # velha, que e o drift descrito no cabecalho deste arquivo. Vale o resultado
+  # no indice, nao o codigo de saida.
   git add "api/$bundle" "api/src/worker.js" "api/wrangler.toml" "scripts/build-worker.ps1" "scripts/deploy-worker.ps1" "CLAUDE.md" "README.md"
-  if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
+  $addExit = $LASTEXITCODE
+
+  # Condicao anti-drift de verdade: o bundle que acabou de ir para producao tem
+  # que estar no indice. Cobre tanto o staging novo quanto o re-deploy de uma
+  # versao ja commitada (nesse caso nada e stageado e esta certo).
+  $bundleNoIndice = git ls-files --cached -- "api/$bundle"
+  if (-not $bundleNoIndice) {
+    Fail "git add nao colocou api/$bundle no indice (exit $addExit). Producao ESTA em $ver e o repo nao sabe. Resolva a mao:`n  git add api/$bundle api/wrangler.toml`n  git commit -m `"chore(worker): deploy $ver em producao`"`n  git push origin HEAD"
+  }
+  if ($addExit -ne 0) { Warn "git add saiu com exit $addExit (aviso), mas api/$bundle esta no indice. Seguindo." }
 
   $staged = git diff --cached --name-only
   if (-not $staged) {
