@@ -39,9 +39,16 @@ com header `X-Routine-Key`). Se um lado quebrar, o sistema para.
 ```
 pwsh ./scripts/deploy-worker.ps1 -Version v4.9.XXX
 ```
-Nunca `wrangler deploy` direto. O script faz 5 passos atômicos: build do src,
-aponta `wrangler.toml main`, deploy com `--no-autoconfig`, valida GET / em produção,
-e só então git add/commit/push. Token Cloudflare é variável de ambiente do sistema.
+Nunca `wrangler deploy` direto. O script faz 6 passos atômicos: build do src,
+aponta `wrangler.toml main`, `npm ci` em `api/`, deploy com `--no-autoconfig`, valida
+GET / em produção, e só então git add/commit/push. Token Cloudflare é variável de
+ambiente do sistema.
+
+Antes de tudo isso rodam três portões que abortam sem tocar em nada: versão de
+produção não pode estar à frente do repo, working tree tem que estar limpo, e o
+secret `SENTRY_DSN` tem que existir no Worker. O terceiro existe porque `sentry_ok`
+entrou no `_okHealth` — sem o secret, o deploy subiria e a validação falharia
+depois, deixando produção nova e repo declarando a versão velha.
 
 ### Pages
 ```
@@ -52,7 +59,9 @@ os 4 arquivos do bundle, deploy, valida em produção.
 
 ### Regras invioláveis de deploy
 - Wrangler 4.x: sempre `--no-autoconfig`. Sem isso detecta `E:\Diretorio\Claude\dashboard` como projeto e ignora `wrangler.toml`.
-- Fonte do Worker: `api/src/worker.js` (17k linhas). Bundles `api/v4.*.js` são artefatos gerados — nunca editar diretamente, publicar com `no_bundle=true`.
+- Fonte do Worker: `api/src/worker.js` (17k linhas). Bundles `api/v4.*.js` são artefatos gerados, nunca editar diretamente.
+- **Nunca ligar `no_bundle = true` nem passar `--no-bundle`.** Esta linha já mandou o contrário e estava errada: `no_bundle` nunca foi configurado, o esbuild do Wrangler sempre esteve ativo. Desde SENTRY1 (v4.9.184) o bundle tem import real de npm (`@sentry/cloudflare`) que só resolve com o bundler ligado. Desligar quebra o deploy seguinte.
+- `api/package.json` e `api/package-lock.json` são versionados e `deploy-worker.ps1` roda `npm ci` antes do deploy. Sem `node_modules`, o import não resolve.
 - Fonte do frontend: `app/index.html` (CACHE_VERSION no header). Sincronizar `app/deploy_zip/` antes do deploy.
 - Git commit só depois de deploy validado em produção (anti-drift).
 - `CLOUDFLARE_API_TOKEN` é variável de ambiente do sistema, nunca no repo.
@@ -61,6 +70,13 @@ os 4 arquivos do bundle, deploy, valida em produção.
 `RADAR_KV` (KV `c6805b8d8a7b468e9f854ab4f91fb93a`), `RATE_LIMITER_DO` (RateLimiterDO),
 `ESTADO_SEMANA_DO` (EstadoSemanaDO, SQLite com migration v2), `RADAR_USAGE_EVENTS`
 (Analytics Engine). Não remover bindings.
+
+### Secrets que derrubam o health se sumirem
+`RESEND_API_KEY`, `ADMIN_EMAIL` (SECRETMISS1) e `SENTRY_DSN` (SENTRY1) entram no
+`_okHealth`. Os dois últimos são validados por formato, não só por presença: string
+vazia ou valor truncado também derruba. Some um deles, o health vai a `ok:false`,
+o `canonical-test` fica vermelho em até 6h e o dono recebe email. Foi assim que o
+`ADMIN_EMAIL` ficou 3 dias ausente com o painel verde.
 
 ## Rotinas do Task Scheduler (fonte da verdade: `routines/README.md`)
 
@@ -141,7 +157,7 @@ Antes de declarar qualquer tarefa concluída, execute:
 ```powershell
 curl.exe -s https://radar-credito-api.prospects-intel.workers.dev -w "`nHTTP:%{http_code} TEMPO:%{time_total}s"
 ```
-Esperado: HTTP 200, `ok:true`, `telemetria:true`, `kv:true`.
+Esperado: HTTP 200, `ok:true`, `telemetria:true`, `kv:true`, `sentry_ok:true`.
 Cole a saída real na resposta. Se falhar ou não puder executar, diga explicitamente.
 Nunca declare "funcionando" sem a saída colada.
 
@@ -159,6 +175,7 @@ Lista parcial dos que têm correção estrutural:
 | VERIFINJ1 | Injeção via parâmetro de verificação | Validação de assinatura Svix |
 | CSRF-COOKIE1 | Auth por cookie vulnerável a CSRF | Migrado para JWT no header |
 | EMAILGET1 | Email actionable por GET | Migrado para POST com token |
+| SENTRY1 | Worker sem captura de exceção; 167 try/catch mudos | `Sentry.withSentry` no export, `sentry_ok` no `_okHealth`, gate de secret no deploy |
 
 Se uma mudança nova toca em auth, KV, estado multi-semana ou input de usuário,
 conferir se não reabre um desses.

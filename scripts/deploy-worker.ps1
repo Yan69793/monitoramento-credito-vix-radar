@@ -6,9 +6,13 @@
   Colapsa em um comando o ritual de 4 passos que gerava drift repo/producao:
     1. Confere pre-requisitos e gera o bundle a partir de api/src/worker.js.
     2. Aponta api/wrangler.toml main -> o bundle desta versao.
-    3. Roda `wrangler deploy` (com --no-autoconfig, obrigatorio neste repo).
-    4. Valida producao (GET /): versao viva == esperada, bindings kv/telemetria.
-    5. Sincroniza o git: add do bundle + wrangler.toml (+ CLAUDE.md/README.md se
+    3. Instala dependencias de api/package.json (npm ci). Desde SENTRY1
+       (v4.9.184) o bundle tem import real (@sentry/cloudflare) resolvido
+       pelo esbuild padrao do Wrangler — precisa de node_modules presente.
+    4. Roda `wrangler deploy` (com --no-autoconfig, obrigatorio neste repo).
+    5. Valida producao (GET /): versao viva == esperada, bindings kv/telemetria
+       e sentry_ok (SENTRY1, v4.9.184 — ver o gate 0.3).
+    6. Sincroniza o git: add do bundle + wrangler.toml (+ CLAUDE.md/README.md se
        sync-version-docs.ps1 os alterou), commit e push.
 
   POR QUE O PASSO 5 EXISTE: api/v4.*.js nao e mais ignorado pelo git (a regra
@@ -115,6 +119,29 @@ if ($stagedDirty) {
 }
 Write-Host "Gate working tree: limpo" -ForegroundColor Green
 
+# --- 0.3 GATE SENTRY_DSN: secret existe antes de o health passar a exigi-lo --
+# SENTRY1 (v4.9.184): sentry_ok entrou no _okHealth do Worker, mesma logica do
+# admin_email_ok (SECRETMISS1). Sem o secret, producao volta ok:false e a
+# validacao do passo 5 falha DEPOIS do deploy: codigo novo no ar, repo
+# declarando a versao velha, canonical-test vermelho — exatamente o drift que
+# este script existe para impedir. Por isso o gate roda aqui, antes do build e
+# do deploy, e nao junto da validacao.
+# `wrangler secret list` devolve so os NOMES dos secrets, nunca os valores.
+Push-Location $apiDir
+try {
+  $secretsRaw  = (npx wrangler secret list --config wrangler.toml --name $WorkerName --format json 2>&1 | Out-String)
+  $secretsExit = $LASTEXITCODE
+} finally {
+  Pop-Location
+}
+if ($secretsExit -ne 0) {
+  Fail "Nao consegui listar os secrets do Worker $WorkerName (exit $secretsExit). O health agora exige SENTRY_DSN; deployar sem confirmar o secret deixaria producao em ok:false e o repo dessincronizado.`n$secretsRaw"
+}
+if ($secretsRaw -notmatch 'SENTRY_DSN') {
+  Fail "Secret SENTRY_DSN ausente no Worker $WorkerName. Desde SENTRY1 (v4.9.184) o health exige, e producao voltaria ok:false. Crie o secret antes de deployar:`n  cd api`n  npx wrangler secret put SENTRY_DSN --config wrangler.toml --name $WorkerName"
+}
+Write-Host "Gate SENTRY_DSN: secret presente" -ForegroundColor Green
+
 # api/src/worker.js e a fonte canonica. O artefato versionado nunca e editado a mao.
 & $buildScript -Version $ver
 if ($LASTEXITCODE -ne 0 -or -not (Test-Path $bundlePath)) {
@@ -156,7 +183,26 @@ if ($mainAtual -ne $bundle) {
   Write-Host "wrangler.toml main ja aponta $bundle" -ForegroundColor DarkGray
 }
 
-# --- 3. Deploy -------------------------------------------------------------
+# --- 3. Dependencias do bundle ---------------------------------------------
+# SENTRY1 (v4.9.184): o bundle passou a ter import de npm real
+# (@sentry/cloudflare). O esbuild embutido no Wrangler resolve esse import na
+# hora do deploy e falha se node_modules nao existir. Antes disso o package.json
+# era decorativo (express/openai nunca foram importados pelo worker) e nenhum
+# install rodava aqui.
+Write-Host "`nInstalando dependencias do bundle (npm ci)..." -ForegroundColor Yellow
+Push-Location $apiDir
+try {
+  npm ci --no-audit --no-fund
+  $npmExit = $LASTEXITCODE
+} finally {
+  Pop-Location
+}
+if ($npmExit -ne 0) { Fail "npm ci falhou (exit $npmExit). Bundle tem import de npm e nao vai resolver no deploy." }
+$sentryDir = Join-Path $apiDir "node_modules\@sentry\cloudflare"
+if (-not (Test-Path $sentryDir)) { Fail "@sentry/cloudflare ausente em node_modules apos npm ci. O import no bundle nao vai resolver." }
+Write-Host "  node_modules OK (@sentry/cloudflare presente)" -ForegroundColor Green
+
+# --- 4. Deploy -------------------------------------------------------------
 # --no-autoconfig obrigatorio: sem ele o Wrangler 4.x detecta outro diretorio
 # como projeto e ignora este wrangler.toml.
 Write-Host "`nDeployando Worker ($WorkerName / $bundle)..." -ForegroundColor Yellow
@@ -169,7 +215,7 @@ try {
 }
 if ($deployExit -ne 0) { Fail "wrangler deploy falhou (exit $deployExit). wrangler.toml foi alterado mas NADA foi commitado." }
 
-# --- 4. Validacao em producao ----------------------------------------------
+# --- 5. Validacao em producao ----------------------------------------------
 if ($SkipValidation) {
   Write-Host "`nValidacao pulada (-SkipValidation)." -ForegroundColor DarkGray
 } else {
@@ -190,16 +236,20 @@ if ($SkipValidation) {
   # Telemetria e regra inviolavel do projeto (binding RADAR_USAGE_EVENTS).
   if (-not $h.bindings.kv)         { Fail "Binding kv ausente apos o deploy." }
   if (-not $h.bindings.telemetria) { Fail "Binding de telemetria ausente — painel de Engajamento cego." }
-  Write-Host "  ok=true kv=true telemetria=true" -ForegroundColor Green
+  # SENTRY1: redundante com o gate 0.3 no caminho feliz, mas pega o caso em que
+  # o secret existe com valor malformado (o gate so ve o nome, o health valida
+  # o formato do DSN). Sentry mudo nao avisa que esta mudo.
+  if (-not $h.sentry_ok)           { Fail "sentry_ok=false — SENTRY_DSN ausente ou malformado. Captura de excecao cega." }
+  Write-Host "  ok=true kv=true telemetria=true sentry_ok=true" -ForegroundColor Green
 }
 
-# --- 4.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
+# --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
 # Sem isto, o bundle e o wrangler.toml ficam corretos mas a doc continua
 # declarando a versao anterior ate alguem lembrar de editar a mao — foi
 # assim que CLAUDE.md e README.md divergiram da producao mais de uma vez.
 & (Join-Path $PSScriptRoot "sync-version-docs.ps1") -WorkerVersion $ver
 
-# --- 5. Sync com o git -----------------------------------------------------
+# --- 6. Sync com o git -----------------------------------------------------
 if ($SkipGit) {
   Write-Host "`nGit pulado (-SkipGit)." -ForegroundColor DarkGray
   Write-Host "ATENCAO: producao esta em $ver e o repo NAO sabe. O canonical-test vai acusar drift ate voce commitar:" -ForegroundColor Yellow

@@ -3,9 +3,13 @@
   Gera deterministicamente o artefato versionado do Worker a partir de api/src/worker.js.
 
 .DESCRIPTION
-  O Worker legado foi recuperado como uma baseline pre-empacotada. O Wrangler deve
-  publica-la com no_bundle=true para impedir novas camadas de reempacotamento.
+  O Worker legado foi recuperado como uma baseline pre-empacotada.
   Nunca edite api/v4.*.js diretamente; altere api/src/worker.js e rode este script.
+
+  SENTRY1 (v4.9.184): a linha antiga desta secao dizia que o Wrangler "deve
+  publicar com no_bundle=true". Isso nunca foi configurado (nem no toml nem na
+  CLI) e agora esta proibido: o bundle tem import real de @sentry/cloudflare que
+  so resolve com o esbuild padrao do Wrangler ligado. Ver nota no wrangler.toml.
 #>
 [CmdletBinding()]
 param(

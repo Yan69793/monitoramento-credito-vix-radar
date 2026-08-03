@@ -1,6 +1,11 @@
 // Fonte canonica do Worker legado. Artefato gerado por scripts/build-worker.ps1.
 // v4.9.183: CAL-003 (overrides em state/calendario), VOL-001/VOL-003
 // (Merton sem substitutos invalidos; Selic efetiva do KV), build deterministico sem rebundle.
+// SENTRY1 (v4.9.184): captura de excecao via @sentry/cloudflare. Depende do
+// bundling padrao do Wrangler (esbuild) para resolver este import — NUNCA
+// adicionar no_bundle=true/--no-bundle sem primeiro vendorizar o SDK, senao
+// o import quebra silenciosamente no deploy seguinte. Ver wrangler.toml.
+import * as Sentry from "@sentry/cloudflare";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -14760,6 +14765,7 @@ async function handleObservabilidade(url, env2222, request) {
         rate_limiter_do: !!env2222.RATE_LIMITER_DO,
         telemetria: !!env2222.RADAR_USAGE_EVENTS,
         resend: !!env2222.RESEND_API_KEY,
+        sentry: !!env2222.SENTRY_DSN,
         openrouter: !!env2222.OPENROUTER_API_KEY,
         perplexity: !!env2222.OPENROUTER_API_KEY
       },
@@ -15707,11 +15713,19 @@ async function __coreFetch(request, env2222) {
       // e nenhum login recebia role admin no JWT. Valida formato, nao so
       // presenca: string vazia ou " " tambem tem que derrubar o health.
       var _adminEmailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(env2222.ADMIN_EMAIL || "").trim());
-      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _verificadorRealOk;
+      // SENTRY1 (v4.9.184): SENTRY_DSN conta no _okHealth pelo mesmo motivo do
+      // ADMIN_EMAIL acima. Sem DSN o SDK nao lanca excecao, so para de enviar
+      // evento em silencio (@sentry/core client.js: "No DSN provided, client
+      // will not send events."). Sentry mudo nao avisa que esta mudo — e o
+      // SECRETMISS1 de novo, so que agora cegando o proprio canal de erro.
+      // Valida formato (https://<chave>@<host>/<projeto>), nao so presenca:
+      // string vazia, " " ou DSN truncado tambem tem que derrubar o health.
+      var _sentryOk = /^https:\/\/[^\s@]+@[^\s@]+\/\d+$/.test(String(env2222.SENTRY_DSN || "").trim());
+      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, verificador_ok: _verificadorRealOk }, 200, request);
+        return resp({ ok: _okHealth, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk }, 200, request);
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
@@ -15733,6 +15747,7 @@ async function __coreFetch(request, env2222) {
         kv: !!env2222.RADAR_KV,
         telemetria: !!env2222.RADAR_USAGE_EVENTS,
         admin_email_ok: _adminEmailOk,
+        sentry_ok: _sentryOk,
         ts: (/* @__PURE__ */ new Date()).toISOString()
       }, 200, request);
     }
@@ -17049,8 +17064,19 @@ async function consultarSaldoOpenRouter(env3) {
 }
 __name(consultarSaldoOpenRouter, "consultarSaldoOpenRouter");
 __name2(consultarSaldoOpenRouter, "consultarSaldoOpenRouter");
+
+// SENTRY1: embrulha fetch+scheduled numa passada so. Sem SENTRY_DSN (secret
+// ainda nao criado), o SDK fica desligado e nao lanca excecao — comportamento
+// padrao documentado do Sentry, nao branch condicional nosso.
+var worker_com_sentry = Sentry.withSentry(
+  (env2222) => ({
+    dsn: env2222.SENTRY_DSN,
+    tracesSampleRate: 0.1
+  }),
+  worker_default
+);
 export {
   EstadoSemanaDO,
   RateLimiterDO,
-  worker_default as default
+  worker_com_sentry as default
 };

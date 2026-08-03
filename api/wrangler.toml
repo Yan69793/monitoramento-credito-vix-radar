@@ -482,6 +482,13 @@ compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
 
+# SENTRY1 (v4.9.184): NAO adicionar no_bundle = true nem --no-bundle no deploy.
+# Desde v4.9.184 o bundle tem import real de npm (@sentry/cloudflare), resolvido
+# pelo esbuild embutido no Wrangler. Comentarios antigos em build-worker.ps1 e no
+# cabecalho de src/worker.js falam em "no_bundle=true" — era intencao, nunca foi
+# configurado. Ligar isso agora quebra o import e o Worker para de subir.
+# Requisito associado: deploy-worker.ps1 roda `npm ci` em api/ antes do deploy.
+
 account_id = "7ac79fb1030e4e81115ef33c21a9b070"
 
 # ─── KV NAMESPACE (produção) ──────────────────────────────────────────

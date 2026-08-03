@@ -113,8 +113,12 @@ vixradar/
 archive/
 dados/
 api/openai-mcp.js
-api/package.json
-api/package-lock.json
+# SENTRY1 (v4.9.184): api/package.json e api/package-lock.json saem do ignore.
+# Eram legado decorativo (express/openai nunca foram importados pelo worker),
+# mas agora o bundle tem import real de @sentry/cloudflare e deploy-worker.ps1
+# roda `npm ci` — sem os dois versionados, clone limpo nao deploya.
+!api/package.json
+!api/package-lock.json
 api/radar-standalone-worker.js
 api/worker_v4.5.0.js
 api/validate.js
@@ -127,6 +131,7 @@ Obsidian VIX Radar/.obsidian/
 # ---------- Node, builds, dependencias ----------
 node_modules/
 package-lock.json
+!api/package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
