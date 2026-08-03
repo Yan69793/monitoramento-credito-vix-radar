@@ -1,5 +1,19 @@
 ﻿# register-all-routines-scheduler.ps1 — Task Scheduler Windows (FALLBACK — exige PC ligado)
 # Primario sem PC: Claude Code Routines Remote — scripts/register-cloud-routines.ps1 + REGISTRAR-CLOUD.md
+#
+# ESCOPO EXPLICITO (P2-SCHEDGUARD1, 2026-08-03):
+#   Este script registra APENAS as 6 tasks listadas abaixo.
+#   Tasks NAO cobertas por este script (use o registrador especifico de cada uma):
+#     - VIXRadar-Monitor-Tasks     → scripts/register-monitor-tasks.ps1
+#     - VIXRadar-Coleta-Volatilidade → scripts/register-coleta-volatilidade-task.ps1
+#     - VIXRadar-Export-Historico  → scripts/register-export-historico-task.ps1
+#     - VIXRadar-Reconciliacao-CVM → scripts/register-reconciliacao-cvm-task.ps1
+#     - VIXRadar-Ranking-Mensal    → scripts/register-ranking-mensal-task.ps1
+#     - VIXRadar-Verificacao-Async → scripts/register-verificacao-async-task.ps1
+#
+# ATENCAO: A linha Unregister-ScheduledTask em Register-OneTask zera o LastRunTime
+# e a task perde o disparo do dia se o horario do trigger ja passou.
+# Se hoje for dia de execucao e voce rodar depois do horario, a task NAO executara hoje.
 param(
     [switch]$Remove,
     [switch]$Status,
@@ -7,7 +21,17 @@ param(
     [string]$RunTask
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
+# P2-SCHEDGUARD1: habilitar log operacional do Scheduler para rastrear remocoes futuras
+try {
+    $logOp = Get-WinEvent -ListLog 'Microsoft-Windows-TaskScheduler/Operational' -ErrorAction SilentlyContinue
+    if ($logOp -and -not $logOp.IsEnabled) {
+        wevtutil sl 'Microsoft-Windows-TaskScheduler/Operational' /e:true
+        Write-Host 'Log operacional do Task Scheduler habilitado (rastreamento de remocoes).' -ForegroundColor DarkGray
+    }
+} catch {
+    Write-Host 'AVISO: nao foi possivel habilitar o log operacional do Task Scheduler.' -ForegroundColor Yellow
+}
 $Scripts = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts'
 $Fechamento = 'E:\Diretorio\Claude\relatorio-diario-szuchmacher\scripts\run_fechamento_claude.ps1'
 $Watchdog = 'E:\Diretorio\Claude\relatorio-diario-szuchmacher\scripts\briefing_watchdog.ps1'
@@ -79,6 +103,21 @@ function New-TaskSettings {
 function Register-OneTask($t) {
     if (-not (Test-Path $t.Script)) {
         throw ('Script ausente: ' + $t.Script)
+    }
+    # P2-SCHEDGUARD1: avisar se o re-registro acontece depois do horario do trigger do dia
+    $agora = Get-Date
+    $triggerTime = [datetime]::ParseExact($t.At, 'HH:mm', $null)
+    $triggerHoje = Get-Date -Year $agora.Year -Month $agora.Month -Day $agora.Day -Hour $triggerTime.Hour -Minute $triggerTime.Minute -Second 0
+    $diaSemana = $agora.DayOfWeek
+    $ehDiaDeExecutar = $false
+    if ($t.Daily) {
+        $ehDiaDeExecutar = $true
+    } elseif ($t.DaysOfWeek) {
+        $dias = $t.DaysOfWeek -split ','
+        $ehDiaDeExecutar = ($dias -contains $diaSemana.ToString())
+    }
+    if ($ehDiaDeExecutar -and $agora -gt $triggerHoje) {
+        Write-Host ('ATENCAO: ' + $t.Name + ' perdera o disparo de hoje (' + $t.At + ' ja passou). A task sera recriada sem executar hoje.' ) -ForegroundColor Yellow
     }
     Unregister-ScheduledTask -TaskName $t.Name -Confirm:$false -ErrorAction SilentlyContinue
 

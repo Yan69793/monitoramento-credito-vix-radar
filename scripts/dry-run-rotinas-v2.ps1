@@ -2,7 +2,7 @@
 $ErrorActionPreference = 'Stop'
 
 $WorkerUrl = 'https://api.vixradar.com'
-$Key = 'mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1'
+$Key = 'CHAVE_ROTACIONADA_REMOVIDA'
 $fail = 0
 
 function Send-Analise($empresa, $setor, $tier, $resultado) {

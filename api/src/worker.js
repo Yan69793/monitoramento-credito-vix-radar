@@ -5657,6 +5657,17 @@ __name22222(enviarAlertaAdminWhatsApp, "enviarAlertaAdminWhatsApp");
 __name222222(enviarAlertaAdminWhatsApp, "enviarAlertaAdminWhatsApp");
 __name2222222(enviarAlertaAdminWhatsApp, "enviarAlertaAdminWhatsApp");
 __name22222222(enviarAlertaAdminWhatsApp, "enviarAlertaAdminWhatsApp");
+// P2-CADDUPL1: funcao auxiliar de hash de email para dedup de notificacao (Cloudflare Workers safe, apenas crypto.subtle)
+async function hashEmail(e) { const d = new TextEncoder().encode(String(e || "").toLowerCase().trim()); const h = await crypto.subtle.digest("SHA-256", d); return Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, "0")).join("").slice(0, 16); }
+__name(hashEmail, "hashEmail");
+__name2(hashEmail, "hashEmail");
+__name22(hashEmail, "hashEmail");
+__name222(hashEmail, "hashEmail");
+__name2222(hashEmail, "hashEmail");
+__name22222(hashEmail, "hashEmail");
+__name222222(hashEmail, "hashEmail");
+__name2222222(hashEmail, "hashEmail");
+__name22222222(hashEmail, "hashEmail");
 async function handleRegistrar(body, env2222) {
   const { nome, email, empresa, senha, consentimento_lgpd, consentimento_ts } = body;
   const _telReg = (motivo, http) => {
@@ -5673,8 +5684,30 @@ async function handleRegistrar(body, env2222) {
   const existing = await getUser(env2222, email);
   const ehReinscricao = !!(existing && existing.status === "rejeitado");
   if (existing) {
-    if (existing.status === "pendente") { _telReg("ja_pendente", 200); return resp({ ok: true, mensagem: "Solicita\xE7\xE3o enviada. Aguarde aprova\xE7\xE3o." }); }
-    if (existing.status === "aprovado") { _telReg("ja_aprovado", 200); return resp({ ok: true, mensagem: "Solicita\xE7\xE3o enviada. Aguarde aprova\xE7\xE3o." }); }
+    // P2-CADDUPL1: diferenciar resposta mantendo seguranca anti-enumeracao
+    if (existing.status === "pendente") {
+      _telReg("ja_pendente", 200);
+      // P2-CADDUPL1: reenvio de notificacao ao admin com dedup 24h
+      try {
+        const emailHash = await hashEmail(existing.email);
+        const dedupKey = "cadastro:notif_reenvio:" + emailHash;
+        const ultimoReenvio = env2222.RADAR_KV ? await env2222.RADAR_KV.get(dedupKey) : "1";
+        if (!ultimoReenvio && env2222.RESEND_API_KEY) {
+          const tokA = await gerarTokenEmail(env2222, existing.email, "aprovar");
+          const tokR = await gerarTokenEmail(env2222, existing.email, "rejeitar");
+          const aUrl = `${WORKER_URL}/?action=aprovar_email&email=${encodeURIComponent(existing.email)}&ts=${tokA.ts}&sig=${tokA.sig}`;
+          const rUrl = `${WORKER_URL}/?action=rejeitar_email&email=${encodeURIComponent(existing.email)}&ts=${tokR.ts}&sig=${tokR.sig}`;
+          const _assuntoReenvio = `[REENVIO] Pendente ha +24h \u2014 ${existing.nome}`;
+          await enviarResend(env2222.RESEND_API_KEY, _assuntoReenvio, emailRegistroAdmin(existing, aUrl, rUrl), [ADMIN_EMAIL], null, null, env2222);
+          await env2222.RADAR_KV.put(dedupKey, "1", { expirationTtl: 86400 });
+        }
+      } catch (_) { /* dedup ou reenvio falhou, sem impacto na resposta */ }
+      return resp({ ok: true, mensagem: "Sua solicita\xE7\xE3o j\xE1 est\xE1 na fila de aprova\xE7\xE3o." });
+    }
+    if (existing.status === "aprovado") {
+      _telReg("ja_aprovado", 200);
+      return resp({ ok: true, mensagem: "Voc\xEA j\xE1 tem acesso. Fa\xE7a login ou recupere sua senha." });
+    }
   }
   const isAdmin = email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
   const emailLc = email.toLowerCase().trim();

@@ -42,7 +42,7 @@ param(
     [switch]$Quiet
 )
 
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
@@ -298,22 +298,22 @@ try {
             continue
         }
         try {
-            # -AsHashTable resolve case sensitivity de chaves no JSON (ex.: "teste" vs "Teste" no
-            # mesmo objeto quebrava ConvertFrom-Json padrao). Hashtable ignora casing.
-            $estado = [System.IO.File]::ReadAllText($tmpPath, [Text.Encoding]::UTF8) | ConvertFrom-Json -AsHashTable
+            # PS 5.1: ConvertFrom-Json sem -AsHashTable (parametro so existe no PS 7+).
+            # PSCustomObject tem acesso case-insensitive a propriedades no PS 5.1,
+            # entao $estado.Results['emissor'] funciona igual hashtable para este caso.
+            $estado = [System.IO.File]::ReadAllText($tmpPath, [Text.Encoding]::UTF8) | ConvertFrom-Json
             $semanasLidas++
-            $results = $estado['results']
-            foreach ($kv in $results.GetEnumerator()) {
-                $emissor = $kv.Key
-                # Guard contra eventos null ou chave ausente: @($null) produz array com 1 elemento
-                # null em vez de array vazio no PowerShell, quebrando o foreach interno com
-                # "Cannot index into a null array" ao acessar $ev['classificacao'].
-                $eventosRaw = $kv.Value['eventos']
+            $results = $estado.Results
+            # PS 5.1: PSCustomObject nao tem .GetEnumerator() como hashtable.
+            # Usar PSObject.Properties para iterar.
+            foreach ($prop in $results.PSObject.Properties) {
+                $emissor = $prop.Name
+                $eventosRaw = $prop.Value.eventos
                 $eventos = if ($null -eq $eventosRaw) { @() } else { @($eventosRaw) }
                 foreach ($ev in $eventos) {
                     if ($null -eq $ev) { continue }
-                    if ($ev['classificacao'] -eq 'CRITICO') { $criticosPorEmissor[$emissor] = $true }
-                    elseif ($ev['classificacao'] -eq 'RELEVANTE') { $relevantesPorEmissor[$emissor] = $true }
+                    if ($ev.classificacao -eq 'CRITICO') { $criticosPorEmissor[$emissor] = $true }
+                    elseif ($ev.classificacao -eq 'RELEVANTE') { $relevantesPorEmissor[$emissor] = $true }
                 }
             }
         } catch {

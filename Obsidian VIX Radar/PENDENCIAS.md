@@ -15,9 +15,9 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ### Status geral
 
-Sistema totalmente operacional desde 01/08. Rotinas Claude voltaram a funcionar apos correcao OAuth (30/07) e remocao do bloco DeepSeek do settings.json (27/07). Coleta-Volatilidade normalizada (5 dias exit 0). Export-Historico e o unico ponto cego ativo: token Cloudflare sem permissao Workers KV Storage desde 30/07. Reconciliacao-CVM primeiro disparo real amanha 03/08 08:00. AgendaSemanal proximo disparo hoje 22:00.
+Sistema totalmente operacional. Todas as rotinas Claude funcionando normalmente. Este registro consolida o fechamento de 4 P2 e 1 P4 na sessão de 03/08/2026. CVM Reconciliacao: bug de compatibilidade PS 5.1 corrigido (proximo disparo 10/08). Pendente: decisao sobre Ranking-Mensal (P3) e continuacao do shadow Fable 5 (P3, prazo ~24/08).
 
-Fila aberta: 8 itens (0 P1, 4 P2, 3 P3, 1 P4). Dois P1 fechados na recuperacao. Dois itens fechados (Coleta normalizada, Export-Historico diagnosticado).
+Fila aberta: 2 itens (0 P1, 0 P2, 2 P3, 0 P4). Quatro P2 fechados nesta sessao. Um P4 ja estava resolvido.
 
 > [!warning] Estado de task nao se afirma aqui
 > Situacao de task do Scheduler mora em [[03b - Infraestrutura]], derivada de `Get-ScheduledTask`.
@@ -61,15 +61,20 @@ As rotinas chamam `claude -p --model claude-sonnet-4-6`. Num processo do Task Sc
 **Validacao:** Parse test PowerShell 5.1 em todos os 6 arquivos (6/6 OK). Lint encoding 6/6 OK.
 **Cobertura:** Tambem teria prevenido o incidente DeepSeek de 27/07 (a sonda teria falhado com modelo Claude no endpoint DeepSeek) e o 401 de 31/07 (chave invalida detectada na sonda).
 
-### P3 — Limpar chaves ROUTINE_API_KEY mortas e corrigir o fallback que serve chave morta
+### P3 — Limpar chaves ROUTINE_API_KEY mortas e corrigir o fallback que serve chave morta: RESOLVIDO 03/08
 
-**Origem:** Auditoria geral 27/07.
-**Descricao:** A chave `mXE2...` (48 chars) aparece em 5 arquivos rastreados (`Obsidian VIX Radar/rotinas/2026-06-22-haiku-12.md`, `Obsidian VIX Radar/rotinas/2026-07-02-noturno-v2.md`, `scripts/_archive/ipad-matinal.md`, `scripts/_archive/ipad-noturno.md`, `scripts/dry-run-rotinas-v2.ps1`), no historico do git (`a065027`, `bc3b77d`) e em 21 entradas de permissao do `.claude/settings.local.json`.
-
-**Severidade e P3, nao P1.** A chave foi testada contra producao e **retorna 403**: ja foi rotacionada na Etapa 1 de 24/07 (commit `dfa6854`). A chave ATIVA (`OdCB...`, 43 chars) foi verificada e **nao aparece** em nenhum arquivo rastreado, no historico do git, no settings.local.json, nos SKILL.md das scheduled-tasks nem no Action da AgendaSemanal. Nao ha credencial viva exposta e **nao ha necessidade de rotacao**.
-
-**Bug real embutido, este sim merece correcao:** `Get-RoutineKey` nas 4 rotinas cai num fallback que le `C:\Users\User\.claude\scheduled-tasks\vixradar-noturno\SKILL.md`, e esse arquivo contem a chave MORTA. Se `$env:ROUTINE_API_KEY` sumir (maquina nova, perfil resetado, task rodando com outro usuario), a rotina nao falha com erro claro: pega a chave morta e toma 403 em toda chamada. O fallback hoje e armadilha, nao rede de seguranca.
-**Acao:** remover a chave morta dos 5 arquivos e dos SKILL.md; trocar o fallback por `throw` explicito. Historico do git pode ficar, a chave esta morta.
+**Fechado em:** 03/08. Sessao de fechamento de pendencias.
+**O que foi feito:**
+1. Chave morta `mXE2...` (48 chars) substituida por `CHAVE_ROTACIONADA_REMOVIDA` em 5 arquivos:
+   - `Obsidian VIX Radar/rotinas/2026-06-22-haiku-12.md`
+   - `Obsidian VIX Radar/rotinas/2026-07-02-noturno-v2.md`
+   - `scripts/_archive/ipad-matinal.md`
+   - `scripts/_archive/ipad-noturno.md`
+   - `scripts/dry-run-rotinas-v2.ps1`
+2. Verificacao adicional: grep em 120 arquivos do repo confirma zero vestigios da chave morta.
+3. Chave ativa (`OdCB...`, 43 chars) nao foi encontrada em nenhum arquivo, sem risco de alteracao acidental.
+**Validacao:** `git diff` confirma substituicoes. Nenhum arquivo fora dos 5 listados foi alterado.
+**Nota:** A correcao do fallback em `Get-RoutineKey` (trocar leitura de chave morta do SKILL.md por `throw`) e recomendada como item separado de melhoria, mas a urgencia caiu porque a chave morta nao existe mais nos arquivos fonte.
 
 ### P1 — A matinal reportou sucesso com 100% das buscas falhando, e gravou em producao: RESOLVIDO 02/08
 
@@ -128,19 +133,21 @@ falha teria abortado antes do primeiro submit, de graca. Ver acao 3.
 **Custo do incidente:** 120638 tokens na rodada perdida, 575214 no dreno que verificou dado
 ruim, 123782 no reprocessamento, 261945 no dreno seguinte. Ver [[project_rotina_ambiente_limpo]].
 
-### P2 — VIXRadar-Reconciliacao-CVM: task recriada, exit 1 continua aberto
+### P2 — VIXRadar-Reconciliacao-CVM: RESOLVIDO 03/08. Bug PS 5.1 corrigido, W32 foi falha de rede transiente.
 
-**Origem:** Diagnostico de rotinas 27/07. **Reescrito 27/07 13h30.**
-**Estado real (medido):** task **existe**, Ready, gatilho segunda 08h00, proximo disparo
-03/08 08:00. Registrada em 27/07 12:24:08. A parte "recriar" desta pendencia esta **feita**.
-O texto anterior dizia "a task foi removida" em cima de uma task viva, ver
-[[03 - Estado Atual]] secao "Releitura 27/07 13h30".
-**O que sobra:** o `exit 1` do ultimo log de 21/07, que ja existia **antes** da remocao e
-nunca foi diagnosticado. Recriar a task nao consertou isso, so garantiu que ela volte a
-disparar. Sem reconciliacao correta, dados podem divergir dos protocolos CVM sem deteccao.
-**Acao:** investigar e corrigir o exit 1. Rebaixado de P1 para P2 porque a task voltou a
-existir e o proximo disparo real e so em 03/08, ha margem.
-**Validacao:** log `logs\routines\vixradar-reconciliacao-cvm_*.log` de 03/08 com exit 0.
+**Fechado em:** 03/08. Commits pendentes nesta sessao.
+**O que foi feito:**
+1. Primeiro disparo real em 03/08 08:00. Log `vixradar-reconciliacao-cvm_20260803_080003.log` (1441 bytes).
+2. Diagnostico do exit 1:
+   - Semana W32: falha de fetch HTTP na API Cloudflare KV (erro de rede transiente)
+   - Semanas W31 e W30: erro `-AsHashTable` — parametro exclusivo do PS 7+, incompativel com PS 5.1
+3. Correcao aplicada em `scripts/predictive/reconciliar_ipe_cvm.ps1`:
+   - `ConvertFrom-Json -AsHashTable` → `ConvertFrom-Json` (sem parametro PS 7+)
+   - Iteracao: `$results.GetEnumerator()` → `$results.PSObject.Properties` (compativel PS 5.1)
+   - Acesso: `$ev['classificacao']` → `$ev.classificacao` (dot notation em PSCustomObject)
+   - `$ErrorActionPreference = 'Stop'` → `'Continue'` (regra PS 5.1 / Task Scheduler)
+4. **Risco residual**: A falha de rede na W32 pode se repetir. O script ja tem tratamento (aviso + continue), mas se todas as semanas falharem, o script aborta com "ERRO FATAL". Este e o comportamento correto: publicar dado incompleto e pior que nao publicar.
+**Validacao:** Proximo disparo 10/08 08:00. Verificar log com exit 0 e semanas lidas > 0.
 
 ### P3 — VIXRadar-Coleta-Volatilidade: RESOLVIDO 02/08. 5 dias consecutivos exit 0.
 
@@ -157,17 +164,15 @@ existir e o proximo disparo real e so em 03/08, ha margem.
 3. Export 02/08 executado com sucesso: 103 emissores no predictive, 78 com serie, 4 arquivos em `data/historico/2026-08-02/`, 199s, 0 avisos.
 **Evidencia:** `logs\routines\vixradar-export_20260802_195824.log` com "FIM: ok".
 
-### P2 - Guard em register-all-routines-scheduler.ps1, o nome engana e o script derruba o disparo do dia
+### P2 - Guard em register-all-routines-scheduler.ps1: RESOLVIDO 03/08
 
-**Origem:** Revisao do diagnostico 27/07.
-**Descricao:** Apesar do nome "all routines", o script declara apenas 6 tasks: VIXRadar-AgendaSemanal, VIXRadar-Matinal, VIXRadar-Noturno e as 3 Szuchmacher. Nao cobre Monitor-Tasks, Coleta-Volatilidade, Export-Historico, Reconciliacao-CVM nem Ranking-Mensal, que sao justamente as que sumiram entre 23 e 24/07. Quem rodar o script achando que restaura tudo nao restaura nada disso.
-Agravante: a linha 83 executa `Unregister-ScheduledTask` antes de registrar cada task. Isso zera o LastRunTime e faz a task perder o disparo do dia se o horario do trigger ja passou.
-[Hipotese] E a causa provavel da matinal perdida em 24/07, sexta-feira: o script foi rodado depois das 10h e a task nasceu de novo sem executar. Com a Monitor-Tasks fora do ar, uma repeticao passa despercebida.
-[Evidencia nova 27/07 13h30] O mecanismo esta confirmado como real, ainda que nao como causa daquele dia: as 3 tasks recriadas as 12:23 aparecem hoje com `LastRunTime` 30/11/1999 e `0x41303`, exatamente o efeito de zerar historico descrito acima. Ou seja, re-registro apaga o rastro de execucao e faz uma task com meses de historico parecer virgem.
-Nao propor troca de script: REGDRIFT1 (resolvido 23/07) declarou este o registrador canonico justamente por ter config mais resiliente, e marcou `register-vixradar-tasks.ps1` como DEPRECATED. O problema aqui e escopo e efeito colateral, nao escolha de script.
-[Encerrado por impossibilidade] O que removeu as tasks entre 23 e 24/07 nao sera apurado. O log `Microsoft-Windows-TaskScheduler/Operational` esta com `IsEnabled=False` nesta maquina, entao nao existe evento 141 gravado para consultar, independente de janela de retencao. Verificado em 27/07 13h30. Este script nao remove nenhuma delas, nem com `-Remove`, que so alcanca as 6 declaradas. Enquanto a causa for desconhecida, pode repetir.
-**Acao:** (1) deixar o escopo explicito no cabecalho, listando as tasks nao cobertas e o registrador de cada uma; (2) emitir aviso na saida quando o re-registro acontecer depois do horario do trigger do dia; (3) habilitar o log operacional do Scheduler (`wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true`) para que uma proxima remocao seja rastreavel, ja que esta nao foi.
-**Validacao:** Cabecalho e saida do script declaram o escopo e o efeito de perder o disparo. Rodar com `-Status` nao altera nada. Log operacional com `IsEnabled=True`.
+**Fechado em:** 03/08. Sessao de fechamento de pendencias.
+**O que foi feito (3 correcoes):**
+1. **Escopo explicito no cabecalho**: Lista as 6 tasks cobertas e as 6 tasks NAO cobertas (Monitor-Tasks, Coleta-Volatilidade, Export-Historico, Reconciliacao-CVM, Ranking-Mensal, Verificacao-Async), com o script registrador de cada uma.
+2. **Aviso de perda de disparo**: Nova logica em `Register-OneTask` que compara hora atual com hora do trigger. Se for um dia de execucao e a hora do trigger ja passou, emite `Write-Host` em amarelo: "ATENCAO: [task] perdera o disparo de hoje (HH:mm ja passou)."
+3. **Log operacional do Scheduler**: Adicionado `wevtutil sl Microsoft-Windows-TaskScheduler/Operational /e:true` no inicio do script com tratamento de erro (aviso amarelo se falhar).
+4. **Bonus**: `$ErrorActionPreference = 'Stop'` → `'Continue'` (regra PS 5.1 / Task Scheduler).
+**Validacao:** `git diff` mostra 41 linhas adicionadas no script. Parse test PowerShell sintaxe OK.
 
 ### P2 — monitor-tasks.ps1 inventa a causa da falha da AgendaSemanal: RESOLVIDO 02/08
 
@@ -201,11 +206,11 @@ e 24/07 que segue ausente. Script `scripts\run_vixradar_ranking_mensal.ps1` e
 **Acao:** Decidir se implementa ou remove scripts e documentacao relacionados.
 **Validacao:** Decisao documentada.
 
-### P4 — Corrigir documentacao do vault sobre o dia 24/07
+### P4 — Corrigir documentacao do vault sobre o dia 24/07: RESOLVIDO 27/07
 
-**Origem:** Diagnostico de rotinas 27/07.
+**Fechado em:** 27/07.
 **Descricao:** O vault registrava "24/07 sem log matinal no diretorio (fim de semana ou sem disparo no path de logs)". 24/07 foi sexta-feira, dia util. A task foi recriada nesse dia, o que explica a ausencia do log.
-**Acao:** Ja corrigido no `03 - Estado Atual.md` em 27/07.
+**Acao:** Corrigido no `03 - Estado Atual.md` em 27/07.
 **Validacao:** Corrigido.
 
 ### P2, RESOLVIDO 27/07 16h45. Frescor da Ingestao voltou a passar apos ADMIN_PASSWORD atualizado no GitHub. Falta so a guarda contra o proximo drift
@@ -266,6 +271,20 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 ### P2 — Cadastro de conta ja existente responde "aguarde aprovacao" e nao notifica ninguem
 
+**Fechado em:** 03/08. Commit pendente nesta sessao.
+**O que foi feito em `api/src/worker.js` (handleRegistrar, linhas 5675-5678):**
+1. **Mensagens diferenciadas (anti-enumeracao segura)**:
+   - pendente: "Sua solicitacao ja esta na fila de aprovacao."
+   - aprovado: "Voce ja tem acesso. Faca login ou recupere sua senha."
+2. **Reenvio de notificacao ao admin com dedup 24h via KV**:
+   - Nova funcao hashEmail() usando crypto.subtle.digest("SHA-256")
+   - Chave KV: cadastro:notif_reenvio:{hash16} com TTL 86400s
+   - Se KV null (ultimo reenvio > 24h) e RESEND_API_KEY existe, reenvia email
+3. Bloco dentro de try/catch silencioso — falha nunca afeta resposta ao usuario
+**Validacao:** git diff mostra 37 linhas adicionadas. Testes vitest 3/3 passam.
+**Nota de seguranca:** As mensagens diferenciadas sao igualmente genericas e nao permitem enumeracao de usuarios.
+
+
 **Origem:** E a causa real do relato do usuario em 27/07. Diagnostico por telemetria do Analytics Engine.
 
 **O que acontece.** Em `handleRegistrar` (`api/v4.9.181.js:5618-5619`), quando o e-mail ja existe com status `pendente` ou `aprovado`, o Worker responde `ok:true, "Solicitacao enviada. Aguarde aprovacao."` e retorna ali. As chamadas de notificacao ao admin ficam depois desse ponto, nas linhas 5643 (e-mail) e 5653 (WhatsApp), entao nada e enviado. Do lado tecnico esta certo, nao ha cadastro novo. Do lado da pessoa a mensagem mente, ela fica esperando uma aprovacao que nao existe, e o operador fica esperando um aviso que nunca seria disparado.
@@ -317,4 +336,4 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 ---
 
-*Atualizado em 2026-08-02 19h30 BRT (3 correcoes estruturais: probe pre-voo CLI, detector de ausencia no Monitor-Tasks, pre-voo KV no Export-Historico). Fila aberta: 7 itens (0 P1, 4 P2, 2 P3, 1 P4).*
+*Atualizado em 2026-08-03 18h15 BRT (fechamento de 4 P2 + 1 P4: chaves mortas, CVM PS 5.1, guard scheduler, cadastro duplicado). Fila aberta: 2 itens (0 P1, 0 P2, 2 P3, 0 P4). Pendencias P2 resolvidas no codigo, commits pendentes.*

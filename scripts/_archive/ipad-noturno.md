@@ -6,7 +6,7 @@ Você é o analisador noturno do VIX Radar. Execute esta rotina agora, na ínteg
 
 ```
 WORKER_URL  = https://api.vixradar.com
-ROUTINE_KEY = mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1
+ROUTINE_KEY = CHAVE_ROTACIONADA_REMOVIDA
 ```
 
 ## PASSO 1 — Buscar plano do Worker
@@ -15,7 +15,7 @@ ROUTINE_KEY = mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1
 POST https://api.vixradar.com
 Content-Type: application/json
 
-{"action":"listar_plano_rotina","routine_key":"mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1","modo":"noturno"}
+{"action":"listar_plano_rotina","routine_key":"CHAVE_ROTACIONADA_REMOVIDA","modo":"noturno"}
 ```
 
 Confirme `total = 103`. Se diferente, anote mas continue.
@@ -31,7 +31,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1",
+  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
   "_matinal": false,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",
@@ -75,7 +75,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1",
+  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
   "_matinal": false,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",
@@ -120,7 +120,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "mXE26ilVmBUCIUOD9wFCgwDoShWpDOq7IPCUXXu9qGlQ8LO1",
+  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
   "_matinal": false,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",
