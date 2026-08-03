@@ -22,12 +22,16 @@
   "durable_objects": {
     "bindings": [
       { "name": "RATE_LIMITER_DO", "class_name": "RateLimiterDO" },
-      { "name": "ESTADO_SEMANA_DO", "class_name": "EstadoSemanaDO" }
+      { "name": "ESTADO_SEMANA_DO", "class_name": "EstadoSemanaDO" },
+      { "name": "EMISSOR_DO", "class_name": "EmissorDO" },
+      { "name": "USUARIO_DO", "class_name": "UsuarioDO" },
+      { "name": "CONFIG_DO", "class_name": "ConfigDO" }
     ]
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["RateLimiterDO"] },
-    { "tag": "v2", "new_sqlite_classes": ["EstadoSemanaDO"] }
+    { "tag": "v2", "new_sqlite_classes": ["EstadoSemanaDO"] },
+    { "tag": "v3", "new_sqlite_classes": ["EmissorDO", "UsuarioDO", "ConfigDO"] }
   ],
 
   "analytics_engine_datasets": [

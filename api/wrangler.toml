@@ -506,6 +506,25 @@ class_name = "RateLimiterDO"
 name       = "ESTADO_SEMANA_DO"
 class_name = "EstadoSemanaDO"
 
+# MIGRACAO KV->DO (v5): Durable Objects para substituir chaves KV por dominio.
+# EmissorDO: 1 instancia por emissor (idFromName), armazena series, flags,
+#   ews_hist, features, alertas e comentarios daquele emissor.
+[[durable_objects.bindings]]
+name       = "EMISSOR_DO"
+class_name = "EmissorDO"
+
+# UsuarioDO: 1 instancia por usuario (idFromName), armazena perfil, favoritos
+#   e analises privadas. Dados LGPD isolados por instancia.
+[[durable_objects.bindings]]
+name       = "USUARIO_DO"
+class_name = "UsuarioDO"
+
+# ConfigDO: singleton (idFromName("_global")), armazena configs globais de
+#   baixa concorrencia (calendario, providers, tenant, anomalias, eventos).
+[[durable_objects.bindings]]
+name       = "CONFIG_DO"
+class_name = "ConfigDO"
+
 [[migrations]]
 tag               = "v1"
 new_sqlite_classes = ["RateLimiterDO"]
@@ -513,6 +532,10 @@ new_sqlite_classes = ["RateLimiterDO"]
 [[migrations]]
 tag               = "v2"
 new_sqlite_classes = ["EstadoSemanaDO"]
+
+[[migrations]]
+tag               = "v3"
+new_sqlite_classes = ["EmissorDO", "UsuarioDO", "ConfigDO"]
 
 # ─── ANALYTICS ENGINE ─────────────────────────────────────────────────
 [[analytics_engine_datasets]]

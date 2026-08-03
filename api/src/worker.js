@@ -3709,7 +3709,7 @@ async function getTenantConfig(env2222, tenantId) {
   const base = DEFAULT_TENANTS[id] || DEFAULT_TENANTS[DEFAULT_TENANT_ID];
   if (!env2222 || !env2222.RADAR_KV) return base;
   try {
-    const raw = await env2222.RADAR_KV.get(`tenant:${id}:config`, "text");
+    var raw = await _kvGetDualConfig(env2222, `tenant:${id}:config`, "getTenant", [id]);
     if (!raw) return base;
     const parsed = JSON.parse(raw);
     const features2222 = Array.isArray(parsed.features) ? parsed.features : base.features;
@@ -3950,10 +3950,12 @@ var KV_CALENDARIO_OVERRIDES = "calendario:overrides:v1";
 async function carregarCalendarioOverrides(env2222) {
   if (!env2222.RADAR_KV) return { schema_version: 1, emissores: {} };
   try {
-    var raw = await env2222.RADAR_KV.get(KV_CALENDARIO_OVERRIDES, "json");
-    if (!raw || typeof raw !== "object") return { schema_version: 1, emissores: {} };
-    if (!raw.emissores || typeof raw.emissores !== "object") raw.emissores = {};
-    return raw;
+    var raw = await _kvGetDualConfig(env2222, KV_CALENDARIO_OVERRIDES, "getCalendario", []);
+    if (!raw) return { schema_version: 1, emissores: {} };
+    var parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return { schema_version: 1, emissores: {} };
+    if (!parsed.emissores || typeof parsed.emissores !== "object") parsed.emissores = {};
+    return parsed;
   } catch (e) {
     return { schema_version: 1, emissores: {} };
   }
@@ -3993,7 +3995,8 @@ async function salvarCalendarioOverrideEmissor(env2222, empresa, trimestres) {
   var sane = Array.isArray(trimestres) ? trimestres.filter(function(t) { return t && t.periodo && t.data_prevista; }) : [];
   doc.emissores[empresa] = { trimestres: sane, atualizado_em: (new Date()).toISOString() };
   doc.ultima_atualizacao = (new Date()).toISOString().split("T")[0];
-  await env2222.RADAR_KV.put(KV_CALENDARIO_OVERRIDES, JSON.stringify(doc));
+  var valor = JSON.stringify(doc);
+  await _kvPutDualConfig(env2222, KV_CALENDARIO_OVERRIDES, valor, "putCalendario", [valor]);
   return { ok: true, empresa: empresa, trimestres_count: sane.length };
 }
 async function listarEmissoresCalendarioStale(env2222, limite) {
@@ -4113,14 +4116,17 @@ function kvEmissorFlagsKey(empresa) {
 }
 async function lerFlagsEmissor(env2222, empresa) {
   if (!env2222 || !env2222.RADAR_KV) return {};
-  const raw = await env2222.RADAR_KV.get(kvEmissorFlagsKey(empresa), "text").catch(() => null);
-  if (!raw) return {};
-  try { return JSON.parse(raw); } catch (_e) { return {}; }
+  try {
+    var raw = await _kvGetDualEmissor(env2222, empresa, kvEmissorFlagsKey(empresa), "getFlags", [empresa]);
+    if (!raw) return {};
+    return JSON.parse(raw);
+  } catch (_e) { return {}; }
 }
 async function gravarFlagsEmissor(env2222, empresa, flags) {
   if (!env2222 || !env2222.RADAR_KV) return;
   const payload = { ...flags, _atualizado_em: (/* @__PURE__ */ new Date()).toISOString() };
-  await env2222.RADAR_KV.put(kvEmissorFlagsKey(empresa), JSON.stringify(payload));
+  var valor = JSON.stringify(payload);
+  await _kvPutDualEmissor(env2222, empresa, kvEmissorFlagsKey(empresa), valor, "putFlags", [empresa, valor]);
 }
 __name(kvComentarioKey, "kvComentarioKey");
 __name2(kvComentarioKey, "kvComentarioKey");
@@ -4277,7 +4283,7 @@ __name22222222(verificarTokenEmail, "verificarTokenEmail");
 async function getUser(env2222, email) {
   if (!env2222.RADAR_KV) return null;
   try {
-    const raw = await env2222.RADAR_KV.get(kvUserKey(email), "text");
+    var raw = await _kvGetDualUsuario(env2222, email, kvUserKey(email), "getPerfil", []);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -4303,7 +4309,8 @@ async function putUser(env2222, user) {
     user._status_historico = anterior._status_historico;
   }
   user.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-  await env2222.RADAR_KV.put(kvUserKey(user.email), JSON.stringify(user));
+  var valor = JSON.stringify(user);
+  await _kvPutDualUsuario(env2222, user.email, kvUserKey(user.email), valor, "putPerfil", [valor]);
   await atualizarIndice(env2222, user);
 }
 __name(putUser, "putUser");
@@ -4399,7 +4406,8 @@ __name2222222(listarUsuarios, "listarUsuarios");
 __name22222222(listarUsuarios, "listarUsuarios");
 async function salvarAnalisePrivada(env2222, email, empresa, payload) {
   if (!env2222.RADAR_KV || !email || !empresa) return;
-  await env2222.RADAR_KV.put(kvAnalisePrivadaKey(email, empresa), JSON.stringify({ ...payload, _privado: true, _usuario: email, _salvo_em: (/* @__PURE__ */ new Date()).toISOString() }), { expirationTtl: 60 * 60 * 24 * 35 });
+  var valor = JSON.stringify({ ...payload, _privado: true, _usuario: email, _salvo_em: (/* @__PURE__ */ new Date()).toISOString() });
+  await _kvPutDualUsuario(env2222, email, kvAnalisePrivadaKey(email, empresa), valor, "putAnalise", [empresa, valor]);
 }
 __name(salvarAnalisePrivada, "salvarAnalisePrivada");
 __name2(salvarAnalisePrivada, "salvarAnalisePrivada");
@@ -4413,7 +4421,7 @@ __name22222222(salvarAnalisePrivada, "salvarAnalisePrivada");
 async function carregarAnalisePrivada(env2222, email, empresa) {
   if (!env2222.RADAR_KV || !email || !empresa) return null;
   try {
-    const raw = await env2222.RADAR_KV.get(kvAnalisePrivadaKey(email, empresa), "text");
+    var raw = await _kvGetDualUsuario(env2222, email, kvAnalisePrivadaKey(email, empresa), "getAnalise", [empresa]);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -4471,7 +4479,8 @@ async function salvarComentario(env2222, empresa, autor_email, autor_nome, autor
   if (!env2222.RADAR_KV) throw new Error("KV indispon\xEDvel");
   const ts = (/* @__PURE__ */ new Date()).toISOString();
   const comentario = { empresa, autor_email, autor_nome, autor_empresa, texto, ts };
-  await env2222.RADAR_KV.put(kvComentarioKey(empresa, ts), JSON.stringify(comentario));
+  var valor = JSON.stringify(comentario);
+  await _kvPutDualEmissor(env2222, empresa, kvComentarioKey(empresa, ts), valor, "putComentario", [empresa, ts, autor_email, texto]);
   return comentario;
 }
 __name(salvarComentario, "salvarComentario");
@@ -4745,7 +4754,7 @@ __name22222222(userHasFeature, "userHasFeature");
 async function lerFavoritosDoUsuario(env2222, email) {
   if (!env2222.RADAR_KV || !email) return [];
   try {
-    const raw = await env2222.RADAR_KV.get(kvUserFavoritosKey(email), "text");
+    var raw = await _kvGetDualUsuario(env2222, email, kvUserFavoritosKey(email), "getFavoritos", []);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -4769,7 +4778,8 @@ async function escreverFavoritosDoUsuario(env2222, email, favoritos) {
   const lista = Array.isArray(favoritos) ? favoritos : [];
   const limpa = lista.filter((f) => f && f.empresa).map((f) => ({ empresa: String(f.empresa).trim().slice(0, 120), marcado_em: f.marcado_em || null }));
   limpa.sort((a, b) => (a.empresa || "").localeCompare(b.empresa || ""));
-  await env2222.RADAR_KV.put(kvUserFavoritosKey(email), JSON.stringify(limpa));
+  var valor = JSON.stringify(limpa);
+  await _kvPutDualUsuario(env2222, email, kvUserFavoritosKey(email), valor, "putFavoritos", [valor]);
 }
 __name(escreverFavoritosDoUsuario, "escreverFavoritosDoUsuario");
 __name2(escreverFavoritosDoUsuario, "escreverFavoritosDoUsuario");
@@ -10930,9 +10940,10 @@ async function agendaBuildPersistir(env2222) {
   for (var k = 0; k < EMISSORES_LISTA.length; k++) {
     var empName = EMISSORES_LISTA[k];
     try {
-      var raw = await env2222.RADAR_KV.get(kvSerieKey(empName), "json").catch(function() {
+      var rawStr = await _kvGetDualEmissor(env2222, empName, kvSerieKey(empName), "getSerie", [empName]).catch(function() {
         return null;
       });
+      var raw = rawStr ? JSON.parse(rawStr) : null;
       if (!raw || !Array.isArray(raw.registros)) continue;
       var _vencList = Array.isArray(raw.vencimentos) ? raw.vencimentos : [];
       if (_vencList.length === 0) {
@@ -11054,7 +11065,7 @@ var KV_ANOMALIAS_ATIVAS = "mercado:anomalias:ativas";
 async function carregarSerie(env2222, empresa) {
   if (!env2222.RADAR_KV) return { registros: [], updated_at: null };
   try {
-    const raw = await env2222.RADAR_KV.get(kvSerieKey(empresa), "text");
+    var raw = await _kvGetDualEmissor(env2222, empresa, kvSerieKey(empresa), "getSerie", [empresa]);
     return raw ? JSON.parse(raw) : { registros: [], updated_at: null };
   } catch {
     return { registros: [], updated_at: null };
@@ -11073,7 +11084,8 @@ async function salvarSerie(env2222, empresa, serie) {
   if (!env2222.RADAR_KV) return;
   serie.registros = serie.registros.sort((a, b) => b.data.localeCompare(a.data)).slice(0, 252);
   serie.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-  await env2222.RADAR_KV.put(kvSerieKey(empresa), JSON.stringify(serie), { expirationTtl: 60 * 60 * 24 * 90 });
+  var valor = JSON.stringify(serie);
+  await _kvPutDualEmissor(env2222, empresa, kvSerieKey(empresa), valor, "putSerie", [empresa, valor]);
 }
 __name(salvarSerie, "salvarSerie");
 __name2(salvarSerie, "salvarSerie");
@@ -11087,7 +11099,7 @@ __name22222222(salvarSerie, "salvarSerie");
 async function carregarAnomalias(env2222) {
   if (!env2222.RADAR_KV) return {};
   try {
-    const raw = await env2222.RADAR_KV.get(KV_ANOMALIAS_ATIVAS, "text");
+    var raw = await _kvGetDualConfig(env2222, KV_ANOMALIAS_ATIVAS, "getAnomalias", []);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -11104,7 +11116,8 @@ __name2222222(carregarAnomalias, "carregarAnomalias");
 __name22222222(carregarAnomalias, "carregarAnomalias");
 async function salvarAnomalias(env2222, anomalias) {
   if (!env2222.RADAR_KV) return;
-  await env2222.RADAR_KV.put(KV_ANOMALIAS_ATIVAS, JSON.stringify(anomalias), { expirationTtl: 60 * 60 * 24 * 7 });
+  var valor = JSON.stringify(anomalias);
+  await _kvPutDualConfig(env2222, KV_ANOMALIAS_ATIVAS, valor, "putAnomalias", [valor]);
 }
 __name(salvarAnomalias, "salvarAnomalias");
 __name2(salvarAnomalias, "salvarAnomalias");
@@ -11119,7 +11132,7 @@ var KV_EVENTOS_PROMOVIDOS = "eventos:confirmados:promovidos";
 async function carregarEventosPromovidos(env2222) {
   if (!env2222.RADAR_KV) return [];
   try {
-    const raw = await env2222.RADAR_KV.get(KV_EVENTOS_PROMOVIDOS, "text");
+    var raw = await _kvGetDualConfig(env2222, KV_EVENTOS_PROMOVIDOS, "getEventosPromovidos", []);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
@@ -11131,7 +11144,8 @@ __name22(carregarEventosPromovidos, "carregarEventosPromovidos");
 __name222(carregarEventosPromovidos, "carregarEventosPromovidos");
 async function salvarEventosPromovidos(env2222, lista) {
   if (!env2222.RADAR_KV) return;
-  await env2222.RADAR_KV.put(KV_EVENTOS_PROMOVIDOS, JSON.stringify(lista), { expirationTtl: 60 * 60 * 24 * 90 });
+  var valor = JSON.stringify(lista);
+  await _kvPutDualConfig(env2222, KV_EVENTOS_PROMOVIDOS, valor, "putEventosPromovidos", [valor]);
 }
 __name(salvarEventosPromovidos, "salvarEventosPromovidos");
 __name2(salvarEventosPromovidos, "salvarEventosPromovidos");
@@ -11445,7 +11459,7 @@ async function handleSerie(url, env2222) {
   const [serie, anomalias, ewsHistRaw] = await Promise.all([
     carregarSerie(env2222, empresa),
     carregarAnomalias(env2222),
-    env2222.RADAR_KV.get(kvEwsHistKey(empresa), "json").catch(() => [])
+    _kvGetDualEmissor(env2222, empresa, kvEwsHistKey(empresa), "getEwsHist", [empresa]).then(function(r) { return r ? JSON.parse(r) : []; }).catch(function() { return []; })
   ]);
   const registrosAsc = (serie.registros || []).filter((r) => r && r.data && r.data >= cutDate).sort((a, b) => a.data.localeCompare(b.data));
   const ewsSerie = (Array.isArray(ewsHistRaw) ? ewsHistRaw : []).filter((h) => h && h.data && h.data >= cutDate).sort((a, b) => a.data.localeCompare(b.data));
@@ -12909,10 +12923,13 @@ __name(kvFeatureKey, "kvFeatureKey");
 async function gravarSnapshotEws(env2222, empresa, score, dataISO) {
   if (!env2222.RADAR_KV) return;
   const key = kvEwsHistKey(empresa);
-  const hist = await env2222.RADAR_KV.get(key, "json").catch(() => []) || [];
+  var raw = await _kvGetDualEmissor(env2222, empresa, key, "getEwsHist", [empresa]);
+  var hist;
+  try { hist = raw ? JSON.parse(raw) : []; } catch (_e) { hist = []; }
   const arr = Array.isArray(hist) ? hist : [];
   const next = [{ data: dataISO, score: Math.round(score * 10) / 10 }, ...arr.filter((h) => h && h.data !== dataISO)];
-  await env2222.RADAR_KV.put(key, JSON.stringify(next.slice(0, 90)), { expirationTtl: 60 * 60 * 24 * 120 });
+  var valor = JSON.stringify(next.slice(0, 90));
+  await _kvPutDualEmissor(env2222, empresa, key, valor, "putEwsHist", [empresa, valor]);
 }
 __name(gravarSnapshotEws, "gravarSnapshotEws");
 function calcularVelocityEws(hist, dias) {
@@ -13014,7 +13031,7 @@ async function persistirHistEwsBatch(env2222, histUpdates) {
   if (!env2222.RADAR_KV || !histUpdates || !histUpdates.length) return;
   for (let i = 0; i < histUpdates.length; i += 15) {
     const chunk = histUpdates.slice(i, i + 15);
-    await Promise.all(chunk.map((h) => env2222.RADAR_KV.put(kvEwsHistKey(h.empresa), JSON.stringify(h.hist), { expirationTtl: 60 * 60 * 24 * 120 })));
+    await Promise.all(chunk.map((h) => { var v = JSON.stringify(h.hist); return _kvPutDualEmissor(env2222, h.empresa, kvEwsHistKey(h.empresa), v, "putEwsHist", [h.empresa, v]); }));
   }
 }
 __name(persistirHistEwsBatch, "persistirHistEwsBatch");
@@ -13484,7 +13501,8 @@ async function verificarSaldoProviders(env2222) {
       nivel,
       verificado_em: agora
     };
-    const anterior = await env2222.RADAR_KV.get(KV_PROVIDERS_STATUS, "json").catch(() => null);
+    const anteriorRaw = await _kvGetDualConfig(env2222, KV_PROVIDERS_STATUS, "getProviders", []).catch(() => null);
+    const anterior = anteriorRaw ? JSON.parse(anteriorRaw) : null;
     const nivelAnterior = anterior?.nivel || "normal";
     const ultimoAlerta = anterior?.ultimo_alerta_enviado || null;
     const cooldownMs = PROVIDER_LIMIARES.alerta_cooldown_horas * 36e5;
@@ -13502,7 +13520,7 @@ async function verificarSaldoProviders(env2222) {
     } else {
       statusObj.ultimo_alerta_enviado = anterior?.ultimo_alerta_enviado || null;
     }
-    await env2222.RADAR_KV.put(KV_PROVIDERS_STATUS, JSON.stringify(statusObj));
+    await _kvPutDualConfig(env2222, KV_PROVIDERS_STATUS, JSON.stringify(statusObj), "putProviders", [JSON.stringify(statusObj)]);
   } catch (e) {
     console.error("[verificarSaldoProviders] Erro geral:", e.message);
   }
@@ -13527,7 +13545,8 @@ async function handleStatusProviders(body, env2222, request) {
   }
   if (!payload || !payload.email) return resp({ ok: false, erro: "Token inv\xE1lido." }, 401);
   if (payload.email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase()) return resp({ ok: false, erro: "Acesso restrito ao admin." }, 403);
-  const status = await env2222.RADAR_KV.get(KV_PROVIDERS_STATUS, "json").catch(() => null);
+  const statusRaw = await _kvGetDualConfig(env2222, KV_PROVIDERS_STATUS, "getProviders", []).catch(() => null);
+  const status = statusRaw ? JSON.parse(statusRaw) : null;
   if (!status) return resp({ ok: true, status: null, mensagem: "Nenhuma verifica\xE7\xE3o executada ainda." });
   return resp({ ok: true, status });
 }
@@ -13698,11 +13717,12 @@ async function handleOps(env2222, request) {
   const tk = extractToken(request);
   const usr = tk ? await verificarJWT(env2222, tk) : null;
   if (!usr || usr.email.toLowerCase().trim() !== ADMIN_EMAIL.toLowerCase()) return resp({ ok: false, erro: "Acesso restrito ao admin." }, 403, request);
-  const [providers, rlStats, kvTest] = await Promise.all([
-    env2222.RADAR_KV.get(KV_PROVIDERS_STATUS, "json").catch(() => null),
+  const [providersRaw, rlStats, kvTest] = await Promise.all([
+    _kvGetDualConfig(env2222, KV_PROVIDERS_STATUS, "getProviders", []).catch(() => null),
     env2222.RADAR_KV.get("ops:rl_blocked", "json").catch(() => ({ total: 0 })),
     env2222.RADAR_KV.get("users:index").then(() => "ok").catch(() => "erro")
   ]);
+  const providers = providersRaw ? JSON.parse(providersRaw) : null;
   return resp({
     ok: true,
     ts: (/* @__PURE__ */ new Date()).toISOString(),
@@ -15824,7 +15844,8 @@ async function __coreFetch(request, env2222) {
     if (body.action === "admin_verificar_providers") {
       if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403);
       await verificarSaldoProviders(env2222);
-      const status = await env2222.RADAR_KV.get(KV_PROVIDERS_STATUS, "json").catch(() => null);
+      const statusRaw = await _kvGetDualConfig(env2222, KV_PROVIDERS_STATUS, "getProviders", []).catch(() => null);
+      const status = statusRaw ? JSON.parse(statusRaw) : null;
       return resp({ ok: true, mensagem: "Verifica\xE7\xE3o executada.", status });
     }
     if (body.action === "admin_upsert_analise") {
@@ -16950,6 +16971,291 @@ var EstadoSemanaDO = class {
   }
 };
 __name(EstadoSemanaDO, "EstadoSemanaDO");
+
+// =============================================================================
+// MIGRACAO KV->DO (v5): Durable Objects para substituir chaves KV por dominio.
+// Padrao: FIFO promise chain (RACEKV1 fix), fetch routing com {op, args},
+// fail-open via fallback KV no worker (chamador, nao aqui dentro).
+// =============================================================================
+
+// --- EmissorDO: 1 instancia por emissor (idFromName), armazena series, flags,
+//     ews_hist, features, alertas e comentarios daquele emissor.
+var EmissorDO = class {
+  static {
+    __name2(this, "EmissorDO");
+  }
+  constructor(state, env2222) {
+    this.state = state;
+    this.env = env2222;
+    this._fila = Promise.resolve();
+  }
+  async fetch(request) {
+    let body;
+    try {
+      body = await request.json();
+    } catch (_e) {
+      return new Response(JSON.stringify({ ok: false, erro: "corpo invalido" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+    var op = body && body.op;
+    var args = body && Array.isArray(body.args) ? body.args : [];
+    var executar = function() { return this._executar(op, args); }.bind(this);
+    var tarefa = this._fila.then(executar, executar);
+    this._fila = tarefa.then(function() {}, function() {});
+    try {
+      var resultado = await tarefa;
+      return new Response(JSON.stringify({ ok: true, resultado: resultado === void 0 ? null : resultado }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (e) {
+      return new Response(JSON.stringify({ ok: false, erro: String(e && e.message || e) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }
+  async _executar(op, args) {
+    // --- Series temporais (spread, ANBIMA) ---
+    if (op === "getSerie") return await this.state.storage.get("serie:" + (args[0] || ""));
+    if (op === "putSerie") { await this.state.storage.put("serie:" + (args[0] || ""), args[1]); return null; }
+    // --- Flags manuais do emissor ---
+    if (op === "getFlags") return await this.state.storage.get("flags:" + (args[0] || ""));
+    if (op === "putFlags") { await this.state.storage.put("flags:" + (args[0] || ""), args[1]); return null; }
+    // --- Historico de EWS (ultimos 90 snapshots) ---
+    if (op === "getEwsHist") return await this.state.storage.get("ews:hist:" + (args[0] || ""));
+    if (op === "putEwsHist") { await this.state.storage.put("ews:hist:" + (args[0] || ""), args[1]); return null; }
+    // --- Features ML (por data ISO) ---
+    if (op === "getFeatures") return await this.state.storage.get("features:" + (args[0] || "") + ":" + (args[1] || ""));
+    if (op === "putFeatures") { await this.state.storage.put("features:" + (args[0] || "") + ":" + (args[1] || ""), args[2]); return null; }
+    // --- Alertas (por data) ---
+    if (op === "getAlertas") return await this.state.storage.get("alertas:" + (args[0] || ""));
+    if (op === "putAlerta") { await this.state.storage.put("alertas:" + (args[0] || "") + ":" + (args[1] || ""), args[2]); return null; }
+    // --- Comentarios (por timestamp) ---
+    if (op === "getComentarios") return await this.state.storage.get("comentarios:" + (args[0] || ""));
+    if (op === "putComentario") { await this.state.storage.put("comentario:" + (args[0] || "") + ":" + (args[1] || ""), JSON.stringify({ ts: args[1], email: args[2], texto: args[3] })); return null; }
+    // --- Bulk: listar todas as chaves do emissor (admin/migracao) ---
+    if (op === "listKeys") return await this.state.storage.list({ prefix: "" });
+    throw new Error("op invalida no EmissorDO: " + op);
+  }
+};
+__name(EmissorDO, "EmissorDO");
+
+// --- UsuarioDO: 1 instancia por usuario (idFromName), armazena perfil, favoritos
+//     e analises privadas. Dados pessoais (LGPD) isolados por instancia.
+var UsuarioDO = class {
+  static {
+    __name22(this, "UsuarioDO");
+  }
+  constructor(state, env2222) {
+    this.state = state;
+    this.env = env2222;
+    this._fila = Promise.resolve();
+  }
+  async fetch(request) {
+    let body;
+    try {
+      body = await request.json();
+    } catch (_e) {
+      return new Response(JSON.stringify({ ok: false, erro: "corpo invalido" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+    var op = body && body.op;
+    var args = body && Array.isArray(body.args) ? body.args : [];
+    var executar = function() { return this._executar(op, args); }.bind(this);
+    var tarefa = this._fila.then(executar, executar);
+    this._fila = tarefa.then(function() {}, function() {});
+    try {
+      var resultado = await tarefa;
+      return new Response(JSON.stringify({ ok: true, resultado: resultado === void 0 ? null : resultado }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (e) {
+      return new Response(JSON.stringify({ ok: false, erro: String(e && e.message || e) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }
+  async _executar(op, args) {
+    // --- Perfil (cadastro/login) ---
+    if (op === "getPerfil") return await this.state.storage.get("perfil");
+    if (op === "putPerfil") { await this.state.storage.put("perfil", args[0]); return null; }
+    // --- Favoritos (lista de emissores) ---
+    if (op === "getFavoritos") return await this.state.storage.get("favoritos");
+    if (op === "putFavoritos") { await this.state.storage.put("favoritos", args[0]); return null; }
+    // --- Analises privadas (uma por emissor) ---
+    if (op === "getAnalise") return await this.state.storage.get("analise:" + (args[0] || ""));
+    if (op === "putAnalise") { await this.state.storage.put("analise:" + (args[0] || ""), args[1]); return null; }
+    // --- Bulk: listar analises ---
+    if (op === "listAnalises") return await this.state.storage.list({ prefix: "analise:" });
+    throw new Error("op invalida no UsuarioDO: " + op);
+  }
+};
+__name2(UsuarioDO, "UsuarioDO");
+
+// --- ConfigDO: singleton (idFromName("_global")), armazena configs globais de
+//     baixa concorrencia que poderiam ficar no KV mas ficam centralizadas aqui.
+var ConfigDO = class {
+  static {
+    __name222(this, "ConfigDO");
+  }
+  constructor(state, env2222) {
+    this.state = state;
+    this.env = env2222;
+    this._fila = Promise.resolve();
+  }
+  async fetch(request) {
+    let body;
+    try {
+      body = await request.json();
+    } catch (_e) {
+      return new Response(JSON.stringify({ ok: false, erro: "corpo invalido" }), { status: 400, headers: { "Content-Type": "application/json" } });
+    }
+    var op = body && body.op;
+    var args = body && Array.isArray(body.args) ? body.args : [];
+    var executar = function() { return this._executar(op, args); }.bind(this);
+    var tarefa = this._fila.then(executar, executar);
+    this._fila = tarefa.then(function() {}, function() {});
+    try {
+      var resultado = await tarefa;
+      return new Response(JSON.stringify({ ok: true, resultado: resultado === void 0 ? null : resultado }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (e) {
+      return new Response(JSON.stringify({ ok: false, erro: String(e && e.message || e) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  }
+  async _executar(op, args) {
+    // --- Calendario overrides ---
+    if (op === "getCalendario") return await this.state.storage.get("calendario:overrides:v1");
+    if (op === "putCalendario") { await this.state.storage.put("calendario:overrides:v1", args[0]); return null; }
+    // --- Providers status ---
+    if (op === "getProviders") return await this.state.storage.get("alertas:providers");
+    if (op === "putProviders") { await this.state.storage.put("alertas:providers", args[0]); return null; }
+    // --- Tenant config (white-label) ---
+    if (op === "getTenant") return await this.state.storage.get("tenant:" + (args[0] || "") + ":config");
+    if (op === "putTenant") { await this.state.storage.put("tenant:" + (args[0] || "") + ":config", args[1]); return null; }
+    // --- Anomalias globais de mercado ---
+    if (op === "getAnomalias") return await this.state.storage.get("mercado:anomalias:ativas");
+    if (op === "putAnomalias") { await this.state.storage.put("mercado:anomalias:ativas", args[0]); return null; }
+    // --- Eventos promovidos ---
+    if (op === "getEventosPromovidos") return await this.state.storage.get("eventos:confirmados:promovidos");
+    if (op === "putEventosPromovidos") { await this.state.storage.put("eventos:confirmados:promovidos", args[0]); return null; }
+    throw new Error("op invalida no ConfigDO: " + op);
+  }
+};
+__name22(ConfigDO, "ConfigDO");
+
+// --- Helpers de roteamento para os DOs (analogo ao _rotearParaEstadoSemanaDO) ---
+// Usados pelo worker durante a migracao progressiva: enviam {op, args} para o DO
+// e retornam o .resultado ou estouram em erro.
+
+async function _rotearParaEmissorDO(env2222, empresa, op, args) {
+  var id = env2222.EMISSOR_DO.idFromName((empresa || "").toLowerCase());
+  var stub = env2222.EMISSOR_DO.get(id);
+  var r = await stub.fetch("https://do.internal/", { method: "POST", body: JSON.stringify({ op, args }) });
+  var j = await r.json().catch(function() { return { ok: false, erro: "resposta invalida do EmissorDO" }; });
+  if (!j.ok) throw new Error(j.erro || "falha no EmissorDO");
+  return j.resultado;
+}
+__name222(_rotearParaEmissorDO, "_rotearParaEmissorDO");
+
+async function _rotearParaUsuarioDO(env2222, email, op, args) {
+  var id = env2222.USUARIO_DO.idFromName((email || "").toLowerCase());
+  var stub = env2222.USUARIO_DO.get(id);
+  var r = await stub.fetch("https://do.internal/", { method: "POST", body: JSON.stringify({ op, args }) });
+  var j = await r.json().catch(function() { return { ok: false, erro: "resposta invalida do UsuarioDO" }; });
+  if (!j.ok) throw new Error(j.erro || "falha no UsuarioDO");
+  return j.resultado;
+}
+__name2222(_rotearParaUsuarioDO, "_rotearParaUsuarioDO");
+
+async function _rotearParaConfigDO(env2222, op, args) {
+  var id = env2222.CONFIG_DO.idFromName("_global");
+  var stub = env2222.CONFIG_DO.get(id);
+  var r = await stub.fetch("https://do.internal/", { method: "POST", body: JSON.stringify({ op, args }) });
+  var j = await r.json().catch(function() { return { ok: false, erro: "resposta invalida do ConfigDO" }; });
+  if (!j.ok) throw new Error(j.erro || "falha no ConfigDO");
+  return j.resultado;
+}
+__name22222(_rotearParaConfigDO, "_rotearParaConfigDO");
+
+// --- Helpers de migracao progressiva (dual-write KV + DO) ---
+// Fase controlada por MIGRATION_PHASE (secret do Cloudflare):
+//   '0' = off (so KV)
+//   '1' = dual-write (KV + DO, le do KV)
+//   '2' = read-DO (le do DO, fallback KV, escreve ambos)
+//   '3' = DO-only (le/escreve so DO, KV so backup)
+
+function _faseMigracao(env2222) {
+  return (env2222.MIGRATION_PHASE || "0")[0]; // primeiro caractere, seguro contra string vazia
+}
+
+async function _kvPutDualEmissor(env2222, empresa, chaveKV, valorKV, opDO, argsDO) {
+  // Sempre escreve no KV (fail-open base, nao perde dado)
+  await env2222.RADAR_KV.put(chaveKV, valorKV);
+  // Dual-write no DO se fase >= 1
+  var fase = _faseMigracao(env2222);
+  if (fase >= "1" && env2222.EMISSOR_DO) {
+    try {
+      await _rotearParaEmissorDO(env2222, empresa, opDO, argsDO);
+    } catch (e) {
+      console.warn("[DO][dual-write] EmissorDO falhou para " + empresa + " op=" + opDO + ", KV ok:", e && e.message);
+    }
+  }
+}
+
+async function _kvGetDualEmissor(env2222, empresa, chaveKV, opDO, argsDO) {
+  var fase = _faseMigracao(env2222);
+  // Fase 2+: le do DO primeiro
+  if (fase >= "2" && env2222.EMISSOR_DO) {
+    try {
+      var resultado = await _rotearParaEmissorDO(env2222, empresa, opDO, argsDO);
+      if (resultado !== null && resultado !== void 0) return resultado;
+    } catch (e) {
+      console.warn("[DO][read] EmissorDO falhou para " + empresa + " op=" + opDO + ", fallback KV:", e && e.message);
+    }
+  }
+  // Fallback KV (fase 0, 1, ou DO falhou)
+  return await env2222.RADAR_KV.get(chaveKV);
+}
+
+async function _kvPutDualUsuario(env2222, email, chaveKV, valorKV, opDO, argsDO) {
+  await env2222.RADAR_KV.put(chaveKV, valorKV);
+  var fase = _faseMigracao(env2222);
+  if (fase >= "1" && env2222.USUARIO_DO) {
+    try {
+      await _rotearParaUsuarioDO(env2222, email, opDO, argsDO);
+    } catch (e) {
+      console.warn("[DO][dual-write] UsuarioDO falhou para " + email + " op=" + opDO + ", KV ok:", e && e.message);
+    }
+  }
+}
+
+async function _kvGetDualUsuario(env2222, email, chaveKV, opDO, argsDO) {
+  var fase = _faseMigracao(env2222);
+  if (fase >= "2" && env2222.USUARIO_DO) {
+    try {
+      var resultado = await _rotearParaUsuarioDO(env2222, email, opDO, argsDO);
+      if (resultado !== null && resultado !== void 0) return resultado;
+    } catch (e) {
+      console.warn("[DO][read] UsuarioDO falhou para " + email + " op=" + opDO + ", fallback KV:", e && e.message);
+    }
+  }
+  return await env2222.RADAR_KV.get(chaveKV);
+}
+
+async function _kvPutDualConfig(env2222, chaveKV, valorKV, opDO, argsDO) {
+  await env2222.RADAR_KV.put(chaveKV, valorKV);
+  var fase = _faseMigracao(env2222);
+  if (fase >= "1" && env2222.CONFIG_DO) {
+    try {
+      await _rotearParaConfigDO(env2222, opDO, argsDO);
+    } catch (e) {
+      console.warn("[DO][dual-write] ConfigDO falhou op=" + opDO + ", KV ok:", e && e.message);
+    }
+  }
+}
+
+async function _kvGetDualConfig(env2222, chaveKV, opDO, argsDO) {
+  var fase = _faseMigracao(env2222);
+  if (fase >= "2" && env2222.CONFIG_DO) {
+    try {
+      var resultado = await _rotearParaConfigDO(env2222, opDO, argsDO);
+      if (resultado !== null && resultado !== void 0) return resultado;
+    } catch (e) {
+      console.warn("[DO][read] ConfigDO falhou op=" + opDO + ", fallback KV:", e && e.message);
+    }
+  }
+  return await env2222.RADAR_KV.get(chaveKV);
+}
+
 async function checkOpenRouterBalance(env2222) {
   try {
     const orKey = env2222.OPENROUTER_API_KEY;
@@ -17111,7 +17417,20 @@ var worker_com_sentry = Sentry.withSentry(
   worker_default
 );
 export {
+  EmissorDO,
+  UsuarioDO,
+  ConfigDO,
   EstadoSemanaDO,
   RateLimiterDO,
+  _rotearParaEmissorDO,
+  _rotearParaUsuarioDO,
+  _rotearParaConfigDO,
+  _kvPutDualEmissor,
+  _kvGetDualEmissor,
+  _kvPutDualUsuario,
+  _kvGetDualUsuario,
+  _kvPutDualConfig,
+  _kvGetDualConfig,
+  _faseMigracao,
   worker_com_sentry as default
 };
