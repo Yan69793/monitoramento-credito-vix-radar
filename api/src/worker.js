@@ -17065,13 +17065,48 @@ async function consultarSaldoOpenRouter(env3) {
 __name(consultarSaldoOpenRouter, "consultarSaldoOpenRouter");
 __name2(consultarSaldoOpenRouter, "consultarSaldoOpenRouter");
 
-// SENTRY1: embrulha fetch+scheduled numa passada so. Sem SENTRY_DSN (secret
-// ainda nao criado), o SDK fica desligado e nao lanca excecao — comportamento
-// padrao documentado do Sentry, nao branch condicional nosso.
+// SENTRY1: embrulha fetch+scheduled numa passada so. Sem SENTRY_DSN o SDK fica
+// desligado e nao lanca excecao (comportamento padrao documentado do Sentry,
+// nao branch condicional nosso), mas o health derruba ok:false antes disso.
+//
+// SENTRY-PII1 (v4.9.184): o bloco dataCollection abaixo NAO e cosmetico e nao
+// pode ser removido nem reduzido. Dois vazamentos reais no default do SDK:
+//
+// 1. httpServerIntegration() vem com maxRequestBodySize:"medium" e captura o
+//    corpo de TODO request nao-GET ate 10.000 bytes, cru, sem redacao
+//    (@sentry/core utils/request.js captureBodyFromWinterCGRequest apenas
+//    trunca). Em v10 esse caminho NAO e coberto por dataCollection.httpBodies
+//    (ha um TODO(v11) no proprio SDK dizendo que o gate so vem na v11). O POST
+//    de login deste Worker carrega admin_senha no corpo. Sem o override abaixo,
+//    a senha de admin ia para a Sentry a cada excecao no login.
+// 2. Header do request vai inteiro no evento. O deny padrao (PII_HEADER_SNIPPETS)
+//    so barra header de IP: ["forwarded","-ip","remote-","via","-user"].
+//    Authorization: Bearer <JWT> e X-Routine-Key passariam limpos.
+//
+// ARMADILHA: dataCollection parcial e PIOR que ausente. Em resolveDataCollectionOptions,
+// `options.dataCollection != null` troca a base restritiva por DEFAULTS permissivo
+// (userInfo:true, cookies:true, httpBodies:[todos], genAI:{inputs:true}). Todo campo
+// que importa tem que estar listado explicitamente aqui. O snippet de onboarding da
+// Sentry, que sugere um dataCollection com tudo comentado, cai exatamente nessa.
+//
+// genAI:false porque este Worker chama LLM, e prompt de analise de emissor e
+// dado de cliente (LGPD).
 var worker_com_sentry = Sentry.withSentry(
   (env2222) => ({
     dsn: env2222.SENTRY_DSN,
-    tracesSampleRate: 0.1
+    tracesSampleRate: 0.1,
+    dataCollection: {
+      userInfo: false,
+      cookies: false,
+      httpHeaders: { request: false, response: false },
+      httpBodies: [],
+      urlQueryParams: false,
+      genAI: { inputs: false, outputs: false },
+      databaseQueryData: false
+    },
+    // Override da integracao default de mesmo nome (getIntegrationsToSetup faz
+    // [...defaults, ...user] e filterDuplicates mantem a nossa). Fecha o item 1.
+    integrations: [Sentry.httpServerIntegration({ maxRequestBodySize: "none" })]
   }),
   worker_default
 );
