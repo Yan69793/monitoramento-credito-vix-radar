@@ -19,6 +19,7 @@
 | `VIXRadar-Export-Historico` | Diário 20:45 BRT | `run_vixradar_export_historico.ps1` | Exporta estado preditivo do KV para `data/historico/` |
 | `VIXRadar-Ranking-Mensal` | Dia 1, 11:30 BRT | `run_vixradar_ranking_mensal.ps1` | Monitor mensal de ranking SEO |
 | ~~`VIXRadar-AgendaSemanal`~~ | ~~Dom 03:00~~ | ~~`run_claude_routine.ps1`~~ | **Desabilitada 16/07/2026** — skill neutralizada desde 14/07, task ficou ativa por omissão |
+| `Szuchmacher-AgendaMacro-Claude` | Sex 07:07 BRT | `run_claude_routine.ps1 -RoutineId atualizar-agenda-macro-szuchmacher` | Calendário macro semanal de szuchmacher.com.br. Religada 02/08/2026 — motivo original do desligamento (14/07, disparo fantasma via cron interno do skill) deixou de existir em 08/07 quando o sistema de cron interno inteiro foi aposentado (ver histórico abaixo); ficou desligada por omissão até esta investigação, sem decisão registrada. Deploy exige aprovação humana explícita (SKILL.md Passo 6) — o pior caso de falha é a rotina parar pedindo aprovação, nunca publicar sozinha. |
 
 ## Contrato dos endpoints
 
@@ -47,5 +48,6 @@ registrar no Obsidian (`03 - Estado de Produção.md`).
 
 ## Histórico de mudanças
 
+- **2026-08-02:** `Szuchmacher-AgendaMacro-Claude` religada (`Enable-ScheduledTask`). Investigação disparada por `monitor-tasks.ps1` acusando `LastTaskResult=267011` (nunca rodou) com `LastRunTime` no sentinela 1999. Causa raiz: task ficou `Enabled:False` desde a janela de endurecimento de 14–16/07 (mesmo padrão aplicado à `VIXRadar-AgendaSemanal`, ver linha acima), motivo documentado na frontmatter do próprio `SKILL.md` (disparo fantasma via cron interno). Esse cron interno foi aposentado por completo em 08/07 (ver nota abaixo) — o risco que motivou o desligamento não existe mais desde então, mas ninguém religou a task nos 19 dias seguintes, e ela nunca entrou nesta tabela. Nota: a instrução de reativação escrita no próprio SKILL.md ("restaurar cron 7 7 \* \* 5") está obsoleta — refere-se ao mecanismo de cron interno já morto; hoje `Enable-ScheduledTask` no Windows Task Scheduler é suficiente e é o único gatilho real.
 - **2026-07-16:** README reescrito — migração Claude Code Desktop → Windows Task Scheduler documentada. Horários e modelos corrigidos. `VIXRadar-AgendaSemanal` desabilitada.
 - **2026-06-15:** Criação original — incidente de perda de registro do agendador Claude Desktop.
