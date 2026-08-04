@@ -17,6 +17,66 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 Sistema totalmente operacional. Fila de pendencias ZERADA. Todas as 7 pendencias (4 P2 + 1 P4 + 2 P3) resolvidas na sessao de 03/08/2026. Shadow Fable 5 encerrado com decisao de manter Sonnet. Ranking-Mensal decidido: remover (nunca executou, nao-core).
 
+> [!info] Este bloco de status ficou desatualizado em 04/08. Ver os dois P0 abaixo.
+
+### P0 — AGUARDANDO DEPLOY: painel admin morto em producao desde 03/08 (corrigido no repo, nao publicado)
+
+**Origem:** [[75 - Auditoria Geral 2026-08-04]]. Nao e regressao nova, o defeito esta no ar desde o deploy de MODULE-MIG1 em 03/08.
+
+**O que aconteceu.** O commit `2c6c09a` publicou tres modulos ES cortados no meio de uma funcao e, no mesmo commit, removeu do `index.html` os cinco `<script src="admin/vr-admin-*.js">` que eles substituiam. ES module resolve o grafo inteiro antes de executar, entao um arquivo quebrado derruba os oito. Health, `version.json`, `canonical-test` e o proprio deploy ficaram verdes o tempo todo.
+
+Evidencia colhida no navegador contra producao:
+```
+import('/app/js/admin-bootstrap.js') -> SyntaxError: Unexpected token 'export'
+window.VRAdmin        -> undefined
+window.VRAdminShared  -> undefined
+```
+
+**Perdido enquanto estiver assim:** aba Hoje, KPIs HEART, saude por usuario, reengajamento por e-mail, modulos de engajamento/metricas/fase3 e o render dos heartbeats do watchdog.
+
+**Corrigido no repo (commits `ee9a941`, `e182774`, `694c433`, `f7f5b8f`), NAO em producao.** Eram 7 truncamentos, nao 3: `node --check` para no primeiro erro de cada arquivo, entao a primeira contagem media arquivos quebrados e nao funcoes perdidas.
+
+**Acao sua, e a unica que falta:**
+```
+pwsh ./scripts/deploy-pages.ps1
+```
+Working tree precisa estar limpo nos arquivos do deploy. O script agora reprova sozinho bundle com JS que nao parseia.
+
+**Validacao apos o deploy:** `curl.exe -s https://vixradar.com/version.json` deve dizer `v202.1`, e `import('/app/js/admin-bootstrap.js')` no console deve resolver sem erro.
+
+### P1 — Worker v4.9.187 corrigido no repo, aguardando rebuild e deploy
+
+**Origem:** [[75 - Auditoria Geral 2026-08-04]]. Commit `694c433`.
+
+VALIDFIX1 fecha dois defeitos do VALID1 que estao vivos em producao no `v4.9.186`:
+
+1. **Fail-open.** POST com header `Content-Type` **ausente** passava direto para o handler, porque o teste era `if (ct && ...)` e string vazia e falsy. So `Content-Type` errado era barrado. Confirmado em producao com `curl -X POST -H "Content-Type:"` respondendo 400 do handler em vez de 415.
+2. **Sem CORS no 415 e no 413.** `_validateInput` retorna antes do ponto onde o CORS e aplicado, entao do lado do navegador esses erros viram falha de rede opaca.
+
+**Acao sua:** rebuild + `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.187`. Menos urgente que o P0 do frontend, o fail-open nao e vetor de CSRF classico porque form HTML sempre manda algum `Content-Type`.
+
+### P0 — CREDITO ZERADO NA API ANTHROPIC. Rotinas paradas, tasks reativadas (04/08 09:39)
+
+**Origem:** Sessao de revisao e execucao das rotinas em 04/08 09:39 BRT. As duas tasks do Scheduler (`VIXRadar-Matinal` e `VIXRadar-Noturno`) estavam **Disabled**, motivo desconhecido. Reativadas com `Enable-ScheduledTask`.
+
+**Estado das rotinas:**
+- Worker: `ok:true`, `v4.9.186`, todos os bindings verdes. Nao e isso.
+- Tasks: reativadas. Matinal com trigger Seg-Sex 10:00, Noturno diario 18:00. Proximo disparo da matinal e hoje 10:00.
+- Cobertura: 94/103 emissores processados na noturna manual da madrugada (01:29-06:27, sessao Claude Desktop). 9 emissores FULL de alto EWS pendentes: **Oncoclinicas, Oi, Raizen, Kora Saude, Pao de Acucar (GPA), Light, CSN, Aegea Saneamento, Simpar**.
+
+**O que trava a execucao:** `ANTHROPIC_API_KEY` (VIXRADAR_ANTHROPIC_API_KEY, 108 chars) e valida mas a conta esta sem credito (`Credit balance is too low`, HTTP 400). A assinatura OAuth tambem nao responde (sessao expirada). Resultado: `claude -p` nao consegue executar lote nenhum.
+
+**Melhorias aplicadas nesta sessao (3 arquivos):**
+1. `Get-RoutineKey` hardened nos 3 scripts (matinal, noturno, verificacao async): fallback de leitura de `ROUTINE_KEY` do SKILL.md removido. Agora so aceita `$env:ROUTINE_API_KEY`. Commit pendente.
+2. Sintaxe validada nos 3 scripts (ParseFile PowerShell, 0 erros).
+
+**Para destravar (Yan, acao sua):**
+- Recarregar credito na conta Anthropic associada a `VIXRADAR_ANTHROPIC_API_KEY`, OU
+- Fazer login no Claude Desktop (`claude /login`) para restaurar a sessao OAuth que estava funcionando as 07:44 de hoje, OU
+- `claude setup-token` para token longevo que sobrevive a reinicio e Task Scheduler
+
+**Validacao pendente:** Matinal hoje 10:00 BRT (se credito ou OAuth resolvido ate la). Se nao resolver a tempo, rodar manualmente com `-Force` depois para cobrir os 9 FULL pendentes alem do top 15 normal.
+
 > [!warning] Estado de task nao se afirma aqui
 > Situacao de task do Scheduler mora em [[03b - Infraestrutura]], derivada de `Get-ScheduledTask`.
 > Esta nota cita, nao redeclara. Em 27/07 tres itens daqui diziam "task removida" durante uma
@@ -341,4 +401,6 @@ Log real da run 45, `ok:true`, `empresas_com_dados:103`, `updated_at:2026-07-27T
 
 ---
 
-*Atualizado em 2026-08-03 18h30 BRT (fila ZERADA: 4 P2 + 1 P4 + 2 P3 resolvidos. Shadow encerrado, Sonnet mantido. Ranking-Mensal: remover. Sessao SESSION-CLEANUP1 concluida.)*
+*Atualizado em 2026-08-04 12h BRT (auditoria geral: P0 do painel admin e P1 do Worker corrigidos no repo, os dois aguardando deploy. Ver [[75 - Auditoria Geral 2026-08-04]].)*
+
+*Anterior: 2026-08-03 18h30 BRT (fila ZERADA: 4 P2 + 1 P4 + 2 P3 resolvidos. Shadow encerrado, Sonnet mantido. Ranking-Mensal: remover. Sessao SESSION-CLEANUP1 concluida.)*
