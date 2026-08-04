@@ -26,7 +26,9 @@ param(
   [switch]$SkipGit,
   # Roda sync + todos os gates e para antes do wrangler. Nao deploya, nao commita.
   # Serve para provar que os gates pegam um bundle ruim sem publicar nada.
-  [switch]$DryRun
+  [switch]$DryRun,
+  # Ignora CLOUDFLARE_API_TOKEN e usa a sessao OAuth do wrangler direto.
+  [switch]$ForcarOAuth
 )
 
 $ErrorActionPreference = "Stop"
@@ -60,10 +62,55 @@ function Compare-FrontendVersion($a, $b) {
   return 0
 }
 
-# --- 0. Pre-requisitos ----------------------------------------------------
-if (-not $env:CLOUDFLARE_API_TOKEN) {
-  Fail "CLOUDFLARE_API_TOKEN ausente. Configure a variavel de ambiente (User scope) antes de deployar. Veja scripts/setup-deploy-credential.ps1."
+# --- 0. Pre-requisitos e credencial ---------------------------------------
+# CREDOAUTH1 (2026-08-04): o token do registro foi trocado em 02/08 por um com
+# permissao de Workers KV Storage, para destravar o Export-Historico. Esse token
+# NAO tem permissao de Pages, entao todo `wrangler pages deploy` passa os gates,
+# sobe ate o wrangler e morre com "Authentication error [code: 10000]". Antes disso
+# o script exigia o token e nem tentava a sessao OAuth, que funciona e tem Pages.
+#
+# Ordem agora: sonda o token; se ele nao alcanca a API de Pages, avisa alto e cai
+# para OAuth. Sem sonda o operador so descobre depois do sync ja ter mexido em
+# deploy_zip e no version.json.
+$usandoOAuth = $false
+
+function Test-CredencialPages {
+  # try/catch porque com $ErrorActionPreference='Stop' o pwsh 7.3+ pode promover
+  # exit code nao-zero de comando nativo a excecao terminante. Aqui exit != 0 e
+  # resposta esperada da sonda, nao erro fatal.
+  try {
+    $null = & npx wrangler pages project list 2>&1
+    return ($LASTEXITCODE -eq 0)
+  } catch {
+    return $false
+  }
 }
+
+if ($ForcarOAuth) {
+  Write-Host "Credencial: OAuth forcado por -ForcarOAuth" -ForegroundColor Cyan
+  $env:CLOUDFLARE_API_TOKEN = ''
+  $usandoOAuth = $true
+} elseif (-not $env:CLOUDFLARE_API_TOKEN) {
+  Write-Host "Credencial: CLOUDFLARE_API_TOKEN ausente, tentando sessao OAuth do wrangler" -ForegroundColor Yellow
+  $usandoOAuth = $true
+} else {
+  if (Test-CredencialPages) {
+    Write-Host "Credencial: CLOUDFLARE_API_TOKEN com acesso a Pages OK" -ForegroundColor Green
+  } else {
+    Warn "CLOUDFLARE_API_TOKEN existe mas NAO alcanca a API de Pages (falta a permissao Cloudflare Pages: Edit)."
+    Warn "Caindo para a sessao OAuth do wrangler. Corrija o token quando puder, senao toda rotina que dependa dele em ambiente nao interativo vai falhar igual."
+    $env:CLOUDFLARE_API_TOKEN = ''
+    $usandoOAuth = $true
+  }
+}
+
+if ($usandoOAuth) {
+  if (-not (Test-CredencialPages)) {
+    Fail "Nem o token nem a sessao OAuth alcancam a API de Pages. Rode 'npx wrangler login' ou adicione a permissao 'Cloudflare Pages: Edit' ao token em https://dash.cloudflare.com/profile/api-tokens"
+  }
+  Write-Host "Credencial: sessao OAuth do wrangler validada contra Pages" -ForegroundColor Green
+}
+
 if (-not $env:CLOUDFLARE_ACCOUNT_ID) {
   Fail "CLOUDFLARE_ACCOUNT_ID ausente. Configure a variavel de ambiente (User scope)."
 }
@@ -286,7 +333,17 @@ if ($DryRun) {
 # --- 4. Deploy -------------------------------------------------------------
 Write-Host "`nDeployando para Cloudflare Pages ($ProjectName / main)..." -ForegroundColor Yellow
 npx wrangler pages deploy "$zipDir" --project-name=$ProjectName --branch=main --commit-dirty=true
-if ($LASTEXITCODE -ne 0) { Fail "wrangler pages deploy falhou (exit $LASTEXITCODE)" }
+if ($LASTEXITCODE -ne 0) {
+  # DEPLOYTS1 (2026-08-04): o passo 2 ja gravou deployed_at com a hora atual. Se o
+  # wrangler falha aqui, esse carimbo vira registro de um deploy que nunca existiu,
+  # exatamente o tipo de version.json mentiroso que a auditoria de hoje foi achar
+  # em producao. Reverte antes de abortar.
+  $verJsonFalho = "{`"version`":`"$ver`",`"deployed_at`":null}"
+  Set-Content -NoNewline -Path (Join-Path $zipDir "version.json") -Value $verJsonFalho
+  Set-Content -NoNewline -Path (Join-Path $appDir "version.json") -Value $verJsonFalho
+  Write-Host "version.json revertido para deployed_at:null (o deploy nao aconteceu)." -ForegroundColor DarkGray
+  Fail "wrangler pages deploy falhou (exit $LASTEXITCODE)"
+}
 
 # --- 5. Validacao em producao ----------------------------------------------
 # NAO sai daqui: o passo 6 (sync com o git) precisa rodar mesmo sem validacao,
