@@ -23,7 +23,10 @@
 param(
   [string]$ProjectName = "radar-credito",
   [switch]$SkipValidation,
-  [switch]$SkipGit
+  [switch]$SkipGit,
+  # Roda sync + todos os gates e para antes do wrangler. Nao deploya, nao commita.
+  # Serve para provar que os gates pegam um bundle ruim sem publicar nada.
+  [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
@@ -36,11 +39,24 @@ function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
 function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
 
 # Compara duas versoes de frontend (vNNN.MMM). Retorna -1, 0 ou 1.
+#
+# VERCMP1 (2026-08-04): a versao anterior concatenava os digitos, entao v202.1 virava
+# 2021 e v201.93 virava 20193, e o gate anti-regressao concluia que producao (v201.93)
+# estava A FRENTE do repo (v202.1) e abortava o deploy correto. Quebra sempre que o
+# minor muda de quantidade de digitos, ou seja, em todo bump de major. Achado ao rodar
+# o primeiro -DryRun depois da auditoria de 2026-08-04. Agora compara por componente.
 function Compare-FrontendVersion($a, $b) {
-  $na = [int]($a -replace '^v', '' -replace '\.', '')
-  $nb = [int]($b -replace '^v', '' -replace '\.', '')
-  if ($na -lt $nb) { return -1 }
-  if ($na -gt $nb) { return 1 }
+  $pa = @(($a -replace '^v', '') -split '\.')
+  $pb = @(($b -replace '^v', '') -split '\.')
+  $n = [Math]::Max($pa.Count, $pb.Count)
+  for ($i = 0; $i -lt $n; $i++) {
+    $ca = 0
+    $cb = 0
+    if ($i -lt $pa.Count -and $pa[$i] -match '^\d+$') { $ca = [int]$pa[$i] }
+    if ($i -lt $pb.Count -and $pb[$i] -match '^\d+$') { $cb = [int]$pb[$i] }
+    if ($ca -lt $cb) { return -1 }
+    if ($ca -gt $cb) { return 1 }
+  }
   return 0
 }
 
@@ -77,16 +93,21 @@ $trackedFiles = @(
   "scripts/deploy-pages.ps1"
 )
 $dirty = git diff --name-only -- $trackedFiles 2>$null
+if ($DryRun) {
+  Write-Host "Gate working tree: pulado (-DryRun nao commita)" -ForegroundColor DarkGray
+  $dirty = $null
+}
 if ($dirty) {
   $dirtyList = ($dirty | ForEach-Object { "  $_" }) -join "`n"
   Fail "Working tree sujo nos arquivos do deploy. Faça commit ou stash antes de deployar:`n$dirtyList"
 }
 $stagedDirty = git diff --cached --name-only -- $trackedFiles 2>$null
+if ($DryRun) { $stagedDirty = $null }
 if ($stagedDirty) {
   $stagedList = ($stagedDirty | ForEach-Object { "  $_" }) -join "`n"
   Fail "Arquivos staged mas nao commitados. Commit ou unstage antes de deployar:`n$stagedList"
 }
-Write-Host "Gate working tree: limpo" -ForegroundColor Green
+if (-not $DryRun) { Write-Host "Gate working tree: limpo" -ForegroundColor Green }
 
 # --- 1. CACHE_VERSION ------------------------------------------------------
 $html = Get-Content $indexSrc -Raw
@@ -113,27 +134,153 @@ foreach ($f in @("_headers","_routes.json","landing-demo.json","robots.txt")) {
   $srcF = Join-Path $appDir $f
   if (Test-Path $srcF) { Copy-Item -Force $srcF (Join-Path $zipDir $f) }
 }
-$adminSrc = Join-Path $appDir "admin"
-$adminDst = Join-Path $zipDir "admin"
-if (Test-Path $adminSrc) {
-  if (Test-Path $adminDst) { Remove-Item -Recurse -Force $adminDst }
-  Copy-Item -Recurse -Force $adminSrc $adminDst
-  Write-Host "admin/ copiado para deploy_zip" -ForegroundColor Cyan
+# Diretorios de asset publicados. Src e o caminho dentro de app/, Dst e o destino
+# DENTRO de deploy_zip. Os dois NAO sao iguais para js/: o index.html referencia
+# "app/js/..." em caminho relativo, entao os modulos ES precisam cair em
+# deploy_zip/app/js/, nao em deploy_zip/js/.
+#
+# MODULE-MIG1 (2026-08-03) criou app/js/ e commitou nas duas arvores na mao. Este
+# script nunca soube dessa pasta, entao qualquer correcao em app/js/ nao chegaria
+# em producao pelo caminho oficial. Achado da auditoria geral de 2026-08-04.
+$assetDirs = @(
+  @{ Src = "admin"; Dst = "admin"  },
+  @{ Src = "js";    Dst = "app\js" }
+)
+foreach ($d in $assetDirs) {
+  $srcD = Join-Path $appDir $d.Src
+  $dstD = Join-Path $zipDir $d.Dst
+  if (-not (Test-Path $srcD)) { continue }
+  if (Test-Path $dstD) { Remove-Item -Recurse -Force $dstD }
+  $dstParent = Split-Path -Parent $dstD
+  if ($dstParent -and -not (Test-Path $dstParent)) {
+    New-Item -ItemType Directory -Force -Path $dstParent | Out-Null
+  }
+  Copy-Item -Recurse -Force $srcD $dstD
+  Write-Host ("{0}/ copiado para deploy_zip/{1}" -f $d.Src, $d.Dst) -ForegroundColor Cyan
 }
-$ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-$verJson = "{`"version`":`"$ver`",`"deployed_at`":`"$ts`"}"
+
+# GATE ASSET ORFAO: subpasta nova em app/ que ninguem mapeou nunca chega em producao,
+# e o deploy segue verde mentindo. Foi exatamente assim que app/js/ ficou de fora.
+# Pasta que NAO e asset publicado entra em $ignorarDirs, com motivo.
+$ignorarDirs = @(
+  "deploy_zip",  # o proprio destino
+  "_arquivo",    # snapshots historicos
+  "_preview",    # rascunho de template
+  "design",      # documentacao e PNG de design, nao referenciado pelo index.html
+  "node_modules"
+)
+$assetConhecidos = @($assetDirs | ForEach-Object { $_.Src })
+foreach ($dir in (Get-ChildItem -Path $appDir -Directory -Force)) {
+  # Pasta de ferramenta (.wrangler, .git, .vscode) nunca e asset publicado.
+  if ($dir.Name.StartsWith('.')) { continue }
+  if ($ignorarDirs -contains $dir.Name) { continue }
+  if ($assetConhecidos -contains $dir.Name) { continue }
+  Fail "Subpasta 'app/$($dir.Name)' nao esta no mapa `$assetDirs nem em `$ignorarDirs de deploy-pages.ps1. Ela NAO seria publicada e o deploy passaria verde. Classifique-a antes de deployar."
+}
+# Em -DryRun o deployed_at fica null: nada foi publicado, e carimbar hora de deploy
+# num arquivo que ninguem deployou e exatamente o tipo de mentira que a auditoria
+# de 2026-08-04 encontrou em producao (version.json v201.93 sobre HTML v202.1).
+if ($DryRun) {
+  $verJson = "{`"version`":`"$ver`",`"deployed_at`":null}"
+} else {
+  $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+  $verJson = "{`"version`":`"$ver`",`"deployed_at`":`"$ts`"}"
+}
 Set-Content -NoNewline -Path (Join-Path $zipDir "version.json") -Value $verJson
 Set-Content -NoNewline -Path (Join-Path $appDir "version.json") -Value $verJson
-Write-Host "deploy_zip sincronizado + version.json gerado ($ts)" -ForegroundColor Cyan
+Write-Host "deploy_zip sincronizado + version.json gerado ($verJson)" -ForegroundColor Cyan
 
-# --- 3. Confere o bundle (4 arquivos) --------------------------------------
+# --- 3. Confere o bundle (arquivos, referencias e sintaxe JS) --------------
 foreach ($f in @("index.html","_headers","_routes.json","version.json","landing-demo.json","robots.txt")) {
   if (-not (Test-Path (Join-Path $zipDir $f))) { Fail "Bundle incompleto: falta $f em deploy_zip" }
 }
-foreach ($af in @("vr-admin-shared.js","vr-admin-modules.js","vr-admin-engajamento.js","vr-admin-metricas.js","vr-admin-fase3.js")) {
-  if (-not (Test-Path (Join-Path $zipDir "admin\$af"))) {
-    Fail "Bundle incompleto: falta admin/$af em deploy_zip"
+
+# --- 3.1 Todo <script src> local do index.html existe no bundle -------------
+# A lista antiga era hardcoded nos 5 vr-admin-*.js e continuou passando verde
+# depois que MODULE-MIG1 os trocou por um bootstrap ES. Gate que valida arquivo
+# que ninguem mais carrega nao e gate. Agora a lista sai do proprio HTML.
+# /cdn-cgi/ e servido pela propria Cloudflare (email obfuscation, insights) e nunca
+# existe no bundle. Excluir, senao o gate reprova um caminho que nao e nosso.
+$srcRefs = @(
+  [regex]::Matches($html, '<script[^>]*\ssrc="(?<u>[^"]+)"') |
+    ForEach-Object { $_.Groups['u'].Value } |
+    Where-Object { $_ -notmatch '^(https?:)?//' } |
+    Where-Object { $_ -notmatch '^/?cdn-cgi/' } |
+    ForEach-Object { ($_ -split '\?')[0].TrimStart('/') } |
+    Select-Object -Unique
+)
+if ($srcRefs.Count -eq 0) {
+  Fail "Nenhum <script src> local encontrado em index.html. A regex do gate 3.1 quebrou, corrija antes de deployar."
+}
+foreach ($ref in $srcRefs) {
+  $refPath = Join-Path $zipDir ($ref -replace '/', '\')
+  if (-not (Test-Path $refPath)) {
+    Fail "Bundle incompleto: index.html referencia '$ref' e o arquivo NAO existe em deploy_zip. Confira o mapa `$assetDirs do passo 2."
   }
+}
+Write-Host ("Gate de referencia: {0} script(s) local(is) do index.html presente(s)" -f $srcRefs.Count) -ForegroundColor Green
+
+# --- 3.2 Cache-busting ?v= coerente com CACHE_VERSION ----------------------
+# MODULE-MIG1 subiu com src="...?v=202.1" e CACHE_VERSION parada em v201.93.
+# Producao ficou com HTML novo, version.json velho, e nenhum usuario com cache
+# antigo foi avisado de que havia versao nova.
+$verNum = $ver.TrimStart('v')
+$vQueries = @(
+  [regex]::Matches($html, '<script[^>]*\ssrc="(?<u>[^"]*\?v=(?<v>[^"&]+))"') |
+    ForEach-Object { $_.Groups['v'].Value } |
+    Select-Object -Unique
+)
+foreach ($vq in $vQueries) {
+  if ($vq.TrimStart('v') -ne $verNum) {
+    Fail "index.html carrega script com ?v=$vq mas CACHE_VERSION e $ver. Alinhe os dois antes de deployar, senao o cache-busting mente."
+  }
+}
+if ($vQueries.Count -gt 0) {
+  Write-Host ("Gate de cache-busting: {0} query ?v= alinhada(s) com {1}" -f $vQueries.Count, $ver) -ForegroundColor Green
+}
+
+# --- 3.3 GATE DE SINTAXE JS (obrigatorio, sem bypass) ----------------------
+# Causa raiz do incidente MODULE-MIG1: 3 modulos ES foram publicados truncados e
+# derrubaram o painel admin inteiro em producao. Health verde, deploy verde,
+# version.json verde. Nenhuma etapa do caminho parseava JS. Custo deste gate:
+# segundos. Custo de nao ter: um dia de painel morto sem ninguem perceber.
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+  Fail "node nao encontrado no PATH e o gate de sintaxe JS e obrigatorio. Instale o Node ou corrija o PATH."
+}
+$jsFiles = @(Get-ChildItem -Path $zipDir -Recurse -Filter *.js -File)
+if ($jsFiles.Count -eq 0) { Fail "Nenhum .js em deploy_zip. O sync do passo 2 falhou." }
+
+$tmpEsm = Join-Path $env:TEMP ("vixradar_jscheck_" + [guid]::NewGuid().ToString('N') + ".mjs")
+$tmpCjs = [IO.Path]::ChangeExtension($tmpEsm, ".cjs")
+$jsRuins = @()
+foreach ($js in $jsFiles) {
+  # Tenta como ES module; se reprovar, tenta como script classico. So e erro real
+  # quando os dois modos falham, senao IIFE legado geraria falso positivo.
+  Copy-Item -Force $js.FullName $tmpEsm
+  $saidaEsm = & node --check $tmpEsm 2>&1
+  $okEsm = ($LASTEXITCODE -eq 0)
+  $okCjs = $false
+  if (-not $okEsm) {
+    Copy-Item -Force $js.FullName $tmpCjs
+    & node --check $tmpCjs 2>&1 | Out-Null
+    $okCjs = ($LASTEXITCODE -eq 0)
+  }
+  if (-not ($okEsm -or $okCjs)) {
+    $rel = $js.FullName.Substring($zipDir.Length).TrimStart('\')
+    $erro = @($saidaEsm | Where-Object { $_ -match 'Error' } | Select-Object -First 1)
+    $jsRuins += ("  {0}  ->  {1}" -f $rel, $(if ($erro.Count -gt 0) { $erro[0] } else { "erro de parse" }))
+  }
+}
+Remove-Item -Force $tmpEsm, $tmpCjs -ErrorAction SilentlyContinue
+if ($jsRuins.Count -gt 0) {
+  Fail ("GATE DE SINTAXE JS reprovou {0} arquivo(s). NADA foi deployado:`n{1}" -f $jsRuins.Count, ($jsRuins -join "`n"))
+}
+Write-Host ("Gate de sintaxe JS: {0} arquivo(s) OK" -f $jsFiles.Count) -ForegroundColor Green
+
+if ($DryRun) {
+  Write-Host "`nDRY-RUN: sync feito e todos os gates passaram. NADA foi deployado, NADA foi commitado." -ForegroundColor Cyan
+  Write-Host "Rode sem -DryRun para publicar." -ForegroundColor Cyan
+  exit 0
 }
 
 # --- 4. Deploy -------------------------------------------------------------

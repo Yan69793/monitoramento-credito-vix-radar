@@ -1,8 +1,11 @@
 #!/bin/sh
-# Reprova commit com .ps1 que nao roda sob powershell.exe 5.1.
+# Dois gates de commit, ambos sobre o conteudo EM STAGING (nunca o working tree).
 #
-# Motivo: em 2026-07-27 o deploy quebrou porque deploy-pages.ps1 estava sem BOM com
-# travessoes; o 5.1 leu o arquivo como CP1252 e o travessao virou aspa curva, que
+#   Gate 1  .ps1 que nao roda sob powershell.exe 5.1
+#   Gate 2  .js de app/ que nao parseia
+#
+# Gate 1, motivo: em 2026-07-27 o deploy quebrou porque deploy-pages.ps1 estava sem BOM
+# com travessoes; o 5.1 leu o arquivo como CP1252 e o travessao virou aspa curva, que
 # termina string. O lint-encoding.ps1 ja existia desde 2026-07-16 e teria pego o caso,
 # mas nao estava ligado a gatilho nenhum. Este hook e o gatilho que faltava.
 #
@@ -12,53 +15,99 @@
 # O parse morria na linha 30 col 49 e derrubou a Coleta-Volatilidade de 30/07.
 # Agora materializa o blob do indice e linta a copia, que e o que de fato vira commit.
 #
+# Gate 2, motivo: em 2026-08-03 o commit 2c6c09a (MODULE-MIG1) publicou tres modulos ES
+# truncados no meio de uma funcao e, no mesmo commit, removeu do index.html os cinco
+# scripts classicos que eles substituiam. O painel admin morreu em producao por um dia
+# inteiro. Health verde, version.json verde, deploy verde: nenhuma etapa do caminho
+# commit->deploy parseava JavaScript. Custo deste gate: segundos.
+#
 # Instalar (uma vez; .git/hooks e compartilhado com os worktrees):
 #   powershell.exe -NoProfile -File scripts/install-hooks.ps1
 #
 # Emergencia: git commit --no-verify
 
-STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '\.ps1$' || true)
-[ -z "$STAGED" ] && exit 0
-
-LINTER="scripts/lint-encoding.ps1"
-[ -f "$LINTER" ] || exit 0
-
-# Copia dentro do repo, nunca em /tmp: caminho MSYS (/c/...) nao e entendido pelo
-# powershell.exe. O cwd de um hook e a raiz do repo, entao caminho relativo resolve.
+FALHOU=0
 STAGEDIR=".git/lint-staged"
 rm -rf "$STAGEDIR"
 
-LISTA=""
-while IFS= read -r f; do
-    [ -z "$f" ] && continue
-    mkdir -p "$STAGEDIR/$(dirname "$f")" || continue
-    git cat-file blob ":$f" > "$STAGEDIR/$f" 2>/dev/null || continue
-    if [ -z "$LISTA" ]; then
-        LISTA="$STAGEDIR/$f"
-    else
-        LISTA="$LISTA,$STAGEDIR/$f"
-    fi
-done <<STAGED_EOF
-$STAGED
-STAGED_EOF
+# Materializa o blob do indice dentro do repo, nunca em /tmp: caminho MSYS (/c/...)
+# nao e entendido pelo powershell.exe. O cwd de um hook e a raiz do repo.
+stage_blob() {
+    mkdir -p "$STAGEDIR/$(dirname "$1")" || return 1
+    git cat-file blob ":$1" > "$STAGEDIR/$1" 2>/dev/null || return 1
+    return 0
+}
 
-if [ -z "$LISTA" ]; then
-    rm -rf "$STAGEDIR"
-    exit 0
+# ─── Gate 1: .ps1 sob powershell.exe 5.1 ──────────────────────────────────
+STAGED_PS1=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '\.ps1$' || true)
+LINTER="scripts/lint-encoding.ps1"
+
+if [ -n "$STAGED_PS1" ] && [ -f "$LINTER" ]; then
+    LISTA=""
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        stage_blob "$f" || continue
+        if [ -z "$LISTA" ]; then
+            LISTA="$STAGEDIR/$f"
+        else
+            LISTA="$LISTA,$STAGEDIR/$f"
+        fi
+    done <<PS1_EOF
+$STAGED_PS1
+PS1_EOF
+
+    if [ -n "$LISTA" ]; then
+        if ! powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$LINTER" -Path "$LISTA"; then
+            echo ""
+            echo "GATE 1 (.ps1) REPROVOU: arquivo acima nao passa no parser do powershell.exe 5.1."
+            echo "Os caminhos exibidos sao copias do conteudo EM STAGING. O arquivo real e o"
+            echo "mesmo caminho sem o prefixo $STAGEDIR/."
+            echo "  Encoding (nao-ASCII sem BOM): powershell.exe -NoProfile -File scripts/lint-encoding.ps1 -Fix"
+            echo "  Depois do -Fix, 'git add' de novo e obrigatorio: sem isso o indice mantem o blob velho"
+            echo "  e o commit continua reprovando, porque o que vale aqui e o staging, nao o disco."
+            echo "  Sintaxe PS 6/7 (ternario, ??, ?., -MaximumRetryCount): reescrever para 5.1, -Fix nao resolve."
+            FALHOU=1
+        fi
+    fi
 fi
 
-if ! powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$LINTER" -Path "$LISTA"; then
-    rm -rf "$STAGEDIR"
-    echo ""
-    echo "COMMIT BLOQUEADO: .ps1 acima nao passa no parser do powershell.exe 5.1."
-    echo "Os caminhos exibidos sao copias do conteudo EM STAGING. O arquivo real e o"
-    echo "mesmo caminho sem o prefixo $STAGEDIR/."
-    echo "  Encoding (nao-ASCII sem BOM): powershell.exe -NoProfile -File scripts/lint-encoding.ps1 -Fix"
-    echo "  Depois do -Fix, 'git add' de novo e obrigatorio: sem isso o indice mantem o blob velho"
-    echo "  e o commit continua reprovando, porque o que vale aqui e o staging, nao o disco."
-    echo "  Sintaxe PS 6/7 (ternario, ??, ?., -MaximumRetryCount): reescrever para 5.1, -Fix nao resolve."
-    exit 1
+# ─── Gate 2: sintaxe dos .js publicados em app/ ───────────────────────────
+STAGED_JS=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '^app/.*\.js$' || true)
+
+if [ -n "$STAGED_JS" ]; then
+    if ! command -v node >/dev/null 2>&1; then
+        echo ""
+        echo "GATE 2 (.js) NAO PODE RODAR: node ausente do PATH e ha .js de app/ em staging."
+        echo "Instale o Node ou use 'git commit --no-verify' assumindo o risco."
+        FALHOU=1
+    else
+        while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            stage_blob "$f" || continue
+            # Tenta como ES module; se reprovar, tenta como script classico. So e erro
+            # real quando os dois modos falham, senao IIFE legado daria falso positivo.
+            cp "$STAGEDIR/$f" "$STAGEDIR/_chk.mjs" 2>/dev/null || continue
+            if ! node --check "$STAGEDIR/_chk.mjs" >/dev/null 2>&1; then
+                cp "$STAGEDIR/$f" "$STAGEDIR/_chk.cjs" 2>/dev/null || continue
+                if ! node --check "$STAGEDIR/_chk.cjs" >/dev/null 2>&1; then
+                    echo ""
+                    echo "GATE 2 (.js) REPROVOU: $f"
+                    node --check "$STAGEDIR/_chk.mjs" 2>&1 | head -4
+                    FALHOU=1
+                fi
+            fi
+        done <<JS_EOF
+$STAGED_JS
+JS_EOF
+    fi
 fi
 
 rm -rf "$STAGEDIR"
+
+if [ "$FALHOU" -ne 0 ]; then
+    echo ""
+    echo "COMMIT BLOQUEADO. Corrija os itens acima, 'git add' de novo, e recommite."
+    exit 1
+fi
+
 exit 0
