@@ -32,3 +32,23 @@
 /api/*
   Cache-Control: no-store, no-cache
   Pragma: no-cache
+
+# ─── JS do app (CACHEJS1, auditoria 2026-08-04) ───────────────────────
+# O default do Pages para estes arquivos era `public, max-age=14400,
+# must-revalidate`. O `must-revalidate` so age DEPOIS dos 4h, entao dentro da
+# janela o navegador serve do cache sem perguntar nada.
+#
+# Isso mordeu de verdade em 04/08: os modulos ES quebrados de MODULE-MIG1
+# ficaram cacheados no navegador, e quem carregou o site entre 03/08 e a
+# correcao continuava recebendo o JS truncado mesmo com producao ja corrigida.
+#
+# Bumpar CACHE_VERSION nao resolve este caso. O `?v=` so entra na tag do
+# index.html, e o bootstrap importa `./admin/shared.js` com caminho relativo
+# limpo, entao os sub-modulos sao cacheados por URL sem query e nenhuma versao
+# nova muda a chave deles. Revalidar sempre e a unica saida. O custo e um 304
+# por arquivo, que o ETag ja resolve.
+/app/js/*
+  Cache-Control: no-cache, must-revalidate
+
+/admin/*
+  Cache-Control: no-cache, must-revalidate

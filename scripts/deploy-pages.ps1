@@ -354,17 +354,58 @@ if ($SkipValidation) {
 } else {
 
 Write-Host "`nValidando producao..." -ForegroundColor Yellow
-Start-Sleep -Seconds 4
-try {
+
+# PROPAG1 (2026-08-04): a validacao era um Start-Sleep de 4s e um unico tiro. No
+# deploy de v202.1 o HTML ja tinha propagado e o version.json ainda nao, entao o
+# script saiu com exit 2 e "NADA commitado" sobre um deploy que deu certo. Isso
+# gera exatamente o drift repo-producao que este script existe para evitar, e por
+# um motivo que so precisava de mais alguns segundos. Agora retenta.
+function Wait-Propagacao {
+  param([string]$Rotulo, [scriptblock]$Sonda, [int]$Tentativas = 8, [int]$EsperaSeg = 5)
+  for ($i = 1; $i -le $Tentativas; $i++) {
+    try {
+      $r = & $Sonda
+      if ($r.ok) {
+        Write-Host ("  {0}: {1} OK{2}" -f $Rotulo, $r.valor, $(if ($i -gt 1) { " (tentativa $i)" } else { "" })) -ForegroundColor Green
+        return $true
+      }
+      if ($i -lt $Tentativas) {
+        Write-Host ("  {0}: {1}, aguardando propagacao ({2}/{3})" -f $Rotulo, $r.valor, $i, $Tentativas) -ForegroundColor DarkGray
+      } else {
+        Write-Host ("  {0}: {1} (esperado {2}) apos {3} tentativas" -f $Rotulo, $r.valor, $ver, $Tentativas) -ForegroundColor Red
+        return $false
+      }
+    } catch {
+      if ($i -eq $Tentativas) { Write-Host ("  {0}: falha de leitura: {1}" -f $Rotulo, $_) -ForegroundColor Red; return $false }
+      Write-Host ("  {0}: erro transiente, retentando ({1}/{2})" -f $Rotulo, $i, $Tentativas) -ForegroundColor DarkGray
+    }
+    Start-Sleep -Seconds $EsperaSeg
+  }
+  return $false
+}
+
+if (-not (Wait-Propagacao "version.json apex" {
   $vj = Invoke-RestMethod -Uri "https://vixradar.com/version.json?_=$([guid]::NewGuid())" -Headers @{ "Cache-Control"="no-cache" }
-  if ($vj.version -eq $ver) { Write-Host "  version.json apex: $($vj.version) OK" -ForegroundColor Green }
-  else { Write-Host "  version.json apex: $($vj.version) (esperado $ver)" -ForegroundColor Red; $ok = $false }
-} catch { Write-Host "  Falha ao ler version.json: $_" -ForegroundColor Red; $ok = $false }
-try {
+  @{ ok = ($vj.version -eq $ver); valor = $vj.version }
+})) { $ok = $false }
+
+if (-not (Wait-Propagacao "CACHE_VERSION no HTML" {
   $page = Invoke-WebRequest -Uri "https://vixradar.com/?_=$([guid]::NewGuid())" -UseBasicParsing
-  if ($page.Content -match "CACHE_VERSION=`"$([regex]::Escape($ver))`"") { Write-Host "  CACHE_VERSION no HTML: $ver OK" -ForegroundColor Green }
-  else { Write-Host "  CACHE_VERSION no HTML divergente do esperado ($ver)" -ForegroundColor Red; $ok = $false }
-} catch { Write-Host "  Falha ao ler index.html: $_" -ForegroundColor Red; $ok = $false }
+  $m2 = [regex]::Match($page.Content, 'CACHE_VERSION="(v[0-9.]+)"')
+  @{ ok = ($m2.Success -and $m2.Groups[1].Value -eq $ver); valor = $(if ($m2.Success) { $m2.Groups[1].Value } else { "ausente" }) }
+})) { $ok = $false }
+
+# CACHEJS1: o deploy so termina quando os modulos ES que o index.html carrega
+# estao servindo os bytes do bundle. Foi assim que MODULE-MIG1 passou verde
+# publicando JS quebrado, ninguem conferia o conteudo do que subiu.
+foreach ($ref in $srcRefs) {
+  $local = Get-Item (Join-Path $zipDir ($ref -replace '/', '\'))
+  $rotulo = "asset $ref"
+  if (-not (Wait-Propagacao $rotulo {
+    $resp = Invoke-WebRequest -Uri ("https://vixradar.com/$ref" + "?_=$([guid]::NewGuid())") -UseBasicParsing -Headers @{ "Cache-Control"="no-cache" }
+    @{ ok = ($resp.RawContentLength -eq $local.Length); valor = "$($resp.RawContentLength)B vs $($local.Length)B local" }
+  } 6 5)) { $ok = $false }
+}
 
 }  # fim do else de -SkipValidation
 
