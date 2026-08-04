@@ -38,7 +38,9 @@ param(
   [Parameter(Mandatory = $true)][string]$Version,
   [string]$WorkerName = "radar-credito-api",
   [switch]$SkipGit,
-  [switch]$SkipValidation
+  [switch]$SkipValidation,
+  # Ignora CLOUDFLARE_API_TOKEN e usa a sessao OAuth do wrangler direto.
+  [switch]$ForcarOAuth
 )
 
 $ErrorActionPreference = "Stop"
@@ -58,11 +60,54 @@ function Compare-WorkerVersion($a, $b) {
   return 0
 }
 
-# --- 0. Pre-requisitos -----------------------------------------------------
-if (-not $env:CLOUDFLARE_API_TOKEN) {
-  Fail "CLOUDFLARE_API_TOKEN ausente. Configure a variavel de ambiente (User scope). Veja scripts/setup-deploy-credential.ps1."
-}
+# --- 0. Pre-requisitos e credencial ----------------------------------------
 if (-not (Test-Path $toml)) { Fail "Nao achei $toml" }
+
+# CREDOAUTH1 (2026-08-04): mesmo problema achado no deploy-pages. O
+# CLOUDFLARE_API_TOKEN do registro foi trocado em 02/08 por um com permissao de
+# Workers KV Storage, para destravar o Export-Historico, e esse token nao alcanca
+# nem Workers Scripts nem Pages. O script exigia o token e nunca tentava a sessao
+# OAuth do wrangler, que funciona. Sem a sonda, a credencial errada so aparecia
+# depois do build ja ter gerado bundle e mexido no wrangler.toml.
+$usandoOAuth = $false
+
+function Test-CredencialWorkers {
+  # try/catch porque com $ErrorActionPreference='Stop' o pwsh 7.3+ pode promover
+  # exit code nao-zero de comando nativo a excecao terminante. Aqui exit != 0 e
+  # resposta esperada da sonda.
+  Push-Location $apiDir
+  try {
+    $null = & npx wrangler secret list --config wrangler.toml --name $WorkerName --format json 2>&1
+    return ($LASTEXITCODE -eq 0)
+  } catch {
+    return $false
+  } finally {
+    Pop-Location
+  }
+}
+
+if ($ForcarOAuth) {
+  Write-Host "Credencial: OAuth forcado por -ForcarOAuth" -ForegroundColor Cyan
+  $env:CLOUDFLARE_API_TOKEN = ''
+  $usandoOAuth = $true
+} elseif (-not $env:CLOUDFLARE_API_TOKEN) {
+  Write-Host "Credencial: CLOUDFLARE_API_TOKEN ausente, tentando sessao OAuth do wrangler" -ForegroundColor Yellow
+  $usandoOAuth = $true
+} else {
+  if (Test-CredencialWorkers) {
+    Write-Host "Credencial: CLOUDFLARE_API_TOKEN com acesso a Workers OK" -ForegroundColor Green
+  } else {
+    Warn "CLOUDFLARE_API_TOKEN existe mas NAO alcanca a API de Workers (falta 'Workers Scripts: Edit')."
+    Warn "Caindo para a sessao OAuth do wrangler. Corrija o token quando puder, senao toda rotina nao interativa que dependa dele falha igual."
+    $env:CLOUDFLARE_API_TOKEN = ''
+    $usandoOAuth = $true
+  }
+}
+
+if ($usandoOAuth -and -not (Test-CredencialWorkers)) {
+  Fail "Nem o token nem a sessao OAuth alcancam a API de Workers. Rode 'npx wrangler login' ou adicione 'Workers Scripts: Edit' ao token em https://dash.cloudflare.com/profile/api-tokens"
+}
+if ($usandoOAuth) { Write-Host "Credencial: sessao OAuth do wrangler validada contra Workers" -ForegroundColor Green }
 
 # Aceita 'v4.9.160' ou 'v4.9.160.js'
 $ver    = $Version -replace '\.js$', ''
