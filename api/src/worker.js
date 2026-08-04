@@ -33,18 +33,39 @@ __name(_logError, "_logError");
 // =============================================================================
 var MAX_BODY_SIZE = 1024 * 1024;
 
+// VALIDFIX1 (v4.9.187, auditoria 2026-08-04): as respostas de validacao saiam sem
+// header CORS, porque _validateInput retorna direto de __coreFetch, antes do ponto
+// onde o CORS e aplicado. Do lado do navegador isso vira erro de rede opaco e a tela
+// nunca consegue mostrar a causa real do 415/413.
+function _respValidacao(request, status, erro) {
+  var h = { "Content-Type": "application/json" };
+  try {
+    var cors = corsHeaders(request);
+    for (var k in cors) { if (cors.hasOwnProperty(k)) h[k] = cors[k]; }
+  } catch (_) { /* sem CORS ainda e melhor que nao responder */ }
+  return new Response(JSON.stringify({ ok: false, erro: erro }), { status: status, headers: h });
+}
+__name(_respValidacao, "_respValidacao");
+
 function _validateInput(request, env) {
   var method = (request.method || "").toUpperCase();
   if (method === "GET" || method === "HEAD" || method === "OPTIONS") return null;
-  var ct = (request.headers.get("Content-Type") || "").toLowerCase();
-  if (ct && ct.indexOf("application/json") === -1 && method !== "DELETE") {
-    return new Response(JSON.stringify({ ok: false, erro: "Content-Type deve ser application/json" }), { status: 415, headers: { "Content-Type": "application/json" } });
-  }
   var cl = request.headers.get("Content-Length");
-  if (cl) { var size = parseInt(cl, 10); if (!isNaN(size) && size > MAX_BODY_SIZE) {
+  var size = cl ? parseInt(cl, 10) : NaN;
+  var temCorpo = (!isNaN(size) && size > 0) || !!request.headers.get("Transfer-Encoding");
+  var ct = (request.headers.get("Content-Type") || "").toLowerCase();
+  // VALIDFIX1: a versao anterior era fail-open. O teste `if (ct && ...)` so barrava
+  // Content-Type ERRADO, porque header AUSENTE vira string vazia, que e falsy, e o
+  // request seguia direto para o handler. Confirmado em producao em 2026-08-04:
+  // POST com "Content-Type:" removido respondia 400 do handler, nunca 415.
+  // Agora a regra e por corpo: corpo declarado exige JSON explicito.
+  if (method !== "DELETE" && temCorpo && ct.indexOf("application/json") === -1) {
+    return _respValidacao(request, 415, "Content-Type deve ser application/json");
+  }
+  if (!isNaN(size) && size > MAX_BODY_SIZE) {
     _logWarn(env, "payload excede " + MAX_BODY_SIZE + " bytes", { size: size, method: method });
-    return new Response(JSON.stringify({ ok: false, erro: "Payload excede 1MB" }), { status: 413, headers: { "Content-Type": "application/json" } });
-  }}
+    return _respValidacao(request, 413, "Payload excede 1MB");
+  }
   return null;
 }
 __name(_validateInput, "_validateInput");
