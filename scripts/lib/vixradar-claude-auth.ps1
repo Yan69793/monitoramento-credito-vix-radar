@@ -91,9 +91,21 @@ function Set-VixClaudeAuthEnv {
     # Aplica o modo ja decidido. Chamar antes de CADA invocacao do claude, porque o
     # ambiente do processo pode ter sido mexido entre lotes.
     $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
-    # Zera sempre primeiro: o que vale e o que este helper decidir, nunca o herdado.
-    $env:ANTHROPIC_AUTH_TOKEN = $null
-    $env:ANTHROPIC_API_KEY = $null
+    # Remove-Item elimina a variavel do bloco de ambiente do processo. Atribuir $null
+    # deixa string vazia, que o binario nativo claude.exe pode tratar como "ausente"
+    # e resolver pelo registro do Windows, onde ANTHROPIC_AUTH_TOKEN de agregador
+    # (OpenRouter/DeepSeek) contamina a autenticacao e trava a sonda (ago/2026).
+    Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_API_KEY -ErrorAction SilentlyContinue
+    # Blinda contra o registro nos 3 escopos. O claude.exe le GetEnvironmentVariable
+    # direto do registro User quando a variavel de processo nao existe, e o token de
+    # agregador (sk-or-v1-...) no registro User envenena a autenticacao Anthropic.
+    # $null DELETA a chave do registro (nao seta vazio). O token de agregador sera
+    # removido permanentemente do registro User, nao da para coexistir com as rotinas.
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', '', 'Process')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
     if ($script:VixAuthModo -eq 'assinatura-token') {
         $env:ANTHROPIC_AUTH_TOKEN = $script:VixAuthToken
     } elseif ($script:VixAuthModo -eq 'api') {

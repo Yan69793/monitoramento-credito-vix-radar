@@ -192,7 +192,7 @@ $runGeneric = Join-Path $root 'scripts\run_claude_routine.ps1'
 Assert-Check (Test-Path $regAll) 'register-all-routines-scheduler.ps1 existe'
 Assert-Check (Test-Path $runGeneric) 'run_claude_routine.ps1 existe'
 foreach ($tn in @(
-    'VIXRadar-AgendaSemanal', 'VIXRadar-Matinal', 'VIXRadar-Noturno',
+    'VIXRadar-AgendaSemanal',
     'Szuchmacher-AgendaMacro-Claude', 'Szuchmacher-FechamentoDiario', 'Szuchmacher-FechamentoWatchdog'
 )) {
     try {
@@ -202,6 +202,18 @@ foreach ($tn in @(
         Assert-Check ($null -ne $nr) "Task Scheduler $tn NextRun definido"
     } catch {
         Assert-Check $false "Task Scheduler $tn ausente"
+    }
+}
+
+# Matinal e noturno migraram para o scheduler do Claude Desktop em 04/08/2026: o claude CLI
+# standalone parou de autenticar e derrubava as duas antes do primeiro lote. Reabilitar aqui
+# nao conserta nada e ressuscita o disparo duplo, entao a assercao e invertida de proposito.
+foreach ($tn in @('VIXRadar-Matinal', 'VIXRadar-Noturno')) {
+    try {
+        $st = Get-ScheduledTask -TaskName $tn -ErrorAction Stop
+        Assert-Check ($st.State -eq 'Disabled') "Task Scheduler $tn Disabled (migrada p/ Claude Desktop)"
+    } catch {
+        Assert-Check $true "Task Scheduler $tn ausente (aceitavel apos migracao)"
     }
 }
 

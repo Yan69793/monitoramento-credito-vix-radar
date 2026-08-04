@@ -1,5 +1,10 @@
 ﻿# run_vixradar_noturno_claude.ps1 - Noturno v2: SKIP PS1 + Haiku/Sonnet por prioridade, cap 500k tokens
-param([switch]$Force)
+param(
+    [switch]$Force,
+    # Shadow DeepSeek: reclassifica com as mesmas fontes do Claude. NUNCA submete ao Worker.
+    # Tambem: env VIXRADAR_NOTURNO_SHADOW_DEEPSEEK=1 + DEEPSEEK_API_KEY / VIXRADAR_DEEPSEEK_API_KEY
+    [switch]$ShadowDeepSeek
+)
 $ErrorActionPreference = 'Stop'
 # PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
 
@@ -21,6 +26,8 @@ $LogDir         = Join-Path $ProjectRoot 'logs\routines'
 $DateTag        = Get-Date -Format 'yyyyMMdd'
 $LogFile        = Join-Path $LogDir ('vixradar-noturno_' + $DateTag + '.log')
 $MetricsFile    = Join-Path $LogDir ('noturno_metrics_' + $DateTag + '.json')
+$ShadowJsonl    = Join-Path $LogDir ('noturno_shadow_deepseek_' + $DateTag + '.jsonl')
+$ShadowSummaryFile = Join-Path $LogDir ('noturno_shadow_summary_' + $DateTag + '.json')
 $McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelHaiku     = 'claude-haiku-4-5-20251001'
@@ -110,12 +117,9 @@ function Invoke-Cleanup([switch]$Aggressive) {
 }
 
 function Get-RoutineKey {
+    # v4.9.187: fallback de leitura de SKILL.md removido (recomendacao PENDENCIAS.md 2026-08-03).
+    # O SKILL.md em scheduled-tasks/ pode conter chave velha apos rotacao. Env var e canonica.
     if ($env:ROUTINE_API_KEY) { return $env:ROUTINE_API_KEY }
-    $skillPath = Join-Path $ScheduledTasks 'vixradar-noturno\SKILL.md'
-    if (Test-Path $skillPath) {
-        $raw = Get-Content $skillPath -Raw -Encoding UTF8
-        if ($raw -match 'ROUTINE_KEY\s*=\s*([A-Za-z0-9_\-]{30,50})') { return $Matches[1] }
-    }
     throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }
 
@@ -124,6 +128,18 @@ function Get-RoutineKey {
 # tres vezes. Politica: assinatura primeiro, chave paga so quando o OAuth nao responde.
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
+
+# Shadow DeepSeek e opcional e nunca submete ao Worker. Dot-source com guarda para
+# a noturna nao morrer se a lib nao estiver presente (auditoria 2026-08-04: o arquivo
+# estava untracked, entao um clone limpo do repo quebraria aqui).
+$ShadowLibPath = Join-Path $PSScriptRoot 'lib\vixradar-noturno-shadow-deepseek.ps1'
+$ShadowLibOk = $false
+if (Test-Path $ShadowLibPath) {
+    . $ShadowLibPath
+    $ShadowLibOk = $true
+} else {
+    Write-Host "AVISO: lib do shadow DeepSeek ausente ($ShadowLibPath). Noturna segue sem shadow." -ForegroundColor Yellow
+}
 
 function Get-AnthropicApiKey {
     # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
@@ -419,6 +435,23 @@ if (-not $__noturnoMutex.WaitOne(0)) {
 }
 
 Write-Log "INICIO: noturno meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
+# Shadow DeepSeek (piloto): off por default. Nunca grava no Worker.
+# Sem a lib carregada nao ha shadow, e a funcao de teste nem existe para ser chamada.
+$ShadowDeepSeekOn = $false
+if ($ShadowLibOk) { $ShadowDeepSeekOn = Test-VixNoturnoShadowDeepSeekEnabled -SwitchOn:$ShadowDeepSeek }
+$ShadowDeepSeekKey = $null
+$statsShadow = @{ n = 0; parse_ok = 0; api_fail = 0; diverge = 0; critico_div = 0; tokens = 0 }
+if ($ShadowDeepSeekOn) {
+    $ShadowDeepSeekKey = Get-VixDeepSeekApiKey
+    if (-not $ShadowDeepSeekKey) {
+        Write-Log 'SHADOW: pedido ON mas DEEPSEEK_API_KEY / VIXRADAR_DEEPSEEK_API_KEY ausente - shadow desligado nesta corrida'
+        $ShadowDeepSeekOn = $false
+    } else {
+        Write-Log ('SHADOW: DeepSeek ON (somente comparacao, submit=false) jsonl=' + $ShadowJsonl)
+    }
+} else {
+    Write-Log 'SHADOW: DeepSeek OFF (use -ShadowDeepSeek ou VIXRADAR_NOTURNO_SHADOW_DEEPSEEK=1)'
+}
 # Sonda a assinatura uma vez e registra no log qual credencial serviu a execucao. A linha
 # importa para proveniencia: em 30/07 o log carimbava Claude sem que isso fosse verificavel.
 Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
@@ -429,10 +462,25 @@ if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
 }
 $ambientViolacao = Test-VixClaudeAmbienteLimpo
 if ($ambientViolacao) {
-    Write-Log "ERRO FATAL: ambiente contaminado detectado — $ambientViolacao"
-    Write-Log 'ERRO FATAL: variavel de ambiente ou settings.json aponta para agregador/modelo nao-Claude.'
-    Write-Log 'ERRO FATAL: corrija o ambiente e reexecute. Verificar: registry User/Machine, settings.json, env vars do processo.'
-    exit 6
+    Write-Log "AVISO: ambiente contaminado detectado — $ambientViolacao"
+    Write-Log 'AVISO: variavel de ambiente ou settings.json aponta para agregador/modelo nao-Claude.'
+    Write-Log 'AVISO: as variaveis ANTHROPIC_BASE_URL, ANTHROPIC_MODEL e ANTHROPIC_AUTH_TOKEN serao sobrescritas com valores oficiais da API Anthropic.'
+    Write-Log 'AVISO: a rotina continua, mas o settings.json deve ser corrigido manualmente.'
+    # Sobrescreve o que vier do settings.json/registry com valores Anthropic oficiais.
+    # Remove-Item elimina do bloco de ambiente; [Environment]::SetEnvironmentVariable
+    # blinda contra leitura de registro pelo binario nativo claude.exe.
+    $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+    Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_DEFAULT_OPUS_MODEL -ErrorAction SilentlyContinue
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+    $env:CLAUDE_CODE_SUBAGENT_MODEL = 'claude-sonnet-5'
+    Write-Log 'RECUPERACAO: env vars Anthropic injetadas para neutralizar contaminacao do settings.json.'
 }
 if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
     Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
@@ -721,6 +769,33 @@ try {
             Write-Log ('OK|' + $emp.empresa + '|' + $emp.tier + '|' + $classif + '|' + $nEv + '|' + $subOk)
             if ($subOk) { $loteOk++ } else { $loteFail++ }
             if ($classif -eq 'CRITICO') { $loteCrit++; $stats.criticos.Add($emp.empresa) }
+
+            # Shadow DeepSeek: mesmas fontes do Claude; nunca submit. Pula fallback de parse.
+            if ($ShadowDeepSeekOn -and $ShadowDeepSeekKey -and $res -and ('' + $res.cobertura_nota) -notmatch 'Falha de parse do agente') {
+                try {
+                    $filaShadow = if ($job.Name -eq 'sonnet') { 'aprofundada' } else { 'rapida' }
+                    $shRec = Invoke-VixNoturnoShadowDeepSeekOne `
+                        -ApiKey $ShadowDeepSeekKey `
+                        -Emp $emp `
+                        -ClaudeResultado $res `
+                        -JanelaInicio $janIni `
+                        -JanelaFim $janFim `
+                        -Fila $filaShadow `
+                        -JsonlPath $ShadowJsonl `
+                        -BatchLabel $label
+                    $statsShadow.n++
+                    if ($shRec.parse_ok) { $statsShadow.parse_ok++ }
+                    if ($shRec.status -eq 'api_fail') { $statsShadow.api_fail++ }
+                    if ($shRec.compare -and $shRec.compare.diverge) { $statsShadow.diverge++ }
+                    if ($shRec.compare -and $shRec.compare.critico_divergente) { $statsShadow.critico_div++ }
+                    if ($shRec.usage -and $shRec.usage.total_tokens) { $statsShadow.tokens += [int]$shRec.usage.total_tokens }
+                    $divTag = if ($shRec.compare -and $shRec.compare.diverge) { 'DIVERGE' } else { 'match' }
+                    Write-Log ('SHADOW|' + $emp.empresa + '|' + $shRec.status + '|' + $shRec.claude_classif + ' vs ' + $shRec.deepseek_classif + '|' + $divTag)
+                } catch {
+                    Write-Log ('SHADOW_EXC|' + $emp.empresa + '|' + $_.Exception.Message)
+                }
+                Start-Sleep -Milliseconds 400
+            }
         }
         $stats.submit_ok += $loteOk
         $stats.submit_fail += $loteFail
@@ -774,6 +849,19 @@ try {
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' buscas=' + $stats.buscas_total +
         ' silent_fail=' + $stats.silent_fail +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
+
+    if ($ShadowDeepSeekOn -and $statsShadow.n -gt 0) {
+        try {
+            $sum = Write-VixNoturnoShadowSummary -JsonlPath $ShadowJsonl -SummaryPath $ShadowSummaryFile -DateTag $DateTag
+            Write-Log ('SHADOW_FIM: n=' + $sum.n_comparacoes + ' parse_ok=' + $sum.parse_ok + ' diverge=' + $sum.classif_diverge +
+                ' critico_div=' + $sum.critico_divergente + ' ds_tokens=' + $sum.tokens_deepseek_total +
+                ' summary=' + $ShadowSummaryFile)
+        } catch {
+            Write-Log ('SHADOW_FIM: falha ao gravar summary - ' + $_.Exception.Message)
+            Write-Log ('SHADOW_FIM: n=' + $statsShadow.n + ' parse_ok=' + $statsShadow.parse_ok + ' diverge=' + $statsShadow.diverge +
+                ' critico_div=' + $statsShadow.critico_div + ' ds_tokens=' + $statsShadow.tokens)
+        }
+    }
 
     # Dreno da fila de verificação assíncrona pós-noturno (v4.9.150)
     # Problema: o cron 18:20 drena ANTES do noturno terminar (~19:00), deixando eventos

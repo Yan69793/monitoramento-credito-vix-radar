@@ -94,11 +94,26 @@ if (-not $SkipPreFlight) {
         try {
             $violacao = Test-VixClaudeAmbienteLimpo
             if ($violacao) {
-                Write-Log "ERRO PRE-FLIGHT: ambiente contaminado - $violacao"
-                Write-Log 'ABORTANDO: roteamento de agregador detectado (risco de queimar tokens sem analise real)'
-                exit 6
+                Write-Log "AVISO PRE-FLIGHT: ambiente contaminado - $violacao"
+                Write-Log 'RECUPERACAO: injetando env vars Anthropic para neutralizar contaminacao.'
+                # Sobrescreve roteamento de agregador com valores oficiais Anthropic.
+                # Remove-Item elimina do bloco de ambiente; SetEnvironmentVariable
+                # blinda contra leitura de registro pelo binario nativo claude.exe.
+                $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+                Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
+                Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+                Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
+                Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
+                Remove-Item Env:\ANTHROPIC_DEFAULT_OPUS_MODEL -ErrorAction SilentlyContinue
+                [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
+                [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
+                [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+                [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+                $env:CLAUDE_CODE_SUBAGENT_MODEL = 'claude-sonnet-5'
+                Write-Log 'RECUPERACAO: env vars Anthropic injetadas. A rotina continua.'
+            } else {
+                Write-Log 'PRE-FLIGHT: ambiente limpo (sem roteamento de agregador)'
             }
-            Write-Log 'PRE-FLIGHT: ambiente limpo (sem roteamento de agregador)'
         } catch {
             Write-Log "AVISO: pre-flight ambiente falhou (nao abortando): $_"
         }

@@ -86,12 +86,9 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
 }
 
 function Get-RoutineKey {
+    # v4.9.187: fallback de leitura de SKILL.md removido (recomendacao PENDENCIAS.md 2026-08-03).
+    # O SKILL.md em scheduled-tasks/ pode conter chave velha apos rotacao. Env var e canonica.
     if ($env:ROUTINE_API_KEY) { return $env:ROUTINE_API_KEY }
-    $skillPath = Join-Path $ScheduledTasks 'vixradar-noturno\SKILL.md'
-    if (Test-Path $skillPath) {
-        $raw = Get-Content $skillPath -Raw -Encoding UTF8
-        if ($raw -match 'ROUTINE_KEY\s*=\s*([A-Za-z0-9_\-]{30,50})') { return $Matches[1] }
-    }
     throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }
 
