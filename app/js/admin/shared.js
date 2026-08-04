@@ -65,6 +65,10 @@ export function skeletonBlock(rows) {
     bars +=
       '<div class="vr-sk-row">' +
       '<span class="vr-sk-line" style="width:' + (40 + (i % 3) * 15) + '%"></span>' +
+      '<span class="vr-sk-line vr-sk-short"></span></div>';
+  }
+  return '<div class="vr-skeleton">' + bars + '</div>';
+}
 
 /* ── Base styles injection ────────────────────────────────── */
 export function injectBaseStyles() {
@@ -97,6 +101,12 @@ export function wrapWhenReady(name, wrapper) {
       wrapped._vrWrapped = true;
       window[name] = wrapped;
       return true;
+    }
+    if (++tries < 80) setTimeout(attempt, 150);
+    return false;
+  }
+  attempt();
+}
 
 /* ── Admin shortcut (Ctrl/Cmd+Shift+A or Ctrl/Cmd+Alt+A) ──── */
 function isAdminShortcut(e) {

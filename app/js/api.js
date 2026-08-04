@@ -96,6 +96,23 @@ export async function fetchWithRetry(url, opts = {}) {
       const contentType = resp.headers.get('content-type') || '';
       return contentType.includes('application/json') ? await resp.json() : resp;
     } catch (err) {
+      // Abort pedido pelo chamador nunca vira retry.
+      if (err.name === 'AbortError' && signal && signal.aborted) throw err;
+      // Erro HTTP ja classificado no bloco acima (4xx, ou 5xx sem tentativa sobrando).
+      if (typeof err.status === 'number') throw err;
+      // Rede ou timeout: retenta enquanto houver tentativa.
+      if (retryOnNetwork && attempt < retries) {
+        lastError = err;
+        console.warn(`[api] Retry ${attempt + 1}/${retries + 1} erro=${err.message}`);
+        await sleep(retryDelay * Math.pow(2, attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  throw lastError || new Error('fetchWithRetry: tentativas esgotadas');
+}
 
 /* ── API Client factory ───────────────────────────────────── */
 export function createApiClient(baseUrl, options = {}) {

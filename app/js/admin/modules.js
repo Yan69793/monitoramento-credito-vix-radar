@@ -175,6 +175,12 @@ export function renderUserHealth(users, retencao) {
         '</td></tr>'
       );
     }).join('');
+  return (
+    '<div class="vr-table-wrap"><table class="vr-admin-table">' +
+    '<thead><tr><th>Status</th><th>E-mail</th><th>Nome</th><th>30d</th><th>Último acesso</th><th>Ação</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>'
+  );
+}
 
 /* ── Render heartbeats ────────────────────────────────────── */
 export function renderHeartbeats(hb) {
@@ -212,6 +218,9 @@ export async function sendReengage(emails, btn) {
   } catch (e) {
     alert('Erro: ' + (e.message || e));
   } finally {
+    if (btn) { btn.disabled = false; btn.textContent = label || 'Enviar'; }
+  }
+}
 
 /* ── Tab: Hoje (HEART dashboard) ──────────────────────────── */
 export async function loadHoje() {
@@ -292,6 +301,11 @@ export async function loadHoje() {
         const em = this.getAttribute('data-email');
         if (em) sendReengage([em], this);
       });
+    });
+  } catch (e) {
+    el.innerHTML = '<div class="admin-msg err">Erro: ' + esc(e.message || e) + '</div>';
+  }
+}
 
 /* ── Inject styles ────────────────────────────────────────── */
 function injectStyles() {
@@ -347,6 +361,8 @@ function injectStyles() {
     '.vr-loading{color:#64748B;font-size:12px;padding:16px}' +
     '@media(max-width:720px){.vr-heart-row{grid-template-columns:repeat(2,1fr)}}' +
     '@media(prefers-reduced-motion:reduce){.vr-heart-kpi{transition:none}}';
+  document.head.appendChild(s);
+}
 
 /* ── Inject the "Hoje" tab into admin panel ───────────────── */
 export function injectHojeTab() {
