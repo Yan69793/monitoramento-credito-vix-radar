@@ -106,6 +106,22 @@ function Set-VixClaudeAuthEnv {
     [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', '', 'Process')
     [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
     [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+    # Vars de alias de modelo saem do bloco de ambiente DESTE processo, para que o
+    # claude.exe filho nao as herde. Defesa em profundidade: as rotinas ja passam
+    # --model com o ID completo (nao alias), entao a tabela de alias nao deveria ser
+    # consultada de qualquer forma.
+    # DIFERENCA DELIBERADA vs os tokens acima: NAO tocamos no registro User/Machine.
+    # Esses valores sao configuracao legitima do operador para o REPL interativo
+    # (economia de custo, ver CLAUDE.md). Apagar o registro quebraria o REPL dele para
+    # resolver um problema que as rotinas nao tem. Foi confundir as duas coisas que
+    # cegou a fila de verificacao por ~24h em 04-05/08.
+    # LIMITE CONHECIDO: se a var existir no registro User, o claude.exe ainda pode
+    # resolve-la de la quando ausente no processo - mesma mecanica descrita acima para
+    # o token. Aqui isso e aceitavel porque --model explicito torna o alias inerte.
+    foreach ($__vixModeloVar in @('ANTHROPIC_MODEL','ANTHROPIC_DEFAULT_HAIKU_MODEL',
+                                  'ANTHROPIC_DEFAULT_SONNET_MODEL','CLAUDE_CODE_SUBAGENT_MODEL')) {
+        Remove-Item -Path "Env:\$__vixModeloVar" -ErrorAction SilentlyContinue
+    }
     if ($script:VixAuthModo -eq 'assinatura-token') {
         $env:ANTHROPIC_AUTH_TOKEN = $script:VixAuthToken
     } elseif ($script:VixAuthModo -eq 'api') {
