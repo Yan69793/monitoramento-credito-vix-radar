@@ -97,6 +97,13 @@ function Set-VixClaudeAuthEnv {
     # (OpenRouter/DeepSeek) contamina a autenticacao e trava a sonda (ago/2026).
     Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
     Remove-Item Env:\ANTHROPIC_API_KEY -ErrorAction SilentlyContinue
+    # Limpar variaveis de modelo que o Claude Code pode injetar no ambiente do
+    # processo. Elas contaminam o Test-VixClaudeAmbienteLimpo (incidente 04/08)
+    # mas nao afetam o `claude -p` com --model explicito.
+    Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\CLAUDE_CODE_SUBAGENT_MODEL -ErrorAction SilentlyContinue
     # Blinda contra o registro nos 3 escopos. O claude.exe le GetEnvironmentVariable
     # direto do registro User quando a variavel de processo nao existe, e o token de
     # agregador (sk-or-v1-...) no registro User envenena a autenticacao Anthropic.
