@@ -88,7 +88,17 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
 function Get-RoutineKey {
     # v4.9.187: fallback de leitura de SKILL.md removido (recomendacao PENDENCIAS.md 2026-08-03).
     # O SKILL.md em scheduled-tasks/ pode conter chave velha apos rotacao. Env var e canonica.
-    if ($env:ROUTINE_API_KEY) { return $env:ROUTINE_API_KEY }
+    # Trim (2026-08-05): o Worker compara com !== exato e NAO normaliza (worker.js ~16354).
+    # Chave colada com quebra de linha ou espaco final produz 403 indistinguivel do 403 de
+    # chave revogada - a causa mais barata de descartar antes de acusar rotacao.
+    if ($env:ROUTINE_API_KEY) {
+        $k = $env:ROUTINE_API_KEY.Trim()
+        if ($k.Length -eq 0) { throw 'ROUTINE_API_KEY definida porem vazia apos trim.' }
+        if ($k -ne $env:ROUTINE_API_KEY) {
+            Write-Log 'AVISO: ROUTINE_API_KEY tinha espaco/quebra de linha nas bordas - usando o valor sem eles.'
+        }
+        return $k
+    }
     throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }
 
@@ -267,6 +277,47 @@ if (-not $__verifMutex.WaitOne(0)) {
 }
 
 Write-Log ('INICIO: drenar fila de verificacao assincrona meta=' + $TokenTarget + ' hard=' + $TokenHardCap)
+
+# PREFLIGHT DE CREDENCIAL (2026-08-05): Worker antes de Claude.
+# A ordem anterior gastava Initialize-VixClaudeAuth + probe WebSearch (uma chamada
+# `claude -p` real) antes de tocar no Worker, entao uma ROUTINE_API_KEY morta so
+# aparecia depois do gasto. Pior: Invoke-WebRequest do PS 5.1 lanca excecao em 403 e o
+# corpo {"erro":"Acesso negado."} fica preso dentro dela - no log o 403 de credencial
+# ficava indistinguivel de rede caida. Health e chave sao GET/POST baratos, sem LLM;
+# rodam primeiro e falham com causa nomeada. Confirmado 05/08: listar_fila_verificacao
+# devolveu 403 a partir do host, com a chave que estava em disco.
+try {
+    $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30
+    Write-Log ('Health ' + $health.versao + ' verificador_ok=' + $health.verificador_ok)
+} catch {
+    Write-Log ('ERRO: health ' + $_.Exception.Message)
+    exit 3
+}
+
+try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exit 4 }
+
+# listar_todos_emissores: mesma guarda de routine_key dos endpoints da fila, somente
+# leitura, sem efeito colateral e com total conferivel (103). E o teste canonico de
+# chave usado nas auditorias do vault.
+try {
+    $__pfResp = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_todos_emissores'; routine_key = $routineKey } -TimeoutSec 45
+} catch {
+    $__pfStatus = 0
+    if ($_.Exception.Response) { $__pfStatus = [int]$_.Exception.Response.StatusCode }
+    if ($__pfStatus -eq 403) {
+        Write-Log 'ERRO FATAL: ROUTINE_API_KEY rejeitada pelo Worker (HTTP 403 Acesso negado).'
+        Write-Log 'ERRO FATAL: a chave existe no ambiente mas nao bate com o secret ROUTINE_API_KEY do Worker. Causas usuais: chave rotacionada em producao, aspas coladas junto do valor, valor truncado.'
+        Write-Log 'ERRO FATAL: reexportar $env:ROUTINE_API_KEY e reexecutar. Nenhum token de LLM foi gasto.'
+        exit 8
+    }
+    Write-Log ('ERRO FATAL: preflight de credencial falhou (HTTP ' + $__pfStatus + '): ' + $_.Exception.Message)
+    exit 8
+}
+if ($__pfResp.ok -ne $true) {
+    Write-Log 'ERRO FATAL: preflight de credencial respondeu ok:false sem erro HTTP - endpoint recusou a chamada.'
+    exit 8
+}
+Write-Log ('Preflight: ROUTINE_API_KEY aceita pelo Worker (' + [int]$__pfResp.total + ' emissores). Nenhum token gasto ate aqui.')
 # Sonda a assinatura uma vez e registra no log qual credencial serviu a execucao. A linha
 # importa para proveniencia: em 30/07 o log carimbava Claude sem que isso fosse verificavel.
 Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
@@ -304,16 +355,6 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     Write-Log 'ERRO: claude.exe ausente'
     exit 2
 }
-
-try {
-    $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30
-    Write-Log ('Health ' + $health.versao + ' verificador_ok=' + $health.verificador_ok)
-} catch {
-    Write-Log ('ERRO: health ' + $_.Exception.Message)
-    exit 3
-}
-
-try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exit 4 }
 
 $stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0; tokens_desconhecidos = 0; deferred = 0; token_hard_hit = $false }
 $exitCode = 0

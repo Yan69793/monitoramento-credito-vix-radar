@@ -65,13 +65,24 @@ if (Test-Path $skillNot) {
 }
 
 # 4. ROUTINE_KEY
+# Prioridade invertida em 2026-08-05: env var e canonica, SKILL.md vira so sinal de
+# divergencia. As 3 rotinas removeram o fallback de SKILL.md no v4.9.187 (PENDENCIAS.md
+# 2026-08-03) porque o arquivo guarda chave velha apos rotacao - mas este validador
+# continuou lendo SKILL.md primeiro. Resultado: ele podia aprovar (ou reprovar) uma
+# chave que o dreno nunca usa, validando credencial diferente da que roda em producao.
 $key = $null
+if ($env:ROUTINE_API_KEY) { $key = $env:ROUTINE_API_KEY.Trim() }
+Assert-Check ($null -ne $key) 'ROUTINE_API_KEY no ambiente (mesma fonte que as rotinas usam)'
 if (Test-Path $skillNot) {
     $raw = Get-Content $skillNot -Raw
-    if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') { $key = $Matches[1] }
+    if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') {
+        $keySkill = $Matches[1].Trim()
+        # Compara sem imprimir nenhum dos dois valores.
+        if ($key -and $keySkill -ne $key) {
+            Write-Output 'WARN: SKILL.md guarda uma ROUTINE_KEY diferente da do ambiente. Se a exportacao veio dali, o 403 tem essa origem. SKILL.md nao e fonte de verdade.'
+        }
+    }
 }
-if (-not $key -and $env:ROUTINE_API_KEY) { $key = $env:ROUTINE_API_KEY }
-Assert-Check ($null -ne $key) 'ROUTINE_KEY disponivel'
 
 # 5. Emissores 103 (live baseline)
 if ($key) {
