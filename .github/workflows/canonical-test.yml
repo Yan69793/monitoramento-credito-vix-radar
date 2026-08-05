@@ -1,4 +1,4 @@
-        # VixRadar — Canonical Production Test
+# VixRadar — Canonical Production Test
 # Valida a saúde de produção a cada 6h via health check anônimo (GET /).
 # NOTA: o endpoint POST de análise passou a exigir JWT (401 anônimo) desde a
 # reconciliação de 2026-06-01, por isso este teste usa o health check público
@@ -7,6 +7,16 @@
 # NOTA: listar_emissores_prioritarios top_n=103 pode retornar <103 quando
 # staleness dos emissores é baixo (varredura recente). Isso NÃO indica gap de
 # cobertura — use listar_todos_emissores (total:103) para validar universo.
+#
+# DIAGNOSTICO DE ok:false (2026-08-05): o campo `ok` do health depende de SEIS
+# fatores no Worker (v4.9.187, lido do bundle deployado):
+#   !!RADAR_KV && !!RADAR_USAGE_EVENTS && !!RESEND_API_KEY
+#   && _adminEmailOk && _sentryOk && _verificadorRealOk
+# Os 3 primeiros ja apareciam aqui (kv / telemetria / providers). Os 3 ultimos
+# vinham no JSON como admin_email_ok / sentry_ok / verificador_ok mas NAO eram
+# lidos nem impressos — entao "ok=false" nunca dizia QUAL fator caiu, e cada
+# ocorrencia (30/07, 05/08) exigia recuperar o bundle via Cloudflare MCP para
+# descobrir. Agora os 3 sao extraidos e citados na mensagem de erro.
 
 name: Canonical Production Test
 
@@ -40,6 +50,10 @@ jobs:
           RL=$(echo "$BODY" | jq -r '.bindings.rate_limiter // false')
           TEL=$(echo "$BODY" | jq -r '.bindings.telemetria // false')
           PROV=$(echo "$BODY" | jq -r '.providers_configurados // "?"')
+          # Fatores restantes de _okHealth — ja vinham no JSON, nunca eram lidos.
+          ADMIN_EMAIL_OK=$(echo "$BODY" | jq -r '.admin_email_ok // "ausente"')
+          SENTRY_OK=$(echo "$BODY" | jq -r '.sentry_ok // "ausente"')
+          VERIFICADOR_OK=$(echo "$BODY" | jq -r '.verificador_ok // "ausente"')
 
           echo "http=$HTTP" >> $GITHUB_OUTPUT
           echo "time=$TIME" >> $GITHUB_OUTPUT
@@ -49,12 +63,16 @@ jobs:
           echo "rate_limiter=$RL" >> $GITHUB_OUTPUT
           echo "telemetria=$TEL" >> $GITHUB_OUTPUT
           echo "providers=$PROV" >> $GITHUB_OUTPUT
+          echo "admin_email_ok=$ADMIN_EMAIL_OK" >> $GITHUB_OUTPUT
+          echo "sentry_ok=$SENTRY_OK" >> $GITHUB_OUTPUT
+          echo "verificador_ok=$VERIFICADOR_OK" >> $GITHUB_OUTPUT
 
           echo "### Resultado"
           echo "HTTP: $HTTP (${TIME}s)"
           echo "ok: $OK | Worker: $WORKER_V"
           echo "bindings: kv=$KV rate_limiter=$RL telemetria=$TEL"
           echo "providers_configurados: $PROV"
+          echo "fatores de ok: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK"
 
       - name: Validate health
         run: |
@@ -64,6 +82,9 @@ jobs:
           KV="${{ steps.test.outputs.kv }}"
           RL="${{ steps.test.outputs.rate_limiter }}"
           TEL="${{ steps.test.outputs.telemetria }}"
+          ADMIN_EMAIL_OK="${{ steps.test.outputs.admin_email_ok }}"
+          SENTRY_OK="${{ steps.test.outputs.sentry_ok }}"
+          VERIFICADOR_OK="${{ steps.test.outputs.verificador_ok }}"
 
           # Fonte de verdade do repo: api/wrangler.toml (main = "vX.Y.Z.js").
           # Deriva a versão esperada em vez de hardcode — o guard passa a comparar
@@ -83,8 +104,11 @@ jobs:
             FAIL=1
           fi
 
+          # ok = kv && telemetria && resend && admin_email_ok && sentry_ok && verificador_ok.
+          # Os 3 primeiros ja tem guard proprio abaixo; cita os 3 ultimos aqui para
+          # que a mensagem nomeie o fator que caiu em vez de so dizer "degradada".
           if [ "$OK" != "true" ]; then
-            echo "::error::Health ok=$OK (esperado true) — produção degradada"
+            echo "::error::Health ok=$OK — fatores: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK (kv/telemetria/resend validados nos guards abaixo). Fator false = secret ausente/malformado no Worker (ADMIN_EMAIL, SENTRY_DSN) ou verificador degradado."
             FAIL=1
           fi
 
