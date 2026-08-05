@@ -51,9 +51,13 @@ jobs:
           TEL=$(echo "$BODY" | jq -r '.bindings.telemetria // false')
           PROV=$(echo "$BODY" | jq -r '.providers_configurados // "?"')
           # Fatores restantes de _okHealth — ja vinham no JSON, nunca eram lidos.
-          ADMIN_EMAIL_OK=$(echo "$BODY" | jq -r '.admin_email_ok // "ausente"')
-          SENTRY_OK=$(echo "$BODY" | jq -r '.sentry_ok // "ausente"')
-          VERIFICADOR_OK=$(echo "$BODY" | jq -r '.verificador_ok // "ausente"')
+          # tostring, NAO `// "ausente"`: o operador // do jq dispara em null E em
+          # false, entao `.verificador_ok // "x"` imprimia "x" para um campo que
+          # existia e valia false (visto no run 30975983230). tostring separa os
+          # casos: "false" = fator caiu, "null" = campo sumiu do endpoint.
+          ADMIN_EMAIL_OK=$(echo "$BODY" | jq -r '.admin_email_ok | tostring')
+          SENTRY_OK=$(echo "$BODY" | jq -r '.sentry_ok | tostring')
+          VERIFICADOR_OK=$(echo "$BODY" | jq -r '.verificador_ok | tostring')
 
           echo "http=$HTTP" >> $GITHUB_OUTPUT
           echo "time=$TIME" >> $GITHUB_OUTPUT
