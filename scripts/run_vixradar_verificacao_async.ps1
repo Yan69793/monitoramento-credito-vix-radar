@@ -326,19 +326,13 @@ if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
     Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
     exit 5
 }
-$modeloEnvInfo = Get-VixModeloEnvInfo
-if ($modeloEnvInfo) {
-    # Nao aborta: --model vai explicito com ID completo e --setting-sources project
-    # ignora o settings.json global. Registrado so para nao virar ponto cego se o
-    # roteamento por alias voltar a morder. Ver cabecalho de vixradar-ambient-check.ps1.
-    Write-Log "AVISO: env/settings com modelo nao-Claude (inerte para esta rotina): $modeloEnvInfo"
-}
-# -ModeloFixadoNaChamada: esta rotina passa --model claude-sonnet-4-6 (ID completo) e
-# --setting-sources project em toda invocacao, entao nem alias de modelo nem o
-# ~/.claude/settings.json global alcancam o claude -p daqui. Sem o switch, a guarda
-# abortou este script 3x em 04/08 por config legitima do REPL do operador, prendendo
-# ~22 eventos na fila >12h. ANTHROPIC_BASE_URL segue checado normalmente.
-$ambientViolacao = Test-VixClaudeAmbienteLimpo -ModeloFixadoNaChamada
+# Alinhado com 2b025b0: a guarda perdeu o parametro -ModeloFixadoNaChamada e a funcao
+# Get-VixModeloEnvInfo, mas as duas chamadas continuaram aqui. Sob $ErrorActionPreference
+# 'Continue' isso nao mataria o script - e pior: parametro inexistente faz o bind falhar,
+# $ambientViolacao fica $null e o `if` abaixo nunca dispara. A guarda inteira (incluindo
+# ANTHROPIC_BASE_URL, o vetor real do 27/07) sairia de servico em silencio, com so um
+# registro de erro no log. Chamada normalizada para a assinatura que a lib expoe hoje.
+$ambientViolacao = Test-VixClaudeAmbienteLimpo
 if ($ambientViolacao) {
     Write-Log "ERRO FATAL: ambiente contaminado detectado — $ambientViolacao"
     Write-Log 'ERRO FATAL: variavel de ambiente ou settings.json aponta para agregador/modelo nao-Claude.'
