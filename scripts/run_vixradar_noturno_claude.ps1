@@ -129,6 +129,11 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 
+# Assert-VixLibFunctions garante que funcoes removidas/renomeadas nas libs sem
+# atualizar os call sites sao detectadas na hora, com erro claro, em vez de
+# silenciosamente apos 24h como aconteceu em 04-05/08/2026.
+Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe')
+
 # Shadow DeepSeek e opcional e nunca submete ao Worker. Dot-source com guarda para
 # a noturna nao morrer se a lib nao estiver presente (auditoria 2026-08-04: o arquivo
 # estava untracked, entao um clone limpo do repo quebraria aqui).

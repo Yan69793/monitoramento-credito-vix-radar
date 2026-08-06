@@ -94,6 +94,11 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 
+# Assert-VixLibFunctions garante que funcoes removidas/renomeadas nas libs sem
+# atualizar os call sites sao detectadas na hora, com erro claro, em vez de
+# silenciosamente apos 24h como aconteceu em 04-05/08/2026.
+Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe')
+
 function Get-AnthropicApiKey {
     # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
     return (Get-VixAnthropicApiKey)

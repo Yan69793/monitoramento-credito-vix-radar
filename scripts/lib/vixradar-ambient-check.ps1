@@ -100,3 +100,26 @@ function Test-VixWebSearchProbe([string]$McpConfigFile) {
     }
     return $ok
 }
+
+function Assert-VixLibFunctions([string[]]$RequiredFunctions) {
+    # Valida que as funcoes esperadas das libs dot-sourced estao presentes.
+    # Adicionado apos o incidente de 04-05/08/2026: o commit 2b025b0 removeu
+    # Get-VixModeloEnvInfo e o parametro -ModeloFixadoNaChamada sem atualizar
+    # todos os call sites, e o run_vixradar_verificacao_async.ps1 quebrou
+    # silenciosamente por ~24h ate o health check acusar fila atrasada.
+    # Esta funcao garante que esse erro nao se repete: se alguem remover uma
+    # funcao e esquecer um call site, o script morre aqui com erro claro,
+    # em vez de morrer no meio de um lote sem log.
+    $missing = @()
+    foreach ($fn in $RequiredFunctions) {
+        if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) {
+            $missing += $fn
+        }
+    }
+    if ($missing.Count -gt 0) {
+        Write-Host "ERRO FATAL: funcao(oes) ausente(s) apos dot-source das libs: $($missing -join ', ')"
+        Write-Host 'ERRO FATAL: lib/vixradar-claude-auth.ps1 ou lib/vixradar-ambient-check.ps1 nao exportam as funcoes esperadas.'
+        Write-Host 'ERRO FATAL: um commit removeu/renomeou funcao sem atualizar todos os call sites. Corrija e reexecute.'
+        exit 97
+    }
+}
