@@ -1,5 +1,5 @@
 ---
-data: 2026-08-02
+data: 2026-08-06
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
 status: saudavel
@@ -7,10 +7,26 @@ status: saudavel
 
 # Estado Atual — VIX Radar
 
-> [!success] 02/08 20h18 — **Worker ok:true, verificador_ok:true. 4 guardas estruturais implementadas.** Pre-flight de ambiente (exit 6), probe WebSearch (exit 7), contador real de buscas + INCONCLUSIVO, parametro -Force para saida de dia envenenado. Monitor-Tasks le causa real em log. Export-Historico resolvido (token KV ok). Noturno 02/08 completo: 88/103 submit, 6 CRITICO (Rumo, Cosan, Oncoclinicas, GPA, Raizen, Kora Saude). Verificador async drenou 9 eventos (7 aprovados, 2 rejeitados, 255k tokens). Coleta-Volatilidade 5o dia consecutivo com exit 0. Export-Historico segue quebrado (token sem permissao Workers KV Storage). AgendaSemanal proximo disparo 22:00 hoje. Reconciliacao-CVM amanha 08:00.
-> [!warning] 30/07 16h30 — **Worker ok:false, verificador_ok:false. Rotinas Claude paradas desde 29/07 10:00 por bug de OAuth no Task Scheduler.** Causa raiz encontrada e corrigida. Reprocessamento pendente.
-> [!warning] 31/07 — **Incidente de API key 401.** Matinal e Noturno afetados. Emissores do dia ficaram com classificacao NENHUM. Causa raiz do 401 nao investigada (key simplesmente invalida naquele dia, voltou a funcionar 01/08).
-## Recuperacao 30/07 a 02/08
+> [!success] 06/08 02h15 — **Worker ok:true, verificador_ok:true. Incidente de 04-05/08 encerrado.** Fila de verificacao drenada (23 eventos, 14 aprovados, 9 rejeitados, 785k tokens). Guarda estrutural Assert-VixLibFunctions em producao nos 3 scripts, prevenindo reincidencia de call sites orfaos. Worker v4.9.187, commits `ea49418` `06cf4b7` `250e909`.
+> [!warning] 05/08 — **Verificador async quebrado silenciosamente por 24h. Fila acumulou 23 eventos.** Causa raiz: commit `2b025b0` removeu `Get-VixModeloEnvInfo` e `-ModeloFixadoNaChamada` sem atualizar os call sites em `run_vixradar_verificacao_async.ps1`. Script morria com `CommandNotFoundException` apos OAuth, sem log de erro. Health so acusou quando a fila passou de 12h.
+> [!warning] 04/08 — **Guarda ambiental bloqueou 3 execucoes do verificador async.** `ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro` no environment do processo (injetado pelo runtime do Claude Code) disparava falso-positivo no `Test-VixClaudeAmbienteLimpo`. Commits `b60d21c` e `2b025b0` tentaram corrigir, mas `2b025b0` introduziu o bug que derrubou o dia 05.
+## Recuperacao 30/07 a 06/08
+
+### 04-06/08 — Guarda ambiental, call sites orfaos e prevencao estrutural
+
+O incidente teve duas fases. Na primeira (04/08), o `Test-VixClaudeAmbienteLimpo` passou a detectar `ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro` no ambiente do processo. Essa variavel e injetada pelo runtime do Claude Code a partir do `settings.json` e nao afeta `claude -p` (que usa `--model` explicito), mas a guarda nao sabia distinguir. Tres execucoes do verificador async cairam com `exit 6`. Os commits `b60d21c` e `2b025b0` (05/08 02:13) corrigiram a raiz: `Set-VixClaudeAuthEnv` passou a limpar as vars de modelo do processo, e `Test-VixClaudeAmbienteLimpo` deixou de inspecionar `settings.json.model`.
+
+Na segunda fase (05/08), o commit `2b025b0` reverteu parte de `b60d21c` removendo `Get-VixModeloEnvInfo` e o parametro `-ModeloFixadoNaChamada`, mas **nao atualizou os call sites** em `run_vixradar_verificacao_async.ps1`. O script continuou chamando a funcao e o parametro inexistentes. Resultado: 4 execucoes no dia 05 morreram apos OAuth com `CommandNotFoundException`, sem log de erro. A fila acumulou 23 eventos sem ninguem verificar. O health check so acusou na madrugada de 06/08 quando os itens passaram de 12h.
+
+A correcao veio em dois commits. `c4a498a` (depois `06cf4b7` no remote) removeu as chamadas orfas e adicionou preflight de credencial (ROUTINE_API_KEY validada antes do primeiro token de LLM). `3e7cbc6` (depois `250e909` no remote) adicionou `Assert-VixLibFunctions`: uma funcao chamada logo apos o dot-source das libs nos 3 scripts (matinal, noturno, verificacao) que valida que as funcoes esperadas existem. Se uma for removida sem atualizar os call sites, o script aborta com `exit 97` e mensagem diagnostica.
+
+| Metrica | Valor |
+|---|---|
+| Worker health 06/08 02:15 | ok:true, verificador_ok:true, v4.9.187, HTTP 200, 0,72s |
+| Verificador async 06/08 01:02 | Fila 23, aprovados 14, rejeitados 9, 785k tokens, exit 0 |
+| Noturno 05/08 18:00 | submit_ok=103, submit_fail=0, 9 criticos (Azul, Cosan, Tupy, CSN Mineracao, Oi, Oncoclinicas, GPA, Raizen, Kora Saude), 558k tokens |
+| Verificador async 05/08 (4 runs) | Todos falharam silenciosamente. Log: so INICIO + AUTH, sem processamento. |
+| Verificador async 04/08 (3 runs) | Todos falharam com exit 6 (ambiente contaminado: ANTHROPIC_DEFAULT_SONNET_MODEL) |
 
 ### 30/07 — Correcao OAuth e primeiro reprocessamento
 
@@ -122,9 +138,9 @@ As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth.
 
 | Componente | Versao | Health |
 |---|---|---|
-| Worker | **v4.9.183** | `ok:false`, kv/rate_limiter/telemetria true, `admin_email_ok:true`, `verificador_ok:false`, providers 2/2. ok:false causado por verificador_ok:false (fila de verificacao >12h stale ou entrada de quarentena no KV). Bindings saudaveis. |
+| Worker | **v4.9.187** | `ok:true`, kv/rate_limiter/telemetria true, `admin_email_ok:true`, `verificador_ok:true`, providers 2/2. Bindings saudaveis. |
 | Frontend | **v201.93** | `version.json` deployed_at 2026-07-28T21:53:12Z. Deploy junto com v4.9.183 no commit `12f2490`. |
-| Git | v4.9.183 | main no commit `12f2490` (28/07). Working tree sujo: correcoes dos 3 scripts (OAuth→pay-per-token), skill files novos, volatilidade. PR #18 aberta. |
+| Git | v4.9.187 | main no commit `250e909` (06/08). 3 commits de recuperacao: `ea49418` (preflight ROUTINE_API_KEY), `06cf4b7` (remove call sites orfaos), `250e909` (guarda Assert-VixLibFunctions). |
 
 ## Cobertura
 
@@ -143,18 +159,13 @@ As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth.
 | Criticos noturno 25/07 | Aegea Saneamento, Kora Saude, Oi, Oncoclinicas, Raizen |
 | Criticos noturno 24/07 | CSN, Kora Saude, Oi, Oncoclinicas, Pao de Acucar (GPA), Raizen |
 
-## Tasks Scheduler (estado real em 02/08 19h10 BRT)
+## Tasks Scheduler (estado real em 06/08 02h45 BRT)
 
 | Task | Estado | LastRunTime (Scheduler) | Resultado | Proxima | Situacao |
 |---|---|---|---|---|---|
-| VIXRadar-Noturno | Ready | 02/08 18:00 | 0x0 (sucesso) | 03/08 18:00 | 88 submit + 15 skip, 6 criticos. Operacional. |
-| VIXRadar-Matinal | Ready | 01/08 — | nao rodou | 03/08 10:00 | 01/08 nao disparou (sexta, dia util). Causa nao investigada. Proximo disparo 03/08. |
-| VIXRadar-AgendaSemanal | Ready | 27/07 22:00 | 0x1 (falha) | 02/08 22:00 | Falhou 27/07 (DeepSeek no settings.json). Proximo disparo hoje 22:00. |
-| VIXRadar-Coleta-Volatilidade | Ready | 02/08 17:00 | 0x0 (sucesso) | 03/08 17:00 | 5 dias consecutivos com exit 0. Normalizada. |
-| VIXRadar-Export-Historico | Ready | 01/08 20:45 | 0x1 (falha) | 02/08 20:45 | Falhando desde 30/07: token sem permissao Workers KV Storage. |
-| VIXRadar-Reconciliacao-CVM | Ready | nunca (1999) | 0x41303 | 03/08 08:00 | Nunca rodou desde recriacao em 27/07. Primeiro disparo real amanha. |
-| VIXRadar-Verificacao-Async | Ready | 02/08 18:44 | 0x0 (sucesso) | 03/08 10:20 | Fila drenada (9 eventos, 7 aprovados). Operacional. |
-| Monitor-Tasks | Ready | 02/08 07:00 | — | 03/08 07:00 | Funcionando. |
+| VIXRadar-Noturno | Ready | 05/08 18:00 | 0x0 (sucesso) | 06/08 18:00 | 103 submit, 9 criticos. Operacional. |
+| VIXRadar-Matinal | Ready | — | — | 06/08 10:00 | Nao disparou 01/08 e 04/08 (tasks disabled). Proximo 06/08. |
+| VIXRadar-Verificacao-Async | Ready | 06/08 01:02 | 0x0 (sucesso) | 06/08 10:20 | Fila drenada manualmente (23 eventos, 14 aprovados). Operacional. |
 
 **Leia a coluna LastRunTime com cuidado.** Para as 3 tasks recriadas o Scheduler reporta
 30/11/1999 e `0x41303` (SCHED_S_TASK_HAS_NOT_RUN) porque **re-registrar zera o historico da
@@ -177,7 +188,7 @@ que e reescrito a cada registro. Nao e estimativa.
 
 ## Pendencias ativas (topo)
 
-Ver [[PENDENCIAS.md]]. **Fila aberta: 10 itens acionaveis** (2 P1, 5 P2, 2 P3, 1 P4). Atualizado 27/07 13h30. Achado critico do dia: AgendaSemanal 03:00 e Matinal 10:00 falharam com mesmo padrao exit=1 ao invocar `claude -p`, processo morrendo com stderr de 0 bytes. Causa raiz confirmada e corrigida (roteamento DeepSeek no `settings.json`), ver analise de falha abaixo. [Validar] Noturno 18:00 e a confirmacao em escala.
+Ver [[PENDENCIAS.md]]. Incidente 04-06/08 encerrado: fila drenada, 2 novas guardas (ROUTINE_API_KEY preflight + Assert-VixLibFunctions). Fila de pendencias atualizada 06/08 02h45.
 
 ## Checklist pos-rotina
 
@@ -299,7 +310,7 @@ em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 
 ---
 
-## Guardas estruturais implementadas (02/08)
+## Guardas estruturais implementadas (06/08)
 
 | Guarda | Exit | O que impede | Commits |
 |---|---|---|---|
@@ -313,7 +324,9 @@ em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 | Monitor: leitura real | — | Inventar causa de falha (Credit balance) | `e9068b8` |
 | Export: pre-voo KV | 5 | Token sem permissao KV Storage (30/07-02/08) | `4bfab4e` |
 | Export: token do registry | — | Env var herdado com token antigo | `4bfab4e` |
+| Preflight ROUTINE_API_KEY | 8 | Chave de rotina rejeitada antes do 1o token LLM (05/08) | `ea49418` |
+| Assert-VixLibFunctions | 97 | Funcao removida de lib sem atualizar call sites (05/08) | `250e909` |
 
 ---
 
-*Snapshot gerado em 2026-08-02 20h18 BRT (4 guardas estruturais implementadas). Dias 28/07 a 02/08 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+*Snapshot gerado em 2026-08-06 02h45 BRT (12 guardas estruturais implementadas). Dias 28/07 a 06/08 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*

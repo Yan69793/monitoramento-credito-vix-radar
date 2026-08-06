@@ -1,5 +1,5 @@
 ---
-data: 2026-08-02
+data: 2026-08-06
 tipo: changelog
 tags: [vix-radar, changelog, incidentes, deploys]
 status: ativo
@@ -7,9 +7,18 @@ status: ativo
 
 # Changelog — VIX Radar
 
-Registro cronológico de incidentes, deploys e eventos de produção. Cobertura: julho 2026. Para histórico anterior: [[_Arquivo/historico-03-2026-06]].
+Registro cronológico de incidentes, deploys e eventos de produção. Cobertura: julho-agosto 2026. Para histórico anterior: [[_Arquivo/historico-03-2026-06]].
 
 ---
+
+> [!success] 06/08 02h15 — **Incidente 04-05/08 encerrado. Fila drenada, 2 guardas novas.**
+> Worker v4.9.187, `ok:true`, `verificador_ok:true`. Fila de 23 eventos drenada (14 aprovados, 9 rejeitados, 785k tokens). Commits `ea49418` (preflight ROUTINE_API_KEY antes do 1o token LLM), `06cf4b7` (remove call sites orfaos de `Get-VixModeloEnvInfo` e `-ModeloFixadoNaChamada`), `250e909` (Assert-VixLibFunctions: deteccao de funcoes removidas de lib sem atualizar call sites, exit 97).
+
+> [!warning] 05/08 — **Verificador async quebrado por 24h. Commit `2b025b0` deixou call sites orfaos.**
+> Noturno rodou normal (103 submit, 9 criticos). Verificador async executou 4 vezes e morreu nas 4 apos OAuth com `CommandNotFoundException` — `Get-VixModeloEnvInfo` e `-ModeloFixadoNaChamada` tinham sido removidos das libs sem atualizar `run_vixradar_verificacao_async.ps1`. Nenhum log de erro porque PowerShell 5.1 no Task Scheduler nao reporta excecoes nao-tratadas como saida visivel. Fila acumulou 23 eventos. Health so acusou na madrugada de 06/08.
+
+> [!warning] 04/08 — **Guarda ambiental bloqueou verificador async (falso-positivo).**
+> `ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro` no ambiente do processo, injetado pelo runtime do Claude Code via `settings.json`. A variavel nao afeta `claude -p` (que recebe `--model` explicito), mas `Test-VixClaudeAmbienteLimpo` nao sabia distinguir. 3 execucoes cairam com `exit 6`. Commits `b60d21c` e `2b025b0` (05/08 02:13) corrigiram: `Set-VixClaudeAuthEnv` passou a limpar vars de modelo do processo, `Test-VixClaudeAmbienteLimpo` deixou de inspecionar `settings.json.model`. Mas `2b025b0` introduziu o bug que derrubou 05/08.
 
 > [!success] 02/08 19h10 — **Sistema totalmente operacional. Noturno 02/08: 88/103 submit, 6 críticos.**
 > Noturno: submit_ok=88, skip_ok=15, submit_fail=0, silent_fail=0. 494k tokens, 44min, 7 lotes (79 haiku + 9 sonnet). 6 CRITICO: Rumo (rebaixamento S&P brAAA→brAA+ CreditWatch negativo), Cosan (rebaixamento BB-→B+), Oncoclínicas, Pão de Açúcar (GPA), Raízen, Kora Saúde. Verificador async: fila 9, aprovados 7, rejeitados 2, 255k tokens, fila zerada. Coleta-Volatilidade 5o dia consecutivo exit 0. Export-Historico segue quebrado (token sem permissao KV Storage). Health: ok:true, verificador_ok:true, v4.9.183.

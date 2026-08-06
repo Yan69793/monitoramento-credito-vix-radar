@@ -1,5 +1,5 @@
 ---
-data: 2026-08-02
+data: 2026-08-06
 tipo: pendencia
 tags: [vix-radar, backlog, acoes]
 status: ativo
@@ -11,13 +11,23 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
-## Abertas (02/08 19h10 — pos-recuperacao 30/07 a 02/08)
+## Abertas (06/08 02h45 — pos-incidente 04-06/08)
 
 ### Status geral
 
-Sistema totalmente operacional. Fila de pendencias ZERADA. Todas as 7 pendencias (4 P2 + 1 P4 + 2 P3) resolvidas na sessao de 03/08/2026. Shadow Fable 5 encerrado com decisao de manter Sonnet. Ranking-Mensal decidido: remover (nunca executou, nao-core).
+Sistema totalmente operacional. Worker v4.9.187, `ok:true`, `verificador_ok:true`. Incidente de 04-06/08 encerrado: fila drenada (23 eventos), 2 guardas estruturais novas (preflight ROUTINE_API_KEY + Assert-VixLibFunctions).
 
-> [!info] Este bloco de status ficou desatualizado em 04/08. Ver os dois P0 abaixo.
+### P0 — ENCERRADO 06/08: verificador async quebrado por call sites orfaos
+
+**Origem:** Commits `b60d21c` e `2b025b0` (05/08) removeram `Get-VixModeloEnvInfo` e `-ModeloFixadoNaChamada` sem atualizar `run_vixradar_verificacao_async.ps1`. Script quebrou silenciosamente por ~24h.
+
+**Correcao:** `c4a498a`/`06cf4b7` removeu as chamadas orfas e adicionou preflight de ROUTINE_API_KEY. `3e7cbc6`/`250e909` adicionou `Assert-VixLibFunctions` nos 3 scripts de rotina — se uma funcao for removida da lib sem atualizar call sites, o script aborta com `exit 97` em vez de morrer no meio de um lote.
+
+**Validado 06/08 02:15:** Fila zerada (23 eventos, 14 aprovados, 9 rejeitados, 785k tokens). Health `ok:true`, `verificador_ok:true`.
+
+### P0 — ENCERRADO 06/08: guarda ambiental bloqueando verificador async
+
+**Origem:** `ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro` no ambiente do processo (injetado pelo runtime Claude Code). Resolvido com `Set-VixClaudeAuthEnv` limpando as vars antes do check, e `Test-VixClaudeAmbienteLimpo` deixando de inspecionar `settings.json.model` (campo do REPL, nao do `claude -p`).
 
 ### P0 — AGUARDANDO DEPLOY: painel admin morto em producao desde 03/08 (corrigido no repo, nao publicado)
 
