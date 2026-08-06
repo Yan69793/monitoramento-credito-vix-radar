@@ -8690,6 +8690,11 @@ async function montarPlanoRotina(env2222, opts) {
       if (setor === "Financeiro") {
         tier = "FULL";
         motivos.push("setor_financeiro_full");
+      // v4.9.189 (2026-08-06): emissores audit forcado — cobertura FULL obrigatoria independente de EWS.
+      // Unidas: upgrade nao detectado em LIGHT (1 busca), forcado FULL para cobertura minima 2+ buscas.
+      } else if (emp === "Unidas") {
+        tier = "FULL";
+        motivos.push("audit_forcado_full");
       } else if (ews.score >= ROTINA_EWS_FULL || horasStale > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
         tier = "FULL";
         if (ews.score >= ROTINA_EWS_FULL) motivos.push("ews_alto");

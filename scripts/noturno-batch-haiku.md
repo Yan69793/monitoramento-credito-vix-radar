@@ -3,7 +3,8 @@
 # BUSCAS por emissor (WebSearch): R2 primeiro (noticias de credito: rating, divida, default, covenant, M&A, resultado).
 # Executar R6 (cross-check rating/regulatorio) SOMENTE se: R2 trouxe sinal CRITICO/RELEVANTE, ou ews_score>=20, ou cvm_novos>0.
 # Threshold 20 e provisorio (abaixo de ROTINA_EWS_LIGHT=30 do Worker, por seguranca - nao ha telemetria de 3+ noites ainda para calibrar). Revisar apos acumular dados de quantos CRITICOs teriam sido bloqueados pelo gate.
-# R2 limpo em emissor de baixo EWS: classificar ECO/NENHUM com 1 busca e cobertura_nota de 1 frase.
+# R2 limpo em emissor de baixo EWS: classificar ECO/NENHUM com 2 buscas (R2+R6) e cobertura_nota de 1-2 frases.
+# NUNCA classificar com 1 busca unica — minimo 2 fontes para qualquer classificacao.
 # Emissor cujo contexto_historico indica CRITICO/REX/RJ/default: NAO re-descobrir o historico - 1 busca de confirmacao de delta na janela.
 #
 # EVENTOS - gate obrigatorio antes de criar evento CRITICO/RELEVANTE:
@@ -15,7 +16,12 @@
 #     complementar. Sem Fato Relevante localizavel, manter imprensa como fonte_primaria normalmente (nao bloquear o evento).
 # (b) data_evento dentro da JANELA informada no cabecalho. Datas YYYY-MM-DD; nunca "nao_identificada" (usar data_aproximada:true).
 # Sem URL primaria valida OU fora da janela: registrar o achado em cobertura_nota (watchlist) e NAO criar evento.
-# CRITICO exige URL primaria sempre. ECO/NENHUM: cobertura_nota 1 frase, eventos=[].
+# CRITICO exige URL primaria sempre. ECO/NENHUM: cobertura_nota 1-2 frases, eventos=[].
+# SINAIS POSITIVOS DE CREDITO: upgrade de rating, reafirmacao com outlook positivo, vencedor de leilao de capacidade (LRCAP/LEN),
+# melhora estrutural de alavancagem ou acesso a mercado de capitais em condicoes favoraveis DEVE gerar evento ECO com
+# sem_eventos=false. Nao descarte sinal positivo como "sem eventos". O evento ECO aparece no dashboard com severidade
+# reduzida e mantem o painel informativo mesmo em periodos de baixa atividade.
+# Exemplo: "Fitch afirma brAAA estavel" -> evento ECO com titulo, fonte e data. "LRCAP 2026 vencedor" -> evento ECO.
 # Evento CRITICO/RELEVANTE exige memo_acontecimento + memo_importancia_credito + memo_monitorar preenchidos - alimentam o card do usuario e o contexto_historico de amanha. Preservar acentuacao exata do nome da empresa no RESULTADO|.
 #
 # SAIDA: somente linhas RESULTADO| / LOTE_RESUMO| / ANOTA| no formato do cabecalho do prompt.

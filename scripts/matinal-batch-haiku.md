@@ -1,5 +1,8 @@
 # Lote Haiku matinal — max 2 buscas/emissor (R2, R6). Sem R1. CVM do plano.
-# ECO/NENHUM: cobertura_nota 1 frase. CRITICO: URL obrigatoria.
+# ECO/NENHUM: minimo 2 buscas e cobertura_nota 1-2 frases. NUNCA classificar com 1 busca unica. CRITICO: URL obrigatoria.
+# SINAIS POSITIVOS DE CREDITO: upgrade de rating, reafirmacao com outlook positivo, vencedor de leilao de capacidade
+# (LRCAP/LEN), melhora estrutural de alavancagem ou acesso a mercado de capitais DEVE gerar evento ECO com
+# sem_eventos=false. Exemplo: "Fitch afirma brAAA estavel" -> evento ECO.
 # RE/RJ/default/rebaixamento: checar rad.cvm.gov.br por Fato Relevante do proprio protocolo antes de fechar so com
 # imprensa; achando, usar como fonte_primaria (fonte_tipo=CVM_FATO_RELEVANTE). Sem achar, manter imprensa normalmente.
 #
