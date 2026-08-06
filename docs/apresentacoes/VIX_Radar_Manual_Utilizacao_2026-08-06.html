@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIX Radar — Manual de Utilização | Szuchmacher Consultoria</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════
+   VIX RADAR — MANUAL DE UTILIZAÇÃO
+   Estetica: Editorial Financeira / Dark Luxury
+   Agosto 2026 · consistente com a apresentacao institucional
+   ═══════════════════════════════════════════════════════ */
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:        #0A0F1A;
+  --bg-card:   #0E1525;
+  --bg-subtle: #111B2E;
+  --gold:      #C4985A;
+  --gold-dim:  #A07840;
+  --copper:    #B87333;
+  --text:      #E0DAD0;
+  --text-dim:  #8A9AAA;
+  --text-mute: #4A5A6A;
+  --border:    #1A2A3E;
+  --red:       #E85454;
+  --amber:     #F5A623;
+  --green:     #34D399;
+  --blue:      #5B8DEF;
+  --serif:     'Playfair Display', Georgia, serif;
+  --sans:      'DM Sans', -apple-system, sans-serif;
+  --mono:      'JetBrains Mono', monospace;
+}
+
+html { scroll-behavior: smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+
+/* Grain overlay, igual a apresentacao institucional */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 999; pointer-events: none; opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+.shell { display: flex; max-width: 1280px; margin: 0 auto; }
+
+/* ── TOC lateral fixa ───────────────────────────────── */
+.toc {
+  position: sticky; top: 0; align-self: flex-start;
+  width: 260px; flex-shrink: 0; height: 100vh; overflow-y: auto;
+  padding: 40px 20px 40px 32px; border-right: 1px solid var(--border);
+}
+.toc-brand { font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: #F0EBE0; }
+.toc-brand-sub { font-family: var(--mono); font-size: 0.65rem; color: var(--gold); letter-spacing: 0.15em; text-transform: uppercase; margin-top: 6px; }
+.toc-gold-line { width: 40px; height: 2px; background: var(--gold); margin: 18px 0 24px; }
+.toc-list { list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.toc-list a {
+  display: block; padding: 7px 10px; margin: 0 -10px; border-radius: 3px;
+  font-size: 0.8rem; color: var(--text-dim); text-decoration: none; transition: all 0.2s;
+  border-left: 2px solid transparent;
+}
+.toc-list a:hover { color: var(--gold); background: rgba(196,152,90,0.06); border-left-color: var(--gold); }
+.toc-num { font-family: var(--mono); color: var(--text-mute); margin-right: 8px; font-size: 0.72rem; }
+.toc-foot { margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--border); font-family: var(--mono); font-size: 0.65rem; color: var(--text-mute); line-height: 1.8; }
+
+/* ── Conteudo ───────────────────────────────────────── */
+.content { flex: 1; min-width: 0; padding: 56px 64px 100px; }
+
+.cover { padding-bottom: 48px; margin-bottom: 48px; border-bottom: 1px solid var(--border); }
+.cover-label { font-family: var(--mono); font-size: 0.72rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); }
+.cover-title { font-family: var(--serif); font-size: clamp(2.2rem, 4.5vw, 3.4rem); font-weight: 700; color: #F0EBE0; line-height: 1.05; margin: 16px 0 12px; }
+.cover-sub { font-family: var(--sans); font-size: 1rem; color: var(--text-dim); font-weight: 300; max-width: 640px; }
+.cover-tags { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 24px; }
+.tag {
+  display: inline-block; padding: 4px 14px; border: 1px solid var(--border);
+  border-radius: 2px; font-family: var(--mono); font-size: 0.7rem;
+  color: var(--text-dim); letter-spacing: 0.05em;
+}
+
+section { margin-bottom: 56px; scroll-margin-top: 24px; }
+.sec-num { font-family: var(--mono); font-size: 0.72rem; color: var(--gold); letter-spacing: 0.15em; }
+h2 { font-family: var(--serif); font-size: 1.7rem; font-weight: 600; color: #EFEAD8; margin: 8px 0 6px; }
+h3 { font-family: var(--sans); font-size: 0.95rem; font-weight: 600; color: var(--gold); margin: 22px 0 10px; letter-spacing: 0.02em; }
+.gold-line { width: 48px; height: 2px; background: linear-gradient(90deg, var(--gold), var(--gold-dim)); margin: 14px 0 20px; }
+p { font-size: 0.92rem; color: var(--text); max-width: 760px; margin-bottom: 12px; }
+p.dim { color: var(--text-dim); }
+strong { font-weight: 600; color: #EFEAD8; }
+
+.card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 5px; padding: 20px 24px; margin: 14px 0;
+}
+.card-title { font-family: var(--mono); font-size: 0.7rem; color: var(--gold); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 8px; }
+
+.steps { display: flex; flex-direction: column; gap: 0; margin: 18px 0; max-width: 720px; }
+.step { display: flex; gap: 18px; padding: 16px 0; border-top: 1px solid var(--border); }
+.step:first-child { border-top: none; }
+.step-n {
+  font-family: var(--serif); font-size: 1.3rem; font-weight: 700; color: var(--gold);
+  min-width: 32px;
+}
+.step-body b { display: block; color: #EFEAD8; font-size: 0.9rem; margin-bottom: 3px; }
+.step-body span { color: var(--text-dim); font-size: 0.85rem; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; max-width: 900px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; max-width: 900px; }
+@media (max-width: 900px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+
+.event-row { display: flex; align-items: center; gap: 18px; padding: 14px 20px; margin: 8px 0; max-width: 800px; }
+.event-tag { font-family: var(--mono); font-weight: 600; font-size: 0.8rem; white-space: nowrap; min-width: 90px; }
+.event-desc { color: var(--text-dim); font-size: 0.82rem; }
+.event-meta { font-family: var(--mono); font-size: 0.65rem; color: var(--text-mute); white-space: nowrap; margin-left: auto; }
+
+.gauge { display: flex; height: 10px; border-radius: 5px; overflow: hidden; max-width: 500px; margin-top: 10px; }
+.gauge-green { flex: 39; background: var(--green); }
+.gauge-amber { flex: 30; background: var(--amber); }
+.gauge-red   { flex: 31; background: var(--red); }
+.gauge-labels { display: flex; justify-content: space-between; max-width: 500px; font-size: 0.7rem; margin-top: 6px; color: var(--text-dim); }
+
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+table { width: 100%; max-width: 800px; border-collapse: collapse; margin: 14px 0; font-size: 0.85rem; }
+th { text-align: left; font-family: var(--mono); font-size: 0.68rem; color: var(--gold); text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+td b { color: var(--text); font-weight: 500; }
+
+.callout {
+  border-left: 2px solid var(--gold); background: rgba(196,152,90,0.04);
+  padding: 14px 20px; margin: 16px 0; max-width: 720px; font-size: 0.85rem; color: var(--text-dim);
+}
+.callout.warn { border-left-color: var(--amber); }
+.callout.legal { border-left-color: var(--text-mute); font-size: 0.78rem; }
+
+.checklist { list-style: none; display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
+.checklist li { display: flex; gap: 10px; font-size: 0.85rem; color: var(--text-dim); align-items: flex-start; }
+.checklist li::before { content: "☐"; color: var(--gold); flex-shrink: 0; }
+
+footer {
+  margin-top: 60px; padding-top: 28px; border-top: 1px solid var(--border);
+  font-family: var(--mono); font-size: 0.68rem; color: var(--text-mute); line-height: 1.9;
+}
+
+@media (max-width: 860px) {
+  .toc { display: none; }
+  .content { padding: 32px 24px 80px; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <nav class="toc">
+    <div class="toc-brand">VIX Radar</div>
+    <div class="toc-brand-sub">Manual do Usuário</div>
+    <div class="toc-gold-line"></div>
+    <ul class="toc-list">
+      <li><a href="#sobre"><span class="toc-num">01</span>O que é</a></li>
+      <li><a href="#acesso"><span class="toc-num">02</span>Primeiro acesso</a></li>
+      <li><a href="#painel"><span class="toc-num">03</span>Estrutura do painel</a></li>
+      <li><a href="#emissor"><span class="toc-num">04</span>Painel do emissor</a></li>
+      <li><a href="#eventos"><span class="toc-num">05</span>Classificação de eventos</a></li>
+      <li><a href="#ews"><span class="toc-num">06</span>Early Warning Score</a></li>
+      <li><a href="#modulos"><span class="toc-num">07</span>Módulos adicionais</a></li>
+      <li><a href="#pdf"><span class="toc-num">08</span>Exportação em PDF</a></li>
+      <li><a href="#config"><span class="toc-num">09</span>Configurações e alertas</a></li>
+      <li><a href="#marca"><span class="toc-num">10</span>Identidade própria</a></li>
+      <li><a href="#suporte"><span class="toc-num">11</span>Suporte</a></li>
+      <li><a href="#legal"><span class="toc-num">12</span>Avisos legais</a></li>
+    </ul>
+    <div class="toc-foot">
+      vixradar.com<br>
+      Szuchmacher Consultoria Ltda.<br>
+      Documento confidencial
+    </div>
+  </nav>
+
+  <main class="content">
+
+    <div class="cover">
+      <span class="cover-label">Documento do Usuário · Versão 2.0 · Agosto 2026</span>
+      <h1 class="cover-title">Manual de Utilização</h1>
+      <p class="cover-sub">Guia prático para acessar, navegar e extrair valor do VIX Radar no dia a dia da mesa de crédito. Substitui integralmente a versão 1.0 (abril de 2026), anterior ao redesign da plataforma.</p>
+      <div class="cover-tags">
+        <span class="tag">vixradar.com</span>
+        <span class="tag">103 emissores</span>
+        <span class="tag">Worker v4.9.188</span>
+        <span class="tag">Frontend v202.2</span>
+      </div>
+    </div>
+
+    <section id="sobre">
+      <span class="sec-num">01 · VISÃO GERAL</span>
+      <h2>O que é o VIX Radar</h2>
+      <div class="gold-line"></div>
+      <p>O VIX Radar é uma plataforma de monitoramento contínuo de <strong>103 emissores de renda fixa</strong> no mercado brasileiro, distribuídos em 13 setores. Ela combina classificação de eventos por inteligência artificial, com verificação adversarial de um segundo modelo independente, dados quantitativos de mercado e fontes públicas para identificar, classificar e alertar sobre eventos que possam impactar a qualidade de crédito dos emissores acompanhados.</p>
+      <p class="dim">O ciclo é automático: duas varreduras diárias (10h e 18h BRT) mantêm o painel atualizado sem qualquer ação do usuário.</p>
+      <h3>Fontes consultadas</h3>
+      <p class="dim">CVM RAD e ANBIMA Data (fontes primárias), B3, Moody's Local e Austin Rating (fontes secundárias), Valor Econômico, InfoMoney e Brazil Journal (imprensa financeira), além de S&P e Fitch para rating.</p>
+    </section>
+
+    <section id="acesso">
+      <span class="sec-num">02 · ONBOARDING</span>
+      <h2>Primeiro acesso</h2>
+      <div class="gold-line"></div>
+      <div class="steps">
+        <div class="step">
+          <div class="step-n">1</div>
+          <div class="step-body"><b>Acesse vixradar.com</b><span>A tela inicial mostra o campo de login e o link "Ainda não tem acesso? Solicite aqui".</span></div>
+        </div>
+        <div class="step">
+          <div class="step-n">2</div>
+          <div class="step-body"><b>Solicite acesso</b><span>Informe nome, e-mail corporativo, empresa e senha. A solicitação fica pendente até aprovação do administrador.</span></div>
+        </div>
+        <div class="step">
+          <div class="step-n">3</div>
+          <div class="step-body"><b>Aguarde a aprovação</b><span>Após aprovação, você recebe confirmação por e-mail e já pode acessar com as credenciais cadastradas.</span></div>
+        </div>
+        <div class="step">
+          <div class="step-n">4</div>
+          <div class="step-body"><b>Faça login</b><span>E-mail e senha na tela "Acessar Sistema". A sessão é renovada automaticamente; após inatividade prolongada, um novo login é exigido. "Esqueceu sua senha?" abre o fluxo de recuperação.</span></div>
+        </div>
+        <div class="step">
+          <div class="step-n">5</div>
+          <div class="step-body"><b>Guia rápido</b><span>No primeiro login, um tour de três telas apresenta o painel, os alertas e as anomalias. Pode ser pulado e reaberto a qualquer momento em "Mais ações → Como usar?".</span></div>
+        </div>
+      </div>
+      <div class="callout">Requisitos: navegador atualizado (Chrome, Edge, Safari ou Firefox) e conexão com a internet. Não é necessária instalação nem integração de TI.</div>
+    </section>
+
+    <section id="painel">
+      <span class="sec-num">03 · NAVEGAÇÃO</span>
+      <h2>Estrutura do painel</h2>
+      <div class="gold-line"></div>
+      <p>O painel é dividido em duas áreas: a <strong>barra lateral</strong> à esquerda lista os 103 emissores monitorados, e o <strong>painel de detalhes</strong> à direita exibe as informações do emissor selecionado.</p>
+      <h3>Barra lateral</h3>
+      <p class="dim">Busca rápida por nome (atalho <strong>Ctrl+K</strong>). Cada emissor exibe um indicador visual do alerta mais relevante e, quando aplicável, um badge triangular de anomalia de mercado.</p>
+      <div class="grid3">
+        <div class="card"><span class="dot" style="background:var(--red);"></span>&nbsp; <b style="color:var(--text);">Vermelho</b><p class="dim" style="margin:4px 0 0;font-size:0.78rem;">Evento crítico ativo, verificado adversarialmente</p></div>
+        <div class="card"><span class="dot" style="background:var(--amber);"></span>&nbsp; <b style="color:var(--text);">Amarelo</b><p class="dim" style="margin:4px 0 0;font-size:0.78rem;">Evento relevante ativo</p></div>
+        <div class="card"><span class="dot" style="background:var(--green);"></span>&nbsp; <b style="color:var(--text);">Verde</b><p class="dim" style="margin:4px 0 0;font-size:0.78rem;">Sem eventos ativos no período</p></div>
+      </div>
+      <h3>Filtros do painel de eventos</h3>
+      <p class="dim">No topo, quatro filtros combináveis: <strong>Janela</strong> (7, 30 ou 90 dias), <strong>Severidade</strong>, <strong>Tipo</strong> (idiossincrático e/ou setorial) e <strong>Origem</strong>. O contador de Early Warning Score mostra quantos emissores têm sinal ativo no filtro corrente.</p>
+    </section>
+
+    <section id="emissor">
+      <span class="sec-num">04 · DRILL-DOWN</span>
+      <h2>Painel do emissor</h2>
+      <div class="gold-line"></div>
+      <p>Ao selecionar um emissor na barra lateral, o painel de detalhes abre em cinco abas.</p>
+      <table>
+        <tr><th>Aba</th><th>O que mostra</th></tr>
+        <tr><td><b>Eventos</b></td><td>Eventos classificados pela IA, com fonte, data e veredicto da verificação adversarial.</td></tr>
+        <tr><td><b>Rodadas de busca</b></td><td>Transparência do processo: o que a IA pesquisou naquele ciclo antes de classificar.</td></tr>
+        <tr><td><b>Alertas de mercado</b></td><td>Anomalias quantitativas — spread, volume ou liquidez fora do padrão do emissor ou do setor.</td></tr>
+        <tr><td><b>Comentários</b></td><td>Espaço colaborativo da mesa. Audit trail informal, visível para todos os analistas com acesso.</td></tr>
+        <tr><td><b>Arquivo</b></td><td>Eventos que saíram da janela ativa, preservados para consulta do histórico de crédito do emissor.</td></tr>
+      </table>
+      <p class="dim">É possível marcar um emissor como <strong>favorito</strong> e, em Configurações, filtrar a barra lateral para mostrar apenas os favoritos.</p>
+    </section>
+
+    <section id="eventos">
+      <span class="sec-num">05 · CLASSIFICAÇÃO</span>
+      <h2>Classificação de eventos</h2>
+      <div class="gold-line"></div>
+      <p class="dim">Cada evento passa por classificação automática em quatro níveis. Eventos CRÍTICO e uma amostra dos RELEVANTE passam por verificação adversarial antes de chegar ao painel.</p>
+      <div class="event-row card" style="border-left:3px solid var(--red);">
+        <span class="event-tag" style="color:var(--red);">CRÍTICO</span>
+        <span class="event-desc">Rebaixamento de rating, default, reestruturação, recuperação judicial, evento regulatório grave.</span>
+        <span class="event-meta">15 dias · verificado</span>
+      </div>
+      <div class="event-row card" style="border-left:3px solid var(--amber);">
+        <span class="event-tag" style="color:var(--amber);">RELEVANTE</span>
+        <span class="event-desc">Emissão relevante, resultado fora do esperado, mudança de outlook, movimento atípico de spread.</span>
+        <span class="event-meta">7 dias · amostragem</span>
+      </div>
+      <div class="event-row card" style="border-left:3px solid var(--green);">
+        <span class="event-tag" style="color:var(--green);">ECO</span>
+        <span class="event-desc">Eventos de rotina: pagamento de juros, divulgação trimestral dentro do esperado.</span>
+        <span class="event-meta">3 dias</span>
+      </div>
+      <div class="event-row card" style="border-left:3px solid var(--text-mute);">
+        <span class="event-tag" style="color:var(--text-mute);">RUÍDO</span>
+        <span class="event-desc">Notícias genéricas, comentários de mercado, republicações sem fato novo.</span>
+        <span class="event-meta">filtrado</span>
+      </div>
+    </section>
+
+    <section id="ews">
+      <span class="sec-num">06 · SCORE</span>
+      <h2>Early Warning Score (EWS)</h2>
+      <div class="gold-line"></div>
+      <p>Cada emissor recebe um score de <strong>0 a 100</strong>, recalculado a cada ciclo, a partir de três eixos: eventos de crédito classificados por IA (até 45 pontos), anomalias quantitativas de mercado (até 40 pontos) e sinais qualitativos e de contexto (até 15 pontos).</p>
+      <div class="gauge">
+        <div class="gauge-green"></div><div class="gauge-amber"></div><div class="gauge-red"></div>
+      </div>
+      <div class="gauge-labels">
+        <span style="color:var(--green);">0–39 Risco Baixo</span>
+        <span style="color:var(--amber);">40–69 Atenção</span>
+        <span style="color:var(--red);">70–100 Alerta</span>
+      </div>
+      <p class="dim" style="margin-top:16px;">O EWS ordena o ranking de emissores por probabilidade de evento de crédito relevante no horizonte próximo — é o primeiro lugar a olhar para priorizar a análise do dia.</p>
+    </section>
+
+    <section id="modulos">
+      <span class="sec-num">07 · FERRAMENTAS</span>
+      <h2>Módulos adicionais</h2>
+      <div class="gold-line"></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Briefing do dia</div>
+          <p class="dim" style="margin:0;">Panorama consolidado das últimas cinco semanas de eventos monitorados, para leitura rápida antes do comitê de crédito.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Comparar emissores</div>
+          <p class="dim" style="margin:0;">Análise lado a lado de dois a cinco emissores: eventos, EWS e anomalias de cada um na mesma tela.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Agenda de divulgação</div>
+          <p class="dim" style="margin:0;">Calendário de ITR/DFP, vencimentos e assembleias do universo monitorado, com filtro de horizonte (7, 30 ou 90 dias) e por tipo de evento.</p>
+        </div>
+        <div class="card">
+          <div class="card-title">Cole sua carteira</div>
+          <p class="dim" style="margin:0;">Cole a lista de emissores da sua carteira e veja de imediato quais já estão cobertos pelo Radar e onde há lacuna de monitoramento.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="pdf">
+      <span class="sec-num">08 · DISTRIBUIÇÃO</span>
+      <h2>Exportação em PDF</h2>
+      <div class="gold-line"></div>
+      <p class="dim">O botão <strong>Relatório PDF</strong>, no menu "Mais ações", gera um relatório consolidado com as empresas monitoradas, agrupadas por setor, incluindo score, métricas e eventos ativos. Uso típico: distribuição em comitês de crédito ou reuniões de gestão.</p>
+    </section>
+
+    <section id="config">
+      <span class="sec-num">09 · PREFERÊNCIAS</span>
+      <h2>Configurações e alertas</h2>
+      <div class="gold-line"></div>
+      <p class="dim">Em "Mais ações → Configurações":</p>
+      <ul class="checklist">
+        <li><strong>Newsletter</strong> — liga ou desliga o boletim por e-mail.</li>
+        <li><strong>Frequência</strong> — diária ou semanal.</li>
+        <li><strong>Alertas críticos</strong> — notificação assim que um evento CRÍTICO de emissor favoritado é aprovado pela verificação adversarial.</li>
+        <li><strong>Filtro de favoritos</strong> — restringe a barra lateral aos emissores marcados.</li>
+      </ul>
+      <p class="dim">O botão <strong>Sair</strong>, no canto superior, encerra a sessão imediatamente.</p>
+    </section>
+
+    <section id="marca">
+      <span class="sec-num">10 · ENTERPRISE</span>
+      <h2>Identidade própria (white-label)</h2>
+      <div class="gold-line"></div>
+      <p class="dim">Contas enterprise podem personalizar a identidade visual do relatório e da newsletter em Configurações: nome da gestora, analista responsável, credencial profissional (opcional), CNPJ (opcional), preset visual (Sóbrio Dark Navy, Classic Gold ou Minimal Slate) e logo próprio (PNG ou SVG, até 200 KB). O rodapé "Powered by VIX Radar" permanece presente em todos os presets.</p>
+    </section>
+
+    <section id="suporte">
+      <span class="sec-num">11 · AJUDA</span>
+      <h2>Suporte</h2>
+      <div class="gold-line"></div>
+      <p class="dim">Reporte quando houver: impossibilidade de acesso persistente, dados claramente incorretos ou desatualizados por mais de 48 horas, funcionalidade que deixou de operar, ou mensagem de erro que impede o uso normal.</p>
+      <div class="callout">Contato: Yan Szuchmacher · szuchmacheryan@gmail.com · vixradar.com</div>
+    </section>
+
+    <section id="legal">
+      <span class="sec-num">12 · CONFORMIDADE</span>
+      <h2>Avisos legais</h2>
+      <div class="gold-line"></div>
+      <div class="callout legal">
+        <strong style="color:var(--text-dim);">Aviso legal e limitação de responsabilidade.</strong> O VIX Radar é uma ferramenta de apoio à pesquisa e monitoramento informacional. As análises, classificações e alertas gerados são produzidos automaticamente por modelos de inteligência artificial e têm caráter estritamente informativo e auxiliar. Este sistema não constitui recomendação de investimento, análise de valores mobiliários nos termos da Instrução CVM nº 598/2018, oferta ou solicitação de compra ou venda de ativos financeiros, assessoria jurídica, contábil ou fiscal, nem rating de crédito nos termos da regulação aplicável. A acurácia, completude e atualidade dos dados não são garantidas. Toda decisão de investimento ou gestão de risco de crédito deve ser tomada com base em análise independente, verificação das fontes primárias e, quando aplicável, com o suporte de profissionais habilitados pela CVM ou BACEN.
+      </div>
+      <p class="dim" style="margin-top:16px;">VIX Radar é software registrado no INPI, de titularidade de Szuchmacher Consultoria Ltda., protegido pela Lei 9.609/98 (Lei do Software) e pela Lei 9.610/98 (Lei de Direitos Autorais). Reprodução, distribuição, engenharia reversa ou criação de obras derivadas sem autorização prévia e por escrito é proibida. Dados pessoais tratados conforme a Lei 13.709/2018 (LGPD).</p>
+    </section>
+
+    <footer>
+      VIX RADAR · MANUAL DE UTILIZAÇÃO DO USUÁRIO · VERSÃO 2.0<br>
+      © 2026 Szuchmacher Consultoria Ltda. · Documento confidencial · uso do cliente autorizado<br>
+      Substitui a versão 1.0 (abril/2026) · Worker v4.9.188 · Frontend v202.2
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>
