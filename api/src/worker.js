@@ -59,7 +59,13 @@ function _validateInput(request, env) {
   // request seguia direto para o handler. Confirmado em producao em 2026-08-04:
   // POST com "Content-Type:" removido respondia 400 do handler, nunca 415.
   // Agora a regra e por corpo: corpo declarado exige JSON explicito.
-  if (method !== "DELETE" && temCorpo && ct.indexOf("application/json") === -1) {
+  // VALIDFIX2 (2026-08-06): libera application/x-www-form-urlencoded. O Resend
+  // envia POST urlencoded no one-click unsubscribe (RFC 8058) e os formularios de
+  // aprovacao de cadastro (handleEmailActionConfirm) tambem usam formData().
+  // Ambos ficaram inacessiveis desde VALIDFIX1 (v4.9.187). Seguranca: os handlers
+  // urlencoded validam tokens/assinaturas; endpoints JSON retornam 400 legitimo
+  // para corpo urlencoded (request.json() falha no parse).
+  if (method !== "DELETE" && temCorpo && ct.indexOf("application/json") === -1 && ct.indexOf("application/x-www-form-urlencoded") === -1) {
     return _respValidacao(request, 415, "Content-Type deve ser application/json");
   }
   if (!isNaN(size) && size > MAX_BODY_SIZE) {
