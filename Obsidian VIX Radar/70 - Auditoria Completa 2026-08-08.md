@@ -162,7 +162,15 @@ segundo segredo exposto, independente da `routine_key`.
 
 ---
 
-### BAIXO 1 — Working tree suja: 96 arquivos, deploy travaria
+### BAIXO 1 — Working tree suja: 96 arquivos ~~, deploy travaria~~
+
+> **CORRIGIDO 08/08 20h — a parte do deploy estava errada.** `deploy-worker.ps1` linha ~148
+> só exige limpeza em `$trackedFiles` (`api/src/worker.js`, `api/wrangler.toml` e afins),
+> nunca na árvore inteira. Os `data/cotacoes/*.json` **não travavam deploy nenhum**. Foi
+> inferência minha a partir da frase "working tree tem que estar limpa" do CLAUDE.md, sem
+> abrir o script. O problema real era só ruído no `git status`, resolvido com `.gitignore`
+> (`dbd8311`): de 96 arquivos modificados para 24.
+
 
 `git status --porcelain` no Windows: **96 arquivos modificados**. São `CLAUDE.md` e ~95
 `data/cotacoes/series/*.json` + `meta_volatilidade.json`, gerados pela coleta de volatilidade
