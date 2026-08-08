@@ -1,0 +1,15 @@
+# Regras deliberadamente estreitas. Nao ha regra global de texto aqui de proposito:
+# `* text=auto` renormalizaria o repo inteiro num commit gigante e sem valor.
+#
+# Motivo (auditoria 2026-08-08): esta maquina tem core.autocrlf=true e o repo nao tinha
+# .gitattributes. Os hooks estavam em LF no disco por acidente de historico, nao por regra.
+# Num clone limpo, ou depois de um `git checkout` do arquivo, o git materializaria
+# scripts/hooks/pre-commit com CRLF; install-hooks.ps1 copiaria o CRLF para .git/hooks/ e o
+# sh morreria com o classico "bad interpreter: /bin/sh^M". O hook nao roda, o commit passa,
+# e os tres gates de seguranca somem sem nenhum aviso.
+#
+# E o mesmo padrao do incidente de 2026-07-27 (deploy-pages.ps1 sem BOM lido como CP1252):
+# encoding errado que nao gera erro na hora, so mais tarde e em outro lugar.
+
+scripts/hooks/*  text eol=lf
+*.sh             text eol=lf

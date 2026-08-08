@@ -24,7 +24,7 @@ Execute este POST e aguarde a resposta:
 POST https://api.vixradar.com
 Content-Type: application/json
 
-{"action":"listar_plano_rotina","routine_key":"CHAVE_ROTACIONADA_REMOVIDA","modo":"matinal","top_n":15}
+{"action":"listar_plano_rotina","routine_key":"REDACTED_ROTACIONAR","modo":"matinal","top_n":15}
 ```
 
 Se `total = 0`, encerre: `SKIP: nenhum emissor no plano.`
@@ -40,7 +40,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
+  "routine_key": "REDACTED_ROTACIONAR",
   "_matinal": true,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome exato do plano>",
@@ -86,7 +86,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
+  "routine_key": "REDACTED_ROTACIONAR",
   "_matinal": true,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",

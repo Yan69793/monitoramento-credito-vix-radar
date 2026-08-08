@@ -26,6 +26,28 @@
 #
 # Emergencia: git commit --no-verify
 
+# Gate 3, LIMITES CONHECIDOS (declarados de proposito - gate que promete o que nao entrega
+# vira `--no-verify` na primeira vez que atrapalha):
+#   - so pega valor literal de 24+ chars no alfabeto [A-Za-z0-9_-]. Segredo curto, em base64
+#     com +/=, ou quebrado em concatenacao, passa.
+#   - a deteccao de "grava segredo em arquivo" e sintatica, casa nome de variavel conhecido na
+#     mesma linha. Chave atribuida a uma variavel de outro nome e gravada depois passa. Foi
+#     exatamente o que aconteceu com a primeira versao de rotate-routine-key.ps1, que este
+#     gate aprovou enquanto ela escrevia a chave num arquivo temporario.
+#   - so olha o que esta EM STAGING. Segredo que ja esta no HEAD nunca mais passa por aqui.
+#     Para varrer o que ja foi commitado: git grep -E sobre o historico, manualmente.
+#
+# Gate 3, motivo: ROUTINEKEY-PLAIN1. Em 2026-07-24 a routine_key foi "removida do disco",
+# em 2026-07-25 o comentario dizendo isso ficou ao lado do valor literal, e em 2026-08-07 a
+# chave reapareceu em 4 arquivos vivos. A auditoria de 2026-08-08 achou TRES valores distintos
+# ainda em claro: rk.tmp (a chave ativa, 43 chars nus num arquivo), quatro submit_*.json,
+# azul_payload.json, e dois ipad-*.md COMMITADOS em 15647ef.
+# O padrao e sempre o mesmo: alguem corrige as ocorrencias que enxerga naquele dia, e a
+# proxima sessao reintroduz. Corrigir instancias nao e corrigir causa. Este gate torna a
+# reintroducao impossivel de commitar, que e a unica versao da correcao que sobrevive a
+# esquecimento. Get-RoutineKey ja le so de $env:ROUTINE_API_KEY desde v4.9.187; este gate e
+# a outra metade, do lado do git.
+
 FALHOU=0
 STAGEDIR=".git/lint-staged"
 rm -rf "$STAGEDIR"
@@ -100,6 +122,67 @@ if [ -n "$STAGED_JS" ]; then
 $STAGED_JS
 JS_EOF
     fi
+fi
+
+# ─── Gate 3: segredo literal em staging ───────────────────────────────────
+# Roda sobre TODO arquivo de texto em staging, nao so .ps1/.js: a chave vazou em .md, .json,
+# .sh e .py. Casa nome-de-segredo seguido de valor literal de 24+ chars do alfabeto
+# [A-Za-z0-9_-]. As formas corretas nao casam por construcao, porque contem caractere fora
+# desse alfabeto: $env:ROUTINE_API_KEY, ${{ secrets.X }}, "<ROUTINE_API_KEY>", $routineKey.
+STAGED_ALL=$(git diff --cached --name-only --diff-filter=ACM || true)
+
+RX_SEGREDO='(routine_key|ROUTINE_API_KEY|X-Routine-Key|ADMIN_PASSWORD|JWT_SECRET|RESEND_API_KEY|GEMINI_API_KEY|PERPLEXITY_API_KEY|ANBIMA_CLIENT_SECRET|CLOUDFLARE_API_TOKEN)["'"'"']?[[:space:]]*[:=][[:space:]]*["'"'"']?[A-Za-z0-9_-]{24,}'
+RX_ANTHROPIC='sk-ant-[A-Za-z0-9_-]{16,}'
+
+if [ -n "$STAGED_ALL" ]; then
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        # binarios e a propria pasta de backups ficam de fora
+        case "$f" in
+            *.jpg|*.jpeg|*.png|*.gif|*.pdf|*.zip|*.ico|*.woff|*.woff2) continue ;;
+        esac
+        stage_blob "$f" || continue
+        BLOB="$STAGEDIR/$f"
+
+        # Placeholder nao e segredo. Sem este filtro o gate reprovaria .dev.vars.example
+        # (JWT_SECRET=gerar-...) e api/wrangler.test.jsonc (test-...), que sao os arquivos
+        # que ENSINAM o formato. Gate que impede commit legitimo e desligado na primeira
+        # vez que atrapalha, e a partir dai nao protege mais nada.
+        # Filtra pelo VALOR, nao pelo caminho: um .example com segredo real ainda reprova.
+        RX_PLACEHOLDER='[:=][[:space:]]*["'"'"']?(test|gerar|exemplo|example|changeme|change-me|dummy|fake|placeholder|sample|seu-|sua-|your-|my-|xxx|XXX|REDACTED|TODO|COLOQUE|INSIRA)'
+
+        ACHOU=$(grep -EIn "$RX_SEGREDO|$RX_ANTHROPIC" "$BLOB" 2>/dev/null | grep -Ev "$RX_PLACEHOLDER")
+        if [ -n "$ACHOU" ]; then
+            echo ""
+            echo "GATE 3 (segredo) REPROVOU: $f"
+            echo "$ACHOU" | sed -E 's/[A-Za-z0-9_-]{24,}/<VALOR-OCULTADO>/g' | head -5
+            echo "  Segredo nao entra no repo. Leia de variavel de ambiente:"
+            echo "    PowerShell  \$env:ROUTINE_API_KEY        (Get-RoutineKey ja faz isso)"
+            echo "    Actions     \${{ secrets.ROUTINE_API_KEY }}"
+            echo "    Worker      env.ROUTINE_API_KEY  (wrangler secret put)"
+            echo "  Em documentacao, use o placeholder <ROUTINE_API_KEY>, nunca o valor."
+            FALHOU=1
+        fi
+
+        # Segunda metade: script que ESCREVE o segredo em arquivo. Foi assim que rk.tmp
+        # nasceu, e um arquivo desses nao aparece em code review porque o valor so existe
+        # em runtime. So .ps1/.sh/.py, que sao os que rodam nas rotinas.
+        case "$f" in
+            *.ps1|*.sh|*.py)
+                RX_GRAVA='(ROUTINE_API_KEY|routineKey).*(Out-File|Set-Content|Add-Content|Export-Csv|WriteAllText|[^-<]>>?[[:space:]])|(Out-File|Set-Content|Add-Content|WriteAllText)[^#]*(ROUTINE_API_KEY|routineKey)'
+                if grep -EIqn "$RX_GRAVA" "$BLOB" 2>/dev/null; then
+                    echo ""
+                    echo "GATE 3 (segredo em disco) REPROVOU: $f"
+                    echo "  O script grava a routine_key num arquivo. Foi assim que logs/routines/rk.tmp"
+                    echo "  ficou com a chave ativa nua em disco de 06/08 a 08/08/2026."
+                    echo "  Passe a chave em memoria (variavel, corpo do POST), nunca por arquivo intermediario."
+                    FALHOU=1
+                fi
+                ;;
+        esac
+    done <<ALL_EOF
+$STAGED_ALL
+ALL_EOF
 fi
 
 rm -rf "$STAGEDIR"

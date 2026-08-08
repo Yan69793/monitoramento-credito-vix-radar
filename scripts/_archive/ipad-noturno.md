@@ -15,7 +15,7 @@ ROUTINE_KEY = CHAVE_ROTACIONADA_REMOVIDA
 POST https://api.vixradar.com
 Content-Type: application/json
 
-{"action":"listar_plano_rotina","routine_key":"CHAVE_ROTACIONADA_REMOVIDA","modo":"noturno"}
+{"action":"listar_plano_rotina","routine_key":"REDACTED_ROTACIONAR","modo":"noturno"}
 ```
 
 Confirme `total = 103`. Se diferente, anote mas continue.
@@ -31,7 +31,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
+  "routine_key": "REDACTED_ROTACIONAR",
   "_matinal": false,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",
@@ -75,7 +75,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
+  "routine_key": "REDACTED_ROTACIONAR",
   "_matinal": false,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",
@@ -120,7 +120,7 @@ Content-Type: application/json
 
 {
   "action": "receber_analise",
-  "routine_key": "CHAVE_ROTACIONADA_REMOVIDA",
+  "routine_key": "REDACTED_ROTACIONAR",
   "_matinal": false,
   "provedor": "claude-sonnet-routine",
   "empresa": "<nome>",
