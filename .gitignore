@@ -257,6 +257,16 @@ app/index.prod.html
 
 
 # cache de CSVs da CVM (grandes; regeneraveis via download)
+# Artefato regenerado pela Coleta-Volatilidade (diaria, 17h). 73 arquivos, ~6 MB, com
+# fetched_at novo a cada execucao: todo dia aparecem 96 arquivos "modificados" no git status,
+# o que esconde a mudanca real no meio do ruido. O dado e reobtenivel da fonte e a copia
+# operacional que importa vive no KV (upload_volatilidade_kv.ps1).
+# Ficam ignorados daqui para frente; o historico ja commitado permanece no git.
+# NAO travava deploy: deploy-worker.ps1 so exige limpeza em $trackedFiles (worker.js,
+# wrangler.toml e afins), nunca na arvore inteira - ver linha ~148.
+data/cotacoes/series/
+data/cotacoes/meta_volatilidade.json
+
 data/cvm/
 
 # Saidas de DryRun da reconciliacao CVM (teste local, regeneravel)

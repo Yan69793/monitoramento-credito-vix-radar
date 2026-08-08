@@ -36,11 +36,42 @@ param(
     [string] $WorkerName = 'radar-credito-api',
     [string] $Repo       = 'Yan69793/monitoramento-credito-vix-radar',
     [string] $ApiUrl     = 'https://api.vixradar.com',
-    [int]    $TamanhoChave = 43
+    [int]    $TamanhoChave = 43,
+
+    # Caminho alternativo para quando o token do gh nao tem escopo de Secrets.
+    # Voce define a chave nova na interface web do GitHub (Settings > Secrets and variables >
+    # Actions > ROUTINE_API_KEY), copia o mesmo valor para ca, e o script cuida do Worker e do
+    # local. Os tres destinos continuam coerentes; so o primeiro passo sai da automacao.
+    [switch] $PularGitHub,
+    [string] $Chave
 )
 
 $ErrorActionPreference = 'Continue'   # nunca 'Stop': regra global do CLAUDE.md
 $ApiDir = Join-Path $PSScriptRoot '..\api'
+
+# Env vars do escopo User nao chegam a processo filho iniciado antes delas existirem, e
+# nenhuma destas esta no escopo Machine (auditoria 2026-08-08). Hidratar aqui e nao confiar
+# na heranca: foi assim que a primeira versao deste script concluiu "gh nao autenticado"
+# quando o gh estava perfeitamente autenticado no terminal do operador.
+#
+# INCIDENTE WHATIFLEAK1 (2026-08-08, corrigido nesta linha): a versao anterior usava
+# `Set-Item ('env:' + $nome) -Value $v`. Set-Item e cmdlet, e [CmdletBinding(SupportsShouldProcess)]
+# propaga -WhatIf para TODO cmdlet do script. Resultado: com -WhatIf o PowerShell imprimia
+#   What if: Performing the operation "Set Item" on target "Item: GH_TOKEN Value: <valor real>"
+# para os tres segredos, em texto puro, no terminal. O script escrito para tirar a chave de
+# circulacao a exibia inteira - e justamente no modo -WhatIf, que e o que se manda rodar
+# primeiro por ser o "seguro". A hidratacao tambem nao acontecia de fato, entao o portao 1
+# abortava com "gh nao autenticado" mesmo com o gh autenticado.
+#
+# [Environment]::SetEnvironmentVariable e metodo .NET, nao cmdlet: nao passa por ShouldProcess,
+# nao imprime nada, e executa igual com ou sem -WhatIf. Que e o comportamento correto aqui,
+# porque hidratar variavel de ambiente do proprio processo nao altera estado nenhum do sistema.
+foreach ($nome in @('GH_TOKEN', 'CLOUDFLARE_API_TOKEN', 'ROUTINE_API_KEY')) {
+    if (-not [Environment]::GetEnvironmentVariable($nome, 'Process')) {
+        $v = [Environment]::GetEnvironmentVariable($nome, 'User')
+        if ($v) { [Environment]::SetEnvironmentVariable($nome, $v, 'Process') }
+    }
+}
 
 function Escrever($msg, $cor) {
     if (-not $cor) { $cor = 'Gray' }
@@ -56,16 +87,34 @@ function Abortar($msg) {
 # Todos antes de tocar em qualquer coisa. Um portao que roda no meio da rotacao
 # e pior que portao nenhum: aborta com o sistema em estado misto.
 
-Escrever 'Portao 1/4: gh CLI autenticado' 'Cyan'
-$null = & gh auth status 2>&1
-if ($LASTEXITCODE -ne 0) {
-    Abortar 'gh nao autenticado. Rode: gh auth login. Sem isso o secret do GitHub Actions fica com a chave velha e o scan-emergencia (23:30 UTC) quebra silencioso.'
-}
+if ($PularGitHub) {
+    if (-not $Chave) {
+        Abortar '-PularGitHub exige -Chave com o MESMO valor que voce ja definiu no GitHub. Sem isso os destinos divergem e toda rotina da 403.'
+    }
+    Escrever 'Portoes 1-2/4: PULADOS (-PularGitHub). Voce assumiu o passo do GitHub Actions.' 'Yellow'
+    Escrever '  Confira depois: Settings > Secrets and variables > Actions > ROUTINE_API_KEY' 'Yellow'
+} else {
+    Escrever 'Portao 1/4: gh CLI autenticado' 'Cyan'
+    $null = & gh auth status 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        Abortar 'gh nao autenticado. Rode `gh auth login`, ou defina GH_TOKEN. Sem o secret do GitHub o scan-emergencia (23:30 UTC) quebra silencioso.'
+    }
 
-Escrever 'Portao 2/4: secret ROUTINE_API_KEY existe no GitHub' 'Cyan'
-$secretsGh = & gh secret list --repo $Repo 2>&1 | Out-String
-if ($secretsGh -notmatch 'ROUTINE_API_KEY') {
-    Abortar ('ROUTINE_API_KEY nao encontrada nos secrets de ' + $Repo + '. Confirme o nome antes de prosseguir.')
+    # Autenticado nao e o mesmo que autorizado. Um fine-grained PAT loga sem problema e mesmo
+    # assim devolve 403 em /actions/secrets se a permissao Secrets nao estiver marcada - foi o
+    # que aconteceu em 08/08/2026. Distinguir os dois casos aqui evita mandar o operador
+    # refazer `gh auth login`, que nao resolveria nada.
+    Escrever 'Portao 2/4: token pode LER e ESCREVER os secrets do repo' 'Cyan'
+    $secretsGh = & gh secret list --repo $Repo 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) {
+        if ($secretsGh -match '403|not accessible') {
+            Abortar ("token autenticado mas SEM permissao de Secrets em " + $Repo + ". Duas saidas: (a) dar 'Secrets: Read and write' ao fine-grained PAT em github.com/settings/personal-access-tokens; (b) definir o secret pela web e rodar de novo com -PularGitHub -Chave <valor>.")
+        }
+        Abortar ('gh secret list falhou em ' + $Repo + ': ' + ($secretsGh.Trim() -split "`n")[0])
+    }
+    if ($secretsGh -notmatch 'ROUTINE_API_KEY') {
+        Abortar ('ROUTINE_API_KEY nao encontrada nos secrets de ' + $Repo + '. Confirme o nome antes de prosseguir.')
+    }
 }
 
 Escrever 'Portao 3/4: wrangler enxerga o Worker' 'Cyan'
@@ -95,14 +144,21 @@ Escrever ('  producao ok, versao ' + $health.versao) 'Green'
 # RNGCryptoServiceProvider e nao Get-Random: Get-Random usa PRNG nao criptografico.
 # Alfabeto sem +/= para a chave passar limpa por JSON, header e linha de comando.
 
-$alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
-$bytes = New-Object 'System.Byte[]' $TamanhoChave
-$rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
-$rng.GetBytes($bytes)
-$rng.Dispose()
-$sb = New-Object System.Text.StringBuilder
-foreach ($b in $bytes) { $null = $sb.Append($alfabeto[$b % $alfabeto.Length]) }
-$novaChave = $sb.ToString()
+if ($Chave) {
+    if ($Chave.Length -lt 24) { Abortar 'chave fornecida tem menos de 24 caracteres. Curta demais.' }
+    if ($Chave -notmatch '^[A-Za-z0-9_-]+$') { Abortar 'chave fornecida tem caractere fora de [A-Za-z0-9_-]. Isso quebra em JSON, header ou linha de comando.' }
+    $novaChave = $Chave
+    Escrever ('usando a chave fornecida por -Chave (' + $novaChave.Length + ' chars)') 'Yellow'
+} else {
+    $alfabeto = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+    $bytes = New-Object 'System.Byte[]' $TamanhoChave
+    $rng = [System.Security.Cryptography.RNGCryptoServiceProvider]::new()
+    $rng.GetBytes($bytes)
+    $rng.Dispose()
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($b in $bytes) { $null = $sb.Append($alfabeto[$b % $alfabeto.Length]) }
+    $novaChave = $sb.ToString()
+}
 
 $chaveAntiga = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
 if (-not $chaveAntiga) {
@@ -149,10 +205,14 @@ function Set-SecretWorker([string] $valor) {
 }
 
 try {
-    Escrever 'Passo 1/3: GitHub Actions' 'Cyan'
-    $novaChave | & gh secret set ROUTINE_API_KEY --repo $Repo 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { Abortar 'gh secret set falhou. Nada foi alterado no Worker nem no local.' }
-    Escrever '  ok' 'Green'
+    if ($PularGitHub) {
+        Escrever 'Passo 1/3: GitHub Actions PULADO (voce ja fez pela web)' 'Yellow'
+    } else {
+        Escrever 'Passo 1/3: GitHub Actions' 'Cyan'
+        $novaChave | & gh secret set ROUTINE_API_KEY --repo $Repo 2>&1 | Out-Null
+        if ($LASTEXITCODE -ne 0) { Abortar 'gh secret set falhou. Nada foi alterado no Worker nem no local.' }
+        Escrever '  ok' 'Green'
+    }
 
     Escrever 'Passo 2/3: Worker (a partir daqui a chave velha esta morta)' 'Cyan'
     $rcWorker = Set-SecretWorker $novaChave
