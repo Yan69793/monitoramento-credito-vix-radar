@@ -24,6 +24,14 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 > Correção (commits `b95a33a` e `019504d`, v202.5): remove só a atribuição de `style.display` inline, a classe base `.admin-msg{display:none}` já cobre o estado escondido por CSS puro. Uma linha. Reverificado em produção pós-deploy com o mesmo teste, `display` computado virou `block`, elemento com `offsetHeight>0`, mensagem "Digite a senha." e a de rejeição do servidor ambas visíveis agora.
 >
 > Efeito colateral do próprio teste: as tentativas repetidas de senha falsa acionaram o rate limiter do Worker, resposta mudou de "Acesso negado" para "Muitas varreduras em pouco tempo". Rate limiter funcionando como esperado, não indica problema.
+>
+> **Desfecho, mesmo dia, 20h35.** Com a mensagem finalmente visível, a senha real do usuário apareceu como "Acesso negado." de verdade, não era mais bug de exibição. Confirmado no código do Worker (`api/src/worker.js`, `handleAdminListar` e afins) que `admin_senha` é comparado por igualdade estrita contra o secret `env.ADMIN_PASSWORD`, e que existe um segundo secret separado, `USER_PASSWORD`, os dois presentes no Worker via `wrangler secret list`, então não era caso de secret ausente. Hipótese mais provável, confusão entre os dois valores ou senha salva antiga no autofill do navegador.
+>
+> No meio da conversa o usuário colou a senha real em texto puro no chat. Recusado usar o valor, sinalizado que isso deixa a senha registrada no histórico da sessão, mesmo padrão do incidente ROUTINEKEY-PLAIN1 já catalogado neste projeto. Decisão do usuário, rotacionar `ADMIN_PASSWORD` pelo próprio terminal dele com `wrangler secret put`, valor nunca compartilhado nesta conversa nem gravado por mim em memória ou arquivo.
+>
+> Primeira tentativa de `wrangler secret put ADMIN_PASSWORD --name radar-credito-api` falhou com aviso do próprio Wrangler, "the latest version of your Worker isn't currently deployed", ligado ao sistema de Versions/Gradual Deployments do Cloudflare. Criou uma versão (`f5813bfc`) que nunca foi promovida, órfã e inofensiva, sem tráfego. Segunda tentativa, comando idêntico, teve sucesso, versão `654c9164` promovida a 100% às 20:33:44, seguida de uma entrada automática de confirmação do Cloudflare (`94e9206d`, também 100%), mesmo padrão observado em rotações de secret anteriores deste Worker em 03/08. Nada ficou em rollout parcial, confirmado em `wrangler deployments list`. Health check pós-rotação limpo. Login testado pelo usuário com a senha nova, confirmado funcionando.
+>
+> Com isso fecha a cadeia completa do dia: atalho de teclado (ADMINROUTE1), mensagem de erro invisível (ADMINMSG1), e a própria credencial. Painel admin acessível de ponta a ponta.
 
 ---
 
