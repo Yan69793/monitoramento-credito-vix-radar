@@ -27,15 +27,15 @@ export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from '
 export {
   loadHoje, calcHeart, sendReengage, getHeartHistory,
   renderHeartKpis, renderUserHealth, renderHeartbeats, injectHojeTab,
-} from './admin/modules.js';
+} from './admin/modules.js?v=202.3';
 
 export {
   API_BASE, esc, getSenha, setSenha, authHeaders,
   postAdmin, skeletonBlock, injectBaseStyles, wrapWhenReady,
-} from './admin/shared.js';
+} from './admin/shared.js?v=202.3';
 
-export { initEngajamento } from './admin/engajamento.js';
-export { initMetricas } from './admin/metricas.js';
-export { initFase3Polish } from './admin/fase3.js';
+export { initEngajamento } from './admin/engajamento.js?v=202.3';
+export { initMetricas } from './admin/metricas.js?v=202.3';
+export { initFase3Polish } from './admin/fase3.js?v=202.3';
 
 console.log('[VRAdmin] Bootstrap loaded — ES modules ready');
