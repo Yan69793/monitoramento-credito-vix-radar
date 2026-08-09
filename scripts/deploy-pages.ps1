@@ -324,6 +324,91 @@ if ($jsRuins.Count -gt 0) {
 }
 Write-Host ("Gate de sintaxe JS: {0} arquivo(s) OK" -f $jsFiles.Count) -ForegroundColor Green
 
+# --- 3.4 GATE DAS ROTAS DE ACESSO AO PAINEL ADMIN --------------------------
+# Contexto (2026-08-09): o Ctrl+Shift+A parou de abrir o painel porque o Brave registra
+# esse chord para o comando 52500 (IDC_TAB_SEARCH) e consome a tecla antes de ela chegar
+# na pagina. O site estava intacto. A licao nao e sobre o Brave: as entradas do painel sao
+# todas discretas, entao perder uma nao quebra nada visivel e o deploy passa verde.
+#
+# Atalho de teclado e rota de NAVEGACAO, nunca mecanismo de seguranca. A metade (b) existe
+# para impedir que ele vire rota de ACESSO. Isto e protecao contra regressao estrutural,
+# nao teste de autorizacao: a autoridade final e do Worker, que valida a senha do lado dele
+# e nao confia em nada que o frontend afirme.
+$idxHtml    = Get-Content (Join-Path $zipDir "index.html") -Raw
+$sharedPath = Join-Path $zipDir "app\js\admin\shared.js"
+if (-not (Test-Path $sharedPath)) { Fail "Gate 3.4: app/js/admin/shared.js ausente no bundle." }
+$sharedJs = Get-Content $sharedPath -Raw
+$falhas34 = @()
+
+# (a1) O handler de atalho existe e ainda faz o toggle do overlay. Ancora no par
+# fecharAdmin/abrirAdmin porque nome de variavel e mangled e nao serve de ancora. O
+# (?!addEventListener) impede que a captura vaze para o listener seguinte.
+$mAtalho = [regex]::Match($idxHtml,
+  'addEventListener\("keydown",\s*function\s*\(e\)\s*\{(?<corpo>(?:(?!addEventListener)[\s\S]){0,800}?)\w+\.classList\.contains\("vis"\)\s*\?\s*fecharAdmin\(\)\s*:\s*abrirAdmin\(\)')
+$corpoAtalho = ""
+if (-not $mAtalho.Success) {
+  $falhas34 += "  (a) index.html: nao achei o listener de keydown que faz o toggle do painel admin"
+} else {
+  $corpoAtalho = $mAtalho.Groups['corpo'].Value
+  if ($corpoAtalho -notmatch 'shiftKey') { $falhas34 += "  (a) index.html: o handler de atalho nao reconhece shiftKey" }
+  if ($corpoAtalho -notmatch 'altKey')   { $falhas34 += "  (a) index.html: o handler de atalho nao reconhece altKey. Com um chord so, basta o navegador reservar ele para o painel ficar inalcancavel por teclado." }
+}
+
+# (a2) O modulo ES registra o atalho de fato, nao so define a funcao.
+if ($sharedJs -notmatch '(?m)^\s*registerAdminShortcut\(\)\s*;') { $falhas34 += "  (a) shared.js: registerAdminShortcut() definido mas nunca chamado" }
+if ($sharedJs -notmatch 'altKey')                                { $falhas34 += "  (a) shared.js: isAdminShortcut nao reconhece altKey" }
+
+# (a3) A rota que nenhum navegador consegue tomar: o botao em Configuracoes.
+if ($idxHtml -notmatch 'id="config-admin-entry"[\s\S]{0,600}?abrirAdmin\(\)') {
+  $falhas34 += "  (a) index.html: bloco config-admin-entry sem botao que chama abrirAdmin"
+}
+
+# (a4) Todo ?v= dos modulos ES bate com CACHE_VERSION. O gate 3.2 so olha o index.html, e
+# um import interno atrasado faz o browser baixar shared.js duas vezes, como dois modulos
+# distintos, cada um com seu estado.
+$jsDir = Join-Path $zipDir "app\js"
+if (Test-Path $jsDir) {
+  foreach ($js in @(Get-ChildItem -Path $jsDir -Recurse -Filter *.js -File)) {
+    $txt = Get-Content $js.FullName -Raw
+    foreach ($mv in [regex]::Matches($txt, '\?v=(?<v>[0-9][0-9.]*)')) {
+      if ($mv.Groups['v'].Value.TrimStart('v') -ne $verNum) {
+        $rel = $js.FullName.Substring($zipDir.Length).TrimStart('\')
+        $falhas34 += ("  (a) {0}: import com ?v={1} e CACHE_VERSION e {2}" -f $rel, $mv.Groups['v'].Value, $ver)
+      }
+    }
+  }
+}
+
+# (b1) abrirAdmin continua ramificando para o portao de senha quando nao ha sessao.
+if ($idxHtml -notmatch 'abrirAdmin\s*=\s*function\s*\(\)\s*\{[\s\S]{0,600}?admin-auth-gate') {
+  $falhas34 += "  (b) index.html: abrirAdmin nao ramifica mais para admin-auth-gate. O atalho passaria direto para o painel."
+}
+
+# (b2) A autenticacao continua sendo decidida pelo servidor.
+$mAuth = [regex]::Match($idxHtml, 'adminAutenticar\s*=\s*async\s*function\s*\(\)\s*\{(?<corpo>[\s\S]{0,1500}?)\}\s*,\s*window\.')
+if (-not $mAuth.Success) {
+  $falhas34 += "  (b) index.html: nao achei adminAutenticar"
+} else {
+  $corpoAuth = $mAuth.Groups['corpo'].Value
+  if ($corpoAuth -notmatch 'admin_listar') { $falhas34 += "  (b) adminAutenticar nao chama mais action:admin_listar no servidor" }
+  if ($corpoAuth -notmatch 'admin_senha')  { $falhas34 += "  (b) adminAutenticar nao envia mais admin_senha" }
+  if ($corpoAuth -notmatch '\.ok')         { $falhas34 += "  (b) adminAutenticar nao checa mais o ok da resposta do servidor" }
+}
+
+# (b3) O handler de atalho so navega: nao manipula senha nem revela o painel por conta propria.
+if ($corpoAtalho) {
+  foreach ($proibido in @('admin_senha', 'admin_listar', 'admin-painel')) {
+    if ($corpoAtalho -match [regex]::Escape($proibido)) {
+      $falhas34 += ("  (b) o handler de atalho toca em '{0}'. Atalho e navegacao, autorizacao e do servidor." -f $proibido)
+    }
+  }
+}
+
+if ($falhas34.Count -gt 0) {
+  Fail ("GATE 3.4 (rotas de acesso ao painel admin) reprovou. NADA foi deployado:`n{0}" -f ($falhas34 -join "`n"))
+}
+Write-Host "Gate 3.4: rotas de acesso ao painel admin OK (atalho, modulo, botao, ?v=, portao de senha)" -ForegroundColor Green
+
 if ($DryRun) {
   Write-Host "`nDRY-RUN: sync feito e todos os gates passaram. NADA foi deployado, NADA foi commitado." -ForegroundColor Cyan
   Write-Host "Rode sem -DryRun para publicar." -ForegroundColor Cyan
