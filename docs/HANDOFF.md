@@ -1,4 +1,11 @@
 # PROMPT DE HANDOFF COMPLETO — RADAR DE CRÉDITO PRIVADO v4
+
+> **DESATUALIZADO desde 2026-06-14.** Conteúdo histórico preservado abaixo para registro.
+> Cita "50 empresas emissoras" — hoje são 103.
+> **Fonte atual:** [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
+
+---
+
 ## Para: Claude Code / Nova sessão de Claude
 ## Objetivo: Entender tudo que foi construído, testar exaustivamente e deixar perfeito
 

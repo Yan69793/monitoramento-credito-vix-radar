@@ -1,5 +1,11 @@
 # Workflow de Governança — Radar de Crédito Privado
 
+> **DESATUALIZADO desde 2026-06-14.** Conteúdo histórico preservado abaixo para registro.
+> Descreve o processo `/spec → /break → /plan → /execute`; os comandos referenciados (`.claude/commands/spec.md` etc.) não existem mais neste repo.
+> **Fonte atual:** [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
+
+---
+
 Sistema de controle de qualidade para garantir que toda modificação no projeto siga o processo **Spec → Break → Plan → Execute**.
 
 ---

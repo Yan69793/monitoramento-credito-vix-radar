@@ -1,5 +1,11 @@
 # ✅ DEPLOY_CHECKLIST — Radar de Crédito Privado
 
+> **DESATUALIZADO desde 2026-06-14.** Conteúdo histórico preservado abaixo para registro.
+> Descreve checklist manual para `radar-standalone-worker.js`, que não existe mais — o deploy atual é `pwsh scripts/deploy-worker.ps1` / `pwsh scripts/deploy-pages.ps1`.
+> **Fonte atual:** [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
+
+---
+
 Use este checklist **antes de cada deploy**. Não pule nenhum item.
 
 ---

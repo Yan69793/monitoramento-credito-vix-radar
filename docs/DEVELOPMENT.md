@@ -1,5 +1,11 @@
 # DEVELOPMENT — Radar de Crédito Privado
 
+> **DESATUALIZADO desde 2026-04-02.** Conteúdo histórico preservado abaixo para registro.
+> Cita `radar-standalone-worker.js` (não existe mais) e a URL antiga `radar-credito.pages.dev`.
+> **Fonte atual:** [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
+
+---
+
 Versão 2.0 | Atualizado 2026-04-02
 
 ---

@@ -1,5 +1,11 @@
 # Design System — Radar de Crédito Privado
 
+> **DESATUALIZADO desde 2026-06-14.** Conteúdo histórico preservado abaixo para registro.
+> Sem processo ativo de sincronização com o CSS atual de `app/index.html`.
+> **Fonte atual:** [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
+
+---
+
 > Extraído do CSS existente em `index.html`. Usar estes tokens em qualquer adição de UI.
 > **Regra:** nunca introduzir uma cor, componente ou padrão de layout não listado aqui sem aprovação via `/spec`.
 
