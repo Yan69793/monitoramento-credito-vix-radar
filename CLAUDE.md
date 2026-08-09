@@ -1,5 +1,12 @@
 # Protocolo Operacional — VIX Radar (hardened 2026-07-25)
 
+## Comunicação
+
+- Toda resposta neste projeto aplica a skill `/humanizer` antes de ser entregue.
+- Sem linguagem de programador no texto explicativo. Traduzir para o que aquilo significa na prática, nunca usar termo técnico como enfeite.
+- Resposta sempre bem resumida, direto ao ponto.
+- Isso não se aplica a evidência técnica exigida em outra regra deste arquivo (por exemplo a saída colada no `Portão de verificação`, comando, caminho de arquivo, valor numérico). Essas ficam literais. A regra acima é sobre a prosa ao redor, não sobre apagar prova.
+
 ## Memória canônica
 
 Vault Obsidian: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\`
@@ -78,18 +85,25 @@ vazia ou valor truncado também derruba. Some um deles, o health vai a `ok:false
 o `canonical-test` fica vermelho em até 6h e o dono recebe email. Foi assim que o
 `ADMIN_EMAIL` ficou 3 dias ausente com o painel verde.
 
-## Rotinas do Task Scheduler (fonte da verdade: `routines/README.md`)
+## Rotinas agendadas (fonte da verdade: `routines/README.md`)
 
 Estes scripts PowerShell chamam o Claude CLI localmente. Todos usam `routine_key` para
 autenticar contra o Worker. A chave nunca está versionada.
 
-| Tarefa | Frequência | Script | Escopo |
-|---|---|---|---|
-| `VIXRadar-Matinal` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
-| `VIXRadar-Noturno` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores |
-| `VIXRadar-Verificacao-Async` | Diário 10h20 BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}` |
-| `VIXRadar-Export-Historico` | Diário 20h45 BRT | — | Exporta estado |
-| `VIXRadar-Ranking-Mensal` | Dia 1, 11h30 | — | SEO mensal |
+**O agendamento está dividido em dois mecanismos, e confundi-los causa execução
+dupla.** As três primeiras rodam por sessão agendada do Claude Desktop e têm a
+task homônima do Windows Task Scheduler mantida `Disabled` de propósito, como
+guarda anti-duplicata verificada pelo próprio script (`GUARD_OK` no log). Nunca
+reabilitar essas três. O `LastTaskResult` delas está congelado desde 06/08/2026 e
+não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
+
+| Tarefa | Mecanismo | Frequência | Script | Escopo |
+|---|---|---|---|---|
+| `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
+| `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores |
+| `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário 10h20 BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}` |
+| `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |
+| `VIXRadar-Ranking-Mensal` | Task Scheduler | Dia 1, 11h30 | — | SEO mensal |
 
 A matinal usa Haiku em lotes de 6 + Sonnet para EWS≥38 em lotes de 4.
 A noturna varre os 103 emissores: Haiku lotes de 15 + Sonnet lotes de 11.
@@ -176,6 +190,7 @@ Lista parcial dos que têm correção estrutural:
 | CSRF-COOKIE1 | Auth por cookie vulnerável a CSRF | Migrado para JWT no header |
 | EMAILGET1 | Email actionable por GET | Migrado para POST com token |
 | SENTRY1 | Worker sem captura de exceção; 167 try/catch mudos | `Sentry.withSentry` no export, `sentry_ok` no `_okHealth`, gate de secret no deploy |
+| ROUTINEKEY-PLAIN1 | `routine_key` em texto puro em `SKILL.md`/`ROUTINES-CLOUD.md` das rotinas cloud (Claude Desktop). Comentário "chave removida do disco 2026-07-24" ficou ao lado do valor literal, remoção não tinha coberto esses arquivos. Achado de novo em 07/08/2026 em 4 arquivos vivos (verificacao-async, noturno, matinal, export-historico), fora dezenas de backups e transcripts históricos que preservam o valor por serem append-only. | Valor redigido nos 4 arquivos vivos em 07/08. Chave em si **não foi rotacionada**, continua válida — rotação é decisão pendente do usuário, afeta toda rotina que autentica com ela. |
 
 Se uma mudança nova toca em auth, KV, estado multi-semana ou input de usuário,
 conferir se não reabre um desses.
