@@ -11,6 +11,26 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
+> [!success] 09/08 21h18 — **LEGALCVM1+LEGALSHARE1 v202.6. Citação CVM revogada e seção de compartilhamento de dados incompleta na Política de Privacidade.**
+> **Status:** resolvido, deploy validado em produção. CNPJ segue como pendência aberta, ver final da entrada
+> **Data da Versão:** 2026-08-09
+> **Origem do Registro:** pedido do usuário para atualizar a documentação do projeto, incluindo leis, CVM e LGPD. Levantamento cobriu `app/index.html`, `api/src/worker.js`, `docs/`, o vault Obsidian inteiro e o site oficial da CVM (`conteudo.cvm.gov.br`)
+> **Condição de Obsolescência:** perde validade se a Resolução CVM 20/2021 for revogada ou substituída, ou se Twilio/Sentry saírem da stack do Worker sem a Política de Privacidade ser atualizada junto
+>
+> Pedido amplo do usuário, "atualizar a documentação, como usar, e tudo mais que for necessário de documentação de leis, CVM, LGPD". O site já tinha uma base jurídica bem mais completa do que uma auditoria rápida sugeriria, Política de Privacidade e Termos de Uso inteiros, Aviso Legal, disclaimer financeiro fixo, cookie banner, tudo embutido como modal dentro do próprio `index.html`, datado de 13 de abril. O problema não era ausência, era desatualização pontual em três pontos.
+>
+> O Aviso Legal do guia-overlay (Configurações → Sobre → Documentação) citava a Instrução CVM nº 598/2018 para justificar que o sistema não faz análise de valores mobiliários. Fui conferir direto em `conteudo.cvm.gov.br`, a própria página da CVM para essa instrução tem o título "Instrução CVM 598 (Revogada)" e o texto "REVOGADA pela Resolução 20/21". A Resolução CVM nº 20/2021 é quem rege hoje a atividade de analista de valores mobiliários, citando a própria revogação da 598 na ementa. A citação estava errada desde que foi escrita, não venceu agora.
+>
+> A Seção 5 (Compartilhamento de Dados) da Política de Privacidade só citava Anthropic e Resend.com. Dois processadores reais de dado pessoal não estavam lá. A Twilio, que dispara WhatsApp para o admin a cada cadastro novo com nome, e-mail e empresa do usuário no corpo da mensagem (`enviarWhatsAppAdmin` em `worker.js`), e o Sentry, monitoramento de erro adicionado depois de abril (SENTRY1/SENTRY-PII1), que embora bem configurado tecnicamente, sem captura de usuário, cookie, corpo de requisição ou header (`dataCollection` com tudo `false` e override de `maxRequestBodySize:"none"`), simplesmente não aparecia no texto. Acrescentei os dois parágrafos e ajustei a Seção 9 (Transferência Internacional) para ficar consistente, sem isso o próprio documento contradiria a si mesmo entre duas seções vizinhas.
+>
+> Achado à parte, não incluído nesta correção. Termos de Uso e Política de Privacidade identificam a controladora só como "Szuchmacher Consultoria Ltda.", sem CNPJ. Achei o número, 49.463.402/0001-11, em dois documentos do próprio registro no INPI dentro do repo (`docs/archived/declaracaoVeracidade_INPI.pdf` e `GRU_730_INPI_Registro_Software.pdf`) e conferi pessoalmente o PDF da declaração, o número bate. Mesmo assim, é dado sensível indo para texto público, perguntei ao usuário se podia incluir e não tive resposta nesta sessão. Optei por não inserir, fica pendente, número já localizado para confirmação rápida quando o usuário quiser.
+>
+> Correção publicada em v202.6 (commits `c0b50d9`, `d47798a`, `b87d81a`), gates de deploy verdes incluindo o 3.4 que valida as rotas de acesso ao admin, verificação em produção em dois níveis, bytes do HTML publicado e texto renderizado dentro dos modais via `abrirLgpd('privacidade')` e `toggleGuia()`. Health check limpo (`ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`).
+>
+> Junto, seis arquivos técnicos em `docs/` (`HANDOFF.md`, `ARQUITETURA.md`, `DEPLOY-CHECKLIST.md`, `workflow.md`, `design-system.md`, `DEVELOPMENT.md`) parados há semanas, alguns citando um `radar-standalone-worker.js` que não existe mais, ganharam um aviso de topo apontando para `README.md` e este vault como fonte atual, no mesmo padrão já usado em `docs/archived/CLAUDE.md`. Conteúdo antigo preservado abaixo do aviso em cada um, nada foi apagado (commit `9152779`).
+
+---
+
 > [!success] 09/08 17h23 — **ADMINMSG1 v202.5. Mensagem de erro do login admin era invisível.**
 > **Status:** resolvido, deploy validado em produção
 > **Data da Versão:** 2026-08-09
