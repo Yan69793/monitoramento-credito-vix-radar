@@ -2,11 +2,27 @@
 # Instrui o navegador a SEMPRE verificar se há versão nova antes de usar o cache.
 # Resultado: nenhum usuário precisa apertar Ctrl+F5 ou limpar cache manualmente.
 
-# ─── Headers de segurança (auditoria 2026-06-01) ──────────────────────
-# Aplicados a todos os assets. Seguros (não quebram o app inline-script).
-# CSP NÃO incluída aqui de propósito: o index.html usa scripts/estilos inline
-# pesados; uma CSP restritiva quebraria o app. CSP exige teste em staging antes
-# de entrar — ver pendência registrada no Obsidian (03 - Estado de Produção).
+# ─── JS do app (CACHEJS1 v202.3) ───
+# Sempre revalidar JS. Sem o no-cache, o Pages default max-age=14400 permite
+# que o navegador sirva modulo truncado do cache por ate 4h sem perguntar.
+# Os imports relativos dos ES modules nao passam por query param, entao
+# o ?v= no HTML nao alcanca. Unica saida e forcar o navegador a revalidar.
+# Padroes duplicados (com/sem /) como defesa contra divergencia de parser.
+/app/js/*
+  Cache-Control: no-cache, must-revalidate
+/app/js*
+  Cache-Control: no-cache, must-revalidate
+app/js/*
+  Cache-Control: no-cache, must-revalidate
+
+/admin/*
+  Cache-Control: no-cache, must-revalidate
+/admin*
+  Cache-Control: no-cache, must-revalidate
+admin/*
+  Cache-Control: no-cache, must-revalidate
+
+# ─── Headers de segurança ───
 /*
   Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
   X-Frame-Options: DENY
@@ -32,23 +48,3 @@
 /api/*
   Cache-Control: no-store, no-cache
   Pragma: no-cache
-
-# ─── JS do app (CACHEJS1, auditoria 2026-08-04) ───────────────────────
-# O default do Pages para estes arquivos era `public, max-age=14400,
-# must-revalidate`. O `must-revalidate` so age DEPOIS dos 4h, entao dentro da
-# janela o navegador serve do cache sem perguntar nada.
-#
-# Isso mordeu de verdade em 04/08: os modulos ES quebrados de MODULE-MIG1
-# ficaram cacheados no navegador, e quem carregou o site entre 03/08 e a
-# correcao continuava recebendo o JS truncado mesmo com producao ja corrigida.
-#
-# Bumpar CACHE_VERSION nao resolve este caso. O `?v=` so entra na tag do
-# index.html, e o bootstrap importa `./admin/shared.js` com caminho relativo
-# limpo, entao os sub-modulos sao cacheados por URL sem query e nenhuma versao
-# nova muda a chave deles. Revalidar sempre e a unica saida. O custo e um 304
-# por arquivo, que o ETag ja resolve.
-/app/js/*
-  Cache-Control: no-cache, must-revalidate
-
-/admin/*
-  Cache-Control: no-cache, must-revalidate

@@ -11,15 +11,17 @@
  */
 
 // Order matters: shared → modules → engajamento → metricas → fase3
-import './admin/shared.js';
-import './admin/modules.js';
-import './admin/engajamento.js';
-import './admin/metricas.js';
-import './admin/fase3.js';
+// CACHEJS1 (v202.3): query param em static import previne cache de modulo truncado.
+// Basta buscar/substituir "?v=202.3" nos .js e mudar CACHE_VERSION no index.html.
+import './admin/shared.js?v=202.3';
+import './admin/modules.js?v=202.3';
+import './admin/engajamento.js?v=202.3';
+import './admin/metricas.js?v=202.3';
+import './admin/fase3.js?v=202.3';
 
 // Also expose the API client and router for direct use
-export { api, createApiClient, fetchWithRetry, Skeleton } from './api.js';
-export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from './admin-router.js';
+export { api, createApiClient, fetchWithRetry, Skeleton } from './api.js?v=202.3';
+export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from './admin-router.js?v=202.3';
 
 // Export admin module APIs for programmatic use
 export {

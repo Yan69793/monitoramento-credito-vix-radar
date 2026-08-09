@@ -7,7 +7,7 @@
  *   initTabHoje, injectHojeTab
  */
 
-import { API_BASE, esc, getSenha, authHeaders, postAdmin } from './shared.js';
+import { API_BASE, esc, getSenha, authHeaders, postAdmin } from './shared.js?v=202.3';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 async function fetchHealth() {
