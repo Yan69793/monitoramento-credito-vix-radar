@@ -11,6 +11,22 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
+> [!success] 09/08 17h23 — **ADMINMSG1 v202.5. Mensagem de erro do login admin era invisível.**
+> **Status:** resolvido, deploy validado em produção
+> **Data da Versão:** 2026-08-09
+> **Origem do Registro:** teste ao vivo em vixradar.com com senha deliberadamente falsa, nunca a senha real do usuário. Achado durante a verificação de campo do ADMINROUTE1, ver entrada abaixo
+> **Condição de Obsolescência:** perde validade se `adminAutenticar()` sair do script inline de `app/index.html` ou se o CSS `.admin-msg` mudar de mecanismo de visibilidade
+>
+> Depois do ADMINROUTE1 (entrada abaixo) o atalho já abria o overlay com o portão de senha. O usuário digitou a senha, apertou Enter, "nada aconteceu", sem mensagem, sem o painel abrir. Reproduzi com senha de teste propositalmente errada, o Worker respondeu certo, `ok:false`, `erro:"Acesso negado."`, o backend nunca teve problema. O bug era só na tela.
+>
+> Em `adminAutenticar()`, a linha `n.className="admin-msg",n.style.display="none"` setava `display:none` inline no elemento de mensagem logo após a checagem de campo vazio, e nada nos caminhos seguintes limpava esse inline style. O CSS tem `.admin-msg.err{display:block}`, mas style inline sempre vence regra de classe sem `!important`. Toda mensagem de erro era escrita no DOM e nunca aparecia, para qualquer usuário, não só hoje. Confirmado com `getComputedStyle` e `offsetHeight` no elemento ao vivo, os dois batiam com invisível antes do fix e com visível depois.
+>
+> Correção (commits `b95a33a` e `019504d`, v202.5): remove só a atribuição de `style.display` inline, a classe base `.admin-msg{display:none}` já cobre o estado escondido por CSS puro. Uma linha. Reverificado em produção pós-deploy com o mesmo teste, `display` computado virou `block`, elemento com `offsetHeight>0`, mensagem "Digite a senha." e a de rejeição do servidor ambas visíveis agora.
+>
+> Efeito colateral do próprio teste: as tentativas repetidas de senha falsa acionaram o rate limiter do Worker, resposta mudou de "Acesso negado" para "Muitas varreduras em pouco tempo". Rate limiter funcionando como esperado, não indica problema.
+
+---
+
 > [!success] 09/08 16h27 — **ADMINROUTE1 v202.4. O Ctrl+Shift+A era o Brave, não o site.**
 > **Status:** resolvido, deploy validado em produção
 > **Data da Versão:** 2026-08-09
@@ -25,7 +41,7 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 >
 > Nota de verificação. Durante o teste em produção o navegador embutido registrou uma requisição extra de `shared.js?v=202.3`. Não vem do site. Nenhum arquivo publicado referencia 202.3 e um Chromium limpo via Playwright carrega só os 8 módulos em `?v=202.4`. É resíduo da própria sessão do painel, que tinha carregado a versão anterior antes do deploy.
 >
-> Pendência do operador: liberar o `Control+Shift+A` em `brave://settings/shortcuts`, removendo o binding da busca de abas. Sem isso o chord continua sendo do navegador e o painel abre por Ctrl+Alt+A ou pelo botão em Configurações.
+> **Atualização 09/08 17h.** Operador liberou o `Control+Shift+A` em `brave://settings/system/shortcuts` (comando "Aba pesquisar"), IDC_TAB_SEARCH, removido pela UI, sem reatribuir outro chord. Depois disso apareceu uma terceira camada disputando a mesma combinação, sem relação com o Brave nem com o site, um atalho `.lnk` do navegador Arc na Área de Trabalho (`OneDrive\Desktop\Arc.lnk`) tinha `Ctrl+Shift+A` cadastrado como tecla de atalho do Windows nas propriedades do próprio ícone, apontando para um `Arc.exe` que não existe mais em `WindowsApps`. É o mecanismo nativo do Explorer de tecla de atalho por `.lnk`, intercepta a combinação nesse nível antes mesmo dela chegar em qualquer navegador. Enquanto o Brave ainda capturava o Ctrl+Shift+A para si, essa camada ficava muda, mascarada. Assim que o Brave parou de capturar, o Windows passou a vencer a disputa e mostrar "Atalho Não Encontrado" ao apertar a combinação. Removida a tecla de atalho do `Arc.lnk` via `WScript.Shell` COM (`Hotkey=""`, `.Save()`), edição pontual só nesse campo, ícone e alvo preservados, confirmado relendo o arquivo depois de salvar. Ctrl+Shift+A confirmado funcionando de ponta a ponta pelo operador, overlay com portão de senha abrindo. Pendência fechada. Detalhe técnico e caminho de diagnóstico registrados em memória de projeto (`project_brave_sequestra_atalhos`).
 
 ---
 
