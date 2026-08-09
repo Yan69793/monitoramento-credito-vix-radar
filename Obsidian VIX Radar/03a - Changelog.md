@@ -1,5 +1,5 @@
 ---
-data: 2026-08-06
+data: 2026-08-09
 tipo: changelog
 tags: [vix-radar, changelog, incidentes, deploys]
 status: ativo
@@ -8,6 +8,31 @@ status: ativo
 # Changelog — VIX Radar
 
 Registro cronológico de incidentes, deploys e eventos de produção. Cobertura: julho-agosto 2026. Para histórico anterior: [[_Arquivo/historico-03-2026-06]].
+
+---
+
+> [!success] 09/08 16h27 — **ADMINROUTE1 v202.4. O Ctrl+Shift+A era o Brave, não o site.**
+> **Status:** resolvido, deploy validado em produção
+> **Data da Versão:** 2026-08-09
+> **Origem do Registro:** perfil Brave local (`brave.accelerators` em `User Data\Default\Preferences`), fonte do Chromium (`chrome/app/chrome_command_ids.h`, `IDC_TAB_SEARCH 52500`), teste ao vivo em vixradar.com
+> **Condição de Obsolescência:** perde validade quando o binding `Control+Shift+KeyA` sair da tabela de aceleradores do Brave, quando o painel admin deixar de morar em script inline de `app/index.html`, ou no primeiro deploy que altere `app/index.html` ou `app/js/admin/shared.js` sem passar pelo gate 3.4
+>
+> "Painel admin não abre com Ctrl+Shift+A" não tinha defeito no site. O perfil do Brave registra `Control+Shift+KeyA` para o comando 52500, `IDC_TAB_SEARCH`, e o navegador consome a tecla antes de ela chegar na página. Nenhum binding `Control+Alt` existe no mesmo perfil, por isso o Ctrl+Alt+A já funcionava. Os dois handlers do site estavam vivos, o inline do `index.html` desde o baseline de 14/06 e o do módulo `app/js/admin/shared.js` desde MODULE-MIG1, e evento sintético abria o painel nos dois chords antes de qualquer mudança.
+>
+> Mudanças (commits `aeffb9b` e `053c443`, v202.4). O handler inline passou a aceitar Ctrl/Cmd mais Shift ou Alt mais A, com guarda de `e.repeat` e `e.code`, alinhado ao `isAdminShortcut` do módulo. Antes disso o Ctrl+Alt+A só existia se o módulo ES carregasse. O bloco `config-admin-entry` de Configurações passou a mostrar os atalhos na `.config-field-value` ao lado do botão, que é a rota que navegador nenhum consegue tomar. O bump de `?v=` foi aplicado em todos os módulos ES, não só no `admin-bootstrap.js`, senão o browser baixa `shared.js` duas vezes como dois módulos distintos.
+>
+> Guarda nova: gate 3.4 do `deploy-pages.ps1`. A metade (a) confere que as rotas de acesso existem no bundle, handler com `altKey`, `registerAdminShortcut()` chamado de fato, botão em Configurações, e que todo `?v=` dos módulos bate com `CACHE_VERSION`, coisa que o gate 3.2 só fazia no `index.html`. A metade (b) confere invariantes de autorização, `abrirAdmin` ramificando para `admin-auth-gate`, `adminAutenticar` chamando `admin_listar` com `admin_senha` e checando `ok`, e o handler de atalho sem tocar em senha nem no painel. É proteção contra regressão estrutural, não teste de autorização, a autoridade final continua sendo do Worker. Prova negativa feita nas duas metades: sem o `altKey` o gate reprova com exit 1, e com `admin_senha` injetado no handler ele reprova de novo, nada deployado nos dois casos.
+>
+> Nota de verificação. Durante o teste em produção o navegador embutido registrou uma requisição extra de `shared.js?v=202.3`. Não vem do site. Nenhum arquivo publicado referencia 202.3 e um Chromium limpo via Playwright carrega só os 8 módulos em `?v=202.4`. É resíduo da própria sessão do painel, que tinha carregado a versão anterior antes do deploy.
+>
+> Pendência do operador: liberar o `Control+Shift+A` em `brave://settings/shortcuts`, removendo o binding da busca de abas. Sem isso o chord continua sendo do navegador e o painel abre por Ctrl+Alt+A ou pelo botão em Configurações.
+
+---
+
+> [!success] 09/08 08h31 — **CACHEJS1 v202.3 estava incompleto. Painel admin sem defeito real, achado era outro.**
+> Investigação de "painel admin não abre" não achou defeito reproduzível: Worker saudável, `index.html` publicado idêntico ao repo, clique abriu o painel de verdade no navegador do operador (Chrome real, sessão admin válida, `role:admin`). No meio da investigação produção trocou de v202.2 para v202.3 (deploy de outra sessão paralela, 01h43-01h45). O achado real apareceu ao reexaminar o fix CACHEJS1 v202.3 (commit `3b4b128`): `admin-bootstrap.js` versionou com `?v=202.3` os 7 imports/exports do topo, mas as 5 linhas de re-export no rodapé (`admin/modules.js`, `shared.js`, `engajamento.js`, `metricas.js`, `fase3.js`) continuaram sem query string. O navegador baixava cada um desses 5 módulos duas vezes, uma versionada e uma limpa, e a cópia limpa ficava exposta ao mesmo cache de 4h que o CACHEJS1 original existia para fechar. Corrigido nas 5 linhas restantes (commit `a69f9d7`), deploy via `deploy-pages.ps1`, validado com trace de rede no navegador real do operador: 13 requisições de módulo caíram para 8, todas com `?v=202.3`, zero sem versão.
+>
+> Gotcha de processo encontrado no caminho: o commit automático do `deploy-pages.ps1` (passo 6) só dá `git add` em `index.html`, `version.json` e docs, nunca em `app/js/` ou `app/admin/`, mesmo sincronizando essas pastas para `deploy_zip` no passo 2. Rodar o script sozinho publica a correção mas não a comita. Neste caso o gap foi fechado na mão (commit `a69f9d7` separado, depois push). Registrado como memória de projeto para não repetir a surpresa.
 
 ---
 
