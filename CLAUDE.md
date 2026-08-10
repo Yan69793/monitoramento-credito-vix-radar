@@ -33,6 +33,14 @@ Isso significa que este repositório tem dois lados que sessão nenhuma descobre
 Os dois lados se comunicam pelo contrato de rotina (POST para `https://api.vixradar.com`
 com header `X-Routine-Key`). Se um lado quebrar, o sistema para.
 
+### Diretórios fora do fluxo operacional
+
+`producao/`, `_historico/`, `archive/`, `vixradar/`, `research/` não fazem parte do
+sistema vivo. `producao/` em especial contém uma versão estática e desconectada
+(v30/v40) do frontend, sem JWT, KV, DO, Analytics Engine ou cascade de IA. Deployar
+esse diretório regrediria produção de v4.9.x para v30 (ver `producao/ATENCAO-NAO-DEPLOYAR.md`).
+As fontes vivas são só `api/` e `app/`.
+
 ## Domínios
 
 | Domínio | O que serve | Projeto Cloudflare |
@@ -84,6 +92,28 @@ os 4 arquivos do bundle, deploy, valida em produção.
 vazia ou valor truncado também derruba. Some um deles, o health vai a `ok:false`,
 o `canonical-test` fica vermelho em até 6h e o dono recebe email. Foi assim que o
 `ADMIN_EMAIL` ficou 3 dias ausente com o painel verde.
+
+## Testes
+
+```
+cd api && npm install && npm test
+```
+Roda `vitest run` contra `@cloudflare/vitest-pool-workers`, que sobe o Worker de
+verdade (`api/src/worker.js`) num runtime workerd local via Miniflare, usando
+`api/wrangler.test.jsonc` (config isolada, sem account_id nem bindings reais, nunca
+toca produção). Um teste isolado: `npx vitest run test/health.test.mjs`.
+
+`test/health.test.mjs` automatiza o `Portão de verificação` abaixo (ok/kv/telemetria/
+admin_email_ok/sentry_ok/verificador_ok). `test/rate-limit.test.mjs` cobre o `RATE_LIMITER_DO`.
+
+**Não roda local nesta máquina.** O Windows Smart App Control bloqueia `workerd.exe`
+por assinatura não reconhecida (Event Log CodeIntegrity id 3077/3033, achado em
+02/08/2026, documentado no próprio `.github/workflows/worker-tests.yml`). `npm test`
+só é confiável rodando em CI (`worker-tests.yml`, dispara em push/PR que toque `api/**`).
+Sem lint configurado no repo, não inventar um.
+
+`app/` (frontend) não tem `package.json`, build step nem suíte de teste, é HTML/CSS/JS
+servido direto, validado manualmente ou pelo `Portão de verificação`.
 
 ## Rotinas agendadas (fonte da verdade: `routines/README.md`)
 
@@ -160,10 +190,11 @@ Roda mesmo com disjuntor de custo ativo.
 
 ## GitHub Actions
 
-- `canonical-test.yml`: health check GET / a cada 6h (valida ok, kv, rate_limiter, telemetria, providers)
+- `canonical-test.yml`: health check GET / a cada 6h (valida ok, kv, rate_limiter, telemetria, providers). Gate usa o campo `ok` agregado, então cai se `verificador_ok`, `sentry_ok` ou `admin_email_ok` ficarem `false`, mesmo com `kv`/`telemetria` saudáveis
 - `daily-status-email.yml`: status diário via Issue + email Resend (não depende de MCP/OAuth)
 - `frescor-check.yml`: diário 01:37 UTC, staleness da ingestão
 - `scan-emergencia.yml`: fallback 23:30 UTC quando estado principal stale
+- `worker-tests.yml`: suíte `vitest` em push/PR que toque `api/**`, ver `## Testes`
 
 ## Portão de verificação
 
