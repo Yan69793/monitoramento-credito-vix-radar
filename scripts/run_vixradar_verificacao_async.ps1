@@ -5,7 +5,9 @@
 # Motivo: saldo pre-pago esgotou 3x em 10 dias (03/07, 04/07, 10/07), interrompendo cobertura.
 # Get-AnthropicApiKey e demais guards permanecem no codigo para eventual retorno a pay-per-token.
 # Programado para rodar pouco depois de vixradar-matinal (10h BRT) e vixradar-noturno (18h BRT).
-$ErrorActionPreference = 'Stop'
+# 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
+# aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
+$ErrorActionPreference = 'Continue'
 # Encoding UTF-8 na captura do stdout do 'claude' (higiene, alinhado ao noturno/matinal).
 # NOTA: a falha de parse dos veredictos (2026-07-05) NAO era encoding - era o extrator ingenuo
 # com LastIndexOf(']') casando com ']' de links markdown que o modelo anexa depois do JSON.

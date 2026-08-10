@@ -25,7 +25,9 @@ param(
     [switch]$Seed
 )
 
-$ErrorActionPreference = 'Stop'
+# 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
+# aborta antes do 'exit' e o Task Scheduler reporta LastTaskResult 0 com falha real.
+$ErrorActionPreference = 'Continue'
 
 # Encoding UTF-8 nos dois sentidos (stdout do wrangler volta com acentos de nomes de emissor)
 $OutputEncoding = New-Object System.Text.UTF8Encoding($false)

@@ -1,6 +1,8 @@
 ﻿# run_vixradar_matinal_claude.ps1 - Matinal v2: SKIP PS1 + Haiku/Sonnet top 15, cap 120k tokens
 param([switch]$Force)
-$ErrorActionPreference = 'Stop'
+# 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
+# aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
+$ErrorActionPreference = 'Continue'
 # PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
 # Mesma correcao de encoding do noturno (ver run_vixradar_noturno_claude.ps1) - stdout do
 # binario 'claude' sem console interativo pode decodificar em ANSI/OEM e corromper nomes

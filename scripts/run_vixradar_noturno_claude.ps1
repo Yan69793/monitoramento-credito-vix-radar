@@ -5,7 +5,9 @@ param(
     # Tambem: env VIXRADAR_NOTURNO_SHADOW_DEEPSEEK=1 + DEEPSEEK_API_KEY / VIXRADAR_DEEPSEEK_API_KEY
     [switch]$ShadowDeepSeek
 )
-$ErrorActionPreference = 'Stop'
+# 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
+# aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
+$ErrorActionPreference = 'Continue'
 # PIPE1: console oculto e best-effort; erros funcionais continuam terminantes.
 
 # Sem isso, stdout do binario nativo 'claude' pode ser decodificado com o codepage ANSI/OEM
@@ -437,6 +439,26 @@ $__noturnoMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-not
 if (-not $__noturnoMutex.WaitOne(0)) {
     Write-Log 'ABORT: outra instancia da noturna ja esta em execucao (mutex ocupado) - saindo limpo em 0 tokens'
     exit 0
+}
+
+# Lock de arquivo da sessao Claude Desktop (scheduled-task vixradar-noturno, SKILL.md). O mutex
+# acima so enxerga outra copia DESTE .ps1; a sessao Claude Desktop roda inline (chama o Worker
+# direto via PowerShell/curl) e nunca aciona esse mutex. Incidente 2026-08-08: o Cowork chamou
+# este .ps1 enquanto a sessao Claude Desktop estava no meio da varredura; esta instancia venceu
+# a corrida, leu fonte mais velha (fora da janela) e sobrescreveu 3 emissores (Rumo, Bradesco,
+# Tupy) ja analisados corretamente pela sessao, corrigido manualmente depois. Este check fecha
+# essa direcao (sessao ja rodando -> este .ps1 desiste). A direcao inversa (este .ps1 ja rodando
+# -> sessao desiste) fica a cargo do Passo 0 do SKILL.md, que checa o mutex acima antes de comecar.
+$__skillLockFile = Join-Path $LogDir ('vixradar-noturno_' + $DateTag + '.lock')
+if (Test-Path $__skillLockFile) {
+    $__lockAgeMin = ((Get-Date) - (Get-Item $__skillLockFile).LastWriteTime).TotalMinutes
+    if ($__lockAgeMin -lt 180) {
+        Write-Log ('ABORT: lock da sessao Claude Desktop ativo ha ' + [math]::Round($__lockAgeMin,1) + ' min - saindo limpo em 0 tokens')
+        $__noturnoMutex.ReleaseMutex()
+        exit 0
+    } else {
+        Write-Log ('AVISO: lock da sessao Claude Desktop encontrado com ' + [math]::Round($__lockAgeMin/60,1) + 'h (>3h, tratado como abandonado) - seguindo')
+    }
 }
 
 Write-Log "INICIO: noturno meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
