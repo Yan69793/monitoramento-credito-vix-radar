@@ -193,6 +193,12 @@ $assetDirs = @(
   @{ Src = "admin"; Dst = "admin"  },
   @{ Src = "js";    Dst = "app\js" }
 )
+# GITADD-ASSETDIRS1 (2026-08-11): coleta os paths ja resolvidos por este loop,
+# pra o git add do passo 6 nunca ficar dessincronizado do que foi de fato copiado.
+# Achado da auditoria de organizacao: o commit automatico do passo 6 nunca soube
+# de app/js (nem de app/admin), entao deploy publicava em producao e o commit
+# ficava pendente ate alguem lembrar de um 'git add' manual (ex.: commit b95a33a).
+$assetGitPaths = @()
 foreach ($d in $assetDirs) {
   $srcD = Join-Path $appDir $d.Src
   $dstD = Join-Path $zipDir $d.Dst
@@ -204,6 +210,8 @@ foreach ($d in $assetDirs) {
   }
   Copy-Item -Recurse -Force $srcD $dstD
   Write-Host ("{0}/ copiado para deploy_zip/{1}" -f $d.Src, $d.Dst) -ForegroundColor Cyan
+  $assetGitPaths += $srcD
+  $assetGitPaths += $dstD
 }
 
 # GATE ASSET ORFAO: subpasta nova em app/ que ninguem mapeou nunca chega em producao,
@@ -515,7 +523,14 @@ if ($SkipGit) {
 Write-Host "`nSincronizando o git..." -ForegroundColor Yellow
 Push-Location $root
 try {
-  git add "app/version.json" "app/deploy_zip/version.json" "app/index.html" "app/deploy_zip/index.html" "CLAUDE.md" "README.md"
+  # GITADD-ASSETDIRS1: $assetGitPaths vem do loop de copia (~linha 196), sempre
+  # os mesmos $srcD/$dstD que acabaram de ser publicados pelo wrangler no passo 4.
+  $gitAddPaths = @(
+    "app/version.json", "app/deploy_zip/version.json",
+    "app/index.html", "app/deploy_zip/index.html",
+    "CLAUDE.md", "README.md"
+  ) + $assetGitPaths
+  git add -- $gitAddPaths
   if ($LASTEXITCODE -ne 0) { Fail "git add falhou (exit $LASTEXITCODE)." }
 
   $staged = git diff --cached --name-only
