@@ -187,6 +187,14 @@ fi
 
 rm -rf "$STAGEDIR"
 
+# --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------
+# Ao contrario dos gates 1-3, olha o working tree inteiro (git status), nao so
+# staging: o problema aqui e exatamente arquivo que ninguem colocou em staging.
+# Nunca seta FALHOU.
+if [ -f "scripts/check-root-hygiene.ps1" ] && command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "scripts/check-root-hygiene.ps1" || true
+fi
+
 if [ "$FALHOU" -ne 0 ]; then
     echo ""
     echo "COMMIT BLOQUEADO. Corrija os itens acima, 'git add' de novo, e recommite."
