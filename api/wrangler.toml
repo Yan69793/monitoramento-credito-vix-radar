@@ -1,9 +1,14 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.189)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.190)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.190.js = v4.9.189 + VERIFSLA2: lookback do health sobe de 2 para 7
+#   dias no listarFilaVerificacaoPendente, alinhando com a janela de 7 dias
+#   do sweepFilaVerificacaoOrfaos. Fecha a janela cega onde item com 3-7 dias
+#   de idade e criado_em <48h ficava invisivel ao health e nao era morto pelo
+#   sweep (confirmado em 09/08: 10 itens passaram 46h na fila com painel verde).
 # v4.9.189.js = v4.9.188 + VERIFSLA1: prazo de atraso da fila de verificacao
 #   sobe de 12h para 20h no calculo de _filaVerifAtrasada, que alimenta
 #   verificador_ok e portanto o _okHealth agregado. Motivo: o prazo de 12h era
@@ -495,7 +500,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.189.js"
+main       = "v4.9.190.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
