@@ -472,6 +472,27 @@ try {
     $metrics | ConvertTo-Json | Set-Content -Path (Join-Path $LogDir ("vixradar-reconciliacao-cvm_metrics_{0}.json" -f $Stamp)) -Encoding UTF8
 
     Write-Log ("FIM: ok - {0} documentos severos, {1} emissores casados, {2} divergencias" -f $documentosSeveros.Count, $emissoresComDocSevero.Count, $divergencias.Count)
+
+    # AUTOCOMMIT-RECONCILIACAO1 (2026-08-11): commit restrito a $relPath e $notaPath,
+    # os 2 arquivos que este run acabou de escrever. NUNCA 'git add -A'. Falha aqui
+    # e AVISO, nunca falha da rotina.
+    if (-not $DryRun) {
+        try {
+            git -C $ProjectRoot add -- $relPath $notaPath
+            if ($LASTEXITCODE -ne 0) { throw "git add saiu $LASTEXITCODE" }
+            $temStaged = git -C $ProjectRoot diff --cached --name-only -- $relPath $notaPath
+            if ($temStaged) {
+                git -C $ProjectRoot commit -m ("chore(data): reconciliacao CVM {0}" -f $DataRef) -- $relPath $notaPath | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "git commit saiu $LASTEXITCODE" }
+                Write-Log ("Commit automatico OK: reconciliacao_cvm_{0}" -f $DataRef)
+            } else {
+                Write-Log "Commit automatico: nada novo (semana ja sincronizada)."
+            }
+        } catch {
+            Write-Log ("AVISO: commit automatico da reconciliacao falhou - {0}" -f $_.Exception.Message)
+        }
+    }
+
     $exitCode = 0
 } catch {
     Write-Log ('ERRO FATAL: ' + $_.Exception.Message)

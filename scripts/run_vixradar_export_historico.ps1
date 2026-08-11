@@ -269,6 +269,28 @@ try {
     $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $LogDir ("vixradar-export_metrics_{0}.json" -f $Stamp)) -Encoding UTF8
 
     Write-Log ("FIM: ok - {0} arquivos em {1} ({2}s, modo {3}, {4} avisos)" -f $arquivos.Count, $OutDir, $manifest.duracao_s, $manifest.modo, $erros.Count)
+
+    # AUTOCOMMIT-HISTORICO1 (2026-08-11): commit restrito a $OutDir (o dia exportado
+    # agora). NUNCA 'git add -A' -- o working tree deste repo frequentemente tem
+    # outras mudancas soltas (scripts, notas) que nao sao desta rotina. Falha aqui
+    # e AVISO, nunca falha da rotina: o dado ja foi exportado com sucesso acima.
+    if (-not $DryRun) {
+        try {
+            git -C $ProjectRoot add -- $OutDir
+            if ($LASTEXITCODE -ne 0) { throw "git add saiu $LASTEXITCODE" }
+            $temStaged = git -C $ProjectRoot diff --cached --name-only -- $OutDir
+            if ($temStaged) {
+                git -C $ProjectRoot commit -m ("chore(data): historico {0}" -f $DataRef) -- $OutDir | Out-Null
+                if ($LASTEXITCODE -ne 0) { throw "git commit saiu $LASTEXITCODE" }
+                Write-Log ("Commit automatico OK: data/historico/{0}" -f $DataRef)
+            } else {
+                Write-Log "Commit automatico: nada novo (dia ja sincronizado)."
+            }
+        } catch {
+            Write-Log ("AVISO: commit automatico do historico falhou - {0}" -f $_.Exception.Message)
+        }
+    }
+
     exit 0
 } finally {
     $mutex.ReleaseMutex()
