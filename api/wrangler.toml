@@ -1,6 +1,24 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.183)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.189)
 # ═══════════════════════════════════════════════════════════════════════
+# ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
+#   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
+#   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.189.js = v4.9.188 + VERIFSLA1: prazo de atraso da fila de verificacao
+#   sobe de 12h para 20h no calculo de _filaVerifAtrasada, que alimenta
+#   verificador_ok e portanto o _okHealth agregado. Motivo: o prazo de 12h era
+#   menor que o ciclo real do sistema. A noturna enfileira por volta das 21h00
+#   UTC e a verificacao-async so drena as 13h20 UTC do dia seguinte, entao um
+#   item saudavel chega a cerca de 15h40 de idade. O resultado era health
+#   ok:false todo dia de madrugada e canonical-test vermelho por horas sem
+#   incidente real, ruido que mascarava falha de verdade (mesmo padrao do
+#   SECRETMISS1, sinal agregado escondendo o fator que caiu). 20h cobre o ciclo
+#   com folga e ainda pega execucao pulada, que produz idade de cerca de 40h.
+#   PENDENTE, NAO RESOLVIDO AQUI: listarFilaVerificacaoPendente e chamada com
+#   dias=2 no health, enquanto sweepFilaVerificacaoOrfaos varre 7 dias e mata
+#   aos 48h. Item que cai numa chave de 3 dias atras fica invisivel para o
+#   health e ainda assim pendente, foi assim que 10 itens de 2026-08-09
+#   passaram 46h na fila com o painel verde, resgatados a mao em 11/08.
 # v4.9.183.js = bundle real de produção, recuperado fiel via Cloudflare MCP
 #   (workers_get_worker_code) em 2026-07-30 — resolve o drift prod v4.9.183
 #   vs repo v4.9.182 detectado pelo guard anti-drift do CI entre 2026-07-28

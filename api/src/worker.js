@@ -15822,8 +15822,14 @@ async function __coreFetch(request, env2222) {
       var _filaVerifAtrasada = false;
       if (env2222.RADAR_KV) {
         try {
+          // VERIFSLA1 (2026-08-11): prazo subiu de 12h para 20h. O ciclo real e maior que 12h.
+          // A noturna enfileira por volta das 21h00 UTC e a verificacao-async so drena as
+          // 13h20 UTC do dia seguinte, entao um item normal chega a cerca de 15h40 de idade
+          // sem nada estar errado. Com 12h o health caia todo dia de madrugada e o
+          // canonical-test ficava vermelho por horas sem incidente real. 20h cobre o ciclo
+          // com folga e ainda pega execucao pulada, que produz idade de cerca de 40h.
           var _filaVerifPend = await listarFilaVerificacaoPendente(env2222, 2);
-          var _filaVerifLimite = Date.now() - 12 * 60 * 60 * 1e3;
+          var _filaVerifLimite = Date.now() - 20 * 60 * 60 * 1e3;
           _filaVerifAtrasada = _filaVerifPend.some(function(it) { return new Date(it.criado_em || 0).getTime() < _filaVerifLimite; });
         } catch (e) { console.error("[health] fila_verif_atrasada:", e?.message ?? String(e)); }
       }
