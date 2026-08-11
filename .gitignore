@@ -169,8 +169,12 @@ deploy_*_tee.log
 *.temp
 *.bak
 *.bak_*
+*.bak-*
 *.backup
 *.old
+
+# ---------- Utilitarios ad-hoc de incidente (script real, mas nao generico) ----------
+gen-dashboard.ps1
 
 # ---------- Backups e arquivos grandes ----------
 backups/
