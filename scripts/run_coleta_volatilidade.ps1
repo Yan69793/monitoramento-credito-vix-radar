@@ -4,7 +4,10 @@ param(
     [string]$Root = 'E:\Diretorio\Claude\Monitoramento de Credito'
 )
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+# 'Continue' e obrigatorio em script do Task Scheduler: com 'Stop' o erro aborta
+# antes do 'exit 1' final e a tarefa reporta LastTaskResult 0 (falha silenciosa).
+# O controle de falha aqui e o $hadFailure + exit explicito no fim.
+$ErrorActionPreference = 'Continue'
 
 $ROOT = $Root
 $Collector = Join-Path $ROOT 'scripts\collect_cotacoes.ps1'
