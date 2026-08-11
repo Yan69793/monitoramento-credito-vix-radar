@@ -9,13 +9,17 @@ param(
     [string]$WorkerUrl = 'https://api.vixradar.com/' # endpoint do action=email_enviar
 )
 
-$ErrorActionPreference = 'Stop'
+# Continue (nao Stop): regra global e CLAUDE.md do VIX. Stop faz o Task Scheduler
+# engolir falha e o healthcheck FALHA-002 so pegava scripts com python|node|claude.
+$ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
 $LogFile   = Join-Path $LogDir "monitor_$DateTag.log"
 $ErrFile   = Join-Path $LogDir "erros_$DateTag.json"
+$EstadoFile = Join-Path $LogDir 'estado.json'
+$BacklogFile = 'E:\Diretorio\Claude\01_PROJETOS\Jarvis\AI_OPERATING_SYSTEM\05_BACKLOG_E_PRIORIDADES.md'
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 
@@ -56,8 +60,8 @@ if ($WhitelistFile -and (Test-Path $WhitelistFile)) {
     }
 }
 
-# Prefixos de tasks do workspace
-$Prefixes = @('Szuchmacher-', 'VIXRadar-', 'Monitor-', 'PME-', 'YanOS_')
+# Prefixos de tasks do workspace (B4: MorningCall- e RadarQuant- entraram 2026-08-07)
+$Prefixes = @('Szuchmacher-', 'VIXRadar-', 'Monitor-', 'PME-', 'YanOS_', 'MorningCall-', 'RadarQuant-')
 
 # Prefixos de projetos pessoais/externos (reportar como warning, nao erro)
 $ExternalPrefixes = @('Monitor-Panerai-', 'PME-Codex-')
@@ -69,6 +73,56 @@ $KnownFalsePositives = @{
         reason = 'exit 6 falso documentado no codigo (2026-07-13). Verificar se persiste > 7d.'
         graceDays = 7
     }
+    # Corrigido e validado 2026-08-07, mas a task e semanal (segunda 08h) e o
+    # LastTaskResult=1 de 03/08 fica congelado ate 10/08. Causa era
+    # ConvertFrom-Json -AsHashTable, parametro que so existe no PS 7, contra uma
+    # task que roda powershell.exe 5.1. Fix ja no script (linha ~301).
+    # Validado no runtime que falhava: powershell.exe -File ... -DryRun deu
+    # exit 0 com 3/3 semanas lidas. Graca de 7d a partir de 03/08 cobre exatamente
+    # ate a proxima execucao agendada, e escala se falhar de novo em 10/08.
+    'VIXRadar-Reconciliacao-CVM' = @{
+        code = 1
+        reason = 'exit 1 de 03/08 e residuo de bug ja corrigido e validado em 07/08. Se persistir depois de 10/08, o fix nao pegou.'
+        graceDays = 7
+    }
+    # exit 6 de 03/08 foi pre-flight abortando com ANTHROPIC_MODEL=deepseek-v4-pro[1m]
+    # no ambiente, comportamento correto do guard. A variavel nao esta mais setada em
+    # nenhum escopo e Test-VixClaudeAmbienteLimpo passa desde 07/08. A task e semanal
+    # (domingo), entao o resultado fica congelado ate o proximo disparo.
+    # NAO validado ao vivo, so o pre-flight foi. Se persistir depois do proximo
+    # domingo, a causa e outra e precisa investigacao nova.
+    'VIXRadar-AgendaSemanal' = @{
+        code = 6
+        reason = 'exit 6 de 03/08 era ambiente contaminado, resolvido em 07/08 mas nao validado ao vivo. Se persistir depois do proximo domingo, investigar de novo.'
+        graceDays = 7
+    }
+}
+
+# B1: State=Disabled aqui e GUARD OBRIGATORIO, nao pausa e nao corte de custo.
+# A execucao das tres migrou para sessao agendada do Claude Desktop. Os scripts
+# checam que a task nativa esta Disabled antes de rodar (ver GUARD_OK no log
+# logs/routines/vixradar-verificacao-async_*.log). Reabilitar qualquer uma delas
+# quebra o guard e dispara os dois caminhos no mesmo horario, que e exatamente o
+# incidente de duplicata citado em routines/README.md.
+# LastTaskResult destas tres esta congelado em 2026-08-06 e NAO significa nada.
+# A entrega real e vigiada pelo bloco ROTINACEGA1 (linha FIM: no log da rotina).
+$GuardedDisabled = @{
+    'VIXRadar-Matinal' = @{
+        reason = 'GUARD anti-duplicata. Execucao via sessao agendada Claude Desktop. NAO REABILITAR.'
+        since  = '2026-08-06 ou depois (rodou pelo Task Scheduler em 06/08 11:31, logo o disable veio apos isso)'
+    }
+    'VIXRadar-Noturno' = @{
+        reason = 'GUARD anti-duplicata. Execucao via sessao agendada Claude Desktop. NAO REABILITAR.'
+        since  = '2026-08-06 ou depois (rodou pelo Task Scheduler em 06/08 18:00, logo o disable veio apos isso)'
+    }
+    'Szuchmacher-LeadNurture' = @{
+        reason = 'Desligado em 08/08/2026 por falta de pipeline de entrada. logs/leads.jsonl tem so o lead de teste de 17/06, ja processado. Nao existe qualificador agendado. NAO REABILITAR sem antes criar a fonte de leads (ver 05_BACKLOG_E_PRIORIDADES.md).'
+        since  = '2026-08-08'
+    }
+    'VIXRadar-Verificacao-Async' = @{
+        reason = 'GUARD anti-duplicata. Execucao via sessao agendada Claude Desktop. NAO REABILITAR.'
+        since  = '2026-08-06 ou depois (rodou pelo Task Scheduler em 06/08 18:20, logo o disable veio apos isso)'
+    }
 }
 
 Write-Log '=== MONITOR TASK SCHEDULER ==='
@@ -76,11 +130,19 @@ Write-Log "Whitelist benigna: $($BenignCodes -join ', ')"
 
 $erros = @()
 $warnings = @()
+$deliberate = @()
 $ok = 0
 $skipped = 0
 
+# Este script sai com exit = numero de erros encontrados (ver fim do arquivo).
+# Escanear a propria task e circular: 6 erros as 07h viram LastTaskResult=6, que
+# cai fora da whitelist benigna e vira um setimo erro no dia seguinte. Nao e
+# falha de execucao, e a contagem de achados. O log e o e-mail ja informam isso.
+$SelfTask = 'Monitor-Tasks'
+
 $allTasks = Get-ScheduledTask | Where-Object {
     $name = $_.TaskName
+    if ($name -eq $SelfTask) { return $false }
     $hit = $false
     foreach ($p in $Prefixes) {
         if ($name -like "$p*") { $hit = $true; break }
@@ -102,6 +164,76 @@ foreach ($task in $allTasks) {
 
     $code = $info.LastTaskResult
     $lastRun = $info.LastRunTime
+    $state = [string]$task.State
+
+    # Calculado aqui, no topo do laco, e nao no meio. Antes disso o bloco de
+    # staleness lia $ageDays e $scriptPath antes da atribuicao, entao herdava os
+    # valores da task ANTERIOR do foreach e reportava o script errado.
+    $ageDays = ((Get-Date) - $lastRun).Days
+    $action = $task.Actions | Select-Object -First 1
+    $scriptPath = if ($action.Arguments -match '-File\s+"([^"]+)"') { $Matches[1] }
+                  elseif ($action.Arguments -match '-File\s+([^\s]+\.ps1)') { $Matches[1] }
+                  else { 'desconhecido' }
+
+    # B1: rotina migrada. Disabled aqui e guard esperado, nao falha.
+    # Habilitada e o alarme, porque significa execucao dupla com o Claude Desktop.
+    if ($GuardedDisabled.ContainsKey($name)) {
+        $gd = $GuardedDisabled[$name]
+        if ($state -eq 'Disabled') {
+            $deliberate += [ordered]@{
+                task       = $name
+                state      = $state
+                lastCode   = $code
+                codeHex    = '0x{0:X}' -f $code
+                lastRun    = $lastRun.ToString('yyyy-MM-dd HH:mm')
+                reason     = $gd.reason
+                since      = $gd.since
+            }
+            Write-Log "GUARD_OK: $name Disabled como esperado | LastResult=$code congelado, ignorar | $($gd.reason)"
+            continue
+        }
+        # Sem este ramo a Noturno reabilitada passaria como sucesso, porque o
+        # LastTaskResult dela esta congelado em 0 desde 06/08.
+        $erros += [ordered]@{
+            task    = $name
+            code    = 9002
+            codeHex = '0x232A'
+            lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm')
+            ageDays = 0
+            script  = 'guard de execucao dupla'
+            reason  = "GUARD QUEBRADO: task esta $state e precisa estar Disabled. Roda em paralelo com a sessao agendada do Claude Desktop. Desabilitar imediatamente."
+        }
+        Write-Log "ERRO GUARD: $name esta $state e deveria estar Disabled. Risco de execucao dupla."
+        continue
+    }
+
+    # 267011 = 0x41303 = SCHED_S_TASK_HAS_NOT_RUN. Ambiguo, nao entra na whitelist
+    # estatica porque o mesmo codigo cobre dois estados opostos.
+    # Com proximo disparo agendado, a task e nova e so nao chegou a hora dela.
+    # Caso real: Szuchmacher-ColetaManchetes registrada 07/08/2026 06:59 (evento
+    # 106 do agendador), primeiro disparo 12:30 do mesmo dia, reportada como erro
+    # por 5 horas sem ter nada de errado.
+    # Sem proximo disparo, a task nunca vai rodar e ai e falha real. Caso real:
+    # Szuchmacher-AgendaMacro-Claude em 02/08, mesmo codigo, mas Enabled=False
+    # desde julho.
+    if ($code -eq 267011) {
+        if ($null -ne $info.NextRunTime -and $info.NextRunTime -gt (Get-Date)) {
+            Write-Log "PENDENTE: $name registrada e ainda sem 1a execucao, proximo disparo $($info.NextRunTime.ToString('yyyy-MM-dd HH:mm'))"
+            $ok++
+            continue
+        }
+        $erros += [ordered]@{
+            task    = $name
+            code    = $code
+            codeHex = '0x{0:X}' -f $code
+            lastRun = 'nunca'
+            ageDays = 0
+            script  = $scriptPath
+            reason  = 'nunca executou E nao tem proximo disparo agendado. Conferir se esta Enabled e se o gatilho existe.'
+        }
+        Write-Log "ERRO: $name nunca executou e nao tem proximo disparo agendado."
+        continue
+    }
 
     # Pula benignos
     if ($code -in $BenignCodes) {
@@ -174,12 +306,7 @@ foreach ($task in $allTasks) {
         continue
     }
 
-    # Classifica severidade
-    $ageDays = ((Get-Date) - $lastRun).Days
-    $action = $task.Actions | Select-Object -First 1
-    $scriptPath = if ($action.Arguments -match '-File\s+"([^"]+)"') { $Matches[1] }
-                  elseif ($action.Arguments -match '-File\s+([^\s]+\.ps1)') { $Matches[1] }
-                  else { 'desconhecido' }
+    # Classifica severidade ($ageDays, $action e $scriptPath vem do topo do laco)
 
     # Verifica se eh projeto externo/pessoal
     $isExternal = $false
@@ -235,29 +362,238 @@ foreach ($task in $allTasks) {
     }
 }
 
+# ---------------------------------------------------------------------------
+# ROTINACEGA1 (2026-08-07): guarda de entrega das rotinas migradas.
+#
+# O loop acima vigia o Windows Task Scheduler. Matinal, Noturno e
+# Verificacao-Async sairam de la entre 04 e 07/08/2026 e passaram a rodar no
+# scheduler do Claude Desktop, com as tasks nativas mantidas Disabled de
+# proposito. O vigia ficou apontado para um caminho que nao executa mais nada.
+#
+# Custou 4 dias. A noturna falhou em 03, 04, 06 e 07/08 por tres causas
+# distintas (ambiente com modelo nao-Claude no settings.json, credencial Claude
+# ausente, e portao de saude abortando por 'ok' agregado quando kv e telemetria
+# estavam ambos true) e o monitor reportou OK nos quatro dias, porque a task
+# nativa guardava LastTaskResult=0 da ultima vez que rodou antes de ser
+# desabilitada. Heartbeat tambem nao pegou: heartbeat:varredura_batch fica
+# fresco com status 'pulado' e o watchdog do Worker so mede idade, nao status.
+#
+# Este bloco nao olha task nenhuma. Olha a evidencia de entrega no log da
+# rotina, a linha 'FIM:' com submit_ok, que so e escrita quando a execucao
+# chega ao fim. Funciona igual se a rotina rodar pelo Windows, pelo Claude
+# Desktop ou na mao.
+# ---------------------------------------------------------------------------
+$RotinasVigiadas = @(
+    @{ nome = 'vixradar-noturno'; rotulo = 'VIXRadar-Noturno (entrega)'; hora = 18; diasUteis = $false; minSubmit = 90 },
+    @{ nome = 'vixradar-matinal'; rotulo = 'VIXRadar-Matinal (entrega)'; hora = 10; diasUteis = $true;  minSubmit = 12 }
+)
+$RotinasLogDir = Join-Path $VixRoot 'logs\routines'
+
+foreach ($rot in $RotinasVigiadas) {
+    $agoraR = Get-Date
+    # Alvo e o ultimo ciclo que ja deveria ter terminado. Com 2h de graca sobre o
+    # horario agendado. Monitor roda 07:00, entao na pratica o alvo e sempre ontem.
+    $alvo = $agoraR.Date
+    if ($agoraR.Hour -lt ($rot.hora + 2)) { $alvo = $agoraR.Date.AddDays(-1) }
+    if ($rot.diasUteis) {
+        while ($alvo.DayOfWeek -eq 'Saturday' -or $alvo.DayOfWeek -eq 'Sunday') { $alvo = $alvo.AddDays(-1) }
+    }
+    $alvoTxt = $alvo.ToString('yyyy-MM-dd')
+    $logRot  = Join-Path $RotinasLogDir ($rot.nome + '_' + $alvo.ToString('yyyyMMdd') + '.log')
+
+    $motivoR  = $null
+    $submitOk = -1
+
+    if (-not (Test-Path $logRot)) {
+        $motivoR = "$alvoTxt sem log de execucao, a rotina nao chegou a iniciar"
+    } else {
+        $conteudoR = ''
+        try { $conteudoR = Get-Content $logRot -Raw -Encoding UTF8 -ErrorAction Stop } catch { $conteudoR = '' }
+        foreach ($m in [regex]::Matches($conteudoR, 'submit_ok=(\d+)')) {
+            $n = [int]$m.Groups[1].Value
+            if ($n -gt $submitOk) { $submitOk = $n }
+        }
+        if ($submitOk -lt 0) {
+            $detalheR = 'sem linha FIM:, execucao nao chegou ao fim'
+            if ($conteudoR -match 'ABORT')      { $detalheR = $detalheR + ', ABORT registrado' }
+            if ($conteudoR -match 'ERRO FATAL') { $detalheR = $detalheR + ', ERRO FATAL registrado' }
+            $motivoR = "$alvoTxt $detalheR"
+        } elseif ($submitOk -lt $rot.minSubmit) {
+            $motivoR = "$alvoTxt entrega parcial, submit_ok=$submitOk (minimo esperado $($rot.minSubmit))"
+        }
+    }
+
+    if ($motivoR) {
+        Write-Log "ROTINA SEM ENTREGA: $($rot.rotulo) | $motivoR"
+        $erros += [ordered]@{
+            task    = $rot.rotulo
+            code    = 9001
+            codeHex = '0x2329'
+            lastRun = "$alvoTxt (ciclo esperado)"
+            ageDays = [int]((Get-Date).Date - $alvo).Days
+            script  = $logRot
+            reason  = $motivoR
+        }
+    } else {
+        Write-Log "ROTINA OK: $($rot.rotulo) | $alvoTxt submit_ok=$submitOk"
+        $ok++
+    }
+}
+
+# ---------------------------------------------------------------------------
+# B2: idade do erro (primeira deteccao persistida em estado.json)
+# ---------------------------------------------------------------------------
+$estado = @{ firstSeen = @{} }
+if (Test-Path $EstadoFile) {
+    try {
+        $rawEst = Get-Content $EstadoFile -Raw -Encoding UTF8 -ErrorAction Stop
+        $parsed = $rawEst | ConvertFrom-Json
+        if ($parsed.firstSeen) {
+            foreach ($p in $parsed.firstSeen.PSObject.Properties) {
+                $estado.firstSeen[$p.Name] = @{
+                    firstDetected = [string]$p.Value.firstDetected
+                    lastCode      = [long]$p.Value.lastCode
+                    lastSeen      = [string]$p.Value.lastSeen
+                }
+            }
+        }
+    } catch {
+        Write-Log "AVISO: estado.json ilegivel, reiniciando - $($_.Exception.Message)"
+    }
+}
+
+$hojeIso = (Get-Date).ToString('yyyy-MM-dd')
+$tasksComErroHoje = @{}
+$errosComIdade = @()
+foreach ($e in $erros) {
+    $tname = [string]$e.task
+    $tasksComErroHoje[$tname] = $true
+    $first = $hojeIso
+    if ($estado.firstSeen.ContainsKey($tname) -and $estado.firstSeen[$tname].firstDetected) {
+        $first = [string]$estado.firstSeen[$tname].firstDetected
+    } elseif ($e.lastRun -match '(\d{4}-\d{2}-\d{2})') {
+        # Primeira vez: se LastRun e razoavel (>= 2026), usa como firstDetected
+        # (AgendaSemanal/CVM ja falhavam ha dias sem estado.json previo)
+        $lrDay = $Matches[1]
+        if ($lrDay -ge '2026-01-01' -and $lrDay -le $hojeIso) { $first = $lrDay }
+    }
+    $firstDate = $null
+    try { $firstDate = [datetime]::ParseExact($first, 'yyyy-MM-dd', $null) } catch { $firstDate = (Get-Date).Date }
+    $ageFromFirst = [int]((Get-Date).Date - $firstDate.Date).TotalDays
+    if ($ageFromFirst -lt 0) { $ageFromFirst = 0 }
+
+    $estado.firstSeen[$tname] = @{
+        firstDetected = $first
+        lastCode      = [long]$e.code
+        lastSeen      = $hojeIso
+    }
+
+    $e2 = [ordered]@{}
+    foreach ($k in $e.Keys) { $e2[$k] = $e[$k] }
+    $e2['firstDetected'] = $first
+    $e2['ageDaysFromFirst'] = $ageFromFirst
+    $e2['escalated'] = ($ageFromFirst -ge 2)
+    if ($e2['escalated']) {
+        $motivoBase = if ($e2.Contains('reason')) { [string]$e2['reason'] } else { 'exit nao-benigno' }
+        $e2['reason'] = "ESCALADO (>48h, desde $first): $motivoBase"
+    }
+    $errosComIdade += $e2
+}
+$erros = $errosComIdade
+
+# Remove do estado erros que sumiram (limpeza)
+$chavesRemover = @()
+foreach ($k in @($estado.firstSeen.Keys)) {
+    if (-not $tasksComErroHoje.ContainsKey($k)) { $chavesRemover += $k }
+}
+foreach ($k in $chavesRemover) { $estado.firstSeen.Remove($k) }
+
+try {
+    $estadoOut = [ordered]@{
+        updated   = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
+        firstSeen = $estado.firstSeen
+    }
+    $estadoOut | ConvertTo-Json -Depth 5 | Set-Content -Path $EstadoFile -Encoding UTF8
+} catch {
+    Write-Log "AVISO: falha ao gravar estado.json - $($_.Exception.Message)"
+}
+
+# ---------------------------------------------------------------------------
+# B3: ponte para backlog (upsert por nome de task, secao Auto-monitor)
+# ---------------------------------------------------------------------------
+if ($erros.Count -gt 0 -and (Test-Path $BacklogFile)) {
+    try {
+        $bl = Get-Content $BacklogFile -Raw -Encoding UTF8 -ErrorAction Stop
+        $markerStart = '<!-- AUTO-MONITOR-START -->'
+        $markerEnd   = '<!-- AUTO-MONITOR-END -->'
+        $linhasAuto = @()
+        $linhasAuto += ''
+        $linhasAuto += '## Auto-monitor (gerado por monitor-tasks.ps1)'
+        $linhasAuto += ''
+        $linhasAuto += 'Erros persistentes detectados pelo Task Scheduler. Upsert por nome de task.'
+        $linhasAuto += "Ultima atualizacao: $hojeIso."
+        $linhasAuto += ''
+        $linhasAuto += '| Task | Desde | Exit | Script | Motivo |'
+        $linhasAuto += '|---|---|---|---|---|'
+        foreach ($e in $erros) {
+            $desde = if ($e.firstDetected) { $e.firstDetected } else { $hojeIso }
+            $mot = if ($e.reason) { ($e.reason -replace '\|', '/') } else { '' }
+            $scr = if ($e.script) { ($e.script -replace '\|', '/') } else { '' }
+            $linhasAuto += "| $($e.task) | $desde | $($e.code) | ``$scr`` | $mot |"
+        }
+        $linhasAuto += ''
+        $bloco = ($linhasAuto -join "`n")
+        $section = "$markerStart`n$bloco`n$markerEnd"
+
+        if ($bl -match [regex]::Escape($markerStart)) {
+            $bl2 = [regex]::Replace($bl, [regex]::Escape($markerStart) + '[\s\S]*?' + [regex]::Escape($markerEnd), $section)
+        } else {
+            $bl2 = $bl.TrimEnd() + "`n`n" + $section + "`n"
+        }
+        if ($bl2 -ne $bl) {
+            $bl2 | Set-Content -Path $BacklogFile -Encoding UTF8 -NoNewline
+            Write-Log "Backlog atualizado (Auto-monitor): $BacklogFile"
+        }
+    } catch {
+        Write-Log "AVISO: falha ao atualizar backlog - $($_.Exception.Message)"
+    }
+}
+
 # Sumario
 Write-Log ''
 Write-Log "=== SUMARIO ==="
 Write-Log "OK: $ok"
 Write-Log "Erros: $($erros.Count)"
 Write-Log "Warnings: $($warnings.Count)"
+Write-Log "Deliberados (Disabled): $($deliberate.Count)"
 Write-Log "Skipped (falso-positivo conhecido): $skipped"
 
 # Persiste erros em JSON
 $report = [ordered]@{
-    timestamp = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
-    erros     = $erros
-    warnings  = $warnings
-    okCount   = $ok
+    timestamp  = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
+    erros      = $erros
+    warnings   = $warnings
+    deliberate = $deliberate
+    okCount    = $ok
 }
 
 $report | ConvertTo-Json -Depth 4 | Set-Content -Path $ErrFile -Encoding UTF8
+
+if ($deliberate.Count -gt 0) {
+    Write-Log ''
+    Write-Log '=== DESLIGADOS DE PROPOSITO (nao contam como erro) ==='
+    foreach ($d in $deliberate) {
+        Write-Log "  $($d.task) | since=$($d.since) | LastResult=$($d.lastCode) | $($d.reason)"
+    }
+}
 
 if ($erros.Count -gt 0) {
     Write-Log ''
     Write-Log '=== ERROS ENCONTRADOS ==='
     foreach ($e in $erros) {
-        Write-Log "  $($e.task) | exit=$($e.code) ($($e.codeHex)) | $($e.lastRun) | $($e.script)"
+        $idade = if ($null -ne $e.ageDaysFromFirst) { " idade=$($e.ageDaysFromFirst)d desde $($e.firstDetected)" } else { '' }
+        $esc = if ($e.escalated) { ' ESCALADO' } else { '' }
+        Write-Log "  $($e.task) | exit=$($e.code) ($($e.codeHex))$idade$esc | $($e.lastRun) | $($e.script)"
     }
 }
 

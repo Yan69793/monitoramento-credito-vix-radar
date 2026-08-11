@@ -217,9 +217,12 @@ foreach ($tn in @(
 }
 
 # Matinal e noturno migraram para o scheduler do Claude Desktop em 04/08/2026: o claude CLI
-# standalone parou de autenticar e derrubava as duas antes do primeiro lote. Reabilitar aqui
-# nao conserta nada e ressuscita o disparo duplo, entao a assercao e invertida de proposito.
-foreach ($tn in @('VIXRadar-Matinal', 'VIXRadar-Noturno')) {
+# standalone parou de autenticar e derrubava as duas antes do primeiro lote. Verificacao-Async
+# migrou em 07/08/2026 pelo mesmo motivo raiz, so que via guarda de ambiente contaminado
+# (Test-VixClaudeAmbienteLimpo, exit 6) em vez de falha de auth direta. Reabilitar qualquer
+# uma aqui nao conserta nada e ressuscita o disparo duplo, entao a assercao e invertida de
+# proposito nas tres.
+foreach ($tn in @('VIXRadar-Matinal', 'VIXRadar-Noturno', 'VIXRadar-Verificacao-Async')) {
     try {
         $st = Get-ScheduledTask -TaskName $tn -ErrorAction Stop
         Assert-Check ($st.State -eq 'Disabled') "Task Scheduler $tn Disabled (migrada p/ Claude Desktop)"
