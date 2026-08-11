@@ -40,6 +40,7 @@ Estado da task nativa verificado na máquina em 2026-08-07, as três `Disabled`.
 | Task | Gatilho | Script | Função |
 |------|---------|--------|--------|
 | `VIXRadar-Export-Historico` | Diário 20:45 BRT | `run_vixradar_export_historico.ps1` | Exporta estado preditivo do KV para `data/historico/` |
+| `VIXRadar-Reconciliacao-CVM` | Seg 08:00 BRT | `scripts/predictive/reconciliar_ipe_cvm.ps1` | Reconcilia IPE CVM (RJ/RE/default) vs estado semanal do Radar; publica KV `radar:reconciliacao_cvm:latest` + nota Obsidian |
 | `VIXRadar-Ranking-Mensal` | Dia 1, 11:30 BRT | `run_vixradar_ranking_mensal.ps1` | Monitor mensal de ranking SEO |
 | `VIXRadar-AgendaSemanal` | Dom 03:00 | `run_claude_routine.ps1 -RoutineId vixradar-agenda-semanal` | Calendário de divulgação trimestral, top 20 stale por execução. **Deve ficar Enabled**, é o gatilho oficial da skill. Ver nota abaixo |
 | `Szuchmacher-AgendaMacro-Claude` | Sex 07:07 BRT | `run_claude_routine.ps1 -RoutineId atualizar-agenda-macro-szuchmacher` | Calendário macro semanal de szuchmacher.com.br. Religada 02/08/2026 — motivo original do desligamento (14/07, disparo fantasma via cron interno do skill) deixou de existir em 08/07 quando o sistema de cron interno inteiro foi aposentado (ver histórico abaixo); ficou desligada por omissão até esta investigação, sem decisão registrada. Deploy exige aprovação humana explícita (SKILL.md Passo 6) — o pior caso de falha é a rotina parar pedindo aprovação, nunca publicar sozinha. |

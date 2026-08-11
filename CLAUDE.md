@@ -133,6 +133,7 @@ não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
 | `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores |
 | `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário 10h20 BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}` |
 | `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |
+| `VIXRadar-Reconciliacao-CVM` | Task Scheduler | Seg 08h00 BRT | — | Reconcilia IPE CVM vs estado |
 | `VIXRadar-Ranking-Mensal` | Task Scheduler | Dia 1, 11h30 | — | SEO mensal |
 
 A matinal usa Haiku em lotes de 6 + Sonnet para EWS≥38 em lotes de 4.
