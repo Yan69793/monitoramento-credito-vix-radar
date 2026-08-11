@@ -84,6 +84,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Incidente |
 |---|---|---|
+| [[77 - Post-Mortem verificador_ok e Proposta canonical-test.yml 2026-08-11]] | 11/08 | Fila de verificação travada por ambiente contaminado (05/08), gap de observabilidade no canonical-test.yml ainda aberto — mesmo padrão se repetiu 11/08 |
 | [[70 - Incidente Encoding e Compatibilidade PowerShell 5.1 2026-07-27]] | 27/07 | Deploy quebrado por UTF-8 sem BOM, mais sintaxe PS7 em script rodado pelo 5.1, guarda no pre-commit |
 | [[63 - Recovery e Deploy 2026-07-20]] | 20/07 | INGEST-GAP1 recovery |
 | [[59 - Incidente RESEARCHDOWN1 (Oncoclinicas CRITICO rebaixado) 2026-07-15]] | 15/07 | Classificação incorreta |
