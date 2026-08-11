@@ -7,7 +7,9 @@ param(
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+# 'Continue' e obrigatorio em script do Task Scheduler: com 'Stop' o erro aborta
+# antes do 'exit 1' final e a tarefa reporta LastTaskResult 0 (falha silenciosa).
+$ErrorActionPreference = 'Continue'
 
 $ROOT = Split-Path -Parent $PSScriptRoot
 if (-not $MetaFile) { $MetaFile = Join-Path $ROOT 'data\cotacoes\meta_volatilidade.json' }
@@ -112,10 +114,27 @@ $body = @{
     ttl = 86400
 } | ConvertTo-Json -Compress
 
-try {
-    $response = Invoke-RestMethod -Uri 'https://api.vixradar.com/' -Method POST -Body $body -ContentType 'application/json' -TimeoutSec 30
-} catch {
-    throw "Falha HTTP ao publicar volatilidade: $($_.Exception.Message)"
+$uploadOk = $false
+$ultimoErro = $null
+$maxRetries = 3
+for ($tentativa = 1; $tentativa -le $maxRetries; $tentativa++) {
+    try {
+        $response = Invoke-RestMethod -Uri 'https://api.vixradar.com/' -Method POST -Body $body -ContentType 'application/json' -TimeoutSec 30
+        if ($response.ok) {
+            $uploadOk = $true
+            break
+        }
+        $ultimoErro = "Worker recusou publicacao (tentativa $tentativa): $($response.erro)"
+        Write-Host "AVISO: $ultimoErro"
+    } catch {
+        $ultimoErro = "Falha HTTP (tentativa $tentativa): $($_.Exception.Message)"
+        Write-Host "AVISO: $ultimoErro"
+    }
+    if ($tentativa -lt $maxRetries) {
+        $wait = 10 * $tentativa
+        Write-Host "retry em ${wait}s..."
+        Start-Sleep -Seconds $wait
+    }
 }
-if (-not $response.ok) { throw "Worker recusou publicacao: $($response.erro)" }
+if (-not $uploadOk) { throw "Falha ao publicar volatilidade apos $maxRetries tentativas. Ultimo erro: $ultimoErro" }
 Write-Host 'UPLOAD_OK key=cotacoes:volatilidade:v1 ttl=86400'
