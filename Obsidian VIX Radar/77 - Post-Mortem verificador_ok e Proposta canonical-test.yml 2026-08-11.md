@@ -2,7 +2,7 @@
 data: 2026-08-11
 tipo: post-mortem
 tags: [vix-radar, incidente, verificador_ok, canonical-test, observabilidade]
-status: incidente-fechado-fix-pendente
+status: incidente-fechado-fix-aplicado
 ---
 
 # Post-Mortem — verificador_ok:false (05/08) e proposta de fix para canonical-test.yml
@@ -53,7 +53,7 @@ CRITICO preso na fila por mais de 12h já derruba `verificador_ok` e com isso
    scripts, quebrando o dreno de novo por 2 dias antes de `Assert-VixLibFunctions`
    fechar o buraco estrutural.
 
-## Achado técnico que continua válido (e ainda não implementado)
+## Achado técnico (implementado entre 05/08 e 11/08)
 
 O endpoint de health **já devolve** os 3 fatores individuais no JSON
 (`admin_email_ok`, `sentry_ok`, `verificador_ok`), mas nenhum workflow do
@@ -90,8 +90,9 @@ passa a apontar o culpado em vez de só dizer "produção degradada". Não mexe 
 nenhuma outra lógica do workflow (guard anti-drift, drift de frontend,
 `CACHE_VERSION`).
 
-Item de backlog aberto para isso: ver
-`01_PROJETOS/Jarvis/AI_OPERATING_SYSTEM/05_BACKLOG_E_PRIORIDADES.md`.
+**Status 11/08:** Fix aplicado. `canonical-test.yml:58-60,111-117` ja le `admin_email_ok`, `sentry_ok` e `verificador_ok` individuais e reporta no log de falha. Confirmado por auditoria de codigo.
+
+Backlog relacionado ainda aberto: VERIFSLA1 (health lookback de 2 dias nao cobre janela do sweep de 7 dias), ver [[PENDENCIAS.md]].
 
 ## O que não precisava ter sido feito em 05/08 (e não foi)
 

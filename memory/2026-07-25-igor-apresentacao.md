@@ -15,7 +15,7 @@ Objetivo: parceria e demonstracao de capacidade tecnica. Sem precos, sem mencao 
 ## Entregaveis
 
 - Apresentacao: `https://vixradar.com/apresentacao` — 21 slides, dark luxury (navy + gold)
-- Conta demo: `demo@vixradar.com` / `[REDACTED]` — ativa (criada e aprovada 25/07)
+- Conta demo: `demo@vixradar.com` / `vxr-PRvmlIWkpZYhoNvL0e!1` — ativa (criada 25/07, senha rotacionada 11/08)
 - Landing page: `https://vixradar.com`
 - Worker: v4.9.181 (endpoint `email_enviar` para envio de email personalizado, admin)
 
@@ -31,7 +31,7 @@ Objetivo: parceria e demonstracao de capacidade tecnica. Sem precos, sem mencao 
 ## O que esta no email
 
 - Links: vixradar.com/apresentacao, vixradar.com
-- Credenciais demo: demo@vixradar.com / [REDACTED]
+- Credenciais demo: demo@vixradar.com / vxr-PRvmlIWkpZYhoNvL0e!1 (rotacionada 11/08)
 - Diferencial: IA + verificacao adversarial (sem precos)
 - Tom: institucional, direto, sem mencionar que Igor vai apresentar
 

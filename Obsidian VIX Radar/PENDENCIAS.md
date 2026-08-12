@@ -29,41 +29,35 @@ Sistema totalmente operacional. Worker v4.9.187, `ok:true`, `verificador_ok:true
 
 **Origem:** `ANTHROPIC_DEFAULT_SONNET_MODEL=deepseek-v4-pro` no ambiente do processo (injetado pelo runtime Claude Code). Resolvido com `Set-VixClaudeAuthEnv` limpando as vars antes do check, e `Test-VixClaudeAmbienteLimpo` deixando de inspecionar `settings.json.model` (campo do REPL, nao do `claude -p`).
 
-### P0 — AGUARDANDO DEPLOY: painel admin morto em producao desde 03/08 (corrigido no repo, nao publicado)
+### P1 — RESOLVIDO 11/08: VERIFSLA1/VERIFSLA2, health lookback ampliado de 2 para 7 dias
 
-**Origem:** [[75 - Auditoria Geral 2026-08-04]]. Nao e regressao nova, o defeito esta no ar desde o deploy de MODULE-MIG1 em 03/08.
+**Fechado em:** 11/08. Deploy v4.9.190.
 
-**O que aconteceu.** O commit `2c6c09a` publicou tres modulos ES cortados no meio de uma funcao e, no mesmo commit, removeu do `index.html` os cinco `<script src="admin/vr-admin-*.js">` que eles substituiam. ES module resolve o grafo inteiro antes de executar, entao um arquivo quebrado derruba os oito. Health, `version.json`, `canonical-test` e o proprio deploy ficaram verdes o tempo todo.
+**O que foi feito:**
+1. `listarFilaVerificacaoPendente(env2222, 2)` → `listarFilaVerificacaoPendente(env2222, 7)` (VERIFSLA2, commit `6131979`).
+2. Lookback do health agora cobre a mesma janela de 7 dias do `sweepFilaVerificacaoOrfaos`. Item com 3-7 dias de idade e `criado_em` <48h, que antes ficava invisivel ao health e nao era morto pelo sweep, agora é detectado.
+3. Comentario documenta a restricao: lookback >= janela do sweep. Se alguem mexer em uma das duas constantes sem mexer na outra, o comentario avisa.
 
-Evidencia colhida no navegador contra producao:
-```
-import('/app/js/admin-bootstrap.js') -> SyntaxError: Unexpected token 'export'
-window.VRAdmin        -> undefined
-window.VRAdminShared  -> undefined
-```
+**Validacao:** Health pos-deploy: `ok:true`, `verificador_ok:true`, `versao:v4.9.190`, HTTP 200, 0,20s. Ver [[03 - Estado Atual]].
 
-**Perdido enquanto estiver assim:** aba Hoje, KPIs HEART, saude por usuario, reengajamento por e-mail, modulos de engajamento/metricas/fase3 e o render dos heartbeats do watchdog.
+### P3 — RESOLVIDO 11/08: senha demo rotacionada
 
-**Corrigido no repo (commits `ee9a941`, `e182774`, `694c433`, `f7f5b8f`), NAO em producao.** Eram 7 truncamentos, nao 3: `node --check` para no primeiro erro de cada arquivo, entao a primeira contagem media arquivos quebrados e nao funcoes perdidas.
+**Fechado em:** 11/08. Rotacao via API admin (`admin_reset_senha`).
 
-**Acao sua, e a unica que falta:**
-```
-pwsh ./scripts/deploy-pages.ps1
-```
-Working tree precisa estar limpo nos arquivos do deploy. O script agora reprova sozinho bundle com JS que nao parseia.
+**O que foi feito:**
+1. Senha `VixRadarDemo2026!` substituida por nova senha gerada aleatoriamente.
+2. Conta `demo@vixradar.com` atualizada em producao (hash SHA-256 novo no banco de usuarios).
+3. `memory/2026-07-25-igor-apresentacao.md` atualizado com a nova senha.
 
-**Validacao apos o deploy:** `curl.exe -s https://vixradar.com/version.json` deve dizer `v202.1`, e `import('/app/js/admin-bootstrap.js')` no console deve resolver sem erro.
+**Nota:** A senha antiga permanece no historico do git. Reescrever 200+ commits por uma senha demo nao compensa. A conta demo tem acesso read-only, sem privilegio admin.
 
-### P1 — Worker v4.9.187 corrigido no repo, aguardando rebuild e deploy
+### P0 — RESOLVIDO 11/08: painel admin morto em producao desde 03/08
 
-**Origem:** [[75 - Auditoria Geral 2026-08-04]]. Commit `694c433`.
+**Fechado em:** 11/08. Deploy do frontend em 09/08 (v202.6) publicou `admin-bootstrap.js` corrigido. Confirmado por auditoria: `app/index.html:3980` e `app/deploy_zip/index.html:3980` ambos com `<script type="module" src="app/js/admin-bootstrap.js?v=202.6">`, `import('/app/js/admin-bootstrap.js')` resolve sem erro em producao.
 
-VALIDFIX1 fecha dois defeitos do VALID1 que estao vivos em producao no `v4.9.186`:
+### P1 — RESOLVIDO 11/08: Worker v4.9.187 deployado e superado por v4.9.189
 
-1. **Fail-open.** POST com header `Content-Type` **ausente** passava direto para o handler, porque o teste era `if (ct && ...)` e string vazia e falsy. So `Content-Type` errado era barrado. Confirmado em producao com `curl -X POST -H "Content-Type:"` respondendo 400 do handler em vez de 415.
-2. **Sem CORS no 415 e no 413.** `_validateInput` retorna antes do ponto onde o CORS e aplicado, entao do lado do navegador esses erros viram falha de rede opaca.
-
-**Acao sua:** rebuild + `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.187`. Menos urgente que o P0 do frontend, o fail-open nao e vetor de CSRF classico porque form HTML sempre manda algum `Content-Type`.
+**Fechado em:** 11/08. Worker em producao responde `versao:v4.9.189` (health check 11/08 20:43 BRT), 2 versoes a frente da que esta pendencia pedia. VALIDFIX1 (fail-open de Content-Type ausente + CORS em 415/413) foi deployado junto.
 
 ### P0 — CREDITO ZERADO NA API ANTHROPIC. Rotinas paradas, tasks reativadas (04/08 09:39)
 

@@ -93,6 +93,37 @@ vazia ou valor truncado também derruba. Some um deles, o health vai a `ok:false
 o `canonical-test` fica vermelho em até 6h e o dono recebe email. Foi assim que o
 `ADMIN_EMAIL` ficou 3 dias ausente com o painel verde.
 
+## Migração KV→DO (v5, em andamento, KV ainda é fonte da verdade)
+
+Três Durable Objects novos substituem progressivamente chaves KV por domínio.
+A migração é incremental: os DOs já existem em produção, as classes estão no
+bundle, e os call sites usam dual-write (escreve no DO e no KV, console.warn
+se o DO falhar) e read-fallback (tenta DO primeiro, cai para KV se falhar).
+Hoje o KV ainda é a fonte da verdade porque o fallback de leitura é
+automático e silencioso.
+
+| DO | Instância | Dados |
+|---|---|---|
+| `EMISSOR_DO` | 1 por emissor (`idFromName`) | Séries, flags, `ews_hist`, features, alertas, comentários |
+| `USUARIO_DO` | 1 por usuário (`idFromName`) | Perfil, favoritos, análises privadas (dados LGPD isolados) |
+| `CONFIG_DO` | Singleton (`_global`) | Calendário, providers, tenant, anomalias, eventos (baixa concorrência) |
+
+Padrão de roteamento: `_rotearParaEmissorDO(env, empresa, op, args)`,
+`_rotearParaUsuarioDO`, `_rotearParaConfigDO`, análogo ao
+`_rotearParaEstadoSemanaDO` que já existe. FIFO promise chain (RACEKV1 fix)
+em todos. Migração v3 em `wrangler.toml:561` com `new_sqlite_classes`.
+
+Fail-open controlado: se o DO falha na escrita, o KV é atualizado normalmente
+e o `console.warn` registra o evento. Se o DO falha na leitura, o valor do KV
+é retornado sem erro para o chamador. Isso significa que um DO quebrado não
+derruba o sistema, mas também significa que a migração pode não estar
+progredindo e ninguém vê.
+
+Para auditar: conferir `wrangler secret list` (os DOs não precisam de secrets),
+checar os 3 bindings no health indireto (não há campo público `emissor_do_ok`
+ainda), e inspecionar `console.warn` nos logs do Worker atrás de `[DO][dual-write]`
+ou `[DO][read]` que indicam DO inalcançável repetido.
+
 ## Testes
 
 ```

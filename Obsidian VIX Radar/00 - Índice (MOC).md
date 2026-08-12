@@ -13,10 +13,10 @@ Mapa do vault. Atualizado 2026-08-06 02h45 BRT.
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.187 |
-| Frontend | v201.93 |
-| Health | `ok:true`, verificador_ok:true, providers 2/2, admin_email_ok:true (06/08 02:15, HTTP 200 0,72s) |
-| Cobertura | Noturno 05/08 completo: 103/103 submit, 9 CRITICO. Verificador async 06/08: fila 23 drenada (14 aprovados, 9 rejeitados, 785k tokens). 2 novas guardas estruturais: preflight ROUTINE_API_KEY (exit 8), Assert-VixLibFunctions (exit 97). |
+| Worker | v4.9.189 |
+| Frontend | v202.6 |
+| Health | `ok:true`, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (11/08 20:43 BRT, HTTP 200 0,15s) |
+| Cobertura | 5 commits de correcao em 11/08: VERIFSLA1 (SLA fila 12h→20h), redacao senha demo, dry-run, deploy v4.9.189 + v202.6. P1 aberto: health lookback de 2 dias nao cobre sweep de 7 dias. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
