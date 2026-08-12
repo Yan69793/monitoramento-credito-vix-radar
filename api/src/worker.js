@@ -15934,7 +15934,13 @@ async function __coreFetch(request, env2222) {
     // inteiro sem enumerar cada action. Sem infra nova.
     var _ehAuthAction = body.action === "registrar" || body.action === "login" || body.action === "admin_auto_login" || body.action === "solicitar_reset" || body.action === "resetar_senha";
     var _ehTentativaAdminSenha = typeof body.admin_senha === "string" && body.admin_senha.length > 0;
-    if (_ehAuthAction || _ehTentativaAdminSenha) {
+    // FIX(ADMINRL-FIX1, v4.9.191): admin_senha CORRETA pula o checkRateLimitV2.
+    // O gate do RLADMIN2 cobre qualquer body com admin_senha, e o painel admin
+    // dispara 4+ POSTs em paralelo (loadHoje, Promise.all) com a senha certa,
+    // estourando o burst anonimo de 3/60s. Incidente 2026-08-12 15:13 BRT.
+    // Brute force continua throttled: senha errada segue no check.
+    var _adminSenhaCorreta = typeof body.admin_senha === "string" && body.admin_senha.length > 0 && body.admin_senha === env2222.ADMIN_PASSWORD;
+    if ((_ehAuthAction || _ehTentativaAdminSenha) && !_adminSenhaCorreta) {
       const _authRl = await checkRateLimitV2(env2222, request);
       if (!_authRl.allowed) {
         return resp({ ok: false, erro: mensagemRateLimit(_authRl), _rate_limit: { camada: _authRl.camada, retry_after_sec: _authRl.retry_after_sec, tenant: _authRl.tenant, autenticado: _authRl.autenticado } }, 429, request);
