@@ -4854,6 +4854,16 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     }).catch(function(){ return null; });
   }
 
+  // CALVAL-V2 (v201.7): rotulo de status_validacao vindo do Worker. Vazio para
+  // CONFIRMADO_OFICIAL (mantem o rotulo legado AGENDADO/DIVULGADO).
+  function _statusValidacaoLabel(sv){
+    if (sv === "CONFIRMADO_CROSSCHECK") return "CONFIRMADO (2 FONTES)";
+    if (sv === "PENDENTE") return "NÃO CONFIRMADO";
+    if (sv === "DIVERGENTE") return "DATAS DIVERGENTES";
+    if (sv === "NAO_INFORMADO") return "SEM DATA OFICIAL";
+    return "";
+  }
+
   function _renderInfo(empresa){
     var info = document.getElementById(ID_INFO);
     if (!info) return;
@@ -4866,14 +4876,20 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     var ult  = dados.ultima_divulgacao_prevista;
     var html = "";
     if (prox && prox.data_prevista) {
-      if (prox.status === "estimado") {
+      var svl = prox.status_validacao ? _statusValidacaoLabel(prox.status_validacao) : "";
+      if (svl) {
+        html = "Divulgação " + (prox.periodo || "") + ": " + _fmtDataBr(prox.data_prevista) + _horarioLabel(prox.horario) + " · " + svl;
+      } else if (prox.status === "estimado") {
         html = "Divulgação " + (prox.periodo || "") + " · ESTIMATIVA NÃO CONFIRMADA";
       } else {
         var statusLbl = prox.status === "divulgado" ? "DIVULGADO" : "AGENDADO";
         html = "Próxima divulgação " + (prox.periodo || "") + ": " + _fmtDataBr(prox.data_prevista) + _horarioLabel(prox.horario) + " · " + statusLbl;
       }
     } else if (ult && ult.data_prevista) {
-      if (ult.status === "estimado") {
+      var svu = ult.status_validacao ? _statusValidacaoLabel(ult.status_validacao) : "";
+      if (svu) {
+        html = "Última divulgação " + (ult.periodo || "") + ": " + _fmtDataBr(ult.data_prevista) + _horarioLabel(ult.horario) + " · " + svu;
+      } else if (ult.status === "estimado") {
         html = "Divulgação " + (ult.periodo || "") + " · ESTIMATIVA NÃO CONFIRMADA";
       } else {
         html = "Última divulgação " + (ult.periodo || "") + ": " + _fmtDataBr(ult.data_prevista) + _horarioLabel(ult.horario);
@@ -4907,7 +4923,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", _init);
   else setTimeout(_init, 200);
-  window._VIX_CAL_VERSAO = "v201.6";
+  window._VIX_CAL_VERSAO = "v201.7";
 })();
 </script>
 
@@ -4978,6 +4994,16 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
       if (diff > 1) return "+" + diff + "d";
       return diff + "d";
     } catch(_){ return ""; }
+  }
+  // CALVAL-V2 (v201.24): selo de status_validacao para eventos de resultado.
+  // So CONFIRMADO_* carregam selo verde; o resto aparece como nao confirmado.
+  function _statusValidacaoOverlay(sv){
+    if (sv === "CONFIRMADO_OFICIAL") return "CONFIRMADO";
+    if (sv === "CONFIRMADO_CROSSCHECK") return "CONFIRMADO (2 FONTES)";
+    if (sv === "PENDENTE") return "NÃO CONFIRMADO";
+    if (sv === "DIVERGENTE") return "DATAS DIVERGENTES";
+    if (sv === "NAO_INFORMADO") return "SEM DATA OFICIAL";
+    return "";
   }
 
   function _carregarAgenda(){
@@ -5084,6 +5110,12 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     var tipoCls = ev.tipo === "resultado" ? "itr_dfp" : ev.tipo === "vencimento" ? "vencimento" : "age";
     var tipoEl = _mkEl("span", { className: "ag-ev-tipo " + tipoCls, style: ev.severidade === "atencao" ? "color:#D97806;border-color:#7c4a07;background:#1d1408;" : "" }, ev.tipo.toUpperCase());
     desc.appendChild(tipoEl);
+    if (ev.tipo === "resultado" && ev.status_validacao) {
+      var _svlO = _statusValidacaoOverlay(ev.status_validacao);
+      if (_svlO) {
+        desc.appendChild(_mkEl("span", { style: "font-size:9px;font-weight:700;margin-left:6px;letter-spacing:.06em;color:" + (ev.confirmado === true ? "#3f8f5f" : "#D97806") + ";" }, _svlO));
+      }
+    }
     if (ev.severidade === "atencao") {
       desc.appendChild(_mkEl("span", { style: "color:#D97806;font-size:9px;font-weight:700;margin-left:6px;letter-spacing:.06em;" }, "ATENCAO"));
     }
@@ -5248,7 +5280,7 @@ const r=document.getElementById("emp-badge");if(r){const _ewsD=ewsEmpresaCache[s
     }
   });
 
-  window._VIX_AGENDA_VERSAO = "v201.23";
+  window._VIX_AGENDA_VERSAO = "v201.24";
 })();
 </script>
 

@@ -47,6 +47,7 @@
     "ADMIN_EMAIL": "admin-test@example.com",
     "JWT_SECRET": "test-jwt-secret-nao-usar-em-producao",
     "ADMIN_PASSWORD": "test-admin-password-nao-usar-em-producao",
+    "ROUTINE_API_KEY": "test-routine-key-nao-usar-em-producao",
     "RESEND_API_KEY": "test-resend-key-dummy",
     "ANTHROPIC_API_KEY": "test-anthropic-key-dummy",
     "SENTRY_DSN": "https://testpublickey@o0.ingest.sentry.io/1"

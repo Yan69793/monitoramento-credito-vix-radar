@@ -3900,6 +3900,12 @@ var EMISSORES_LISTA = [
   "Natura &Co",
   "Ultrapar"
 ];
+// CALVAL-ALIAS (v4.9.192): razoes sociais / tickers antigos -> emissor canonico.
+// Evita duplicar empresas ou misturar resultados da companhia antiga com a sucessora.
+var AGENDA_ALIASES = {
+  // Renomeacao da Eletrobras para AXIA Energia em 10/11/2025 (ver nota na base CALENDARIO_RESULTADOS_V1).
+  "AXIA Energia": "Eletrobras"
+};
 var CALENDARIO_RESULTADOS_V1 = {
   schema_version: 1,
   ultima_atualizacao: "2026-05-09",
@@ -4053,13 +4059,16 @@ function obterTrimestresEmpresaSync(empresa) {
 function obterTrimestresEmpresaMergedSync(empresa, overridesDoc) {
   var base = obterTrimestresEmpresaSync(empresa);
   var over = overridesDoc && overridesDoc.emissores && overridesDoc.emissores[empresa] ? overridesDoc.emissores[empresa].trimestres : null;
-  return mergeTrimestresCalendario(base, over);
+  return mergeTrimestresCalendarioValidado(base, over);
 }
 async function salvarCalendarioOverrideEmissor(env2222, empresa, trimestres) {
   if (!env2222.RADAR_KV || !empresa) return { ok: false, erro: "kv_ou_empresa_ausente" };
   var doc = await carregarCalendarioOverrides(env2222);
   if (!doc.emissores) doc.emissores = {};
-  var sane = Array.isArray(trimestres) ? trimestres.filter(function(t) { return t && t.periodo && t.data_prevista; }) : [];
+  // CALVAL-V2: trimestre sem data e permitido quando a rotina declarou
+  // NAO_INFORMADO (regra 6: nao inferir datas). O restante do fluxo ja ignora
+  // trimestres sem data_prevista para proxima/ultima divulgacao.
+  var sane = Array.isArray(trimestres) ? trimestres.filter(function(t) { return t && t.periodo && (t.data_prevista || t.status_validacao === "NAO_INFORMADO"); }) : [];
   doc.emissores[empresa] = { trimestres: sane, atualizado_em: (new Date()).toISOString() };
   doc.ultima_atualizacao = (new Date()).toISOString().split("T")[0];
   var valor = JSON.stringify(doc);
@@ -4067,9 +4076,15 @@ async function salvarCalendarioOverrideEmissor(env2222, empresa, trimestres) {
   return { ok: true, empresa: empresa, trimestres_count: sane.length };
 }
 async function listarEmissoresCalendarioStale(env2222, limite) {
+  // CALVAL-V2 (regra 9): motivos novos de revalidacao.
+  // Prioridade: sem_calendario (gap total) > confirmar_divulgacao (data passada
+  // nao confrontada com a publicacao) > revalidar_proximo (evento em <=7 dias
+  // sem confirmacao) > sem_data_oficial (NAO_INFORMADO persistente) > stale_Nd.
   var max = limite && limite > 0 ? Math.min(Number(limite), 30) : 20;
   var overrides = await carregarCalendarioOverrides(env2222);
   var hojeMs = Date.now();
+  var hojeIso = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  var lim7 = new Date(hojeMs + 7 * 864e5).toISOString().split("T")[0];
   var stale = [];
   for (var i = 0; i < EMISSORES_LISTA.length; i++) {
     var emp = EMISSORES_LISTA[i];
@@ -4081,13 +4096,49 @@ async function listarEmissoresCalendarioStale(env2222, limite) {
       diasStale = Math.floor((hojeMs - new Date(atualizado + "T00:00:00Z").getTime()) / 864e5);
     }
     var semCalendario = trimBundle.length === 0 && (!over || !over.trimestres || over.trimestres.length === 0);
-    if (semCalendario || diasStale > 7) {
-      stale.push({ empresa: emp, setor: SETOR_DE_EMPRESA[emp] || "Outros", motivo: semCalendario ? "sem_calendario" : "stale_" + diasStale + "d", trimestres_bundle: trimBundle.length, atualizado_em: atualizado });
+    var merged = obterTrimestresEmpresaMergedSync(emp, overrides);
+    var alvoConfirmar = [];
+    var alvoRevalidar = [];
+    var alvoSemData = [];
+    for (var j = 0; j < merged.length; j++) {
+      var t = merged[j];
+      if (!t) continue;
+      var alvo = { periodo: t.periodo, data_prevista: t.data_prevista || null, status_validacao: t.status_validacao || null };
+      if (!t.data_prevista) {
+        alvoSemData.push(alvo);
+      } else if (t.data_prevista < hojeIso && t.status !== "divulgado") {
+        alvoConfirmar.push(alvo);
+      } else if (t.data_prevista >= hojeIso && t.data_prevista <= lim7 && t.status_validacao !== "CONFIRMADO_OFICIAL" && t.status_validacao !== "CONFIRMADO_CROSSCHECK") {
+        alvoRevalidar.push(alvo);
+      }
     }
+    var motivo = null;
+    if (semCalendario) {
+      motivo = "sem_calendario";
+    } else if (alvoConfirmar.length > 0) {
+      motivo = "confirmar_divulgacao";
+    } else if (alvoRevalidar.length > 0) {
+      motivo = "revalidar_proximo";
+    } else if (alvoSemData.length > 0 && diasStale > 7) {
+      motivo = "sem_data_oficial";
+    } else if (diasStale > 7) {
+      motivo = "stale_" + diasStale + "d";
+    }
+    if (!motivo) continue;
+    stale.push({
+      empresa: emp,
+      setor: SETOR_DE_EMPRESA[emp] || "Outros",
+      motivo: motivo,
+      trimestres_bundle: trimBundle.length,
+      atualizado_em: atualizado,
+      trimestres_alvo: alvoConfirmar.concat(alvoRevalidar, alvoSemData)
+    });
   }
   stale.sort(function(a, b) {
-    if (a.motivo === "sem_calendario" && b.motivo !== "sem_calendario") return -1;
-    if (a.motivo !== "sem_calendario" && b.motivo === "sem_calendario") return 1;
+    var rank = { "sem_calendario": 0, "confirmar_divulgacao": 1, "revalidar_proximo": 2, "sem_data_oficial": 3 };
+    var ra = rank[a.motivo] !== undefined ? rank[a.motivo] : 9;
+    var rb = rank[b.motivo] !== undefined ? rank[b.motivo] : 9;
+    if (ra !== rb) return ra - rb;
     return 0;
   });
   return stale.slice(0, max);
@@ -4096,6 +4147,316 @@ __name(obterCalendarioEmpresa, "obterCalendarioEmpresa");
 __name2(obterCalendarioEmpresa, "obterCalendarioEmpresa");
 __name22(obterCalendarioEmpresa, "obterCalendarioEmpresa");
 __name222(obterCalendarioEmpresa, "obterCalendarioEmpresa");
+// ============================================================================
+// CALVAL-V2 (v4.9.192) — validacao de fonte da Agenda de Divulgacao de Resultados.
+// Regras: fonte primaria obrigatoria (RI > CVM > B3 > comunicado > secundaria),
+// nunca sobrescrever oficial com secundaria, cross-check, 5 status de validacao,
+// nao inferir datas, trimestre fiscal, aliases, auditoria de mudanca de data.
+// status_validacao e SEMPRE computado no Worker, nunca confiado do POST.
+// ============================================================================
+var CALVAL_FONTES_SECUNDARIAS = [
+  "infomoney.com.br",
+  "moneytimes.com.br",
+  "advfn.com",
+  "xpi.com.br",
+  "conteudos.xpi.com.br",
+  "btgpactual.com",
+  "bb.com.br",
+  "investidor10.com.br",
+  "statusinvest.com.br",
+  "fundamentus.com.br",
+  "suno.com.br",
+  "einvestidor.estadao.com.br"
+];
+function classificarTierFonte(fonte, emissor) {
+  // Tier da fonte de uma data: "ri" | "cvm" | "b3" | "corporativo" | "secundario" | "nenhum".
+  // Fail-closed: dominio desconhecido cai como "secundario", nunca vira oficial.
+  if (!fonte || typeof fonte !== "string") return "nenhum";
+  var f = fonte.trim();
+  if (!f || f === "estimado_historico") return "nenhum";
+  var host = _agendaExtrairDominio(f).toLowerCase();
+  if (!host) return "secundario";
+  if (/^ri\./.test(host) || host.indexOf(".mziq.com") >= 0 || host.indexOf("mzweb.com.br") >= 0) return "ri";
+  if (host.indexOf("cvm.gov.br") >= 0) return "cvm";
+  if (host.indexOf("b3.com.br") >= 0) return "b3";
+  for (var i = 0; i < CALVAL_FONTES_SECUNDARIAS.length; i++) {
+    if (host.indexOf(CALVAL_FONTES_SECUNDARIAS[i]) >= 0) return "secundario";
+  }
+  var slug = _agendaSlug(emissor || "");
+  if (slug.length >= 4 && host.indexOf(slug) >= 0) return "corporativo";
+  return "secundario";
+}
+__name(classificarTierFonte, "classificarTierFonte");
+function _calvalTemFonteOficial(t) {
+  function _oficial(tier) {
+    return tier === "ri" || tier === "cvm" || tier === "b3" || tier === "corporativo";
+  }
+  var tierPrim = t.url_fonte_primaria ? classificarTierFonte(t.url_fonte_primaria, t.empresa || "") : "nenhum";
+  var tierLegado = classificarTierFonte(t.fonte, t.empresa || "");
+  return _oficial(tierPrim) || _oficial(tierLegado);
+}
+__name(_calvalTemFonteOficial, "_calvalTemFonteOficial");
+function _calvalContarFontesSecundarias(t) {
+  var n = Array.isArray(t.fontes_secundarias) ? t.fontes_secundarias.length : 0;
+  var tierLegado = classificarTierFonte(t.fonte, t.empresa || "");
+  if (tierLegado === "secundario" && !t.url_fonte_primaria) n += 1;
+  return n;
+}
+__name(_calvalContarFontesSecundarias, "_calvalContarFontesSecundarias");
+function calcularStatusValidacaoTrimestre(t) {
+  // Um dos 5 status permitidos. Deterministico, ignora status_validacao recebido.
+  if (!t || !t.periodo || !t.data_prevista) return "NAO_INFORMADO";
+  var divergencias = Array.isArray(t.divergencias) && t.divergencias.length > 0;
+  if (divergencias) {
+    // Divergencia envolvendo fonte oficial -> DIVERGENTE (a oficial vence e fica registrada).
+    // Divergencia so entre fontes nao oficiais -> PENDENTE (regra 3 do pedido).
+    return _calvalTemFonteOficial(t) ? "DIVERGENTE" : "PENDENTE";
+  }
+  if (t.status === "estimado") {
+    // Estimativa nunca e confirmada, inclusive estimado_historico.
+    return "PENDENTE";
+  }
+  if (t.status === "divulgado") {
+    if (_calvalTemFonteOficial(t) || t.data_divulgacao_confirmada) return "CONFIRMADO_OFICIAL";
+    if (_calvalContarFontesSecundarias(t) >= 2) return "CONFIRMADO_CROSSCHECK";
+    return "PENDENTE";
+  }
+  if (_calvalTemFonteOficial(t)) return "CONFIRMADO_OFICIAL";
+  if (_calvalContarFontesSecundarias(t) >= 2) return "CONFIRMADO_CROSSCHECK";
+  return "PENDENTE";
+}
+__name(calcularStatusValidacaoTrimestre, "calcularStatusValidacaoTrimestre");
+function migrarTrimestreParaV2(t, hojeIso, empresaHint) {
+  // Copia enriquecida com os metadados de validacao. Nunca muta a entrada
+  // (protege CALENDARIO_RESULTADOS_V1, retornado por referencia no merge).
+  var src = t && typeof t === "object" ? t : {};
+  var out = Object.assign({}, src);
+  var empresa = empresaHint || src.empresa || "";
+  out.empresa = empresa;
+  var tierLegado = classificarTierFonte(src.fonte, empresa);
+  function _oficialTier(tier) {
+    return tier === "ri" || tier === "cvm" || tier === "b3" || tier === "corporativo";
+  }
+  var primUrl = src.url_fonte_primaria || null;
+  var secUrl = src.url_fonte_secundaria || null;
+  if (!primUrl && _oficialTier(tierLegado) && typeof src.fonte === "string" && src.fonte) {
+    primUrl = src.fonte;
+  }
+  if (!secUrl && tierLegado === "secundario" && typeof src.fonte === "string" && src.fonte) {
+    secUrl = src.fonte;
+  }
+  out.url_fonte_primaria = primUrl;
+  out.url_fonte_secundaria = secUrl;
+  out.fonte_primaria = src.fonte_primaria || (primUrl ? _agendaExtrairDominio(primUrl) : null);
+  out.fonte_secundaria = src.fonte_secundaria || (secUrl ? _agendaExtrairDominio(secUrl) : null);
+  var secs = Array.isArray(src.fontes_secundarias) ? src.fontes_secundarias.slice() : [];
+  if (secUrl) {
+    var jaTem = false;
+    for (var i = 0; i < secs.length; i++) {
+      if (secs[i] && secs[i].url === secUrl) jaTem = true;
+    }
+    if (!jaTem) secs.push({ fonte: _agendaExtrairDominio(secUrl) || "secundaria", url: secUrl });
+  }
+  out.fontes_secundarias = secs;
+  out.divergencias = Array.isArray(src.divergencias) ? src.divergencias.slice() : [];
+  out.observacao_divergencia = src.observacao_divergencia || null;
+  out.data_ultima_verificacao = src.data_ultima_verificacao || (hojeIso || null);
+  out.trimestre_fiscal = src.trimestre_fiscal === true;
+  out.data_divulgacao_confirmada = src.data_divulgacao_confirmada || null;
+  out.auditoria = Array.isArray(src.auditoria) ? src.auditoria.slice(0, 10) : [];
+  if (!out.antes_ou_depois_do_fechamento) {
+    if (out.horario === "antes_abertura") out.antes_ou_depois_do_fechamento = "antes";
+    else if (out.horario === "apos_fechamento") out.antes_ou_depois_do_fechamento = "depois";
+    else out.antes_ou_depois_do_fechamento = null;
+  }
+  var sv = calcularStatusValidacaoTrimestre(out);
+  if (src.status_validacao && src.status_validacao !== sv) {
+    try {
+      console.warn("[calval] status_validacao recebido ignorado: " + src.status_validacao + " -> " + sv);
+    } catch (_e) {
+    }
+  }
+  out.status_validacao = sv;
+  out.nivel_confianca = sv === "CONFIRMADO_OFICIAL" ? "alta" : sv === "CONFIRMADO_CROSSCHECK" ? "media" : "baixa";
+  return out;
+}
+__name(migrarTrimestreParaV2, "migrarTrimestreParaV2");
+function registrarAuditoriaMudancaData(antigo, novo, fonteUrl, motivo) {
+  // Regra 11: data anterior, nova data, fonte, timestamp, motivo.
+  var dataAnt = antigo && antigo.data_prevista ? antigo.data_prevista : null;
+  var dataNova = novo && novo.data_prevista ? novo.data_prevista : null;
+  if (dataAnt === dataNova && motivo !== "confirmacao_cvm") return null;
+  return {
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    data_anterior: dataAnt,
+    data_nova: dataNova,
+    fonte: fonteUrl || (novo && (novo.url_fonte_primaria || novo.fonte)) || null,
+    motivo: motivo || "atualizacao_rotina"
+  };
+}
+__name(registrarAuditoriaMudancaData, "registrarAuditoriaMudancaData");
+function _calvalAppendAuditoria(t, entrada) {
+  if (!entrada) return t;
+  var arr = Array.isArray(t.auditoria) ? t.auditoria.slice() : [];
+  arr.unshift(entrada);
+  t.auditoria = arr.slice(0, 10);
+  return t;
+}
+__name(_calvalAppendAuditoria, "_calvalAppendAuditoria");
+function aplicarRegraNaoSobrescrever(atual, novo) {
+  // Regra 2: fonte oficial nunca e sobrescrita por fonte secundaria divergente.
+  // A secundaria divergente vira registro de divergencia e a oficial permanece.
+  // Regra 6: submeter sem data nao apaga data ja conhecida.
+  if (!novo.data_prevista && atual.data_prevista) {
+    return atual;
+  }
+  function _oficial(tier) {
+    return tier === "ri" || tier === "cvm" || tier === "b3" || tier === "corporativo";
+  }
+  var tierAtual = classificarTierFonte(atual.url_fonte_primaria || atual.fonte, atual.empresa || "");
+  var tierNovo = classificarTierFonte(novo.url_fonte_primaria || novo.fonte, novo.empresa || "");
+  var oficialAtual = _oficial(tierAtual);
+  var oficialNovo = _oficial(tierNovo);
+  if (oficialAtual && !oficialNovo && atual.data_prevista && novo.data_prevista && atual.data_prevista !== novo.data_prevista) {
+    var copia = Object.assign({}, atual);
+    copia.divergencias = copia.divergencias.slice();
+    copia.divergencias.push({
+      fonte: novo.fonte_secundaria || _agendaExtrairDominio(novo.fonte || "") || "secundaria",
+      url: novo.url_fonte_secundaria || novo.fonte || null,
+      data_alternativa: novo.data_prevista
+    });
+    copia.observacao_divergencia = (copia.observacao_divergencia ? copia.observacao_divergencia + " " : "") + "Fonte secundaria informou " + novo.data_prevista + " (" + (novo.fonte_secundaria || _agendaExtrairDominio(novo.fonte || "") || "sem dominio") + "); mantida a data oficial " + atual.data_prevista + ".";
+    _calvalAppendAuditoria(copia, registrarAuditoriaMudancaData(atual, novo, novo.url_fonte_secundaria || novo.fonte || null, "divergencia_ignorada"));
+    copia.status_validacao = calcularStatusValidacaoTrimestre(copia);
+    copia.nivel_confianca = copia.status_validacao === "CONFIRMADO_OFICIAL" ? "alta" : copia.status_validacao === "CONFIRMADO_CROSSCHECK" ? "media" : "baixa";
+    return copia;
+  }
+  var reg = registrarAuditoriaMudancaData(atual, novo, novo.url_fonte_primaria || novo.fonte || null, oficialNovo ? "correcao_ri" : "atualizacao_rotina");
+  _calvalAppendAuditoria(novo, reg);
+  return novo;
+}
+__name(aplicarRegraNaoSobrescrever, "aplicarRegraNaoSobrescrever");
+function mergeTrimestresCalendarioValidado(baseArr, overrideArr) {
+  // Leitura: merge por periodo com migracao v2. O override vence porque a
+  // protecao de nao-sobrescrever ja foi aplicada na escrita (handler).
+  var base = Array.isArray(baseArr) ? baseArr : [];
+  var over = Array.isArray(overrideArr) ? overrideArr : [];
+  var map = {};
+  var ordem = [];
+  for (var i = 0; i < base.length; i++) {
+    var b = base[i];
+    if (!b || !b.periodo) continue;
+    map[b.periodo] = migrarTrimestreParaV2(b, null);
+    ordem.push(b.periodo);
+  }
+  for (var j = 0; j < over.length; j++) {
+    var o = over[j];
+    if (!o || !o.periodo) continue;
+    if (!map[o.periodo]) ordem.push(o.periodo);
+    map[o.periodo] = migrarTrimestreParaV2(o, null);
+  }
+  return ordem.map(function(k) {
+    return map[k];
+  }).sort(function(a, b) {
+    return (a.data_prevista || "") < (b.data_prevista || "") ? -1 : 1;
+  });
+}
+__name(mergeTrimestresCalendarioValidado, "mergeTrimestresCalendarioValidado");
+function resolverAliasAgenda(nome) {
+  // Regra 8: razao social antiga / ticker renomeado resolve para o emissor canonico.
+  if (!nome) return nome;
+  function _nfdAlias(s) {
+    return String(s).toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  }
+  var up = _nfdAlias(nome);
+  for (var alias in AGENDA_ALIASES) {
+    if (!Object.prototype.hasOwnProperty.call(AGENDA_ALIASES, alias)) continue;
+    var alUp = _nfdAlias(alias);
+    if (up === alUp || up.indexOf(alUp) >= 0) return AGENDA_ALIASES[alias];
+  }
+  return nome;
+}
+__name(resolverAliasAgenda, "resolverAliasAgenda");
+function cvmDocConfirmaDivulgacao(doc, emissor, dataPrevista) {
+  // Regra 9: confronto com a publicacao efetiva. doc = item de cvm:documentos
+  // {c: categoria, e: razao social, a: assunto, d: data, l: link}.
+  if (!doc || !emissor || !dataPrevista) return false;
+  var cat = String(doc.c || "").toLowerCase();
+  if (cat.indexOf("dfp") < 0 && cat.indexOf("itr") < 0 && cat.indexOf("resultado") < 0 && cat.indexOf("divulgacao") < 0) return false;
+  var emMatch = _agendaMatchEmissorPorRazao(doc.e || "");
+  if (emMatch !== emissor) return false;
+  var dDoc = _agendaParseVencimentoDate(doc.d || "");
+  var dPrev = _agendaParseVencimentoDate(dataPrevista);
+  if (!dDoc || !dPrev) return false;
+  var diff = (dDoc.getTime() - dPrev.getTime()) / 864e5;
+  return diff >= 0 && diff <= 10;
+}
+__name(cvmDocConfirmaDivulgacao, "cvmDocConfirmaDivulgacao");
+async function confrontarDivulgacoesCVM(env2222) {
+  // Regra 9 (parte automatica diaria): trimestres passados nao confirmados sao
+  // confrontados com o documento efetivo no CVM (DFP/ITR). So promove a
+  // CONFIRMADO_OFICIAL, nunca rebaixa. Melhor esforco, nao derruba o cron.
+  if (!env2222 || !env2222.RADAR_KV) return { ok: false, erro: "kv ausente" };
+  var cvmRaw = null;
+  try {
+    cvmRaw = await env2222.RADAR_KV.get("cvm:documentos", "json");
+  } catch (e) {
+    return { ok: false, erro: String(e && e.message || e) };
+  }
+  if (!Array.isArray(cvmRaw)) return { ok: false, erro: "cvm:documentos ausente" };
+  var hojeIso = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+  var overridesDoc = await carregarCalendarioOverrides(env2222);
+  var alterados = [];
+  for (var i = 0; i < EMISSORES_LISTA.length; i++) {
+    var emp = EMISSORES_LISTA[i];
+    var mudouEmp = false;
+    try {
+      var trims = obterTrimestresEmpresaMergedSync(emp, overridesDoc);
+      var overAtual = overridesDoc.emissores && overridesDoc.emissores[emp] ? (overridesDoc.emissores[emp].trimestres || []).slice() : [];
+      for (var j = 0; j < trims.length; j++) {
+        var t = trims[j];
+        if (!t || !t.data_prevista) continue;
+        if (t.data_prevista >= hojeIso) continue;
+        if (t.status === "divulgado" && t.status_validacao === "CONFIRMADO_OFICIAL") continue;
+        for (var k = 0; k < cvmRaw.length; k++) {
+          if (!cvmDocConfirmaDivulgacao(cvmRaw[k], emp, t.data_prevista)) continue;
+          var novo = migrarTrimestreParaV2(t, hojeIso, emp);
+          novo.status = "divulgado";
+          novo.data_divulgacao_confirmada = String(cvmRaw[k].d || "").slice(0, 10);
+          novo.fonte = "cvm";
+          novo.url_fonte_primaria = cvmRaw[k].l || null;
+          novo.fonte_primaria = "cvm";
+          novo.status_validacao = "CONFIRMADO_OFICIAL";
+          novo.nivel_confianca = "alta";
+          _calvalAppendAuditoria(novo, {
+            timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+            data_anterior: t.data_prevista,
+            data_nova: t.data_prevista,
+            fonte: cvmRaw[k].l || "cvm",
+            motivo: "confirmacao_cvm"
+          });
+          var idx = -1;
+          for (var oi = 0; oi < overAtual.length; oi++) {
+            if (overAtual[oi] && overAtual[oi].periodo === novo.periodo) idx = oi;
+          }
+          if (idx >= 0) overAtual[idx] = novo;
+          else overAtual.push(novo);
+          alterados.push({ empresa: emp, periodo: novo.periodo });
+          mudouEmp = true;
+          break;
+        }
+      }
+      if (mudouEmp) {
+        var res = await salvarCalendarioOverrideEmissor(env2222, emp, overAtual);
+        if (!res.ok) console.error("[calval][cvm]", emp, res.erro);
+      }
+    } catch (e) {
+      console.error("[calval][cvm]", emp, String(e && e.message || e));
+    }
+  }
+  return { ok: true, confirmados: alterados.length };
+}
+__name(confrontarDivulgacoesCVM, "confrontarDivulgacoesCVM");
 var REGULADORES = {
   "Energia El\xE9trica": "ANEEL",
   "Transportes e Log\xEDstica": "ANTT e ANTAQ",
@@ -11008,6 +11369,12 @@ async function agendaBuildPersistir(env2222) {
   horMax.setUTCDate(horMax.getUTCDate() + 90);
   var eventos = [];
   try {
+    // CALVAL-V2 (regra 9): confronto diario com a publicacao efetiva no CVM.
+    try {
+      await confrontarDivulgacoesCVM(env2222);
+    } catch (e) {
+      console.error("[agenda][cvm-confronto]", String(e && e.message || e));
+    }
     var _calOverrides = await carregarCalendarioOverrides(env2222);
     for (var i = 0; i < EMISSORES_LISTA.length; i++) {
       var emp = EMISSORES_LISTA[i];
@@ -11018,6 +11385,11 @@ async function agendaBuildPersistir(env2222) {
           if (!tr || !tr.data_prevista) continue;
           var d = /* @__PURE__ */ new Date(tr.data_prevista + "T00:00:00Z");
           if (isNaN(d.getTime()) || d < hoje || d > horMax) continue;
+          // CALVAL-V2 (regra 10): gate de publicacao. Evento mantem todos os
+          // campos do contrato atual (newsletter e overlay) e ganha os campos
+          // de validacao. confirmado so com fonte oficial ou cross-check.
+          var _v2Tr = migrarTrimestreParaV2(tr, null, emp);
+          var _confirmadoTr = _v2Tr.status_validacao === "CONFIRMADO_OFICIAL" || _v2Tr.status_validacao === "CONFIRMADO_CROSSCHECK";
           eventos.push({
             tipo: "resultado",
             data: tr.data_prevista,
@@ -11029,7 +11401,20 @@ async function agendaBuildPersistir(env2222) {
             fonte: _agendaExtrairDominio(tr.fonte || ""),
             fonte_url: tr.fonte || null,
             _origem_kv: "CALENDARIO_RESULTADOS_V1",
-            _id: _agendaSlugId("res", emp, d, tr.periodo || "trim", tr.fonte || "")
+            _id: _agendaSlugId("res", emp, d, tr.periodo || "trim", tr.fonte || ""),
+            confirmado: _confirmadoTr,
+            status_validacao: _v2Tr.status_validacao,
+            data_resultado: _v2Tr.data_prevista,
+            horario_resultado: _v2Tr.horario || "nao_informado",
+            antes_ou_depois_do_fechamento: _v2Tr.antes_ou_depois_do_fechamento || null,
+            fonte_primaria: _v2Tr.fonte_primaria || null,
+            url_fonte_primaria: _v2Tr.url_fonte_primaria || null,
+            fonte_secundaria: _v2Tr.fonte_secundaria || null,
+            url_fonte_secundaria: _v2Tr.url_fonte_secundaria || null,
+            data_ultima_verificacao: _v2Tr.data_ultima_verificacao || null,
+            nivel_confianca: _v2Tr.nivel_confianca,
+            observacao_divergencia: _v2Tr.observacao_divergencia || null,
+            trimestre_fiscal: _v2Tr.trimestre_fiscal === true
           });
       }
     }
@@ -11147,6 +11532,17 @@ async function agendaBuildPersistir(env2222) {
     })),
     com_assembleia: _setSize(dedup.filter(function(e) {
       return e.tipo === "assembleia";
+    }).map(function(e) {
+      return e.emissor;
+    })),
+    // CALVAL-V2: cobertura separando confirmados de pendentes (regra 10).
+    confirmados: _setSize(dedup.filter(function(e) {
+      return e.tipo === "resultado" && e.confirmado === true;
+    }).map(function(e) {
+      return e.emissor;
+    })),
+    pendentes: _setSize(dedup.filter(function(e) {
+      return e.tipo === "resultado" && e.confirmado !== true;
     }).map(function(e) {
       return e.emissor;
     })),
@@ -16545,9 +16941,32 @@ async function __coreFetch(request, env2222) {
     }
     if (body.action === "atualizar_calendario_emissor") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
-      var _calEmp = body.empresa;
-      if (!_calEmp || !Array.isArray(body.trimestres)) return resp({ ok: false, erro: "empresa e trimestres obrigatorios." }, 400, request);
-      var _calRes = await salvarCalendarioOverrideEmissor(env2222, _calEmp, body.trimestres);
+      var _calEmpIn = body.empresa;
+      if (!_calEmpIn || !Array.isArray(body.trimestres)) return resp({ ok: false, erro: "empresa e trimestres obrigatorios." }, 400, request);
+      // CALVAL-V2: alias resolve para o canonico e nome desconhecido e rejeitado
+      // (regra 8: nao duplicar empresas nem aceitar nomes inventados).
+      var _calEmp = resolverAliasAgenda(String(_calEmpIn).trim());
+      if (EMISSORES_LISTA.indexOf(_calEmp) < 0) {
+        return resp({ ok: false, erro: "Emissor desconhecido: " + _calEmpIn + ". Use o nome canonico de listar_calendario_stale.", emissor_resolvido: _calEmp }, 400, request);
+      }
+      var _hojeIso = (/* @__PURE__ */ new Date()).toISOString().split("T")[0];
+      var _calOverridesAtual = await carregarCalendarioOverrides(env2222);
+      var _mergedAtual = obterTrimestresEmpresaMergedSync(_calEmp, _calOverridesAtual);
+      var _mapAtual = {};
+      for (var _i = 0; _i < _mergedAtual.length; _i++) {
+        if (_mergedAtual[_i] && _mergedAtual[_i].periodo) _mapAtual[_mergedAtual[_i].periodo] = _mergedAtual[_i];
+      }
+      var _saneCal = [];
+      for (var _j = 0; _j < body.trimestres.length; _j++) {
+        var _tIn = body.trimestres[_j];
+        if (!_tIn || !_tIn.periodo) continue;
+        var _v2 = migrarTrimestreParaV2(_tIn, _hojeIso, _calEmp);
+        if (_mapAtual[_tIn.periodo]) {
+          _v2 = aplicarRegraNaoSobrescrever(_mapAtual[_tIn.periodo], _v2);
+        }
+        _saneCal.push(_v2);
+      }
+      var _calRes = await salvarCalendarioOverrideEmissor(env2222, _calEmp, _saneCal);
       return resp(_calRes, _calRes.ok ? 200 : 500, request);
     }
     // ─────────────────────────────────────────────────────────────────────────
