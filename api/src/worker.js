@@ -4077,9 +4077,11 @@ async function salvarCalendarioOverrideEmissor(env2222, empresa, trimestres) {
 }
 async function listarEmissoresCalendarioStale(env2222, limite) {
   // CALVAL-V2 (regra 9): motivos novos de revalidacao.
-  // Prioridade: sem_calendario (gap total) > confirmar_divulgacao (data passada
-  // nao confrontada com a publicacao) > revalidar_proximo (evento em <=7 dias
-  // sem confirmacao) > sem_data_oficial (NAO_INFORMADO persistente) > stale_Nd.
+  // Prioridade: confirmar_divulgacao (data ja exibida e possivelmente errada,
+  // o bug reportado) > revalidar_proximo (evento em <=7 dias, iminente)
+  // > sem_calendario (gap de cobertura) > sem_data_oficial > stale_Nd.
+  // Sem essa ordem, os ~80 emissores sem_calendario ocupam o limite de 30 e
+  // os motivos de revalidacao nunca sao servidos para a rotina.
   var max = limite && limite > 0 ? Math.min(Number(limite), 30) : 20;
   var overrides = await carregarCalendarioOverrides(env2222);
   var hojeMs = Date.now();
@@ -4135,7 +4137,7 @@ async function listarEmissoresCalendarioStale(env2222, limite) {
     });
   }
   stale.sort(function(a, b) {
-    var rank = { "sem_calendario": 0, "confirmar_divulgacao": 1, "revalidar_proximo": 2, "sem_data_oficial": 3 };
+    var rank = { "confirmar_divulgacao": 0, "revalidar_proximo": 1, "sem_calendario": 2, "sem_data_oficial": 3 };
     var ra = rank[a.motivo] !== undefined ? rank[a.motivo] : 9;
     var rb = rank[b.motivo] !== undefined ? rank[b.motivo] : 9;
     if (ra !== rb) return ra - rb;

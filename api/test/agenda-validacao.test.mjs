@@ -56,8 +56,9 @@ async function getAgenda() {
 }
 
 async function rebuild() {
+  // O dispatch de op= roda no branch GET de __coreFetch.
   return SELF.fetch("https://example.com/?op=admin_agenda_rebuild", {
-    method: "POST",
+    method: "GET",
     headers: { "x-admin-password": ADMIN_PWD },
   });
 }
