@@ -182,7 +182,7 @@ describe("CALVAL-V2: validacao de fonte da agenda de resultados", () => {
     // contrato da newsletter preservado: campos legados intactos
     expect(evVale.titulo).toContain("3T26");
     expect(evVale.subtitulo).toBeTruthy();
-    expect(evVale.fonte).toBe("www.infomoney.com.br");
+    expect(evVale.fonte).toBe("infomoney.com.br");
   });
 
   it("sem data: trimestre persiste como NAO_INFORMADO e pode ser preenchido depois (regra 6)", async () => {
