@@ -254,6 +254,7 @@ Lista parcial dos que têm correção estrutural:
 | EMAILGET1 | Email actionable por GET | Migrado para POST com token |
 | SENTRY1 | Worker sem captura de exceção; 167 try/catch mudos | `Sentry.withSentry` no export, `sentry_ok` no `_okHealth`, gate de secret no deploy |
 | ROUTINEKEY-PLAIN1 | `routine_key` em texto puro em `SKILL.md`/`ROUTINES-CLOUD.md` das rotinas cloud (Claude Desktop). Comentário "chave removida do disco 2026-07-24" ficou ao lado do valor literal, remoção não tinha coberto esses arquivos. Achado de novo em 07/08/2026 em 4 arquivos vivos (verificacao-async, noturno, matinal, export-historico), fora dezenas de backups e transcripts históricos que preservam o valor por serem append-only. | Valor redigido nos 4 arquivos vivos em 07/08. Chave em si **não foi rotacionada**, continua válida — rotação é decisão pendente do usuário, afeta toda rotina que autentica com ela. |
+| ADMINRL-FIX1 | Gate RLADMIN2 (v4.9.164) mandava para `checkRateLimitV2` qualquer request com `admin_senha`, inclusive o painel admin legítimo que dispara 4 POSTs em paralelo com a senha certa (tela Hoje). Estourava burst anônimo de 3/60s e o painel exibia 429. Incidente 12/08 15:13 BRT. | v4.9.191: `admin_senha === ADMIN_PASSWORD` pula o check. Brute force continua throttled (senha errada segue no check). Testes em `api/test/rate-limit.test.mjs`. |
 
 Se uma mudança nova toca em auth, KV, estado multi-semana ou input de usuário,
 conferir se não reabre um desses.

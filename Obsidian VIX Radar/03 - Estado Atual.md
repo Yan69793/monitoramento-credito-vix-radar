@@ -9,6 +9,7 @@ status: saudavel
 
 > [!success] 11/08 19h05 UTC — **Reorganização do working tree: 7 causas raiz corrigidas, 16 commits, push feito.** Repo tinha ~30 entradas de drift (8 modificadas, 22 não rastreadas) acumuladas desde 30/07. Causa raiz principal: `scripts/deploy-pages.ps1` publicava `app/js/**` via wrangler mas o `git add` do próprio script nunca incluía esse caminho (`GITADD-ASSETDIRS1`, segunda vez que essa classe de bug morde o script, primeira foi MODULE-MIG1 em 03/08). Também corrigido: `data/historico` e `data/reconciliacao` paravam de ser commitados manualmente há semanas apesar das rotinas seguirem rodando sozinhas, agora com auto-commit escopado (nunca `git add -A`, falha vira aviso sem derrubar a rotina). Rotina `VIXRadar-Reconciliacao-CVM` (Task Scheduler, seg 08h00 BRT) estava ativa há um mês sem estar documentada, corrigido em `CLAUDE.md` e `routines/README.md`. Novo Gate 4 não-bloqueante no pre-commit avisa arquivo parado na raiz. Diagnóstico do incidente de verificador_ok de 05/08 (3 rascunhos soltos na raiz) consolidado em [[77 - Post-Mortem verificador_ok e Proposta canonical-test.yml 2026-08-11]], com proposta de fix pro `canonical-test.yml` que ainda não foi implementada (item de backlog aberto no Jarvis). **Não verificado ainda:** o caminho real de commit das 2 rotinas automatizadas, só o desvio de DryRun foi testado ao vivo — conferir amanhã se aparece commit de historico pós-20h45 e de reconciliação pós-segunda 08h00. Health no fechamento: `ok:true verificador_ok:true`, drenou sozinho durante a sessão, sem relação com as mudanças. Detalhe completo: `01_PROJETOS/Jarvis/AI_OPERATING_SYSTEM/memoria_de_sessao/2026-08-11_vix-radar-reorganizacao-working-tree.md`.
 > [!success] 11/08 20h47 BRT — **Deploy v4.9.190: VERIFSLA2 fecha janela cega do health.** Lookback de `listarFilaVerificacaoPendente` sobe de 2 para 7 dias, alinhando com a janela do sweep. P1 fechado.
+> [!success] 12/08 15h49 BRT — **Deploy v4.9.191: ADMINRL-FIX1 encerra 429 do painel admin.** O painel admin disparava 4 POSTs em paralelo com `admin_senha` (tela Hoje) e o gate do RLADMIN2 (v4.9.164) classificava tudo como anonimo com burst de 3/60s. Resultado: 429 "Muitas varreduras em pouco tempo" a cada carregamento (reportado por screenshot 15:13 BRT, confirmado em Observability). Fix: `admin_senha` correta pula o `checkRateLimitV2`, senha errada continua throttled. Testes de regressao no CI (commit `c2b2d5f`, verde). Detalhe: [[79 - Incidente ADMINRL-FIX1 429 painel admin 2026-08-12]].
 
 > [!warning] 10/08 13h39 UTC — **`canonical-test.yml` falhou (run `31393983894`, commit `151052d`). Causa: `verificador_ok:false` no health, kv/telemetria seguem `true`.** Frontend sem drift (prod=repo=v202.6). Mesmo padrao de fila de verificacao travada ja visto em 07/08 (ver `project_rotinas_nunca_abortam_por_ok_agregado`), o workflow de CI corretamente falha porque seu gate usa o `ok` agregado (diferente da rotina noturna, que ignora esse campo de proposito). Print de um segundo alerta, repo "VIXRADAR" commit `d22823f`, nao corresponde a nada no historico atual, provavelmente notificacao antiga do nome anterior do repo. **Correcao de memoria:** `gh` CLI esta instalado e autenticado localmente (`gh auth status` confirmou), ao contrario do que a nota anterior registrava. Usado para puxar este log direto do Actions.
 > [!success] 06/08 02h15 — **Worker ok:true, verificador_ok:true. Incidente de 04-05/08 encerrado.** Fila de verificacao drenada (23 eventos, 14 aprovados, 9 rejeitados, 785k tokens). Guarda estrutural Assert-VixLibFunctions em producao nos 3 scripts, prevenindo reincidencia de call sites orfaos. Worker v4.9.187, commits `ea49418` `06cf4b7` `250e909`.
@@ -142,9 +143,9 @@ As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth.
 
 | Componente | Versao | Health |
 |---|---|---|
-| Worker | **v4.9.190** | `ok:true`, kv/rate_limiter/telemetria true, `admin_email_ok:true`, `verificador_ok:true`, providers 2/2, `sentry_ok:true`. Health check 11/08 20:47 BRT: HTTP 200, 0,20s. VERIFSLA2: lookback 7 dias. |
+| Worker | **v4.9.191** | `ok:true`, kv/rate_limiter/telemetria true, `admin_email_ok:true`, `verificador_ok:true`, providers 2/2, `sentry_ok:true`. Health check 12/08 15:48 BRT: HTTP 200, 0,32s. ADMINRL-FIX1: senha admin correta pula rate limit. |
 | Frontend | **v202.6** | `version.json` deployed_at 2026-08-09T21:16:48Z. Painel admin funcional, `admin-bootstrap.js` carregando sem erro. |
-| Git | v4.9.190 | main no commit `6131979` (11/08). Deploy VERIFSLA2: lookback do health de 2→7 dias, fecha janela cega entre health e sweep. |
+| Git | v4.9.191 | main no commit `4a35977` (12/08). Fix `c2b2d5f` + chore de deploy `4a35977`, push feito. |
 
 ## Cobertura
 
@@ -188,7 +189,7 @@ que e reescrito a cada registro. Nao e estimativa.
 | RATE_LIMITER_DO | ok (health 27/07: rate_limiter:true) |
 | RADAR_USAGE_EVENTS | ok (health 27/07: telemetria:true) |
 | ESTADO_SEMANA_DO | declarado no `wrangler.toml` + usado no bundle (nao exposto no health publico) |
-| Providers | 2/2 (Resend + Anthropic); OpenRouter probes removidos do health (OPENROUTERVIVO). **ANTHROPIC_API_KEY ativa (35 chars, confirmada no ambiente), mas scripts apagavam antes do claude -p — corrigido 30/07.** |
+| Providers | 2/2 (Resend + Anthropic); OpenRouter saiu do cascade de analise de credito no v4.9.108 (OPENROUTERVIVO). **Correcao 11/08:** a frase anterior ("probes removidos do health") era imprecisa, `OPENROUTER_API_KEY` continua ativa e em uso para um probe de saldo/saude do Perplexity (`verificarSaldoOpenRouter`, `api/src/worker.js` ~13595-13597 e ~14894-14895), separado do cascade de analise que de fato nao usa mais OpenRouter. **ANTHROPIC_API_KEY ativa (35 chars, confirmada no ambiente), mas scripts apagavam antes do claude -p — corrigido 30/07.** |
 
 ## Pendencias ativas (topo)
 
@@ -334,3 +335,5 @@ em `PENDENCIAS.md` esta encerrada por impossibilidade, nao por conclusao.
 ---
 
 *Snapshot gerado em 2026-08-06 02h45 BRT (12 guardas estruturais implementadas). Dias 28/07 a 06/08 documentados. Changelog: [[03a - Changelog]]. Infra: [[03b - Infraestrutura]].*
+
+*Reconciliado em 2026-08-11 21h40 BRT via auditoria geral de engenharia: rodape acima ficava desatualizado havia 5 dias apesar de callouts novos no topo do arquivo (arquivo era editado sem o rodape acompanhar). Health verificado ao vivo neste momento: `ok:true`, `versao:v4.9.190`, `verificador_ok:true`, `admin_email_ok:true`, `sentry_ok:true`, HTTP 200 em 1,79s. Corrigida tambem a linha de OpenRouter acima (Infra), que dizia probe removido do health quando na verdade so saiu do cascade de analise.*
