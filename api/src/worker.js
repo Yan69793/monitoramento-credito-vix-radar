@@ -4199,9 +4199,23 @@ function _calvalTemFonteOficial(t) {
 }
 __name(_calvalTemFonteOficial, "_calvalTemFonteOficial");
 function _calvalContarFontesSecundarias(t) {
+  // Conta fontes secundarias INDEPENDENTES. A fonte legada so soma se ainda
+  // nao estiver listada em fontes_secundarias (a migracao ja a inclui la,
+  // e contar de novo transformaria 1 fonte em "2 fontes" e viraria
+  // CONFIRMADO_CROSSCHECK com fonte unica).
   var n = Array.isArray(t.fontes_secundarias) ? t.fontes_secundarias.length : 0;
   var tierLegado = classificarTierFonte(t.fonte, t.empresa || "");
-  if (tierLegado === "secundario" && !t.url_fonte_primaria) n += 1;
+  if (tierLegado === "secundario" && !t.url_fonte_primaria && typeof t.fonte === "string" && t.fonte) {
+    var _dom = _agendaExtrairDominio(t.fonte).toLowerCase();
+    var _ja = false;
+    for (var i = 0; i < n; i++) {
+      var _s = t.fontes_secundarias[i];
+      if (!_s) continue;
+      if (_s.url === t.fonte) { _ja = true; break; }
+      if (_dom && _agendaExtrairDominio(_s.url || "").toLowerCase() === _dom) { _ja = true; break; }
+    }
+    if (!_ja) n += 1;
+  }
   return n;
 }
 __name(_calvalContarFontesSecundarias, "_calvalContarFontesSecundarias");

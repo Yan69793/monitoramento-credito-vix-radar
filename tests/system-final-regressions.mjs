@@ -150,6 +150,13 @@ assert.equal(fiscal.periodo, "3T25F");
 assert.equal(fiscal.trimestre_fiscal, true);
 assert.equal(fiscal.status_validacao, "CONFIRMADO_OFICIAL");
 
+// ── CALVAL-V2: fonte secundaria unica nao vira cross-check (regressao CI 2) ─
+const single = context.migrarTrimestreParaV2(
+  { periodo: "2T26", data_prevista: "2026-08-12", status: "agendado", fonte: "https://www.infomoney.com.br/x" },
+  null, "Bradesco"
+);
+assert.equal(single.status_validacao, "PENDENTE");
+
 // ── CALVAL-V2: cross-check (2 secundarias concordantes) ─────────────────────
 const cross = context.migrarTrimestreParaV2(
   { periodo: "2T26", data_prevista: "2026-08-12", status: "agendado",
