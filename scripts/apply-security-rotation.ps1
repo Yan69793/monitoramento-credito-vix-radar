@@ -95,8 +95,13 @@ if ($DryRun) {
 # --- GitHub Actions usa o MESMO ADMIN_PASSWORD, secret separado --------
 # Achado 27/07: esta etapa foi pulada na rotacao original (24/07) e os workflows
 # frescor-check.yml, daily-status-email.yml e scan-emergencia.yml ficaram
-# falhando silenciosamente por 3 dias (ver PENDENCIAS.md). Nao ha gh CLI nesta
-# maquina para automatizar, entao o gate abaixo obriga confirmacao manual.
+# falhando silenciosamente por 3 dias (ver PENDENCIAS.md). REPETIU em ~09-10/08:
+# o secret do GitHub divergiu de novo e os dois guardas de staleness ficaram
+# cegos por 4 dias, achado da auditoria geral de 13/08 (GHWL1). O gh CLI existe
+# nesta maquina (confirmado 11/08), mas secrets nao sao gerenciaveis via PAT
+# fine-grained, entao o gate continua sendo confirmacao manual. Depois de
+# atualizar, valide com: scripts/check-gh-actions-health.ps1 (esperado 3/3
+# verdes na proxima run de cada workflow).
 Write-Host "[4/8] ADMIN_PASSWORD tambem precisa ser atualizado no GitHub Actions..." -ForegroundColor Yellow
 Write-Host "  Os workflows frescor-check.yml, daily-status-email.yml e scan-emergencia.yml" -ForegroundColor White
 Write-Host "  leem secrets.ADMIN_PASSWORD, que e independente do secret do Cloudflare." -ForegroundColor White
@@ -109,8 +114,10 @@ if ($DryRun) {
     $confirmaGithub = Read-Host "  Ja atualizou o secret ADMIN_PASSWORD no GitHub? (s/n)"
     if ($confirmaGithub -notmatch '^(s|sim|y|yes)$') {
         Write-Host "  AVISO: GitHub Actions vai continuar com a senha antiga ate voce atualizar. Os 3 workflows acima vao falhar." -ForegroundColor Red
+        Write-Host "  AVISO (GHWL1): frescor-check e scan-emergencia sao os guardas de staleness da ingestao. Com secret velho eles ficam CEGOS, nao so vermelhos." -ForegroundColor Red
     } else {
         Write-Host "  ADMIN_PASSWORD: confirmado atualizado no GitHub tambem" -ForegroundColor Green
+        Write-Host "  GHWL1: rode scripts/check-gh-actions-health.ps1 na proxima janela de runs para confirmar os 3 workflows verdes." -ForegroundColor Cyan
     }
 }
 
