@@ -36,6 +36,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[81 - Auditoria Geral e incidentes 2026-08-13]] | 13/08 | Geral: AUTHWEEK1 (cascade parado), GHWL1 (secret GH divergente), XSS v100 fechado, BOM fechado |
 | [[68 - Avaliação Claude Fable 5 para Otimização do Sistema (2026-07-26)]] | 26/07 | Pesquisa, Fable 5 nao recomendado para producao, fix compliance na politica de privacidade |
 | [[67 - Auditoria Geral 2026-07-25]] | 25/07 | Geral, drift FE v201.88 + VERSAO3X recorrente + notas 65/66 ausentes do MOC |
 | [[66 - Preditivo lab interno 2026-07-21]] | 21/07 | Decisao: preditivo so interno, pesquisa/backtest |

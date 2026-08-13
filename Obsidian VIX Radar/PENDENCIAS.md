@@ -11,6 +11,80 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## Abertas (13/08 — auditoria geral + execução)
+
+### P0 — ABERTO: cascade de IA parado (AUTHWEEK1). Assinatura no limite semanal + chave paga sem crédito
+
+**Achado:** Sonda em processo limpo: OAuth 429 "You've hit your weekly limit, resets Aug 15, 8am" e chave paga `VIXRADAR_ANTHROPIC_API_KEY` 400 "Credit balance is too low". Nenhuma rotina de análise roda até 15/08 08h BRT (ou recarga). Noturno 13/08 18h00 aborta limpo (exit 5). Cobertura congelada no dado de 12/08 18h28.
+
+**Correção:** operador recarrega a chave paga, ou aguarda o reset. Guarda proposta: notificação quando a sonda detectar 429 de limite semanal (a sonda já detecta, falta notificar).
+
+**Causa raiz:** três drenos de verificação em 12/08 (~2M tokens) + noturno completo estouraram o limite semanal da assinatura. A pendência de 04/08 ("recarregar crédito da chave paga") nunca foi executada.
+
+### P1 — ABERTO: secret ADMIN_PASSWORD do GitHub Actions divergiu do Worker (GHWL1)
+
+**Achado:** frescor-check 403 desde 10/08, scan-emergencia falhando desde 09/08. Os dois guardas de staleness ficaram cegos por 4 dias sem detecção. Repetição da classe de drift de 24/07 (documentada neste arquivo).
+
+**Correção:** operador atualiza `secrets.ADMIN_PASSWORD` em GitHub → Settings → Secrets and variables → Actions. Validar com `scripts/check-gh-actions-health.ps1` (novo, commit `f82872d`) na próxima janela de runs.
+
+**Guarda:** `check-gh-actions-health.ps1` + aviso reforçado no `apply-security-rotation.ps1`. Publicação automática do secret segue impossível via PAT fine-grained (403), exige token clássico ou UI.
+
+### P1 — ABERTO: 8 commits locais à frente do origin, push bloqueado por credencial
+
+**Achado:** `git push origin HEAD` retorna 403 "Write access to repository not granted" com o credential manager E com o token do gh (PAT fine-grained sem Contents write). Commits de hoje (FIMREAL1, BOM, XSS, deploy v202.8, GHWL1) estão só no disco. canonical-test vai acusar drift de frontend na próxima run até o push sair.
+
+**Correção:** operador roda `gh auth refresh -s repo` (ou push manual). Repo local está íntegro e sincronizado com produção (v202.8 / v4.9.192).
+
+### P1 — FECHADO hoje: BOM UTF-8 nos scripts
+
+35 .ps1 varridos, 18 regravados com BOM byte a byte, parse PS 5.1 64/64 OK. Commit `9764a3d`.
+
+### P2 — FECHADO no código: XSS Market Overview (parcialmente deployado)
+
+Frontend v202.8 **no ar** com escape nos 4 pontos do módulo v100 (commits `0ee7987`, `88c758d`, `832b72d`). Worker com strip no `sanitizarPayloadRadar` commitado (`01f95bd`) mas **sem deploy**: `deploy-worker.ps1` reprova `ok:false` pós-deploy. Deployar v4.9.193 quando o health voltar a verde (~14/08 21h30Z, via sweep).
+
+### P0 — VERIFICADO hoje: não há solicitações pendentes
+
+Telemetria AE 10 dias: última solicitação 07/08 10:04, zero desde então. KV: 33 usuários, 0 pendentes. Fluxo de aprovação funcional (WhatsApp admin 07/08 HTTP 201, zero `registrar_email_admin_erro` em 10 dias).
+
+Detalhe completo: [[81 - Auditoria Geral e incidentes 2026-08-13]].
+
+---
+
+## Abertas (12/08 — auditoria geral, skill vix-radar-general-audit)
+
+### P1 — ABERTO: dreno diario da fila de verificacao nao acompanha o enfileiramento da noturna
+
+**Achado:** Em 12/08 o dreno processou 12 de 17 itens e a fila cresceu para 16 durante a execucao (noturna enfileira mais rapido do que o dreno diario de 10h20 esvazia). Os 5 itens de 11/08 23h33Z cruzaram o SLA de 20h as 19h33Z e o health caiu para `ok:false` (`verificador_ok:false`). Proximo canonical-test previsto 01h15Z (13/08) deve falhar e mandar email ao admin.
+
+**Correcao:** drenar a fila manualmente (executar `run_vixradar_verificacao_async.ps1`) antes de 01h15Z, e revisar a capacidade do dreno (aumentar `dias=3` do listing, rodar dreno apos o noturno, ou aumentar chunks mantendo o teto de 700k tokens).
+
+**Causa raiz:** o unico dreno roda 10h20 BRT, a noturna enfileira 18h00, e o SLA de 20h vence as ~19h33 do dia seguinte. A janela de dreno nao cobre a taxa de enfileiramento em dias de backlog.
+
+**Guarda:** alerta de fila no canonical-test ja existe (e vai acender). Proposta: alerta adicional quando o dreno termina com fila restante acima de um limite, ou agendar um segundo dreno pos-noturno.
+
+### P1 — ABERTO: 12 `.ps1` do working tree sem BOM UTF-8 com caracteres nao-ASCII
+
+**Achado:** A reescrita em massa de caminhos para `FREQUENTE\` (12/08) regravou os scripts sem o BOM. Os 3 drivers diarios estao na lista: `run_vixradar_matinal_claude.ps1` (32 bytes nao-ASCII), `run_vixradar_noturno_claude.ps1` (35), `run_vixradar_verificacao_async.ps1` (30). Completam a lista: `watch-noturno-progress.ps1` (74), `register-all-routines-scheduler.ps1` (27), `atualizar_altman_cvm.ps1` (12), `reconciliar_ipe_cvm.ps1` (10), `seed_labels.ps1` (10), `verify-rotinas-v2.ps1` (8), `register-verificacao-async-task.ps1` (6), `run_vixradar_ranking_mensal.ps1` (6), `cleanup-rotina-artifacts.ps1` (3). PowerShell 5.1 le arquivo sem BOM como ANSI e corrompe acentos em literais — precedente real documentado em `run_vixradar_noturno_claude.ps1:15` (match de emissor quebrado). O pre-commit hook reprova o commit nesse estado, mas nada impede o script de RODAR.
+
+**Correcao:** regravar os 12 arquivos com BOM UTF-8 (prefixo `EF BB BF`) mantendo o conteudo, antes do proximo disparo (matinal 13/08 10h00). Copia antiga em `E:\Diretorio\Claude\Monitoramento de Credito\` tem o mesmo problema, nao serve de backup.
+
+**Causa raiz:** ferramenta de edicao em lote que grava UTF-8 sem BOM, usada na reorganizacao de caminhos, sem rodar `lint-encoding.ps1` apos.
+
+**Guarda:** item permanente na matriz da auditoria geral: varredura de BOM/nao-ASCII no working tree. Opcional: self-check de BOM no inicio dos 3 drivers (precedente: `GUARD_OK` anti-duplicata).
+
+### P2 — ABERTO: candidato a XSS armazenado no Market Overview
+
+**Achado:** `app/index.html:4051` interpola `e.titulo` (titulo gerado por LLM, gravado sem strip de HTML em `sanitizarPayloadRadar`) direto em `innerHTML`, sem `escapeHtml`. Os helpers existem no codigo (`escapeHtml` no worker, `esc()` no dashboard) mas o modulo v100 nao usa.
+
+**Correcao:** aplicar escape no titulo e empresa antes do `innerHTML` do modulo Market Overview, e strip de HTML no write path do titulo (`sanitizarPayloadRadar`).
+
+**Causa raiz:** modulo novo (v100) escrito antes da padronizacao de escaping do resto do frontend, sem revisao de segurança no merge.
+
+**Guarda:** item permanente na matriz (escaping de saida em todo `innerHTML` que toque dado de LLM) + grep de `innerHTML` com interpolacao de campo LLM na auditoria geral.
+
+---
+
 ## Abertas (06/08 02h45 — pos-incidente 04-06/08)
 
 ### Status geral
