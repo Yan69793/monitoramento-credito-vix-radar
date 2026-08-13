@@ -1,6 +1,6 @@
 /**
  * VIX Radar — Admin Bootstrap (ES Module Entry)
- * v202.1
+ * v202.8
  *
  * Replaces the old <script src="admin/vr-admin-*.js"> loading sequence.
  * Add ONE script tag to index.html:
@@ -16,29 +16,29 @@
 // <script src> do index.html, e mudar CACHE_VERSION. Se um ficar para tras, o browser baixa
 // shared.js duas vezes como dois modulos distintos. O gate 3.2 do deploy so olha o
 // index.html, o resto e conferido pelo 3.4a.
-import './admin/shared.js?v=202.7';
-import './admin/modules.js?v=202.7';
-import './admin/engajamento.js?v=202.7';
-import './admin/metricas.js?v=202.7';
-import './admin/fase3.js?v=202.7';
+import './admin/shared.js?v=202.8';
+import './admin/modules.js?v=202.8';
+import './admin/engajamento.js?v=202.8';
+import './admin/metricas.js?v=202.8';
+import './admin/fase3.js?v=202.8';
 
 // Also expose the API client and router for direct use
-export { api, createApiClient, fetchWithRetry, Skeleton } from './api.js?v=202.7';
-export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from './admin-router.js?v=202.7';
+export { api, createApiClient, fetchWithRetry, Skeleton } from './api.js?v=202.8';
+export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from './admin-router.js?v=202.8';
 
 // Export admin module APIs for programmatic use
 export {
   loadHoje, calcHeart, sendReengage, getHeartHistory,
   renderHeartKpis, renderUserHealth, renderHeartbeats, injectHojeTab,
-} from './admin/modules.js?v=202.7';
+} from './admin/modules.js?v=202.8';
 
 export {
   API_BASE, esc, getSenha, setSenha, authHeaders,
   postAdmin, skeletonBlock, injectBaseStyles, wrapWhenReady,
-} from './admin/shared.js?v=202.7';
+} from './admin/shared.js?v=202.8';
 
-export { initEngajamento } from './admin/engajamento.js?v=202.7';
-export { initMetricas } from './admin/metricas.js?v=202.7';
-export { initFase3Polish } from './admin/fase3.js?v=202.7';
+export { initEngajamento } from './admin/engajamento.js?v=202.8';
+export { initMetricas } from './admin/metricas.js?v=202.8';
+export { initFase3Polish } from './admin/fase3.js?v=202.8';
 
 console.log('[VRAdmin] Bootstrap loaded — ES modules ready');
