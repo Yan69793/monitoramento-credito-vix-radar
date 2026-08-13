@@ -89,3 +89,30 @@ Não sustentável como 100% hoje. Bloqueadores: cascade de IA parado (dado
 congelado em 12/08 18h28 até 15/08 ou recarga), health `ok:false`,
 frescor/scan-emergencia cegos, push pendente. Itens do operador: recarregar
 chave paga OU aguardar reset de sábado; atualizar secret do GH; destravar push.
+
+## Fechamento do mesmo dia (15h10-15h50 BRT)
+
+- **Cascade destravado:** chave paga recarregada pelo operador 15h12, sonda
+  exit 0. Dreno 15h16-15h27: fila=11, 9 aprovados, 2 rejeitados, 223k tokens.
+  Health `ok:true verificador_ok:true`.
+- **Worker v4.9.193 no ar:** deploy validado (`ok=true kv=true telemetria=true
+  sentry_ok=true`). XSS fechado nas duas camadas (frontend v202.8 + strip no
+  write path).
+- **Push destravado:** gh reautenticado via device flow OAuth (escopos repo/
+  read:org/gist). Merge do `cbda7d1` (sessão paralela) resolvido mantendo as
+  duas visões. 11 commits no origin, repo sincronizado.
+- **Secret GH publicado:** senha admin validada contra o Worker (103
+  emissores), publicada via `gh secret set`. frescor-check disparado
+  manualmente: **success em 11s**. canonical-test: **success em 11s**. Os dois
+  guardas cegos há 4 dias voltaram a ver produção.
+- **DPAPI reparado:** a recuperação local da credencial admin estava quebrada
+  (chave inválida, provável troca de senha do Windows pós-criptografia).
+  Recriptografado com o valor atual, `Get-VixAdminCredential.ps1` volta a
+  funcionar.
+- **Solicitação nova 15h12:** aprovada (WhatsApp admin enviado 1s depois),
+  KV 34 usuários, 0 pendentes.
+- **Pendências residuais:** assinatura segue no limite semanal até 15/08 08h
+  (rotinas rodam por chave paga); noturno 18h00 depende da sessão do Desktop
+  (com chave paga, roda mesmo no limite); dreno único dependente do Desktop
+  segue no backlog; senha admin em texto na conversa da sessão, considerar
+  rotação futura da ADMIN_PASSWORD por higiene.
