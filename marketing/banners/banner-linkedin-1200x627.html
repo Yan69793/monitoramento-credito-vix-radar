@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>VIX Radar — LinkedIn 1200x627</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/cormorant.css">
+<style>
+  :root {
+    --navy: #001020;
+    --navy-soft: #0a1a30;
+    --gold: #b7985d;
+    --gold-bright: #d4b878;
+    --text: #f2efe8;
+    --muted: rgba(242, 239, 232, 0.66);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 627px; overflow: hidden; }
+  body {
+    background: var(--navy);
+    font-family: "DM Sans", "Segoe UI", sans-serif;
+    color: var(--text);
+    position: relative;
+  }
+  .glow {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse 900px 480px at 82% 18%, rgba(183, 152, 93, 0.16), transparent 62%),
+      radial-gradient(ellipse 700px 500px at 8% 108%, rgba(20, 60, 110, 0.35), transparent 70%);
+  }
+  .grid {
+    position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(183, 152, 93, 0.05) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(183, 152, 93, 0.05) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse 1000px 500px at 70% 30%, black, transparent 78%);
+  }
+  .frame {
+    position: absolute; inset: 28px;
+    border: 1px solid rgba(183, 152, 93, 0.35);
+  }
+  .content {
+    position: relative; height: 100%;
+    padding: 64px 72px;
+    display: flex; flex-direction: column; justify-content: center;
+    max-width: 640px;
+  }
+  .eyebrow {
+    font-size: 15px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase;
+    color: var(--gold-bright); margin-bottom: 26px;
+  }
+  h1 {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-weight: 500; font-size: 64px; line-height: 1.04;
+    letter-spacing: -0.01em; margin-bottom: 22px;
+  }
+  h1 em { font-style: italic; color: var(--gold-bright); }
+  .sub {
+    font-size: 20px; line-height: 1.5; color: var(--muted); max-width: 520px; margin-bottom: 30px;
+  }
+  .pills { display: flex; gap: 12px; margin-bottom: 38px; }
+  .pill {
+    font-size: 14px; font-weight: 500; letter-spacing: 0.08em;
+    color: var(--gold-bright);
+    border: 1px solid rgba(183, 152, 93, 0.5);
+    padding: 9px 16px;
+  }
+  .cta-row { display: flex; align-items: center; gap: 22px; }
+  .cta {
+    display: inline-block; text-decoration: none;
+    background: var(--gold); color: #001020;
+    font-size: 16px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+    padding: 16px 34px;
+  }
+  .url { font-size: 15px; letter-spacing: 0.18em; color: var(--muted); }
+  .card {
+    position: absolute; right: 96px; top: 50%; transform: translateY(-50%);
+    width: 340px; background: rgba(10, 26, 48, 0.72);
+    border: 1px solid rgba(183, 152, 93, 0.45);
+    padding: 30px 30px 26px;
+  }
+  .card .tag {
+    display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: 0.22em;
+    color: #001020; background: var(--gold-bright);
+    padding: 6px 12px; margin-bottom: 20px;
+  }
+  .card .emissor { font-size: 14px; letter-spacing: 0.06em; color: var(--muted); margin-bottom: 10px; }
+  .card .score {
+    font-family: "Cormorant Garamond", Georgia, serif;
+    font-size: 84px; font-weight: 500; line-height: 1; color: var(--text);
+  }
+  .card .score span { font-size: 26px; color: var(--muted); }
+  .card .meta { font-size: 13px; color: var(--muted); letter-spacing: 0.05em; margin-top: 12px; }
+  .foot {
+    position: absolute; left: 72px; bottom: 58px;
+    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(242,239,232,0.4);
+  }
+</style>
+</head>
+<body>
+  <div class="glow"></div>
+  <div class="grid"></div>
+  <div class="frame"></div>
+
+  <div class="content">
+    <div class="eyebrow">Monitoramento de crédito privado</div>
+    <h1>Veja o risco de crédito <em>antes</em> do mercado.</h1>
+    <p class="sub">100+ emissores monitorados com IA. Alertas CVM e ratings ranqueados por materialidade, atualizados todo dia útil após o fechamento da B3.</p>
+    <div class="pills">
+      <span class="pill">ANTECIPA</span>
+      <span class="pill">FILTRA</span>
+      <span class="pill">CONTEXTUALIZA</span>
+    </div>
+    <div class="cta-row">
+      <a class="cta" href="https://vixradar.com">Solicitar acesso</a>
+      <span class="url">vixradar.com</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <span class="tag">RELEVANTE</span>
+    <div class="emissor">EMISSOR DO SETOR ELÉTRICO · EXEMPLO ILUSTRATIVO</div>
+    <div class="score">72<span>/100</span></div>
+    <div class="meta">MATERIALIDADE · FONTE: DOCUMENTO CVM</div>
+  </div>
+
+  <div class="foot">Szuchmacher Consultoria · Material institucional, não é recomendação de investimento</div>
+</body>
+</html>

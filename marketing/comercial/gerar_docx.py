@@ -646,7 +646,7 @@ add_bullet('Existencia de BRSA, Seja Mais e Conversa.tech — universo de agenci
 # ══════════════════════════════════════════════════════════════
 # SAVE
 # ══════════════════════════════════════════════════════════════
-output_dir = r'E:\Diretorio\Claude\Monitoramento de Credito\marketing\comercial'
+output_dir = r'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\marketing\comercial'
 output_path = os.path.join(output_dir, 'VIX_Radar_Plano_Comercial_Fase1_2026-07-30.docx')
 doc.save(output_path)
 print(f'Documento salvo: {output_path}')
