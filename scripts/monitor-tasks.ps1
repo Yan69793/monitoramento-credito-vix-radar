@@ -1,4 +1,4 @@
-﻿# monitor-tasks.ps1 - Alerta de falha silenciosa em Task Scheduler
+# monitor-tasks.ps1 - Alerta de falha silenciosa em Task Scheduler
 # Roda diario 07h BRT, varre tasks do workspace, reporta LastTaskResult != benigno.
 # ASCII puro (roda no powershell.exe 5.1 sem risco de parse).
 param(
@@ -13,7 +13,7 @@ param(
 # engolir falha e o healthcheck FALHA-002 so pegava scripts com python|node|claude.
 $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$VixRoot   = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
 $LogFile   = Join-Path $LogDir "monitor_$DateTag.log"
@@ -409,17 +409,41 @@ foreach ($rot in $RotinasVigiadas) {
     } else {
         $conteudoR = ''
         try { $conteudoR = Get-Content $logRot -Raw -Encoding UTF8 -ErrorAction Stop } catch { $conteudoR = '' }
-        foreach ($m in [regex]::Matches($conteudoR, 'submit_ok=(\d+)')) {
-            $n = [int]$m.Groups[1].Value
-            if ($n -gt $submitOk) { $submitOk = $n }
-        }
-        if ($submitOk -lt 0) {
+        # FIMREAL1 (2026-08-13): o regex antigo procurava 'submit_ok=N' no arquivo
+        # inteiro e o formato da linha FIM mudou:
+        #   ate ~08-11:  'FIM: submit_ok=103 total_plano=103'
+        #   noturno:     'FIM: noturno 103/103 processados, 0 falhas de submit'
+        #   matinal:     'FIM: matinal processados=19 falhas=0 ...'
+        # Rotina ENTREGUE com formato novo caia em 'sem linha FIM' e gerava 9001
+        # falso (noturno e matinal de 12 e 13/08 no backlog). Alem disso
+        # 'SHADOW_FIM:' contem 'FIM:' como substring e era contada como conclusao
+        # (08/08 nao tinha FIM real, so SHADOW_FIM).
+        $fims = [regex]::Matches($conteudoR, '(?m)(?<!SHADOW_)FIM:\s*(.*?)\r?$')
+        if ($fims.Count -eq 0) {
             $detalheR = 'sem linha FIM:, execucao nao chegou ao fim'
             if ($conteudoR -match 'ABORT')      { $detalheR = $detalheR + ', ABORT registrado' }
             if ($conteudoR -match 'ERRO FATAL') { $detalheR = $detalheR + ', ERRO FATAL registrado' }
             $motivoR = "$alvoTxt $detalheR"
-        } elseif ($submitOk -lt $rot.minSubmit) {
-            $motivoR = "$alvoTxt entrega parcial, submit_ok=$submitOk (minimo esperado $($rot.minSubmit))"
+        } else {
+            $linhaFim = $fims[$fims.Count - 1].Groups[1].Value
+            $mFim = [regex]::Match($linhaFim, 'submit_ok=(\d+)')
+            if (-not $mFim.Success) { $mFim = [regex]::Match($linhaFim, '(\d+)/\d+ processados') }
+            if (-not $mFim.Success) { $mFim = [regex]::Match($linhaFim, 'processados=(\d+)') }
+            if ($mFim.Success) {
+                $submitOk = [int]$mFim.Groups[1].Value
+            }
+            $mFal = [regex]::Match($linhaFim, '(\d+) falhas de submit|falhas=(\d+)')
+            $nFal = -1
+            if ($mFal.Success) {
+                $nFal = if ($mFal.Groups[1].Success) { [int]$mFal.Groups[1].Value } else { [int]$mFal.Groups[2].Value }
+            }
+            if ($nFal -gt 0) {
+                $motivoR = "$alvoTxt FIM com falhas=$nFal"
+            } elseif ($submitOk -lt 0) {
+                $motivoR = "$alvoTxt linha FIM sem contador reconhecido: $linhaFim"
+            } elseif ($submitOk -lt $rot.minSubmit) {
+                $motivoR = "$alvoTxt entrega parcial, submit_ok=$submitOk (minimo esperado $($rot.minSubmit))"
+            }
         }
     }
 
