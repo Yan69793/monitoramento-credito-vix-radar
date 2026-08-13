@@ -10422,7 +10422,13 @@ function sanitizarPayloadRadar(payload, hoje, trintaDiasAtras, env2222) {
         _de = _dpRaw;
       }
     }
-    return { ...ev, data_evento: _de, data_publicacao_fonte: _dpRaw, escopo: classificarEscopo(ev, payload.empresa), tipo_dado: _td, classificacao: _cls, rebaixado_de: _rebaixadoDe };
+    // XSSV100-FIX1 (2026-08-13): titulo e empresa vem de LLM e iam crus para
+    // o innerHTML do Market Overview (app/index.html, modulo v100). Strip de
+    // tags aqui no write path + escape no render. Guarda dupla: mesmo que um
+    // consumidor novo esqueça o escape, o dado gravado ja chega sem HTML.
+    var _titLimpo = String(ev?.titulo || "").replace(/<[^>]*>/g, "").slice(0, 300);
+    var _empLimpo = ev?.empresa ? String(ev.empresa).replace(/<[^>]*>/g, "").slice(0, 60) : ev?.empresa;
+    return { ...ev, titulo: _titLimpo, empresa: _empLimpo, data_evento: _de, data_publicacao_fonte: _dpRaw, escopo: classificarEscopo(ev, payload.empresa), tipo_dado: _td, classificacao: _cls, rebaixado_de: _rebaixadoDe };
   }).filter((ev) => {
     const _tit = (ev.titulo || "").slice(0, 40);
     if (!ev.classificacao || ev.classificacao === "RUIDO") {
