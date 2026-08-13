@@ -1,4 +1,4 @@
-# Estimativa tokens noturno (roteamento atual)
+﻿# Estimativa tokens noturno (roteamento atual)
 $ErrorActionPreference = 'Stop'
 $skillPath = 'C:\Users\User\.claude\scheduled-tasks\vixradar-noturno\SKILL.md'
 $raw = Get-Content $skillPath -Raw

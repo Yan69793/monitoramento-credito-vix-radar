@@ -1,4 +1,4 @@
-﻿# register-coleta-volatilidade-task.ps1
+# register-coleta-volatilidade-task.ps1
 # Cria a task VIXRadar-Coleta-Volatilidade no Windows Task Scheduler.
 # Roda DIARIAMENTE as 17:00 (hora local BRT), apos fechamento do pregao, antes da noturna 18:00.
 # Reversao: Unregister-ScheduledTask -TaskName 'VIXRadar-Coleta-Volatilidade' -Confirm:$false
@@ -6,7 +6,7 @@
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-coleta-volatilidade-task.ps1"
 
 $ErrorActionPreference = 'Stop'
-$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $ScriptPath  = Join-Path $ProjectRoot 'scripts\run_coleta_volatilidade.ps1'
 
 if (-not (Test-Path $ScriptPath)) { throw "Script nao encontrado: $ScriptPath" }

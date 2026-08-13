@@ -5,13 +5,13 @@
 # com RunLevel=Highest, entao alterar exige janela de administrador.
 #
 # Uso (PowerShell COMO ADMINISTRADOR):
-#   pwsh -File "E:\Diretorio\Claude\Monitoramento de Credito\scripts\fix_task_coleta_volatilidade.ps1"
+#   pwsh -File "E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\scripts\fix_task_coleta_volatilidade.ps1"
 #
 # Idempotente: se ja estiver correto, so reporta e sai.
 
 $ErrorActionPreference = 'Stop'
 $TaskName = 'VIXRadar-Coleta-Volatilidade'
-$ScriptPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_coleta_volatilidade.ps1'
+$ScriptPath = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\scripts\run_coleta_volatilidade.ps1'
 
 $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
 $isAdmin = (New-Object System.Security.Principal.WindowsPrincipal($id)).IsInRole(

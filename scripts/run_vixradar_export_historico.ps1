@@ -34,7 +34,7 @@ $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
-$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $ApiDir      = Join-Path $ProjectRoot 'api'
 $NamespaceId = 'c6805b8d8a7b468e9f854ab4f91fb93a'   # RADAR_KV (api/wrangler.toml)
 # Marca 401/403 vindo da API. Declarado aqui e nao so dentro de Get-KvValue para o script

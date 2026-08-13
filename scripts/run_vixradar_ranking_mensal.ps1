@@ -24,7 +24,7 @@ $ErrorActionPreference = 'Stop'
 $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $CfgPath     = Join-Path $ProjectRoot 'scripts\seo\keywords.json'
 $StatePath   = Join-Path $ProjectRoot 'scripts\seo\ranking_state.json'
 $HistPath    = Join-Path $ProjectRoot 'logs\seo\ranking_history.jsonl'

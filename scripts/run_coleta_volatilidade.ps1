@@ -1,7 +1,7 @@
 # run_coleta_volatilidade.ps1 - rotina diaria: coleta cotacoes e publica o KV.
 [CmdletBinding()]
 param(
-    [string]$Root = 'E:\Diretorio\Claude\Monitoramento de Credito'
+    [string]$Root = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 )
 Set-StrictMode -Version Latest
 # 'Continue' e obrigatorio em script do Task Scheduler: com 'Stop' o erro aborta

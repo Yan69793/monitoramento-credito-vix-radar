@@ -2,7 +2,7 @@
 param(
     [int]$KeepDays = 7,
     [switch]$Aggressive,
-    [string]$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
+    [string]$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 )
 
 $ErrorActionPreference = 'SilentlyContinue'

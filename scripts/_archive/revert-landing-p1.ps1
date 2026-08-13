@@ -1,4 +1,4 @@
-# revert-landing-p1.ps1 — desativa P1 (demo JSON + animação mobile)
+﻿# revert-landing-p1.ps1 — desativa P1 (demo JSON + animação mobile)
 $ErrorActionPreference = 'Stop'
 $index = Join-Path (Split-Path -Parent $PSScriptRoot) 'app\index.html'
 $html = Get-Content $index -Raw -Encoding UTF8

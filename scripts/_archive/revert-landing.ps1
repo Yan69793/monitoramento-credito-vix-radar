@@ -1,4 +1,4 @@
-# revert-landing.ps1 — desativa landing estendida VIX Radar
+﻿# revert-landing.ps1 — desativa landing estendida VIX Radar
 # Uso: pwsh ./scripts/revert-landing.ps1
 # Preview: https://vixradar.com/?landing=classic
 

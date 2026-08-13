@@ -1,4 +1,4 @@
-# Estimativa tokens matinal (roteamento orquestrado)
+﻿# Estimativa tokens matinal (roteamento orquestrado)
 $ErrorActionPreference = 'Stop'
 $skillPath = 'C:\Users\User\.claude\scheduled-tasks\vixradar-matinal\SKILL.md'
 $raw = Get-Content $skillPath -Raw

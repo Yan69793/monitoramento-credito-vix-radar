@@ -1,4 +1,4 @@
-﻿# run_claude_routine.ps1 - Runner generico Claude Code para scheduled-tasks.
+# run_claude_routine.ps1 - Runner generico Claude Code para scheduled-tasks.
 # ASCII puro (powershell.exe 5.1). Hardenizado 2026-08-02 com pre-flight de
 # ambiente + probe WebSearch (TASK-18, TASK-19 do pacote de recuperacao pos-27/07).
 param(
@@ -12,8 +12,8 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $ScheduledRoot = 'C:\Users\User\.claude\scheduled-tasks'
-$VixRoot       = 'E:\Diretorio\Claude\Monitoramento de Credito'
-$SiteRoot      = 'E:\Diretorio\Claude\Site\site-producao'
+$VixRoot       = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$SiteRoot      = 'E:\Diretorio\Claude\FREQUENTE\Site\site-producao'
 $LibDir        = Join-Path $VixRoot 'scripts\lib'
 $LogDir        = Join-Path $VixRoot 'logs\routines'
 $DateTag       = Get-Date -Format 'yyyyMMdd'

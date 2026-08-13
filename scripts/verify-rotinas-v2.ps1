@@ -5,7 +5,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$root = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$root = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $fail = 0
 
 function Assert-Check($cond, $msg) {

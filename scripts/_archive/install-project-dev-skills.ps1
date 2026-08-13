@@ -1,4 +1,4 @@
-# install-project-dev-skills.ps1 — execute-plan + superpowers (somente este projeto)
+﻿# install-project-dev-skills.ps1 — execute-plan + superpowers (somente este projeto)
 param(
     [switch]$Remove,
     [switch]$DryRun

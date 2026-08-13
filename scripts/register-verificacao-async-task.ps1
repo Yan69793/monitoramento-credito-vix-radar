@@ -6,7 +6,7 @@
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-verificacao-async-task.ps1"
 
 $ErrorActionPreference = 'Stop'
-$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $ScriptPath  = Join-Path $ProjectRoot 'scripts\run_vixradar_verificacao_async.ps1'
 
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`""

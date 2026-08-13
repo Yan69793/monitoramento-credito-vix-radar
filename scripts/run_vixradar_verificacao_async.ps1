@@ -15,7 +15,7 @@ $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
-$ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$ProjectRoot    = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
 $WorkerUrl      = 'https://api.vixradar.com'
 $ScheduledTasks = 'C:\Users\User\.claude\scheduled-tasks'
 $LogDir         = Join-Path $ProjectRoot 'logs\routines'

@@ -1,4 +1,4 @@
-# preview-landing.ps1 — abre landing local SEM deploy
+﻿# preview-landing.ps1 — abre landing local SEM deploy
 # Uso: pwsh ./scripts/preview-landing.ps1
 # URLs:
 #   http://localhost:8765/                           (splash clássica — padrão)
