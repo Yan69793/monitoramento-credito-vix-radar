@@ -1,5 +1,5 @@
 ---
-data: 2026-08-13
+data: 2026-08-14
 tipo: pendencia
 tags: [vix-radar, backlog, acoes]
 status: ativo
@@ -74,6 +74,32 @@ Reconciliado nesta sessao (checkout estava ~40 commits atras, atualizado via `gi
 ### P3 — postAdmin sem Authorization: Bearer
 
 **Origem:** [[79 - Incidente ADMINRL-FIX1 429 painel admin 2026-08-12]]. Backlog registrado, ainda nao implementado.
+
+---
+
+## Abertas (14/08 — auditoria geral de engenharia)
+
+Detalhe: [[82 - Auditoria Geral 2026-08-14]].
+
+### P2 — Fila de verificacao >20h: RESOLVIDO por evidencia
+
+O dreno async de 13/08 15h16-15h27 rodou por pay-per-token (11 eventos, 9 aprovados). Health ao vivo 14/08 01h22Z: `verificador_ok:true`. Item fechado.
+
+### P3 — "Cobertura ANBIMA" e terceiro sentido do termo reservado
+
+`app/index.html:5486-5491`. Rotulo qualificado e com texto explicativo, nao engana, mas viola a regra "um termo, um significado" do glossario. Adicionar o conceito ao `glossario-dominio.md` ou renomear o rotulo (ex: "Preco ANBIMA indisponivel").
+
+### P3 — Disjuntor de custo fail-open e silencioso em erro de KV
+
+`api/src/worker.js:17911-17923`. `verificarDisjuntorDiario` engole excecao e retorna false. Mitigado pelo gate de health das rotinas. Correcao barata: `console.error` no catch.
+
+### P3 — Card "Sem alertas" sem denominador explicito
+
+Formula correta (verificada na auditoria), mas o contrato de indicador exige numerador/denominador declarados na tela. Card mostra so percentual e selo.
+
+### P3 — 2 diretorios untracked no repo
+
+`Operacoes-Recorrentes/` (vazio) e `docs/entrevista-ff/` (material Financial Finesse, fora do escopo VIX Radar). Commit, mover ou ignorar.
 
 ---
 

@@ -32,6 +32,8 @@ Checklist:
   - Multi-semana em endpoints criticos.
   - Datas CVM nao podem cair em fallback "hoje" sem sinalizacao.
   - `EMISSORES_LISTA`/setores/materialidade devem estar coerentes.
+  - Agenda de Resultados (CALVAL-V2, desde v4.9.192): tier de fonte (RI/CVM/B3/corporativo/secundario) fail-closed, oficial nunca sobrescrita por secundaria divergente (vira DIVERGENTE), gate de publicacao (`confirmado` so com CONFIRMADO_*), auditoria de mudanca de data, alias de empresa, confronto diario com publicacao CVM, `status_validacao` computado no Worker e exibido no frontend.
+- XSS write-path (XSSV100-FIX1, desde v4.9.193): `sanitizarPayloadRadar` faz strip de tags HTML em `titulo`/`empresa` no caminho de gravacao. Confirmar que todo novo caminho de ingestao chama o sanitizador e que o strip nao e a unica defesa (render continua escapando).
 
 Comandos uteis:
 
@@ -74,6 +76,7 @@ Checklist:
 - CSS:
   - Regra global `strong` sem `color`.
   - Evitar mudancas que quebrem contraste ou hierarquia.
+- Market Overview (modulo v100, `app/index.html` ~4051): campos de LLM (`titulo`, `empresa`) escapados no render (`x()`/`h()`), chips e cores derivados do mesmo valor com os mesmos limiares (>=90 saudavel, >=70 atencao, <70 critico), rotulos reservados ("Emissores", "Criticos", "Relevantes", "Sem alertas") conferidos contra o glossario.
 
 ## Performance
 

@@ -25,6 +25,7 @@ com outro sentido.
 | **Varredura** | Execucao de analise sobre o universo (matinal/noturna) | Contagem de alertas encontrados |
 | **Sem alertas** | Emissores sem evento CRITICO nem RELEVANTE na janela de 30 dias | Cobertura |
 | **Health** | Estado dos bindings e providers do Worker (`ok`, `kv`, `telemetria`, `verificador_ok`) | Saude do mercado de credito |
+| **Cobertura ANBIMA** | Disponibilidade da serie no arquivo de precos diario da ANBIMA (db*.txt) para UM emissor. Usado no aviso "Cobertura ANBIMA" do painel do emissor (`app/index.html` ~5486): emissor possui debentures registradas, mas sem preco na fonte ANBIMA | Cobertura do universo varrido (termo reservado "Cobertura" simples). Nunca usar "Cobertura" sem o qualificador "ANBIMA" para esse sentido |
 
 ## Colisao perigosa conhecida
 
