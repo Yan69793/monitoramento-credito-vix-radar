@@ -119,10 +119,12 @@
     var senha = getSenha();
     if (!senha) throw new Error("Senha admin ausente");
     var body = Object.assign({ action: action, admin_senha: senha }, extra || {});
+    // P3 postAdmin Bearer (2026-08-14): passa a usar authHeaders(), que inclui
+    // Authorization: Bearer quando existe JWT local, alem do admin_senha no body.
     var r = await fetch(API, {
       method: "POST",
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: authHeaders(),
       body: JSON.stringify(body),
     });
     return r.json();
