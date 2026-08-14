@@ -77,29 +77,49 @@ Reconciliado nesta sessao (checkout estava ~40 commits atras, atualizado via `gi
 
 ---
 
-## Abertas (14/08 — auditoria geral de engenharia)
+## Fechadas (14/08 — execução das pendências da auditoria)
 
-Detalhe: [[82 - Auditoria Geral 2026-08-14]].
+Worker v4.9.194 e frontend v202.9 no ar, commits `f8bcf7c`..`08e2557` pushed.
 
-### P2 — Fila de verificacao >20h: RESOLVIDO por evidencia
+### RESOLVIDO — P0 AUTHWEEK1: guarda de notificação implementada
 
-O dreno async de 13/08 15h16-15h27 rodou por pay-per-token (11 eventos, 9 aprovados). Health ao vivo 14/08 01h22Z: `verificador_ok:true`. Item fechado.
+Novo `action=notificar_rotina` no Worker (auth routine_key, email ao admin via Resend) + `Send-VixRoutineAlert` na lib `vixradar-claude-auth.ps1`, chamado nos 3 pontos de abort por auth (matinal, noturno, verificacao-async) e validado no `Assert-VixLibFunctions`. Probe em producao: 403 com chave invalida, fail-closed confirmado. O reset da assinatura (15/08 08h) segue como evento externo; a partir de agora qualquer estouro de limite semanal notifica o admin na hora.
 
-### P3 — "Cobertura ANBIMA" e terceiro sentido do termo reservado
+### RESOLVIDO — P2 canonical-test.yml: fix ja estava implementado
 
-`app/index.html:5486-5491`. Rotulo qualificado e com texto explicativo, nao engana, mas viola a regra "um termo, um significado" do glossario. Adicionar o conceito ao `glossario-dominio.md` ou renomear o rotulo (ex: "Preco ANBIMA indisponivel").
+A pendencia estava errada. `canonical-test.yml:58-60` ja le `admin_email_ok`/`sentry_ok`/`verificador_ok` individuais (commits `15feb31` e `870b29f`) e as linhas 111-117 nomeiam o fator que caiu. Nada a implementar, item fechado por evidencia.
 
-### P3 — Disjuntor de custo fail-open e silencioso em erro de KV
+### RESOLVIDO — P3 agenda-semanal 2x/semana (CALVAL-V2 regra 9)
 
-`api/src/worker.js:17911-17923`. `verificarDisjuntorDiario` engole excecao e retorna false. Mitigado pelo gate de health das rotinas. Correcao barata: `console.error` no catch.
+Task `VIXRadar-AgendaSemanal` atualizada no Scheduler: de Monday para Sunday+Wednesday 22h00 (DaysOfWeek=9), proximo disparo 16/08. `register-all-routines-scheduler.ps1` atualizado junto para a re-registracao nao reverter.
 
-### P3 — Card "Sem alertas" sem denominador explicito
+### RESOLVIDO — P3 postAdmin sem Authorization: Bearer
 
-Formula correta (verificada na auditoria), mas o contrato de indicador exige numerador/denominador declarados na tela. Card mostra so percentual e selo.
+`app/admin/vr-admin-shared.js` agora usa `authHeaders()` (Bearer quando ha JWT local) + `admin_senha` no body. Deployado em v202.9.
 
-### P3 — 2 diretorios untracked no repo
+### RESOLVIDO — P3 "Cobertura ANBIMA" terceiro sentido
 
-`Operacoes-Recorrentes/` (vazio) e `docs/entrevista-ff/` (material Financial Finesse, fora do escopo VIX Radar). Commit, mover ou ignorar.
+Termo "Cobertura ANBIMA" adicionado ao `glossario-dominio.md` como termo qualificado proprio (disponibilidade da serie no arquivo de precos diario ANBIMA para um emissor), com a regra de nunca usar "Cobertura" simples para esse sentido.
+
+### RESOLVIDO — P3 disjuntor de custo catch mudo (CUSTOBRAKE1)
+
+`verificarDisjuntorDiario` agora loga `console.error` quando a leitura do KV falha, em vez de engolir. Deployado em v4.9.194.
+
+### RESOLVIDO — P3 card "Sem alertas" sem denominador
+
+Card do Market Overview agora declara "X de Y emissores". Deployado em v202.9.
+
+### RESOLVIDO — P3 diretorios untracked
+
+`Operacoes-Recorrentes/` (Trading View, repo proprio) movido para `FREQUENTE\Operacoes-Recorrentes\`, posicao de irmao dos projetos. `docs/entrevista-ff/` (material Financial Finesse) movido para `FREQUENTE\Emprego (1)\Finance\entrevista-ff\`. Working tree limpo.
+
+---
+
+## Abertas (14/08 — execução das pendências da auditoria)
+
+### P3 — CLOUDFLARE_API_TOKEN sem Pages:Edit
+
+Verificado em 14/08: token ativo mas `pages/projects` devolve Authentication error. A API do Cloudflare nao cria nem edita permissoes de token existente (dashboard-only). Passo manual: em https://dash.cloudflare.com/profile/api-tokens, criar token novo com "Cloudflare Pages: Edit" (zona/account `7ac79fb1030e4e81115ef33c21a9b070`) e gravar como `CLOUDFLARE_API_TOKEN` no registro User. Enquanto isso o deploy-pages segue funcional pelo fallback OAuth do wrangler (usado no deploy de hoje).
 
 ---
 
