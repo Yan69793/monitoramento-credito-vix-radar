@@ -258,3 +258,38 @@ function Get-VixClaudeAuthModo {
     if ($script:VixAuthModo) { return $script:VixAuthModo }
     return 'indefinido'
 }
+
+function Send-VixRoutineAlert {
+    # AUTHWEEK1 (2026-08-14): as 3 rotinas Claude Desktop tem LastTaskResult congelado,
+    # o Monitor-Tasks nao as enxerga. Quando a sonda de auth detecta limite semanal ou
+    # credencial invalida, a propria rotina avisa o admin via action=notificar_rotina
+    # do Worker no momento do abort. Falha aqui nao derruba a rotina, so registra aviso.
+    param(
+        [string]$Rotina,
+        [string]$Motivo,
+        [string]$RoutineKey,
+        [string]$WorkerUrl = 'https://api.vixradar.com/'
+    )
+    if (-not $RoutineKey) {
+        Write-VixAuthLog 'AVISO: alerta de rotina nao enviado (rotina sem routine_key).'
+        return $false
+    }
+    try {
+        $body = @{
+            action = 'notificar_rotina'
+            routine_key = $RoutineKey
+            rotina = $Rotina
+            motivo = $Motivo
+        } | ConvertTo-Json -Compress
+        $r = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 30
+        if ($r -and $r.ok -eq $true) {
+            Write-VixAuthLog ('ALERTA: admin notificado (notificar_rotina, rotina=' + $Rotina + ').')
+            return $true
+        }
+        Write-VixAuthLog ('AVISO: notificar_rotina respondeu ok:false. ' + ($r.erro | Out-String))
+        return $false
+    } catch {
+        Write-VixAuthLog ('AVISO: falha ao notificar admin (notificar_rotina): ' + $_.Exception.Message)
+        return $false
+    }
+}

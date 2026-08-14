@@ -42,7 +42,8 @@ $Tasks = @(
         Description = 'VIX Radar calendario resultados stale top 20'
         Script      = Join-Path $Scripts 'run_claude_routine.ps1'
         ArgList     = @('-RoutineId', 'vixradar-agenda-semanal')
-        DaysOfWeek  = 'Monday'
+        # CALVAL-V2 regra 9 (2026-08-14): revalidacao 2x/semana (Dom+Qua).
+        DaysOfWeek  = 'Sunday,Wednesday'
         At          = '22:00'
         Daily       = $false
     },

@@ -114,7 +114,7 @@ function Get-RoutineKey {
 # Assert-VixLibFunctions garante que funcoes removidas/renomeadas nas libs sem
 # atualizar os call sites sao detectadas na hora, com erro claro, em vez de
 # silenciosamente apos 24h como aconteceu em 04-05/08/2026.
-Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe')
+Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert')
 
 function Get-AnthropicApiKey {
     # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
@@ -464,6 +464,9 @@ try {
 
             if ($result.AuthFailure) {
                 Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
+                # AUTHWEEK1 (2026-08-14): avisa o admin no momento do abort (limite semanal,
+                # OAuth vencido etc). O Monitor-Tasks nao enxerga esta rotina.
+                $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'claude CLI nao autenticado ou limite semanal atingido - itens permanecem na fila' -RoutineKey $routineKey
                 $stats.erros_parse++
                 $exitCode = 7
                 Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
