@@ -16648,6 +16648,25 @@ async function __coreFetch(request, env2222) {
       }
     }
 
+    // AUTHWEEK1-NOTIFY (2026-08-14): as 3 rotinas Claude Desktop tem LastTaskResult
+    // congelado no Task Scheduler, entao o Monitor-Tasks nao enxerga a falha delas.
+    // Quando a sonda de auth detecta limite semanal/credencial, a propria rotina
+    // avisa o admin aqui no momento do abort, em vez de esperar alguem notar.
+    if (body.action === "notificar_rotina") {
+      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      const _nrRotina = String(body.rotina || "rotina").slice(0, 40);
+      const _nrMotivo = String(body.motivo || "").slice(0, 300);
+      const _nrHtml = body.html ? String(body.html).slice(0, 4000) : ("<p>Rotina " + _nrRotina + " abortou: " + (_nrMotivo || "sem detalhe") + "</p>");
+      const _nrDest = ADMIN_EMAIL ? [ADMIN_EMAIL] : [];
+      if (_nrDest.length === 0) return resp({ ok: false, erro: "Sem destinatario admin." }, 500, request);
+      try {
+        await enviarResend(env2222.RESEND_API_KEY, "[VIX Radar] Rotina " + _nrRotina + " precisa de atencao", _nrHtml, _nrDest, null, { tipo: "transacional" }, env2222);
+        await tel(env2222, request, { evento: "rotina_alerta_admin", rotina: _nrRotina.slice(0, 40) });
+        return resp({ ok: true, enviado: true }, 200, request);
+      } catch (e) {
+        return resp({ ok: false, erro: "Falha ao enviar email.", detalhe: e && e.message }, 500, request);
+      }
+    }
     if (body.action === "relatorio_dry_run") {
       const { admin_senha } = body;
       if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
@@ -17918,6 +17937,11 @@ async function verificarDisjuntorDiario(env3) {
     }
     return false;
   } catch (e) {
+    // CUSTOBRAKE1 (2026-08-14): catch era mudo, erro de leitura do KV deixava o
+    // disjuntor fechado sem deixar rastro. Mitigacao natural: KV fora derruba o
+    // health e as rotinas param pelo gate, mas o evento precisa ficar visivel no
+    // log para auditoria, nao engolido.
+    console.error("[disjuntor] leitura de custo falhou, seguindo sem corte:", String(e && e.message || e).slice(0, 120));
     return false;
   }
 }
