@@ -51,7 +51,11 @@ export async function postAdmin(action, extra) {
   const r = await fetch(API_BASE, {
     method: 'POST',
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
+    // AUDITORIA-15AGO (BEARERADMIN1): o fix de 14/08 (P3 "postAdmin sem Bearer")
+    // foi aplicado so no arquivo legado app/admin/vr-admin-shared.js, que nao e
+    // carregado por ninguem; o modulo vivo enviava so admin_senha. Agora usa o
+    // mesmo authHeaders() (Bearer quando ha JWT local) + admin_senha no body.
+    headers: authHeaders(),
     body: JSON.stringify(body),
   });
   return r.json();
