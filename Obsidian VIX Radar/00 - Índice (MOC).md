@@ -115,6 +115,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 | Nota | Descrição |
 |---|---|
 | [[34 - Rotina Matinal 2026-06-22]] | Execução matinal |
+| [[Rotina Noturna 2026-08-14]] | Noturna 14/08: 103/103, 5 CRITICOs, cap de tokens estourado |
 | [[30 - Monitor CRITICOs 2026-06-20]] | Rastreamento de críticos |
 | [[29 - Rotina Noturna 2026-06-20]] | Execução noturna |
 | [[27 - Otimizacao Tokens Rotina Noturna]] | Otimização de tokens |

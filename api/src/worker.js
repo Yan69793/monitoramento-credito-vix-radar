@@ -5650,6 +5650,18 @@ async function _exigeLabPreditivoAdmin(request, env2222, body) {
   if (env2222.ADMIN_PASSWORD && senha && senha === env2222.ADMIN_PASSWORD) {
     return { ok: true, via: "admin_password" };
   }
+  // PREDRL1 (auditoria 2026-08-15): a porta de senha por query/header no GET
+  // op=predictive_v1 nao passava pelo gate de rate limit (que cobre so body de
+  // POST com admin_senha). Senha errada agora consome o throttle anonimo por IP,
+  // fechando o brute force com oraculo (auth_via na resposta).
+  if (request && senha) {
+    try {
+      const _rlPred = await checkRateLimitV2(env2222, request);
+      if (!_rlPred.allowed) {
+        return { ok: false, status: 429, erro: mensagemRateLimit(_rlPred), _rate_limit: { camada: _rlPred.camada, retry_after_sec: _rlPred.retry_after_sec } };
+      }
+    } catch (_rlErr) { /* falha do limiter nao libera o gate */ }
+  }
   return { ok: false, status: jwt.status || 401, erro: jwt.erro || "Acesso restrito.", lab_interno: true };
 }
 __name(_exigeLabPreditivoAdmin, "_exigeLabPreditivoAdmin");
@@ -5755,7 +5767,9 @@ async function handleUso(url, env2222, request, opts) {
           "Authorization": `Bearer ${env2222.CLOUDFLARE_API_TOKEN}`,
           "Content-Type": "text/plain"
         },
-        body: sql
+        body: sql,
+        // TIMEOUT1 (auditoria 2026-08-15): fetch de admin sem timeout pendurava o request
+        signal: AbortSignal.timeout(3e4)
       }
     );
     if (!r.ok) {
@@ -5810,7 +5824,9 @@ async function fetchResendComRetry(apiKey, payload) {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": "Bearer " + apiKey, "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(payload),
+      // TIMEOUT1 (auditoria 2026-08-15)
+      signal: AbortSignal.timeout(3e4)
     });
     if (r.ok) return await r.json();
     const txt = await r.text().catch(() => "");
@@ -5849,6 +5865,8 @@ async function resendCall(env2222, method, path, body) {
     if (body && method !== "GET") {
       opts.body = JSON.stringify(body);
     }
+    // TIMEOUT1 (auditoria 2026-08-15)
+    opts.signal = AbortSignal.timeout(3e4);
     const res = await fetch(url, opts);
     const data = await res.json().catch(() => ({}));
     return { status: res.status, data };
@@ -6039,7 +6057,9 @@ Hora: ${agora} BRT`;
     const r = await fetch("https://api.twilio.com/2010-04-01/Accounts/" + env2222.TWILIO_ACCOUNT_SID + "/Messages.json", {
       method: "POST",
       headers: { "Authorization": "Basic " + auth, "Content-Type": "application/x-www-form-urlencoded" },
-      body: params.toString()
+      body: params.toString(),
+      // TIMEOUT1 (auditoria 2026-08-15)
+      signal: AbortSignal.timeout(3e4)
     });
     if (!r.ok) {
       const txt = await r.text().catch(() => "");
@@ -6276,7 +6296,16 @@ async function handleResetarSenha(body, env2222) {
   if (nova_senha.length < 6) return resp({ ok: false, erro: "Senha m\xEDnima: 6 caracteres." }, 400);
   const raw = await env2222.RADAR_KV.get(`reset:${token}`, "text");
   if (!raw) return resp({ ok: false, erro: "Link expirado ou inv\xE1lido. Solicite novamente." }, 400);
-  const { email, created_at } = JSON.parse(raw);
+  // AUDITORIA-15AGO (RESETPARSE1): JSON.parse sem try derrubava a rota em 500 se o
+  // valor no KV estivesse truncado/corrompido; agora responde "link invalido" (400).
+  var _resetParsed;
+  try {
+    _resetParsed = JSON.parse(raw);
+  } catch (_rpe) {
+    console.error("[resetar_senha] token com valor invalido no KV:", _rpe?.message ?? String(_rpe));
+    return resp({ ok: false, erro: "Link expirado ou inv\xE1lido. Solicite novamente." }, 400);
+  }
+  const { email, created_at } = _resetParsed;
   if (Date.now() - created_at > 864e5) {
     await env2222.RADAR_KV.delete(`reset:${token}`);
     return resp({ ok: false, erro: "Link expirado. Solicite novamente." }, 400);
@@ -7059,7 +7088,7 @@ async function syncCVMAutomatico(env2222) {
   if (!env2222.RADAR_KV) return { ok: false, erro: "KV indispon\xEDvel" };
   const log = { etapas: [] };
   try {
-    const res = await fetch(CVM_ZIP_URL, { cf: { cacheTtl: 3600 } });
+    const res = await fetch(CVM_ZIP_URL, { cf: { cacheTtl: 3600 }, signal: AbortSignal.timeout(6e4) }); // TIMEOUT1 (auditoria 2026-08-15)
     if (!res.ok) {
       log.etapas.push({ etapa: "fetch", ok: false, status: res.status });
       return { ok: false, log };
@@ -8098,6 +8127,9 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         anterior.timestamp = _tsVarredura;
         anterior._ultima_checagem_vazia_fim = _fimJanela;
         anterior._ultima_checagem_vazia_inicio = _inicioJanela;
+        // DEFERREDREC1-FIX (2026-08-15): sem este write o flag morria no cliente e o
+        // "Priorizar amanha" do ledger de cap nunca virava FULL no tiering seguinte.
+        if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -8110,6 +8142,9 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         anterior.timestamp = _tsVarredura;
         anterior._ultima_checagem_vazia_fim = _fimJanela;
         anterior._ultima_checagem_vazia_inicio = _inicioJanela;
+        // DEFERREDREC1-FIX (2026-08-15): sem este write o flag morria no cliente e o
+        // "Priorizar amanha" do ledger de cap nunca virava FULL no tiering seguinte.
+        if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -8122,6 +8157,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       estadoInc.timestamp = _tsVarredura;
       estadoInc._ultima_checagem_vazia_fim = _fimJanela;
       estadoInc._ultima_checagem_vazia_inicio = _inicioJanela;
+      if (payload._token_cap_deferred === true) estadoInc._token_cap_deferred = true;
       estadoInc.sem_eventos = true;
       estadoInc._status = "INCONCLUSIVO";
       estadoInc._motivo = "cobertura_incompleta: " + _cobertura + "/" + _coberturaMin + "+ (tier=" + (_tierPayload || "?") + ")";
@@ -8136,6 +8172,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       anterior.timestamp = _tsVarredura;
       anterior._ultima_checagem_vazia_fim = _fimJanela;
       anterior._ultima_checagem_vazia_inicio = _inicioJanela;
+      if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
       estado.results[empresa] = anterior;
       estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
       await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -8146,6 +8183,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     estadoAtual.timestamp = _tsVarredura;
     estadoAtual._ultima_checagem_vazia_fim = _fimJanela;
     estadoAtual._ultima_checagem_vazia_inicio = _inicioJanela;
+    if (payload._token_cap_deferred === true) estadoAtual._token_cap_deferred = true;
     estadoAtual.sem_eventos = true;
     estadoAtual._status = "OK";
     delete estadoAtual._motivo;
@@ -9034,6 +9072,11 @@ async function montarPlanoRotina(env2222, opts) {
     var eventos = res && res.eventos ? res.eventos : [];
     var ews = emissoresAlvo[i].ews_score != null ? { score: emissoresAlvo[i].ews_score } : calcularEWS(emp, anomalias, eventos, []);
     var lastTs = res ? res._last_scanned_at || res.timestamp : null;
+    // DEFERREDREC1 (auditoria 2026-08-15): emissor deferido por cap de tokens no
+    // dia anterior caia em SKIP no tiering seguinte (horasStale baixo) e o
+    // "Priorizar amanha" do ledger minimo nunca virava re-analise real. Deferido
+    // agora entra como FULL prioritario; a proxima analise real sobrescreve o flag.
+    var _foiDeferido = !!(res && res._token_cap_deferred === true);
     var horasStale = _parseHorasStale(lastTs);
     var docs = await buscarDocumentosCVM(env2222, emp, janelaInicio, hoje).catch(function() { return []; });
     var sinceScan = lastTs ? lastTs.slice(0, 10) : "1970-01-01";
@@ -9048,6 +9091,9 @@ async function montarPlanoRotina(env2222, opts) {
       if (setor === "Financeiro") {
         tier = "FULL";
         motivos.push("setor_financeiro_full");
+      } else if (_foiDeferido) {
+        tier = "FULL";
+        motivos.push("deferred_prioritario");
       } else if (horasStale < 12 && cvmOvernight.length === 0 && ews.score < ROTINA_EWS_LIGHT && (!res || res._status !== "INCONCLUSIVO")) {
         tier = "SKIP";
         motivos.push("scan_recente_sem_delta");
@@ -9072,6 +9118,9 @@ async function montarPlanoRotina(env2222, opts) {
       } else if (emp === "Unidas") {
         tier = "FULL";
         motivos.push("audit_forcado_full");
+      } else if (_foiDeferido) {
+        tier = "FULL";
+        motivos.push("deferred_prioritario");
       } else if (ews.score >= ROTINA_EWS_FULL || horasStale > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
         tier = "FULL";
         if (ews.score >= ROTINA_EWS_FULL) motivos.push("ews_alto");
@@ -9751,6 +9800,16 @@ async function executarNewsletter(env2222, opts) {
     log.etapas.push({ etapa: "email", ok: false, motivo: "Nenhum destinatario apos filtro de prefs" });
     return { ok: true, enviado: false, log };
   }
+  if (!opts._sem_dedup) {
+    // DEDUPCLAIM1 (auditoria 2026-08-15): claim ANTES do envio, apos os filtros. O marcador
+    // final e regravado depois do send; se o Worker morrer entre send e put (ou o cron
+    // re-disparar por at-least-once), o claim com TTL 1h bloqueia o duplo envio.
+    // Revisao 15/08: o claim ficava antes dos filtros e nenhum retorno antecipado o limpava,
+    // entao dia sem eventos bloqueava o envio manual por 1h com motivo mentiroso
+    // "newsletter_ja_enviada_hoje". Agora o claim so existe com evento elegivel + destinatario,
+    // e o catch abaixo o libera para permitir retry.
+    await env2222.RADAR_KV.put(_kvEnviada, "sending", { expirationTtl: 3600 }).catch(function(_c) { console.warn("[newsletter] claim dedup falhou:", _c && _c.message); });
+  }
   try {
     const assunto = montarAssuntoEmail(hoje, filtradosDedup);
     const resendOpts = {
@@ -9768,6 +9827,11 @@ async function executarNewsletter(env2222, opts) {
     log.etapas.push({ etapa: "email", ok: true, eventos: filtradosDedup.length, destinatarios: destinatarios.length, dedup_global: !opts._sem_dedup, bcc: opts.bcc && opts.bcc.length ? opts.bcc : [] });
     return { ok: true, enviado: true, eventos: filtradosDedup.length, destinatarios: destinatarios.length, destinatarios_lista: destinatarios, bcc: opts.bcc && opts.bcc.length ? opts.bcc : [], log };
   } catch (e) {
+    if (!opts._sem_dedup) {
+      // DEDUPCLAIM1: sem liberar o claim, retry manual dentro de 1h levaria
+      // "newsletter_ja_enviada_hoje" com envio nunca concluído.
+      await env2222.RADAR_KV.delete(_kvEnviada).catch(function(_c) { console.warn("[newsletter] liberar claim falhou:", _c && _c.message); });
+    }
     log.etapas.push({ etapa: "email", ok: false, motivo: e.message });
     return { ok: false, enviado: false, erro: e.message, log };
   }
@@ -10111,6 +10175,8 @@ async function executarRelatorioDiario(env2222, opts) {
   if (!opts._teste && !opts._forcar) {
     var _ja = await env2222.RADAR_KV.get(_kvEnviada, "text");
     if (_ja) return { ok: true, enviado: false, motivo: "relatorio_ja_enviado_semana", semana: semanaRef };
+    // DEDUPCLAIM1 (auditoria 2026-08-15): claim antes do envio, mesmo padrao da newsletter.
+    await env2222.RADAR_KV.put(_kvEnviada, "sending", { expirationTtl: 3600 }).catch(function(_c) { console.warn("[relatorio] claim dedup falhou:", _c && _c.message); });
   }
   var intervalo = intervaloSemanaCorrente(hoje);
   var pacote = await coletarDestaquesSemana(env2222, intervalo.inicio, intervalo.fim);
@@ -10426,8 +10492,13 @@ function sanitizarPayloadRadar(payload, hoje, trintaDiasAtras, env2222) {
     // o innerHTML do Market Overview (app/index.html, modulo v100). Strip de
     // tags aqui no write path + escape no render. Guarda dupla: mesmo que um
     // consumidor novo esqueça o escape, o dado gravado ja chega sem HTML.
-    var _titLimpo = String(ev?.titulo || "").replace(/<[^>]*>/g, "").slice(0, 300);
-    var _empLimpo = ev?.empresa ? String(ev.empresa).replace(/<[^>]*>/g, "").slice(0, 60) : ev?.empresa;
+    // AUDITORIA-15AGO: o strip original /<[^>]*>/g tambem removia comparacoes
+    // legitimas do tipo "EBITDA < 2x" (corrupcao permanente do titulo no KV).
+    // A regex nova exige letra logo apos "<" ou "</", que e o que um browser
+    // interpreta como tag; "< 2x", "<3" etc. passam intactos.
+    var _stripTags = function (s) { return String(s).replace(/<\/?[a-zA-Z][^>]*>/g, ""); };
+    var _titLimpo = _stripTags(ev?.titulo || "").slice(0, 300);
+    var _empLimpo = ev?.empresa ? _stripTags(ev.empresa).slice(0, 60) : ev?.empresa;
     return { ...ev, titulo: _titLimpo, empresa: _empLimpo, data_evento: _de, data_publicacao_fonte: _dpRaw, escopo: classificarEscopo(ev, payload.empresa), tipo_dado: _td, classificacao: _cls, rebaixado_de: _rebaixadoDe };
   }).filter((ev) => {
     const _tit = (ev.titulo || "").slice(0, 40);
@@ -13887,7 +13958,8 @@ async function verificarSaldoOpenRouter(apiKey) {
   if (!apiKey) return { status: "sem_chave", origem: "financeiro_exato", saldo_restante: null };
   try {
     const r = await fetch("https://openrouter.ai/api/v1/credits", {
-      headers: { "Authorization": `Bearer ${apiKey}` }
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      signal: AbortSignal.timeout(3e4) // TIMEOUT1 (auditoria 2026-08-15)
     });
     if (!r.ok) return { status: "erro_api", origem: "financeiro_exato", saldo_restante: null, erro: `HTTP ${r.status}` };
     const d = await r.json();
@@ -13959,7 +14031,7 @@ function classificarNivelAlerta(statusObj) {
   const { openrouter, perplexity, perplexity_direto } = statusObj;
   if (openrouter.status === "critico" || perplexity.status === "auth_invalida") return "critico";
   if (openrouter.status === "vermelho" || perplexity.status === "rate_limit") return "vermelho";
-  if (openrouter.status === "amarelo" || perplexity.status !== "normal") return "amarelo";
+  if (openrouter.status === "amarelo" || (perplexity.status !== "normal" && perplexity.status !== "removido")) return "amarelo";
   if (perplexity_direto && perplexity_direto.status === "auth_invalida") return "amarelo";
   return "normal";
 }
@@ -13976,7 +14048,7 @@ function emailAlertaProviders(statusObj, nivel) {
   const orIcon = statusObj.openrouter.status === "normal" ? "\u{1F7E2}" : statusObj.openrouter.status === "amarelo" ? "\u{1F7E1}" : "\u{1F534}";
   const ppIcon = statusObj.perplexity.status === "normal" ? "\u{1F7E2}" : "\u{1F534}";
   const orDetail = statusObj.openrouter.saldo_restante !== null ? `US$ ${statusObj.openrouter.saldo_restante.toFixed(2)} restantes (dado financeiro exato)` : `Status: ${statusObj.openrouter.status} (${statusObj.openrouter.erro || "sem detalhe"})`;
-  const ppDetail = statusObj.perplexity.status === "normal" ? `Operacional (lat\xEAncia: ${statusObj.perplexity.latencia_ms}ms). Inferido por teste de conectividade.` : `${statusObj.perplexity.status.toUpperCase()}: c\xF3digo ${statusObj.perplexity.codigo_ultimo_erro || "N/A"}. Inferido, n\xE3o confirmado.`;
+  const ppDetail = statusObj.perplexity.status === "normal" ? `Operacional (lat\xEAncia: ${statusObj.perplexity.latencia_ms}ms). Inferido por teste de conectividade.` : statusObj.perplexity.status === "removido" ? "Probe removido (v4.9.180, OPENROUTER-DEAD). Sem verifica\xE7\xE3o ativa." : `${statusObj.perplexity.status.toUpperCase()}: c\xF3digo ${statusObj.perplexity.codigo_ultimo_erro || "N/A"}. Inferido, n\xE3o confirmado.`;
   const nivelLabel = nivel === "critico" ? "CR\xCDTICO" : nivel === "vermelho" ? "ALTO" : "MODERADO";
   const content = `
     <h2 style="color:#0F172A;font-size:16px;font-weight:700;margin:0 0 16px;">\u26A0 Alerta de Providers (${nivelLabel})</h2>
@@ -14012,7 +14084,13 @@ async function verificarSaldoProviders(env2222) {
   try {
     const openrouter = await verificarSaldoOpenRouter(env2222.OPENROUTER_API_KEY);
     const gemini = { status: "removido", origem: "v4971", ultimo_sucesso: null, ultimo_erro: null, codigo_ultimo_erro: null, latencia_ms: null };
-    const perplexity = await verificarHealthProvider("perplexity_primario", env2222.OPENROUTER_API_KEY, (k, s, u) => chamarOpenRouter(k, s, u, "perplexity/sonar-pro"));
+    // OPENROUTER-ORFAO1 (auditoria 2026-08-15): chamarOpenRouter foi removido no
+    // v4.9.180 (OPENROUTER-DEAD) mas este call site ficou orfao. O ReferenceError
+    // era engolido por verificarHealthProvider (status sempre "erro_desconhecido")
+    // e classificarNivelAlerta voltava nivel >= "amarelo" em toda verificacao,
+    // com email de alerta falso de providers desde 30/07. Probe desligado por
+    // design (mesmo destino do gemini): status fixo "removido".
+    const perplexity = { status: "removido", origem: "openrouter-dead-v4.9.180", ultimo_sucesso: null, ultimo_erro: null, codigo_ultimo_erro: null, latencia_ms: null };
     const perplexity_direto = env2222.PERPLEXITY_API_KEY ? await verificarHealthProvider("perplexity_direto_legado", env2222.PERPLEXITY_API_KEY, chamarPerplexity) : { status: "nao_configurada", origem: "legado_opcional", ultimo_sucesso: null, ultimo_erro: null, codigo_ultimo_erro: null };
     const nivel = classificarNivelAlerta({ openrouter, perplexity, perplexity_direto });
     const agora = (/* @__PURE__ */ new Date()).toISOString();
@@ -15195,6 +15273,9 @@ async function baterHeartbeat(env2222, agente, status, extras) {
     };
     await env2222.RADAR_KV.put("heartbeat:" + agente, JSON.stringify(payload), { expirationTtl: 60 * 60 * 24 * 7 });
   } catch (e) {
+    // AUDITORIA-15AGO (HEARTBEATLOG1): catch era mudo — o watchdog monitora exatamente
+    // este heartbeat; falha silenciosa de KV vira stale-agente falso no painel.
+    console.error("[heartbeat] falha ao gravar", agente, e?.message ?? String(e));
   }
 }
 __name(baterHeartbeat, "baterHeartbeat");
@@ -15907,7 +15988,7 @@ function __fixCorsResp(response, request) {
   }
   return response;
 }
-async function __coreFetch(request, env2222) {
+async function __coreFetch(request, env2222, ctx) {
     aplicarConfigRuntime(env2222);
     // VALID1: valida input antes do route dispatch (Content-Type, body size)
     var _valErr = _validateInput(request, env2222);
@@ -16258,10 +16339,13 @@ async function __coreFetch(request, env2222) {
       }
       // VERIFQ-ORFAO1 (2026-07-24): sweep de orfaos >48h na fila de verificacao.
       // Fire-and-forget: nao bloqueia o health e nao afeta _verificadorRealOk.
-      if (env2222.RADAR_KV) { sweepFilaVerificacaoOrfaos(env2222).catch(function(_sErr) { console.error("[health] sweep orfaos:", _sErr?.message ?? String(_sErr)); }); }
+      // HEALTHWAIT1 (auditoria 2026-08-15): sem ctx.waitUntil o runtime pode congelar
+      // o isolate ao completar a resposta e o sweep nunca rodar. Agora amarrado ao
+      // ciclo de vida do request quando ctx existe.
+      if (env2222.RADAR_KV) { var _sweepP = sweepFilaVerificacaoOrfaos(env2222).catch(function(_sErr) { console.error("[health] sweep orfaos:", _sErr?.message ?? String(_sErr)); }); if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(_sweepP); }
       // PRED2 (2026-07-24): self-healing de case divergente no estado multi-semana.
       // Normaliza chaves de results divergentes por capitalizacao (ex.: "Eletrobras" vs "ELETROBRAS").
-      if (env2222.RADAR_KV) { normalizarCaseEstado(env2222).catch(function(_cErr) { console.error("[health] case-norm:", _cErr?.message ?? String(_cErr)); }); }
+      if (env2222.RADAR_KV) { var _caseP = normalizarCaseEstado(env2222).catch(function(_cErr) { console.error("[health] case-norm:", _cErr?.message ?? String(_cErr)); }); if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(_caseP); }
       _verificadorRealOk = _verificadorRealOk && !_filaVerifAtrasada;
       // SECRETMISS1 (2026-07-27): ADMIN_EMAIL passa a contar no _okHealth.
       // De 24/07 a 27/07 o secret nao existiu (removido do [vars] pelo commit
@@ -16654,13 +16738,28 @@ async function __coreFetch(request, env2222) {
     // avisa o admin aqui no momento do abort, em vez de esperar alguem notar.
     if (body.action === "notificar_rotina") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      // NOTIFYRL1 (auditoria 2026-08-15): o action nasceu sem teto nem dedup. A
+      // routine_key esteve em texto puro em arquivos vivos e backups (ROUTINEKEY-PLAIN1,
+      // nao rotacionada), entao qualquer porta dessa chave podia bombar o inbox do
+      // admin e injetar HTML via body.html (Resend renderiza HTML). Agora: rate limit
+      // anonimo por IP + dedup por rotina/dia no KV + escape no corpo default. O
+      // body.html segue aceito porque as rotinas legais enviam HTML proprio.
+      const _nrRl = await checkRateLimitV2(env2222, request);
+      if (!_nrRl.allowed) {
+        return resp({ ok: false, erro: mensagemRateLimit(_nrRl), _rate_limit: { camada: _nrRl.camada, retry_after_sec: _nrRl.retry_after_sec } }, 429, request);
+      }
       const _nrRotina = String(body.rotina || "rotina").slice(0, 40);
       const _nrMotivo = String(body.motivo || "").slice(0, 300);
-      const _nrHtml = body.html ? String(body.html).slice(0, 4000) : ("<p>Rotina " + _nrRotina + " abortou: " + (_nrMotivo || "sem detalhe") + "</p>");
+      const _nrEsc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+      const _nrHtml = body.html ? String(body.html).slice(0, 4000) : ("<p>Rotina " + _nrEsc(_nrRotina) + " abortou: " + _nrEsc(_nrMotivo || "sem detalhe") + "</p>");
       const _nrDest = ADMIN_EMAIL ? [ADMIN_EMAIL] : [];
       if (_nrDest.length === 0) return resp({ ok: false, erro: "Sem destinatario admin." }, 500, request);
+      const _nrDupKey = "rotina_alerta:" + _nrRotina.toLowerCase() + ":" + new Date().toISOString().slice(0, 10);
+      const _nrJaEnviado = await env2222.RADAR_KV.get(_nrDupKey).catch(() => null);
+      if (_nrJaEnviado) return resp({ ok: true, enviado: false, dedup: true }, 200, request);
       try {
-        await enviarResend(env2222.RESEND_API_KEY, "[VIX Radar] Rotina " + _nrRotina + " precisa de atencao", _nrHtml, _nrDest, null, { tipo: "transacional" }, env2222);
+        await enviarResend(env2222.RESEND_API_KEY, "[VIX Radar] Rotina " + _nrEsc(_nrRotina) + " precisa de atencao", _nrHtml, _nrDest, null, { tipo: "transacional" }, env2222);
+        await env2222.RADAR_KV.put(_nrDupKey, "1", { expirationTtl: 86400 }).catch(() => {});
         await tel(env2222, request, { evento: "rotina_alerta_admin", rotina: _nrRotina.slice(0, 40) });
         return resp({ ok: true, enviado: true }, 200, request);
       } catch (e) {
@@ -17150,6 +17249,9 @@ Execute as 9 rodadas (R1-R8 + R4b para Letras Financeiras banc\xE1rias). Para ca
         await gravarTrilha(env2222, _cicloIdP, { empresa, setor, provedor: _baseResA._provedor, providers_usados: _provUsadosA, tempo_ms: Date.now() - _t0cascade, eventos: (_baseResA.eventos || []).length, docsCVM: docsCVM.length, cobertura: _baseResA._cobertura_cvm, exclusoes: (_baseResA._exclusoes_auditadas || []).length, bloqueio_publicacao: !!_baseResA.bloqueio_publicacao });
         await baterHeartbeat(env2222, "cascade_analise", "ok", { empresa, provedor: _baseResA._provedor, ciclo_id: _cicloIdP });
       } catch (_tr) {
+        // AUDITORIA-15AGO (TRILHALOG1): catch era mudo — a unica trilha de auditoria
+        // do cascade sumia sem rastro quando o KV falhava.
+        console.error("[consulta_empresa] trilha/heartbeat:", _tr?.message ?? String(_tr));
       }
       delete _baseResA._rota_secundaria_acionada;
       delete _baseResA._rota_secundaria_motivo;
@@ -17165,8 +17267,8 @@ Execute as 9 rodadas (R1-R8 + R4b para Letras Financeiras banc\xE1rias). Para ca
     return resp({ ok: false, erro: "Servico de analise temporariamente indisponivel. Tente novamente em alguns minutos.", _provedor: "nenhum" }, 503, request);
 }
 var worker_default = {
-  async fetch(request, env2222) {
-    const __r = await __coreFetch(request, env2222);
+  async fetch(request, env2222, ctx) {
+    const __r = await __coreFetch(request, env2222, ctx);
     return __fixCorsResp(__r, request);
   },
   async scheduled(event, env2222, ctx) {

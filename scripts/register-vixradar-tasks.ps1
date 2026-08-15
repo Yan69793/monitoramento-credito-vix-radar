@@ -5,6 +5,12 @@
 #   20/07 (battery + StartWhenAvailable) mas não ganhou as features de resiliência do outro.
 #   Manter como referência de configuração mínima; não usar para registro de tasks novas.
 # Execute como Administrador uma vez.
+
+# REGDRIFT1-FIX (auditoria 2026-08-15): guarda dura. Rodar este script re-habilitaria
+# VIXRadar-Matinal/Noturno, que hoje rodam por sessao agendada do Claude Desktop com a
+# task nativa mantida Disabled como guarda anti-duplicata. O registrador canonico
+# (register-all-routines-scheduler.ps1) reproduz o estado Disabled e cobre as 6+ rotinas.
+throw 'REGDRIFT1: registrador legado desativado. Use pwsh scripts/register-all-routines-scheduler.ps1'
 #
 # FIX 2026-07-20 (auditoria geral): faltavam -AllowStartIfOnBatteries/-DontStopIfGoingOnBatteries,
 # unicas entre TODOS os scripts register-*-task.ps1 do projeto sem essas flags (comparado com

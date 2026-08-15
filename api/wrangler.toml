@@ -1,9 +1,42 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.190)
+# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.195)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.195.js = v4.9.194 + auditoria geral 15/08:
+#   - notificar_rotina: rate limit anonimo + dedup por rotina/dia + escape no corpo
+#     e no assunto (NOTIFYRL1).
+#   - probe de providers: perplexity vira status fixo "removido", classificador
+#     ignora, admin_verificar_providers diz a verdade (OPENROUTER-ORFAO1).
+#   - health: self-healing (sweep da fila + normalizarCase) amarrado em
+#     ctx.waitUntil (HEALTHWAIT1); catches mudos ganham console.error
+#     (TRILHALOG1 / HEARTBEATLOG1).
+#   - reset de senha: JSON.parse com try/catch devolve 400 em vez de 500 (RESETPARSE1).
+#   - login preditivo: senha errada passa pelo checkRateLimitV2 (PREDRL1).
+#   - sanitizador: strip de tags conservador, preserva "EBITDA < 2x".
+#   - timeouts: AbortSignal.timeout(30-60s) em CVM ZIP, Resend, Twilio, OpenRouter e
+#     Analytics Engine SQL (TIMEOUT1).
+#   - newsletter: claim de dedup move para depois dos filtros e e liberado no catch,
+#     fim do bloqueio de 1h com motivo mentiroso (DEDUPCLAIM1).
+#   - ledger de defer por token cap: _token_cap_deferred passa a persistir nos 5
+#     ramos do sem_eventos, entao o "Priorizar amanha" vira FULL prioritario no
+#     tiering seguinte (DEFERREDREC1).
+#   Acompanha: frontend v202.10 (escape LLMXSS1 + Bearer vivo), test/providers-regressao,
+#   routines/claude-desktop versionadas, guarda dura nos registradores legados (REGDRIFT1).
+# v4.9.194.js = v4.9.193 + CUSTOBRAKE1 (disjuntor loga console.error quando a
+#   leitura do KV falha, em vez de engolir) + AUTHWEEK1 notificar_rotina (action
+#   novo com auth routine_key para as 3 rotinas avisarem o admin quando abortam
+#   por auth/limite semanal).
+# v4.9.193.js = v4.9.192 + XSSV100-FIX1: sanitizarPayloadRadar faz strip de tags
+#   HTML em titulo/empresa no write path (guarda dupla com o escape do render
+#   v202.8 do frontend).
+# v4.9.192.js = v4.9.191 + CALVAL-V2: validacao de fonte da agenda de resultados
+#   (tier RI/CVM/B3/corporativo/secundario fail-closed, 5 status_validacao,
+#   gate confirmado, auditoria de mudanca de data, aliases, selos). Frontend v202.7.
+# v4.9.191.js = v4.9.190 + ADMINRL-FIX1: admin_senha correta pula o checkRateLimitV2
+#   (o painel admin dispara 4 POSTs em paralelo e estourava o burst anonimo de
+#   3/60s). Brute force continua throttled: senha errada segue no check.
 # v4.9.190.js = v4.9.189 + VERIFSLA2: lookback do health sobe de 2 para 7
 #   dias no listarFilaVerificacaoPendente, alinhando com a janela de 7 dias
 #   do sweepFilaVerificacaoOrfaos. Fecha a janela cega onde item com 3-7 dias
@@ -500,7 +533,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.194.js"
+main       = "v4.9.195.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

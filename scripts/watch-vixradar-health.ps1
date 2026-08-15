@@ -30,6 +30,28 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $Root = Split-Path -Parent $PSScriptRoot
+
+# HEALTHWATCH2 (auditoria 2026-08-15): a versao esperada era hardcoded no parametro e
+# ficava stale a cada deploy - em 14/08 o vigia marcou "degradado" o dia inteiro
+# (prod v4.9.194 vs esperada v4.9.193), gerando alertas falsos por horas. Agora a
+# versao esperada deriva do api\wrangler.toml (fonte canonica do repo), que e o mesmo
+# arquivo que o deploy atualiza; o parametro vira so fallback.
+try {
+    $linhaMain = Select-String -Path (Join-Path $Root 'api\wrangler.toml') -Pattern '^main\s*=\s*"v([0-9.]+)\.js"' | Select-Object -First 1
+    if ($linhaMain -and $linhaMain.Matches[0].Groups[1].Value) {
+        $VersaoEsperada = 'v' + $linhaMain.Matches[0].Groups[1].Value
+    }
+} catch { }
+# HEALTHWATCH2b (revisao 15/08): o toml e apontado ANTES do deploy terminar, entao o
+# vigia via "esperada v4.9.195 vs producao v4.9.194" e mandava e-mail falso a cada
+# deploy. Se o toml foi alterado ha menos de 10 minutos, o cheque de versao fica
+# suprimido nesta rodada (deploy em curso); passados 10 min sem deploy, o desvio
+# volta a ser alarmado como "deploy fora do processo ou drift".
+$TomlRecente = $false
+try {
+    $tomlItem = Get-Item -LiteralPath (Join-Path $Root 'api\wrangler.toml')
+    if ($tomlItem -and ((Get-Date) - $tomlItem.LastWriteTime).TotalMinutes -lt 10) { $TomlRecente = $true }
+} catch { }
 $LogDir = Join-Path $Root 'logs\watch-health'
 if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Force -Path $LogDir | Out-Null }
 $EstadoFile = Join-Path $LogDir 'estado.json'
@@ -72,6 +94,50 @@ function Get-VixHealthSnapshot {
 $degradado = $false
 $detalhe = ''
 $snap = $null
+
+# ROTINAGAP1 (auditoria 2026-08-15): sessao Claude Desktop que nao dispara nao deixa
+# rastro nenhum - a matinal perdeu 13 e 14/08 em silencio total. Se o log do dia da
+# rotina esperada nao existe apos o horario de execucao, avisa via action=notificar_rotina.
+# O dedup por rotina/dia do Worker (NOTIFYRL1) garante no maximo 1 aviso por dia.
+$agoraR = Get-Date
+$hojeF = $agoraR.ToString('yyyyMMdd')
+$logMat = Join-Path $Root ('logs\routines\vixradar-matinal_' + $hojeF + '.log')
+$logVer = Join-Path $Root ('logs\routines\vixradar-verificacao-async_' + $hojeF + '.log')
+$logNot = Join-Path $Root ('logs\routines\vixradar-noturno_' + $hojeF + '.log')
+# ROTINAGAP1 revisao 15/08: o elseif cego perdia a ausencia da verificacao-async quando
+# matinal e verificacao faltavam no mesmo dia. Agora cada ausencia vira um alerta proprio
+# com nome de rotina distinto (watch-health-<rotina>), porque o dedup do Worker e POR NOME
+# de rotina por dia (NOTIFYRL1) e um nome unico faria o segundo alerta ser engolido.
+$rotinasFaltantes = @()
+if ($agoraR.DayOfWeek -notin @('Saturday', 'Sunday')) {
+    if ($agoraR.Hour -ge 12 -and -not (Test-Path $logMat)) { $rotinasFaltantes += 'matinal' }
+    if ($agoraR.Hour -ge 12 -and -not (Test-Path $logVer)) { $rotinasFaltantes += 'verificacao-async' }
+}
+if ($agoraR.Hour -ge 19 -and $agoraR.Minute -ge 30 -and -not (Test-Path $logNot)) { $rotinasFaltantes += 'noturno' }
+if ($rotinasFaltantes.Count -gt 0) {
+    $rk = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
+    foreach ($rotinaFaltante in $rotinasFaltantes) {
+        Write-WatchLog ('ROTINA FALTANTE: ' + $rotinaFaltante + ' sem log hoje')
+        if (-not $rk) {
+            Write-WatchLog ('AVISO: ROUTINE_API_KEY ausente do escopo User, alerta nao enviado')
+            continue
+        }
+        try {
+            $p2 = @{
+                action       = 'notificar_rotina'
+                routine_key  = $rk
+                rotina       = 'watch-health-' + $rotinaFaltante
+                motivo       = ('Rotina ' + $rotinaFaltante + ' nao deixou log ate ' + $agoraR.ToString('HH:mm') + ' BRT. Sessao Claude Desktop pode nao ter disparado.')
+            }
+            $b2 = [System.Text.Encoding]::UTF8.GetBytes(($p2 | ConvertTo-Json -Compress))
+            Invoke-WebRequest -Uri $WorkerUrl -Method Post -ContentType 'application/json; charset=utf-8' -Body $b2 -TimeoutSec 30 -UseBasicParsing | Out-Null
+            Write-WatchLog ('ALERTA ROTINA enviado (dedup do Worker limita a 1/dia por rotina)')
+        } catch {
+            Write-WatchLog ('AVISO: falha ao alertar rotina faltante: ' + $_.Exception.Message)
+        }
+    }
+    exit 0
+}
 for ($i = 0; $i -lt 2; $i++) {
     $snap = Get-VixHealthSnapshot
     if ($snap.code -ne 200) {
@@ -84,7 +150,7 @@ for ($i = 0; $i -lt 2; $i++) {
         $detalhe = ('ok=' + $snap.ok + ' verificador_ok=' + $snap.verificador + ' versao=' + $snap.versao)
         break
     }
-    if ($snap.versao -and $snap.versao -ne $VersaoEsperada) {
+    if ($snap.versao -and $snap.versao -ne $VersaoEsperada -and -not $TomlRecente) {
         $degradado = $true
         $detalhe = ('versao ' + $snap.versao + ' != esperada ' + $VersaoEsperada + ' (deploy fora do processo ou drift)')
         break

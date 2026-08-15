@@ -128,7 +128,12 @@ jobs:
           fi
 
           if [ "$RL" != "true" ]; then
-            echo "::warning::Binding rate_limiter=$RL (esperado true)"
+            # AUDITORIA-15AGO (RLGATE1): era ::warning::, o que mantinha o run
+            # verde com rate limiter quebrado em prod — mesmo padrao do drift
+            # v4.9.143 (warning ignorado por ~12 dias). health.test.mjs ja exige
+            # rate_limiter=true; o gate de CI passa a exigir tambem.
+            echo "::error::Binding rate_limiter=$RL (esperado true) — DO de rate limit ausente/degradado"
+            FAIL=1
           fi
 
           # GUARD ANTI-DRIFT: falha (não só avisa). O warning anterior foi ignorado

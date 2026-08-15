@@ -11,6 +11,36 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## Abertas (15/08 — auditoria geral profunda)
+
+Detalhe: [[83 - Auditoria Geral 2026-08-15]]. Plano completo: `C:\Users\User\.claude\plans\graceful-soaring-hopper.md`.
+
+### P1 — Deploy v4.9.195 + v202.10 pendente (correções locais da auditoria)
+
+Todas as correções locais prontas, revisão independente concluída com veredito "pronto para deploy" e correções pós-revisão aplicadas (DEFERREDREC1 persistência do flag, DEDUPCLAIM1 claim após filtros, conflito de registradores, menores). Produção segue com ORFAO1 (alerta falso de providers) e LLMXSS1 até o deploy autorizado, que roda nesta meta após pré-flight verde.
+
+### P1 — Rotação da routine_key (em execução na meta)
+
+Chave redigida em 15/08 de `~/.claude/scheduled-tasks/gen_workflow.py` + `vixradar-noturno-v2.js` (com backup), mas cópias históricas em backups/transcripts seguem existindo e a chave não foi rotacionada. `rotate-routine-key.ps1` cobre os 3 destinos (Worker secret, GitHub Actions secret, env User da máquina). Dependia de permissão Secrets no token gh; ao concluir, reiniciar o Claude Desktop antes da noturno 18:00 para a sessão absorver o env novo.
+
+### P2 — Orçamento da noturna (A1)
+
+Cap de 700k estoura toda noite (~70% acima do desenho). Recalibrar envelope ou fixar modelo da fila rápida. A recuperação mecânica do defer (P1-2) foi RESOLVIDA nesta meta (DEFERREDREC1 com persistência real do flag nos 5 ramos).
+
+### P2 — Validar ROUTINE_API_KEY do scan-emergencia no GitHub (C2)
+
+Chave possivelmente morta desde 03/08; se morta, o fallback de emergência falha exatamente quando deveria rodar. Coberto junto da rotação.
+
+### P2 — express/openai do package.json (C3)
+
+Remover dependências não usadas no próximo ciclo de deploy.
+
+### RESOLVIDO nesta meta (aguardando deploy): P1 matinal sem alarme, P1 governança do orquestrador, P2 REGDRIFT1, P2 timeouts de cron, P2 falso-verde CI
+
+ROTINAGAP1 no watch-vixradar-health (alerta por rotina faltante com dedup por nome), 7 arquivos do Claude Desktop versionados em `routines/claude-desktop/` + `check-desktop-orquestrador-drift.ps1`, guarda dura nos 2 registradores legados + Disabled reproduzido no register-all, AbortSignal.timeout nos 6 fetches de cron, canonical-test fail-closed no rate_limiter.
+
+---
+
 ## Abertas (13/08 — auditoria geral + execução)
 
 ### P0 — PARCIALMENTE RESOLVIDO: cascade de IA (AUTHWEEK1). Assinatura no limite semanal, chave paga recarregada

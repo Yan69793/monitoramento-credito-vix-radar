@@ -1,4 +1,14 @@
 ﻿# register-verificacao-async-task.ps1
+# DEPRECATED 2026-08-15 (REGDRIFT1-FIX): a task VIXRadar-Verificacao-Async roda por
+# sessao agendada do Claude Desktop (Seg-Sex 10:20 BRT) e a task nativa fica DISABLED
+# como guarda anti-duplicata. O registrador canonico (register-all-routines-scheduler.ps1)
+# reproduz esse estado. Rodar este script reabilitaria a task com DOIS triggers diarios
+# (10:20 e 18:20), abrindo execucao dupla do dreno de fila contra a sessao Desktop.
+# Guarda dura abaixo.
+throw 'REGDRIFT1: registrador dedicado desativado. Use pwsh scripts/register-all-routines-scheduler.ps1'
+#
+# Conteudo abaixo preservado como referencia (inalcancavel).
+#
 # Cria a task VIXRadar-Verificacao-Async no Windows Task Scheduler.
 # Roda 10:20 e 18:20 BRT diariamente — mesma janela do cron original do Claude Code.
 # Exige admin (Register-ScheduledTask).

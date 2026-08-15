@@ -9,7 +9,11 @@
 #     - VIXRadar-Export-Historico  → scripts/register-export-historico-task.ps1
 #     - VIXRadar-Reconciliacao-CVM → scripts/register-reconciliacao-cvm-task.ps1
 #     - VIXRadar-Ranking-Mensal    → scripts/register-ranking-mensal-task.ps1
-#     - VIXRadar-Verificacao-Async → scripts/register-verificacao-async-task.ps1
+#
+#   VIXRadar-Verificacao-Async PASSOU a ser coberto por este script (REGDRIFT1-FIX,
+#   2026-08-15): registrada com Disabled = $true, guarda anti-duplicata com a sessao
+#   Claude Desktop. O registrador dedicado (register-verificacao-async-task.ps1) foi
+#   desativado com guarda dura, mesmo padrao do register-vixradar-tasks.ps1.
 #
 # ATENCAO: A linha Unregister-ScheduledTask em Register-OneTask zera o LastRunTime
 # e a task perde o disparo do dia se o horario do trigger ja passou.
@@ -55,6 +59,10 @@ $Tasks = @(
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '10:00'
         Daily       = $false
+        # REGDRIFT1-FIX (2026-08-15): roda por sessao agendada do Claude Desktop;
+        # task nativa fica DISABLED como guarda anti-duplicata. O registrador
+        # passa a reproduzir esse estado (antes era aplicado so a mao).
+        Disabled    = $true
     },
     @{
         Name        = 'VIXRadar-Noturno'
@@ -64,6 +72,17 @@ $Tasks = @(
         DaysOfWeek  = $null
         At          = '18:00'
         Daily       = $true
+        Disabled    = $true
+    },
+    @{
+        Name        = 'VIXRadar-Verificacao-Async'
+        Description = 'VIX Radar dreno fila verificacao (Claude Desktop)'
+        Script      = Join-Path $Scripts 'run_vixradar_verificacao_async.ps1'
+        ArgList     = @()
+        DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
+        At          = '10:20'
+        Daily       = $false
+        Disabled    = $true
     },
     @{
         Name        = 'Szuchmacher-AgendaMacro-Claude'
@@ -140,6 +159,19 @@ function Register-OneTask($t) {
     $desc = if ($t.Description) { $t.Description } else { $t.Name }
     Register-ScheduledTask -TaskName $t.Name -Action $act -Trigger $trg `
         -Settings (New-TaskSettings) -Principal $principal -Description $desc -Force | Out-Null
+
+    # REGDRIFT1-FIX (2026-08-15): reproduz o estado Disabled das tasks de rotina
+    # Claude Desktop apos o registro. Antes deste fix, nenhum script reproduzia
+    # esse estado e re-registrar reabilitava a task, abrindo dupla execucao.
+    # Revisao 15/08: Disable sem guarda falhava em silencio (ErrorActionPreference
+    # Continue) e o script imprimia OK com a task reabilitada. Agora falha alto.
+    if ($t.Disabled) {
+        try {
+            Disable-ScheduledTask -TaskName $t.Name -ErrorAction Stop | Out-Null
+        } catch {
+            throw ('registrada mas nao desabilitada: ' + $t.Name + ' (' + $_.Exception.Message + ')')
+        }
+    }
 }
 
 if ($Status) {

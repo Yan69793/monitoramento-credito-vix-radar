@@ -1,8 +1,14 @@
 ﻿# Replay dos CRITICOs perdidos na rotina noturna 2026-07-06
 # Extrai os JSONs do log e submete via API
 
-$keyLine = Get-Content "$PSScriptRoot\..\..\..\..\..\..\Users\User\.claude\scheduled-tasks\vixradar-noturno-v2.js" -Encoding UTF8 | Select-String "routine_key = '" | Select-Object -First 1
-$key = ($keyLine.Line -split "'")[1]
+$key = $env:ROUTINE_API_KEY
+if (-not $key) {
+  # ROUTINEKEY-PLAIN1 (auditoria 2026-08-15): o v2.js foi redigido, a chave
+  # nao esta mais no disco em texto puro. Fonte canonica agora e o env var.
+  $keyLine = Get-Content "$PSScriptRoot\..\..\..\..\..\..\Users\User\.claude\scheduled-tasks\vixradar-noturno-v2.js" -Encoding UTF8 | Select-String "routine_key = '" | Select-Object -First 1
+  $key = ($keyLine.Line -split "'")[1]
+  if (-not $key) { throw "ROUTINE_API_KEY ausente e chave redigida no v2.js (ROUTINEKEY-PLAIN1). Defina o env var." }
+}
 $workerUrl = 'https://api.vixradar.com'
 $logPath = "$PSScriptRoot\..\logs\routines\vixradar-noturno_20260706.log"
 
