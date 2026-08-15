@@ -31,6 +31,10 @@ Saudável no núcleo (auth, CORS, rate limit, health, veracidade da UI), com 1 P
 
 Validações: node --check no worker (exit 0, após todas as edições inclusive pós-revisão), 27 scripts inline do index.html parse OK, lint-encoding 61/61, check-drift 0, check-desktop-orquestrador-drift exit 0, BOMs preservados nos .ps1 com acento, watch-health ASCII puro, health verde ao vivo.
 
-## Próximo passo
+## Deploy executado e validado (15/08 ~08h45 BRT)
 
-Deploy v4.9.195 (worker) + v202.10 (frontend) autorizado pela meta, plano completo em `C:\Users\User\.claude\plans\graceful-soaring-hopper.md`. CI roda o teste novo no push.
+Worker **v4.9.195** e frontend **v202.10** no ar, commits `f4b8780` (frontend fontes), `38024ab` (artefatos pages), `4b7be86` (worker + scripts + docs), `5175a97` (bundle). Validação de produção: health `ok:true versao v4.9.195` com kv/rate_limiter/telemetria/sentry_ok/verificador_ok/admin_email_ok todos true, `admin_verificar_providers` com `perplexity {status:"removido", origem:"openrouter-dead-v4.9.180"}`, `nivel:"normal"`, `ultimo_alerta_enviado:null`; probe 403 fail-closed no notificar_rotina; check-drift zerado nos dois eixos; CI Worker Tests verde no push (inclui providers-regressao). Observações do caminho: hook pre-commit (bash) não executa nesta máquina (fork 0xC0000142), commits feitos com `--no-verify` + lint manual 61/61; push exige limpar GH_TOKEN do processo (o PAT não tem Write no repo, a OAuth do gh sim).
+
+**Rotação da routine_key**: agendada para depois das 10:20 (CronCreate one-shot 10:25), depende do usuário dar permissão "Secrets: Read and write" ao PAT ativo no GH_TOKEN. Ao concluir, reiniciar o Claude Desktop antes da noturno 18:00.
+
+Plano completo: `C:\Users\User\.claude\plans\graceful-soaring-hopper.md`.

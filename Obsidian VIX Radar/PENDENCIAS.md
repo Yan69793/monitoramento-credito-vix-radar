@@ -15,13 +15,13 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 Detalhe: [[83 - Auditoria Geral 2026-08-15]]. Plano completo: `C:\Users\User\.claude\plans\graceful-soaring-hopper.md`.
 
-### P1 — Deploy v4.9.195 + v202.10 pendente (correções locais da auditoria)
+### RESOLVIDO 15/08 — Deploy v4.9.195 + v202.10 (correções locais da auditoria)
 
-Todas as correções locais prontas, revisão independente concluída com veredito "pronto para deploy" e correções pós-revisão aplicadas (DEFERREDREC1 persistência do flag, DEDUPCLAIM1 claim após filtros, conflito de registradores, menores). Produção segue com ORFAO1 (alerta falso de providers) e LLMXSS1 até o deploy autorizado, que roda nesta meta após pré-flight verde.
+Worker v4.9.195 e frontend v202.10 no ar e validados em produção (commits `f4b8780`..`5175a97`). Health verde com todos os sub-checks, providers com perplexity "removido" e nivel normal, drift zerado, CI Worker Tests verde no push. Fecha OPENROUTER-ORFAO1 (alerta falso desde 30/07) e LLMXSS1 em produção.
 
-### P1 — Rotação da routine_key (em execução na meta)
+### P1 — Rotação da routine_key (agendada para 15/08 após 10:20)
 
-Chave redigida em 15/08 de `~/.claude/scheduled-tasks/gen_workflow.py` + `vixradar-noturno-v2.js` (com backup), mas cópias históricas em backups/transcripts seguem existindo e a chave não foi rotacionada. `rotate-routine-key.ps1` cobre os 3 destinos (Worker secret, GitHub Actions secret, env User da máquina). Dependia de permissão Secrets no token gh; ao concluir, reiniciar o Claude Desktop antes da noturno 18:00 para a sessão absorver o env novo.
+Chave redigida em 15/08 de `~/.claude/scheduled-tasks/gen_workflow.py` + `vixradar-noturno-v2.js` (com backup), mas cópias históricas em backups/transcripts seguem existindo e a chave não foi rotacionada. `rotate-routine-key.ps1` cobre os 3 destinos (Worker secret, GitHub Actions secret, env User da máquina). Portão 2 reprovou às 08:19 e 08:38: o PAT ativo no GH_TOKEN não tem permissão de Secrets. Usuário vai ajustar o PAT; execução agendada para 10:25 BRT. Ao concluir, reiniciar o Claude Desktop antes da noturno 18:00 para a sessão absorver o env novo.
 
 ### P2 — Orçamento da noturna (A1)
 
