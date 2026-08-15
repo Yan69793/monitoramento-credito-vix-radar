@@ -21,7 +21,7 @@ próprio, sem banco de dados, sem manutenção de infraestrutura.
 
 ```
 api/
-  v4.9.194.js        ← bundle Worker em produção (bundle Wrangler, NÃO editar)
+  v4.9.195.js        ← bundle Worker em produção (bundle Wrangler, NÃO editar)
   wrangler.toml      ← config de deploy: main, bindings, cron triggers, custom domain
 
 app/
@@ -81,7 +81,7 @@ research/            ← pesquisa e referências externas
 
 | Componente | Versão | Confirmada |
 |---|---|---|
-| Worker `radar-credito-api` | v4.9.194 | 2026-08-14 |
+| Worker `radar-credito-api` | v4.9.195 | 2026-08-15 |
 | Frontend `vixradar.com` | v202.10 | 2026-08-15 |
 | Emissores monitorados | 103 empresas / 13 setores | — |
 
