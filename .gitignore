@@ -188,7 +188,11 @@ audio/*.mp3
 audio/*.wav
 
 # ---------- IDE ----------
-.vscode/
+# Mantém tasks/settings compartilhados do time; ignora o resto pessoal.
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/extensions.json
 .idea/
 *.swp
 *.swo
@@ -278,3 +282,7 @@ data/reconciliacao/dryrun/
 Obsidian VIX Radar/Reconciliacao-CVM/dryrun/
 data/historico/.dryrun/
 .cloudflare-typescript-temp/
+
+# Material de video do comercial. Binario pesado, regeneravel pelo pipeline de
+# captura, nao e fonte do sistema. Fica fora do repo.
+Videos Comercial/

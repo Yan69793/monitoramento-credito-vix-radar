@@ -7,16 +7,16 @@ status: ativo
 
 # VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-08-06 02h45 BRT.
+Mapa do vault. Atualizado 2026-08-15 11h08 BRT.
 
 ## Estado atual
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.189 |
-| Frontend | v202.6 |
-| Health | `ok:true`, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (11/08 20:43 BRT, HTTP 200 0,15s) |
-| Cobertura | 5 commits de correcao em 11/08: VERIFSLA1 (SLA fila 12h→20h), redacao senha demo, dry-run, deploy v4.9.189 + v202.6. P1 aberto: health lookback de 2 dias nao cobre sweep de 7 dias. |
+| Worker | v4.9.195 |
+| Frontend | v202.10 |
+| Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (15/08 11h08 BRT, HTTP 200 0,31s) |
+| Cobertura | Deploy v4.9.195 + v202.10 em 15/08 (auditoria profunda: routine_key redigida do disco, OPENROUTER-ORFAO1, NOTIFYRL1, LLMXSS1, DEFERREDREC1 corrigidos). Matinal 15/08: 19/19, 3 CRITICOs. P1 aberto: rotação da routine_key pendente de permissão Secrets no PAT do GitHub. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
@@ -114,6 +114,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Descrição |
 |---|---|
+| [[84 - Rotina Matinal 2026-08-15]] | Matinal 15/08: 19/19 (retry pós troca de modelo), 3 CRITICOs (Oncoclínicas, Kora Saúde, CSN) |
 | [[34 - Rotina Matinal 2026-06-22]] | Execução matinal |
 | [[Rotina Noturna 2026-08-14]] | Noturna 14/08: 103/103, 5 CRITICOs, cap de tokens estourado |
 | [[30 - Monitor CRITICOs 2026-06-20]] | Rastreamento de críticos |

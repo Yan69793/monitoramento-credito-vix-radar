@@ -1,0 +1,263 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Portão de verificação",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/portao-verificacao.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "Ctrl+Shift+B. Health em produção. Sai com erro se ok/kv/telemetria/sentry_ok não vierem true."
+    },
+    {
+      "label": "Portão (api.vixradar.com)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/portao-verificacao.ps1",
+        "-Url",
+        "https://api.vixradar.com/"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "Mesmo portão pelo domínio canônico público. Se um passar e o outro não, é roteamento."
+    },
+    {
+      "label": "Deploy Worker",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/deploy-worker.ps1",
+        "-Version",
+        "${input:workerVersion}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "detail": "Nunca wrangler deploy direto. Pede a versão (ex.: v4.9.200). Confirme no terminal antes de deixar rodar até o fim."
+    },
+    {
+      "label": "Deploy Pages",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/deploy-pages.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      },
+      "detail": "Sincroniza app/ → deploy_zip, sobe Pages e valida em produção."
+    },
+    {
+      "label": "Abrir log das rotinas (hoje)",
+      "type": "shell",
+      "command": "powershell.exe",
+      "args": [
+        "-NoProfile",
+        "-Command",
+        "$d = Get-Date -Format 'yyyyMMdd'; $dir = Join-Path '${workspaceFolder}' 'logs\\routines'; if (-not (Test-Path $dir)) { Write-Host \"Pasta inexistente: $dir\" -ForegroundColor Red; exit 1 }; $hoje = @(Get-ChildItem $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -like \"*$d*\" } | Sort-Object LastWriteTime -Descending); if ($hoje.Count -eq 0) { Write-Host \"NENHUM log com a data de hoje ($d) em $dir\" -ForegroundColor Red; Write-Host 'Ultimos 5 arquivos que existem:' -ForegroundColor Yellow; Get-ChildItem $dir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 5 | ForEach-Object { Write-Host ($_.LastWriteTime.ToString('yyyy-MM-dd HH:mm') + '  ' + $_.Name) }; exit 1 }; Write-Host \"=== logs/routines (*$d*) ===\" -ForegroundColor Cyan; $hoje | ForEach-Object { Write-Host ($_.LastWriteTime.ToString('HH:mm:ss') + '  ' + $_.Name + '  ' + [math]::Round($_.Length/1KB,1) + 'KB') }; Write-Host ''; foreach ($f in ($hoje | Select-Object -First 3)) { Write-Host \"-------- $($f.Name) (tail) --------\" -ForegroundColor Yellow; Get-Content $f.FullName -Tail 25 -ErrorAction SilentlyContinue }"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "Logs do dia em logs/routines, tail dos 3 mais recentes (procure FIM: / GUARD_OK). Falha se não houver log de hoje."
+    },
+    {
+      "label": "Abrir pasta logs/routines",
+      "type": "shell",
+      "command": "explorer.exe",
+      "args": [
+        "${workspaceFolder}\\logs\\routines"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      },
+      "detail": "Abre o Explorer na pasta de logs das rotinas."
+    },
+    {
+      "label": "Rotinas: verificar (local)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/verify-rotinas-v2.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "Confere contrato e integridade das rotinas sem bater no Worker."
+    },
+    {
+      "label": "Rotinas: verificar (live no Worker)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/verify-rotinas-v2.ps1",
+        "-Live"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "Mesma verificação batendo em api.vixradar.com. Precisa da routine_key no ambiente."
+    },
+    {
+      "label": "Rotinas: monitor de tasks",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/monitor-tasks.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "Varre o Task Scheduler atrás de LastTaskResult não-benigno. Exit code = nº de tasks com erro."
+    },
+    {
+      "label": "Lint de encoding dos .ps1",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/lint-encoding.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true,
+        "clear": true
+      },
+      "detail": "BOM UTF-8 e sintaxe PS 5.1. É o que o pre-commit reprova. Rodar antes de commitar script."
+    },
+    {
+      "label": "Drift check (repo)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/check-drift.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": true
+      },
+      "detail": "Confere desalinhamento local vs o que o processo espera."
+    },
+    {
+      "label": "Drift check (vault Obsidian)",
+      "type": "shell",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile",
+        "-File",
+        "${workspaceFolder}/scripts/check-vault-drift.ps1"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "focus": true
+      },
+      "detail": "Confere se o vault Obsidian ainda descreve o que está em produção."
+    }
+  ],
+  "inputs": [
+    {
+      "id": "workerVersion",
+      "type": "promptString",
+      "description": "Versão do Worker (ex.: v4.9.200). Tem que ser maior que a de produção.",
+      "default": "v4.9."
+    }
+  ]
+}

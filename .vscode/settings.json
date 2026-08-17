@@ -1,0 +1,45 @@
+{
+  // VIX Radar — visão e busca só no sistema vivo.
+  // Pastas mortas continuam no disco/git; só saem do Explorer e da busca.
+  "files.exclude": {
+    "**/_historico": true,
+    "**/_backup_security_fix_2026-07-24_054124": true,
+    "**/archive": true,
+    "**/producao": true,
+    "**/vixradar": true,
+    "**/research": true,
+    "**/.cloudflare-typescript-temp": true,
+    "**/node_modules": true
+  },
+  "search.exclude": {
+    "**/_historico": true,
+    "**/_backup_security_fix_2026-07-24_054124": true,
+    "**/archive": true,
+    "**/producao": true,
+    "**/vixradar": true,
+    "**/research": true,
+    "**/.cloudflare-typescript-temp": true,
+    "**/node_modules": true,
+    "**/logs": true,
+    "**/api/v4.*.js": true,
+    "**/app/deploy_zip": true
+  },
+  "files.watcherExclude": {
+    "**/_historico/**": true,
+    "**/archive/**": true,
+    "**/producao/**": true,
+    "**/node_modules/**": true,
+    "**/logs/**": true,
+    "**/.git/objects/**": true
+  },
+  "search.useIgnoreFiles": true,
+  "editor.stickyScroll.enabled": true,
+  "outline.collapseItems": "alwaysCollapse",
+  "terminal.integrated.tabs.title": "${sequence}${separator}${process}",
+  // PowerShell 5.1 é o runtime das rotinas/Task Scheduler neste projeto.
+  "terminal.integrated.defaultProfile.windows": "PowerShell",
+  "files.associations": {
+    "wrangler.toml": "toml",
+    "wrangler.test.jsonc": "jsonc"
+  }
+}

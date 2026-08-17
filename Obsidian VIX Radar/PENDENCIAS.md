@@ -11,6 +11,38 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 17/08 — sessão de custo/benefício e limpeza de fila (sem deploy)
+
+### RESOLVIDO 17/08 — P2 express/openai órfãos no package.json (C3)
+
+Zero import ou require de `express`/`openai` em todo o `api/`. Removidos com `npm uninstall`, `api/package.json` fica só com `@sentry/cloudflare` em dependencies. `npm ci` revalidado, árvore com os 3 pacotes esperados. Efeito só na próxima publicação, nada em produção mudou.
+
+### RESOLVIDO 17/08 — P2 ~25 .ps1 sem commit, 12 reprovados no lint
+
+Pendência estava vencida. `lint-encoding.ps1` varreu 63 arquivos, 63 OK, 0 risco, e o working tree não tem `.ps1` modificado. Foi fechado pelo commit `9764a3d` (18 arquivos regravados com BOM) e ficou aberto na fila por falta de reconciliação.
+
+### RESOLVIDO 17/08 — P3 listar_plano_rotina devolveu 19 para top_n=15
+
+Não é bug. `selecionarEmissoresPrioritarios` corta em `topN` e depois o mínimo por setor do v4.9.157 (`api/src/worker.js:8953`) adiciona emissores dos setores sem cobertura, senão setor com EWS perto de zero nunca entra no top-N. Na matinal de 15/08 isso somou 4. Contrato descreve `top_n` como se fosse teto, e ele é piso. Corrigir a redação do contrato, não o código.
+
+### RESOLVIDO 17/08 — FIMRUN21, alerta 9001 falso do monitor desde 13/08
+
+`monitor-tasks.ps1` lia só a última linha `FIM:` do log da rotina. O noturno de 15/08 escreveu duas, run-1 com `FIM: noturno 103/103 processados` e run-2 com `FIM: noturno run-2 11/11 emissores DEFERRED ... Total do dia 103/103 com analise real`. A segunda não casava com nenhum padrão de contador, `submit_ok` caía para -1 e disparava 9001 mesmo com o dia entregue inteiro. Vermelho crônico desde 13/08 escondendo sinal verdadeiro. Fix varre todas as linhas `FIM:` do dia e fica com o maior contador, mais padrão novo para `Total do dia N/M`. Validado contra o log real de 15/08, resultado `submitOk=103`, sem alerta.
+
+### RESOLVIDO 17/08 — Portão de verificação saía verde com o sistema doente
+
+A task do VS Code chamava `curl.exe -s` direto, que sai com código 0 mesmo quando o health responde `ok:false`. Novo `scripts/portao-verificacao.ps1` parseia o JSON e sai com 1 se qualquer flag obrigatória não vier `true`, cobrindo os 4 do CLAUDE.md mais `rate_limiter`, `admin_email_ok` e `verificador_ok`. Achado durante o próprio teste: `kv` e `telemetria` moram dentro de `bindings`, não na raiz, a primeira versão reprovava um health saudável. Portão virou build task padrão, Ctrl+Shift+B. `.vscode/tasks.json` ganhou verificar rotinas local e live, monitor de tasks, lint de encoding e drift do vault, que eram o braço do agendador faltando.
+
+### P2 — Envelope da noturna, agora é a alavanca única de custo
+
+Com plano Max a rotina local é flat, trocar modelo dela economiza zero. Dólar real só aparece quando a assinatura estoura o limite semanal e a execução cai na chave paga `VIXRADAR_ANTHROPIC_API_KEY`. O cap de 700k estourando toda noite (~70% acima do desenho) é o que consome a folga semanal. Recalibrar o envelope ou fixar modelo da fila rápida deixa de ser afinação e vira o item de maior retorno da fila inteira.
+
+### P2 — ROUTINE_API_KEY do scan-emergencia continua não validada
+
+Workflow verde nas 4 últimas noites (última 16/08 23:45), mas o log mostra só a checagem de idade do estado (`Idade do estado: 2h`) e saída pelo caminho no-op. A chave nunca é exercitada, então o verde não prova nada. Falharia exatamente no dia em que o fallback precisasse rodar. Validar por `workflow_dispatch` forçado ou junto da rotação.
+
+---
+
 ## Abertas (15/08 — auditoria geral profunda)
 
 Detalhe: [[83 - Auditoria Geral 2026-08-15]]. Plano completo: `C:\Users\User\.claude\plans\graceful-soaring-hopper.md`.
@@ -34,6 +66,10 @@ Chave possivelmente morta desde 03/08; se morta, o fallback de emergência falha
 ### P2 — express/openai do package.json (C3)
 
 Remover dependências não usadas no próximo ciclo de deploy.
+
+### P3 — listar_plano_rotina devolveu 19 emissores para top_n=15 solicitado (matinal 15/08)
+
+Plano da matinal de 15/08 trouxe `total=19` em vez dos 15 esperados pelo contrato (0 SKIP, 10 LIGHT, 9 FULL, 0 AUDIT). Rotina prosseguiu processando os 19 sem erro. Verificar se `top_n` está sendo respeitado na composição do plano no Worker, ou se a contagem por tier ignora o limite quando não há SKIP suficiente para completar a diferença. Detalhe: [[84 - Rotina Matinal 2026-08-15]].
 
 ### RESOLVIDO nesta meta (aguardando deploy): P1 matinal sem alarme, P1 governança do orquestrador, P2 REGDRIFT1, P2 timeouts de cron, P2 falso-verde CI
 

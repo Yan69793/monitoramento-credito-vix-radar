@@ -425,19 +425,52 @@ foreach ($rot in $RotinasVigiadas) {
             if ($conteudoR -match 'ERRO FATAL') { $detalheR = $detalheR + ', ERRO FATAL registrado' }
             $motivoR = "$alvoTxt $detalheR"
         } else {
-            $linhaFim = $fims[$fims.Count - 1].Groups[1].Value
-            $mFim = [regex]::Match($linhaFim, 'submit_ok=(\d+)')
-            if (-not $mFim.Success) { $mFim = [regex]::Match($linhaFim, '(\d+)/\d+ processados') }
-            if (-not $mFim.Success) { $mFim = [regex]::Match($linhaFim, 'processados=(\d+)') }
-            if ($mFim.Success) {
-                $submitOk = [int]$mFim.Groups[1].Value
+            # FIMRUN21 (2026-08-17): o dia pode ter mais de uma execucao e so a
+            # ULTIMA linha FIM era lida. Em 15/08 o noturno teve run-1 com
+            # 'FIM: noturno 103/103 processados' e run-2 com
+            # 'FIM: noturno run-2 11/11 emissores DEFERRED ... Total do dia 103/103
+            # com analise real'. A linha do run-2 nao casa com nenhum padrao de
+            # contador, entao submit_ok caia para -1 e gerava 9001 falso mesmo com
+            # o dia entregue inteiro. Alerta ficou vermelho desde 13/08 escondendo
+            # falha real. Agora varre TODAS as linhas FIM do dia e fica com o maior
+            # contador, que e a semantica certa: o que importa e o total entregue
+            # no dia, nao qual execucao escreveu a ultima linha.
+            $linhaFim   = $fims[$fims.Count - 1].Groups[1].Value
+            $linhaMelhor = ''
+            $nFal       = -1
+            $nFalMelhor = -1
+            foreach ($m in $fims) {
+                $linha = $m.Groups[1].Value
+
+                $mFim = [regex]::Match($linha, 'submit_ok=(\d+)')
+                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'Total do dia (\d+)/\d+') }
+                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)/\d+ processados') }
+                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'processados=(\d+)') }
+
+                $mFal    = [regex]::Match($linha, '(\d+) falhas de submit|falhas=(\d+)')
+                $nFalEsta = -1
+                if ($mFal.Success) {
+                    if ($mFal.Groups[1].Success) { $nFalEsta = [int]$mFal.Groups[1].Value }
+                    else { $nFalEsta = [int]$mFal.Groups[2].Value }
+                }
+                if ($nFalEsta -gt $nFal) { $nFal = $nFalEsta }
+
+                if ($mFim.Success) {
+                    $valor = [int]$mFim.Groups[1].Value
+                    if ($valor -gt $submitOk) {
+                        $submitOk    = $valor
+                        $linhaMelhor = $linha
+                        $nFalMelhor  = $nFalEsta
+                    }
+                }
             }
-            $mFal = [regex]::Match($linhaFim, '(\d+) falhas de submit|falhas=(\d+)')
-            $nFal = -1
-            if ($mFal.Success) {
-                $nFal = if ($mFal.Groups[1].Success) { [int]$mFal.Groups[1].Value } else { [int]$mFal.Groups[2].Value }
-            }
-            if ($nFal -gt 0) {
+            if ($linhaMelhor) { $linhaFim = $linhaMelhor }
+
+            if ($submitOk -ge $rot.minSubmit -and $nFalMelhor -le 0) {
+                # Dia entregue. Falha de uma execucao anterior corrigida por outra
+                # nao derruba o dia, o que vale e a evidencia de entrega completa.
+                $motivoR = $null
+            } elseif ($nFal -gt 0) {
                 $motivoR = "$alvoTxt FIM com falhas=$nFal"
             } elseif ($submitOk -lt 0) {
                 $motivoR = "$alvoTxt linha FIM sem contador reconhecido: $linhaFim"
