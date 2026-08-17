@@ -1,5 +1,9 @@
 # Protocolo Operacional — VIX Radar (hardened 2026-07-25)
 
+## Estado do projeto
+
+Página canônica de estado, legível por qualquer agente (não só Claude): `status/ESTADO.md`. Ler antes de começar sessão de trabalho, atualizar a data e os itens ao fechar uma sessão que mudou o estado.
+
 ## Comunicação
 
 - Toda resposta neste projeto aplica a skill `/humanizer` antes de ser entregue.
