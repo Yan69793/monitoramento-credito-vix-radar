@@ -123,6 +123,10 @@ $GuardedDisabled = @{
         reason = 'GUARD anti-duplicata. Execucao via sessao agendada Claude Desktop. NAO REABILITAR.'
         since  = '2026-08-06 ou depois (rodou pelo Task Scheduler em 06/08 18:20, logo o disable veio apos isso)'
     }
+    'Szuchmacher-MacroCron' = @{
+        reason = 'Desligado em ~10/08/2026: o cron nativo do Cloudflare (worker do site-producao) assumiu o macro. Pendencia do site-producao/CLAUDE.md, alvo de confirmacao 24/08. NAO REABILITAR enquanto o cron nativo nao estiver confirmado.'
+        since  = '2026-08-10'
+    }
 }
 
 Write-Log '=== MONITOR TASK SCHEDULER ==='
@@ -308,6 +312,43 @@ foreach ($task in $allTasks) {
 
     # Classifica severidade ($ageDays, $action e $scriptPath vem do topo do laco)
 
+    # COTA1 (2026-08-17): exit 1 por limite de assinatura Claude (weekly/session)
+    # vira warning, nao erro. O cluster Szuchmacher falhou entre 11 e 14/08 com
+    # 'hit your weekly/session limit' e o monitor escalou como falha persistente
+    # de task. A task esta saudavel, a cota e causa externa e reseta sozinha.
+    # O log de cada rotina confirma a causa (mesmo padrao do bloco AgendaSemanal).
+    $cotaLogPattern = $null
+    switch ($name) {
+        'Szuchmacher-AgendaMacro-Claude' { $cotaLogPattern = Join-Path $VixRoot ('logs\routines\agenda-macro-szuchmacher_' + $lastRun.ToString('yyyyMMdd') + '.log') }
+        'Szuchmacher-FechamentoDiario'   { $cotaLogPattern = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\logs\briefing_' + $lastRun.ToString('yyyyMMdd') + '.log' }
+        'Szuchmacher-PreflightAnthropic' { $cotaLogPattern = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\logs\preflight_anthropic_' + $lastRun.ToString('yyyyMMdd') + '.log' }
+        'Szuchmacher-BriefingMatinal'   { $cotaLogPattern = 'E:\Diretorio\Claude\FREQUENTE\Morning Call\briefing-interno\logs\briefing_' + $lastRun.ToString('yyyyMMdd') + '.log' }
+        'Szuchmacher-BriefingWatchdog'  { $cotaLogPattern = 'E:\Diretorio\Claude\FREQUENTE\Morning Call\briefing-interno\logs\briefing_' + $lastRun.ToString('yyyyMMdd') + '.log' }
+    }
+    $cotaDetectada = $false
+    $cotaTxt = ''
+    if ($cotaLogPattern -and (Test-Path $cotaLogPattern)) {
+        try {
+            $cotaRaw = Get-Content $cotaLogPattern -Raw -Encoding UTF8 -ErrorAction Stop
+            if ($cotaRaw -match 'hit your (weekly|session) limit') {
+                $cotaDetectada = $true
+                $cotaTxt = 'limite de assinatura Claude confirmado no log, task saudavel'
+            } elseif ($cotaRaw -match 'PREFLIGHT CRITICO') {
+                $cotaDetectada = $true
+                $cotaTxt = 'preflight detectou e alertou por push/email, funcao cumprida (motivo no log)'
+            } elseif ($name -eq 'Szuchmacher-BriefingWatchdog' -and $cotaRaw -match 'WATCHDOG: ALERTA') {
+                $cotaDetectada = $true
+                $cotaTxt = 'watchdog detectou briefing ausente e alertou o operador, funcao cumprida'
+            } elseif ($name -eq 'Szuchmacher-BriefingMatinal' -and $cotaRaw -match 'ENVIADO OK') {
+                $cotaDetectada = $true
+                $cotaTxt = 'reprovado as 07h mas reenviado com sucesso no mesmo dia'
+            } elseif ($name -eq 'Szuchmacher-BriefingMatinal' -and $cotaRaw -match 'REPROVADO') {
+                $cotaDetectada = $true
+                $cotaTxt = 'reprovado no portao de validacao, watchdog alertou o operador'
+            }
+        } catch { }
+    }
+
     # Verifica se eh projeto externo/pessoal
     $isExternal = $false
     foreach ($ep in $ExternalPrefixes) {
@@ -356,6 +397,20 @@ foreach ($task in $allTasks) {
             $entry.reason = 'exit 1 sem causa identificada (log nao contem padrao conhecido)'
             $erros += $entry
         }
+    } elseif (($code -eq 1 -or $code -eq 3) -and $cotaDetectada) {
+        $entry.reason = $cotaTxt
+        $warnings += $entry
+    } elseif ($code -eq 2147946720) {
+        # 0x800710E0 = ERROR_REQUEST_REFUSED: o agendador recusou iniciar a task.
+        # Caso visto 16/08 (domingo) 20:22: catch-up de trigger perdido recusado,
+        # script nem chegou a rodar. Em dia nao util a recusa nao tem custo.
+        if ($lastRun.DayOfWeek -in 'Saturday', 'Sunday') {
+            Write-Log "INFO: $name recusada pelo agendador em dia nao util ($($lastRun.ToString('yyyy-MM-dd HH:mm'))) - ignorada"
+            $ok++
+            continue
+        }
+        $entry.reason = 'recusada pelo agendador (ERROR_REQUEST_REFUSED) em dia util - investigar'
+        $erros += $entry
     } elseif ($code -ne 0) {
         $entry.reason = "exit code $code nao-benigno"
         $erros += $entry
