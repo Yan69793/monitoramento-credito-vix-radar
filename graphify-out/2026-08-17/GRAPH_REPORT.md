@@ -1,302 +1,294 @@
-# Graph Report - Monitoramento de Credito  (2026-08-17)
+# Graph Report - Monitoramento de Credito  (2026-07-23)
 
 ## Corpus Check
-- 521 files · ~1,084,160 words
+- 431 files · ~526,348 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 3606 nodes · 4474 edges · 344 communities (321 shown, 23 thin omitted)
+- 3506 nodes · 4376 edges · 336 communities (313 shown, 23 thin omitted)
 - Extraction: 94% EXTRACTED · 6% INFERRED · 0% AMBIGUOUS · INFERRED: 278 edges (avg confidence: 0.5)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `ed407579`
+- Built from commit: `cdc06b25`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
-- 50 - Análise Competitiva e Baseline SEO — 2026-07-11
-- Auditoria Completa — VIX Radar (2026-06-18 pós v4.9.141)
-- package.json
-- Auditoria Completa — VIX Radar (2026-07-15)
-- verificarEventosBatch
-- 13 - Metodo de Vistoria Operacional.md
-- Copilot CLI Tool Mapping
-- Auditoria Geral — Addendum IA/LLM + Runtime Workers (2026-07-14)
-- 51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11
-- Evaluation and iteration
-- Example: TDD Skill Bulletproofing
-- Auditoria Geral — VIX Radar (2026-07-07)
-- Auditoria Geral — VIX Radar (2026-07-03)
-- Auditoria Geral, VIX Radar, 2026-07-21 (tarde)
-- 2026-08-15/manifest.json
-- Auditoria Geral — VIX Radar (2026-07-06)
-- Auditoria Geral, VIX Radar, 2026-07-21
-- Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE
-- render-graphs.js
-- Fechadas (14/08 — execução das pendências da auditoria)
-- 17/08 — sessão de custo/benefício e limpeza de fila (sem deploy)
-- Abertas (13/08 — pos v4.9.192 / CALVAL-V2, sessão paralela)
-- Abertas (15/08 — auditoria geral profunda)
-- Fechadas (historico recente)
-- Abertas (13/08 — auditoria geral + execução)
-- Runbook — Deploy do Frontend (Cloudflare Pages)
-- Pendencias — VIX Radar
-- prod-worker-2026-06-10.js
-- memory.py
-- resp
-- Achados
-- Execute Plan Skill
-- Implement Skill
-- fetch
-- Test-Driven Development (TDD)
-- Estado de Produção — VIX Radar
-- Auditoria Completa — VIX Radar (2026-06-16)
-- obterAgoraBRT
-- Protocolo Operacional — VIX Radar
-- DEVELOPMENT — Radar de Crédito Privado
-- PROMPT DE HANDOFF COMPLETO — RADAR DE CRÉDITO PRIVADO v4
-- __coreFetch
-- 3. Componentes Existentes — Reuso Obrigatório
-- createNotImplementedError
-- Email Relatório e Deliverability — 2026-06-17
-- Subagent-Driven Development
-- enviarResend
-- Frontend
-- ✅ DEPLOY_CHECKLIST — Radar de Crédito Privado
-- Workers Best Practices — Rules
-- Arquitetura — Radar de Crédito Privado
-- run_vixradar_matinal_claude.ps1
-- app/admin/vr-admin-modules.js
-- deploy_zip/admin/vr-admin-modules.js
-- validate-plan.py
-- VIX Radar — Motor Preditivo
-- 07 — Evolução do Sistema de Classificação e Prompts
-- _run_helper
-- Using Git Worktrees
-- Code Review — Workers
-- importar_serie_mercado.py
-- Importador de Séries Históricas de Debêntures
-- Visual Companion Guide
-- Creation Log: Systematic Debugging Skill
-- 08 — Análise de Risco e Arquitetura de Confiabilidade
-- noturno-batch-haiku.md
-- run_vixradar_noturno_claude.ps1
-- Rotina Noturna — 2026-06-20
-- Auditoria Completa — VIX Radar (2026-07-09 v2)
-- Code Review Reception
-- using-superpowers/SKILL.md
-- VIX Radar — Auditoria Completa do Sistema
-- noturno-batch-sonnet.md
-- The Process
-- Systematic Debugging
-- Testing CLAUDE.md Skills Documentation
-- Testing Skills With Subagents
-- Pendências abertas — sessão 2026-06-11
-- Histórico de Versões Frontend
-- Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)
-- Dispatching Parallel Agents
-- test_memory.py
-- Root Cause Tracing
-- Persuasion Principles for Skill Design
-- Writing Skills
-- Guia de Integração Figma — VIX Radar
-- Histórico de Versões Worker
-- Design P16 / P17 — Agenda de Divulgação e Relatório Diário
-- Monitoramento Loop — 2026-06-17
-- TestMergeValidation
-- workers-best-practices/SKILL.md
-- 2. Component Library
-- Auditoria Completa — VIX Radar (2026-06-17)
-- Auditoria Completa — VIX Radar (2026-06-18)
-- Auditoria Completa — VIX Radar (2026-06-30)
-- Achados da auditoria
-- Auditoria Completa — VIX Radar (2026-07-12)
-- Auditoria Completa — VIX Radar (2026-07-14)
-- PROMPTS — RADAR DE CRÉDITO PRIVADO
-- Notas por categoria
-- Auditoria Completa — VIX Radar (2026-06-17)
-- Admin HEART Modular — v201.66
-- Deploy Readiness v4.9.142
-- Auditoria Completa — VIX Radar (2026-07-01)
-- Auditoria Geral — VIX Radar (2026-07-07, ~16:15-16:35 BRT)
-- Auditoria Completa — VIX Radar (2026-07-09)
-- Auditoria de arrumação do diretório — 2026-06-14
-- Rotina Noturna v2 — 2026-07-02
-- app/admin/vr-admin-shared.js
-- deploy_zip/admin/vr-admin-shared.js
-- Writing Plans
-- [Analysis Title]
-- Workflow de Governança — Radar de Crédito Privado
-- 1. Token Definitions
-- posts_organicos.md — 10 posts (voz Yan Szuchmacher)
-- plano_campanha.md — Campanha LinkedIn VIX Radar (8 semanas)
-- Otimizacao Tokens Rotina Noturna
-- Detalhes por Emissor
-- Auditoria Completa — VIX Radar (2026-07-03)
-- Auditoria Completa — VIX Radar (2026-07-13 ~03:15 BRT)
-- VIX Radar — MATINAL (iPad / claude.ai/code)
-- matinal-batch-sonnet.md
-- Defense-in-Depth Validation
-- Verification Before Completion
-- 2026-07-11/manifest.json
-- 2026-07-12/manifest.json
-- 2026-07-13/manifest.json
-- 2026-07-14/manifest.json
-- 2026-07-15/manifest.json
-- 2026-07-16/manifest.json
-- 2026-07-17/manifest.json
-- 2026-07-18/manifest.json
-- 2026-07-19/manifest.json
-- 2026-07-20/manifest.json
-- Auditoria Completa — VIX Radar (2026-06-16 v2)
-- Sprite Health Check — VIX Radar
-- Auditoria Completa — VIX Radar (2026-06-18 caveman)
-- Auditoria Completa — VIX Radar (2026-06-20)
-- Auditoria Geral Backend/Frontend — 2026-06-20
-- Auditoria Completa — VIX Radar (2026-07-02)
-- Auditoria Completa — VIX Radar (2026-07-04)
-- Auditoria Completa + Correções — VIX Radar (2026-07-20)
-- Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)
-- Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)
-- VIX Radar — NOTURNO (iPad / claude.ai/code)
-- matinal-batch-haiku.md
-- Executing Plans
-- /ODDA — Loop OODA
-- Returns: "OK" or lists conflicts
-- pesquisa-mercado.md — Pesquisa de mercado e copywriting (2026-07-13)
-- Estado Atual — VIX Radar
-- Recovery e Deploy — VIX Radar (2026-07-20)
-- preview-boletim-diario.mjs
-- Landing estendida VIX Radar — como reverter
-- TestMergeBehavior
-- Condition-Based Waiting
-- Skill structure
-- 6. Styling Approach
-- product.md — VIX Radar
-- Oportunidades de Melhoria — 2026-06-11
-- Rotina Matinal — 2026-06-22
-- 49 - Avaliação Claude Fable 5 + Guards de Refusal no Verificador (2026-07-10)
-- AGENTS.md — Projeto "Oportunidades de Mercado"
-- helper.js
-- Brainstorming Ideas Into Designs
-- VIX Radar — Next Steps Advisor
-- VIX Radar Session Briefing
-- Wrangler CLI
-- Skill authoring best practices
-- 4.1 Armazenamento de Assets
-- 5.3 Importação em Componentes
-- 8.1 Fluxo de Design-to-Code
-- copy-rules.md — Regras de escrita (VIX Radar no LinkedIn)
-- positioning.md — Posicionamento (VIX Radar)
-- Campanha LinkedIn — VIX Radar
-- Auditoria de Produção — 2026-06-08
-- Incidente 2026-06-18 — Varredura matinal: eventos críticos não persistidos (gate de verificação)
-- Auditoria Geral — VIX Radar (2026-07-04)
-- Auditoria Completa — VIX Radar (2026-07-06)
-- O que foi feito
-- CLAUDE.md — Projeto "Oportunidades de Mercado"
-- run_vixradar_verificacao_async.ps1
-- Tech Debt Audit — VIX Radar
-- app/admin/vr-admin-engajamento.js
-- deploy_zip/admin/vr-admin-engajamento.js
-- TestParseRender
-- /sprite-health — Health check via Sprite
-- Gemini CLI Tool Mapping
-- Audit Matrix
-- VIX Radar General Audit
-- icp.md — Cliente ideal (VIX Radar)
-- Auditoria de Produção — 2026-06-07
-- Auditoria de Pendências — 2026-06-10
-- Auditoria Completa — 2026-06-14 (pós-deploy v4.9.110 + consolidação de diretório)
-- Auditoria Geral — VIX Radar (2026-06-22)
-- Auditoria Geral Backend/Frontend — VIX Radar — 2026-07-07 (noite)
-- Rotina Noturna de Crédito — 2026-06-14
-- scan-emergencia.mjs
-- /299 — Profundidade L99
-- /artifact — Artefato Interativo
-- stop-server.sh
-- /ghost — Tom Humano
-- /godmode — Modo Expert Máximo
-- Antigravity CLI (`agy`) Tool Mapping
-- REFACTOR Phase: Close Loopholes (Stay Green)
-- 2.1 Componentes de UI Base
-- 7. Project Structure
-- Rotina Noturna de Crédito — 2026-06-13
-- Rotina Noturna VIX Radar v2 — 2026-06-19
-- Lote Haiku-12 — 2026-06-22
-- Lote Haiku-10 — 2026-07-03 02:55 UTC
-- Codex Tool Mapping
-- Using Skills
-- D1 (SQL Database)
-- Skill Discovery Optimization (SDO)
-- Bulletproofing Skills Against Rationalization
-- 3.2 Estrutura de Código (Frontend)
-- ads-history.md — Histórico de experimentos
-- anuncios.md — 3 anúncios (LinkedIn Ads)
-- briefing_visual.md — Diretrizes de criativo (VIX Radar no LinkedIn)
-- Preditivo lab interno (2026-07-21)
-- Rotinas Operacionais — VIX Radar (fonte canônica versionada)
-- criar-token-dns-e-spf.ps1
-- TestCanonicalizeRemote
-- Design Document Review: [Title]
-- Security Audit: [Scope]
-- Pressure Test 1: Emergency Production Fix
-- Pressure Test 2: Sunk Cost + Exhaustion
-- Pressure Test 3: Authority + Social Pressure
-- Pi Tool Mapping
-- Containers
-- anthropic-best-practices.md
-- Anti-Patterns
-- Testing All Skill Types
-- RED-GREEN-REFACTOR for Skills
-- VERIFY GREEN: Pressure Testing
-- 2.4 Componentes de Navegação
-- Atualização 2026-06-11 (verificação online + fix v201.47)
-- Lote Haiku-13 — 2026-06-22
-- atualizar_altman_cvm.ps1
-- run_vixradar_export_historico.ps1
-- app/admin/vr-admin-metricas.js
-- deploy_zip/admin/vr-admin-metricas.js
-- TestSanitizeOneLine
-- TestSeveritySummary
-- KV (Key-Value Store)
-- R2 (Object Storage)
-- Vectorize (Vector Database)
-- Workflows
-- Secrets Store
-- Configuration (wrangler.jsonc)
-- Deployment
-- Local Development
-- Checklist for effective Skills
-- Core principles
-- File Organization
-- Skill Types
-- Atualização 2026-06-11 02:07 BRT — Validação online completa (Claude in Chrome)
-- app/admin/vr-admin-fase3.js
-- deploy_zip/admin/vr-admin-fase3.js
-- start-server.sh
-- Troubleshooting
-- Hyperdrive (Database Accelerator)
-- Workers AI
-- Queues
-- Pipelines
-- Observability
-- Testing
-- Atualização 2026-06-11 (reconciliação Worker + P11 implementado)
-- register-all-routines-scheduler.ps1
-- skills-index.ps1
-- spec-document-reviewer-prompt.md
-- review-package
-- sdd-workspace
-- task-brief
-- find-polluter.sh
-- test-academic.md
-- plan-document-reviewer-prompt.md
-- .mcp.json
-- Reconciliacao 2026-07-17.md
-- noturno-batch.md
-- health_vix.sh
+- [[_COMMUNITY_v4.9.165.js|v4.9.165.js]]
+- [[_COMMUNITY_v4.9.151.js|v4.9.151.js]]
+- [[_COMMUNITY_v4.9.166.js|v4.9.166.js]]
+- [[_COMMUNITY_v4.9.150.js|v4.9.150.js]]
+- [[_COMMUNITY_v4.9.143.js|v4.9.143.js]]
+- [[_COMMUNITY_v4.9.164.js|v4.9.164.js]]
+- [[_COMMUNITY_v4.9.167.js|v4.9.167.js]]
+- [[_COMMUNITY_v4.9.168.js|v4.9.168.js]]
+- [[_COMMUNITY_v4.9.146.js|v4.9.146.js]]
+- [[_COMMUNITY_v4.9.152.js|v4.9.152.js]]
+- [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-07-07)|Auditoria Geral — VIX Radar (2026-07-07)]]
+- [[_COMMUNITY_Runbook — Deploy do Frontend (Cloudflare Pages)|Runbook — Deploy do Frontend (Cloudflare Pages)]]
+- [[_COMMUNITY_Auditoria Geral, VIX Radar, 2026-07-21 (tarde)|Auditoria Geral, VIX Radar, 2026-07-21 (tarde)]]
+- [[_COMMUNITY_51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11|51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11]]
+- [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-07-06)|Auditoria Geral — VIX Radar (2026-07-06)]]
+- [[_COMMUNITY_Auditoria Geral, VIX Radar, 2026-07-21|Auditoria Geral, VIX Radar, 2026-07-21]]
+- [[_COMMUNITY_Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE|Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE]]
+- [[_COMMUNITY_prod-worker-2026-06-10.js|prod-worker-2026-06-10.js]]
+- [[_COMMUNITY_memory.py|memory.py]]
+- [[_COMMUNITY___coreFetch|__coreFetch]]
+- [[_COMMUNITY_50 - Análise Competitiva e Baseline SEO — 2026-07-11|50 - Análise Competitiva e Baseline SEO — 2026-07-11]]
+- [[_COMMUNITY_Execute Plan Skill|Execute Plan Skill]]
+- [[_COMMUNITY_Implement Skill|Implement Skill]]
+- [[_COMMUNITY_fetch|fetch]]
+- [[_COMMUNITY_Test-Driven Development (TDD)|Test-Driven Development (TDD)]]
+- [[_COMMUNITY_Estado de Produção — VIX Radar|Estado de Produção — VIX Radar]]
+- [[_COMMUNITY_13 - Metodo de Vistoria Operacional|13 - Metodo de Vistoria Operacional.md]]
+- [[_COMMUNITY_executarVarreduraBatchComFila|executarVarreduraBatchComFila]]
+- [[_COMMUNITY_Protocolo Operacional — VIX Radar|Protocolo Operacional — VIX Radar]]
+- [[_COMMUNITY_DEVELOPMENT — Radar de Crédito Privado|DEVELOPMENT — Radar de Crédito Privado]]
+- [[_COMMUNITY_PROMPT DE HANDOFF COMPLETO — RADAR DE CRÉDITO PRIVADO v4|PROMPT DE HANDOFF COMPLETO — RADAR DE CRÉDITO PRIVADO v4]]
+- [[_COMMUNITY_obterAgoraBRT|obterAgoraBRT]]
+- [[_COMMUNITY_3. Componentes Existentes — Reuso Obrigatório|3. Componentes Existentes — Reuso Obrigatório]]
+- [[_COMMUNITY_createNotImplementedError|createNotImplementedError]]
+- [[_COMMUNITY_Email Relatório e Deliverability — 2026-06-17|Email Relatório e Deliverability — 2026-06-17]]
+- [[_COMMUNITY_Subagent-Driven Development|Subagent-Driven Development]]
+- [[_COMMUNITY_enviarResend|enviarResend]]
+- [[_COMMUNITY_Frontend|Frontend]]
+- [[_COMMUNITY_✅ DEPLOY_CHECKLIST — Radar de Crédito Privado|✅ DEPLOY_CHECKLIST — Radar de Crédito Privado]]
+- [[_COMMUNITY_Workers Best Practices — Rules|Workers Best Practices — Rules]]
+- [[_COMMUNITY_Arquitetura — Radar de Crédito Privado|Arquitetura — Radar de Crédito Privado]]
+- [[_COMMUNITY_run_vixradar_matinal_claude.ps1|run_vixradar_matinal_claude.ps1]]
+- [[_COMMUNITY_vr-admin-modules.js|vr-admin-modules.js]]
+- [[_COMMUNITY_vr-admin-modules.js|vr-admin-modules.js]]
+- [[_COMMUNITY_validate-plan.py|validate-plan.py]]
+- [[_COMMUNITY_VIX Radar — Motor Preditivo|VIX Radar — Motor Preditivo]]
+- [[_COMMUNITY_07 — Evolução do Sistema de Classificação e Prompts|07 — Evolução do Sistema de Classificação e Prompts]]
+- [[_COMMUNITY__run_helper|_run_helper]]
+- [[_COMMUNITY_Using Git Worktrees|Using Git Worktrees]]
+- [[_COMMUNITY_Code Review — Workers|Code Review — Workers]]
+- [[_COMMUNITY_importar_serie_mercado.py|importar_serie_mercado.py]]
+- [[_COMMUNITY_Importador de Séries Históricas de Debêntures|Importador de Séries Históricas de Debêntures]]
+- [[_COMMUNITY_Visual Companion Guide|Visual Companion Guide]]
+- [[_COMMUNITY_Creation Log Systematic Debugging Skill|Creation Log: Systematic Debugging Skill]]
+- [[_COMMUNITY_08 — Análise de Risco e Arquitetura de Confiabilidade|08 — Análise de Risco e Arquitetura de Confiabilidade]]
+- [[_COMMUNITY_noturno-batch-haiku|noturno-batch-haiku.md]]
+- [[_COMMUNITY_run_vixradar_noturno_claude.ps1|run_vixradar_noturno_claude.ps1]]
+- [[_COMMUNITY_Rotina Noturna — 2026-06-20|Rotina Noturna — 2026-06-20]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-09 v2)|Auditoria Completa — VIX Radar (2026-07-09 v2)]]
+- [[_COMMUNITY_Code Review Reception|Code Review Reception]]
+- [[_COMMUNITY_SKILL|SKILL.md]]
+- [[_COMMUNITY_VIX Radar — Auditoria Completa do Sistema|VIX Radar — Auditoria Completa do Sistema]]
+- [[_COMMUNITY_noturno-batch-sonnet|noturno-batch-sonnet.md]]
+- [[_COMMUNITY_The Process|The Process]]
+- [[_COMMUNITY_Systematic Debugging|Systematic Debugging]]
+- [[_COMMUNITY_Testing CLAUDE.md Skills Documentation|Testing CLAUDE.md Skills Documentation]]
+- [[_COMMUNITY_Testing Skills With Subagents|Testing Skills With Subagents]]
+- [[_COMMUNITY_Pendências abertas — sessão 2026-06-11|Pendências abertas — sessão 2026-06-11]]
+- [[_COMMUNITY_Histórico de Versões Frontend|Histórico de Versões Frontend]]
+- [[_COMMUNITY_Auditoria Geral BackendFrontend — VIX Radar (2026-07-13)|Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)]]
+- [[_COMMUNITY_Dispatching Parallel Agents|Dispatching Parallel Agents]]
+- [[_COMMUNITY_test_memory.py|test_memory.py]]
+- [[_COMMUNITY_Root Cause Tracing|Root Cause Tracing]]
+- [[_COMMUNITY_Persuasion Principles for Skill Design|Persuasion Principles for Skill Design]]
+- [[_COMMUNITY_Writing Skills|Writing Skills]]
+- [[_COMMUNITY_Guia de Integração Figma — VIX Radar|Guia de Integração Figma — VIX Radar]]
+- [[_COMMUNITY_Histórico de Versões Worker|Histórico de Versões Worker]]
+- [[_COMMUNITY_Design P16  P17 — Agenda de Divulgação e Relatório Diário|Design P16 / P17 — Agenda de Divulgação e Relatório Diário]]
+- [[_COMMUNITY_Monitoramento Loop — 2026-06-17|Monitoramento Loop — 2026-06-17]]
+- [[_COMMUNITY_TestMergeValidation|TestMergeValidation]]
+- [[_COMMUNITY_SKILL|SKILL.md]]
+- [[_COMMUNITY_2. Component Library|2. Component Library]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-17)|Auditoria Completa — VIX Radar (2026-06-17)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-18)|Auditoria Completa — VIX Radar (2026-06-18)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-30)|Auditoria Completa — VIX Radar (2026-06-30)]]
+- [[_COMMUNITY_Achados da auditoria|Achados da auditoria]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-12)|Auditoria Completa — VIX Radar (2026-07-12)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-14)|Auditoria Completa — VIX Radar (2026-07-14)]]
+- [[_COMMUNITY_PROMPTS — RADAR DE CRÉDITO PRIVADO|PROMPTS — RADAR DE CRÉDITO PRIVADO]]
+- [[_COMMUNITY_Notas por categoria|Notas por categoria]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-17)|Auditoria Completa — VIX Radar (2026-06-17)]]
+- [[_COMMUNITY_Admin HEART Modular — v201.66|Admin HEART Modular — v201.66]]
+- [[_COMMUNITY_Deploy Readiness v4.9.142|Deploy Readiness v4.9.142]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-01)|Auditoria Completa — VIX Radar (2026-07-01)]]
+- [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-07-06)|Auditoria Geral — VIX Radar (2026-07-06)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-09)|Auditoria Completa — VIX Radar (2026-07-09)]]
+- [[_COMMUNITY_Auditoria de arrumação do diretório — 2026-06-14|Auditoria de arrumação do diretório — 2026-06-14]]
+- [[_COMMUNITY_Rotina Noturna v2 — 2026-07-02|Rotina Noturna v2 — 2026-07-02]]
+- [[_COMMUNITY_vr-admin-shared.js|vr-admin-shared.js]]
+- [[_COMMUNITY_vr-admin-shared.js|vr-admin-shared.js]]
+- [[_COMMUNITY_Writing Plans|Writing Plans]]
+- [[_COMMUNITY_Analysis Title|[Analysis Title]]]
+- [[_COMMUNITY_Workflow de Governança — Radar de Crédito Privado|Workflow de Governança — Radar de Crédito Privado]]
+- [[_COMMUNITY_1. Token Definitions|1. Token Definitions]]
+- [[_COMMUNITY_posts_organicos.md — 10 posts (voz Yan Szuchmacher)|posts_organicos.md — 10 posts (voz Yan Szuchmacher)]]
+- [[_COMMUNITY_plano_campanha.md — Campanha LinkedIn VIX Radar (8 semanas)|plano_campanha.md — Campanha LinkedIn VIX Radar (8 semanas)]]
+- [[_COMMUNITY_Otimizacao Tokens Rotina Noturna|Otimizacao Tokens Rotina Noturna]]
+- [[_COMMUNITY_Detalhes por Emissor|Detalhes por Emissor]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-03)|Auditoria Completa — VIX Radar (2026-07-03)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-13 ~0315 BRT)|Auditoria Completa — VIX Radar (2026-07-13 ~03:15 BRT)]]
+- [[_COMMUNITY_VIX Radar — MATINAL (iPad  claude.aicode)|VIX Radar — MATINAL (iPad / claude.ai/code)]]
+- [[_COMMUNITY_matinal-batch-sonnet|matinal-batch-sonnet.md]]
+- [[_COMMUNITY_Defense-in-Depth Validation|Defense-in-Depth Validation]]
+- [[_COMMUNITY_Verification Before Completion|Verification Before Completion]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_manifest.json|manifest.json]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-16 v2)|Auditoria Completa — VIX Radar (2026-06-16 v2)]]
+- [[_COMMUNITY_Sprite Health Check — VIX Radar|Sprite Health Check — VIX Radar]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-18 caveman)|Auditoria Completa — VIX Radar (2026-06-18 caveman)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-06-20)|Auditoria Completa — VIX Radar (2026-06-20)]]
+- [[_COMMUNITY_Auditoria Geral BackendFrontend — 2026-06-20|Auditoria Geral Backend/Frontend — 2026-06-20]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-02)|Auditoria Completa — VIX Radar (2026-07-02)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-04)|Auditoria Completa — VIX Radar (2026-07-04)]]
+- [[_COMMUNITY_Auditoria Completa + Correções — VIX Radar (2026-07-20)|Auditoria Completa + Correções — VIX Radar (2026-07-20)]]
+- [[_COMMUNITY_Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)|Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)]]
+- [[_COMMUNITY_Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)|Contrato analítico (espelha `buildSystemPrompt` do Worker v4.9.143)]]
+- [[_COMMUNITY_VIX Radar — NOTURNO (iPad  claude.aicode)|VIX Radar — NOTURNO (iPad / claude.ai/code)]]
+- [[_COMMUNITY_matinal-batch-haiku|matinal-batch-haiku.md]]
+- [[_COMMUNITY_Executing Plans|Executing Plans]]
+- [[_COMMUNITY_ODDA — Loop OODA|/ODDA — Loop OODA]]
+- [[_COMMUNITY_Returns OK or lists conflicts|Returns: "OK" or lists conflicts]]
+- [[_COMMUNITY_pesquisa-mercado.md — Pesquisa de mercado e copywriting (2026-07-13)|pesquisa-mercado.md — Pesquisa de mercado e copywriting (2026-07-13)]]
+- [[_COMMUNITY_Infraestrutura — VIX Radar|Infraestrutura — VIX Radar]]
+- [[_COMMUNITY_Recovery e Deploy — VIX Radar (2026-07-20)|Recovery e Deploy — VIX Radar (2026-07-20)]]
+- [[_COMMUNITY_preview-boletim-diario.mjs|preview-boletim-diario.mjs]]
+- [[_COMMUNITY_Landing estendida VIX Radar — como reverter|Landing estendida VIX Radar — como reverter]]
+- [[_COMMUNITY_TestMergeBehavior|TestMergeBehavior]]
+- [[_COMMUNITY_Condition-Based Waiting|Condition-Based Waiting]]
+- [[_COMMUNITY_Skill structure|Skill structure]]
+- [[_COMMUNITY_6. Styling Approach|6. Styling Approach]]
+- [[_COMMUNITY_product.md — VIX Radar|product.md — VIX Radar]]
+- [[_COMMUNITY_Oportunidades de Melhoria — 2026-06-11|Oportunidades de Melhoria — 2026-06-11]]
+- [[_COMMUNITY_Rotina Matinal — 2026-06-22|Rotina Matinal — 2026-06-22]]
+- [[_COMMUNITY_49 - Avaliação Claude Fable 5 + Guards de Refusal no Verificador (2026-07-10)|49 - Avaliação Claude Fable 5 + Guards de Refusal no Verificador (2026-07-10)]]
+- [[_COMMUNITY_AGENTS.md — Projeto Oportunidades de Mercado|AGENTS.md — Projeto "Oportunidades de Mercado"]]
+- [[_COMMUNITY_helper.js|helper.js]]
+- [[_COMMUNITY_Brainstorming Ideas Into Designs|Brainstorming Ideas Into Designs]]
+- [[_COMMUNITY_VIX Radar — Next Steps Advisor|VIX Radar — Next Steps Advisor]]
+- [[_COMMUNITY_VIX Radar Session Briefing|VIX Radar Session Briefing]]
+- [[_COMMUNITY_Wrangler CLI|Wrangler CLI]]
+- [[_COMMUNITY_Skill authoring best practices|Skill authoring best practices]]
+- [[_COMMUNITY_4.1 Armazenamento de Assets|4.1 Armazenamento de Assets]]
+- [[_COMMUNITY_5.3 Importação em Componentes|5.3 Importação em Componentes]]
+- [[_COMMUNITY_8.1 Fluxo de Design-to-Code|8.1 Fluxo de Design-to-Code]]
+- [[_COMMUNITY_copy-rules.md — Regras de escrita (VIX Radar no LinkedIn)|copy-rules.md — Regras de escrita (VIX Radar no LinkedIn)]]
+- [[_COMMUNITY_positioning.md — Posicionamento (VIX Radar)|positioning.md — Posicionamento (VIX Radar)]]
+- [[_COMMUNITY_Campanha LinkedIn — VIX Radar|Campanha LinkedIn — VIX Radar]]
+- [[_COMMUNITY_Auditoria de Produção — 2026-06-08|Auditoria de Produção — 2026-06-08]]
+- [[_COMMUNITY_Incidente 2026-06-18 — Varredura matinal eventos críticos não persistidos (gate de verificação)|Incidente 2026-06-18 — Varredura matinal: eventos críticos não persistidos (gate de verificação)]]
+- [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-07-04)|Auditoria Geral — VIX Radar (2026-07-04)]]
+- [[_COMMUNITY_Auditoria Completa — VIX Radar (2026-07-06)|Auditoria Completa — VIX Radar (2026-07-06)]]
+- [[_COMMUNITY_O que foi feito|O que foi feito]]
+- [[_COMMUNITY_CLAUDE.md — Projeto Oportunidades de Mercado|CLAUDE.md — Projeto "Oportunidades de Mercado"]]
+- [[_COMMUNITY_run_vixradar_verificacao_async.ps1|run_vixradar_verificacao_async.ps1]]
+- [[_COMMUNITY_Tech Debt Audit — VIX Radar|Tech Debt Audit — VIX Radar]]
+- [[_COMMUNITY_vr-admin-engajamento.js|vr-admin-engajamento.js]]
+- [[_COMMUNITY_vr-admin-engajamento.js|vr-admin-engajamento.js]]
+- [[_COMMUNITY_TestParseRender|TestParseRender]]
+- [[_COMMUNITY_sprite-health — Health check via Sprite|/sprite-health — Health check via Sprite]]
+- [[_COMMUNITY_Gemini CLI Tool Mapping|Gemini CLI Tool Mapping]]
+- [[_COMMUNITY_Audit Matrix|Audit Matrix]]
+- [[_COMMUNITY_VIX Radar General Audit|VIX Radar General Audit]]
+- [[_COMMUNITY_icp.md — Cliente ideal (VIX Radar)|icp.md — Cliente ideal (VIX Radar)]]
+- [[_COMMUNITY_Auditoria de Produção — 2026-06-07|Auditoria de Produção — 2026-06-07]]
+- [[_COMMUNITY_Auditoria de Pendências — 2026-06-10|Auditoria de Pendências — 2026-06-10]]
+- [[_COMMUNITY_Auditoria Completa — 2026-06-14 (pós-deploy v4.9.110 + consolidação de diretório)|Auditoria Completa — 2026-06-14 (pós-deploy v4.9.110 + consolidação de diretório)]]
+- [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-06-22)|Auditoria Geral — VIX Radar (2026-06-22)]]
+- [[_COMMUNITY_Auditoria Geral — VIX Radar (2026-07-05)|Auditoria Geral — VIX Radar (2026-07-05)]]
+- [[_COMMUNITY_Auditoria Geral BackendFrontend — VIX Radar — 2026-07-07 (noite)|Auditoria Geral Backend/Frontend — VIX Radar — 2026-07-07 (noite)]]
+- [[_COMMUNITY_Rotina Noturna de Crédito — 2026-06-14|Rotina Noturna de Crédito — 2026-06-14]]
+- [[_COMMUNITY_scan-emergencia.mjs|scan-emergencia.mjs]]
+- [[_COMMUNITY_299 — Profundidade L99|/299 — Profundidade L99]]
+- [[_COMMUNITY_artifact — Artefato Interativo|/artifact — Artefato Interativo]]
+- [[_COMMUNITY_stop-server.sh|stop-server.sh]]
+- [[_COMMUNITY_ghost — Tom Humano|/ghost — Tom Humano]]
+- [[_COMMUNITY_godmode — Modo Expert Máximo|/godmode — Modo Expert Máximo]]
+- [[_COMMUNITY_Antigravity CLI (`agy`) Tool Mapping|Antigravity CLI (`agy`) Tool Mapping]]
+- [[_COMMUNITY_REFACTOR Phase Close Loopholes (Stay Green)|REFACTOR Phase: Close Loopholes (Stay Green)]]
+- [[_COMMUNITY_2.1 Componentes de UI Base|2.1 Componentes de UI Base]]
+- [[_COMMUNITY_7. Project Structure|7. Project Structure]]
+- [[_COMMUNITY_Rotina Noturna de Crédito — 2026-06-13|Rotina Noturna de Crédito — 2026-06-13]]
+- [[_COMMUNITY_Rotina Noturna VIX Radar v2 — 2026-06-19|Rotina Noturna VIX Radar v2 — 2026-06-19]]
+- [[_COMMUNITY_Lote Haiku-12 — 2026-06-22|Lote Haiku-12 — 2026-06-22]]
+- [[_COMMUNITY_Lote Haiku-10 — 2026-07-03 0255 UTC|Lote Haiku-10 — 2026-07-03 02:55 UTC]]
+- [[_COMMUNITY_PENDENCIAS.md — VIX Radar|PENDENCIAS.md — VIX Radar]]
+- [[_COMMUNITY_Codex Tool Mapping|Codex Tool Mapping]]
+- [[_COMMUNITY_Using Skills|Using Skills]]
+- [[_COMMUNITY_D1 (SQL Database)|D1 (SQL Database)]]
+- [[_COMMUNITY_Skill Discovery Optimization (SDO)|Skill Discovery Optimization (SDO)]]
+- [[_COMMUNITY_Bulletproofing Skills Against Rationalization|Bulletproofing Skills Against Rationalization]]
+- [[_COMMUNITY_3.2 Estrutura de Código (Frontend)|3.2 Estrutura de Código (Frontend)]]
+- [[_COMMUNITY_ads-history.md — Histórico de experimentos|ads-history.md — Histórico de experimentos]]
+- [[_COMMUNITY_anuncios.md — 3 anúncios (LinkedIn Ads)|anuncios.md — 3 anúncios (LinkedIn Ads)]]
+- [[_COMMUNITY_briefing_visual.md — Diretrizes de criativo (VIX Radar no LinkedIn)|briefing_visual.md — Diretrizes de criativo (VIX Radar no LinkedIn)]]
+- [[_COMMUNITY_Estado Atual — VIX Radar|Estado Atual — VIX Radar]]
+- [[_COMMUNITY_Rotinas Operacionais — VIX Radar (fonte canônica versionada)|Rotinas Operacionais — VIX Radar (fonte canônica versionada)]]
+- [[_COMMUNITY_criar-token-dns-e-spf.ps1|criar-token-dns-e-spf.ps1]]
+- [[_COMMUNITY_TestCanonicalizeRemote|TestCanonicalizeRemote]]
+- [[_COMMUNITY_Design Document Review Title|Design Document Review: [Title]]]
+- [[_COMMUNITY_Security Audit Scope|Security Audit: [Scope]]]
+- [[_COMMUNITY_Pressure Test 1 Emergency Production Fix|Pressure Test 1: Emergency Production Fix]]
+- [[_COMMUNITY_Pressure Test 2 Sunk Cost + Exhaustion|Pressure Test 2: Sunk Cost + Exhaustion]]
+- [[_COMMUNITY_Pressure Test 3 Authority + Social Pressure|Pressure Test 3: Authority + Social Pressure]]
+- [[_COMMUNITY_Pi Tool Mapping|Pi Tool Mapping]]
+- [[_COMMUNITY_Containers|Containers]]
+- [[_COMMUNITY_anthropic-best-practices|anthropic-best-practices.md]]
+- [[_COMMUNITY_Anti-Patterns|Anti-Patterns]]
+- [[_COMMUNITY_Testing All Skill Types|Testing All Skill Types]]
+- [[_COMMUNITY_RED-GREEN-REFACTOR for Skills|RED-GREEN-REFACTOR for Skills]]
+- [[_COMMUNITY_VERIFY GREEN Pressure Testing|VERIFY GREEN: Pressure Testing]]
+- [[_COMMUNITY_2.4 Componentes de Navegação|2.4 Componentes de Navegação]]
+- [[_COMMUNITY_Atualização 2026-06-11 (verificação online + fix v201.47)|Atualização 2026-06-11 (verificação online + fix v201.47)]]
+- [[_COMMUNITY_Lote Haiku-13 — 2026-06-22|Lote Haiku-13 — 2026-06-22]]
+- [[_COMMUNITY_atualizar_altman_cvm.ps1|atualizar_altman_cvm.ps1]]
+- [[_COMMUNITY_run_vixradar_export_historico.ps1|run_vixradar_export_historico.ps1]]
+- [[_COMMUNITY_vr-admin-metricas.js|vr-admin-metricas.js]]
+- [[_COMMUNITY_vr-admin-metricas.js|vr-admin-metricas.js]]
+- [[_COMMUNITY_TestSanitizeOneLine|TestSanitizeOneLine]]
+- [[_COMMUNITY_TestSeveritySummary|TestSeveritySummary]]
+- [[_COMMUNITY_KV (Key-Value Store)|KV (Key-Value Store)]]
+- [[_COMMUNITY_R2 (Object Storage)|R2 (Object Storage)]]
+- [[_COMMUNITY_Vectorize (Vector Database)|Vectorize (Vector Database)]]
+- [[_COMMUNITY_Workflows|Workflows]]
+- [[_COMMUNITY_Secrets Store|Secrets Store]]
+- [[_COMMUNITY_Configuration (wrangler.jsonc)|Configuration (wrangler.jsonc)]]
+- [[_COMMUNITY_Deployment|Deployment]]
+- [[_COMMUNITY_Local Development|Local Development]]
+- [[_COMMUNITY_Checklist for effective Skills|Checklist for effective Skills]]
+- [[_COMMUNITY_Core principles|Core principles]]
+- [[_COMMUNITY_File Organization|File Organization]]
+- [[_COMMUNITY_Skill Types|Skill Types]]
+- [[_COMMUNITY_Atualização 2026-06-11 0207 BRT — Validação online completa (Claude in Chrome)|Atualização 2026-06-11 02:07 BRT — Validação online completa (Claude in Chrome)]]
+- [[_COMMUNITY_vr-admin-fase3.js|vr-admin-fase3.js]]
+- [[_COMMUNITY_vr-admin-fase3.js|vr-admin-fase3.js]]
+- [[_COMMUNITY_start-server.sh|start-server.sh]]
+- [[_COMMUNITY_Troubleshooting|Troubleshooting]]
+- [[_COMMUNITY_Hyperdrive (Database Accelerator)|Hyperdrive (Database Accelerator)]]
+- [[_COMMUNITY_Workers AI|Workers AI]]
+- [[_COMMUNITY_Queues|Queues]]
+- [[_COMMUNITY_Pipelines|Pipelines]]
+- [[_COMMUNITY_Observability|Observability]]
+- [[_COMMUNITY_Testing|Testing]]
+- [[_COMMUNITY_Atualização 2026-06-11 (reconciliação Worker + P11 implementado)|Atualização 2026-06-11 (reconciliação Worker + P11 implementado)]]
+- [[_COMMUNITY_register-all-routines-scheduler.ps1|register-all-routines-scheduler.ps1]]
+- [[_COMMUNITY_skills-index.ps1|skills-index.ps1]]
+- [[_COMMUNITY_spec-document-reviewer-prompt|spec-document-reviewer-prompt.md]]
+- [[_COMMUNITY_review-package|review-package]]
+- [[_COMMUNITY_sdd-workspace|sdd-workspace]]
+- [[_COMMUNITY_task-brief|task-brief]]
+- [[_COMMUNITY_find-polluter.sh|find-polluter.sh]]
+- [[_COMMUNITY_test-academic|test-academic.md]]
+- [[_COMMUNITY_plan-document-reviewer-prompt|plan-document-reviewer-prompt.md]]
+- [[_COMMUNITY_.mcp.json|.mcp.json]]
+- [[_COMMUNITY_Reconciliacao 2026-07-17|Reconciliacao 2026-07-17.md]]
+- [[_COMMUNITY_noturno-batch|noturno-batch.md]]
+- [[_COMMUNITY_health_vix.sh|health_vix.sh]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `__coreFetch()` - 117 edges
@@ -311,63 +303,53 @@
 10. `createNotImplementedError22()` - 24 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `testarProviders()` --indirect_call--> `chamarPerplexity()`  [INFERRED]
-  docs/auditorias/prod-worker-2026-06-10.js → docs/auditorias/prod-worker-2026-06-10.js  _Bridges community 176 → community 234_
-- `TestCLI` --inherits--> `CLIBase`  [EXTRACTED]
-  .claude/skills/implement/tests/test_memory.py → .claude/skills/implement/tests/test_memory.py  _Bridges community 443 → community 414_
-- `abort()` --calls--> `createNotImplementedError()`  [EXTRACTED]
-  docs/auditorias/prod-worker-2026-06-10.js → docs/auditorias/prod-worker-2026-06-10.js  _Bridges community 271 → community 176_
-- `__coreFetch()` --calls--> `_ehEmissorMonitorado()`  [EXTRACTED]
-  docs/auditorias/prod-worker-2026-06-10.js → docs/auditorias/prod-worker-2026-06-10.js  _Bridges community 234 → community 258_
-- `resp()` --calls--> `corsHeaders()`  [EXTRACTED]
-  docs/auditorias/prod-worker-2026-06-10.js → docs/auditorias/prod-worker-2026-06-10.js  _Bridges community 258 → community 110_
+- `get_workspace_id()` --references--> `path`  [EXTRACTED]
+  .claude/skills/implement/scripts/memory.py → .claude/skills/writing-skills/render-graphs.js
+- `memory_paths()` --references--> `path`  [EXTRACTED]
+  .claude/skills/implement/scripts/memory.py → .claude/skills/writing-skills/render-graphs.js
 
 ## Import Cycles
 - None detected.
 
-## Communities (344 total, 23 thin omitted)
+## Communities (336 total, 23 thin omitted)
 
-### Community 0 - "50 - Análise Competitiva e Baseline SEO — 2026-07-11"
+### Community 0 - "v4.9.165.js"
 Cohesion: 0.17
 Nodes (12): 50 - Análise Competitiva e Baseline SEO — 2026-07-11, Ameaças, Baseline do monitor — Tabela B (WebSearch, instrumento do mecanismo, 11/07/2026), Baseline SERP — Tabela A (Google BR via Firecrawl, 11/07/2026), Diagnóstico SEO, Espaços de mercado não ocupados (gaps), Fontes (consulta 2026-07-11), Mapa competitivo (+4 more)
 
-### Community 1 - "Auditoria Completa — VIX Radar (2026-06-18 pós v4.9.141)"
+### Community 1 - "v4.9.151.js"
 Cohesion: 0.20
 Nodes (10): Achados, Auditoria Completa — VIX Radar (2026-06-18 pós v4.9.141), BAIXO, Lacunas, MÉDIO, Próximos passos, Resolvido nesta sessão, Síntese executiva (+2 more)
 
-### Community 2 - "package.json"
-Cohesion: 0.14
-Nodes (13): allowScripts, esbuild@0.28.1, workerd@1.20260730.1, dependencies, @sentry/cloudflare, devDependencies, @cloudflare/vitest-pool-workers, vitest (+5 more)
+### Community 2 - "v4.9.166.js"
+Cohesion: 0.22
+Nodes (9): Acompanhamento do plano Claude — 2026-06-16, Aprendizados do acompanhamento 2026-06-16, Credenciais por endpoint (auditoria 24 — P2), Fontes lidas antes da vistoria, Formato minimo do relatorio, Metodo consolidado, Metodo de Vistoria Operacional — VIX Radar, Objetivo (+1 more)
 
-### Community 3 - "Auditoria Completa — VIX Radar (2026-07-15)"
-Cohesion: 0.20
+### Community 3 - "v4.9.150.js"
+Cohesion: 0.22
 Nodes (9): Achados, Auditoria Completa — VIX Radar (2026-07-15), BAIXO, Lacunas, MÉDIO — RESOLVIDO nesta sessão (v4.9.159, deploy ~10:52 UTC), Próximos passos, Síntese executiva, Validação em produção (+1 more)
 
-### Community 4 - "verificarEventosBatch"
+### Community 4 - "v4.9.143.js"
 Cohesion: 0.25
 Nodes (8): deveVerificar(), enviarAlertaAdminWhatsApp(), fonteAltaCredibilidade(), getCachedVerification(), hashEventoKey(), quarentenarBatch(), setCachedVerification(), verificarEventosBatch()
 
-### Community 5 - "13 - Metodo de Vistoria Operacional.md"
-Cohesion: 0.13
-Nodes (9): Acompanhamento do plano Claude — 2026-06-16, Aprendizados do acompanhamento 2026-06-16, Credenciais por endpoint (auditoria 24 — P2), Fontes lidas antes da vistoria, Formato minimo do relatorio, Metodo consolidado, Metodo de Vistoria Operacional — VIX Radar, Objetivo (+1 more)
-
-### Community 6 - "Copilot CLI Tool Mapping"
+### Community 6 - "v4.9.164.js"
 Cohesion: 0.33
 Nodes (5): Additional Copilot CLI tools, Async shell sessions, Copilot CLI Tool Mapping, Instructions file, Personal skills directory
 
-### Community 7 - "Auditoria Geral — Addendum IA/LLM + Runtime Workers (2026-07-14)"
+### Community 7 - "v4.9.167.js"
 Cohesion: 0.33
 Nodes (6): Auditoria Geral — Addendum IA/LLM + Runtime Workers (2026-07-14), Conclusão, Drift de escopo (checagem da própria skill), IA generativa / cascade LLM (mapeado ao OWASP LLM Top 10 2025), Novos itens P3 (não estavam na nota 56), Padrões de runtime Workers (guia oficial Cloudflare 2026-02)
 
-### Community 8 - "51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11"
+### Community 8 - "v4.9.168.js"
 Cohesion: 0.29
 Nodes (7): 51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11, Achados (com fonte e relevância), Contexto consultado, Decisões arquiteturais (validadas por agente de design em 11/07), Fontes principais, Fora do escopo agora (registrado para o v2), Recomendações acionáveis (viram execução no plano)
 
-### Community 9 - "Evaluation and iteration"
+### Community 9 - "v4.9.146.js"
 Cohesion: 0.50
 Nodes (4): Build evaluations first, Develop Skills iteratively with the agent, Evaluation and iteration, Observe how agents navigate Skills
 
-### Community 10 - "Example: TDD Skill Bulletproofing"
+### Community 10 - "v4.9.152.js"
 Cohesion: 0.50
 Nodes (4): Example: TDD Skill Bulletproofing, Initial Test (Failed), Iteration 1 - Add Counter, Iteration 2 - Add Foundational Principle
 
@@ -375,7 +357,7 @@ Nodes (4): Example: TDD Skill Bulletproofing, Initial Test (Failed), Iteration 1
 Cohesion: 0.29
 Nodes (7): Auditoria Geral — VIX Radar (2026-07-07), Backend (bundle v4.9.146 — 32 controles OK), Frontend, Próximos passos, Rotinas em tempo real (07/07), Top riscos, Veredito
 
-### Community 12 - "Auditoria Geral — VIX Radar (2026-07-03)"
+### Community 12 - "Runbook — Deploy do Frontend (Cloudflare Pages)"
 Cohesion: 0.25
 Nodes (8): Auditoria Geral — VIX Radar (2026-07-03), Backend, Frontend, Lacunas, Próximos passos, Segurança, perf e a11y, Top riscos, Veredito
 
@@ -383,9 +365,9 @@ Nodes (8): Auditoria Geral — VIX Radar (2026-07-03), Backend, Frontend, Lacuna
 Cohesion: 0.17
 Nodes (11): Auditoria Geral, VIX Radar, 2026-07-21 (tarde), Backend, Frontend, IA / LLM (OWASP 2025), Lacunas desta rodada, Proximos passos, Rotinas, Skill general-audit (+3 more)
 
-### Community 14 - "2026-08-15/manifest.json"
-Cohesion: 0.17
-Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
+### Community 14 - "51 - Pesquisa e Ideias — Preditivo v2 — 2026-07-11"
+Cohesion: 0.20
+Nodes (8): Checklist pós-rotina, Cobertura, Estado Atual — VIX Radar, Infra, Pendências ativas (topo), Tasks Scheduler, Versões, Changelog — VIX Radar
 
 ### Community 17 - "Auditoria Geral — VIX Radar (2026-07-06)"
 Cohesion: 0.29
@@ -399,55 +381,19 @@ Nodes (7): Auditoria Geral, VIX Radar, 2026-07-21, Confirmações desta sessão 
 Cohesion: 0.29
 Nodes (6): Causa raiz (rastreada linha a linha, sem hipótese não verificada), Correção do dado já gravado em produção, Diagnóstico (systematic-debugging, Fase 1 completa antes de qualquer fix), Fix (v4.9.161, commit local `a64ed21`, deploy pendente de autorização), Incidente RESEARCHDOWN1 — evento CRITICO da Oncoclínicas rebaixado para RELEVANTE, Pendência aberta
 
-### Community 20 - "render-graphs.js"
-Cohesion: 0.33
-Nodes (8): combineGraphs(), { execSync }, extractDotBlocks(), extractGraphBody(), fs, main(), path, renderToSvg()
-
-### Community 21 - "Fechadas (14/08 — execução das pendências da auditoria)"
-Cohesion: 0.22
-Nodes (9): Fechadas (14/08 — execução das pendências da auditoria), RESOLVIDO — P0 AUTHWEEK1: guarda de notificação implementada, RESOLVIDO — P2 canonical-test.yml: fix ja estava implementado, RESOLVIDO — P3 agenda-semanal 2x/semana (CALVAL-V2 regra 9), RESOLVIDO — P3 card "Sem alertas" sem denominador, RESOLVIDO — P3 "Cobertura ANBIMA" terceiro sentido, RESOLVIDO — P3 diretorios untracked, RESOLVIDO — P3 disjuntor de custo catch mudo (CUSTOBRAKE1) (+1 more)
-
-### Community 22 - "17/08 — sessão de custo/benefício e limpeza de fila (sem deploy)"
-Cohesion: 0.25
-Nodes (8): 17/08 — sessão de custo/benefício e limpeza de fila (sem deploy), P2 — Envelope da noturna, agora é a alavanca única de custo, P2 — ROUTINE_API_KEY do scan-emergencia continua não validada, RESOLVIDO 17/08 — FIMRUN21, alerta 9001 falso do monitor desde 13/08, RESOLVIDO 17/08 — P2 ~25 .ps1 sem commit, 12 reprovados no lint, RESOLVIDO 17/08 — P2 express/openai órfãos no package.json (C3), RESOLVIDO 17/08 — P3 listar_plano_rotina devolveu 19 para top_n=15, RESOLVIDO 17/08 — Portão de verificação saía verde com o sistema doente
-
-### Community 23 - "Abertas (13/08 — pos v4.9.192 / CALVAL-V2, sessão paralela)"
-Cohesion: 0.25
-Nodes (8): Abertas (13/08 — pos v4.9.192 / CALVAL-V2, sessão paralela), P2 — ~25 scripts `.ps1` de rotina modificados sem commit, 12 reprovados pelo lint-staged, P2 — canonical-test.yml: fix do post-mortem 77 nunca implementado, P2 — Fila de verificacao >20h no fechamento do deploy CALVAL-V2 (12/08 23:33Z) — validar, P3 — CLOUDFLARE_API_TOKEN sem permissao Pages:Edit, P3 — postAdmin sem Authorization: Bearer, P3 — Rotina agenda-semanal rodando 1x/semana, regra pede 2x, Status geral
-
-### Community 24 - "Abertas (15/08 — auditoria geral profunda)"
-Cohesion: 0.25
-Nodes (8): Abertas (15/08 — auditoria geral profunda), P1 — Rotação da routine_key (agendada para 15/08 após 10:20), P2 — express/openai do package.json (C3), P2 — Orçamento da noturna (A1), P2 — Validar ROUTINE_API_KEY do scan-emergencia no GitHub (C2), P3 — listar_plano_rotina devolveu 19 emissores para top_n=15 solicitado (matinal 15/08), RESOLVIDO 15/08 — Deploy v4.9.195 + v202.10 (correções locais da auditoria), RESOLVIDO nesta meta (aguardando deploy): P1 matinal sem alarme, P1 governança do orquestrador, P2 REGDRIFT1, P2 timeouts de cron, P2 falso-verde CI
-
-### Community 25 - "Fechadas (historico recente)"
-Cohesion: 0.25
-Nodes (8): Consolidar os dois PENDENCIAS.md, DOCBILL1 — Criterio de evidencia para troca de modelo, Fechadas (historico recente), LOGLOCK1-REC — Lock de arquivos de log pelo OneDrive, Monitor-Tasks — Registrador criado, task recriada e primeiro disparo validado, P2 - Verificar primeiro disparo da Matinal (27/07 10:00), P2 - Verificar se AgendaSemanal e Matinal se repetem sem erro apos falha da AgendaSemanal 27/07 03:00, SHADOW1 — Implementacao do piloto shadow mode Fable 5
-
-### Community 26 - "Abertas (13/08 — auditoria geral + execução)"
-Cohesion: 0.29
-Nodes (7): Abertas (13/08 — auditoria geral + execução), P0 — PARCIALMENTE RESOLVIDO: cascade de IA (AUTHWEEK1). Assinatura no limite semanal, chave paga recarregada, P1 — FECHADO: BOM UTF-8 nos scripts, P1 — RESOLVIDO: push bloqueado por credencial, P1 — RESOLVIDO: secret ADMIN_PASSWORD do GitHub Actions (GHWL1), P2 — FECHADO e DEPLOYADO: XSS Market Overview (frontend + worker), Solicitações de acesso
-
-### Community 27 - "Runbook — Deploy do Frontend (Cloudflare Pages)"
-Cohesion: 0.40
-Nodes (5): Credencial (configurar uma vez, e a cada rotação), Deploy normal (caso comum), Notas, Runbook — Deploy do Frontend (Cloudflare Pages), Validação manual pós-deploy (se quiser conferir à mão)
-
-### Community 28 - "Pendencias — VIX Radar"
-Cohesion: 0.50
-Nodes (4): Abertas (14/08 — execução das pendências da auditoria), Fechadas — bloco 04-11/08 (P0/P1/P2), RESOLVIDO, P3 — CLOUDFLARE_API_TOKEN sem Pages:Edit, Pendencias — VIX Radar
-
 ### Community 30 - "prod-worker-2026-06-10.js"
 Cohesion: 0.02
 Nodes (51): agendaBuildPersistir(), _agendaClassificarSeveridadeVencimento(), _agendaExtrairDataAssembleia(), _agendaExtrairDominio(), _agendaMatchEmissorPorRazao(), _agendaParseVencimentoDate(), _agendaSha8(), _agendaSlug() (+43 more)
 
 ### Community 84 - "memory.py"
-Cohesion: 0.08
-Nodes (53): Any, _acquire_lock(), _atomic_write(), _build_snapshot(), _bump_or_append(), canonicalize_remote(), cmd_path(), cmd_read() (+45 more)
+Cohesion: 0.07
+Nodes (61): Any, _acquire_lock(), _atomic_write(), _build_snapshot(), _bump_or_append(), canonicalize_remote(), cmd_path(), cmd_read() (+53 more)
 
-### Community 110 - "resp"
+### Community 110 - "__coreFetch"
 Cohesion: 0.12
 Nodes (47): escreverFavoritosDoUsuario(), extractToken(), getTenantConfig(), getUser(), handleAdminAprovar(), handleAdminAutoLogin(), handleAdminRejeitar(), handleAdminResetSenha() (+39 more)
 
-### Community 131 - "Achados"
+### Community 131 - "50 - Análise Competitiva e Baseline SEO — 2026-07-11"
 Cohesion: 0.12
 Nodes (16): 1. A CVM publica Fato Relevante como dataset estruturado, com lag de 5 dias, 2. O caminho de tempo real da CVM não é uma API, 3. O `_RJ_FLOOR` é uma tabela manual sem data e sem fonte, e já está stale, 4. Dois emissores críticos estão mapeados para a subsidiária errada, com `match=forte`, 5. PRED3 bloqueia justamente os emissores de maior risco, 60 - Pesquisa e Ideias, Proveniência de Fonte e Ground Truth CVM, 2026-07-16, 6. O join por CNPJ funciona, e cobre 73 dos 80 emissores mapeados, 7. Os players usam score contínuo, não gate binário (+8 more)
 
@@ -471,11 +417,11 @@ Nodes (38): Common Rationalizations, Debugging Integration, Example: Bug Fix, Fi
 Cohesion: 0.05
 Nodes (39): Acesso admin, Atualização 2026-06-10 (auditoria repeat-run), Atualização 2026-06-11 — Deploy Worker v4.9.105 + Frontend v201.48, Atualização 2026-06-11 (frontend v201.46 — DEPLOYADO), Atualização 2026-06-11 — N06 cálculo resolvido em repo (Worker v4.9.105), Auth, Bindings (confirmados via health), Cascade AI (v4.9.108) (+31 more)
 
-### Community 205 - "Auditoria Completa — VIX Radar (2026-06-16)"
+### Community 205 - "13 - Metodo de Vistoria Operacional.md"
 Cohesion: 0.20
 Nodes (10): Achado 1 — ANTHROPIC_API_KEY inválido (CRÍTICO → RESOLVIDO), Achado 2 — Micro-drift app/version.json (BAIXO → RESOLVIDO), Achado 3 — Comentário stale em wrangler.toml (INFO → RESOLVIDO), Achado 4 — Credenciais operacionais sem persistência local (INFO → RESOLVIDO), Auditoria Completa — VIX Radar (2026-06-16), Contexto, Critérios de encerramento (todos atendidos), Drift repo vs produção — estado final (pós-auditoria) (+2 more)
 
-### Community 234 - "obterAgoraBRT"
+### Community 234 - "executarVarreduraBatchComFila"
 Cohesion: 0.09
 Nodes (52): buildSystemPrompt(), buscarDocumentosCVM(), calcularEWS(), carregarAnomalias(), carregarEstadoCompartilhado(), carregarEstadoMultiSemana(), chamarClaudeAnalise(), chamarOpenRouter() (+44 more)
 
@@ -491,7 +437,7 @@ Nodes (33): Backend (`radar-standalone-worker.js`), 🔄 Cascade AI — Como Fun
 Cohesion: 0.06
 Nodes (33): Acesso, Arquitetura de arquivos, Como exportar a newsletter, Como interpretar um evento, Decisões técnicas e por quê cada uma foi tomada, FASE 1 — Infraestrutura (executar no terminal), FASE 2 — Frontend modo Demo, FASE 3 — Frontend modo Live (+25 more)
 
-### Community 258 - "__coreFetch"
+### Community 258 - "obterAgoraBRT"
 Cohesion: 0.10
 Nodes (27): buscarCacheUltimoResorte(), carregarSerie(), circuitoAberto(), __coreFetch(), corsHeaders(), eventosFixturesTeste(), gerarCicloId(), gerarPaginaAdminMercado() (+19 more)
 
@@ -535,11 +481,11 @@ Nodes (25): 1. Princípio Central: Thin Client / Fat Server, 2. Comportamentos (
 Cohesion: 0.12
 Nodes (14): Get-AnthropicApiKey(), Get-CvmResumo(), Get-NomeNormalizado(), Get-ParsedResultados(), Get-ResultadoEmissor(), Get-SlimEmissor(), Invoke-ClaudeBatch(), Invoke-Cleanup() (+6 more)
 
-### Community 408 - "app/admin/vr-admin-modules.js"
+### Community 408 - "vr-admin-modules.js"
 Cohesion: 0.22
 Nodes (21): authHeaders(), calcHeart(), daysSince(), esc(), fetchHealth(), fetchHeartbeats(), getHeartHistory(), getSenha() (+13 more)
 
-### Community 409 - "deploy_zip/admin/vr-admin-modules.js"
+### Community 409 - "vr-admin-modules.js"
 Cohesion: 0.22
 Nodes (21): authHeaders(), calcHeart(), daysSince(), esc(), fetchHealth(), fetchHeartbeats(), getHeartHistory(), getSenha() (+13 more)
 
@@ -607,7 +553,7 @@ Nodes (19): Achados, ALTO, Auditoria Completa — VIX Radar (2026-07-09 v2), BAI
 Cohesion: 0.11
 Nodes (17): Acknowledging Correct Feedback, Code Review Reception, Common Mistakes, Forbidden Responses, From External Reviewers, From your human partner, GitHub Thread Replies, Gracefully Correcting Your Pushback (+9 more)
 
-### Community 432 - "using-superpowers/SKILL.md"
+### Community 432 - "SKILL.md"
 Cohesion: 0.18
 Nodes (7): Claude Code Tool Mapping, Instructions file, Personal skills directory, Tools, How to Access Skills, Instruction Priority, Platform Adaptation
 
@@ -683,7 +629,7 @@ Nodes (15): Atualização memory, Conteúdo do e-mail (MVP), Critérios de aceit
 Cohesion: 0.12
 Nodes (15): Checagem radar noturno — 2026-06-17 19:15 BRT, Estado local após estabilização, Evidência objetiva, Evidência objetiva, Git observado durante o loop, Ideias de melhoria, Lacunas e próximos passos, Monitoramento Loop — 2026-06-17 (+7 more)
 
-### Community 452 - "workers-best-practices/SKILL.md"
+### Community 452 - "SKILL.md"
 Cohesion: 0.13
 Nodes (14): Anti-Patterns to Flag, Architecture, Code Patterns, Configuration, FIRST: Fetch Latest References, Observability, Principles, Reference Documentation (+6 more)
 
@@ -739,7 +685,7 @@ Nodes (13): Acompanhamento Codex 2026-06-19 01:15 BRT, Acompanhamento Codex 2026
 Cohesion: 0.14
 Nodes (14): Achados, Auditoria Completa — VIX Radar (2026-07-01), CRÍTICO, CRÍTICO (herdado — auditoria 25), Health de produção (live, CI 2026-07-01T02:02Z), Lacunas, Mitigação implementada nesta sessão (2026-06-30 → 07-01), MÉDIO (+6 more)
 
-### Community 466 - "Auditoria Geral — VIX Radar (2026-07-07, ~16:15-16:35 BRT)"
+### Community 466 - "Auditoria Geral — VIX Radar (2026-07-06)"
 Cohesion: 0.22
 Nodes (9): Auditoria Geral — VIX Radar (2026-07-07, ~16:15-16:35 BRT), Backend (bundle v4.9.147 → v4.9.148), Contexto — sessões concorrentes, Frontend, Perf e a11y adicional (achados NÃO corrigidos nesta rodada — backlog), Próximos passos, Top riscos (corrigidos no repo, deploy pendente salvo indicação contrária), Validação dos fixes (+1 more)
 
@@ -755,11 +701,11 @@ Nodes (13): Achados, Auditoria de arrumação do diretório — 2026-06-14, Cont
 Cohesion: 0.15
 Nodes (13): Ações recomendadas (P0/P1) — atualizado, Críticos do lote sonnet-1, INCIDENTE 2 — haiku-11 (23:54-23:58): submit bloqueado 401, INCIDENTE 3 — cleanup apaga log/metrics do próprio dia, INCIDENTE — haiku-9 (23:50-23:52), Lote reproc-1 (bancos/mineração) — 12/12 OK, Lote reproc-2 (varejo/construção/tech) — 12/12 OK, Lotes concluídos (+5 more)
 
-### Community 471 - "app/admin/vr-admin-shared.js"
+### Community 471 - "vr-admin-shared.js"
 Cohesion: 0.19
 Nodes (5): getSenha(), isAdminShortcut(), postAdmin(), registerAdminShortcut(), toggleAdminPanel()
 
-### Community 472 - "deploy_zip/admin/vr-admin-shared.js"
+### Community 472 - "vr-admin-shared.js"
 Cohesion: 0.19
 Nodes (5): getSenha(), isAdminShortcut(), postAdmin(), registerAdminShortcut(), toggleAdminPanel()
 
@@ -819,43 +765,43 @@ Nodes (11): Applying the Pattern, Defense-in-Depth Validation, Example from Sess
 Cohesion: 0.17
 Nodes (11): Common Failures, Key Patterns, Overview, Rationalization Prevention, Red Flags - STOP, The Bottom Line, The Gate Function, The Iron Law (+3 more)
 
-### Community 487 - "2026-07-11/manifest.json"
+### Community 487 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 488 - "2026-07-12/manifest.json"
+### Community 488 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 489 - "2026-07-13/manifest.json"
+### Community 489 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 490 - "2026-07-14/manifest.json"
+### Community 490 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 491 - "2026-07-15/manifest.json"
+### Community 491 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 492 - "2026-07-16/manifest.json"
+### Community 492 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 493 - "2026-07-17/manifest.json"
+### Community 493 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 494 - "2026-07-18/manifest.json"
+### Community 494 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 495 - "2026-07-19/manifest.json"
+### Community 495 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
-### Community 496 - "2026-07-20/manifest.json"
+### Community 496 - "manifest.json"
 Cohesion: 0.17
 Nodes (11): com_serie, data, dry_run, duracao_s, emissores, erros, gerado_em_brt, model_version (+3 more)
 
@@ -923,9 +869,9 @@ Nodes (11): Avoid assuming tools are installed, Create verifiable intermediate o
 Cohesion: 0.18
 Nodes (10): 1. Como concorrentes reais de inteligência de crédito se vendem, 2. Frameworks de copywriting (com exemplo real verificável), 3. O que realmente funciona como gancho no LinkedIn (dado real, não achismo), 4. O paradoxo da especificidade, 5. Prova social fraca → copy convincente (produto novo, poucos clientes), 6. Preço acessível sem parecer inferior (o ponto mais importante para o VIX Radar), 7. Eventos de crédito privado brasileiro reais (contexto de mercado, não recomendação), 8. Jargão real de crédito privado brasileiro (para soar como quem entende, não como marketing) (+2 more)
 
-### Community 513 - "Estado Atual — VIX Radar"
-Cohesion: 0.04
-Nodes (44): 01/08 — Recuperacao parcial, 02/08 — Dia totalmente operacional, 04-06/08 — Guarda ambiental, call sites orfaos e prevencao estrutural, 30/07 — Correcao OAuth e primeiro reprocessamento, 31/07 — Incidente de API key 401, Analise de falha: AgendaSemanal 03:00 + Matinal 10:00, Checklist pos-rotina, Cobertura (+36 more)
+### Community 513 - "Infraestrutura — VIX Radar"
+Cohesion: 0.18
+Nodes (11): Acesso Admin, Auth, Bindings (Worker `radar-credito-api`), Cascade AI, CORS, Crons Worker, Infraestrutura — VIX Radar, Multi-semana (+3 more)
 
 ### Community 514 - "Recovery e Deploy — VIX Radar (2026-07-20)"
 Cohesion: 0.18
@@ -956,8 +902,8 @@ Cohesion: 0.20
 Nodes (9): Como funciona (para quando a copy precisar de prova técnica), Em um parágrafo, Em uma frase, Funcionalidades vendáveis, Não prometer, Planos, product.md — VIX Radar, Prova / credibilidade (+1 more)
 
 ### Community 523 - "Oportunidades de Melhoria — 2026-06-11"
-Cohesion: 0.20
-Nodes (10): 1. Triagem dos exemplos sugeridos (verificado no código), 2. Técnicas — itens novos (T11–T15), 3. Produto — itens novos (P11–P15), 4. Priorização recomendada (valor ÷ esforço), 6. Rotina noturna 2026-06-12 — execução e achados do verificador, 7. Implementação 2026-06-12 — T16, P16, T15, Lacunas e Próximos Passos, Oportunidades de Melhoria — 2026-06-11 (+2 more)
+Cohesion: 0.11
+Nodes (15): 1. Triagem dos exemplos sugeridos (verificado no código), 2. Técnicas — itens novos (T11–T15), 3. Produto — itens novos (P11–P15), 4. Priorização recomendada (valor ÷ esforço), 6. Rotina noturna 2026-06-12 — execução e achados do verificador, 7. Implementação 2026-06-12 — T16, P16, T15, Lacunas e Próximos Passos, Oportunidades de Melhoria — 2026-06-11 (+7 more)
 
 ### Community 524 - "Rotina Matinal — 2026-06-22"
 Cohesion: 0.20
@@ -1051,11 +997,11 @@ Nodes (6): Get-AnthropicApiKey(), Get-BalancedJson(), Get-VeredictosArray(), Inv
 Cohesion: 0.22
 Nodes (8): Architectural mental model, Executive summary, Findings, Open questions, Quick wins (< 2h, zero risco de regressão), Tech Debt Audit — VIX Radar, Things that look bad but are actually fine, Top 5 "se não corrigir nada, corrija esses"
 
-### Community 550 - "app/admin/vr-admin-engajamento.js"
+### Community 550 - "vr-admin-engajamento.js"
 Cohesion: 0.46
 Nodes (7): init(), injectEngStyles(), patchAbaAtiva(), patchUsoCarregar(), patchUsoMudarVisao(), showSkeleton(), startAutoRefresh()
 
-### Community 551 - "deploy_zip/admin/vr-admin-engajamento.js"
+### Community 551 - "vr-admin-engajamento.js"
 Cohesion: 0.46
 Nodes (7): init(), injectEngStyles(), patchAbaAtiva(), patchUsoCarregar(), patchUsoMudarVisao(), showSkeleton(), startAutoRefresh()
 
@@ -1096,8 +1042,12 @@ Cohesion: 0.25
 Nodes (7): Achados por severidade, Auditoria Completa — 2026-06-14 (pós-deploy v4.9.110 + consolidação de diretório), Drift source control, Lacunas e Próximos Passos, Os 4 blocos obrigatórios, Status das 7 regras invioláveis, Versões reais (produção vs repo canônico E:\)
 
 ### Community 561 - "Auditoria Geral — VIX Radar (2026-06-22)"
-Cohesion: 0.11
-Nodes (16): Achados novos, Achados reconfirmados (herdados), Auditoria Geral — VIX Radar (2026-06-22), Conformidade regras invioláveis, F1 resolvido (confirmado), Lacunas, Próximos passos, Veredito (+8 more)
+Cohesion: 0.22
+Nodes (8): Achados novos, Achados reconfirmados (herdados), Auditoria Geral — VIX Radar (2026-06-22), Conformidade regras invioláveis, F1 resolvido (confirmado), Lacunas, Próximos passos, Veredito
+
+### Community 563 - "Auditoria Geral — VIX Radar (2026-07-05)"
+Cohesion: 0.25
+Nodes (8): Auditoria Geral — VIX Radar (2026-07-05), Backend — achado central (detalhe), Frontend (v201.69), Lacunas, Próximos passos, Rotina — pendências de validação real (não observadas ainda), Top riscos, Veredito
 
 ### Community 564 - "Auditoria Geral Backend/Frontend — VIX Radar — 2026-07-07 (noite)"
 Cohesion: 0.25
@@ -1163,6 +1113,10 @@ Nodes (6): Emissores Críticos (ews_score > 20), Emissores ECO (ews_score ≤ 20
 Cohesion: 0.29
 Nodes (6): Emissores processados, Lote Haiku-10 — 2026-07-03 02:55 UTC, Notas operacionais, Próximos passos, Resumo, Totais
 
+### Community 582 - "PENDENCIAS.md — VIX Radar"
+Cohesion: 0.29
+Nodes (6): Histórico resolvido (compacto, pré-13/07), PENDENCIAS.md — VIX Radar, Pendências abertas, Próximos passos priorizados, Resolvido desde 2026-07-13, Síntese executiva
+
 ### Community 585 - "Codex Tool Mapping"
 Cohesion: 0.33
 Nodes (6): Codex App Finishing, Codex Tool Mapping, Environment Detection, Instructions file, Personal skills directory, Subagent dispatch requires multi-agent support
@@ -1199,7 +1153,7 @@ Nodes (5): anuncios.md — 3 anúncios (LinkedIn Ads), Anúncio 1 — Single Ima
 Cohesion: 0.33
 Nodes (5): Aplicações concretas (pronto para briefar designer), briefing_visual.md — Diretrizes de criativo (VIX Radar no LinkedIn), Especificações por formato, O que evitar, Princípios
 
-### Community 594 - "Preditivo lab interno (2026-07-21)"
+### Community 594 - "Estado Atual — VIX Radar"
 Cohesion: 0.22
 Nodes (8): Decisao, Estado deployado, O que continua, O que saiu do produto, Politica de acesso (unificada v4.9.170), Preditivo lab interno (2026-07-21), Rollback, Smoke / testes
 
@@ -1271,11 +1225,11 @@ Nodes (4): Lote Haiku-13 — 2026-06-22, Notas, Resultado, Resumo
 Cohesion: 0.60
 Nodes (3): Carregar-AtivoTotalPorCnpj(), Carregar-Contas(), Log()
 
-### Community 616 - "app/admin/vr-admin-metricas.js"
+### Community 616 - "vr-admin-metricas.js"
 Cohesion: 0.83
 Nodes (3): init(), injectMetStyles(), patchMetricas()
 
-### Community 617 - "deploy_zip/admin/vr-admin-metricas.js"
+### Community 617 - "vr-admin-metricas.js"
 Cohesion: 0.83
 Nodes (3): init(), injectMetStyles(), patchMetricas()
 
@@ -1364,24 +1318,24 @@ Cohesion: 0.67
 Nodes (3): Atualização 2026-06-11 (reconciliação Worker + P11 implementado), Drift de artefato do Worker — RECONCILIADO (fecha achado de 2026-06-10), P11 — alerta crítico direcionado por favorito (Worker v4.9.103)
 
 ## Knowledge Gaps
-- **2148 isolated node(s):** `04-06/08 — Guarda ambiental, call sites orfaos e prevencao estrutural`, `30/07 — Correcao OAuth e primeiro reprocessamento`, `31/07 — Incidente de API key 401`, `01/08 — Recuperacao parcial`, `02/08 — Dia totalmente operacional` (+2143 more)
+- **2069 isolated node(s):** `Versões`, `Cobertura`, `Tasks Scheduler`, `Infra`, `Pendências ativas (topo)` (+2064 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **23 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)` connect `Auditoria Geral Backend/Frontend — VIX Radar (2026-07-13)` to `00 - Índice (MOC).md`?**
-  _High betweenness centrality (0.009) - this node is a cross-community bridge._
-- **What connects `04-06/08 — Guarda ambiental, call sites orfaos e prevencao estrutural`, `30/07 — Correcao OAuth e primeiro reprocessamento`, `31/07 — Incidente de API key 401` to the rest of the system?**
-  _2148 weakly-connected nodes found - possible documentation gaps or missing edges._
-- **Should `package.json` be split into smaller, more focused modules?**
-  _Cohesion score 0.14285714285714285 - nodes in this community are weakly interconnected._
-- **Should `13 - Metodo de Vistoria Operacional.md` be split into smaller, more focused modules?**
-  _Cohesion score 0.13157894736842105 - nodes in this community are weakly interconnected._
+- **Why does `Auditoria Completa + Correções — VIX Radar (2026-07-20)` connect `Auditoria Completa + Correções — VIX Radar (2026-07-20)` to `00 - Índice (MOC).md`?**
+  _High betweenness centrality (0.006) - this node is a cross-community bridge._
+- **Why does `Auditoria Completa — VIX Radar (2026-06-16 v2)` connect `Auditoria Completa — VIX Radar (2026-06-16 v2)` to `v4.9.153.js`?**
+  _High betweenness centrality (0.005) - this node is a cross-community bridge._
+- **What connects `Versões`, `Cobertura`, `Tasks Scheduler` to the rest of the system?**
+  _2113 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `prod-worker-2026-06-10.js` be split into smaller, more focused modules?**
   _Cohesion score 0.023686405337781484 - nodes in this community are weakly interconnected._
 - **Should `memory.py` be split into smaller, more focused modules?**
-  _Cohesion score 0.08385744234800839 - nodes in this community are weakly interconnected._
-- **Should `resp` be split into smaller, more focused modules?**
+  _Cohesion score 0.06861239119303636 - nodes in this community are weakly interconnected._
+- **Should `__coreFetch` be split into smaller, more focused modules?**
   _Cohesion score 0.12303422756706753 - nodes in this community are weakly interconnected._
+- **Should `50 - Análise Competitiva e Baseline SEO — 2026-07-11` be split into smaller, more focused modules?**
+  _Cohesion score 0.125 - nodes in this community are weakly interconnected._
