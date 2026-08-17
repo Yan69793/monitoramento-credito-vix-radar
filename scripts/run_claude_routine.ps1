@@ -39,6 +39,27 @@ $Catalog = @{
         Model             = $null
         RequiresWebSearch = $false
     }
+    # RETRY-VIX (2026-08-17): as rotinas noturna e matinal migraram para sessoes
+    # agendadas do Claude Desktop, que entram em idle no meio do cascade e matam
+    # a rotina sem rastro. O retry via retry-vixradar.ps1 relanca a skill por
+    # aqui quando o log do dia nao tem FIM valido. O lock de 3h da propria
+    # skill protege contra duplicata com execucao Desktop ainda viva.
+    'vixradar-noturno' = @{
+        Skill             = Join-Path $ScheduledRoot 'vixradar-noturno\SKILL.md'
+        ProjectRoot       = $VixRoot
+        AddDirs           = @((Join-Path $VixRoot 'scripts'), $ScheduledRoot)
+        LogPrefix         = 'vixradar-noturno'
+        Model             = $null
+        RequiresWebSearch = $true
+    }
+    'vixradar-matinal' = @{
+        Skill             = Join-Path $ScheduledRoot 'vixradar-matinal\SKILL.md'
+        ProjectRoot       = $VixRoot
+        AddDirs           = @((Join-Path $VixRoot 'scripts'), $ScheduledRoot)
+        LogPrefix         = 'vixradar-matinal'
+        Model             = $null
+        RequiresWebSearch = $true
+    }
 }
 
 if (-not $Catalog.ContainsKey($RoutineId)) {
