@@ -90,6 +90,19 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
 function Get-RoutineKey {
     # v4.9.187: fallback de leitura de SKILL.md removido (recomendacao PENDENCIAS.md 2026-08-03).
     # O SKILL.md em scheduled-tasks/ pode conter chave velha apos rotacao. Env var e canonica.
+    # ROTA1 (2026-08-18): apos a rotacao da chave, o registro User e a fonte da verdade.
+    # Processo longevo (sessao do Claude Desktop) herda o env do boot e mandaria a chave
+    # velha ate reiniciar - mesmo modo de falha que o rotate-routine-key.ps1 corrigiu na
+    # hidratacao dele. Hidratar do registro SEMPRE, nao so quando o env esta ausente.
+    $doRegistro = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
+    if ($doRegistro) {
+        $k = $doRegistro.Trim()
+        if ($k.Length -eq 0) { throw 'ROUTINE_API_KEY no registro vazia apos trim.' }
+        if ($k -ne $doRegistro) {
+            Write-Log 'AVISO: ROUTINE_API_KEY do registro tinha espaco/quebra de linha nas bordas - usando o valor sem eles.'
+        }
+        return $k
+    }
     # Trim (2026-08-05): o Worker compara com !== exato e NAO normaliza (worker.js ~16354).
     # Chave colada com quebra de linha ou espaco final produz 403 indistinguivel do 403 de
     # chave revogada - a causa mais barata de descartar antes de acusar rotacao.

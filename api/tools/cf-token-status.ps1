@@ -2,7 +2,7 @@
 <#
   Mostra status dos tokens Cloudflare (Workers + DNS) e indica se estao unificados.
 #>
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 $AccountId = '7ac79fb1030e4e81115ef33c21a9b070'
 $ZoneId = 'ea770942bf861c70bc0ce783c4ece5fa'
 
@@ -61,3 +61,5 @@ if ($anyUnified) {
   Write-Host 'Para unificar: edite o token DNS no dashboard e adicione Workers Scripts/KV/Routes Edit.'
   Write-Host 'URL: https://dash.cloudflare.com/profile/api-tokens'
 }
+
+exit 0

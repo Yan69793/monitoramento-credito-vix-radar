@@ -10,7 +10,7 @@ param(
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 $ROOT = Split-Path -Parent $PSScriptRoot
 if (-not $OutputDir) { $OutputDir = Join-Path $ROOT 'data\cotacoes' }

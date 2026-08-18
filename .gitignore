@@ -203,6 +203,10 @@ mcps/
 .claude-local/
 .claude.json*
 .claude-skills/
+# Grafo de codigo gerado por ferramenta (graphify): cache AST, labels e reports mudam
+# a cada execucao e poluiam o working tree com ~14 entradas por sessao, escondendo
+# mudanca real no meio do ruido. Regeneravel, sem valor de auditoria.
+graphify-out/
 
 # ---------- Scripts de automacao transitoria ----------
 _git_*.ps1

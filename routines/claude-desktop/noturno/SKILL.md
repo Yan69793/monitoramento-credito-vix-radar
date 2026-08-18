@@ -17,7 +17,7 @@ Comprimir esses campos corrompe a entrega. Caveman e so para falar comigo.
 
 ## Contexto
 
-Projeto: `E:\Diretorio\Claude\Monitoramento de Credito`
+Projeto: `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito`
 Worker: `https://api.vixradar.com` (POST, Content-Type application/json; charset=utf-8)
 
 Esta rotina roda nesta sessao do Claude Desktop. Ela substituiu a Windows Scheduled Task `VIXRadar-Noturno`, que foi desabilitada em 04/08/2026 porque o `claude` CLI standalone parou de autenticar. NAO chame `run_vixradar_noturno_claude.ps1`, ele depende do CLI quebrado. Use PowerShell apenas para HTTP e arquivo.
@@ -31,6 +31,8 @@ try { Disable-ScheduledTask -TaskName "VIXRadar-Noturno" -ErrorAction Stop | Out
 ```
 
 Idempotente, nao falha se a task ja estiver `Disabled` ou ausente. Nao aborte a rotina se este passo falhar, so registre no log e siga.
+
+Desde 17/08/2026 existe retry automatico: a task `Szuchmacher-RetryVixNoturno` (21:30) relanca esta skill via `claude` CLI quando o log do dia nao tem FIM valido. O lock e o mutex deste Passo 0 protegem o retry de duplicar execucao viva; nao crie outra guarda.
 
 Isso nao cobre tudo. Em 08/08/2026 o Cowork disparou `run_vixradar_noturno_claude.ps1` direto, por fora do Task Scheduler e desta sessao, no meio de uma varredura ja em andamento aqui. A segunda analise leu fonte mais velha e sobrescreveu 3 emissores (Rumo, Bradesco, Tupy) antes de ser corrigida manualmente. Rode o bloco abaixo logo apos o comando acima, antes do health check:
 
@@ -104,7 +106,7 @@ Extraia a janela do primeiro emissor (`janela_inicio`, `janela_fim`). Ela vai no
 
 ## Passo 4 - Idempotencia
 
-Log do dia: `E:\Diretorio\Claude\Monitoramento de Credito\logs\routines\vixradar-noturno_<yyyyMMdd>.log` (ex: vixradar-noturno_20260804.log).
+Log do dia: `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\logs\routines\vixradar-noturno_<yyyyMMdd>.log` (ex: vixradar-noturno_20260804.log). O caminho antigo `E:\Diretorio\Claude\Monitoramento de Credito` ainda funciona por junction, mas e fragil - usar sempre o caminho FREQUENTE.
 
 Se o arquivo existe, leia as linhas que casam `^[\d-]+ [\d:]+ OK\|([^|]+)\|` e extraia os nomes ja processados. Pule esses emissores. Compare ignorando acentuacao. Aplique esse filtro TAMBEM aos emissores tier SKIP.
 
@@ -134,11 +136,15 @@ A ordem importa, rapida antes de aprofundada. Se a sessao degradar no meio, o qu
 
 Um subagente por lote. Rode no maximo 3 subagentes em paralelo, para nao saturar WebSearch.
 
+Para cada lote, decida o caminho do arquivo de saida ANTES de disparar o subagente: diretorio scratchpad desta sessao (nunca o repo git), nome `out_rapida_<n>.txt` ou `out_aprofundada_<n>.txt`, `<n>` = ordem do lote na fila. Passe esse caminho absoluto no prompt do subagente (Passo 7). O subagente nao escolhe o proprio nome de arquivo.
+
+NUNCA reabra um subagente apos o retorno (via SendMessage ou qualquer outro mecanismo) so para gravar linhas em arquivo. Reabrir um subagente custa o replay do transcript inteiro - medido em 17/08: +142260 tokens em UM lote, preco equivalente ao da analise original, e foi isso que estourou o hard cap daquele dia. Se o arquivo de saida voltou ausente, vazio ou incompleto, extraia as linhas RESULTADO| do RETORNO do subagente e grave-as voce mesmo no arquivo com Add-Content via PowerShell.
+
 ## Orcamento de tokens
 
 Meta 500000 tokens (500k). Hard cap 700000 tokens (700k). Herdado do desenho original, onde a fila rapida rodava em Haiku (lotes de 15) e a aprofundada em Sonnet (lotes de 11).
 
-Voce nao tem contagem exata de tokens nesta sessao. Use o orcamento como envelope de custo, nao como numero a medir. O desenho original estimava por lote: cerca de 15000 fixos mais 4500 por emissor na fila rapida e 13000 por emissor na aprofundada. Use isso para decidir se ainda cabe mais um lote antes de dispara-lo.
+Voce nao tem contagem exata de tokens nesta sessao. Use o orcamento como envelope de custo, nao como numero a medir. Estimativa calibrada 2026-08-18: cerca de 15000 fixos mais 9500 por emissor na fila rapida (medido: 9,4k/emissor em 17/08, 12,4k/emissor em 15/08) e 13000 por emissor na aprofundada (sem medicao recente, revalidar). Use isso para decidir se ainda cabe mais um lote antes de dispara-lo.
 
 Chegando perto do hard cap, NAO dispare o proximo lote. Defira os emissores restantes conforme o passo 10.
 
@@ -174,8 +180,9 @@ Sem URL primaria valida OU fora da janela: registrar em cobertura_nota (watchlis
 CRITICO exige URL primaria sempre. ECO/NENHUM: cobertura_nota 1 frase, eventos=[].
 Evento CRITICO/RELEVANTE exige memo_acontecimento + memo_importancia_credito + memo_monitorar preenchidos - alimentam o card do usuario e o contexto_historico de amanha.
 
-SAIDA: somente linhas RESULTADO| e ANOTA|. Sem markdown, sem tabelas, sem backticks, sem narrativa.
-NAO executar curl nem qualquer submit HTTP - o orquestrador grava.
+SAIDA: grave as linhas RESULTADO| e ANOTA| (uma por emissor, sem markdown, sem tabelas, sem backticks, sem narrativa) com a ferramenta Write, UTF-8, no arquivo <caminho absoluto definido pelo orquestrador para este lote>. Grave DENTRO desta mesma execucao, como ultimo passo antes de responder.
+Depois de gravar, sua resposta final deve ser SO uma linha: "GRAVADO <numero de linhas RESULTADO> em <caminho>". Nao repita o conteudo das linhas RESULTADO| na resposta, o orquestrador le do arquivo.
+NAO executar curl nem qualquer submit HTTP - o orquestrador grava no Worker.
 Preservar a acentuacao exata do nome da empresa no RESULTADO|.
 
 Formato (1 linha por emissor, JSON compacto sem quebras):
@@ -190,11 +197,15 @@ Escrever cobertura_nota, memo_* , titulo, evento e impacto_credito em portugues 
 
 ## Passo 8 - Parse
 
-Do retorno do subagente, extraia as linhas `^RESULTADO\|([^|]+)\|(\{.*\})$`. Case o nome com o emissor do plano ignorando acentuacao. Linhas `ANOTA|` sao so observacao, registre no log e siga.
+Incidente 17/08/2026: o orquestrador deixou os subagentes devolverem as linhas RESULTADO na propria resposta e, para nao duplicar esse texto no seu contexto, depois reabriu cada um via SendMessage so para gravar em arquivo. Reabrir subagente relê o transcript inteiro, cada reabertura custou de 142k a 165k tokens, preco de uma analise nova so para salvar texto que ja existia. O unico lote que ja tinha recebido a instrucao de Write dentro da propria execucao (o que o Passo 7 agora exige sempre) saiu de graca. Nunca peca para o subagente gravar por fora depois, so dentro da execucao original.
 
-Emissor do lote que voltou sem `RESULTADO`: rode UM retry so com os faltantes. Persistindo a falta, submeta com fallback `classificacao_geral: "NENHUM"`, `sem_eventos: true`, `cobertura_nota: "Falha de parse do agente apos retry."` e registre no log.
+Leia as linhas do ARQUIVO do lote (Read ou Get-Content), nao da resposta em texto do subagente, que agora e so a confirmacao curta "GRAVADO N em <caminho>". Extraia `^RESULTADO\|([^|]+)\|(\{.*\})$`. Case o nome com o emissor do plano ignorando acentuacao. Linhas `ANOTA|` sao so observacao, registre no log e siga.
 
-Lote que voltou com ZERO linhas `RESULTADO`: registre `silent_fail` no log. Nao trate como sucesso.
+Se disparou o subagente em background (`run_in_background: true`), espere o arquivo aparecer com um loop de polling em PowerShell (`Test-Path` a cada poucos segundos) ou pelo Monitor, nunca com a ferramenta Bash (roda Git Bash, o projeto usa so PowerShell). Se disparou em foreground, o arquivo ja existe quando a chamada retorna, va direto para o parse.
+
+Arquivo ausente, vazio, ou com menos linhas RESULTADO do que emissores do lote: confira primeiro se as linhas aparecem na resposta em texto do subagente, fallback aceitavel se so o Write falhou. Achando la, extraia dali, sem reabrir o subagente. Emissor do lote que nao apareceu em nenhum dos dois lugares: rode UM retry so com os faltantes, pedindo de novo Write mais confirmacao curta. Persistindo a falta, submeta com fallback `classificacao_geral: "NENHUM"`, `sem_eventos: true`, `cobertura_nota: "Falha de parse do agente apos retry."` e registre no log.
+
+Lote que voltou com ZERO linhas `RESULTADO` (nem no arquivo, nem na resposta): registre `silent_fail` no log. Nao trate como sucesso.
 
 ## Passo 9 - Guarda de cobertura
 
@@ -239,6 +250,8 @@ com `"provedor":"claude-cap-deferred"`. Registre no log quantos foram deferidos 
 
 Antes de qualquer outra coisa, apague o lock do Passo 0 (`Remove-Item $LockFile -Force -ErrorAction SilentlyContinue`). Vale tambem se a rotina abortou em qualquer passo anterior por motivo diferente de mutex/lock ocupado (ex.: health check, plano).
 
-Em caveman. Reporte: processados, SKIP, deferidos, distribuicao por classificacao, degradados para INCONCLUSIVO, lotes com silent_fail, emissores que falharam submit. Liste os CRITICO com nome e uma linha do que aconteceu.
+Escreva no log a linha `FIM: noturno concluido. Total do dia <N>/103.`, onde `<N>` = total de linhas `OK|` no log de hoje (SKIP + analisados + deferidos). Formato exigido pelo watchdog `scripts/retry-vixradar.ps1`, que le o log as 21h30 e relanca a rotina inteira se nao achar um numero >=90 casando `Total do dia (\d+)/\d+`, `submit_ok=(\d+)`, `(\d+)/\d+ processados` ou `processados=(\d+)` numa linha `FIM:`. Incidente 17/08/2026: a primeira versao deste passo so mandava reportar em prosa livre ("103 no ledger, 3 SKIP..."), nenhum numero batia com os quatro formatos aceitos, e o watchdog teria relancado a rotina inteira as 21h30 mesmo com entrega completa (103/103, 0 falha). Escreva essa linha SEMPRE, com esse formato exato, mesmo que o resto do relatorio va em caveman.
+
+Depois da linha FIM, o relatorio para o usuario e em caveman. Reporte: processados, SKIP, deferidos, distribuicao por classificacao, degradados para INCONCLUSIVO, lotes com silent_fail, emissores que falharam submit. Liste os CRITICO com nome e uma linha do que aconteceu.
 
 Se abortou, diga onde e por que, sem suavizar.

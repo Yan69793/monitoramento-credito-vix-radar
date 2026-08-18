@@ -11,6 +11,74 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 18/08 — execução: rotação da routine_key + envelope + limpeza (detalhe: [[86 - Rotacao routine_key e envelope noturno 2026-08-18]])
+
+### RESOLVIDO 18/08 — P1 rotação da routine_key
+
+Chave rotacionada nos 3 destinos (GitHub Actions criado, Worker, env User). Validação: 200 com a nova, 403 com inválida. Guarda nova ROTA1: os 3 scripts de rotina hidratam a chave do registro User sempre, processo longevo não manda mais chave morta. O secret nunca existiu no GitHub (C2 confirmado com evidência: repo tinha só ADMIN_PASSWORD), portão do script ajustado para criar.
+
+### RESOLVIDO 18/08 — P2 envelope da noturna (recalibração, sem deploy)
+
+Estimativa do envelope recalibrada para o custo medido (9,5k/emissor na rápida) na skill viva e na cópia versionada. Regra dura anti-replay de subagente adicionada (o vazamento de 142k do 17/08). Efeito real será medido no noturno de 18/08.
+
+### RESOLVIDO 18/08 — P3 graphify-out versionado
+
+`graphify-out/` no .gitignore + `git rm -r --cached`. Working tree sem o ruído da ferramenta.
+
+### RESOLVIDO 18/08 — Pre-flight: 4 scripts vivos com P0
+
+gen-dashboard (BOM), cf-token-status e build-worker (Stop→Continue + exit), collect_cotacoes (Stop→Continue, roda no Task Scheduler).
+
+### RESOLVIDO 18/08 — Drift das skills do Desktop
+
+Noturno e matinal sincronizadas da viva para a versionada. Verificacao-async em dia.
+
+### P2 — ANTHROPIC_API_KEY continua ausente no GitHub Actions
+
+O scan-emergencia usa `secrets.ANTHROPIC_API_KEY` no passo que faz a varredura real, e esse secret também não existe no repo. ROUTINE_API_KEY foi criada na rotação, mas o fallback de emergência segue morto de fato: morreria no primeiro fetch de LLM exatamente no dia em que precisasse rodar. Decidir: criar o secret com a chave paga local, ou remover o passo LLM do workflow.
+
+### P3 — ~20 scripts de ferramenta com ErrorActionPreference Stop
+
+register-*, deploy-pages, lint-encoding, check-drift, check-vault-drift, dry-run, verify-rotinas-v2, atualizar_altman_cvm, seed_labels, install-hooks, skills-audit, push-health, criar-token-dns, unificar-cf-token, apply-security-rotation, disable-vixradar-noturno-task, register-coleta/export/monitor/ranking/reconciliacao, run_vixradar_ranking_mensal, fix_task_coleta_volatilidade, skills-verify-tokens. Nenhum roda no Task Scheduler (os que rodam foram corrigidos: collect_cotacoes, matinal, noturno, verificacao). Correção em lote com parse PS 5.1 de cada um, sessão dedicada.
+
+### P4 — Worktrees órfãos de outras ferramentas poluem o pre-flight recursivo
+
+`git worktree list` mostra 1 do Codex (C:\Users\User\.codex\worktrees), 5 do Traycer e 4 do Claude no caminho antigo (E:\Diretorio\Claude\Monitoramento de Credito\.claude\worktrees, que agora é junction para FREQUENTE). Os .ps1 dessas cópias entram no scan recursivo do pre-flight e geram P0 fantasma. Remover os sem mudança (`git worktree remove`) ou excluir paths de worktrees do scan.
+
+### P4 — check-desktop-orquestrador-drift.ps1 não alertou o drift das skills
+
+O drift noturno (19,4k vs 15,6k bytes) e o da matinal estavam lá há dias sem alerta. Rever por que o check não pegou (agendamento? comparação por hash errado?).
+
+### RESOLVIDO nesta sessão de auditoria — Merton DD 0/103 (ver [[85 - Auditoria Geral e Preditiva 2026-08-18]])
+
+Não resolvido na execução, permanece P2 com o plano de correção descrito na nota 85. Listado aqui para não se perder entre os blocos.
+
+---
+
+## 18/08 — auditoria geral + preditiva (readonly, detalhe: [[85 - Auditoria Geral e Preditiva 2026-08-18]])
+
+### P2 — Merton DD nunca roda em producao (0/103 emissores)
+
+`predictive_v1:latest` (run 17/08): `merton_dd` null em todos os emissores, driver `merton` nunca aparece. Causa: `market_cap` vazio no Altman e na volatilidade (nenhuma coleta preenche; o gate do codigo exige `market_cap > 0` de proposito). Codigo do modelo correto, Fase A de dados incompleta. Correcao: coletar market cap (cotacao x n. de acoes) ou declarar Merton em stand-by. Guarda: contador `com_merton` no payload do pipeline.
+
+### P3 — graphify-out versionado sem .gitignore
+
+Cache de tooling gerando 14 entradas de ruido no working tree a cada execucao. Adicionar `graphify-out/` ao .gitignore.
+
+### P3 — email do admin hardcoded no frontend (app/index.html:4079)
+
+Revelacao do item "Painel Admin" no cmdk por comparacao literal com o email. O JWT ja carrega `role:admin`; trocar a comparacao pelo role.
+
+### P3 — divs clicaveis sem role/tabindex no Market Overview
+
+mo-table-row e mo-heatmap-row nao sao alcancaveis por teclado. Adicionar role="button" + tabindex + handler de teclado, ou trocar por `<button>`.
+
+### P3 — card "Sem alertas" sem declaracao de janela no proprio card
+
+O indicador tem janela fixa de 30 dias ao lado do toggle 7D/30D do grafico; o glossario manda declarar. Trocar o sub para "X de Y emissores · 30 dias".
+
+---
+
 ## 17/08 — sessão de custo/benefício e limpeza de fila (sem deploy)
 
 ### RESOLVIDO 17/08 — P2 express/openai órfãos no package.json (C3)
@@ -51,9 +119,25 @@ Detalhe: [[83 - Auditoria Geral 2026-08-15]]. Plano completo: `C:\Users\User\.cl
 
 Worker v4.9.195 e frontend v202.10 no ar e validados em produção (commits `f4b8780`..`5175a97`). Health verde com todos os sub-checks, providers com perplexity "removido" e nivel normal, drift zerado, CI Worker Tests verde no push. Fecha OPENROUTER-ORFAO1 (alerta falso desde 30/07) e LLMXSS1 em produção.
 
-### P1 — Rotação da routine_key (agendada para 15/08 após 10:20)
+### P1 — Rotação da routine_key (bloqueio de PAT pode ter caído em 17/08, não testado)
 
-Chave redigida em 15/08 de `~/.claude/scheduled-tasks/gen_workflow.py` + `vixradar-noturno-v2.js` (com backup), mas cópias históricas em backups/transcripts seguem existindo e a chave não foi rotacionada. `rotate-routine-key.ps1` cobre os 3 destinos (Worker secret, GitHub Actions secret, env User da máquina). Portão 2 reprovou às 08:19 e 08:38: o PAT ativo no GH_TOKEN não tem permissão de Secrets. Usuário vai ajustar o PAT; execução agendada para 10:25 BRT. Ao concluir, reiniciar o Claude Desktop antes da noturno 18:00 para a sessão absorver o env novo.
+Chave redigida em 15/08 de `~/.claude/scheduled-tasks/gen_workflow.py` + `vixradar-noturno-v2.js` (com backup), mas cópias históricas em backups/transcripts seguem existindo e a chave não foi rotacionada. `rotate-routine-key.ps1` cobre os 3 destinos (Worker secret, GitHub Actions secret, env User da máquina). Bloqueava porque o `GH_TOKEN` ativo era um PAT fine-grained sem permissão de Secrets. Em 17/08, resolvendo um bloqueio parecido no `git push` (ver item abaixo), achamos que existe uma credencial OAuth já autenticada no keyring do Windows com escopo `repo` clássico, que inclui gerenciar secret de repositório, e que `GH_TOKEN` (mesmo vazio) segue tendo prioridade sobre ela. Não tentamos rodar `rotate-routine-key.ps1` ainda com esse keyring ativo, mas é candidato forte a destravar sem precisar mexer em PAT nenhum. Ao concluir, reiniciar o Claude Desktop antes da noturno 18:00 para a sessão absorver o env novo.
+
+### RESOLVIDO 17/08 — P1 push de 3 commits bloqueado por credencial (regressão do incidente já documentado em 13/08)
+
+`git push` reprovava com 403, PAT fine-grained sem escopo Contents. Ajustar a permissão do token pelo GitHub não bastou, e no meio da correção o usuário rodou `[Environment]::SetEnvironmentVariable('GH_TOKEN', ...)` duas vezes com erro, primeiro gravando o placeholder literal `cole-o-token-aqui`, depois esvaziando a variável, e colou o valor completo de um token fine-grained em texto puro no chat ao tentar corrigir. Achado real: a trava nunca foi permissão, `GH_TOKEN`, mesmo quebrado, tinha prioridade sobre uma credencial OAuth já autenticada e guardada no keyring do Windows (escopo `repo`, `read:org`, `gist`, `workflow`), suprimindo ela. Limpar `GH_TOKEN` (`$null` em escopo User) destravou o push na hora, sem gerar token novo. Os 3 commits (`960b56c`, `ed40757`, `2fc9216`) estão em `origin/main`, working tree limpo, `0 0` de diferença.
+
+### P3 — Token fine-grained "Token name" exposto em texto puro no chat
+
+Durante a correção acima, o valor completo desse token (o mesmo que teve a permissão Contents ajustada para Read/write) foi colado no chat pelo usuário. Não está mais em uso, `GH_TOKEN` foi removido e o push passou a usar o keyring, mas o valor ficou exposto no histórico da conversa. Regenerar ou apagar esse token específico por higiene quando for conveniente, sem urgência operacional.
+
+### P2 — monitor-tasks.ps1 não detecta rotina completa sem linha FIM:
+
+Achado na medição de cobertura de 17/08 (ver `03 - Estado Atual.md`, callout 05h10): 08/11 e 08/14 fecharam 103 de 103 emissores sem nunca escrever `FIM:` no log, um caminho de conclusão legítimo que o FIMRUN21 não cobre. Hoje isso cai em "sem linha FIM, execução não chegou ao fim" mesmo com o trabalho completo. Fix recomendado, ainda não implementado: quando não achar `FIM:`, `monitor-tasks.ps1` fazer fallback pra a mesma contagem por nome único de emissor usada na medição manual, antes de declarar 9001. Código puro, sem custo de token.
+
+### P3 — routines/README.md descreve top_n como teto, e ele é piso
+
+Achado junto do item RESOLVIDO do `top_n=15` devolvendo 19 (ver acima). O comportamento está correto, `selecionarEmissoresPrioritarios` garante mínimo por setor depois do corte. A correção pendente é só de redação em `routines/README.md`, ainda não editada.
 
 ### P2 — Orçamento da noturna (A1)
 

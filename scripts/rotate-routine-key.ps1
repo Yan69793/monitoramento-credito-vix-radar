@@ -113,7 +113,10 @@ if ($PularGitHub) {
         Abortar ('gh secret list falhou em ' + $Repo + ': ' + ($secretsGh.Trim() -split "`n")[0])
     }
     if ($secretsGh -notmatch 'ROUTINE_API_KEY') {
-        Abortar ('ROUTINE_API_KEY nao encontrada nos secrets de ' + $Repo + '. Confirme o nome antes de prosseguir.')
+        # C2 (2026-08-18): o secret nunca existiu no repo - o scan-emergencia so ficou verde
+        # porque o gate de staleness usa ADMIN_PASSWORD e o caminho que consome a chave
+        # nunca foi exercitado. Nao abortar: o Passo 1 (gh secret set) CRIA o secret.
+        Escrever ('  AVISO: ROUTINE_API_KEY ainda nao existe nos secrets de ' + $Repo + '. O Passo 1 vai cria-la.') 'Yellow'
     }
 }
 

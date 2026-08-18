@@ -17,7 +17,7 @@ param(
 )
 
 Set-StrictMode -Version Latest
-$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Continue'
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $apiDir = Join-Path $projectRoot 'api'
@@ -51,3 +51,4 @@ if ($LASTEXITCODE -ne 0) {
 
 $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $artifactPath).Hash
 Write-Host "ARTEFATO_OK path=$artifactPath sha256=$hash"
+exit 0

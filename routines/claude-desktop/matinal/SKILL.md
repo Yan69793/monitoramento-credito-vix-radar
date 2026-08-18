@@ -17,7 +17,7 @@ Comprimir esses campos corrompe a entrega. Caveman e so para falar comigo.
 
 ## Contexto
 
-Projeto: `E:\Diretorio\Claude\Monitoramento de Credito`
+Projeto: `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito`
 Worker: `https://api.vixradar.com` (POST, Content-Type application/json; charset=utf-8)
 
 Esta rotina roda nesta sessao do Claude Desktop. Ela substituiu a Windows Scheduled Task `VIXRadar-Matinal`, que foi desabilitada em 04/08/2026 porque o `claude` CLI standalone parou de autenticar. NAO chame `run_vixradar_matinal_claude.ps1`, ele depende do CLI quebrado. Use PowerShell apenas para HTTP e arquivo, a analise e voce que faz, com WebSearch.
@@ -31,6 +31,8 @@ try { Disable-ScheduledTask -TaskName "VIXRadar-Matinal" -ErrorAction Stop | Out
 ```
 
 Idempotente, nao falha se a task ja estiver `Disabled` ou ausente. Nao aborte a rotina se este passo falhar, so registre no log e siga.
+
+Desde 17/08/2026 existe retry automatico: a task `Szuchmacher-RetryVixMatinal` (13:30, dias uteis) relanca esta skill via `claude` CLI quando o log do dia nao tem FIM valido. O lock e o mutex deste Passo 0 protegem o retry de duplicar execucao viva; nao crie outra guarda.
 
 ## Passo 1 - Feriado
 

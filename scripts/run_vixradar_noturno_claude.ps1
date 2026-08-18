@@ -37,9 +37,13 @@ $ModelSonnet    = 'claude-sonnet-4-6'
 $TokenTarget    = 500000   # meta - passar um pouco OK
 $TokenHardCap   = 700000   # deferred só acima disto
 # Coeficientes da estimativa pre-lote (ver bloco do hard cap). Modelo aditivo: boot + n * unit.
+# CALIB1 (2026-08-18): Haiku recalibrado para o custo medido em sessao agendada (17/08: 9,4k/emissor,
+# 15/08: 12,4k/emissor). A estimativa antiga de 4,5k fazia o plano achar que 89 emissores cabiam e o
+# hard cap estourava no meio. Este script nao e mais o executor (a sessao do Desktop usa a skill em
+# ~/.claude/scheduled-tasks/vixradar-noturno/), mas as constantes ficam coerentes com a skill.
 $TokenBootOverhead     = 15000   # piso fixo por invocacao do claude (medido ~13,6k - ver Invoke-ClaudeBatch)
-$TokenPerEmissorSonnet = 13000   # real 14/07: 11,3k/emissor (lote de 10 = 127.015 tokens)
-$TokenPerEmissorHaiku  = 4500    # real 14/07: 2,8k-4,1k/emissor em lotes de 15
+$TokenPerEmissorSonnet = 13000   # sem medicao recente - revalidar no proximo run aprofundado
+$TokenPerEmissorHaiku  = 9500    # medido 17/08: 9,4k/emissor em lotes de 15 (era 4500, desenho original)
 $SonnetEwsMin   = 38
 $HaikuChunk     = 15
 $SonnetChunk    = 11
@@ -121,6 +125,12 @@ function Invoke-Cleanup([switch]$Aggressive) {
 function Get-RoutineKey {
     # v4.9.187: fallback de leitura de SKILL.md removido (recomendacao PENDENCIAS.md 2026-08-03).
     # O SKILL.md em scheduled-tasks/ pode conter chave velha apos rotacao. Env var e canonica.
+    # ROTA1 (2026-08-18): apos a rotacao da chave, o registro User e a fonte da verdade.
+    # Processo longevo (sessao do Claude Desktop) herda o env do boot e mandaria a chave
+    # velha ate reiniciar - mesmo modo de falha que o rotate-routine-key.ps1 corrigiu na
+    # hidratacao dele. Hidratar do registro SEMPRE, nao so quando o env esta ausente.
+    $doRegistro = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
+    if ($doRegistro) { return $doRegistro }
     if ($env:ROUTINE_API_KEY) { return $env:ROUTINE_API_KEY }
     throw 'ROUTINE_API_KEY nao definida. Configure: $env:ROUTINE_API_KEY = "<chave>"'
 }

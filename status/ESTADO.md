@@ -28,7 +28,9 @@ resumido em "Itens abertos" abaixo, com o detalhe no CLAUDE.md.
 
 Hoje, 17/08: criado o retry automático com as tasks Szuchmacher-RetryVixNoturno
 (21:30) e Szuchmacher-RetryVixMatinal (13:30), script `scripts/retry-vixradar.ps1`,
-e o `monitor-tasks.ps1` ganhou regras de cota e guard.
+e o `monitor-tasks.ps1` ganhou regras de cota e guard. Matinal do dia rodou via
+sessão agendada (19/19 emissores, 6 CRITICO), detalhe no vault
+`Obsidian VIX Radar/03 - Estado Atual.md`.
 
 ## Como verificar
 
