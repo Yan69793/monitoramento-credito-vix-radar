@@ -17043,7 +17043,9 @@ async function __coreFetch(request, env2222, ctx) {
       }
     }
     if (body.action === "listar_fila_verificacao") {
-      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      // CHAVEESCOPO1 (2026-08-18): aceita ROUTINE_API_KEY (local, todas as acoes) OU
+      // REMOTE_VERIFICACAO_KEY (escopo minimo: so listar/reservar/confirmar verificacao).
+      if (!body.routine_key || (body.routine_key !== env2222.ROUTINE_API_KEY && body.routine_key !== env2222.REMOTE_VERIFICACAO_KEY)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _lfvItens = await listarFilaVerificacaoPendente(env2222, body.dias || 3);
       if (Array.isArray(body.ids) && body.ids.length > 0) {
         var _lfvIdsSet = new Set(body.ids);
@@ -17074,7 +17076,9 @@ async function __coreFetch(request, env2222, ctx) {
       }, 200, request);
     }
     if (body.action === "confirmar_verificacao") {
-      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      // CHAVEESCOPO1 (2026-08-18): aceita ROUTINE_API_KEY (local) OU REMOTE_VERIFICACAO_KEY
+      // (escopo minimo, ver listar_fila_verificacao acima).
+      if (!body.routine_key || (body.routine_key !== env2222.ROUTINE_API_KEY && body.routine_key !== env2222.REMOTE_VERIFICACAO_KEY)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _cvItens = Array.isArray(body.itens) ? body.itens : [];
       if (_cvItens.length === 0) return resp({ ok: false, erro: "itens obrigatorio (array)." }, 400, request);
       var _cvResultado = { processados: 0, aprovados: 0, rejeitados: 0, retratados: 0, erros: 0 };
@@ -17131,7 +17135,8 @@ async function __coreFetch(request, env2222, ctx) {
       // item. listar_fila_verificacao (acima) e leitura pura, sem isso dois pollers (Local e
       // Remote) podem pegar o mesmo evento. Aqui a reserva roda dentro do EstadoSemanaDO por
       // dia (op "reservar"), serializada pelo FIFO da propria classe.
-      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      // CHAVEESCOPO1 (2026-08-18): aceita ROUTINE_API_KEY (local) OU REMOTE_VERIFICACAO_KEY.
+      if (!body.routine_key || (body.routine_key !== env2222.ROUTINE_API_KEY && body.routine_key !== env2222.REMOTE_VERIFICACAO_KEY)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _rifItens = Array.isArray(body.itens) ? body.itens : [];
       var _rifClaimante = String(body.origem || "desconhecida").slice(0, 40);
       if (_rifItens.length === 0) return resp({ ok: false, erro: "itens obrigatorio (array de {id,data_fila})." }, 400, request);
