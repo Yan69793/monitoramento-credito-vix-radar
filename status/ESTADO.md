@@ -47,6 +47,24 @@ documentação do contrato de `confirmar_verificacao` (contagens vêm aninhadas 
 `routines/README.md` e o `SKILL.md` da rotina `vixradar-verificacao-async`.
 Nenhuma alteração de código nem deploy nesta sessão, só documentação.
 
+Ainda em 18/08, à noite, a junction NTFS do projeto foi invertida. O caminho físico
+canônico passou a ser `E:\Diretorio\Claude\Monitoramento de Credito`, e
+`E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito` virou junction legado de
+compatibilidade apontando para ele. Antes era o contrário. Rodou por script
+transacional com rollback automático, preflight que barra a operação se qualquer
+processo tiver working directory dentro da árvore, e baseline capturado em runtime
+na mesma execução, sem nenhum valor de referência gravado no código. A validação
+fechou com 43890 arquivos, 5787 pastas, delta zero de bytes, HEAD
+`a3462c29ef5066a0e92c80932e1ed6f22a238d06` preservado, 12 worktrees íntegros e as 12
+tarefas agendadas resolvendo seus scripts. Log em
+`%TEMP%\mdc-inversao-20260818-193245.log`.
+
+Nada precisa ser reapontado com pressa. As referências com caminho fixo para
+FREQUENTE continuam funcionando através da junction de compatibilidade, que existe
+exatamente para isso. Duas tentativas anteriores falharam porque sessão do Claude
+Code viva no diretório arrasta cerca de trinta processos filhos que herdam o working
+directory e seguram a raiz, e é por isso que o preflight passou a existir.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:
@@ -61,6 +79,7 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 
 ## Onde está o resto
 
+- Caminho físico canônico do projeto: `E:\Diretorio\Claude\Monitoramento de Credito`. O `FREQUENTE\Monitoramento de Credito` é junction legado de compatibilidade, use o canônico em caminho novo
 - `CLAUDE.md` (protocolo operacional, deploy, incidentes) e `README.md`
 - `scripts/` (deploy e automações) e `routines/` (`README.md` é a fonte da verdade do agendamento)
 - `logs/routines/` (saúde real das rotinas, linha `FIM:` no log)
@@ -75,3 +94,5 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - Migração KV→DO em andamento com KV ainda como fonte da verdade; auditar `console.warn` atrás de `[DO][dual-write]`/`[DO][read]`, detalhe no CLAUDE.md
 - `npm test` só é confiável em CI: `workerd.exe` bloqueado localmente pelo Smart App Control, detalhe no CLAUDE.md
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
+- `CLAUDE.md` global e as 12 tarefas agendadas ainda apontam para o caminho legado FREQUENTE. Funcionam pela junction de compatibilidade, reapontamento pendente de aprovação do usuário
+- Worktree `quizzical-nightingale-0c534b` continua registrado pelo caminho legado FREQUENTE. Funciona e o git já resolve para o canônico em `show-toplevel` e `git-common-dir`, mas os dois ponteiros gravados em disco (o `.git` do worktree e `.git/worktrees/quizzical-nightingale-0c534b/gitdir`) dependem da junction de compatibilidade continuar existindo. Só vira problema no dia em que essa junction for removida
