@@ -8402,6 +8402,36 @@ async function removerDaFilaVerificacao(env2222, dataFila, id) {
   return await removerDaFilaVerificacaoInterno(env2222, dataFila, id);
 }
 __name(removerDaFilaVerificacao, "removerDaFilaVerificacao");
+// CONCORVERIF1 (2026-08-18): claim/reserva de itens da fila, roda DENTRO do EstadoSemanaDO
+// (op "reservar", keyed por "fila:"+data), serializado pelo mesmo _fila FIFO da classe — por
+// isso e atomico de verdade, ao contrario de listar_fila_verificacao (leitura pura, sem reserva).
+// Motivacao: Local (sessao Claude Desktop) e Remote (Claude Code Routine) podem chamar
+// listar_fila_verificacao quase ao mesmo tempo e pegar os mesmos itens. Sem isso, os dois fariam
+// verificacao adversarial duplicada e, se os veredictos divergissem, quem confirmasse por ultimo
+// venceria em silencio (achado de auditoria de codigo, 2026-08-18). Usa this.state.storage do
+// proprio DO (nao KV), reservas curtas (default 20min, cobre o tempo real de um lote de 4 eventos
+// com ate 3 buscas cada), sem limpeza ativa — reserva expirada e simplesmente sobrescrita na
+// proxima tentativa, custo de armazenamento residual e desprezivel.
+async function reservarItensFilaInterno(doInstancia, ids, claimante, ttlMs) {
+  const agora = Date.now();
+  const ttl = ttlMs || 20 * 60 * 1e3;
+  const reservados = [];
+  const jaReservados = [];
+  for (const id of ids) {
+    const chaveRes = "reserva:" + id;
+    let atual = null;
+    try { atual = await doInstancia.state.storage.get(chaveRes); } catch (_) { atual = null; }
+    if (atual && agora - atual.ts < ttl && atual.claimante !== claimante) {
+      jaReservados.push({ id, claimante: atual.claimante, ha_ms: agora - atual.ts });
+      continue;
+    }
+    try { await doInstancia.state.storage.put(chaveRes, { claimante, ts: agora }); } catch (_) {
+    }
+    reservados.push(id);
+  }
+  return { reservados, ja_reservados: jaReservados };
+}
+__name(reservarItensFilaInterno, "reservarItensFilaInterno");
 // VERIFQ-ORFAO1 (2026-07-24): sweep de orfaos na fila de verificacao.
 // Itens com criado_em > maxHoras (default 48h) sao removidos — ou ja foram processados
 // e o removerDaFilaVerificacao falhou silenciosamente, ou sao duplicatas que nunca serao drenadas.
@@ -17096,6 +17126,35 @@ async function __coreFetch(request, env2222, ctx) {
       }
       return resp({ ok: true, resultado: _cvResultado }, 200, request);
     }
+    if (body.action === "reservar_itens_fila") {
+      // CONCORVERIF1 (2026-08-18): claim atomico antes de gastar verificacao adversarial num
+      // item. listar_fila_verificacao (acima) e leitura pura, sem isso dois pollers (Local e
+      // Remote) podem pegar o mesmo evento. Aqui a reserva roda dentro do EstadoSemanaDO por
+      // dia (op "reservar"), serializada pelo FIFO da propria classe.
+      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      var _rifItens = Array.isArray(body.itens) ? body.itens : [];
+      var _rifClaimante = String(body.origem || "desconhecida").slice(0, 40);
+      if (_rifItens.length === 0) return resp({ ok: false, erro: "itens obrigatorio (array de {id,data_fila})." }, 400, request);
+      var _rifPorDia = {};
+      for (const it of _rifItens) {
+        if (!it || !it.id || !it.data_fila) continue;
+        (_rifPorDia[it.data_fila] = _rifPorDia[it.data_fila] || []).push(it.id);
+      }
+      var _rifReservados = [], _rifJaReservados = [], _rifProtegido = true;
+      for (const _dia of Object.keys(_rifPorDia)) {
+        try {
+          var _rifR = await _rotearParaFilaVerificacaoDO(env2222, _dia, "reservar", [_rifPorDia[_dia], _rifClaimante, 20 * 60 * 1e3]);
+          if (!_rifR.disponivel) { _rifProtegido = false; _rifReservados.push(..._rifPorDia[_dia]); continue; }
+          _rifReservados.push(..._rifR.resultado.reservados);
+          _rifJaReservados.push(..._rifR.resultado.ja_reservados);
+        } catch (_rifErr) {
+          console.error("[reservar_itens_fila] erro no dia " + _dia + ":", _rifErr?.message ?? String(_rifErr));
+          _rifProtegido = false;
+          _rifReservados.push(..._rifPorDia[_dia]);
+        }
+      }
+      return resp({ ok: true, reservados: _rifReservados, ja_reservados: _rifJaReservados, protecao_ativa: _rifProtegido }, 200, request);
+    }
     if (body.action === "listar_calendario_stale") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _staleList = await listarEmissoresCalendarioStale(env2222, body.limite || 20);
@@ -17680,6 +17739,9 @@ var EstadoSemanaDO = class {
     // VERIFQ-ORFAO1 (2026-07-24): operacoes da fila de verificacao serializadas pelo mesmo DO
     if (op === "enfileirar") return await enfileirarVerificacaoAssincronaInterno(this.env, ...args);
     if (op === "remover") { await removerDaFilaVerificacaoInterno(this.env, ...args); return null; }
+    // CONCORVERIF1 (2026-08-18): reserva atomica de itens da fila, usa this.state.storage (nao
+    // this.env), por isso passa "this" (a instancia do DO) em vez de "this.env" como os demais.
+    if (op === "reservar") return await reservarItensFilaInterno(this, ...args);
     throw new Error("op invalida no EstadoSemanaDO: " + op);
   }
 };
