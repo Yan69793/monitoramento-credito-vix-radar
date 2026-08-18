@@ -16,8 +16,17 @@ soma capacidade real de drenagem, o local continua sendo o caminho principal qua
 esta ligada.
 
 WORKER_URL = `https://api.vixradar.com`
-ROUTINE_KEY = ler da variavel de ambiente do Environment desta rotina (secret configurado no
-painel `claude.ai/code`, nunca em texto puro neste arquivo, nunca logado, nunca ecoado).
+ROUTINE_KEY (nesta rotina, use o valor de `REMOTE_VERIFICACAO_KEY`) = ler da variavel de
+ambiente do Environment desta rotina (secret configurado no painel `claude.ai/code`, nunca em
+texto puro neste arquivo, nunca logado, nunca ecoado).
+
+**Credencial dedicada, nao a mesma do mecanismo local (18/08/2026, `CHAVEESCOPO1`).** O secret
+chama-se `REMOTE_VERIFICACAO_KEY`, diferente do `ROUTINE_API_KEY` que a sessao local usa. O
+Worker aceita as duas para `listar_fila_verificacao`, `reservar_itens_fila` e
+`confirmar_verificacao`, mas `REMOTE_VERIFICACAO_KEY` NAO funciona em nenhuma outra acao do
+contrato (`listar_todos_emissores`, `receber_analise`, etc. continuam 403 com ela — testado e
+confirmado em producao). Isso limita o dano se o Environment desta rotina remota for
+comprometido: a chave vazada so abre a fila de verificacao, nada mais.
 
 ## Passo 0 — Identidade, agendamento e por que o cap mudou
 
@@ -53,7 +62,7 @@ Guarde o horario deste passo (ISO), vai como `inicio` no Passo 6.
 ## Passo 2 — Checar fila
 
 POST `https://api.vixradar.com`
-Body: `{"action":"listar_fila_verificacao","routine_key":"<ROUTINE_API_KEY do Environment>","origem":"remote"}`
+Body: `{"action":"listar_fila_verificacao","routine_key":"<REMOTE_VERIFICACAO_KEY do Environment>","origem":"remote"}`
 
 Se `ok != true`: abortar e reportar. Se a fila vier vazia (`total: 0`): encerrar limpo, isso e
 comportamento normal, nao erro. Esse check-in ja grava heartbeat no Worker mesmo com fila
@@ -118,7 +127,7 @@ objeto `veredicto` aninhado:
 ```json
 {
   "action": "confirmar_verificacao",
-  "routine_key": "<ROUTINE_API_KEY do Environment>",
+  "routine_key": "<REMOTE_VERIFICACAO_KEY do Environment>",
   "origem": "remote",
   "inicio": "<horario ISO do Passo 1>",
   "itens": [
