@@ -59,11 +59,21 @@ fechou com 43890 arquivos, 5787 pastas, delta zero de bytes, HEAD
 tarefas agendadas resolvendo seus scripts. Log em
 `%TEMP%\mdc-inversao-20260818-193245.log`.
 
-Nada precisa ser reapontado com pressa. As referências com caminho fixo para
-FREQUENTE continuam funcionando através da junction de compatibilidade, que existe
-exatamente para isso. Duas tentativas anteriores falharam porque sessão do Claude
-Code viva no diretório arrasta cerca de trinta processos filhos que herdam o working
-directory e seguram a raiz, e é por isso que o preflight passou a existir.
+Duas tentativas anteriores falharam porque sessão do Claude Code viva no diretório
+arrasta cerca de trinta processos filhos que herdam o working directory e seguram a
+raiz, e é por isso que o preflight passou a existir.
+
+A migração fechou na mesma noite. Das 12 tarefas agendadas que referenciam o projeto,
+as 8 que ainda usavam o caminho legado foram reapontadas para o canônico preservando
+ação, argumentos, trigger, usuário e privilégio. O `VIXRadar-Health-Watch` só aceitou
+a mudança sob execução elevada, por usar logon S4U, e a primeira tentativa sem
+elevação abortou e reverteu sozinha. O worktree `quizzical-nightingale-0c534b` foi
+normalizado com `git worktree repair` apontando o caminho canônico, então o `.git`
+dele, o `gitdir` no repo principal e o `worktree list --porcelain` deixaram de citar
+FREQUENTE. A alteração local que esse worktree carregava foi preservada intacta.
+
+O `FREQUENTE\Monitoramento de Credito` continua existindo como junction, mas agora só
+por compatibilidade. Nenhuma tarefa, worktree ou metadado do git depende mais dele.
 
 ## Como verificar
 
@@ -94,5 +104,3 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - Migração KV→DO em andamento com KV ainda como fonte da verdade; auditar `console.warn` atrás de `[DO][dual-write]`/`[DO][read]`, detalhe no CLAUDE.md
 - `npm test` só é confiável em CI: `workerd.exe` bloqueado localmente pelo Smart App Control, detalhe no CLAUDE.md
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
-- `CLAUDE.md` global e as 12 tarefas agendadas ainda apontam para o caminho legado FREQUENTE. Funcionam pela junction de compatibilidade, reapontamento pendente de aprovação do usuário
-- Worktree `quizzical-nightingale-0c534b` continua registrado pelo caminho legado FREQUENTE. Funciona e o git já resolve para o canônico em `show-toplevel` e `git-common-dir`, mas os dois ponteiros gravados em disco (o `.git` do worktree e `.git/worktrees/quizzical-nightingale-0c534b/gitdir`) dependem da junction de compatibilidade continuar existindo. Só vira problema no dia em que essa junction for removida
