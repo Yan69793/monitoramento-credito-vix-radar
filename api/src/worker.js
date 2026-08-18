@@ -17019,6 +17019,9 @@ async function __coreFetch(request, env2222, ctx) {
         var _lfvIdsSet = new Set(body.ids);
         _lfvItens = _lfvItens.filter(function(it) { return _lfvIdsSet.has(it.id); });
       }
+      // HEARTBEATVERIF1 (2026-08-18): heartbeat a cada check-in (fila vazia ou nao), para a
+      // rotina ficar observavel via Worker/KV mesmo sem a maquina local ligada (Remote Routine).
+      await baterHeartbeat(env2222, "verificacao_async", "ok", { fase: "checkin", total_fila: _lfvItens.length, origem: body.origem || "desconhecida" });
       if (_lfvItens.length === 0) return resp({ ok: true, total: 0, itens: [], system_prompt: null, user_prompt: null, cache_hits: {} }, 200, request);
       var _lfvEventos = _lfvItens.map(function(it) { return Object.assign({}, it.evento, { empresa: it.empresa }); });
       // VERIFCACHE1 (2026-07-24): cache de verificacao no fluxo real de listagem.
@@ -17072,6 +17075,25 @@ async function __coreFetch(request, env2222, ctx) {
       }
       await env2222.RADAR_KV.put("radar:verif_async:ultima_execucao", (/* @__PURE__ */ new Date()).toISOString(), { expirationTtl: 60 * 60 * 24 * 30 }).catch(function() {
       });
+      // HEARTBEATVERIF1 (2026-08-18): heartbeat com placar completo do lote, mesmo mecanismo
+      // dos outros agentes vigiados pelo watchdog (baterHeartbeat/lerTodosHeartbeats).
+      try {
+        var _cvPendentes = (await listarFilaVerificacaoPendente(env2222, 3)).length;
+        var _cvStatus = _cvResultado.erros === 0 ? "ok" : _cvResultado.processados > 0 ? "parcial" : "falha";
+        await baterHeartbeat(env2222, "verificacao_async", _cvStatus, {
+          fase: "confirmacao",
+          inicio: body.inicio || (/* @__PURE__ */ new Date()).toISOString(),
+          processados: _cvResultado.processados,
+          aprovados: _cvResultado.aprovados,
+          rejeitados: _cvResultado.rejeitados,
+          retratados: _cvResultado.retratados,
+          erros: _cvResultado.erros,
+          pendentes: _cvPendentes,
+          origem: body.origem || "desconhecida"
+        });
+      } catch (_hbErr) {
+        console.error("[verif-confirm] heartbeat falhou:", _hbErr?.message ?? String(_hbErr));
+      }
       return resp({ ok: true, resultado: _cvResultado }, 200, request);
     }
     if (body.action === "listar_calendario_stale") {
@@ -17316,7 +17338,7 @@ var worker_default = {
           var hb = await lerTodosHeartbeats(env2222);
           var agoraEpoch = Date.now();
           var staleAgents = [];
-          var expectedAgents = ["sync_cvm", "varredura_batch", "varredura_matinal", "newsletter", "healthcheck_diario", "cascade_analise"];
+          var expectedAgents = ["sync_cvm", "varredura_batch", "varredura_matinal", "newsletter", "healthcheck_diario", "cascade_analise", "verificacao_async"];
           for (var ag of expectedAgents) {
             var h = hb[ag];
             if (!h) {
@@ -17324,7 +17346,11 @@ var worker_default = {
               continue;
             }
             var idadeH = (agoraEpoch - new Date(h.ts).getTime()) / 36e5;
-            var limite = ag === "varredura_matinal" ? 26 : ag === "cascade_analise" ? 48 : 26;
+            // HEARTBEATVERIF1 (2026-08-18): verificacao_async espera check-in bem mais frequente
+            // que os demais (local 2x/dia + Remote 2x/dia, deslocados). 16h tolera 1 falha de uma
+            // das duas origens sem falso-positivo, e ainda acusa bem antes do SLA de 48h do sweep
+            // de orfaos da fila (sweepFilaVerificacaoOrfaos).
+            var limite = ag === "varredura_matinal" ? 26 : ag === "cascade_analise" ? 48 : ag === "verificacao_async" ? 16 : 26;
             if (idadeH > limite) staleAgents.push({ agente: ag, motivo: "stale_" + Math.round(idadeH) + "h", ultimo_ts: h.ts });
           }
           var _wdFila = await env2222.RADAR_KV.get("cron:fila_noturna:v1", "json").catch(() => null);
