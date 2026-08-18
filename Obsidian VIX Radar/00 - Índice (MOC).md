@@ -36,6 +36,8 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[86 - Rotacao routine_key e envelope noturno 2026-08-18]] | 18/08 | Execucao: rotacao da routine_key nos 3 destinos (P1 fechado), envelope do noturno recalibrado, ROTA1, pre-flight fixes, graphify-out ignorado |
+| [[85 - Auditoria Geral e Preditiva 2026-08-18]] | 18/08 | Geral + preditiva readonly: Merton 0/103 (market_cap nunca coletado), P3s de governanca e a11y |
 | [[81 - Auditoria Geral e incidentes 2026-08-13]] | 13/08 | Geral: AUTHWEEK1 (cascade parado), GHWL1 (secret GH divergente), XSS v100 fechado, BOM fechado |
 | [[68 - Avaliação Claude Fable 5 para Otimização do Sistema (2026-07-26)]] | 26/07 | Pesquisa, Fable 5 nao recomendado para producao, fix compliance na politica de privacidade |
 | [[67 - Auditoria Geral 2026-07-25]] | 25/07 | Geral, drift FE v201.88 + VERSAO3X recorrente + notas 65/66 ausentes do MOC |
