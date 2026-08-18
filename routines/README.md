@@ -81,8 +81,11 @@ Worker versão de referência: ver `CLAUDE.md` (tabela "Produção atual").
 - `listar_emissores_prioritarios` `{ top_n }` → `{ ok, total, emissores:[...] }`
 - `dados_para_analise` `{ empresa, setor }` → `{ ok, janela_inicio, janela_fim, cvm_documentos, eventos_historicos, contexto_historico, instrumentos_ativos }`
 - `receber_analise` `{ empresa, setor, resultado, _matinal? }` → `{ ok, empresa, semana, n_eventos, sem_eventos }`
+- `listar_fila_verificacao` `{ origem, ids? }` → `{ ok, total, itens:[...], system_prompt, user_prompt, cache_hits:{id:veredicto} }` — `cache_hits` traz veredicto já pago de ciclo anterior (VERIFCACHE1), reenviar sem reverificar
+- `reservar_itens_fila` `{ origem, itens:[{id,data_fila}] }` → `{ ok, reservados:[ids], ja_reservados:[{id,claimante,ha_ms}], protecao_ativa }` — reserva atômica antes de verificar (CONCORVERIF1), janela de 20 min, aceita `ROUTINE_API_KEY` ou `REMOTE_VERIFICACAO_KEY`
+- `confirmar_verificacao` `{ origem, inicio, itens:[{id,empresa,semana,data_fila,setor,evento,veredicto}] }` → `{ ok, resultado:{processados,aprovados,rejeitados,retratados,erros} }` — atenção, contagens vêm aninhadas em `resultado`, não na raiz
 
-`resultado` segue o schema JSON da seção "FORMATO JSON" de cada SKILL.md.
+`resultado` de `receber_analise` segue o schema JSON da seção "FORMATO JSON" de cada SKILL.md. Contrato completo dos três endpoints de verificação (payload exato, passo a passo, critério adversarial) está no `SKILL.md` da rotina `vixradar-verificacao-async`, não repetido aqui.
 
 > **Segredo:** `ROUTINE_API_KEY` não é versionado. Vive como Wrangler secret
 > no Worker e em `memory/credenciais.md` (gitignored). Os scripts leem a
@@ -110,6 +113,21 @@ vigia real das três hoje.
 
 ## Histórico de mudanças
 
+- **2026-08-18:** Primeira prova ao vivo de dual-execução real na fila de verificação: a sessão local
+  (Claude Desktop, `origem:"local"`) e a Claude Code Routine remote (`origem:"remote"`, roda 02:00 e
+  14:00 BRT, ver `ROUTINES-CLOUD.md` na pasta da rotina) drenaram a mesma fila em paralelo. Fila com 26
+  itens no início da checagem local; `reservar_itens_fila` devolveu `protecao_ativa:true` (reserva via
+  Durable Object, CONCORVERIF1) e confirmou 20 itens já `ja_reservados` pela `remote` cerca de 11 minutos
+  antes, sobrando 6 para a sessão local processar — 4 reaproveitados via `cache_hits` (VERIFCACHE1, sem
+  busca nova) e 2 verificados do zero contra fonte primária CVM (Movida, Aegea Saneamento). Fila terminou
+  em 0, com ~30s de lag de propagação do Durable Object antes do último item sumir de
+  `listar_fila_verificacao`. Health final em produção: `{"ok":true,"versao":"v4.9.198",...,"kv":true,
+  "telemetria":true,"sentry_ok":true,"verificador_ok":true}` — confirma que `verificador_ok` volta a
+  `true` sozinho quando a fila é drenada, sem reinício nem intervenção manual. Corrigidos no mesmo dia,
+  no `SKILL.md` da rotina e na seção "Contrato dos endpoints" acima: o formato real da resposta de
+  `confirmar_verificacao` (contagens aninhadas em `resultado{}`, não na raiz — versão anterior do SKILL
+  documentava a raiz e o log da execução registrou contadores vazios com `ok:true` até a releitura do
+  JSON bruto) e a regra de reaproveitamento de `cache_hits` (ausente do SKILL até então).
 - **2026-08-07:** Registrada a reversão de mecanismo que ninguém tinha documentado.
   Matinal, Noturno e Verificacao-Async voltaram do Windows Task Scheduler para
   sessão agendada do Claude Desktop, com as tasks nativas mantidas `Disabled`
