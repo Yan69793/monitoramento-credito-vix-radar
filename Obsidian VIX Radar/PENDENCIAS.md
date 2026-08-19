@@ -11,6 +11,98 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 19/08 (08h30-09h00 BRT) — ABERTO: feed segue em 14/08, causa e apagao da CVM + cegueira de frescor
+
+Usuario reportou que, mesmo apos os fixes DEDUP1 e HISTFLAT1+2 da madrugada, o Painel de Eventos
+continua parando em 14/08. Auditoria geral (`vix-radar-general-audit`) provou que **o painel esta
+correto** e o problema e de dado, nao de renderizacao.
+
+### Prova, varredura nos 103 emissores canonicos via `dados_para_analise`
+```
+MAX data_entrega CVM  (103 emissores) = 2026-08-15
+MAX data_evento estado (103 emissores) = 2026-08-14
+emissores sem doc CVM na janela 30d = 26
+emissores sem evento no estado      = 44
+```
+Script em `scratchpad/probe-frescor.ps1`, detalhe por emissor em `scratchpad/frescor-por-emissor.txt`.
+
+### CAUSA RAIZ 1 (externa) — a CVM parou de publicar em 16/08
+```
+CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip   Last-Modified: Sun, 16 Aug 2026 10:00:36 GMT
+CIA_ABERTA/DOC/FRE/DADOS/fre_cia_aberta_2026.zip   Last-Modified: Sun, 16 Aug 2026 10:03:19 GMT
+CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip   Last-Modified: Sun, 16 Aug 2026 10:46:07 GMT
+CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv            Last-Modified: Wed, 19 Aug 2026 04:15:42 GMT
+```
+IPE, FRE e ITR parados ha 3 dias no servidor da propria CVM. So o CAD (cadastro) segue atualizando.
+Baixado o ZIP real e rodado o mesmo parser do Worker contra ele (`scratchpad/test-cvm-zip.mjs`):
+```
+descomprimido OK: 13290631 bytes
+MAX Data_Entrega no arquivo da CVM: 2026-08-16
+linhas por Data_Entrega >= 13/08: {"2026-08-14":332,"2026-08-13":358,"2026-08-15":6,"2026-08-16":4}
+```
+Zero entrega em 17 e 18/08, dias uteis. **O parser de ZIP do `syncCVMAutomatico` esta correto**, nao
+e ZIP64, nao tem data descriptor, `compSize` do local header bate, descompressao limpa em 1,1s.
+Hipotese de estouro de CPU no laco `String.fromCharCode` tambem descartada, 670ms local.
+
+### CAUSA RAIZ 2 (interna) — nenhuma guarda mede frescor de dado, todas medem se o escritor rodou
+- `heartbeat:sync_cvm` = `{"status":"ok","ts":"2026-08-18T21:30:56.564Z"}`. Verde durante o apagao.
+- `api/src/worker.js:17506` e `:17550` fazem `await syncCVMAutomatico(env)` e carimbam `"ok"` **sem
+  checar o retorno**. A funcao devolve `{ok:false}` (nao lanca) em fetch !ok, arquivo nao-ZIP e
+  metodo nao-Deflate. Buraco latente, nao foi o caminho de hoje, mas mascararia falha real.
+- `.github/workflows/frescor-check.yml` valida `estado_semanal.updated_at` e
+  `empresas_com_dados >= 50`. Os dois ficam verdes com conteudo reciclado porque a rotina escreve
+  todo dia. Nunca olha idade do evento mais novo nem idade da fonte.
+
+### Consequencia observada — a rotina recicla fato velho
+Log `logs/routines/vixradar-noturno_20260818.log`:
+```
+2026-08-18 18:17:13 ANOTA_rapida_1: CEMIG|Duas emissoes novas em 14/08/2026, 16a da Cemig D e 13a da Cemig GT...
+2026-08-18 18:17:16 OK|CEMIG|FULL|RELEVANTE|1|true
+```
+Rodou em 15, 17 e 18/08, submeteu 1 evento cada vez, e a CEMIG segue com 2 eventos, o mais novo de
+14/08. A dedup do Worker funciona. O que ela deduplica e o modelo re-narrando a mesma noticia porque
+o `cvm_documentos` entregue a ele tambem parou em 14/08.
+
+### Veracidade da UI — 2 achados novos
+- **"Atualizado em 19 de agosto de 2026"** e `new Date()` do navegador (`app/index.html`, funcao de
+  relogio do dashboard), nao timestamp de dado. Nunca pode ficar velho, por definicao.
+- **Tira de fontes do rodape e decoracao pura.** `st-cvm`, `st-anbima`, `st-b3`, `st-fitch`,
+  `st-moodys` aparecem **uma unica vez cada** no arquivo, dentro do HTML estatico com
+  `class="status-item ok"` fixo. Nenhum codigo le ou altera em runtime. "CVM RAD" ficou verde
+  durante 3 dias de apagao real da CVM.
+- Script obrigatorio `audit-ui-metrics.mjs`: `0 bloqueante(s), 9 informativo(s)`.
+
+### Achado menor
+`heartbeat:cascade_analise` nao existe no KV. E o `stale_count:1` que o `watchdog_diario` reportou
+em `2026-08-19T01:00:51.106Z`.
+
+### Correcoes propostas, nao aplicadas (exigem deploy, sem autorizacao nesta sessao)
+| Sev | Correcao | Guarda sistemica |
+|---|---|---|
+| P0 | Gravar `Last-Modified` e `max(Data_Entrega)` a cada `syncCVMAutomatico` | Derrubar `_okHealth` se a fonte passar de 2 dias uteis, igual ao gate do `sentry_ok` |
+| P0 | Cron checar retorno de `syncCVMAutomatico` antes de bater `"ok"` (`worker.js:17506`, `:17550`) | Teste em `api/test/` cobrindo o caminho `{ok:false}` |
+| P1 | `frescor-check.yml` validar idade do **evento mais novo**, nao so `updated_at` | Gate no proprio Action, falha o run |
+| P1 | Tira de fontes vira dinamica ou sai da tela | Item permanente na matriz da skill de auditoria |
+| P2 | "Atualizado em" mostrar data do dado, nao do relogio | `audit-ui-metrics.mjs` passa a reprovar carimbo derivado de `new Date()` |
+
+### Lacuna honesta
+Nao foi provado que houve evento de credito material em 17 ou 18/08 que o sistema perdeu. A busca
+web nao devolveu nada datado desses dias. O que esta medido e que **nenhum evento posterior a 14/08
+entrou no estado**. Nao ha evidencia de que o WebSearch das rotinas esteja quebrado.
+
+### Estrutura de pastas, resolvido na mesma sessao
+- Junction legada `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito` **removida**. Preflight
+  confirmou 0 tarefas agendadas, 0 worktrees e `lint-legacy-path.ps1` com 70/70 OK antes de mexer.
+  Alvo validado depois, 44923 arquivos e 1799312500 bytes identicos ao baseline, HEAD `fa191b5`
+  preservado, working tree limpo. `FREQUENTE\` continua intacta com os outros 13 projetos.
+- As 5 skills `vix-radar-*` estavam duplicadas: stubs de 250 a 325 bytes em
+  `C:\Users\User\.claude\skills\` apenas apontando texto para o conteudo real em
+  `E:\Diretorio\Claude\.claude\skills\`. Isso quebrou de verdade nesta sessao, o
+  `audit-ui-metrics.mjs` falhou com `MODULE_NOT_FOUND` na primeira chamada porque o diretorio-base
+  anunciado era o do stub. Stubs trocados por junctions apontando para o conteudo real.
+
+---
+
 ## 19/08 (01h35-03h10 BRT) — RESOLVIDO: painel de eventos parado em 14/08 + historico de EWS achatado
 
 Usuario reportou o Painel de Eventos em vixradar.com mostrando 14/08 como a data mais recente do

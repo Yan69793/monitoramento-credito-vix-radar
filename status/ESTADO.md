@@ -162,6 +162,32 @@ a primeira versão do teste mascarava o HISTFLAT2 por seedar a chave errada, cor
 
 Detalhe completo, causa raiz, commits e prova de cada um em `PENDENCIAS.md`.
 
+Ainda 19/08, manhã: o usuário reportou que o feed **continua** parando em 14/08 mesmo depois dos
+dois fixes acima. Auditoria geral provou que o painel está certo e o dado é que parou. Varredura
+nos 103 emissores dá `MAX data_evento = 2026-08-14` e `MAX data_entrega CVM = 2026-08-15`. A causa
+primária é externa, a CVM parou de publicar: IPE, FRE e ITR em `dados.cvm.gov.br` estão com
+`Last-Modified: Sun, 16 Aug 2026`, três dias parados, e o arquivo real baixado e parseado com o
+mesmo código do Worker não tem nenhuma entrega em 17 nem 18/08. O parser de ZIP do
+`syncCVMAutomatico` foi testado contra o arquivo real e está correto, não é bug nosso.
+
+A causa agravante é interna e é o achado que importa: **nenhuma guarda deste sistema mede frescor de
+dado, todas medem se o escritor rodou**. O `heartbeat:sync_cvm` ficou verde o apagão inteiro, o
+`frescor-check.yml` valida `updated_at` e contagem de empresas (que seguem verdes com conteúdo
+reciclado), o cron carimba `sync_cvm = ok` sem checar o retorno de `syncCVMAutomatico`, o carimbo
+"Atualizado em 19 de agosto" na tela é `new Date()` do navegador, e a tira de fontes do rodapé é
+HTML estático com classe `ok` fixa, que mostrou "CVM RAD" verde durante o apagão. Nenhuma correção
+foi aplicada, todas exigem deploy. Prova, evidência bruta e as 5 correções propostas em
+`PENDENCIAS.md`.
+
+Na mesma sessão, estrutura de pastas resolvida. A junction legada
+`E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito` foi removida depois de preflight com 0
+tarefas agendadas, 0 worktrees e `lint-legacy-path.ps1` 70/70 OK; alvo validado sem perda (44923
+arquivos, 1799312500 bytes, HEAD `fa191b5`, tree limpo) e `FREQUENTE\` intacta com os outros 13
+projetos. As 5 skills `vix-radar-*` estavam duplicadas como stubs de ~300 bytes em
+`C:\Users\User\.claude\skills\` apontando por texto para o conteúdo real em
+`E:\Diretorio\Claude\.claude\skills\`, o que quebrou de verdade nesta sessão (o script obrigatório
+da auditoria falhou com `MODULE_NOT_FOUND` na primeira chamada). Stubs trocados por junctions.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:
@@ -196,4 +222,6 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - RESOLVIDO 19/08 00h10: os 24 `.ps1` + 4 `SKILL.md` (2 versionados + 2 vivos fora do repo) corrigidos, testados ao vivo (`monitor-tasks.ps1` e `retry-vixradar.ps1` rodados de verdade), guarda nova `scripts/lint-legacy-path.ps1` (Gate 5 do pre-commit). Detalhe em `PENDENCIAS.md`
 - RESOLVIDO 19/08 03h10 (DEDUP1): feed do Painel de Eventos parado em 14/08. Dedup semântica do frontend descartava atualização real de saga longa quando a única diferença textual era "nova" ou quando a redação do analista se repetia quase verbatim. Corrigido, testado (`scripts/test-dedup-eventos.mjs`), deployado v202.11, confirmado ao vivo. Detalhe em `PENDENCIAS.md`
 - RESOLVIDO 19/08 03h10 (HISTFLAT1+2): histórico de EWS não acumulava, `hist_len` preso em 1 para os 103 emissores. Duas causas (gate de leitura + mismatch de case na chave), corrigidas em sequência porque a primeira sozinha não bastou — a prova em produção pegou isso. Deploy Worker v4.9.199 depois v4.9.200, confirmado ao vivo (`hist_len` 1→2 uniforme). Detalhe em `PENDENCIAS.md`
+- NOVO 19/08 manhã, P0 aberto: nenhuma guarda mede frescor de dado. Fonte CVM parada desde 16/08 com todos os semáforos verdes. 5 correções propostas em `PENDENCIAS.md`, nenhuma aplicada, todas exigem deploy
+- RESOLVIDO 19/08 09h00: junction legada `FREQUENTE\Monitoramento de Credito` removida com preflight e validação de integridade; 5 skills `vix-radar-*` deduplicadas (stubs em `C:` trocados por junctions para o conteúdo real em `E:`)
 - NOVO 19/08, ainda não resolvido: 3 falhas de cobertura sem diagnóstico prévio (blackout de rotina em 13/08, matinal ausente em 14/08, noturno de 16/08 parado em 15/103 com lock órfão). Não eram a causa dos dois bugs acima, mas seguem sendo buracos reais de cobertura, fora do escopo desta sessão de fix

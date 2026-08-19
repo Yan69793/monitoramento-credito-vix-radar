@@ -6680,6 +6680,19 @@ async function handleSyncCVM(body, env2222) {
   if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indispon\xEDvel." }, 500);
   if (!Array.isArray(documentos)) return resp({ ok: false, erro: "'documentos' deve ser array." }, 400);
   await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(documentos), { expirationTtl: 60 * 60 * 24 * 14 });
+  // CVMFRESCOR1: carga manual tambem carimba a meta. Sem isto, um POST admin
+  // sobrescreveria os documentos e deixaria o frescor apontando para o sync
+  // automatico anterior, que e exatamente o tipo de invariante quebrada que
+  // faz o health mentir depois.
+  await gravarFonteCVMMeta(env2222, {
+    ok: true,
+    sincronizado_em: (/* @__PURE__ */ new Date()).toISOString(),
+    last_modified: null,
+    last_modified_iso: null,
+    max_data_entrega: _cvmMaxDataEntrega(documentos),
+    documentos: documentos.length,
+    origem: "admin_manual"
+  });
   return resp({ ok: true, mensagem: `${documentos.length} docs CVM sincronizados.` });
 }
 __name(handleSyncCVM, "handleSyncCVM");
@@ -7084,24 +7097,131 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "COMPANHIA BRASILEIRA DE DISTRIBUICAO": "P\xE3o de A\xE7\xFAcar (GPA)",
   "SENDAS DISTRIBUIDORA S/A": "Assa\xED Atacadista"
 };
+// ── CVMFRESCOR1 (auditoria 2026-08-19) ──────────────────────────────────────
+// O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde.
+// A causa foi a CVM parar de publicar (IPE/FRE/ITR com Last-Modified de
+// 2026-08-16 no servidor dela), e o sistema nao ter como perceber: o
+// heartbeat de sync_cvm mede se a funcao rodou, nao se o dado e novo, e o
+// download de um arquivo que nao mudou e um sucesso perfeito. Fonte parada
+// vira modelo re-narrando o mesmo fato todo dia, com painel verde.
+// A partir daqui toda sincronizacao carimba a idade REAL da fonte, e essa
+// idade entra no _okHealth pelo mesmo motivo do SECRETMISS1 e do SENTRY1:
+// cegueira silenciosa tem que doer.
+var CVM_FONTE_META_KEY = "cvm:fonte_meta";
+var CVM_FONTE_MAX_DU = 2;
+
+// Dias uteis decorridos APOS dataISO ate hojeISO, inclusive. Fim de semana nao
+// conta, senao toda segunda-feira acusaria fonte podre sem nada ter acontecido.
+function _cvmDiasUteisApos(dataISO, hojeISO) {
+  if (!dataISO || !hojeISO) return null;
+  var ini = new Date(dataISO + "T00:00:00Z");
+  var fim = new Date(hojeISO + "T00:00:00Z");
+  if (isNaN(ini.getTime()) || isNaN(fim.getTime())) return null;
+  if (fim <= ini) return 0;
+  var n = 0;
+  var cur = new Date(ini.getTime());
+  var guarda = 0;
+  while (cur < fim && guarda++ < 400) {
+    cur.setUTCDate(cur.getUTCDate() + 1);
+    var dow = cur.getUTCDay();
+    if (dow !== 0 && dow !== 6) n++;
+  }
+  return n;
+}
+
+async function gravarFonteCVMMeta(env2222, meta) {
+  if (!env2222 || !env2222.RADAR_KV) return;
+  try {
+    // Sem expirationTtl de proposito: meta que expira volta a "sem_meta" e o
+    // health teria que decidir no escuro. Meta velha e informacao, meta
+    // ausente e cegueira.
+    await env2222.RADAR_KV.put(CVM_FONTE_META_KEY, JSON.stringify(meta));
+  } catch (e) {
+    console.error("[cvm][fonte_meta] gravacao falhou:", e && e.message ? e.message : String(e));
+  }
+}
+
+// Le a meta e decide se a fonte esta fresca. Fail-closed: meta ausente,
+// ilegivel ou sem data utilizavel conta como NAO fresca. O custo de um falso
+// alarme aqui e um e-mail; o custo do falso silencio foi 5 dias de feed morto.
+async function avaliarFrescorCVM(env2222) {
+  var out = { ok: false, motivo: "sem_meta", idade_du: null, last_modified: null, max_data_entrega: null, sincronizado_em: null };
+  if (!env2222 || !env2222.RADAR_KV) { out.motivo = "kv_indisponivel"; return out; }
+  var meta = null;
+  try {
+    meta = await env2222.RADAR_KV.get(CVM_FONTE_META_KEY, "json");
+  } catch (e) {
+    out.motivo = "meta_ilegivel";
+    return out;
+  }
+  if (!meta) return out;
+  out.last_modified = meta.last_modified_iso || null;
+  out.max_data_entrega = meta.max_data_entrega || null;
+  out.sincronizado_em = meta.sincronizado_em || null;
+  if (meta.ok === false) {
+    out.motivo = "ultimo_sync_falhou:" + String(meta.motivo || "desconhecido").slice(0, 60);
+    return out;
+  }
+  // Last-Modified do servidor da CVM e o sinal mais direto de "a fonte mudou".
+  // max_data_entrega e o fallback para quando o header nao vem.
+  var ref = meta.last_modified_iso || meta.max_data_entrega || null;
+  if (!ref) { out.motivo = "sem_data_de_referencia"; return out; }
+  var hoje = obterAgoraBRT().toISOString().slice(0, 10);
+  var du = _cvmDiasUteisApos(ref, hoje);
+  out.idade_du = du;
+  if (du === null) { out.motivo = "data_invalida"; return out; }
+  if (du > CVM_FONTE_MAX_DU) {
+    out.motivo = "fonte_parada_ha_" + du + "_dias_uteis";
+    return out;
+  }
+  out.ok = true;
+  out.motivo = "ok";
+  return out;
+}
+
+function _cvmMaxDataEntrega(docs) {
+  var m = null;
+  if (!Array.isArray(docs)) return null;
+  for (var i = 0; i < docs.length; i++) {
+    var d = docs[i];
+    var v = d && (d.de || d.d || d.data_entrega || d.data);
+    if (typeof v === "string" && (m === null || v > m)) m = v;
+  }
+  return m;
+}
+
 async function syncCVMAutomatico(env2222) {
   if (!env2222.RADAR_KV) return { ok: false, erro: "KV indispon\xEDvel" };
   const log = { etapas: [] };
+  const _agoraIso = (/* @__PURE__ */ new Date()).toISOString();
+  let _lastModIso = null;
+  let _lastModRaw = null;
   try {
     const res = await fetch(CVM_ZIP_URL, { cf: { cacheTtl: 3600 }, signal: AbortSignal.timeout(6e4) }); // TIMEOUT1 (auditoria 2026-08-15)
     if (!res.ok) {
       log.etapas.push({ etapa: "fetch", ok: false, status: res.status });
+      await gravarFonteCVMMeta(env2222, { ok: false, motivo: "http_" + res.status, sincronizado_em: _agoraIso, origem: "sync_automatico" });
       return { ok: false, log };
     }
+    // CVMFRESCOR1: o header e a unica evidencia direta de que o lote publicado
+    // mudou. Sem ele, download bem-sucedido de arquivo identico parece sucesso.
+    _lastModRaw = res.headers.get("last-modified");
+    if (_lastModRaw) {
+      var _lmD = new Date(_lastModRaw);
+      if (!isNaN(_lmD.getTime())) _lastModIso = _lmD.toISOString().slice(0, 10);
+    }
+    log.etapas.push({ etapa: "last_modified", ok: !!_lastModIso, valor: _lastModRaw || null });
     const zipBuf = new Uint8Array(await res.arrayBuffer());
     log.etapas.push({ etapa: "fetch", ok: true, bytes: zipBuf.length });
     if (zipBuf[0] !== 80 || zipBuf[1] !== 75) {
       log.etapas.push({ etapa: "zip", ok: false });
+      await gravarFonteCVMMeta(env2222, { ok: false, motivo: "nao_e_zip", sincronizado_em: _agoraIso, last_modified: _lastModRaw, last_modified_iso: _lastModIso, origem: "sync_automatico" });
       return { ok: false, log };
     }
     const compMethod = zipBuf[8] | zipBuf[9] << 8;
     if (compMethod !== 8) {
       log.etapas.push({ etapa: "zip", ok: false, motivo: "N\xE3o \xE9 Deflate" });
+      await gravarFonteCVMMeta(env2222, { ok: false, motivo: "nao_e_deflate", sincronizado_em: _agoraIso, last_modified: _lastModRaw, last_modified_iso: _lastModIso, origem: "sync_automatico" });
       return { ok: false, log };
     }
     const compSize = zipBuf[18] | zipBuf[19] << 8 | zipBuf[20] << 16 | zipBuf[21] << 24;
@@ -7143,12 +7263,17 @@ async function syncCVMAutomatico(env2222) {
     const emissoresUp = EMISSORES_LISTA.map((e) => e.toUpperCase());
     const aliasesUp = SYNC_ALIAS_NOMES_CVM.map((a) => a.toUpperCase());
     const docs = [];
+    // CVMFRESCOR1: maior Data_Entrega do arquivo INTEIRO, antes de qualquer
+    // filtro. Se medisse so os 103 emissores, um dia em que a CVM publicou
+    // normalmente mas nenhum emissor nosso protocolou pareceria fonte parada.
+    let maxEntregaFonte = null;
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(";");
       if (cols.length < 6) continue;
+      const entrega = (cols[iEntrega] || "").trim();
+      if (/^\d{4}-\d{2}-\d{2}$/.test(entrega) && (maxEntregaFonte === null || entrega > maxEntregaFonte)) maxEntregaFonte = entrega;
       const cat = (cols[iCat] || "").trim();
       if (!CVM_CATEGORIAS.includes(cat)) continue;
-      const entrega = (cols[iEntrega] || "").trim();
       if (entrega < trintaDiasAtras) continue;
       const nome = (cols[iNome] || "").trim().toUpperCase();
       const matchPrincipal = emissoresUp.some((e) => nome.includes(e.substring(0, Math.min(e.length, 8))));
@@ -7162,9 +7287,21 @@ async function syncCVMAutomatico(env2222) {
     await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(docs), { expirationTtl: 60 * 60 * 24 * 14 });
     const empresasUnicas = [...new Set(docs.map((d) => d.e))].length;
     log.etapas.push({ etapa: "store", ok: true, documentos: docs.length, empresas: empresasUnicas });
-    return { ok: true, documentos: docs.length, empresas: empresasUnicas, ultimo: docs[0]?.d || null, log };
+    log.etapas.push({ etapa: "frescor", last_modified: _lastModRaw || null, max_data_entrega_fonte: maxEntregaFonte });
+    await gravarFonteCVMMeta(env2222, {
+      ok: true,
+      sincronizado_em: _agoraIso,
+      last_modified: _lastModRaw,
+      last_modified_iso: _lastModIso,
+      max_data_entrega: maxEntregaFonte,
+      documentos: docs.length,
+      empresas: empresasUnicas,
+      origem: "sync_automatico"
+    });
+    return { ok: true, documentos: docs.length, empresas: empresasUnicas, ultimo: docs[0]?.d || null, last_modified: _lastModRaw, last_modified_iso: _lastModIso, max_data_entrega: maxEntregaFonte, log };
   } catch (e) {
     log.etapas.push({ etapa: "erro", motivo: e.message });
+    await gravarFonteCVMMeta(env2222, { ok: false, motivo: "excecao:" + String(e && e.message || e).slice(0, 80), sincronizado_em: _agoraIso, last_modified: _lastModRaw, last_modified_iso: _lastModIso, origem: "sync_automatico" });
     return { ok: false, erro: e.message, log };
   }
 }
@@ -16407,17 +16544,35 @@ async function __coreFetch(request, env2222, ctx) {
       // Valida formato (https://<chave>@<host>/<projeto>), nao so presenca:
       // string vazia, " " ou DSN truncado tambem tem que derrubar o health.
       var _sentryOk = /^https:\/\/[^\s@]+@[^\s@]+\/\d+$/.test(String(env2222.SENTRY_DSN || "").trim());
-      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk;
+      // CVMFRESCOR1 (auditoria 2026-08-19): a idade da fonte CVM passa a contar
+      // no _okHealth. De 14/08 a 19/08 o feed inteiro ficou congelado porque a
+      // CVM parou de publicar e nenhuma camada mediu isso: o heartbeat de
+      // sync_cvm ficou verde (mede se a funcao rodou), o frescor-check media
+      // updated_at do estado (fica verde com conteudo reciclado) e a tira de
+      // fontes da tela e HTML estatico. Ingestao cega e P0 pela tabela de
+      // severidade do projeto, entao tem que derrubar o health como o
+      // ADMIN_EMAIL e o SENTRY_DSN derrubam.
+      var _cvmFrescor = { ok: false, motivo: "nao_avaliado", idade_du: null };
+      try {
+        _cvmFrescor = await avaliarFrescorCVM(env2222);
+      } catch (e) {
+        console.error("[health] frescor_cvm:", e && e.message ? e.message : String(e));
+        _cvmFrescor = { ok: false, motivo: "excecao_na_avaliacao", idade_du: null };
+      }
+      var _cvmFonteOk = !!_cvmFrescor.ok;
+      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk && _cvmFonteOk;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk }, 200, request);
+        return resp({ ok: _okHealth, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null }, 200, request);
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
       return resp({
         ok: _okHealth,
         versao: WORKER_VERSAO,
+        cvm_fonte_ok: _cvmFonteOk,
+        cvm_fonte: _cvmFrescor,
         openrouter_saldo_usd: null,
         versao_nota: WORKER_DEPLOY_NOTE,
         openrouter: !!env2222.OPENROUTER_API_KEY,
@@ -16542,6 +16697,20 @@ async function __coreFetch(request, env2222, ctx) {
       return resp({ ok: true, empresa, semana: semanaUpsert, n_eventos: payload.eventos.length, sem_eventos: payload.sem_eventos }, 200, request);
     }
     if (body.action === "admin_sync_cvm") return await handleSyncCVM(body, env2222);
+    // CVMFRESCOR1: dispara a sincronizacao REAL sob demanda e devolve o log.
+    // Existe porque `admin_sync_cvm` so aceita um array pronto de documentos, e
+    // ate aqui nao havia jeito de rodar (nem de auditar) o `syncCVMAutomatico`
+    // fora dos dois crons. Sem isso, provar frescor exigia esperar 12h.
+    if (body.action === "admin_sync_cvm_auto") {
+      if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      var _rsync = await syncCVMAutomatico(env2222);
+      var _rfresc = await avaliarFrescorCVM(env2222);
+      return resp({ ok: !!(_rsync && _rsync.ok), sync: _rsync, frescor: _rfresc }, 200, request);
+    }
+    if (body.action === "admin_frescor_cvm") {
+      if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      return resp({ ok: true, frescor: await avaliarFrescorCVM(env2222) }, 200, request);
+    }
     if (body.action === "admin_sync_mercado") return await handleSyncMercado(body, env2222);
     if (body.action === "admin_recalcular_anomalias") {
       const { admin_senha } = body;
@@ -17502,9 +17671,17 @@ var worker_default = {
         }
       } else if (ehMatinal) {
         await baterHeartbeat(env2222, "cron_matinal_inicio", "ok", { hora_utc: cronHora });
+        // CVMFRESCOR1: o retorno TEM que ser checado. `syncCVMAutomatico` nao
+        // lanca em falha de fetch, arquivo nao-ZIP ou metodo nao-Deflate, ela
+        // devolve {ok:false}. Como este bloco so carimbava "ok" ao nao explodir,
+        // a CVM podia devolver HTML de erro por uma semana com heartbeat verde.
         try {
-          await syncCVMAutomatico(env2222);
-          await baterHeartbeat(env2222, "sync_cvm", "ok", { origem: "matinal" });
+          var _cvmMat = await syncCVMAutomatico(env2222);
+          if (_cvmMat && _cvmMat.ok) {
+            await baterHeartbeat(env2222, "sync_cvm", "ok", { origem: "matinal", documentos: _cvmMat.documentos, last_modified: _cvmMat.last_modified_iso || null, max_data_entrega: _cvmMat.max_data_entrega || null });
+          } else {
+            await baterHeartbeat(env2222, "sync_cvm", "erro", { origem: "matinal", erro: String(_cvmMat && (_cvmMat.erro || "retorno_nao_ok") || "retorno_vazio").slice(0, 200), log: _cvmMat && _cvmMat.log || null });
+          }
         } catch (e) {
           await baterHeartbeat(env2222, "sync_cvm", "erro", { erro: e.message, origem: "matinal" });
         }
@@ -17546,9 +17723,14 @@ var worker_default = {
         }
       } else if (ehNoturno) {
         await baterHeartbeat(env2222, "cron_noturno_inicio", "ok", { hora_utc: cronHora });
+        // CVMFRESCOR1: mesmo motivo do bloco matinal acima.
         try {
-          await syncCVMAutomatico(env2222);
-          await baterHeartbeat(env2222, "sync_cvm", "ok", { origem: "noturno" });
+          var _cvmNot = await syncCVMAutomatico(env2222);
+          if (_cvmNot && _cvmNot.ok) {
+            await baterHeartbeat(env2222, "sync_cvm", "ok", { origem: "noturno", documentos: _cvmNot.documentos, last_modified: _cvmNot.last_modified_iso || null, max_data_entrega: _cvmNot.max_data_entrega || null });
+          } else {
+            await baterHeartbeat(env2222, "sync_cvm", "erro", { origem: "noturno", erro: String(_cvmNot && (_cvmNot.erro || "retorno_nao_ok") || "retorno_vazio").slice(0, 200), log: _cvmNot && _cvmNot.log || null });
+          }
         } catch (e) {
           await baterHeartbeat(env2222, "sync_cvm", "erro", { erro: e.message, origem: "noturno" });
         }

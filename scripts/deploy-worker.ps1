@@ -282,7 +282,23 @@ if ($SkipValidation) {
   }
   Write-Host "  versao viva: $($h.versao) OK" -ForegroundColor Green
 
-  if (-not $h.ok) { Fail "Health ok=false — producao degradada apos o deploy." }
+  # CVMFRESCOR1 (2026-08-19): cvm_fonte_ok entrou no _okHealth para que ingestao
+  # cega derrube o painel. So que ele mede a idade da FONTE da CVM, estado do
+  # mundo externo, nao resultado deste deploy. Se ele sozinho abortasse o passo 5,
+  # todo deploy feito durante um apagao da CVM deixaria producao nova com o repo
+  # declarando a versao velha, que e exatamente o drift que este passo existe para
+  # evitar. Os demais gates seguem abortando.
+  if (-not $h.ok) {
+    $temCampoCvm = ($h.PSObject.Properties.Name -contains 'cvm_fonte_ok')
+    $outrosGatesOk = $h.bindings.kv -and $h.bindings.telemetria -and $h.admin_email_ok -and $h.sentry_ok -and $h.verificador_ok
+    if ($temCampoCvm -and (-not $h.cvm_fonte_ok) -and $outrosGatesOk) {
+      Write-Host "  AVISO: ok=false causado SOMENTE por cvm_fonte_ok=false." -ForegroundColor Yellow
+      Write-Host "  Fonte CVM parada ha $($h.cvm_fonte_idade_du) dias uteis. Motivo: $($h.cvm_fonte_motivo). Last-Modified: $($h.cvm_fonte_last_modified)" -ForegroundColor Yellow
+      Write-Host "  Estado da fonte externa, nao falha deste deploy. Prosseguindo com o commit." -ForegroundColor Yellow
+    } else {
+      Fail "Health ok=false — producao degradada apos o deploy."
+    }
+  }
   # Telemetria e regra inviolavel do projeto (binding RADAR_USAGE_EVENTS).
   if (-not $h.bindings.kv)         { Fail "Binding kv ausente apos o deploy." }
   if (-not $h.bindings.telemetria) { Fail "Binding de telemetria ausente — painel de Engajamento cego." }
@@ -290,7 +306,7 @@ if ($SkipValidation) {
   # o secret existe com valor malformado (o gate so ve o nome, o health valida
   # o formato do DSN). Sentry mudo nao avisa que esta mudo.
   if (-not $h.sentry_ok)           { Fail "sentry_ok=false — SENTRY_DSN ausente ou malformado. Captura de excecao cega." }
-  Write-Host "  ok=true kv=true telemetria=true sentry_ok=true" -ForegroundColor Green
+  Write-Host "  ok=$($h.ok) kv=true telemetria=true sentry_ok=true cvm_fonte_ok=$($h.cvm_fonte_ok)" -ForegroundColor Green
 }
 
 # --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
