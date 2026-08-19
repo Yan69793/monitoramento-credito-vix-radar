@@ -177,6 +177,10 @@ Essa linha e o ledger de idempotencia. Sem ela, uma re-execucao reprocessa o emi
 
 ## Passo 12 - Relatorio
 
-Em caveman. Reporte: quantos emissores processados, quantos SKIP, quantos deferidos por cap, quantos por classificacao, quantos degradados para INCONCLUSIVO, total de buscas efetivas, e qualquer emissor que falhou submit. Liste os CRITICO com nome e uma linha do que aconteceu.
+Antes do relatorio, escreva no log a linha `FIM: matinal <N>/<TOTAL> processados.`, onde `<N>` = total de linhas `OK|` no log de hoje e `<TOTAL>` = emissores do plano. Formato exigido pelo watchdog `scripts/retry-vixradar.ps1`, que le o log as 13h30 e relanca a rotina inteira se nao achar um numero >=12 numa linha `FIM:`. Escreva SEMPRE, com esse formato exato, mesmo que o resto do relatorio va em caveman.
+
+Este passo existe porque a matinal, ao contrario do noturno, nao tinha formato exigido e escreveu tres variantes em quatro dias: `19/19 emissores processados` (17/08), `20/20 processados` (18/08) e `19 emissores processados` (15/08, sem denominador). A de 17/08 nao casava com o parser e o watchdog relancou a rotina as 13h30 mesmo com os 19 emissores ja entregues, queimando uma sessao Claude Desktop a toa. O parser foi endurecido depois, mas a correcao de verdade e nao deixar o formato solto.
+
+Depois da linha FIM, o relatorio e em caveman. Reporte: quantos emissores processados, quantos SKIP, quantos deferidos por cap, quantos por classificacao, quantos degradados para INCONCLUSIVO, total de buscas efetivas, e qualquer emissor que falhou submit. Liste os CRITICO com nome e uma linha do que aconteceu.
 
 Se algo abortou, diga o que foi e em que passo, sem suavizar.

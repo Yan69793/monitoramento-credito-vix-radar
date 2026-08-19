@@ -117,6 +117,21 @@ corretamente. Guarda nova: `scripts/lint-legacy-path.ps1`, Gate 5 do pré-commit
 reintrodução do caminho legado em `.ps1`/`SKILL.md` de rotina. Junto, P3 do dry-run do
 Ranking-Mensal fechado (`.gitignore` + arquivos removidos). Detalhe completo em `PENDENCIAS.md`.
 
+Em 19/08, madrugada: auditoria fechada de retries, watchdogs e monitoramento. O
+`Szuchmacher-RetryVixMatinal` recusado em 18/08 16h23 teve a causa determinada por evidência, não
+por inferência de exit code: evento 153 (agendamento perdido), máquina desligada das 03h42 às
+16h14, gatilho das 13h30 perdido, task sem `StartWhenAvailable`. Impacto zero, a matinal rodou às
+16h34 pelo catch-up da própria sessão do Claude Desktop e entregou 20/20. Fato novo, o event log
+`Microsoft-Windows-TaskScheduler/Operational` está habilitado (16.676 registros), ao contrário do
+que o vault registrava em 27/07, então esse tipo de incidente passou a ser apurável. Achado
+corrigido: a matinal escreveu três formatos diferentes da linha `FIM:` em quatro dias porque o
+`SKILL.md` dela, ao contrário do noturno, nunca exigiu formato fixo, e a variante de 15/08
+(`FIM: 19 emissores processados`, sem denominador) geraria retry falso. Formato agora exigido nas
+duas cópias do `SKILL.md` da matinal, mais denominador opcional no parser de
+`retry-vixradar.ps1`/`monitor-tasks.ps1`. Testado ponta a ponta com o script real, mais controle
+negativo. `VIXRadar-Health-Watch` e `Szuchmacher-RetryVixNoturno` validados sem achado. Detalhe em
+`PENDENCIAS.md`.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:

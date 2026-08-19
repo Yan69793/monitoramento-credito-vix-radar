@@ -42,6 +42,15 @@ $conteudo = Get-Content $RotLog -Raw -Encoding UTF8
 
 # FIMREAL: mesma leitura do monitor-tasks.ps1, linha FIM: com contador >= minimo
 # significa entrega do dia. Noturno: min 90 de 103. Matinal: min 12 de 15-19.
+#
+# O denominador e OPCIONAL no 3o padrao (2026-08-19). A matinal escreveu tres
+# formatos em quatro dias porque o SKILL.md dela, ao contrario do noturno, nunca
+# exigiu formato fixo: "19/19 emissores processados" (17/08), "20/20 processados"
+# (18/08) e "19 emissores processados" (15/08, sem denominador). Este ultimo nao
+# casava e teria gerado retry falso, mesmo modo de falha que queimou uma sessao
+# Claude Desktop em 17/08. Causa raiz fechada no SKILL.md da matinal (Passo 12,
+# formato exigido igual ao do noturno); este regex e a guarda para log ja escrito
+# e para drift futuro do formato.
 $fims = [regex]::Matches($conteudo, '(?m)(?<!SHADOW_)FIM:\s*(.*?)\r?$')
 $entregue = $false
 foreach ($m in $fims) {
@@ -49,7 +58,7 @@ foreach ($m in $fims) {
     $n = -1
     if ($linha -match 'submit_ok=(\d+)') { $n = [int]$Matches[1] }
     elseif ($linha -match 'Total do dia (\d+)/\d+') { $n = [int]$Matches[1] }
-    elseif ($linha -match '(\d+)/\d+(?:\s+\S+)?\s+processados') { $n = [int]$Matches[1] }
+    elseif ($linha -match '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') { $n = [int]$Matches[1] }
     elseif ($linha -match 'processados=(\d+)') { $n = [int]$Matches[1] }
     if ($n -ge 12 -and $RoutineId -eq 'vixradar-matinal') { $entregue = $true; break }
     if ($n -ge 90 -and $RoutineId -eq 'vixradar-noturno') { $entregue = $true; break }

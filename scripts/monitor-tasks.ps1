@@ -497,9 +497,13 @@ foreach ($rot in $RotinasVigiadas) {
             foreach ($m in $fims) {
                 $linha = $m.Groups[1].Value
 
+                # Denominador opcional no 3o padrao (2026-08-19): a matinal de 15/08
+                # escreveu "FIM: 19 emissores processados", sem "/19". Nao casava com
+                # nenhum dos 4 padroes e cairia em 9001 falso com o dia entregue.
+                # Causa raiz (SKILL.md da matinal sem formato exigido) fechada junto.
                 $mFim = [regex]::Match($linha, 'submit_ok=(\d+)')
                 if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'Total do dia (\d+)/\d+') }
-                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)/\d+(?:\s+\S+)?\s+processados') }
+                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') }
                 if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'processados=(\d+)') }
 
                 $mFal    = [regex]::Match($linha, '(\d+) falhas de submit|falhas=(\d+)')

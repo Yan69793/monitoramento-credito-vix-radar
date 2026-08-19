@@ -11,6 +11,79 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 19/08 (00h20 BRT) — auditoria de retries, watchdogs e monitoramento
+
+Escopo fechado: só retry/watchdog/monitor. Produção como fonte de verdade (Task Scheduler ao vivo,
+event log `Microsoft-Windows-TaskScheduler/Operational`, logs reais, execução real dos scripts).
+
+### FATO NOVO — o event log do Task Scheduler está HABILITADO
+
+`Get-WinEvent -ListLog` retorna `IsEnabled:True`, 16.676 registros. O `03 - Estado Atual.md`
+(bloco de 27/07) afirma o contrário, que o log estava `IsEnabled=False` e que por isso a
+investigação de quem removeu tasks entre 23 e 24/07 estava "encerrada por impossibilidade, não
+por conclusão". Essa premissa não vale mais. Não reabri o caso de julho (fora do escopo desta
+auditoria), mas fica registrado que hoje **é apurável** por evento 141.
+
+### RESOLVIDO — causa exata do `Szuchmacher-RetryVixMatinal` recusado em 18/08 16:23
+
+Não foi falha de execução nem do script. Evidência direta, evento **153** às 16:23:38: "o
+Agendador não iniciou a tarefa porque não tinha sua agenda". Cadeia completa, toda medida:
+a máquina desligou 18/08 03:42:14 (evento 13) e só voltou 16:14:33 (evento 12); o gatilho do
+watchdog é 13h30 seg-sex, com a máquina desligada; a task **não** tem `StartWhenAvailable`,
+então o agendador recusou o disparo atrasado e gravou `0x800710E0` (ERROR_REQUEST_REFUSED).
+Não houve evento 201 para ela nesse dia, confirmando que nunca executou.
+
+**Impacto real: zero.** A janela das 10h da matinal também caiu com a máquina desligada, e a
+matinal só rodou às 16h34 (catch-up da própria sessão agendada do Claude Desktop, 20 min depois
+do retry recusado), entregando 20/20 às 16h50. E mesmo se o watchdog tivesse rodado às 13h30,
+não faria nada: sem log do dia ele sai por `SEM LOG ... fora do alcance deste watchdog`.
+
+`monitor-tasks.ps1` classificar isso como erro **está correto**, não é ruído: em dia útil, um
+watchdog que não disparou merece olhar. Ele pediu investigação, a investigação foi feita, a causa
+é externa e benigna. Nada a corrigir aqui.
+
+### Limitação conhecida (não é bug, decisão do usuário) — cobertura do watchdog com máquina desligada
+
+Dia de máquina desligada na janela inteira não tem cobertura de watchdog nenhuma, por dois
+motivos somados: (1) sem `StartWhenAvailable`, o disparo atrasado é recusado; (2) o próprio
+script declara `SEM LOG → fora do alcance deste watchdog` quando a rotina nunca começou. Ligar
+`StartWhenAvailable` **não** teria mudado o 18/08 (cairia em SEM LOG do mesmo jeito). Quem cobre
+esse cenário hoje é o catch-up da sessão do Claude Desktop, que foi o que de fato salvou o dia.
+Mudança não aplicada de propósito, não havia bug e a correção não resolveria o cenário.
+
+### RESOLVIDO — parser de `FIM:` da matinal, 4o formato não reconhecido (causa raiz fechada)
+
+Teste controlado aplicando o parser real contra os 14 logs reais de matinal/noturno disponíveis
+achou 3 que produziriam retry falso. Dois são a P2 já aberta (11/08 e 14/08, noturno completo sem
+escrever `FIM:`). O terceiro é novo: matinal 15/08 escreveu `FIM: 19 emissores processados`, sem
+denominador, e nenhum dos 4 padrões casava.
+
+Causa raiz: assimetria entre as duas skills. Depois do incidente de 17/08 o `SKILL.md` do noturno
+passou a **exigir** o formato exato da linha `FIM:`; o da matinal nunca ganhou essa exigência.
+Resultado, três formatos em quatro dias (`19/19 emissores processados`, `20/20 processados`,
+`19 emissores processados`). Corrigir só o regex seria perseguir sintoma.
+
+Correção: Passo 12 do `SKILL.md` da matinal agora exige `FIM: matinal <N>/<TOTAL> processados.`,
+igual ao Passo 11 do noturno, nas duas cópias (versionada e viva fora do repo). Guarda: o
+denominador virou opcional no 3o padrão do cascade, em `retry-vixradar.ps1` e `monitor-tasks.ps1`,
+cobrindo log já escrito e drift futuro.
+
+Teste real, ponta a ponta, com o script de produção: log de teste com a forma exata do 15/08 →
+`OK: log do dia tem FIM valido, entrega feita`, exit 0 (antes daria retry falso). Controle
+negativo com contador 3, abaixo do mínimo 12 → não entrou no ramo de entregue, caiu na guarda de
+frescor. Log de teste removido. Regressão: `monitor-tasks.ps1` segue lendo noturno 103 e matinal
+20 de 18/08.
+
+### SEGUE ABERTA — P2 `monitor-tasks.ps1` não detecta rotina completa sem linha `FIM:`
+
+Já registrada em 17/08, agora com evidência independente: o teste controlado reproduziu o caso
+nos logs de 11/08 e 14/08 (103 emissores únicos entregues, zero linha `FIM:`, watchdog decidiria
+RELANÇA). Mitigado na origem para as duas rotinas agora que ambos os `SKILL.md` exigem a linha,
+mas o fallback por contagem de nome único continua não implementado. Não implementado nesta
+auditoria por escopo.
+
+---
+
 ## 18/08 (23h50 BRT) — auditoria geral (skill vix-radar-general-audit, pos-FASE 2)
 
 Auditoria readonly focada no que mudou apos as notas 85/86 e a inversao da junction (mesma
