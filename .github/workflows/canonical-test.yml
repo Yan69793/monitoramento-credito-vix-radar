@@ -8,10 +8,14 @@
 # staleness dos emissores é baixo (varredura recente). Isso NÃO indica gap de
 # cobertura — use listar_todos_emissores (total:103) para validar universo.
 #
-# DIAGNOSTICO DE ok:false (2026-08-05): o campo `ok` do health depende de SEIS
-# fatores no Worker (v4.9.187, lido do bundle deployado):
+# DIAGNOSTICO DE ok:false (2026-08-05, atualizado 2026-08-19): o campo `ok` do
+# health depende de SETE fatores no Worker (v4.9.201, lido do bundle deployado):
 #   !!RADAR_KV && !!RADAR_USAGE_EVENTS && !!RESEND_API_KEY
-#   && _adminEmailOk && _sentryOk && _verificadorRealOk
+#   && _adminEmailOk && _sentryOk && _verificadorRealOk && _cvmFonteOk
+#
+# O setimo (CVMFRESCOR1) mede a idade da FONTE da CVM, nao algo nosso. Se ele
+# for o unico false, o problema esta em dados.cvm.gov.br, nao no deploy nem em
+# secret. Confira o Last-Modified do ipe_cia_aberta antes de caçar bug no codigo.
 # Os 3 primeiros ja apareciam aqui (kv / telemetria / providers). Os 3 ultimos
 # vinham no JSON como admin_email_ok / sentry_ok / verificador_ok mas NAO eram
 # lidos nem impressos — entao "ok=false" nunca dizia QUAL fator caiu, e cada
@@ -58,6 +62,13 @@ jobs:
           ADMIN_EMAIL_OK=$(echo "$BODY" | jq -r '.admin_email_ok | tostring')
           SENTRY_OK=$(echo "$BODY" | jq -r '.sentry_ok | tostring')
           VERIFICADOR_OK=$(echo "$BODY" | jq -r '.verificador_ok | tostring')
+          # CVMFRESCOR1 (2026-08-19): cvm_fonte_ok entrou no _okHealth. Sem ler ele
+          # aqui, um apagao da fonte CVM deixaria este run vermelho com a mensagem
+          # nomeando admin_email_ok/sentry_ok/verificador_ok, todos true — alarme
+          # que aponta para o lugar errado e queima a confianca no proprio alarme.
+          CVM_FONTE_OK=$(echo "$BODY" | jq -r '.cvm_fonte_ok | tostring')
+          CVM_FONTE_IDADE=$(echo "$BODY" | jq -r '.cvm_fonte_idade_du | tostring')
+          CVM_FONTE_MOTIVO=$(echo "$BODY" | jq -r '.cvm_fonte_motivo | tostring')
 
           echo "http=$HTTP" >> $GITHUB_OUTPUT
           echo "time=$TIME" >> $GITHUB_OUTPUT
@@ -70,12 +81,17 @@ jobs:
           echo "admin_email_ok=$ADMIN_EMAIL_OK" >> $GITHUB_OUTPUT
           echo "sentry_ok=$SENTRY_OK" >> $GITHUB_OUTPUT
           echo "verificador_ok=$VERIFICADOR_OK" >> $GITHUB_OUTPUT
+          echo "cvm_fonte_ok=$CVM_FONTE_OK" >> $GITHUB_OUTPUT
+          echo "cvm_fonte_idade=$CVM_FONTE_IDADE" >> $GITHUB_OUTPUT
+          echo "cvm_fonte_motivo=$CVM_FONTE_MOTIVO" >> $GITHUB_OUTPUT
 
           echo "### Resultado"
           echo "HTTP: $HTTP (${TIME}s)"
           echo "ok: $OK | Worker: $WORKER_V"
           echo "bindings: kv=$KV rate_limiter=$RL telemetria=$TEL"
           echo "providers_configurados: $PROV"
+          echo "fatores: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK"
+          echo "fonte CVM: ok=$CVM_FONTE_OK idade_du=$CVM_FONTE_IDADE motivo=$CVM_FONTE_MOTIVO"
           echo "fatores de ok: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK"
 
       - name: Validate health
@@ -89,6 +105,9 @@ jobs:
           ADMIN_EMAIL_OK="${{ steps.test.outputs.admin_email_ok }}"
           SENTRY_OK="${{ steps.test.outputs.sentry_ok }}"
           VERIFICADOR_OK="${{ steps.test.outputs.verificador_ok }}"
+          CVM_FONTE_OK="${{ steps.test.outputs.cvm_fonte_ok }}"
+          CVM_FONTE_IDADE="${{ steps.test.outputs.cvm_fonte_idade }}"
+          CVM_FONTE_MOTIVO="${{ steps.test.outputs.cvm_fonte_motivo }}"
 
           # Fonte de verdade do repo: api/wrangler.toml (main = "vX.Y.Z.js").
           # Deriva a versão esperada em vez de hardcode — o guard passa a comparar
@@ -108,11 +127,24 @@ jobs:
             FAIL=1
           fi
 
-          # ok = kv && telemetria && resend && admin_email_ok && sentry_ok && verificador_ok.
-          # Os 3 primeiros ja tem guard proprio abaixo; cita os 3 ultimos aqui para
+          # ok = kv && telemetria && resend && admin_email_ok && sentry_ok &&
+          #      verificador_ok && cvm_fonte_ok (CVMFRESCOR1, 2026-08-19).
+          # Os 3 primeiros ja tem guard proprio abaixo; cita os 4 ultimos aqui para
           # que a mensagem nomeie o fator que caiu em vez de so dizer "degradada".
           if [ "$OK" != "true" ]; then
-            echo "::error::Health ok=$OK — fatores: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK (kv/telemetria/resend validados nos guards abaixo). Fator false = secret ausente/malformado no Worker (ADMIN_EMAIL, SENTRY_DSN) ou verificador degradado."
+            echo "::error::Health ok=$OK — fatores: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK cvm_fonte_ok=$CVM_FONTE_OK (kv/telemetria/resend validados nos guards abaixo). Fator false = secret ausente/malformado no Worker (ADMIN_EMAIL, SENTRY_DSN), verificador degradado, ou fonte CVM parada."
+            FAIL=1
+          fi
+
+          # CVMFRESCOR1: quando o unico fator caido e a fonte CVM, o problema NAO
+          # esta no deploy nem em secret nosso, esta em dados.cvm.gov.br. Dizer
+          # isso explicitamente evita a caca ao bug errada que custou 5 dias de
+          # feed congelado entre 14 e 19/08.
+          if [ "$CVM_FONTE_OK" = "false" ]; then
+            echo "::error::Fonte CVM parada ha ${CVM_FONTE_IDADE} dias uteis (motivo: ${CVM_FONTE_MOTIVO}). Ingestao cega: as rotinas continuam rodando e o modelo passa a re-narrar o mesmo fato todo dia. Confira o Last-Modified de https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip antes de procurar bug no codigo."
+          fi
+          if [ "$CVM_FONTE_OK" = "null" ]; then
+            echo "::error::Campo cvm_fonte_ok sumiu do health. O gate de frescor da fonte CVM foi removido ou o deploy regrediu para antes do v4.9.201."
             FAIL=1
           fi
 
