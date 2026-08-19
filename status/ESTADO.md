@@ -194,6 +194,31 @@ abortaria o passo 5 deixando produção nova com o repo declarando versão velha
 `cvm_fonte_motivo:"fonte_parada_ha_3_dias_uteis"`, e isso é o comportamento pretendido, a
 fonte está parada mesmo.
 
+Ainda 19/08, tarde: usuário pediu para checar manualmente se realmente não houve notícia de crédito nos
+103 emissores em 17 e 18/08. Busca dirigida (nome a nome nos 5 maiores riscos, depois os 98 restantes em
+9 lotes por setor) achou 3 indícios que pareciam reais. Dois, Cosan e Vibra Energia, se confirmaram como
+falso alarme depois de cruzar contra o estado real do sistema: a "notícia de 17/08" da Cosan era imprensa
+comentando um Fato Relevante que a CVM já tinha divulgado em 14/08, que o sistema já tinha capturado com a
+data certa, e a Vibra teve resultado forte, corretamente triado como baixa materialidade (ECO), não omissão.
+O terceiro indício, um voto de privatização da Copasa supostamente em 17/08 na Assembleia de Minas Gerais,
+parecia gap real (EWS baixo demais para acionar o cross-check regulatório) até eu verificar a data na fonte
+oficial da ALMG antes de gravar qualquer coisa em produção: a votação foi em **17/12/2025**, oito meses
+antes, sem ligação com agosto de 2026. O resumo da própria ferramenta de busca tinha colado o dia certo no
+mês errado, mesmo padrão já visto com outro emissor na mesma investigação. Nenhum evento foi criado para a
+Copasa, nada foi registrado como achado, porque não havia achado. Resultado líquido depois de checar os 103,
+nenhuma notícia de crédito material perdida nesses dois dias, o carimbo novo (CARIMBOFAKE1, acima) está
+dizendo a verdade.
+
+Mesmo sem caso comprovado, o usuário autorizou reforço preventivo no prompt de busca das duas rotinas
+(matinal e noturno, as 4 cópias, 2 versionadas + 2 vivas fora do repo): nova dimensão R7 (estrutura
+societária, privatização, mudança de controle, intervenção legislativa ou regulatória), porque o vocabulário
+de R2 (rating, dívida, default, covenant) não cobre naturalmente esse tipo de notícia e R6 só dispara com
+EWS≥20, deixando emissor de risco baixo nos setores regulados sem cross-check algum. Escopo restrito a
+Energia Elétrica, Saneamento e Transportes e Logística, para não dobrar o custo de busca dos outros dois
+terços dos emissores. R2 e R6 saíram intocados. A justificativa original (Copasa) e sua retratação ficaram
+documentadas dentro do próprio SKILL.md, commit `54ef874`, para a próxima sessão não reabrir a mesma
+investigação do zero achando que existe evento perdido de verdade.
+
 Na mesma sessão, estrutura de pastas resolvida. A junction legada
 `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito` foi removida depois de preflight com 0
 tarefas agendadas, 0 worktrees e `lint-legacy-path.ps1` 70/70 OK; alvo validado sem perda (44923
