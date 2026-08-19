@@ -179,6 +179,21 @@ HTML estático com classe `ok` fixa, que mostrou "CVM RAD" verde durante o apag�
 foi aplicada, todas exigem deploy. Prova, evidência bruta e as 5 correções propostas em
 `PENDENCIAS.md`.
 
+Ainda 19/08, ao meio-dia: as duas P0 foram implementadas e deployadas com autorização do
+usuário. Worker v4.9.201 leva o CVMFRESCOR1, a idade da fonte CVM carimbada a cada sync e
+contando no `_okHealth`, mais os dois crons passando a checar o retorno do
+`syncCVMAutomatico` em vez de só verificar se ele explodiu. A primeira leitura do health em
+produção expôs uma falha do próprio fix, sem cron nenhum tendo rodado o motivo vinha
+`sem_meta` e o health ficaria vermelho por até 12h a cada deploy, o que é justamente o tipo
+de alarme falso que ensina todo mundo a ignorar alarme. Corrigido no v4.9.202 derivando a
+idade da chave `cvm:documentos` que já existia, com backfill gravado uma vez só e
+precedência garantida para a meta real. Junto foram ajustados o `deploy-worker.ps1`, que
+abortaria o passo 5 deixando produção nova com o repo declarando versão velha, e o
+`canonical-test.yml`, cuja mensagem de erro nomeava três fatores todos verdes. CI verde com
+35 testes. O health hoje volta `ok:false` com
+`cvm_fonte_motivo:"fonte_parada_ha_3_dias_uteis"`, e isso é o comportamento pretendido, a
+fonte está parada mesmo.
+
 Na mesma sessão, estrutura de pastas resolvida. A junction legada
 `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito` foi removida depois de preflight com 0
 tarefas agendadas, 0 worktrees e `lint-legacy-path.ps1` 70/70 OK; alvo validado sem perda (44923
@@ -222,6 +237,7 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - RESOLVIDO 19/08 00h10: os 24 `.ps1` + 4 `SKILL.md` (2 versionados + 2 vivos fora do repo) corrigidos, testados ao vivo (`monitor-tasks.ps1` e `retry-vixradar.ps1` rodados de verdade), guarda nova `scripts/lint-legacy-path.ps1` (Gate 5 do pre-commit). Detalhe em `PENDENCIAS.md`
 - RESOLVIDO 19/08 03h10 (DEDUP1): feed do Painel de Eventos parado em 14/08. Dedup semântica do frontend descartava atualização real de saga longa quando a única diferença textual era "nova" ou quando a redação do analista se repetia quase verbatim. Corrigido, testado (`scripts/test-dedup-eventos.mjs`), deployado v202.11, confirmado ao vivo. Detalhe em `PENDENCIAS.md`
 - RESOLVIDO 19/08 03h10 (HISTFLAT1+2): histórico de EWS não acumulava, `hist_len` preso em 1 para os 103 emissores. Duas causas (gate de leitura + mismatch de case na chave), corrigidas em sequência porque a primeira sozinha não bastou — a prova em produção pegou isso. Deploy Worker v4.9.199 depois v4.9.200, confirmado ao vivo (`hist_len` 1→2 uniforme). Detalhe em `PENDENCIAS.md`
-- NOVO 19/08 manhã, P0 aberto: nenhuma guarda mede frescor de dado. Fonte CVM parada desde 16/08 com todos os semáforos verdes. 5 correções propostas em `PENDENCIAS.md`, nenhuma aplicada, todas exigem deploy
+- RESOLVIDO 19/08 12h07 (CVMFRESCOR1 + 1b): as duas P0 de frescor implementadas e em produção, Worker v4.9.201 depois v4.9.202. A idade da fonte CVM entra no `_okHealth` e os crons passaram a checar o retorno do `syncCVMAutomatico`. Health hoje volta `ok:false` com `cvm_fonte_motivo:"fonte_parada_ha_3_dias_uteis"`, que é o comportamento pretendido, a fonte está parada de verdade. `deploy-worker.ps1` e `canonical-test.yml` ajustados para não apontar o dedo para o fator errado. CI verde, 35 testes. Detalhe em `PENDENCIAS.md`
+- ABERTO 19/08, P1 e P2 da mesma auditoria: `frescor-check.yml` ainda mede `updated_at` em vez da idade do evento mais novo, a tira de fontes do rodapé continua sendo HTML estático com classe `ok` fixa, e o carimbo "Atualizado em" continua sendo `new Date()` do navegador
 - RESOLVIDO 19/08 09h00: junction legada `FREQUENTE\Monitoramento de Credito` removida com preflight e validação de integridade; 5 skills `vix-radar-*` deduplicadas (stubs em `C:` trocados por junctions para o conteúdo real em `E:`)
 - NOVO 19/08, ainda não resolvido: 3 falhas de cobertura sem diagnóstico prévio (blackout de rotina em 13/08, matinal ausente em 14/08, noturno de 16/08 parado em 15/103 com lock órfão). Não eram a causa dos dois bugs acima, mas seguem sendo buracos reais de cobertura, fora do escopo desta sessão de fix

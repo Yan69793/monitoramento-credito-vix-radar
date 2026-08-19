@@ -76,14 +76,72 @@ o `cvm_documentos` entregue a ele tambem parou em 14/08.
 `heartbeat:cascade_analise` nao existe no KV. E o `stale_count:1` que o `watchdog_diario` reportou
 em `2026-08-19T01:00:51.106Z`.
 
-### Correcoes propostas, nao aplicadas (exigem deploy, sem autorizacao nesta sessao)
+### As duas P0 — RESOLVIDAS e em producao (v4.9.201 depois v4.9.202)
+
+**P0-1 CVMFRESCOR1, a idade da fonte entra no health.** `syncCVMAutomatico` passou a
+carimbar `cvm:fonte_meta` com o `Last-Modified` do servidor da CVM e a maior `Data_Entrega`
+do arquivo INTEIRO, medida antes de qualquer filtro de emissor (se medisse so os 103, um dia
+em que a CVM publicou normalmente mas nenhum emissor nosso protocolou pareceria fonte
+parada). `avaliarFrescorCVM` decide por dias uteis, fim de semana nao conta, limite de 2 du.
+Fail-closed: meta ausente, ilegivel, sem data ou de sync que falhou nao conta como fresca.
+`cvm_fonte_ok` entrou no `_okHealth` pelo mesmo criterio do SECRETMISS1 e do SENTRY1.
+
+**P0-2, os crons passam a checar o retorno.** `worker.js` linhas do bloco matinal e noturno
+so verificavam se `syncCVMAutomatico` explodiu. A funcao devolve `{ok:false}` sem lancar em
+fetch !ok, arquivo nao-ZIP e metodo nao-Deflate, entao a CVM poderia devolver HTML de erro
+por uma semana com heartbeat verde. Agora o retorno decide o heartbeat, e o heartbeat de
+sucesso carrega `documentos`, `last_modified` e `max_data_entrega`.
+
+**CVMFRESCOR1b, falha do proprio fix, achada na primeira leitura em producao.** Com o gate
+valendo e nenhum cron tendo rodado, o motivo vinha `sem_meta` e o health ficaria vermelho por
+ate 12h a CADA deploy. Alarme falso recorrente treina quem olha a ignorar o alarme, que e o
+mecanismo por tras dos 5 dias congelados. Corrigido derivando a idade de `cvm:documentos`,
+que ja existia, com backfill gravado uma unica vez e marcado `origem:"backfill_documentos"`.
+Precedencia testada: meta real sempre ganha do backfill, porque o backfill mede so os 103
+emissores e o `Last-Modified` mede o arquivo inteiro.
+
+**Efeito colateral tratado, `deploy-worker.ps1`.** O passo 5 fazia `Fail` em `ok=false`.
+Com o gate novo, todo deploy durante apagao da CVM abortaria com o codigo ja no ar e o repo
+declarando a versao velha, que e o drift que esse passo existe para impedir. Agora ele
+distingue health degradado por falha do deploy de health degradado por fonte externa. Provado
+na saida real do v4.9.202: `AVISO: ok=false causado SOMENTE por cvm_fonte_ok=false. Fonte CVM
+parada ha 3 dias uteis. Prosseguindo com o commit.`
+
+**Efeito colateral tratado, `canonical-test.yml`.** A mensagem de erro nomeava
+`admin_email_ok`, `sentry_ok` e `verificador_ok`, todos true, mandando quem investigasse
+procurar secret quebrado. Agora le `cvm_fonte_ok`, `cvm_fonte_idade_du` e `cvm_fonte_motivo`,
+nomeia o fator caido e, quando ele e o unico, manda conferir o `Last-Modified` do
+`ipe_cia_aberta` antes de mexer em codigo. Guarda extra: se o campo sumir do health, o run
+falha, o que pega tanto remocao do gate quanto deploy regredido.
+
+`frescor-check.yml` foi conferido e NAO quebra: ele chama `admin_health_check`, que roda
+`executarHealthCheckDiario` com `ok` proprio, independente do `_okHealth`.
+
+**Prova em producao (v4.9.202, 2026-08-19T12:07:37Z):**
+```
+{"ok":false,"versao":"v4.9.202","bindings":{"kv":true,"rate_limiter":true,"telemetria":true},
+"admin_email_ok":true,"sentry_ok":true,"verificador_ok":true,"cvm_fonte_ok":false,
+"cvm_fonte_idade_du":3,"cvm_fonte_motivo":"fonte_parada_ha_3_dias_uteis"}
+```
+```
+cvm:fonte_meta = {"ok":true,"max_data_entrega":"2026-08-15","documentos":715,"origem":"backfill_documentos"}
+```
+`ok:false` aqui e o comportamento pretendido, nao regressao. A fonte esta parada de verdade,
+e agora o sistema diz isso em vez de fingir saude.
+
+**Guardas:** `api/test/cvm-frescor.test.mjs` (12 casos, CI verde, 35 testes no total) e
+`scripts/test-frescor-cvm.mjs` (31 casos, roda local porque o Smart App Control bloqueia
+`workerd` nesta maquina). Os dois exercitam codigo extraido do `worker.js` real, nunca copia.
+Endpoints novos `admin_sync_cvm_auto` e `admin_frescor_cvm`, porque ate aqui nao havia como
+rodar nem auditar o `syncCVMAutomatico` fora dos dois crons.
+
+### Ainda abertas
 | Sev | Correcao | Guarda sistemica |
 |---|---|---|
-| P0 | Gravar `Last-Modified` e `max(Data_Entrega)` a cada `syncCVMAutomatico` | Derrubar `_okHealth` se a fonte passar de 2 dias uteis, igual ao gate do `sentry_ok` |
-| P0 | Cron checar retorno de `syncCVMAutomatico` antes de bater `"ok"` (`worker.js:17506`, `:17550`) | Teste em `api/test/` cobrindo o caminho `{ok:false}` |
 | P1 | `frescor-check.yml` validar idade do **evento mais novo**, nao so `updated_at` | Gate no proprio Action, falha o run |
-| P1 | Tira de fontes vira dinamica ou sai da tela | Item permanente na matriz da skill de auditoria |
-| P2 | "Atualizado em" mostrar data do dado, nao do relogio | `audit-ui-metrics.mjs` passa a reprovar carimbo derivado de `new Date()` |
+| P1 | Tira de fontes do rodape vira dinamica ou sai da tela (hoje e HTML estatico com classe `ok` fixa) | Item permanente na matriz da skill de auditoria |
+| P2 | "Atualizado em" mostrar data do dado, nao `new Date()` do navegador | `audit-ui-metrics.mjs` passa a reprovar carimbo derivado de `new Date()` |
+| P3 | `heartbeat:cascade_analise` nao existe no KV, e o `stale_count:1` do watchdog | Investigar se o agente foi renomeado ou morreu |
 
 ### Lacuna honesta
 Nao foi provado que houve evento de credito material em 17 ou 18/08 que o sistema perdeu. A busca
