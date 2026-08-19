@@ -16164,8 +16164,41 @@ async function executarHealthCheckDiario(env2222) {
     var estado = await carregarEstadoMultiSemana(env2222, 2);
     var numEmpresas = estado.results ? Object.keys(estado.results).length : 0;
     resultado.checks.estado_semanal = { empresas_com_dados: numEmpresas, updated_at: estado.updated_at, weeks_loaded: estado.weeks_loaded };
+    // EVENTOFRESCOR1 (auditoria 2026-08-19): `updated_at` acima diz quando o
+    // estado foi ESCRITO, nao quando o dado e de. A rotina escreve todos os
+    // dias, entao esse campo fica verde mesmo com o modelo re-narrando o mesmo
+    // fato de 5 dias atras. Foi exatamente esse o furo: o frescor-check.yml
+    // validava `updated_at` + contagem de empresas e passou verde a semana toda
+    // com o feed congelado em 14/08.
+    // Aqui vai a idade do EVENTO mais novo, que e o que o usuario ve na tela.
+    // Reusa `_cvmDiasUteisApos`, que apesar do nome e contador de dias uteis
+    // generico, para nao ter duas implementacoes do mesmo calendario.
+    var _evMax = null, _evTotal = 0;
+    if (estado.results) {
+      for (var _ek in estado.results) {
+        var _er = estado.results[_ek];
+        if (!_er || !Array.isArray(_er.eventos)) continue;
+        for (var _ei = 0; _ei < _er.eventos.length; _ei++) {
+          _evTotal++;
+          var _ed = _er.eventos[_ei] && _er.eventos[_ei].data_evento;
+          if (typeof _ed === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_ed) && (_evMax === null || _ed > _evMax)) _evMax = _ed;
+        }
+      }
+    }
+    var _evHoje = obterAgoraBRT().toISOString().slice(0, 10);
+    var _evIdade = _evMax ? _cvmDiasUteisApos(_evMax, _evHoje) : null;
+    resultado.checks.evento_mais_novo = {
+      data: _evMax,
+      idade_du: _evIdade,
+      total_eventos: _evTotal,
+      // Mesmo limite da fonte CVM. 2 dias uteis sem NENHUM evento novo entre 103
+      // emissores nao e mercado quieto, e pipeline parado ou fonte seca.
+      limite_du: CVM_FONTE_MAX_DU,
+      fresco: _evIdade !== null && _evIdade <= CVM_FONTE_MAX_DU
+    };
   } catch (e2) {
     resultado.checks.estado_semanal = "erro";
+    resultado.checks.evento_mais_novo = "erro";
   }
   try {
     var provStatus = await env2222.RADAR_KV.get("providers:status", "json").catch(function() {
