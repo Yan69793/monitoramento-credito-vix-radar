@@ -69,6 +69,29 @@ if ($entregue) {
     exit 0
 }
 
+# ROTINACEGA2 (2026-08-19): fallback por contagem de nome unico, o mesmo que o
+# monitor-tasks.ps1 usa. Aplicado aqui tambem de proposito: os dois leem o MESMO
+# sinal, e sem isto um dia entregue sem linha FIM: (aconteceu em 11/08 e 14/08,
+# 103 de 103 emissores sem linha de fecho) faria este watchdog relancar a rotina
+# inteira a toa, que e o incidente caro de 17/08 se repetindo.
+#
+# O ledger OK| e evidencia mais confiavel que a linha de fecho: escrito por
+# emissor logo apos cada submit confirmado, nao depende do modelo lembrar de
+# fechar. Conferido contra os 14 logs reais de 19/08: onde o contador do FIM:
+# parseia, ele bate exato com a contagem de nome unico.
+$minimoLedger = 90
+if ($RoutineId -eq 'vixradar-matinal') { $minimoLedger = 12 }
+$vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach ($m in [regex]::Matches($conteudo, '(?m)^[\d-]+ [\d:]+ OK\|([^|]+)\|')) {
+    $nome = $m.Groups[1].Value.Trim()
+    if ($nome) { [void]$vistos.Add($nome) }
+}
+if ($vistos.Count -ge $minimoLedger) {
+    Write-Log ("OK POR LEDGER: sem FIM: valido, mas o ledger OK| tem " + $vistos.Count + " emissores distintos com submit confirmado (minimo " + $minimoLedger + "). Dia entregue, nao relanco.")
+    exit 0
+}
+Write-Log ("Ledger OK| tem " + $vistos.Count + " emissor(es) distinto(s), minimo " + $minimoLedger + " - nao confirma entrega.")
+
 # Execucao Desktop pode estar viva e lenta. Se o log mexeu nos ultimos 15 min,
 # a rotina esta em andamento agora. O lock da skill decidiria no Passo 0, mas
 # nao gastamos um run inteiro para descobrir.

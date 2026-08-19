@@ -74,13 +74,32 @@ negativo com contador 3, abaixo do mínimo 12 → não entrou no ramo de entregu
 frescor. Log de teste removido. Regressão: `monitor-tasks.ps1` segue lendo noturno 103 e matinal
 20 de 18/08.
 
-### SEGUE ABERTA — P2 `monitor-tasks.ps1` não detecta rotina completa sem linha `FIM:`
+### RESOLVIDO 19/08 (00h30 BRT) — P2 `monitor-tasks.ps1` não detectava rotina completa sem linha `FIM:`
 
-Já registrada em 17/08, agora com evidência independente: o teste controlado reproduziu o caso
-nos logs de 11/08 e 14/08 (103 emissores únicos entregues, zero linha `FIM:`, watchdog decidiria
-RELANÇA). Mitigado na origem para as duas rotinas agora que ambos os `SKILL.md` exigem a linha,
-mas o fallback por contagem de nome único continua não implementado. Não implementado nesta
-auditoria por escopo.
+Fallback por contagem de nome único implementado nos dois arquivos que leem o mesmo sinal
+(`monitor-tasks.ps1` e `retry-vixradar.ps1`), não só no primeiro. Faltar nos dois teria deixado
+o monitor avisar corretamente enquanto o retry ainda relançava a rotina inteira à toa, exatamente
+o incidente caro de 17/08 se repetindo por outro caminho.
+
+Calibragem: conferido contra os 14 logs reais de matinal/noturno disponíveis em 19/08, em todo
+log onde o contador do `FIM:` parseava, ele batia exatamente com a contagem de nome único
+(19=19, 103=103, 20=20). O fallback mede a mesma coisa por uma evidência mais confiável, o ledger
+`OK|` é escrito por emissor logo após cada submit confirmado, não depende do modelo lembrar de
+fechar o log.
+
+Dia resgatado pelo fallback não vira `OK` mudo no `monitor-tasks.ps1`: vira aviso (novo código
+`9003`), porque a linha `FIM:` ausente continua sendo defeito real de alguma execução, mesmo com
+o dia entregue.
+
+Testado com o script de produção real via cópia com `$VixRoot` redirecionado para sandbox (não
+mock, o mesmo código, só a raiz trocada): 3 cenários no `monitor-tasks.ps1` (sem `FIM:` e ledger
+suficiente → aviso 9003 dia OK; sem `FIM:` e ledger insuficiente → 9001 erro real; `FIM:` presente
+sem contador reconhecível e ledger suficiente → aviso 9003). E 2 controles no
+`retry-vixradar.ps1` com log real (não sandbox, arquivo de teste criado e removido em seguida):
+positivo, 103 no ledger sem `FIM:` → não relança, exit 0; negativo, 15 no ledger (mínimo 90) → não
+confirma entrega, não sai pelo ramo de sucesso. Regressão contra os logs reais de 18/08
+(`FIM:` presente e válido nos dois): resultado idêntico ao de antes da mudança, `submit_ok=103`
+noturno e `20` matinal, fallback nem é exercitado.
 
 ---
 
