@@ -49,7 +49,7 @@ foreach ($m in $fims) {
     $n = -1
     if ($linha -match 'submit_ok=(\d+)') { $n = [int]$Matches[1] }
     elseif ($linha -match 'Total do dia (\d+)/\d+') { $n = [int]$Matches[1] }
-    elseif ($linha -match '(\d+)/\d+ processados') { $n = [int]$Matches[1] }
+    elseif ($linha -match '(\d+)/\d+(?:\s+\S+)?\s+processados') { $n = [int]$Matches[1] }
     elseif ($linha -match 'processados=(\d+)') { $n = [int]$Matches[1] }
     if ($n -ge 12 -and $RoutineId -eq 'vixradar-matinal') { $entregue = $true; break }
     if ($n -ge 90 -and $RoutineId -eq 'vixradar-noturno') { $entregue = $true; break }

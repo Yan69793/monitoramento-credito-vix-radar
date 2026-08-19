@@ -499,7 +499,7 @@ foreach ($rot in $RotinasVigiadas) {
 
                 $mFim = [regex]::Match($linha, 'submit_ok=(\d+)')
                 if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'Total do dia (\d+)/\d+') }
-                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)/\d+ processados') }
+                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)/\d+(?:\s+\S+)?\s+processados') }
                 if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'processados=(\d+)') }
 
                 $mFal    = [regex]::Match($linha, '(\d+) falhas de submit|falhas=(\d+)')
