@@ -11,6 +11,148 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 19/08 (01h35-03h10 BRT) — RESOLVIDO: painel de eventos parado em 14/08 + historico de EWS achatado
+
+Usuario reportou o Painel de Eventos em vixradar.com mostrando 14/08 como a data mais recente do
+feed cronologico, apesar do cabecalho "atualizado em 19 de agosto" e da janela de 7 dias uteis
+(11-19/08) exibindo 38 relevantes / 7 criticos / 24 emissores com sinal. Investigacao (01h35)
+achou a causa provavel do feed sem prova direta e, de passagem, um segundo problema no bloco
+preditivo (hist_len sempre 1). Sessao de fix (/caveman, 02h30-03h10) provou, corrigiu, testou e
+deployou os dois. Hierarquia de verdade aplicada: producao (version.json + comportamento real)
+antes de Obsidian: as duas hipoteses do achado inicial precisaram de correcao a luz da prova, ver
+secoes "correcao sobre o achado inicial" abaixo de cada bug.
+
+### Confirmado — infraestrutura saudavel agora
+Portao de verificacao: `ok:true kv:true telemetria:true sentry_ok:true verificador_ok:true`, v4.9.198.
+
+### Confirmado — 3 falhas de cobertura entre 13 e 16/08, nenhuma documentada antes desta sessao
+- **13/08 (quinta), blackout total.** Nenhum log de matinal nem de noturno existe para essa data
+  em `logs/routines/`. Nao e log malformado, e ausencia completa, a rotina nao deixou rastro.
+- **14/08 (sexta), matinal ausente.** O noturno de 14/08 rodou completo (log com conteudo real,
+  CRITICO em Oncoclinicas/Oi/Raizen, `DEFERIDOS=13 FALHA=0 TOTAL=13`), mas nao ha log de matinal
+  nesse dia, apesar de ser dia util com agendamento 10h BRT.
+- **16/08 (sabado), noturno morreu no meio.** `vixradar-noturno_20260816.log` tem 1,3KB contra
+  6-17KB dos demais dias: processou 15 de 103 emissores (LOTE R3), parou em "Aguardando R4 R5 R6
+  R7" sem escrever `FIM:`, e deixou `vixradar-noturno_20260816.lock` sem limpar. A linha `HEALTH`
+  no inicio do log ja mostrava `verificador_ok=false`, consistente com o modo de falha conhecido
+  da fila de verificacao (SLA de 12h). 88 de 103 emissores ficaram sem qualquer analise no dia.
+
+Nos dias entre essas falhas (15/08, 17/08, 18/08) o noturno rodou 103/103 com saida substantiva,
+nao vazia, entao o pipeline nao ficou morto o periodo inteiro.
+
+### DESCARTADO — cache do navegador
+Usuario reabriu em aba anonima (sessao limpa, login refeito) e o feed continua parando em 14/08.
+Nao e cache stale nem estado de sessao.
+
+### DESCARTADO — rotina parada como causa
+As rotinas de 15, 17 e 18/08 rodaram e submeteram com sucesso. A matinal de 18/08 fechou
+`FIM: matinal 20/20 processados. CRITICO=2 RELEVANTE=13 ECO=5 ... submits_falhos=0`, com
+`OK|Oi|FULL|CRITICO|1|true`, `OK|Oncoclinicas|FULL|RELEVANTE|1|true`, `OK|CSN|LIGHT|CRITICO|1|true`
+entre outros. O noturno de 18/08 fechou `Total do dia 103/103`. Ou seja, o pipeline entregou
+conteudo nesses dias e mesmo assim nada disso aparece no feed.
+
+### CONFIRMADO — evento novo existe no dado depois de 14/08
+Comparacao dos snapshots diarios de `data/historico/*/predictive.json` (gravados pela rotina de
+export, 20h45) entre 14/08 e 18/08: 37 emissores mudaram `event_count`, sendo 20 com aumento —
+Pao de Acucar (GPA) 10->13, CSN 11->14, Hapvida 2->5, Eneva 6->9, Dasa 4->6, JBS 4->6, CEMIG 1->2,
+entre outros. Soma total de eventos 245 -> 254. O contador tem janela rolante (alguns cairam), mas
+aumento so acontece com evento entrando. Logo, ha evento posterior a 14/08 gravado no estado.
+
+Corroboracao externa: o Term Sheet das novas debentures do GPA foi aprovado por credores em
+13/08 e o resultado 2T26 da Oncoclinicas saiu em 14/08 (prejuizo de R$ 475,7 mi), consistente com
+o aumento de `event_count` desses dois nomes. Braskem, que teve rating cortado para RD pela Fitch
+nessa janela, **nao** e emissor monitorado (zero ocorrencias em `api/src/worker.js`), entao nao
+conta como perda de cobertura.
+
+### P0-1 RESOLVIDO — DEDUP1, dedup semantica do frontend colapsava saga continua
+
+**Correcao sobre o achado das 01h35:** a hipotese original ("qualquer titulo parecido dentro de
+45 dias colide") era forte demais. Teste executavel com a funcao real extraida do arquivo (nao
+reescrita, ver `scripts/test-dedup-eventos.mjs`) mostrou que manchetes de capitulo novo de uma
+mesma saga normalmente NAO colidem, so 2 de 6 casos construidos colidiam de fato: republicacao
+identica (esperado, dedup correta) e uma nota de analista template repetida verbatim, ou um par
+onde a UNICA diferenca era a palavra "nova" (que a normalizacao removia por design). O mecanismo
+real e mais estreito que o suspeitado, mas real: qualquer atualizacao cuja unica marca textual de
+novidade seja "novo/nova", ou cuja redacao de analista se repita quase verbatim (comum neste
+sistema, ver `ANOTA_rapida` nos logs de rotina), colide e o evento novo e descartado.
+
+`_isDupSemantico`/`_normTituloDedup` (`app/index.html`, bloco minificado do `<head>`) tratavam
+como duplicata qualquer titulo normalizado igual dentro de 45 dias, e a normalizacao removia
+`novo|nova|novos|novas` (sinal temporal) alem de truncar em 70 caracteres.
+
+**Fix (commits `60234fa`, `d818780`, `ae57327`, `32fcdb6`):**
+- `novo/nova/novos/novas` nao e mais removido da normalizacao.
+- Truncamento de 70 caracteres eliminado (compara string normalizada inteira).
+- Identidade de duplicata agora prioriza `fonte_primaria` (URL sem query) quando disponivel;
+  senao exige MESMO `data_evento` (dia exato, nao mais janela de 45 dias) + titulo normalizado
+  igual.
+- `_v201Coletar` ordena por `data_evento` desc antes de dedupar: numa colisao real, sobrevive o
+  evento mais novo, nao o primeiro que chegou.
+- `CACHE_VERSION` v202.10->v202.11, e as 15 referencias `?v=202.10` em `app/js/admin-bootstrap.js`
+  + 3 submodulos alinhadas (pego pelo GATE 3.4 do proprio `deploy-pages.ps1`, nao verificado a
+  mao).
+
+**Teste:** `scripts/test-dedup-eventos.mjs` (nao ha suite para `app/`, script standalone que
+extrai a funcao DIRETO do `index.html` real, nunca copia solta). 8 casos + ordenacao, verde:
+republicacao real / mesma fonte / intradia matinal+noturno continuam deduplicando; capitulo de
+saga, comunicado com "nova", rating novo, restatement em dia diferente, empresas distintas
+passam a sobreviver.
+
+**Prova em producao (v202.11, 2026-08-19T06:04:51Z):** `curl vixradar.com/` contem literalmente
+o `_isDupSemantico` novo, `CACHE_VERSION="v202.11"` ao vivo, `admin-bootstrap.js` servindo
+`shared.js?v=202.11`. Prova do dado real do usuario (evento que ANTES sumia agora aparecendo no
+feed autenticado) nao foi possivel nesta sessao: exige sessao logada do usuario, que este agente
+nao tem e nao deve simular. Se quiser fechar 100%, `JSON.stringify(resultados)` no console do
+painel logado confirma.
+
+### P0-2 RESOLVIDO — HISTFLAT1+2, historico de EWS nunca acumulava
+
+Nos 8 snapshots de `data/historico/*/predictive.json` (11 a 18/08), `hist_len` era **1 para os
+103 emissores, todos os dias**, zerando `velocity_delta`, `direction` (`sem_historico`) e
+`confianca_nivel` (`muito_baixa`) no universo inteiro. Duas causas independentes, achadas em
+sequencia porque a primeira sozinha nao resolveu (prova em producao pos-deploy 1 ainda mostrava
+hist_len=1, o que forcou a segunda rodada de diagnostico):
+
+**HISTFLAT1** (`api/src/worker.js:13804` `executarPipelinePreditivo`): a LEITURA de
+`ews:hist:{empresa}` ficava atras do mesmo gate `persistHist` que decide se um ponto NOVO e
+gravado. O unico caller com `opts` (`admin_executar_predictive`, usado por
+`scripts/smoke-preditivo-lab.ps1`) chama com `skip_hist_persist:true`, entao pulava a leitura
+inteira: historico tratado como vazio SO NESSA CHAMADA. Esse payload achatado ia para
+`predictive_v1:latest`, a MESMA chave que os crons matinal/noturno (`scheduled()`, sem opts)
+escrevem 2x/dia com ponto real, entao uma chamada admin/smoke depois do ultimo cron do dia
+sobrescrevia o snapshot correto. Fix: leitura roda sempre, so `persistirHistEwsBatch` (escrita de
+ponto novo) continua condicionada a `persistHist` (commit `297841e`, deploy v4.9.199).
+
+**HISTFLAT2**, achada pela prova em producao do fix acima (hist_len continuava 1 apos o deploy):
+`kvEwsHistKey` (`worker.js:13539`) grava a chave com `empresa.toLowerCase().trim()`. `histMap` e
+populado decodificando essa mesma chave (fica minusculo), mas era lido com `histMap[empresa]`
+usando o case original de `EMISSORES_LISTA` (ex. "Oncoclínicas", com maiuscula). Miss de lookup
+silencioso: `histRaw` sempre `[]`, em QUALQUER chamador, inclusive os crons que sempre leram
+(HISTFLAT1 nunca afetava esse caminho). Esta era a causa real por tras dos 8 dias observados, o
+HISTFLAT1 era necessario mas nao suficiente. A escrita nunca teve esse bug, ela normaliza
+internamente. Fix: lookup usa a mesma normalizacao da escrita (commit `53f2930`, deploy v4.9.200).
+
+**Teste:** `api/test/predictive-hist.test.mjs`, integracao via `SELF.fetch`/`env` (CI, Miniflare
+bloqueado localmente pelo Smart App Control) + formula pura de acumulacao validada em Node puro
+(dia N->1, N+1->2, N+2->3, reprocessar N+2 continua 3 sem duplicar, dia anterior intacto,
+ordenacao cronologica, gap de um dia nao apaga serie). A primeira versao do teste seedava a chave
+`ews:hist:` com o case ORIGINAL da empresa (nao com `kvEwsHistKey` real) e por isso teria passado
+mesmo com o HISTFLAT2 presente, mascarando o bug — corrigido para seedar exatamente como o codigo
+real grava antes de confiar nele.
+
+**Prova em producao (v4.9.200):** `smoke-preditivo-lab.ps1 -ExpectWorker v4.9.200` -> `SMOKE
+PASSED` (7/7). Consulta direta pos-deploy: `hist_len` uniforme **2** para os 103 emissores
+(antes: uniforme 1), `direction` `sem_historico` -> `estavel`. O "2" (nao um numero maior) reflete
+que so ha 1 ponto real persistido ate agora (a serie so volta a crescer daqui pra frente, dia a
+dia, com os proximos crons; nao existe historico retroativo para reconstruir com seguranca, entao
+nenhum foi inventado).
+
+### Achado menor — export ainda grava pelo caminho legado
+`vixradar-export_20260818_204501.log` fecha com `3 arquivos em E:\Diretorio\Claude\FREQUENTE\
+Monitoramento de Credito\data\historico\2026-08-18`, o caminho da junction legado. Nao quebra
+porque a junction resolve, mas e sobrevivente da migracao de 18/08 e o `lint-legacy-path.ps1` nao
+pegou, provavelmente por ser string montada em runtime e nao literal no `.ps1`.
+
 ## 19/08 (00h20 BRT) — auditoria de retries, watchdogs e monitoramento
 
 Escopo fechado: só retry/watchdog/monitor. Produção como fonte de verdade (Task Scheduler ao vivo,

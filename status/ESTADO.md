@@ -1,6 +1,6 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-18 (agente: Claude Code)
+Última atualização: 2026-08-19 (agente: Claude Code)
 
 Leia este arquivo antes de começar qualquer trabalho, seja qual for o agente.
 Atualize a data e os itens abertos ao fechar uma sessão que mudou o estado.
@@ -132,6 +132,36 @@ duas cópias do `SKILL.md` da matinal, mais denominador opcional no parser de
 negativo. `VIXRadar-Health-Watch` e `Szuchmacher-RetryVixNoturno` validados sem achado. Detalhe em
 `PENDENCIAS.md`.
 
+Ainda 19/08, madrugada: investigado relato do usuário de que o Painel de Eventos em produção
+mostra 14/08 como data mais recente do feed. Primeira rodada (01h35) achou causa provável sem
+prova direta, mais um achado separado (histórico de EWS achatado). Segunda rodada (/caveman,
+02h30-03h10) provou, corrigiu, testou e deployou os dois problemas de ponta a ponta.
+
+**P0-1 RESOLVIDO — dedup de eventos.** A hipótese inicial ("qualquer manchete parecida em 45 dias
+colide") era forte demais, teste executável com a função real mostrou que só colide quando a
+diferença é a palavra "nova" (removida por design) ou quando a redação do analista se repete
+quase verbatim. `_isDupSemantico`/`_normTituloDedup` (`app/index.html`) não removem mais
+`novo/nova`, não truncam mais em 70 caracteres, e a identidade de duplicata agora prioriza
+`fonte_primaria`, senão exige mesmo `data_evento` exato (não mais janela de 45 dias). Em colisão
+real, sobrevive o evento mais novo. Deploy Pages v202.11, confirmado ao vivo (código novo,
+CACHE_VERSION e `?v=` dos módulos admin alinhados, pego pelo GATE 3.4 do próprio
+`deploy-pages.ps1`). Teste `scripts/test-dedup-eventos.mjs`, 8 casos + ordenação, roda direto
+contra o `index.html` real.
+
+**P0-2 RESOLVIDO — histórico de EWS não acumulava.** Duas causas, não uma: HISTFLAT1
+(`executarPipelinePreditivo` pulava a leitura do histórico real inteira quando chamado com
+`skip_hist_persist:true`, o único caller assim é o endpoint admin/smoke, que sobrescrevia
+`predictive_v1:latest`, a mesma chave dos crons, com um snapshot achatado) e HISTFLAT2 (achada
+pela prova em produção do fix 1, que ainda mostrava hist_len=1: a chave real é gravada em
+minúsculo por `kvEwsHistKey`, mas o lookup em memória usava o case original da empresa, miss
+silencioso em QUALQUER chamador, inclusive os crons que sempre tinham a leitura ligada). Deploy
+Worker v4.9.199 depois v4.9.200. Prova em produção: `hist_len` foi de uniforme 1 para uniforme 2
+nos 103 emissores (o "2" é esperado, só há 1 ponto real persistido até agora, a série volta a
+crescer dia a dia sem histórico retroativo inventado). Testes em CI, `api/test/predictive-hist.test.mjs` —
+a primeira versão do teste mascarava o HISTFLAT2 por seedar a chave errada, corrigida.
+
+Detalhe completo, causa raiz, commits e prova de cada um em `PENDENCIAS.md`.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:
@@ -164,3 +194,6 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - P2, não bloqueante: `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` preso ao exit code antigo (1); o script novo usa 2-8, catch-all genérico ainda pega qualquer falha como erro, só perde a mensagem específica. Detalhe em `routines/README.md`
 - P2, não bloqueante: retrofit da linha `ROTINA_RESUMO` padronizada em matinal/noturno/coleta-volatilidade/export-historico/reconciliacao-cvm (hoje só a agenda-semanal, recém-reescrita, tem essa linha). Sessão separada já em andamento (task_12edfa2c)
 - RESOLVIDO 19/08 00h10: os 24 `.ps1` + 4 `SKILL.md` (2 versionados + 2 vivos fora do repo) corrigidos, testados ao vivo (`monitor-tasks.ps1` e `retry-vixradar.ps1` rodados de verdade), guarda nova `scripts/lint-legacy-path.ps1` (Gate 5 do pre-commit). Detalhe em `PENDENCIAS.md`
+- RESOLVIDO 19/08 03h10 (DEDUP1): feed do Painel de Eventos parado em 14/08. Dedup semântica do frontend descartava atualização real de saga longa quando a única diferença textual era "nova" ou quando a redação do analista se repetia quase verbatim. Corrigido, testado (`scripts/test-dedup-eventos.mjs`), deployado v202.11, confirmado ao vivo. Detalhe em `PENDENCIAS.md`
+- RESOLVIDO 19/08 03h10 (HISTFLAT1+2): histórico de EWS não acumulava, `hist_len` preso em 1 para os 103 emissores. Duas causas (gate de leitura + mismatch de case na chave), corrigidas em sequência porque a primeira sozinha não bastou — a prova em produção pegou isso. Deploy Worker v4.9.199 depois v4.9.200, confirmado ao vivo (`hist_len` 1→2 uniforme). Detalhe em `PENDENCIAS.md`
+- NOVO 19/08, ainda não resolvido: 3 falhas de cobertura sem diagnóstico prévio (blackout de rotina em 13/08, matinal ausente em 14/08, noturno de 16/08 parado em 15/103 com lock órfão). Não eram a causa dos dois bugs acima, mas seguem sendo buracos reais de cobertura, fora do escopo desta sessão de fix
