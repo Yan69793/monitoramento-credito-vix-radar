@@ -13858,7 +13858,13 @@ async function executarPipelinePreditivo(env2222, opts) {
   for (const empresa of EMISSORES_LISTA) {
     const eventos = eventosCache[empresa] || [];
     const ewsScore = ewsCache[empresa] || 0;
-    const histRaw = histMap[empresa] || [];
+    // HISTFLAT2 (2026-08-19): kvEwsHistKey grava com empresa.toLowerCase().trim(), mas
+    // histMap era populado decodificando essa MESMA chave (fica lowercase) e depois lido
+    // aqui com "empresa" no case original de EMISSORES_LISTA (ex.: "Oncoclínicas"). Miss
+    // de lookup silencioso: histRaw sempre [] mesmo com serie real gravada no KV, mesmo
+    // nos crons que sempre leram (persistHist=true, HISTFLAT1 nao afetava este caminho).
+    // Normaliza a leitura com a mesma funcao usada na escrita.
+    const histRaw = histMap[String(empresa || "").toLowerCase().trim()] || [];
     const histNext = [{ data: dataISO, score: Math.round(ewsScore * 10) / 10 }, ...histRaw.filter((h) => h && h.data !== dataISO)].slice(0, 90);
     histUpdates.push({ empresa, hist: histNext });
     const vel = calcularVelocityEws(histNext, 7);

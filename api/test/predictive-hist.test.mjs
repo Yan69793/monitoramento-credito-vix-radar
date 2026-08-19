@@ -12,6 +12,17 @@ import { describe, expect, it } from "vitest";
 // ponto real. Qualquer chamada admin depois do ultimo cron do dia sobrescrevia
 // o snapshot correto. Fix: leitura sempre roda; so a escrita de ponto novo
 // (persistirHistEwsBatch) continua condicionada a persistHist.
+//
+// HISTFLAT2 (2026-08-19, achado DEPOIS do fix acima em producao real - hist_len
+// continuava 1 para os 103 pos-deploy): kvEwsHistKey (worker.js ~13539) grava com
+// empresa.toLowerCase().trim() antes do encodeURIComponent. histMap era montado
+// decodificando essa mesma chave (fica lowercase), mas lido com "histMap[empresa]"
+// usando o case original de EMISSORES_LISTA (ex. "Oncoclínicas", com maiuscula).
+// Miss de lookup silencioso: histRaw sempre [], mesmo nos crons que sempre leram
+// (persistHist=true la, HISTFLAT1 nunca afetou esse caminho). Esse era o bug
+// real por tras dos 8 dias de hist_len=1 na producao, nao so o HISTFLAT1.
+// O teste abaixo seeda a chave EXATAMENTE como kvEwsHistKey grava (lowercase),
+// para nao mascarar este bug de novo como a primeira versao deste teste fez.
 
 function postAdmin(action, extra) {
   return SELF.fetch("https://example.com/", {
@@ -21,11 +32,21 @@ function postAdmin(action, extra) {
   });
 }
 
-const EMPRESA_TESTE = "Oncoclínicas";
-const HIST_KEY = "ews:hist:" + encodeURIComponent(EMPRESA_TESTE);
+function kvEwsHistKey(empresa) {
+  // Copia literal de worker.js:13539-13541 - o teste tem que gravar exatamente
+  // como o codigo real grava, senao mascara bug de mismatch de chave de novo.
+  return "ews:hist:" + encodeURIComponent(String(empresa || "").toLowerCase().trim());
+}
 
-describe("HISTFLAT1 - leitura de historico nao fica atras do gate de escrita", () => {
+const EMPRESA_TESTE = "Oncoclínicas";
+const HIST_KEY = kvEwsHistKey(EMPRESA_TESTE);
+
+describe("HISTFLAT1+2 - leitura de historico real (gate de escrita + case da chave)", () => {
   it("admin_executar_predictive (skip_hist_persist) LE serie real pre-existente em vez de tratar como vazia", async () => {
+    // Seed com HIST_KEY = kvEwsHistKey(EMPRESA_TESTE), ou seja, minusculo - exatamente
+    // como a escrita real grava. Empresa exibida/lida em EMISSORES_LISTA continua com
+    // maiuscula ("Oncoclínicas"). Se o lookup nao normalizar (HISTFLAT2), isto falha com
+    // hist_len=1 mesmo com a leitura ligada (HISTFLAT1 corrigido nao basta sozinho).
     const serieReal = [
       { data: "2026-08-16", score: 60 },
       { data: "2026-08-17", score: 63 },
