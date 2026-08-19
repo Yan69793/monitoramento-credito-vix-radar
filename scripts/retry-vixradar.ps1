@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-$VixRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$VixRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $Runner  = Join-Path $VixRoot 'scripts\run_claude_routine.ps1'
 $LogDir  = Join-Path $VixRoot 'logs\routines'
 $DateTag = Get-Date -Format 'yyyyMMdd'
@@ -42,6 +42,15 @@ $conteudo = Get-Content $RotLog -Raw -Encoding UTF8
 
 # FIMREAL: mesma leitura do monitor-tasks.ps1, linha FIM: com contador >= minimo
 # significa entrega do dia. Noturno: min 90 de 103. Matinal: min 12 de 15-19.
+#
+# O denominador e OPCIONAL no 3o padrao (2026-08-19). A matinal escreveu tres
+# formatos em quatro dias porque o SKILL.md dela, ao contrario do noturno, nunca
+# exigiu formato fixo: "19/19 emissores processados" (17/08), "20/20 processados"
+# (18/08) e "19 emissores processados" (15/08, sem denominador). Este ultimo nao
+# casava e teria gerado retry falso, mesmo modo de falha que queimou uma sessao
+# Claude Desktop em 17/08. Causa raiz fechada no SKILL.md da matinal (Passo 12,
+# formato exigido igual ao do noturno); este regex e a guarda para log ja escrito
+# e para drift futuro do formato.
 $fims = [regex]::Matches($conteudo, '(?m)(?<!SHADOW_)FIM:\s*(.*?)\r?$')
 $entregue = $false
 foreach ($m in $fims) {
@@ -49,7 +58,7 @@ foreach ($m in $fims) {
     $n = -1
     if ($linha -match 'submit_ok=(\d+)') { $n = [int]$Matches[1] }
     elseif ($linha -match 'Total do dia (\d+)/\d+') { $n = [int]$Matches[1] }
-    elseif ($linha -match '(\d+)/\d+ processados') { $n = [int]$Matches[1] }
+    elseif ($linha -match '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') { $n = [int]$Matches[1] }
     elseif ($linha -match 'processados=(\d+)') { $n = [int]$Matches[1] }
     if ($n -ge 12 -and $RoutineId -eq 'vixradar-matinal') { $entregue = $true; break }
     if ($n -ge 90 -and $RoutineId -eq 'vixradar-noturno') { $entregue = $true; break }
@@ -59,6 +68,29 @@ if ($entregue) {
     Write-Log "OK: log do dia tem FIM valido, entrega feita. Nada a fazer."
     exit 0
 }
+
+# ROTINACEGA2 (2026-08-19): fallback por contagem de nome unico, o mesmo que o
+# monitor-tasks.ps1 usa. Aplicado aqui tambem de proposito: os dois leem o MESMO
+# sinal, e sem isto um dia entregue sem linha FIM: (aconteceu em 11/08 e 14/08,
+# 103 de 103 emissores sem linha de fecho) faria este watchdog relancar a rotina
+# inteira a toa, que e o incidente caro de 17/08 se repetindo.
+#
+# O ledger OK| e evidencia mais confiavel que a linha de fecho: escrito por
+# emissor logo apos cada submit confirmado, nao depende do modelo lembrar de
+# fechar. Conferido contra os 14 logs reais de 19/08: onde o contador do FIM:
+# parseia, ele bate exato com a contagem de nome unico.
+$minimoLedger = 90
+if ($RoutineId -eq 'vixradar-matinal') { $minimoLedger = 12 }
+$vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+foreach ($m in [regex]::Matches($conteudo, '(?m)^[\d-]+ [\d:]+ OK\|([^|]+)\|')) {
+    $nome = $m.Groups[1].Value.Trim()
+    if ($nome) { [void]$vistos.Add($nome) }
+}
+if ($vistos.Count -ge $minimoLedger) {
+    Write-Log ("OK POR LEDGER: sem FIM: valido, mas o ledger OK| tem " + $vistos.Count + " emissores distintos com submit confirmado (minimo " + $minimoLedger + "). Dia entregue, nao relanco.")
+    exit 0
+}
+Write-Log ("Ledger OK| tem " + $vistos.Count + " emissor(es) distinto(s), minimo " + $minimoLedger + " - nao confirma entrega.")
 
 # Execucao Desktop pode estar viva e lenta. Se o log mexeu nos ultimos 15 min,
 # a rotina esta em andamento agora. O lock da skill decidiria no Passo 0, mas

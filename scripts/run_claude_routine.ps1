@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $ScheduledRoot = 'C:\Users\User\.claude\scheduled-tasks'
-$VixRoot       = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$VixRoot       = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $SiteRoot      = 'E:\Diretorio\Claude\FREQUENTE\Site\site-producao'
 $LibDir        = Join-Path $VixRoot 'scripts\lib'
 $LogDir        = Join-Path $VixRoot 'logs\routines'
@@ -22,15 +22,19 @@ $AmbientCheck  = Join-Path $LibDir 'vixradar-ambient-check.ps1'
 $ClaudeAuth    = Join-Path $LibDir 'vixradar-claude-auth.ps1'
 $McpConfig     = Join-Path $env:USERPROFILE '.claude\mcp-config.json'
 
+# AGENDASEM-CAUSA1 (2026-08-18, FASE 2): 'vixradar-agenda-semanal' REMOVIDA deste catalogo.
+# Este runner sobe o claude -p com --tools 'WebSearch,WebFetch' quando RequiresWebSearch=true
+# (ver ~linha 229) - essa flag SUBSTITUI o conjunto de ferramentas, nao soma, entao o Bash
+# desaparecia. A SKILL.md desta rotina mandava o proprio modelo rodar curl.exe contra o Worker.
+# Sem shell, os logs de 2026-08-10 e 2026-08-16 mostram o modelo relatando "nao tenho shell" e
+# "nao consigo executar curl", mas o wrapper gravava FIM: concluido com exit 0 do mesmo jeito -
+# calendario trimestral ficou parado silenciosamente por pelo menos 2 execucoes (20 emissores
+# com atualizado_em:null confirmado ao vivo em producao). A rotina agora tem wrapper dedicado
+# em scripts/run_vixradar_agenda_semanal.ps1 (mesmo desenho de scripts/run_vixradar_verificacao_async.ps1:
+# o PowerShell faz toda a I/O com o Worker, o claude -p so pesquisa e devolve JSON), invocado
+# direto pela task VIXRadar-AgendaSemanal, sem passar por este catalogo generico. Nao reative
+# esta entrada sem corrigir a causa raiz (Bash ausente) primeiro.
 $Catalog = @{
-    'vixradar-agenda-semanal' = @{
-        Skill             = Join-Path $ScheduledRoot 'vixradar-agenda-semanal\SKILL.md'
-        ProjectRoot       = $VixRoot
-        AddDirs           = @((Join-Path $VixRoot 'scripts'), $ScheduledRoot)
-        LogPrefix         = 'vixradar-agenda-semanal'
-        Model             = $null
-        RequiresWebSearch = $true
-    }
     'atualizar-agenda-macro-szuchmacher' = @{
         Skill             = Join-Path $ScheduledRoot 'atualizar-agenda-macro-szuchmacher\SKILL.md'
         ProjectRoot       = $SiteRoot

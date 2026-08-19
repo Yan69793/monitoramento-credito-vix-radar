@@ -67,7 +67,7 @@ Auditar estas camadas:
 5. **Checks automaticos baratos:** sintaxe, busca por padroes de risco (incluindo estado global entre requests e promises sem `await`/`waitUntil` — ver matriz), diff, tamanhos, headers publicos, health publico.
 6. **Veracidade da UI (obrigatorio, nao pular):**
    ```powershell
-   node "E:\Diretorio\Claude\.claude\skills\vix-radar-general-audit\scripts\audit-ui-metrics.mjs" "E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\app\index.html"
+   node "E:\Diretorio\Claude\.claude\skills\vix-radar-general-audit\scripts\audit-ui-metrics.mjs" "E:\Diretorio\Claude\Monitoramento de Credito\app\index.html"
    ```
    Exit 1 significa achado bloqueante. O bloco `[INVENTARIO]` **sempre** exige leitura humana: para cada rotulo marcado `TERMO RESERVADO`, confirmar que a expressao ao lado mede o que o glossario manda. O script detecta cor incoerente sozinho; rotulo mentiroso ele so expoe, quem julga e o auditor.
 7. **Amostragem manual profunda:** escolher fluxos criticos: login, `op=state`, `receber_analise`, admin, newsletter, briefing/comparar, pulso manual, cascade de IA (matinal/noturno/verificador).

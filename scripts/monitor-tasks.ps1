@@ -13,7 +13,7 @@ param(
 # engolir falha e o healthcheck FALHA-002 so pegava scripts com python|node|claude.
 $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$VixRoot   = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
 $LogFile   = Join-Path $LogDir "monitor_$DateTag.log"
@@ -444,6 +444,34 @@ $RotinasVigiadas = @(
 )
 $RotinasLogDir = Join-Path $VixRoot 'logs\routines'
 
+# ROTINACEGA2 (2026-08-19): fallback de entrega por contagem de nome unico.
+#
+# A linha FIM: e a evidencia primaria, mas ela e escrita pelo modelo no fim da
+# sessao e ja faltou em dia inteiramente entregue: 11/08 e 14/08 fecharam 103 de
+# 103 emissores sem nunca escreve-la. Nesses dias o vigia dizia "execucao nao
+# chegou ao fim" e gerava 9001 com o trabalho todo feito, exatamente o tipo de
+# alarme falso que faz o operador parar de ler o alerta.
+#
+# O ledger OK| e evidencia melhor que a linha de fecho: e escrito por emissor,
+# logo apos cada submit confirmado, e nao depende do modelo lembrar de fechar.
+# Calibragem conferida contra os 14 logs reais de matinal/noturno disponiveis em
+# 19/08: em TODO log onde o contador do FIM: parseou, ele bate exatamente com a
+# contagem de nome unico (19=19, 103=103, 20=20). Ou seja o fallback nao afrouxa
+# o criterio, mede a mesma coisa por outro caminho.
+#
+# Dia resgatado pelo fallback NAO vira OK mudo. Vira aviso (9003), porque linha
+# FIM: ausente continua sendo defeito real da rotina: o retry-vixradar.ps1 le o
+# mesmo sinal e relancaria a rotina a toa.
+function Get-VixEmissoresUnicos([string]$conteudo) {
+    if (-not $conteudo) { return 0 }
+    $vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    foreach ($m in [regex]::Matches($conteudo, '(?m)^[\d-]+ [\d:]+ OK\|([^|]+)\|')) {
+        $nome = $m.Groups[1].Value.Trim()
+        if ($nome) { [void]$vistos.Add($nome) }
+    }
+    return $vistos.Count
+}
+
 foreach ($rot in $RotinasVigiadas) {
     $agoraR = Get-Date
     # Alvo e o ultimo ciclo que ja deveria ter terminado. Com 2h de graca sobre o
@@ -456,8 +484,9 @@ foreach ($rot in $RotinasVigiadas) {
     $alvoTxt = $alvo.ToString('yyyy-MM-dd')
     $logRot  = Join-Path $RotinasLogDir ($rot.nome + '_' + $alvo.ToString('yyyyMMdd') + '.log')
 
-    $motivoR  = $null
-    $submitOk = -1
+    $motivoR   = $null
+    $fallbackR = $null
+    $submitOk  = -1
 
     if (-not (Test-Path $logRot)) {
         $motivoR = "$alvoTxt sem log de execucao, a rotina nao chegou a iniciar"
@@ -478,7 +507,17 @@ foreach ($rot in $RotinasVigiadas) {
             $detalheR = 'sem linha FIM:, execucao nao chegou ao fim'
             if ($conteudoR -match 'ABORT')      { $detalheR = $detalheR + ', ABORT registrado' }
             if ($conteudoR -match 'ERRO FATAL') { $detalheR = $detalheR + ', ERRO FATAL registrado' }
-            $motivoR = "$alvoTxt $detalheR"
+            # ROTINACEGA2: antes de declarar 9001, conferir o ledger OK| (ver nota da
+            # funcao acima). ABORT/ERRO FATAL no log nao anulam a contagem: o que decide
+            # e quantos emissores tem submit confirmado, nao se houve susto no meio.
+            $unicosR = Get-VixEmissoresUnicos $conteudoR
+            if ($unicosR -ge $rot.minSubmit) {
+                $submitOk  = $unicosR
+                $fallbackR = "$detalheR, PORQUE o ledger OK| tem $unicosR emissores distintos com submit confirmado (minimo $($rot.minSubmit)): dia entregue, a rotina so nao escreveu a linha de fecho"
+                $motivoR   = $null
+            } else {
+                $motivoR = "$alvoTxt $detalheR, e o ledger OK| confirma: so $unicosR emissores distintos com submit (minimo $($rot.minSubmit))"
+            }
         } else {
             # FIMRUN21 (2026-08-17): o dia pode ter mais de uma execucao e so a
             # ULTIMA linha FIM era lida. Em 15/08 o noturno teve run-1 com
@@ -497,9 +536,13 @@ foreach ($rot in $RotinasVigiadas) {
             foreach ($m in $fims) {
                 $linha = $m.Groups[1].Value
 
+                # Denominador opcional no 3o padrao (2026-08-19): a matinal de 15/08
+                # escreveu "FIM: 19 emissores processados", sem "/19". Nao casava com
+                # nenhum dos 4 padroes e cairia em 9001 falso com o dia entregue.
+                # Causa raiz (SKILL.md da matinal sem formato exigido) fechada junto.
                 $mFim = [regex]::Match($linha, 'submit_ok=(\d+)')
                 if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'Total do dia (\d+)/\d+') }
-                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)/\d+ processados') }
+                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') }
                 if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'processados=(\d+)') }
 
                 $mFal    = [regex]::Match($linha, '(\d+) falhas de submit|falhas=(\d+)')
@@ -528,7 +571,16 @@ foreach ($rot in $RotinasVigiadas) {
             } elseif ($nFal -gt 0) {
                 $motivoR = "$alvoTxt FIM com falhas=$nFal"
             } elseif ($submitOk -lt 0) {
-                $motivoR = "$alvoTxt linha FIM sem contador reconhecido: $linhaFim"
+                # Mesmo fallback do ramo sem FIM: a linha existe mas nao carrega
+                # contador que o cascade reconheca. O ledger OK| decide.
+                $unicosR = Get-VixEmissoresUnicos $conteudoR
+                if ($unicosR -ge $rot.minSubmit) {
+                    $submitOk  = $unicosR
+                    $fallbackR = "linha FIM sem contador reconhecido ($linhaFim), PORQUE o ledger OK| tem $unicosR emissores distintos com submit confirmado (minimo $($rot.minSubmit)): dia entregue"
+                    $motivoR   = $null
+                } else {
+                    $motivoR = "$alvoTxt linha FIM sem contador reconhecido: $linhaFim, e o ledger OK| confirma: so $unicosR emissores distintos com submit (minimo $($rot.minSubmit))"
+                }
             } elseif ($submitOk -lt $rot.minSubmit) {
                 $motivoR = "$alvoTxt entrega parcial, submit_ok=$submitOk (minimo esperado $($rot.minSubmit))"
             }
@@ -546,6 +598,21 @@ foreach ($rot in $RotinasVigiadas) {
             script  = $logRot
             reason  = $motivoR
         }
+    } elseif ($fallbackR) {
+        # Entregue, mas por evidencia secundaria. Aviso, nao erro: nao entra na
+        # contagem do exit code (o dia foi entregue), e continua visivel para o
+        # operador porque a linha FIM: ausente quebra o retry-vixradar.ps1 tambem.
+        Write-Log "ROTINA OK (por ledger OK|, nao por FIM:): $($rot.rotulo) | $alvoTxt $fallbackR"
+        $warnings += [ordered]@{
+            task    = $rot.rotulo
+            code    = 9003
+            codeHex = '0x232B'
+            lastRun = "$alvoTxt (ciclo esperado)"
+            ageDays = [int]((Get-Date).Date - $alvo).Days
+            script  = $logRot
+            reason  = $fallbackR
+        }
+        $ok++
     } else {
         Write-Log "ROTINA OK: $($rot.rotulo) | $alvoTxt submit_ok=$submitOk"
         $ok++

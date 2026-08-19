@@ -8,7 +8,7 @@
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-export-historico-task.ps1"
 
 $ErrorActionPreference = 'Stop'
-$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $ScriptPath  = Join-Path $ProjectRoot 'scripts\run_vixradar_export_historico.ps1'
 
 if (-not (Test-Path $ScriptPath)) { throw "Script nao encontrado: $ScriptPath" }

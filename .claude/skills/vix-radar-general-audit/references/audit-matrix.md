@@ -34,6 +34,9 @@ Checklist:
   - `EMISSORES_LISTA`/setores/materialidade devem estar coerentes.
   - Agenda de Resultados (CALVAL-V2, desde v4.9.192): tier de fonte (RI/CVM/B3/corporativo/secundario) fail-closed, oficial nunca sobrescrita por secundaria divergente (vira DIVERGENTE), gate de publicacao (`confirmado` so com CONFIRMADO_*), auditoria de mudanca de data, alias de empresa, confronto diario com publicacao CVM, `status_validacao` computado no Worker e exibido no frontend.
 - XSS write-path (XSSV100-FIX1, desde v4.9.193): `sanitizarPayloadRadar` faz strip de tags HTML em `titulo`/`empresa` no caminho de gravacao. Confirmar que todo novo caminho de ingestao chama o sanitizador e que o strip nao e a unica defesa (render continua escapando).
+- Fila de verificacao com reserva atomica (CONCORVERIF1, desde v4.9.196): acao `reservar_itens_fila` faz claim via `EstadoSemanaDO` (`op:"reservar"`, `this.state.storage`, TTL 20min) antes de gastar verificacao adversarial num item, evitando que poller Local e Remote processem o mesmo evento em paralelo. Fail-open documentado: se o DO falhar, `protecao_ativa:false` e o lote inteiro e tratado como reservado sem protecao real. Confirmar que todo caller (local e remote) checa `protecao_ativa` na resposta em vez de assumir protecao silenciosamente.
+- Credencial escopada para poller remoto (CHAVEESCOPO1, desde v4.9.197): secret `REMOTE_VERIFICACAO_KEY` autentica só as 3 acoes de verificacao (`listar_fila_verificacao`, `confirmar_verificacao`, `reservar_itens_fila`); toda outra acao do contrato exige `ROUTINE_API_KEY`. Ao revisar acao nova dessas 3, replicar o aceite dual (`routine_key !== ROUTINE_API_KEY && routine_key !== REMOTE_VERIFICACAO_KEY`); qualquer acao fora do grupo que aceite `REMOTE_VERIFICACAO_KEY` e escopo vazando.
+- Heartbeat de agente remoto (HEARTBEATVERIF1, desde v4.9.196): `verificacao_async` entra no `expectedAgents` do watchdog cron (limite 16h). Todo agente/rotina remota nova precisa entrar nesta lista, senão fica invisivel ao watchdog mesmo publicando heartbeat.
 
 Comandos uteis:
 
@@ -58,6 +61,29 @@ O que checar em auditoria:
 - Dual-write: padrão `_rotearPara{Emissor,Usuario,Config}DO` com fallback KV. Se o DO falha na escrita, `console.warn("[DO][dual-write] ...")` e o KV segue atualizado. Na leitura, tenta DO primeiro, cai para KV.
 - Sinal de estagnação: ausência prolongada de `[DO][dual-write]` nos logs do Worker NÃO significa que a migração completou — pode significar que os DOs nunca foram exercitados. Ausência de `[DO][read]` com fallback KV também não é garantia de que o DO está servindo leitura.
 - Risco: a migração pode estar parada sem ninguém ver porque todo o fallback é silencioso. Não há métrica de cobertura DO vs KV, taxa de acerto de leitura DO, nem aging de dual-write.
+
+## Watchdogs locais de rotina (novo, 2026-08-18)
+
+Desde a migracao das rotinas para sessoes agendadas do Claude Desktop (que podem cair em
+idle no meio do cascade sem deixar rastro), existe uma camada extra de watchdog puramente
+local: `scripts/retry-vixradar.ps1` (Task Scheduler `Szuchmacher-RetryVixNoturno`/
+`RetryVixMatinal`), que relanca a rotina via `run_claude_routine.ps1` quando o log do dia
+nao tem linha `FIM:` valida.
+
+O que checar:
+
+- O regex de parsing de `FIM:` deste script e o de `scripts/monitor-tasks.ps1` (bloco de
+  leitura de status) precisam aceitar exatamente as mesmas variantes de texto que as
+  rotinas realmente escrevem. Ja bateu uma vez (17/08, commit `ad06ad4`): um regex aceitava
+  `N/N processados` mas nao `N/N emissores processados`, causando retry falso (sessao
+  Claude Desktop queimada a toa). Ao mudar a redacao de qualquer linha `FIM:` em qualquer
+  rotina, atualizar os dois arquivos juntos e testar contra o log real.
+- Lock/mutex contra duplicata: o watchdog tem que respeitar o mesmo lock que a rotina usa
+  (ex.: mutex de 3h da skill, ou `Global\<nome>` .NET Mutex), nunca relancar por cima de
+  uma execucao ainda viva.
+- `$VixRoot` e caminhos hardcoded no script: confirmar que apontam para o caminho fisico
+  canonico do projeto (nao para um junction legado), especialmente apos qualquer inversao
+  de junction como a de 2026-08-18.
 
 ## Frontend Pages
 

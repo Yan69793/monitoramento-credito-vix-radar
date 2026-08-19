@@ -1,6 +1,6 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-18 (agente: Claude Code)
+Última atualização: 2026-08-19 (agente: Claude Code)
 
 Leia este arquivo antes de começar qualquer trabalho, seja qual for o agente.
 Atualize a data e os itens abertos ao fechar uma sessão que mudou o estado.
@@ -75,6 +75,93 @@ FREQUENTE. A alteração local que esse worktree carregava foi preservada intact
 O `FREQUENTE\Monitoramento de Credito` continua existindo como junction, mas agora só
 por compatibilidade. Nenhuma tarefa, worktree ou metadado do git depende mais dele.
 
+Ainda 18/08, à noite: FASE 2 de governança das rotinas fechada. Achado principal: a
+`VIXRadar-AgendaSemanal` estava morta em silêncio desde antes de 10/08 (rodava sem shell,
+gravava `FIM: concluido` sem fazer nada, 20 emissores com calendário trimestral vencido em
+produção). Corrigida com `scripts/run_vixradar_agenda_semanal.ps1` dedicado, validado com dois
+testes ao vivo contra produção (o primeiro interrompido pelo limite de uso da própria conta do
+usuário durante a sessão, com falha corretamente reportada em vez de mascarada; o segundo
+limpo, exit 0, 8/20 emissores atualizados, confirmado fora do script via nova consulta a
+`listar_calendario_stale`). Também corrigidos: `VIXRadar-Ranking-Mensal` descontinuada
+formalmente (task não existe no Scheduler há 5+ semanas), segunda Remote Routine não
+documentada (`VIX Radar — frescor diário`) trazida para `routines/README.md`, cron da
+verificação assíncrona remota corrigido (estava 3h fora do horário prometido desde a criação
+no mesmo dia, string do cron local colada sem converter fuso), `ROUTINES-CLOUD.md` de
+matinal/noturno marcados órfão/especulativo. Matriz completa das 13 rotinas locais + 2 remotas
++ 5 GitHub Actions + 4 Cloudflare Cron em
+`Obsidian VIX Radar/10_Estado_Atual_Validado.md`. Na verificação de fechamento, mais um achado:
+`retry-vixradar.ps1` e `monitor-tasks.ps1` tinham o mesmo regex que não reconhecia a frase real
+"N/N emissores processados" da matinal, causou um retry falso em 17/08 (rotina já tinha
+entregue, watchdog relançou à toa); corrigido nos dois arquivos, commit `ad06ad4`. Health
+final: `ok:true kv:true telemetria:true sentry_ok:true verificador_ok:true`, v4.9.198.
+
+Auditoria geral readonly (23h50, skill `vix-radar-general-audit`) achou que a migração da
+junction acima fechou a Action das 12 tarefas e o worktree, mas não alcançou o conteúdo interno:
+26 `.ps1` (incluindo `run_claude_routine.ps1`, todos os `run_vixradar_*.ps1`,
+`monitor-tasks.ps1` e os `register-*-task.ps1`) mais `matinal/SKILL.md` e `noturno/SKILL.md`
+continuam com `$ProjectRoot`/`$VixRoot` hardcoded em `FREQUENTE\Monitoramento de Credito`. Não
+quebra hoje (a junction resolve), mas contradiz a afirmação "nada depende mais dele" logo acima
+e é o tipo de lacuna que convida alguém a remover a junction achando que é seguro. Detalhe e
+correção proposta em `PENDENCIAS.md` (P1, 18/08 23h50). Também achado: saída de dry-run do
+Ranking-Mensal (descontinuado nesta sessão) ficou untracked por falta de padrão no
+`.gitignore` (P3, mesma nota). Nenhum achado nas camadas de segurança/frontend/perf/a11y —
+confirmado sem mudança em `app/` desde a auditoria desta manhã (nota 85).
+
+Ainda 19/08, madrugada: fechada a lacuna acima. Os 24 `.ps1` e os 2 `SKILL.md` versionados
+corrigidos, mais os mesmos 2 `SKILL.md` vivos fora do repo (`C:\Users\User\.claude\scheduled-tasks\
+vixradar-{matinal,noturno}\`, achado novo durante a correção, é o arquivo que a sessão agendada do
+Claude Desktop realmente lê). Testado ao vivo, não só parse: `monitor-tasks.ps1` rodado de
+verdade leu os logs de 18/08 no caminho canônico (`submit_ok=103` noturno, `submit_ok=20`
+matinal); `retry-vixradar.ps1` rodado para as duas rotinas resolveu o caminho do dia 19/08
+corretamente. Guarda nova: `scripts/lint-legacy-path.ps1`, Gate 5 do pré-commit, reprova
+reintrodução do caminho legado em `.ps1`/`SKILL.md` de rotina. Junto, P3 do dry-run do
+Ranking-Mensal fechado (`.gitignore` + arquivos removidos). Detalhe completo em `PENDENCIAS.md`.
+
+Em 19/08, madrugada: auditoria fechada de retries, watchdogs e monitoramento. O
+`Szuchmacher-RetryVixMatinal` recusado em 18/08 16h23 teve a causa determinada por evidência, não
+por inferência de exit code: evento 153 (agendamento perdido), máquina desligada das 03h42 às
+16h14, gatilho das 13h30 perdido, task sem `StartWhenAvailable`. Impacto zero, a matinal rodou às
+16h34 pelo catch-up da própria sessão do Claude Desktop e entregou 20/20. Fato novo, o event log
+`Microsoft-Windows-TaskScheduler/Operational` está habilitado (16.676 registros), ao contrário do
+que o vault registrava em 27/07, então esse tipo de incidente passou a ser apurável. Achado
+corrigido: a matinal escreveu três formatos diferentes da linha `FIM:` em quatro dias porque o
+`SKILL.md` dela, ao contrário do noturno, nunca exigiu formato fixo, e a variante de 15/08
+(`FIM: 19 emissores processados`, sem denominador) geraria retry falso. Formato agora exigido nas
+duas cópias do `SKILL.md` da matinal, mais denominador opcional no parser de
+`retry-vixradar.ps1`/`monitor-tasks.ps1`. Testado ponta a ponta com o script real, mais controle
+negativo. `VIXRadar-Health-Watch` e `Szuchmacher-RetryVixNoturno` validados sem achado. Detalhe em
+`PENDENCIAS.md`.
+
+Ainda 19/08, madrugada: investigado relato do usuário de que o Painel de Eventos em produção
+mostra 14/08 como data mais recente do feed. Primeira rodada (01h35) achou causa provável sem
+prova direta, mais um achado separado (histórico de EWS achatado). Segunda rodada (/caveman,
+02h30-03h10) provou, corrigiu, testou e deployou os dois problemas de ponta a ponta.
+
+**P0-1 RESOLVIDO — dedup de eventos.** A hipótese inicial ("qualquer manchete parecida em 45 dias
+colide") era forte demais, teste executável com a função real mostrou que só colide quando a
+diferença é a palavra "nova" (removida por design) ou quando a redação do analista se repete
+quase verbatim. `_isDupSemantico`/`_normTituloDedup` (`app/index.html`) não removem mais
+`novo/nova`, não truncam mais em 70 caracteres, e a identidade de duplicata agora prioriza
+`fonte_primaria`, senão exige mesmo `data_evento` exato (não mais janela de 45 dias). Em colisão
+real, sobrevive o evento mais novo. Deploy Pages v202.11, confirmado ao vivo (código novo,
+CACHE_VERSION e `?v=` dos módulos admin alinhados, pego pelo GATE 3.4 do próprio
+`deploy-pages.ps1`). Teste `scripts/test-dedup-eventos.mjs`, 8 casos + ordenação, roda direto
+contra o `index.html` real.
+
+**P0-2 RESOLVIDO — histórico de EWS não acumulava.** Duas causas, não uma: HISTFLAT1
+(`executarPipelinePreditivo` pulava a leitura do histórico real inteira quando chamado com
+`skip_hist_persist:true`, o único caller assim é o endpoint admin/smoke, que sobrescrevia
+`predictive_v1:latest`, a mesma chave dos crons, com um snapshot achatado) e HISTFLAT2 (achada
+pela prova em produção do fix 1, que ainda mostrava hist_len=1: a chave real é gravada em
+minúsculo por `kvEwsHistKey`, mas o lookup em memória usava o case original da empresa, miss
+silencioso em QUALQUER chamador, inclusive os crons que sempre tinham a leitura ligada). Deploy
+Worker v4.9.199 depois v4.9.200. Prova em produção: `hist_len` foi de uniforme 1 para uniforme 2
+nos 103 emissores (o "2" é esperado, só há 1 ponto real persistido até agora, a série volta a
+crescer dia a dia sem histórico retroativo inventado). Testes em CI, `api/test/predictive-hist.test.mjs` —
+a primeira versão do teste mascarava o HISTFLAT2 por seedar a chave errada, corrigida.
+
+Detalhe completo, causa raiz, commits e prova de cada um em `PENDENCIAS.md`.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:
@@ -104,3 +191,9 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - Migração KV→DO em andamento com KV ainda como fonte da verdade; auditar `console.warn` atrás de `[DO][dual-write]`/`[DO][read]`, detalhe no CLAUDE.md
 - `npm test` só é confiável em CI: `workerd.exe` bloqueado localmente pelo Smart App Control, detalhe no CLAUDE.md
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
+- P2, não bloqueante: `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` preso ao exit code antigo (1); o script novo usa 2-8, catch-all genérico ainda pega qualquer falha como erro, só perde a mensagem específica. Detalhe em `routines/README.md`
+- P2, não bloqueante: retrofit da linha `ROTINA_RESUMO` padronizada em matinal/noturno/coleta-volatilidade/export-historico/reconciliacao-cvm (hoje só a agenda-semanal, recém-reescrita, tem essa linha). Sessão separada já em andamento (task_12edfa2c)
+- RESOLVIDO 19/08 00h10: os 24 `.ps1` + 4 `SKILL.md` (2 versionados + 2 vivos fora do repo) corrigidos, testados ao vivo (`monitor-tasks.ps1` e `retry-vixradar.ps1` rodados de verdade), guarda nova `scripts/lint-legacy-path.ps1` (Gate 5 do pre-commit). Detalhe em `PENDENCIAS.md`
+- RESOLVIDO 19/08 03h10 (DEDUP1): feed do Painel de Eventos parado em 14/08. Dedup semântica do frontend descartava atualização real de saga longa quando a única diferença textual era "nova" ou quando a redação do analista se repetia quase verbatim. Corrigido, testado (`scripts/test-dedup-eventos.mjs`), deployado v202.11, confirmado ao vivo. Detalhe em `PENDENCIAS.md`
+- RESOLVIDO 19/08 03h10 (HISTFLAT1+2): histórico de EWS não acumulava, `hist_len` preso em 1 para os 103 emissores. Duas causas (gate de leitura + mismatch de case na chave), corrigidas em sequência porque a primeira sozinha não bastou — a prova em produção pegou isso. Deploy Worker v4.9.199 depois v4.9.200, confirmado ao vivo (`hist_len` 1→2 uniforme). Detalhe em `PENDENCIAS.md`
+- NOVO 19/08, ainda não resolvido: 3 falhas de cobertura sem diagnóstico prévio (blackout de rotina em 13/08, matinal ausente em 14/08, noturno de 16/08 parado em 15/103 com lock órfão). Não eram a causa dos dois bugs acima, mas seguem sendo buracos reais de cobertura, fora do escopo desta sessão de fix

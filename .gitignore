@@ -285,6 +285,11 @@ data/cvm/
 data/reconciliacao/dryrun/
 Obsidian VIX Radar/Reconciliacao-CVM/dryrun/
 data/historico/.dryrun/
+
+# Saida de DryRun do Ranking-Mensal SEO (rotina descontinuada 18/08/2026,
+# script mantido em quarentena - qualquer teste manual futuro gera estes arquivos)
+scripts/seo/*.dryrun.json
+Obsidian VIX Radar/SEO/*(dryrun)*.md
 .cloudflare-typescript-temp/
 
 # Material de video do comercial. Binario pesado, regeneravel pelo pipeline de

@@ -7,18 +7,18 @@ status: ativo
 
 # VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-08-18 23h BRT.
+Mapa do vault. Atualizado 2026-08-19 03h BRT (merge de duas sessões paralelas, ver PENDENCIAS.md 18/08 tarde-noite + 19/08).
 
 ## Estado atual
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.198 |
-| Frontend | v202.10 |
-| Health | Confirmação direta mais recente: v4.9.195 saudável em 18/08 (sessão de rotação, nota 86). Confirmação indireta mais recente: `canonical-test.yml` run de sucesso 2026-08-19T01:50:09Z (22h50 BRT 18/08), `WORKER_V` batendo com `wrangler.toml`. Entre essas duas, `verificador_ok:false` real às 10h04 e 15h53 BRT de 18/08 (ver [[87 - Auditoria Geral 2026-08-18 (tarde-noite, pos-CONCORVERIF1)]]), corrigido no mesmo dia por v4.9.196/197/198. |
-| Cobertura | Deploy v4.9.195 + v202.10 em 15/08 (auditoria profunda). Deploys v4.9.196/197/198 em 18/08 tarde (CONCORVERIF1 + CHAVEESCOPO1, fila de verificação com dupla origem local/remota). Matinal 15/08: 19/19, 3 CRITICOs. P1 aberto: rotação da routine_key — RESOLVIDO 18/08 (ver nota 86). |
+| Worker | v4.9.200 |
+| Frontend | v202.11 |
+| Health | Confirmação indireta mais recente: `canonical-test.yml` run de sucesso 2026-08-19T01:50:09Z (22h50 BRT 18/08, ainda em v4.9.198). Produção avançou para v4.9.200 / v202.11 na madrugada de 19/08 (sessão de fix do painel de eventos, 01h35-03h10 BRT), sem nova confirmação de health colada nesta sessão remota. `verificador_ok:false` real às 10h04 e 15h53 BRT de 18/08 (ver [[87 - Auditoria Geral 2026-08-18 (tarde-noite, pos-CONCORVERIF1)]]), corrigido no mesmo dia por v4.9.196/197/198. |
+| Cobertura | Deploy v4.9.195 + v202.10 em 15/08 (auditoria profunda). Deploys v4.9.196/197/198 em 18/08 tarde (CONCORVERIF1 + CHAVEESCOPO1, fila de verificação com dupla origem local/remota). v4.9.199/v4.9.200 + v202.11 em 19/08 madrugada (painel de eventos parado + hist_len achatado, ver PENDENCIAS.md). Matinal 15/08: 19/19, 3 CRITICOs. P1 aberto: rotação da routine_key — RESOLVIDO 18/08 (ver nota 86). |
 
-Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
+Ver [[03 - Estado Atual]] e [[10_Estado_Atual_Validado]] (matriz de governança de rotinas, 19/08) para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
 ## Notas por categoria
 

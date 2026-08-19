@@ -185,6 +185,42 @@ $STAGED_ALL
 ALL_EOF
 fi
 
+# ─── Gate 5: caminho legado FREQUENTE (pos-inversao de junction 2026-08-18) ──
+# .ps1 e SKILL.md de rotina Claude Desktop nao podem hardcodar o caminho legado
+# E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito. Motivo: auditoria de
+# 2026-08-18 achou 26 arquivos assim, incluindo o SKILL.md da rotina noturna
+# instruindo o sentido errado ("usar sempre FREQUENTE"), sobrevivendo a
+# inversao da junction do mesmo dia. Nao quebra hoje (a junction ainda
+# resolve), mas convida remocao futura da junction achando que nada depende
+# dela. Mesma familia do Gate 1: materializa o blob em staging, roda o lint.
+STAGED_LEGADO=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '\.ps1$|routines/claude-desktop/.*/SKILL\.md$' || true)
+LEGADO_LINTER="scripts/lint-legacy-path.ps1"
+
+if [ -n "$STAGED_LEGADO" ] && [ -f "$LEGADO_LINTER" ]; then
+    LISTA_LEGADO=""
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        stage_blob "$f" || continue
+        if [ -z "$LISTA_LEGADO" ]; then
+            LISTA_LEGADO="$STAGEDIR/$f"
+        else
+            LISTA_LEGADO="$LISTA_LEGADO,$STAGEDIR/$f"
+        fi
+    done <<LEGADO_EOF
+$STAGED_LEGADO
+LEGADO_EOF
+
+    if [ -n "$LISTA_LEGADO" ]; then
+        if ! powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$LEGADO_LINTER" -Path "$LISTA_LEGADO"; then
+            echo ""
+            echo "GATE 5 (caminho legado) REPROVOU: arquivo acima ainda hardcoda FREQUENTE\\Monitoramento de Credito."
+            echo "Use E:\\Diretorio\\Claude\\Monitoramento de Credito (caminho fisico canonico desde 18/08/2026)."
+            echo "Excecao legitima (doc historica): adicione o caminho relativo ao \$Allowlist em scripts/lint-legacy-path.ps1."
+            FALHOU=1
+        fi
+    fi
+fi
+
 rm -rf "$STAGEDIR"
 
 # --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------

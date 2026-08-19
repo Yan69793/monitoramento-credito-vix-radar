@@ -17,7 +17,7 @@ Comprimir esses campos corrompe a entrega. Caveman e so para falar comigo.
 
 ## Contexto
 
-Projeto: `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito`
+Projeto: `E:\Diretorio\Claude\Monitoramento de Credito`
 Worker: `https://api.vixradar.com` (POST, Content-Type application/json; charset=utf-8)
 
 Esta rotina roda nesta sessao do Claude Desktop. Ela substituiu a Windows Scheduled Task `VIXRadar-Noturno`, que foi desabilitada em 04/08/2026 porque o `claude` CLI standalone parou de autenticar. NAO chame `run_vixradar_noturno_claude.ps1`, ele depende do CLI quebrado. Use PowerShell apenas para HTTP e arquivo.
@@ -106,7 +106,7 @@ Extraia a janela do primeiro emissor (`janela_inicio`, `janela_fim`). Ela vai no
 
 ## Passo 4 - Idempotencia
 
-Log do dia: `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\logs\routines\vixradar-noturno_<yyyyMMdd>.log` (ex: vixradar-noturno_20260804.log). O caminho antigo `E:\Diretorio\Claude\Monitoramento de Credito` ainda funciona por junction, mas e fragil - usar sempre o caminho FREQUENTE.
+Log do dia: `E:\Diretorio\Claude\Monitoramento de Credito\logs\routines\vixradar-noturno_<yyyyMMdd>.log` (ex: vixradar-noturno_20260804.log). Este e o caminho fisico canonico desde a inversao da junction em 18/08/2026. O caminho antigo (prefixo FREQUENTE) ainda resolve por junction legada de compatibilidade, mas nao usar mais - usar sempre o caminho canonico acima.
 
 Se o arquivo existe, leia as linhas que casam `^[\d-]+ [\d:]+ OK\|([^|]+)\|` e extraia os nomes ja processados. Pule esses emissores. Compare ignorando acentuacao. Aplique esse filtro TAMBEM aos emissores tier SKIP.
 

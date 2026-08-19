@@ -3555,7 +3555,7 @@ var __defProp2222222 = Object.defineProperty;
 var __name2222222 = /* @__PURE__ */ __name222222((target, value) => __defProp2222222(target, "name", { value, configurable: true }), "__name");
 var __defProp22222222 = Object.defineProperty;
 var __name22222222 = /* @__PURE__ */ __name2222222((target, value) => __defProp22222222(target, "name", { value, configurable: true }), "__name");
-var WORKER_VERSAO = "__WORKER_VERSION__";
+var WORKER_VERSAO = "v4.9.199";
 var CUSTO_PRECO = {
   haiku_input_mtok: 1,
   haiku_output_mtok: 5,
@@ -13858,13 +13858,7 @@ async function executarPipelinePreditivo(env2222, opts) {
   for (const empresa of EMISSORES_LISTA) {
     const eventos = eventosCache[empresa] || [];
     const ewsScore = ewsCache[empresa] || 0;
-    // HISTFLAT2 (2026-08-19): kvEwsHistKey grava com empresa.toLowerCase().trim(), mas
-    // histMap era populado decodificando essa MESMA chave (fica lowercase) e depois lido
-    // aqui com "empresa" no case original de EMISSORES_LISTA (ex.: "Oncoclínicas"). Miss
-    // de lookup silencioso: histRaw sempre [] mesmo com serie real gravada no KV, mesmo
-    // nos crons que sempre leram (persistHist=true, HISTFLAT1 nao afetava este caminho).
-    // Normaliza a leitura com a mesma funcao usada na escrita.
-    const histRaw = histMap[String(empresa || "").toLowerCase().trim()] || [];
+    const histRaw = histMap[empresa] || [];
     const histNext = [{ data: dataISO, score: Math.round(ewsScore * 10) / 10 }, ...histRaw.filter((h) => h && h.data !== dataISO)].slice(0, 90);
     histUpdates.push({ empresa, hist: histNext });
     const vel = calcularVelocityEws(histNext, 7);

@@ -5,7 +5,7 @@ if (-not $rk) {
 }
 $worker = 'https://radar-credito-api.prospects-intel.workers.dev'
 $failFiles = @('noturno_Hidrovias.json','noturno_Kora.json','noturno_MRV.json','noturno_Vibra.json','noturno_Raizen.json')
-$dir = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\testing'
+$dir = 'E:\Diretorio\Claude\Monitoramento de Credito\testing'
 
 foreach ($name in $failFiles) {
   $path = Join-Path $dir $name
