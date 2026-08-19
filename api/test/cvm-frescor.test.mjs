@@ -38,6 +38,11 @@ async function seedMeta(meta) {
 describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
   beforeEach(async () => {
     await env.RADAR_KV.delete(META_KEY);
+    // CVMFRESCOR1b: avaliarFrescorCVM cai para cvm:documentos quando nao ha
+    // meta. Sem limpar aqui, os testes de fail-closed passariam ou falhariam
+    // conforme o lixo deixado por outro teste, que e o tipo de flakiness que
+    // faz suite verde nao significar nada.
+    await env.RADAR_KV.delete("cvm:documentos");
   });
 
   it("fail-closed: sem cvm:fonte_meta a fonte NAO conta como fresca", async () => {
@@ -107,6 +112,46 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     expect(b.ok).toBe(false);
   });
 
+  it("CVMFRESCOR1b: sem meta, deriva a idade de cvm:documentos e grava o backfill", async () => {
+    // Sem isto, TODO deploy deixaria o health vermelho com motivo "sem_meta"
+    // ate o proximo cron, ou seja ate 12h de alarme falso por subida. Alarme
+    // que grita pelo motivo errado deixa de ser lido.
+    const hoje = diasAtrasISO(0);
+    await env.RADAR_KV.put("cvm:documentos", JSON.stringify([
+      { e: "TESTE S.A.", d: hoje, de: hoje, c: "Fato Relevante", a: "x", l: "https://exemplo" }
+    ]));
+    const b = await health();
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.ok).toBe(true);
+    const meta = await env.RADAR_KV.get(META_KEY, "json");
+    expect(meta).toBeTruthy();
+    expect(meta.origem).toBe("backfill_documentos");
+    expect(meta.max_data_entrega).toBe(hoje);
+  });
+
+  it("CVMFRESCOR1b: backfill com documentos velhos reprova, nao mascara", async () => {
+    await env.RADAR_KV.put("cvm:documentos", JSON.stringify([
+      { e: "TESTE S.A.", d: diasAtrasISO(30), de: diasAtrasISO(30), c: "Fato Relevante", a: "x", l: "https://exemplo" }
+    ]));
+    const b = await health();
+    expect(b.cvm_fonte_ok).toBe(false);
+    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_parada_ha_\d+_dias_uteis$/);
+    expect(b.ok).toBe(false);
+  });
+
+  it("CVMFRESCOR1b: meta existente tem precedencia sobre o backfill", async () => {
+    // O backfill mede so os 103 emissores; o Last-Modified do servidor mede o
+    // arquivo inteiro. O sinal fraco nunca pode sobrescrever o forte.
+    await env.RADAR_KV.put("cvm:documentos", JSON.stringify([
+      { e: "TESTE S.A.", d: diasAtrasISO(90), de: diasAtrasISO(90), c: "Fato Relevante", a: "x", l: "https://exemplo" }
+    ]));
+    await seedMeta({ ok: true, sincronizado_em: new Date().toISOString(), last_modified_iso: diasAtrasISO(0), origem: "sync_automatico" });
+    const b = await health();
+    expect(b.cvm_fonte_ok).toBe(true);
+    const meta = await env.RADAR_KV.get(META_KEY, "json");
+    expect(meta.origem).toBe("sync_automatico");
+  });
+
   it("cai para max_data_entrega quando o servidor nao manda Last-Modified", async () => {
     await seedMeta({
       ok: true,
@@ -126,6 +171,11 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
 describe("CVMFRESCOR1 - endpoints admin de frescor", () => {
   beforeEach(async () => {
     await env.RADAR_KV.delete(META_KEY);
+    // CVMFRESCOR1b: avaliarFrescorCVM cai para cvm:documentos quando nao ha
+    // meta. Sem limpar aqui, os testes de fail-closed passariam ou falhariam
+    // conforme o lixo deixado por outro teste, que e o tipo de flakiness que
+    // faz suite verde nao significar nada.
+    await env.RADAR_KV.delete("cvm:documentos");
   });
 
   function postAdmin(action, extra) {

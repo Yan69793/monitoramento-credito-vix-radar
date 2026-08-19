@@ -7154,7 +7154,36 @@ async function avaliarFrescorCVM(env2222) {
     out.motivo = "meta_ilegivel";
     return out;
   }
-  if (!meta) return out;
+  if (!meta) {
+    // CVMFRESCOR1b (2026-08-19, mesma sessao): sem este backfill, TODO deploy
+    // deixaria o health vermelho com motivo "sem_meta" ate o proximo cron, ou
+    // seja ate 12h de alarme falso a cada subida. Alarme que grita por motivo
+    // errado e como o que nao grita, some do radar de quem olha.
+    // A chave cvm:documentos ja existe desde muito antes deste fix e carrega
+    // data_entrega por documento, entao da para derivar a idade da fonte sem
+    // esperar sync nenhum. Gravamos o resultado uma unica vez: o proximo sync
+    // real sobrescreve com o Last-Modified do servidor, que e o sinal forte.
+    // Fica marcado como origem backfill_documentos porque e sinal mais fraco,
+    // mede so os 103 emissores, nao o arquivo inteiro da CVM.
+    var _docsFallback = null;
+    try {
+      _docsFallback = await env2222.RADAR_KV.get("cvm:documentos", "json");
+    } catch (e) {
+      _docsFallback = null;
+    }
+    var _mxFallback = _cvmMaxDataEntrega(_docsFallback);
+    if (!_mxFallback) return out;
+    meta = {
+      ok: true,
+      sincronizado_em: null,
+      last_modified: null,
+      last_modified_iso: null,
+      max_data_entrega: _mxFallback,
+      documentos: Array.isArray(_docsFallback) ? _docsFallback.length : 0,
+      origem: "backfill_documentos"
+    };
+    await gravarFonteCVMMeta(env2222, meta);
+  }
   out.last_modified = meta.last_modified_iso || null;
   out.max_data_entrega = meta.max_data_entrega || null;
   out.sincronizado_em = meta.sincronizado_em || null;

@@ -38,6 +38,7 @@ function extrair(nome, tipo) {
 const fonte = [
   extrair("_cvmDiasUteisApos", "sync"),
   extrair("_cvmMaxDataEntrega", "sync"),
+  extrair("gravarFonteCVMMeta", "async"),
   extrair("avaliarFrescorCVM", "async"),
 ].join("\n\n");
 
@@ -50,15 +51,23 @@ function obterAgoraBRT() { return new Date(__HOJE_FAKE); }
 `;
 
 const mod = new Function(
-  preludio + fonte + "\nreturn { _cvmDiasUteisApos, _cvmMaxDataEntrega, avaliarFrescorCVM, setHoje: function(d){ __HOJE_FAKE = d; } };"
+  preludio + fonte + "\nreturn { _cvmDiasUteisApos, _cvmMaxDataEntrega, gravarFonteCVMMeta, avaliarFrescorCVM, setHoje: function(d){ __HOJE_FAKE = d; } };"
 )();
 
-function envFake(meta) {
-  return {
+function envFake(meta, docs) {
+  const gravado = [];
+  const e = {
+    _gravado: gravado,
     RADAR_KV: {
-      get: async (k, t) => (k === "cvm:fonte_meta" ? (meta === undefined ? null : meta) : null),
+      get: async (k) => {
+        if (k === "cvm:fonte_meta") return meta === undefined ? null : meta;
+        if (k === "cvm:documentos") return docs === undefined ? null : docs;
+        return null;
+      },
+      put: async (k, v) => { gravado.push({ k, v: JSON.parse(v) }); },
     },
   };
+  return e;
 }
 
 let falhas = 0;
@@ -114,6 +123,32 @@ for (const [titulo, meta, esperado] of casos) {
 console.log("\n=== KV indisponivel ===");
 const rSemKv = await mod.avaliarFrescorCVM({});
 checa("sem binding de KV reprova", { ok: rSemKv.ok, motivo: rSemKv.motivo }, { ok: false, motivo: "kv_indisponivel" });
+
+console.log("\n=== CVMFRESCOR1b: backfill a partir de cvm:documentos ===");
+// Sem meta mas COM documentos, deriva a idade em vez de acusar sem_meta. Isto
+// existe para que deploy novo nao produza 12h de alarme falso ate o cron rodar.
+const envBackfillFresco = envFake(undefined, [{ de: "2026-08-18" }, { de: "2026-08-11" }]);
+const rBackfillFresco = await mod.avaliarFrescorCVM(envBackfillFresco);
+checa("sem meta mas com documentos de ontem, passa", { ok: rBackfillFresco.ok, motivo: rBackfillFresco.motivo }, { ok: true, motivo: "ok" });
+checa("backfill gravou a meta uma vez", envBackfillFresco._gravado.length, 1);
+checa("backfill marcou a origem", envBackfillFresco._gravado[0] && envBackfillFresco._gravado[0].v.origem, "backfill_documentos");
+checa("backfill escreveu na chave certa", envBackfillFresco._gravado[0] && envBackfillFresco._gravado[0].k, "cvm:fonte_meta");
+
+const envBackfillVelho = envFake(undefined, [{ de: "2026-08-15" }]);
+const rBackfillVelho = await mod.avaliarFrescorCVM(envBackfillVelho);
+checa("o caso real de hoje via backfill, sabado 15, reprova", { ok: rBackfillVelho.ok, motivo: rBackfillVelho.motivo }, { ok: false, motivo: "fonte_parada_ha_3_dias_uteis" });
+
+const envSemNada = envFake(undefined, []);
+const rSemNada = await mod.avaliarFrescorCVM(envSemNada);
+checa("sem meta e sem documentos continua fail-closed", { ok: rSemNada.ok, motivo: rSemNada.motivo }, { ok: false, motivo: "sem_meta" });
+checa("fail-closed nao grava nada", envSemNada._gravado.length, 0);
+
+// Meta existente tem que ganhar do backfill, senao o sinal fraco sobrescreveria
+// o Last-Modified autoritativo do servidor da CVM a cada leitura de health.
+const envMetaVence = envFake({ ok: true, last_modified_iso: "2026-08-18" }, [{ de: "2026-01-01" }]);
+const rMetaVence = await mod.avaliarFrescorCVM(envMetaVence);
+checa("meta existente tem precedencia sobre o backfill", { ok: rMetaVence.ok, motivo: rMetaVence.motivo }, { ok: true, motivo: "ok" });
+checa("com meta presente nao regrava", envMetaVence._gravado.length, 0);
 
 console.log("\n" + (falhas === 0 ? "TUDO VERDE" : falhas + " FALHA(S)") + " em " + total + " casos.\n");
 process.exit(falhas === 0 ? 0 : 1);
