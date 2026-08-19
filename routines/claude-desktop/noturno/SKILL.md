@@ -156,14 +156,26 @@ Para cada emissor do lote, envie SO estes campos: `empresa, setor, tier, ews_sco
 
 Nunca inclua a routine_key no prompt do subagente.
 
+R7 (auditoria 19/08/2026): reforco preventivo, nao correcao de caso comprovado. A investigacao original suspeitou
+que a Copasa tinha perdido um voto de privatizacao na Assembleia de MG datado de 17/08/2026 - o R2 busca por
+palavra de credito (rating, divida, default, covenant) e nao cobre naturalmente noticia legislativa/regulatoria, e
+R6 so dispara com ews_score>=20, entao emissor de risco baixo nesses 3 setores nunca aciona o cross-check. Antes
+de gravar qualquer coisa em producao, a data foi verificada na fonte primaria (site da ALMG): a votacao foi em
+17/12/2025, oito meses antes, sem nenhuma ligacao com agosto de 2026. O "achado" era o resumo da propria busca
+colando o dia certo (17) no mes errado, mesma falha ja vista com outro emissor na mesma investigacao. R7 entra
+mesmo assim, autorizado pelo operador, como cobertura preventiva do buraco metodologico real (privatizacao,
+mudanca de controle, intervencao legislativa fogem do vocabulario de R2/R6), nao porque exista caso perdido
+comprovado. Escopo restrito aos 3 setores estruturalmente expostos, para nao estourar o orcamento dos outros 2/3
+dos emissores, que hoje fazem so 1 busca. R2 e R6 ficam com a definicao exatamente como estava.
+
 Cabecalho do prompt do subagente, literal:
 
 ```
 JANELA: <janela_inicio> a <janela_fim>
 
 BUSCAS por emissor (WebSearch).
-[fila RAPIDA]  R2 sempre (noticias de credito: rating, divida, default, covenant, M&A, resultado). R6 (cross-check rating/regulatorio) SOMENTE se R2 trouxe sinal CRITICO/RELEVANTE, ou ews_score>=20, ou cvm_novos>0. R2 limpo em emissor de EWS baixo: classificar ECO/NENHUM com 1 busca e cobertura_nota de 1 frase.
-[fila APROFUNDADA]  max 3 buscas, adaptativas. R2 primeiro. R6 se R2 trouxe sinal ou ews_score>=38. R5 (covenants, rolagem, liquidez) SOMENTE se R2/R6 confirmaram evento CRITICO/RELEVANTE.
+[fila RAPIDA]  R2 sempre (noticias de credito: rating, divida, default, covenant, M&A, resultado). R6 (cross-check rating/regulatorio) SOMENTE se R2 trouxe sinal CRITICO/RELEVANTE, ou ews_score>=20, ou cvm_novos>0. R7 (estrutura societaria: privatizacao, mudanca de controle, intervencao legislativa ou regulatoria) roda SEMPRE, alem de R2, quando setor for Energia Eletrica, Saneamento ou Transportes e Logistica - independente do ews_score, porque R6 exige ews_score>=20 e por isso nao cobre emissor de risco baixo nesses 3 setores. Fora desses 3 setores, R7 nao roda por padrao. R2 limpo em emissor de EWS baixo: classificar ECO/NENHUM com 1 busca e cobertura_nota de 1 frase; nos 3 setores acima, R7 conta como busca adicional antes de fechar ECO/NENHUM, nao substitui R2.
+[fila APROFUNDADA]  max 3 buscas, adaptativas. R2 primeiro. R6 se R2 trouxe sinal ou ews_score>=38. Nos mesmos 3 setores (Energia Eletrica, Saneamento, Transportes e Logistica), R7 roda sempre, contando dentro do orcamento de 3 buscas junto com R2 e adaptativo como as demais. R5 (covenants, rolagem, liquidez) SOMENTE se R2/R6 confirmaram evento CRITICO/RELEVANTE.
 
 Dados CVM ja vem no JSON, nao rebuscar CVM.
 Emissor cujo contexto_historico indica CRITICO/REX/RJ/default: NAO re-descobrir o historico, buscar so o delta na janela.

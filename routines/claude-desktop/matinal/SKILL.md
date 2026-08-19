@@ -116,12 +116,23 @@ Respeitar o maximo de buscas por emissor e o que mantem o custo dentro do envelo
 
 ## Passo 8 - Analise (WebSearch)
 
-Fila RAPIDA, max 2 buscas por emissor:
+R7 (auditoria 19/08/2026): reforco preventivo, nao correcao de caso comprovado. A investigacao original (rotina
+noturna) suspeitou que a Copasa tinha perdido um voto de privatizacao na Assembleia de MG datado de 17/08/2026 -
+R2 busca por palavra de credito e nao cobre naturalmente noticia legislativa/regulatoria, e R6 so dispara com
+ews_score>=20, entao emissor de risco baixo nesses 3 setores nunca aciona o cross-check. Antes de gravar qualquer
+coisa em producao, a data foi verificada na fonte primaria (site da ALMG): a votacao foi em 17/12/2025, oito meses
+antes, sem ligacao com agosto de 2026. O achado era o resumo da propria busca colando o dia certo (17) no mes
+errado. R7 entra mesmo assim, autorizado pelo operador, como cobertura preventiva do buraco metodologico real, nao
+porque exista caso perdido comprovado. Mesmo escopo e mesma logica da rotina noturna, para as duas nao divergirem
+como ja divergiram no passado (formato da linha FIM). R2 e R6 ficam com a definicao exatamente como estava.
+
+Fila RAPIDA, max 2 buscas por emissor (3 nos setores abaixo, ver R7):
 - R2 sempre: noticias de credito do emissor (rating, divida, default, covenant, M&A, resultado).
 - R6 so se R2 trouxe sinal CRITICO/RELEVANTE, ou ews_score >= 20, ou cvm_novos > 0: cross-check de rating/regulatorio.
-- R2 limpo em emissor de EWS baixo: classifique ECO ou NENHUM com 1 busca e `cobertura_nota` de 1 frase.
+- R7 (estrutura societaria: privatizacao, mudanca de controle, intervencao legislativa ou regulatoria): roda SEMPRE, alem de R2, quando setor for Energia Eletrica, Saneamento ou Transportes e Logistica, independente do ews_score. Fora desses 3 setores, R7 nao roda por padrao.
+- R2 limpo em emissor de EWS baixo: classifique ECO ou NENHUM com 1 busca e `cobertura_nota` de 1 frase; nos 3 setores acima, R7 conta como busca adicional antes de fechar ECO/NENHUM, nao substitui R2.
 
-Fila APROFUNDADA, max 3 buscas por emissor: R2, R6, e R5 (covenants, rolagem, liquidez) SOMENTE se R2/R6 confirmaram evento CRITICO/RELEVANTE.
+Fila APROFUNDADA, max 3 buscas por emissor: R2, R6, e R5 (covenants, rolagem, liquidez) SOMENTE se R2/R6 confirmaram evento CRITICO/RELEVANTE. Nos mesmos 3 setores do R7 acima, R7 roda sempre, contando dentro do orcamento de 3 buscas junto com R2 e adaptativo como as demais. Condicao do R5 fica igual, nao afetada pelo R7.
 
 Emissor cujo `contexto_historico` ja indica CRITICO/REX/RJ/default: nao re-descubra o historico, busque so o delta na janela (`janela_inicio` a `janela_fim`).
 
