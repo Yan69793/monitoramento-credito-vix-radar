@@ -40,7 +40,7 @@ jobs:
           hc=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' \
             -H 'Content-Type: application/json' -d "$body_health" --max-time 60)
           echo "$hc" | jq -e '.ok == true' >/dev/null
-          echo "$hc" | jq '{ok,versao,empresas_com_dados:.checks.estado_semanal.empresas_com_dados,updated_at:.checks.estado_semanal.updated_at,weeks_loaded:.checks.estado_semanal.weeks_loaded}'
+          echo "$hc" | jq '{ok,versao,empresas_com_dados:.checks.estado_semanal.empresas_com_dados,updated_at:.checks.estado_semanal.updated_at,weeks_loaded:.checks.estado_semanal.weeks_loaded,evento_mais_novo:.checks.evento_mais_novo}'
 
           body_cost=$(jq -n --arg pw "$admin_pwd" '{action:"admin_custo",admin_senha:$pw}')
           cost=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' \
@@ -58,4 +58,29 @@ jobs:
           (( updated_epoch <= now_epoch + 300 )) || { echo "::error::updated_at esta no futuro: $updated"; exit 1; }
           age_h=$(( (now_epoch - updated_epoch) / 3600 ))
           (( age_h <= 48 )) || { echo "::error::Estado stale ha ${age_h}h"; exit 1; }
-          echo "FRESCOR_OK empresas=$companies idade_h=$age_h"
+
+          # EVENTOFRESCOR1 (2026-08-19). Tudo acima mede se o ESCRITOR rodou, nao
+          # se o dado e novo: `updated_at` e a hora da gravacao e `companies` e a
+          # contagem de emissores tocados. A rotina escreve todo dia, entao os
+          # dois ficaram verdes a semana inteira enquanto o feed estava congelado
+          # em 14/08 com o modelo re-narrando o mesmo fato. Este Action passou
+          # verde o incidente todo e foi por isso que ninguem viu.
+          # O gate abaixo mede a idade do EVENTO mais novo, que e o que aparece
+          # na tela do usuario. Campo servido por checks.evento_mais_novo desde o
+          # Worker v4.9.203.
+          ev_data=$(echo "$hc" | jq -r '.checks.evento_mais_novo.data // "null"')
+          ev_idade=$(echo "$hc" | jq -r '.checks.evento_mais_novo.idade_du // "null"')
+          ev_limite=$(echo "$hc" | jq -r '.checks.evento_mais_novo.limite_du // "null"')
+          ev_total=$(echo "$hc" | jq -r '.checks.evento_mais_novo.total_eventos // "null"')
+
+          if [[ "$ev_idade" == "null" ]]; then
+            echo "::error::checks.evento_mais_novo ausente ou sem data. Ou o Worker regrediu para antes do v4.9.203, ou nao existe UM evento datado no estado inteiro."
+            exit 1
+          fi
+
+          if (( ev_idade > ev_limite )); then
+            echo "::error::INGESTAO PARADA. Evento mais novo e de ${ev_data}, ${ev_idade} dias uteis atras (limite ${ev_limite}), com ${ev_total} eventos no estado. As rotinas podem estar rodando e gravando normalmente: o que este gate mede e se entrou fato NOVO, nao se alguem escreveu. Primeira coisa a conferir e o cvm_fonte_ok do health publico (GET /): se ele tambem estiver false, a causa e a mesma, a fonte da CVM parou de publicar, e nao ha bug nosso para cacar."
+            exit 1
+          fi
+
+          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total"
