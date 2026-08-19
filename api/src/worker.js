@@ -13831,17 +13831,26 @@ async function executarPipelinePreditivo(env2222, opts) {
   const selicFresh = volatilidadeKV && volatilidadeKV.selic_fonte === "BCB_SGS_1178" && selicAgeDays >= -1 && selicAgeDays <= 10;
   const selicAnual = selicFresh && Number.isFinite(Number(volatilidadeKV.selic_anual)) && Number(volatilidadeKV.selic_anual) > 0 && Number(volatilidadeKV.selic_anual) < 1 ? Number(volatilidadeKV.selic_anual) : null;
   const histMap = {};
-  if (persistHist) {
-    const histListed = await env2222.RADAR_KV.list({ prefix: "ews:hist:" }).catch(() => ({ keys: [] }));
-    const histKeys = (histListed.keys || []).slice(0, 120);
-    for (let i = 0; i < histKeys.length; i += 25) {
-      const chunk = histKeys.slice(i, i + 25);
-      await Promise.all(chunk.map(async (k) => {
-        const v = await env2222.RADAR_KV.get(k.name, "json").catch(() => []);
-        const emp = decodeURIComponent(String(k.name).replace("ews:hist:", ""));
-        histMap[emp] = Array.isArray(v) ? v : [];
-      }));
-    }
+  // HISTFLAT1 (2026-08-19): a leitura do historico real NAO pode ficar atras do mesmo
+  // gate que decide se um NOVO ponto e gravado. Antes, chamadas com skip_hist_persist=true
+  // (endpoint admin_executar_predictive, unico caller com opts) pulavam esta leitura
+  // inteira, calculavam hist_len/velocity com histRaw=[] para os 103 emissores, e ainda
+  // assim gravavam esse payload achatado em predictive_v1:latest (chave compartilhada com
+  // os crons matinal/noturno que gravam ponto real 2x/dia). Qualquer chamada admin/smoke
+  // depois do ultimo cron do dia sobrescrevia o snapshot correto por um com hist_len=1
+  // para o universo inteiro. A serie real em ews:hist:{empresa} nunca foi tocada por isso,
+  // so a leitura ficava desligada. Ler sempre; so a GRAVACAO de ponto novo (mais abaixo,
+  // persistirHistEwsBatch) continua condicionada a persistHist, preservando a intencao
+  // original de chamada de laboratorio nao criar ponto novo na serie.
+  const histListed = await env2222.RADAR_KV.list({ prefix: "ews:hist:" }).catch(() => ({ keys: [] }));
+  const histKeys = (histListed.keys || []).slice(0, 120);
+  for (let i = 0; i < histKeys.length; i += 25) {
+    const chunk = histKeys.slice(i, i + 25);
+    await Promise.all(chunk.map(async (k) => {
+      const v = await env2222.RADAR_KV.get(k.name, "json").catch(() => []);
+      const emp = decodeURIComponent(String(k.name).replace("ews:hist:", ""));
+      histMap[emp] = Array.isArray(v) ? v : [];
+    }));
   }
   const emissores = [];
   const histUpdates = [];
