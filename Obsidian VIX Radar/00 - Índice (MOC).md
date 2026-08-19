@@ -7,16 +7,16 @@ status: ativo
 
 # VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-08-15 11h08 BRT.
+Mapa do vault. Atualizado 2026-08-18 23h BRT.
 
 ## Estado atual
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.195 |
+| Worker | v4.9.198 |
 | Frontend | v202.10 |
-| Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (15/08 11h08 BRT, HTTP 200 0,31s) |
-| Cobertura | Deploy v4.9.195 + v202.10 em 15/08 (auditoria profunda: routine_key redigida do disco, OPENROUTER-ORFAO1, NOTIFYRL1, LLMXSS1, DEFERREDREC1 corrigidos). Matinal 15/08: 19/19, 3 CRITICOs. P1 aberto: rotação da routine_key pendente de permissão Secrets no PAT do GitHub. |
+| Health | Confirmação direta mais recente: v4.9.195 saudável em 18/08 (sessão de rotação, nota 86). Confirmação indireta mais recente: `canonical-test.yml` run de sucesso 2026-08-19T01:50:09Z (22h50 BRT 18/08), `WORKER_V` batendo com `wrangler.toml`. Entre essas duas, `verificador_ok:false` real às 10h04 e 15h53 BRT de 18/08 (ver [[87 - Auditoria Geral 2026-08-18 (tarde-noite, pos-CONCORVERIF1)]]), corrigido no mesmo dia por v4.9.196/197/198. |
+| Cobertura | Deploy v4.9.195 + v202.10 em 15/08 (auditoria profunda). Deploys v4.9.196/197/198 em 18/08 tarde (CONCORVERIF1 + CHAVEESCOPO1, fila de verificação com dupla origem local/remota). Matinal 15/08: 19/19, 3 CRITICOs. P1 aberto: rotação da routine_key — RESOLVIDO 18/08 (ver nota 86). |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
@@ -36,6 +36,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[87 - Auditoria Geral 2026-08-18 (tarde-noite, pos-CONCORVERIF1)]] | 18/08 (tarde-noite) | Geral readonly: incidente verificador_ok real (10h04/15h53 BRT) e fix CONCORVERIF1/CHAVEESCOPO1 documentados pela primeira vez, janela residual de TTL, historico de 18/08 sem commit |
 | [[86 - Rotacao routine_key e envelope noturno 2026-08-18]] | 18/08 | Execucao: rotacao da routine_key nos 3 destinos (P1 fechado), envelope do noturno recalibrado, ROTA1, pre-flight fixes, graphify-out ignorado |
 | [[85 - Auditoria Geral e Preditiva 2026-08-18]] | 18/08 | Geral + preditiva readonly: Merton 0/103 (market_cap nunca coletado), P3s de governanca e a11y |
 | [[81 - Auditoria Geral e incidentes 2026-08-13]] | 13/08 | Geral: AUTHWEEK1 (cascade parado), GHWL1 (secret GH divergente), XSS v100 fechado, BOM fechado |
@@ -87,6 +88,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Incidente |
 |---|---|---|
+| [[87 - Auditoria Geral 2026-08-18 (tarde-noite, pos-CONCORVERIF1)]] | 18/08 | verificador_ok:false real por corrida entre verificador local e remoto na mesma fila (causa nova, diferente da staleness de 05/08 e 11/08), corrigido no mesmo dia por CONCORVERIF1/CHAVEESCOPO1 |
 | [[77 - Post-Mortem verificador_ok e Proposta canonical-test.yml 2026-08-11]] | 11/08 | Fila de verificação travada por ambiente contaminado (05/08), gap de observabilidade no canonical-test.yml ainda aberto — mesmo padrão se repetiu 11/08 |
 | [[70 - Incidente Encoding e Compatibilidade PowerShell 5.1 2026-07-27]] | 27/07 | Deploy quebrado por UTF-8 sem BOM, mais sintaxe PS7 em script rodado pelo 5.1, guarda no pre-commit |
 | [[63 - Recovery e Deploy 2026-07-20]] | 20/07 | INGEST-GAP1 recovery |
