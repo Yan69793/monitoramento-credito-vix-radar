@@ -189,12 +189,87 @@ e agora o sistema diz isso em vez de fingir saude.
 Endpoints novos `admin_sync_cvm_auto` e `admin_frescor_cvm`, porque ate aqui nao havia como
 rodar nem auditar o `syncCVMAutomatico` fora dos dois crons.
 
-### Ainda abertas
-| Sev | Correcao | Guarda sistemica |
+### As tres P1/P2 — RESOLVIDAS e em producao (Worker v4.9.203, frontend v202.12)
+
+**Achado de investigacao, antes de listar as correcoes.** A busca das rotinas NAO
+esta quebrada. Amostra do noturno de 18/08 mostra achado real, variado, com data
+e numero (Engie Fitch elevou IDR em 10/08, Energisa vendeu 5 transmissoras em
+12/08, Auren prejuizo R$ 379,1mi no 2T26), e classificacao com distribuicao
+normal entre os dias (3-6 CRITICO, 16-26 RELEVANTE). O problema real: o pipeline
+responde "qual o evento mais MATERIAL da janela de 30 dias", nao "o que mudou
+desde ontem". Para a maioria dos emissores isso e o resultado do 2T26,
+divulgado 12-14/08, entao o modelo reporta a mesma coisa corretamente todo dia
+ate aparecer algo maior, e a dedup do Worker colapsa as repeticoes no feed. A
+CVM parada tirou a unica fonte que traria fato novo com data nova; as duas
+causas juntas produziram o congelamento. Item 5 (materialidade vs delta) fica
+registrado como mudanca de produto, nao aplicado, ver abaixo.
+
+**EVENTOFRESCOR1, health diario mede idade do evento (P1).** Novo
+`checks.evento_mais_novo` em `executarHealthCheckDiario`: data do evento mais
+recente entre os 103 emissores, idade em dias uteis, total de eventos, veredicto
+`fresco`. Mesmo limite de 2 du da fonte CVM. Reusa `_cvmDiasUteisApos` em vez de
+reimplementar calendario.
+
+**`frescor-check.yml` gateia o campo novo (P1).** O Action so validava
+`updated_at` (hora da GRAVACAO) e `empresas_com_dados`, os dois ficam verdes com
+conteudo reciclado porque a rotina escreve todo dia. Foi por isso que ele passou
+verde a semana inteira do incidente. Agora aborta se `idade_du > limite_du`, com
+mensagem mandando conferir `cvm_fonte_ok` do health publico antes de cacar bug,
+porque quando os dois estao vermelhos a causa e a mesma.
+
+Validacao sem credencial: simulado localmente em node contra o formato real de
+resposta (`scratchpad/simula-frescor.mjs`), 4 casos incluindo o caso real do
+incidente (escritor fresco, evento de 3 du) abortando como esperado. O
+`workflow_dispatch` manual falhou por `ADMIN_PASSWORD` vazio no disparo via
+`gh workflow run`, mas o secret existe no repo desde 13/08 (`gh secret list`) e
+o `schedule` de hoje 02h42 UTC ja tinha rodado verde com ele antes deste fix.
+Anomalia pontual do disparo manual, nao do secret nem do codigo; nao investigada
+a fundo por ser tangencial. Confirmar no proximo `schedule` (diario 01:37 UTC).
+
+**FONTESFAKE1, tira de 7 fontes removida (P1).** Era HTML estatico com
+`class="status-item ok"` fixa, cada id (`st-cvm`, `st-anbima`, `st-b3`,
+`st-fitch`, `st-sp`, `st-moodys`, `st-austin`) aparecia uma unica vez no arquivo
+inteiro, nenhum codigo lia ou escrevia em runtime. Nao virou dinamica: das 7 o
+sistema so tem sinal real de 2 (CVM via `cvm_fonte_ok`, ANBIMA via heartbeat
+`sync_anbima` com `data_arquivo`), as outras 5 nao tem integracao monitorada.
+Duas reais ao lado de cinco decorativas continuaria enganando. Confirmado ao
+vivo via DOM: `status-left` com 0 filhos, `getElementById("st-cvm")` retorna
+null em producao.
+
+**CARIMBOFAKE1, "Atualizado em" mostra idade do dado (P2).** Era
+`new Date().toLocaleDateString(...)`, relogio do navegador, nunca podia ficar
+velho por definicao. Nova funcao `_vixCarimboDeDados` calcula local no
+frontend (sem round-trip ao Worker) a data do `data_evento` mais recente em
+`resultados` e a idade em dias uteis: "Evento mais recente 14 de agosto de 2026
+(3 dias uteis atras)". Sem dado carregado (home publica), so declara a janela,
+nao inventa carimbo — confirmado ao vivo, `dash-data` mostra so
+`"Janela: 30 dias"` na home sem sessao.
+
+**Efeito colateral tratado: GATE 3.4 achou drift de `?v=` em 4 camadas.**
+Bump do `CACHE_VERSION` para v202.12 exigiu alinhar nao so o
+`admin-bootstrap.js` (memoria conhecida, DEDUP1 ja tinha esse padrao) mas
+tambem os 3 submodulos que ele reexporta (`engajamento.js`, `metricas.js`,
+`modules.js` importam `shared.js` com querystring propria). Corrigido em
+commit separado depois que o gate reprovou pela segunda vez, varredura final
+cobriu TODO `app/`, nao so os arquivos que o gate apontou.
+
+**Prova em producao:**
+```
+{"ok":false,"versao":"v4.9.203",...,"cvm_fonte_ok":false,"cvm_fonte_idade_du":3,
+"cvm_fonte_motivo":"fonte_parada_ha_3_dias_uteis"}
+```
+```
+version.json = {"version":"v202.12","deployed_at":"2026-08-19T12:36:04Z"}
+DOM: status-left innerHTML="" children=0 stCvmExiste=false
+DOM (home, sem sessao): dash-data.textContent="Janela: 30 dias"
+```
+
+### Ainda aberto
+
+| Sev | Item | Nota |
 |---|---|---|
-| P1 | `frescor-check.yml` validar idade do **evento mais novo**, nao so `updated_at` | Gate no proprio Action, falha o run |
-| P1 | Tira de fontes do rodape vira dinamica ou sai da tela (hoje e HTML estatico com classe `ok` fixa) | Item permanente na matriz da skill de auditoria |
-| P2 | "Atualizado em" mostrar data do dado, nao `new Date()` do navegador | `audit-ui-metrics.mjs` passa a reprovar carimbo derivado de `new Date()` |
+| Decisao de produto | Materialidade vs delta: o feed hoje mostra "evento mais material da janela de 30d", nao "o que mudou desde ontem". E a causa de fundo do congelamento, junto com o apagao da CVM. Separar as duas perguntas no prompt das rotinas e mudanca de produto, nao bug — nao aplicado sem decisao do operador | Ver secao acima |
+| Investigacao, maior esforco | Dependencia do arquivo batch `ipe_cia_aberta_2026.zip` da CVM, que provou atrasar 3 dias. Portal RAD e superfice em tempo real, caminho alternativo nao investigado | Abrir como item separado |
 | P3 | `heartbeat:cascade_analise` nao existe no KV, e o `stale_count:1` do watchdog | Investigar se o agente foi renomeado ou morreu |
 
 ### Lacuna honesta
