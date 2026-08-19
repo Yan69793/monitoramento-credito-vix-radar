@@ -17,7 +17,7 @@ Comprimir esses campos corrompe a entrega. Caveman e so para falar comigo.
 
 ## Contexto
 
-Projeto: `E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito`
+Projeto: `E:\Diretorio\Claude\Monitoramento de Credito`
 Worker: `https://api.vixradar.com` (POST, Content-Type application/json; charset=utf-8)
 
 Esta rotina roda nesta sessao do Claude Desktop. Ela substituiu a Windows Scheduled Task `VIXRadar-Matinal`, que foi desabilitada em 04/08/2026 porque o `claude` CLI standalone parou de autenticar. NAO chame `run_vixradar_matinal_claude.ps1`, ele depende do CLI quebrado. Use PowerShell apenas para HTTP e arquivo, a analise e voce que faz, com WebSearch.

@@ -95,6 +95,28 @@ matinal/noturno marcados órfão/especulativo. Matriz completa das 13 rotinas lo
 entregue, watchdog relançou à toa); corrigido nos dois arquivos, commit `ad06ad4`. Health
 final: `ok:true kv:true telemetria:true sentry_ok:true verificador_ok:true`, v4.9.198.
 
+Auditoria geral readonly (23h50, skill `vix-radar-general-audit`) achou que a migração da
+junction acima fechou a Action das 12 tarefas e o worktree, mas não alcançou o conteúdo interno:
+26 `.ps1` (incluindo `run_claude_routine.ps1`, todos os `run_vixradar_*.ps1`,
+`monitor-tasks.ps1` e os `register-*-task.ps1`) mais `matinal/SKILL.md` e `noturno/SKILL.md`
+continuam com `$ProjectRoot`/`$VixRoot` hardcoded em `FREQUENTE\Monitoramento de Credito`. Não
+quebra hoje (a junction resolve), mas contradiz a afirmação "nada depende mais dele" logo acima
+e é o tipo de lacuna que convida alguém a remover a junction achando que é seguro. Detalhe e
+correção proposta em `PENDENCIAS.md` (P1, 18/08 23h50). Também achado: saída de dry-run do
+Ranking-Mensal (descontinuado nesta sessão) ficou untracked por falta de padrão no
+`.gitignore` (P3, mesma nota). Nenhum achado nas camadas de segurança/frontend/perf/a11y —
+confirmado sem mudança em `app/` desde a auditoria desta manhã (nota 85).
+
+Ainda 19/08, madrugada: fechada a lacuna acima. Os 24 `.ps1` e os 2 `SKILL.md` versionados
+corrigidos, mais os mesmos 2 `SKILL.md` vivos fora do repo (`C:\Users\User\.claude\scheduled-tasks\
+vixradar-{matinal,noturno}\`, achado novo durante a correção, é o arquivo que a sessão agendada do
+Claude Desktop realmente lê). Testado ao vivo, não só parse: `monitor-tasks.ps1` rodado de
+verdade leu os logs de 18/08 no caminho canônico (`submit_ok=103` noturno, `submit_ok=20`
+matinal); `retry-vixradar.ps1` rodado para as duas rotinas resolveu o caminho do dia 19/08
+corretamente. Guarda nova: `scripts/lint-legacy-path.ps1`, Gate 5 do pré-commit, reprova
+reintrodução do caminho legado em `.ps1`/`SKILL.md` de rotina. Junto, P3 do dry-run do
+Ranking-Mensal fechado (`.gitignore` + arquivos removidos). Detalhe completo em `PENDENCIAS.md`.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:
@@ -126,3 +148,4 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
 - P2, não bloqueante: `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` preso ao exit code antigo (1); o script novo usa 2-8, catch-all genérico ainda pega qualquer falha como erro, só perde a mensagem específica. Detalhe em `routines/README.md`
 - P2, não bloqueante: retrofit da linha `ROTINA_RESUMO` padronizada em matinal/noturno/coleta-volatilidade/export-historico/reconciliacao-cvm (hoje só a agenda-semanal, recém-reescrita, tem essa linha). Sessão separada já em andamento (task_12edfa2c)
+- RESOLVIDO 19/08 00h10: os 24 `.ps1` + 4 `SKILL.md` (2 versionados + 2 vivos fora do repo) corrigidos, testados ao vivo (`monitor-tasks.ps1` e `retry-vixradar.ps1` rodados de verdade), guarda nova `scripts/lint-legacy-path.ps1` (Gate 5 do pre-commit). Detalhe em `PENDENCIAS.md`

@@ -36,7 +36,7 @@ try {
 } catch {
     Write-Host 'AVISO: nao foi possivel habilitar o log operacional do Task Scheduler.' -ForegroundColor Yellow
 }
-$Scripts = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito\scripts'
+$Scripts = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts'
 $Fechamento = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\scripts\run_fechamento_claude.ps1'
 $Watchdog = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\scripts\briefing_watchdog.ps1'
 

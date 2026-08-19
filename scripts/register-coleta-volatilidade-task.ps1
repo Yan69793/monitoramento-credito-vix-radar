@@ -6,7 +6,7 @@
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-coleta-volatilidade-task.ps1"
 
 $ErrorActionPreference = 'Stop'
-$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $ScriptPath  = Join-Path $ProjectRoot 'scripts\run_coleta_volatilidade.ps1'
 
 if (-not (Test-Path $ScriptPath)) { throw "Script nao encontrado: $ScriptPath" }

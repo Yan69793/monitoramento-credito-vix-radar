@@ -11,6 +11,110 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 18/08 (23h50 BRT) — auditoria geral (skill vix-radar-general-audit, pos-FASE 2)
+
+Auditoria readonly focada no que mudou apos as notas 85/86 e a inversao da junction (mesma
+noite). Escopo: drift de codigo/rotina de hoje, veracidade da UI (script obrigatorio), governanca
+de artefatos. Nao re-derivou seguranca/frontend/perf/a11y (sem mudanca desde a nota 85 desta
+manha, confirmado por `git log --since` em `app/`). Detalhe completo pedido ao agente na sessao;
+resumo dos achados novos abaixo.
+
+### RESOLVIDO 19/08 (00h10 BRT) — P1 migracao da junction nos scripts e SKILL.md
+
+Inventario refeito por busca direta (nao so o achado da auditoria): 24 `.ps1` + 2 `SKILL.md`
+versionados (`matinal`, `noturno`) + os mesmos 2 `SKILL.md` vivos fora do repo em
+`C:\Users\User\.claude\scheduled-tasks\vixradar-{matinal,noturno}\` (achado novo, nao estava no
+inventario original, e o SKILL.md que a sessao agendada do Claude Desktop realmente le).
+`register-all-routines-scheduler.ps1` e `monitor-tasks.ps1` tinham linhas adicionais com
+`FREQUENTE\relatorio-diario-szuchmacher\...` e `FREQUENTE\Morning Call\...`, de outros projetos,
+deixadas intocadas de proposito. `gen-dashboard.ps1` (root, gitignorado, fora do repo) corrigido
+tambem, script local sem rastreamento git. Frase do `noturno/SKILL.md:109` que mandava "usar
+sempre o caminho FREQUENTE" reescrita nos dois lugares (versionado e vivo) para citar o caminho
+antigo sem soletra-lo por extenso (evita falso-positivo no lint novo).
+
+Teste real, nao so parse: `lint-encoding.ps1` 66/66 OK. `monitor-tasks.ps1` executado ao vivo,
+achou os logs de 18/08 no caminho canonico e leu `submit_ok=103` (noturno) e `submit_ok=20`
+(matinal) corretamente, prova que o `$VixRoot` corrigido resolve de verdade. `retry-vixradar.ps1`
+executado ao vivo para as duas rotinas, resolveu o caminho do log do dia 19/08 corretamente (log
+ainda nao existe, rotina de hoje nao comecou, comportamento esperado). Achado incidental do teste,
+sem relacao com este fix: `Szuchmacher-RetryVixMatinal` foi recusado pelo Task Scheduler
+(`ERROR_REQUEST_REFUSED`) as 18/08 16:23, dia util, mas a matinal completou normal no horario
+certo, sem impacto real. Nao investigado a fundo, fora do escopo deste item.
+
+Guarda nova: `scripts/lint-legacy-path.ps1`, Gate 5 do pre-commit (`scripts/hooks/pre-commit`,
+hooks reinstalados com `install-hooks.ps1 -Force`), reprova qualquer `.ps1` ou `SKILL.md` de
+`routines/claude-desktop/*/` que reintroduza o caminho legado, com `$Allowlist` explicita para
+excecao documentada. So cobre o repo, nao os `SKILL.md` vivos fora dele, limitacao conhecida e
+registrada no proprio script. `references/audit-matrix.md` da skill de auditoria ganhou secao
+"Watchdogs locais de rotina" cobrindo o padrao.
+
+Junction NAO removida nesta rodada, como pedido: continua existindo, so passa a nao ter mais
+nenhum consumidor operacional conhecido puxando por ela.
+
+---
+
+### P1 (fechado acima) — Migracao da junction (18/08 a noite) nao alcancou 26 scripts nem 2 SKILL.md das rotinas
+
+A inversao da junction (`status/ESTADO.md`, 18/08 noite) reapontou a Action das 12 tarefas do
+Task Scheduler para o caminho fisico canonico `E:\Diretorio\Claude\Monitoramento de Credito`, e
+fechou dizendo "nenhuma tarefa, worktree ou metadado do git depende mais" do `FREQUENTE`. Isso e
+verdade so para Action/worktree/git. Por dentro, 26 arquivos `.ps1` (incluindo
+`run_claude_routine.ps1`, todos os `run_vixradar_*.ps1`, todos os `register-*-task.ps1` e o
+proprio `monitor-tasks.ps1`) continuam com `$ProjectRoot`/`$VixRoot` hardcoded no caminho
+`FREQUENTE\Monitoramento de Credito`. Nao quebra hoje porque a junction ainda existe e resolve, mas
+e exatamente o cenario que a doc de fechamento convida alguem a criar (achar que nada depende mais
+dela e remover). Se isso acontecer, praticamente toda a camada operacional cai ao mesmo tempo,
+incluindo os watchdogs que deveriam acusar a falha.
+
+Agravante: `routines/claude-desktop/noturno/SKILL.md:109` instrui ativamente o sentido errado hoje
+("o caminho antigo `E:\Diretorio\Claude\Monitoramento de Credito` ainda funciona por junction, mas
+e fragil - usar sempre o caminho FREQUENTE") — verdade antes da inversao de hoje, invertido agora.
+`matinal/SKILL.md` tem a mesma referencia ao caminho FREQUENTE. `verificacao-async/SKILL.md` (FASE
+1, referencia de qualidade) nao tem esse problema.
+
+CLAUDE.md e README.md (raiz do projeto) nao mencionam FREQUENTE, o problema fica contido na camada
+de scripts/rotina, nao vazou para a documentacao mais lida.
+
+**Correcao:** atualizar os 26 `$ProjectRoot`/`$VixRoot` para o caminho canonico e reescrever a
+linha 109 de `noturno/SKILL.md` (e a equivalente em `matinal/SKILL.md`) para parar de recomendar
+FREQUENTE. Nao aplicado nesta auditoria (readonly, mudanca abrange a camada operacional inteira,
+decisao de quando/como fica com o usuario).
+**Causa raiz:** a migracao teve um passo para Action de tarefa e um para worktree/git, mas nenhum
+passo varreu o conteudo interno dos scripts nem os SKILL.md pela mesma string de caminho — uma
+quarta superficie que ninguem cobriu porque a junction mascarava o sintoma.
+**Guarda sistemica proposta:** check automatizado (candidato a pre-flight ou lint, molde de
+`lint-encoding.ps1`) que reprova qualquer `.ps1` versionado ou `SKILL.md` de rotina Claude Desktop
+com `FREQUENTE\Monitoramento de Credito` hardcoded fora de allowlist explicita. Nao implementado
+ainda, proposta registrada aqui e no `references/audit-matrix.md` da skill de auditoria.
+
+### P3 — Saida de dry-run do Ranking-Mensal (descontinuado) ficou untracked sem padrao de .gitignore
+
+`Obsidian VIX Radar/SEO/Ranking SEO 2026-08 (dryrun).md` e `scripts/seo/ranking_state.dryrun.json`
+(ambos gerados 18/08 22h22, claramente durante a propria investigacao que decidiu descontinuar
+`VIXRadar-Ranking-Mensal`) sao untracked. O projeto ja tem o padrao para isso (`data/reconciliacao/
+dryrun/`, `data/historico/.dryrun/` no `.gitignore`), so nao foi generalizado para este caminho —
+primeira vez que esta rotina roda em modo dry-run. Como o script fica em quarentena (nao apagado),
+qualquer novo teste manual repete o ruido. **Correcao:** adicionar `scripts/seo/*.dryrun.json` e
+o padrao equivalente em `Obsidian VIX Radar/SEO/*(dryrun)*.md` ao `.gitignore`, ou apagar os dois
+arquivos (zero valor operacional, decisao de descontinuar ja documentada em local com evidencia
+melhor). Nao aplicado nesta auditoria, fica para o usuario escolher.
+
+### Confirmado (sem achado novo) — subsistemas de hoje
+
+`CHAVEESCOPO1` (`REMOTE_VERIFICACAO_KEY` existe como secret vivo em producao, confirmado via
+`wrangler secret list`, escopo restrito as 3 acoes de verificacao confirmado por leitura direta do
+codigo), `CONCORVERIF1` (reserva atomica, fail-open documentado e correto) e `HEARTBEATVERIF1`
+(agente `verificacao_async` no watchdog, limite 16h) auditados por leitura de diff + evidencia de
+producao em `status/ESTADO.md`. Nenhum binding novo em `wrangler.toml` hoje. `references/
+audit-matrix.md` da skill `vix-radar-general-audit` (revisao anterior 27/07, defasada) atualizado
+com os 3 subsistemas + secao nova "Watchdogs locais de rotina" cobrindo o par
+`retry-vixradar.ps1`/`monitor-tasks.ps1` e o risco de regex de `FIM:` divergente entre os dois
+(mesma causa do retry falso de 17/08, ja corrigido, commit `ad06ad4`). Script obrigatorio de
+veracidade de UI (`audit-ui-metrics.mjs`) rodado: exit 0, 0 bloqueante, 3 termos reservados
+conferidos manualmente contra o glossario, todos batendo.
+
+---
+
 ## 18/08 — execução: rotação da routine_key + envelope + limpeza (detalhe: [[86 - Rotacao routine_key e envelope noturno 2026-08-18]])
 
 ### RESOLVIDO 18/08 — P1 rotação da routine_key

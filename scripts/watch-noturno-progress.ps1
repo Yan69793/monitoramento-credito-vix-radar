@@ -4,7 +4,7 @@
 #      pwsh -File scripts\watch-noturno-progress.ps1 -DateTag 20260804 -OpenBrowser
 param(
     [string]$DateTag = (Get-Date -Format 'yyyyMMdd'),
-    [string]$ProjectRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito',
+    [string]$ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito',
     [int]$TotalEsperado = 103,
     [int]$RefreshMs = 800,
     [switch]$OpenBrowser,

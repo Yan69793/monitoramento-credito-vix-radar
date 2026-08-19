@@ -13,7 +13,7 @@ param(
 # engolir falha e o healthcheck FALHA-002 so pegava scripts com python|node|claude.
 $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$VixRoot   = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
 $LogFile   = Join-Path $LogDir "monitor_$DateTag.log"

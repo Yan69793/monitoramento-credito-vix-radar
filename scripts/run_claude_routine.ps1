@@ -12,7 +12,7 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $ScheduledRoot = 'C:\Users\User\.claude\scheduled-tasks'
-$VixRoot       = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$VixRoot       = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $SiteRoot      = 'E:\Diretorio\Claude\FREQUENTE\Site\site-producao'
 $LibDir        = Join-Path $VixRoot 'scripts\lib'
 $LogDir        = Join-Path $VixRoot 'logs\routines'

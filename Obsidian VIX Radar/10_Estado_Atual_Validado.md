@@ -76,6 +76,12 @@ foi feito, e o guard segue intacto. O novo script da agenda-semanal também ganh
 
 ### Riscos residuais
 
+- RESOLVIDO 19/08 (madrugada): auditoria geral encontrou os 24 `.ps1` + 4 `SKILL.md` (2
+  versionados + 2 vivos fora do repo) desta tabela ainda hardcodando `FREQUENTE\Monitoramento de
+  Credito`, sobrevivendo à inversão de junction descrita acima. Corrigido e testado ao vivo
+  (`monitor-tasks.ps1`, `retry-vixradar.ps1`), guarda nova `scripts/lint-legacy-path.ps1`. Não
+  muda nenhuma classificação desta matriz, só fecha a lacuna que a inversão de junction deixou.
+  Detalhe em `PENDENCIAS.md`.
 - P2: `monitor-tasks.ps1` com diagnóstico específico da AgendaSemanal preso a exit code
   antigo — catch-all genérico cobre, só perde precisão da mensagem.
 - P2: linha `ROTINA_RESUMO` padronizada só na agenda-semanal, as outras 5 rotinas estáveis

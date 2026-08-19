@@ -20,7 +20,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-$VixRoot = 'E:\Diretorio\Claude\FREQUENTE\Monitoramento de Credito'
+$VixRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $Runner  = Join-Path $VixRoot 'scripts\run_claude_routine.ps1'
 $LogDir  = Join-Path $VixRoot 'logs\routines'
 $DateTag = Get-Date -Format 'yyyyMMdd'
