@@ -23,6 +23,70 @@ Universo real: **13 rotinas locais** (Task Scheduler + 2 watchdogs) + **2 Claude
 Routines remotas** + **5 GitHub Actions workflows** + **4 Cloudflare Cron Triggers internos
 do Worker**. Nenhuma rodava fora desse universo confirmado.
 
+### Classificação por rotina
+
+| Rotina | Classificação |
+|---|---|
+| `vixradar-matinal` | LOCAL SOMENTE |
+| `vixradar-noturno` | LOCAL SOMENTE |
+| `vixradar-verificacao-async` (par local+remote) | **LOCAL + REMOTE** (dual real, provado 18/08) |
+| `VIXRadar-AgendaSemanal` | LOCAL SOMENTE |
+| `VIXRadar-Coleta-Volatilidade` | LOCAL SOMENTE |
+| `VIXRadar-Export-Historico` | LOCAL SOMENTE |
+| `VIXRadar-Reconciliacao-CVM` | LOCAL SOMENTE |
+| `VIXRadar-Health-Watch` | LOCAL SOMENTE |
+| `Szuchmacher-RetryVixMatinal`/`RetryVixNoturno` | LOCAL SOMENTE (watchdog) |
+| VIX Radar — frescor diário | REMOTE, sem par local (não é fallback de nada, é a única implementação) |
+| `VIXRadar-Ranking-Mensal` | **DESCONTINUAR** |
+| canonical-test / daily-status-email / frescor-check / scan-emergencia / worker-tests | GITHUB ACTIONS |
+| 4 crons internos do Worker (matinal/noturno/watchdog/agenda-build) | CLOUDFLARE CRON |
+
+Nenhuma rotina se encaixa em REMOTE PRIMÁRIO ou LOCAL+REMOTE FALLBACK no sentido estrito
+(remote como principal com local de reserva, ou o inverso) — o único par local+remote real
+(verificação assíncrona) roda os dois **simultaneamente por desenho**, não em relação
+primário/fallback, cobrindo janelas horárias diferentes.
+
+Matinal e noturno avaliados e **mantidos locais de propósito**, conforme instrução original de
+não forçar migração para Remote sem comparar custo e equivalência funcional: nenhum bug
+encontrado, plano Max local é flat-rate (sessão interativa e rotina agendada não competem por
+custo adicional, ver memória do projeto), e mover para Remote trocaria custo zero por custo
+metrado sem ganho funcional correspondente. Nenhuma mudança faria sentido sem uma razão
+concreta, que não apareceu na auditoria.
+
+### Independência do PC do operador
+
+**Independem do PC ligado:** os 2 Claude Code Routines remotos (verificação assíncrona remote
++ frescor diário), os 5 GitHub Actions workflows, os 4 Cloudflare Cron Triggers do Worker —
+todos rodam em infraestrutura de nuvem (Anthropic/GitHub/Cloudflare).
+
+**Necessariamente locais:** as 11 rotinas restantes (matinal, noturno, verificação assíncrona
+local, agenda-semanal, coleta-volatilidade, export-historico, reconciliacao-cvm, health-watch,
+os 2 watchdogs de retry) — todas chamam `claude` CLI local via credencial de assinatura do
+desktop, ou dependem de `wrangler`/PowerShell local. Nenhuma tem caminho de execução que não
+passe pela máquina do operador. A fila de verificação é a única com cobertura real quando o PC
+está desligado, via o par remote.
+
+### Duplicações eliminadas
+
+**Zero duplicações ativas encontradas.** O sistema já tinha os guards corretos antes desta
+sessão (tasks nativas `Disabled` para matinal/noturno/verificação, mutex nas rotinas
+PowerShell). O único risco de duplicação real seria alguém reabilitar essas três tasks — não
+foi feito, e o guard segue intacto. O novo script da agenda-semanal também ganhou mutex
+(`Global\vixradar-agenda-semanal`) que não existia antes.
+
+### Riscos residuais
+
+- P2: `monitor-tasks.ps1` com diagnóstico específico da AgendaSemanal preso a exit code
+  antigo — catch-all genérico cobre, só perde precisão da mensagem.
+- P2: linha `ROTINA_RESUMO` padronizada só na agenda-semanal, as outras 5 rotinas estáveis
+  mantêm formato de log próprio (retrofit em sessão separada, `task_12edfa2c`).
+- Baixo: `VIXRadar-AgendaSemanal` nunca teve confirmação viva de que 03:00 (citado em versões
+  antigas do README) foi horário real de produção — mantido 22:00, sem evidência de que 03:00
+  tenha existido de fato, então não é regressão, é documentação antiga possivelmente já errada.
+- Nenhum risco de segurança residual identificado: nenhuma credencial nova criada, nenhum
+  segredo exposto, `REMOTE_VERIFICACAO_KEY` continua com escopo restrito e não foi tocada além
+  da correção de cron.
+
 Achados que exigiram correção nesta sessão:
 
 1. **`VIXRadar-AgendaSemanal` morta em silêncio.** O runner genérico subia o Claude com
