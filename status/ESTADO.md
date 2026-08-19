@@ -75,6 +75,23 @@ FREQUENTE. A alteração local que esse worktree carregava foi preservada intact
 O `FREQUENTE\Monitoramento de Credito` continua existindo como junction, mas agora só
 por compatibilidade. Nenhuma tarefa, worktree ou metadado do git depende mais dele.
 
+Ainda 18/08, à noite: FASE 2 de governança das rotinas fechada. Achado principal: a
+`VIXRadar-AgendaSemanal` estava morta em silêncio desde antes de 10/08 (rodava sem shell,
+gravava `FIM: concluido` sem fazer nada, 20 emissores com calendário trimestral vencido em
+produção). Corrigida com `scripts/run_vixradar_agenda_semanal.ps1` dedicado, validado com dois
+testes ao vivo contra produção (o primeiro interrompido pelo limite de uso da própria conta do
+usuário durante a sessão, com falha corretamente reportada em vez de mascarada; o segundo
+limpo, exit 0, 8/20 emissores atualizados, confirmado fora do script via nova consulta a
+`listar_calendario_stale`). Também corrigidos: `VIXRadar-Ranking-Mensal` descontinuada
+formalmente (task não existe no Scheduler há 5+ semanas), segunda Remote Routine não
+documentada (`VIX Radar — frescor diário`) trazida para `routines/README.md`, cron da
+verificação assíncrona remota corrigido (estava 3h fora do horário prometido desde a criação
+no mesmo dia, string do cron local colada sem converter fuso), `ROUTINES-CLOUD.md` de
+matinal/noturno marcados órfão/especulativo. Matriz completa das 13 rotinas locais + 2 remotas
++ 5 GitHub Actions + 4 Cloudflare Cron em
+`Obsidian VIX Radar/10_Estado_Atual_Validado.md`. Health final: `ok:true kv:true telemetria:true
+sentry_ok:true verificador_ok:true`, v4.9.198.
+
 ## Como verificar
 
 Portão de verificação do CLAUDE.md, antes de declarar tarefa concluída:
@@ -104,3 +121,5 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - Migração KV→DO em andamento com KV ainda como fonte da verdade; auditar `console.warn` atrás de `[DO][dual-write]`/`[DO][read]`, detalhe no CLAUDE.md
 - `npm test` só é confiável em CI: `workerd.exe` bloqueado localmente pelo Smart App Control, detalhe no CLAUDE.md
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
+- P2, não bloqueante: `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` preso ao exit code antigo (1); o script novo usa 2-8, catch-all genérico ainda pega qualquer falha como erro, só perde a mensagem específica. Detalhe em `routines/README.md`
+- P2, não bloqueante: retrofit da linha `ROTINA_RESUMO` padronizada em matinal/noturno/coleta-volatilidade/export-historico/reconciliacao-cvm (hoje só a agenda-semanal, recém-reescrita, tem essa linha). Sessão separada já em andamento (task_12edfa2c)

@@ -167,9 +167,16 @@ não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
 | `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
 | `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores |
 | `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário 10h20 BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}` |
+| `VIXRadar-AgendaSemanal` | Task Scheduler | Dom 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale |
+| `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
 | `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |
 | `VIXRadar-Reconciliacao-CVM` | Task Scheduler | Seg 08h00 BRT | — | Reconcilia IPE CVM vs estado |
-| `VIXRadar-Ranking-Mensal` | Task Scheduler | Dia 1, 11h30 | — | SEO mensal |
+| `VIXRadar-Health-Watch` | Task Scheduler | Seg-Sex 08h-20h, 15/15min | — | Vigia de health, alerta e-mail |
+| `VIXRadar-Ranking-Mensal` | **OBSOLETO** (task não existe) | — | — | SEO mensal, descontinuada 18/08/2026, ver `routines/README.md` |
+
+Duas Claude Code Routines remotas (nuvem, fora do Task Scheduler) também existem:
+verificação async (02h/14h BRT) e frescor diário (23h BRT). Detalhe e trigger IDs em
+`routines/README.md`.
 
 A matinal usa Haiku em lotes de 6 + Sonnet para EWS≥38 em lotes de 4.
 A noturna varre os 103 emissores: Haiku lotes de 15 + Sonnet lotes de 11.
