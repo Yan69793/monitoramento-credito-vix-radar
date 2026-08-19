@@ -4,6 +4,21 @@
 
 Página canônica de estado, legível por qualquer agente (não só Claude): `status/ESTADO.md`. Ler antes de começar sessão de trabalho, atualizar a data e os itens ao fechar uma sessão que mudou o estado.
 
+## Pendências abertas
+
+Esta seção existe como **ponteiro**, não como lista. A fila real vive em dois
+arquivos e duplicar aqui só criaria uma terceira versão para divergir. Ela foi
+criada em 19/08/2026 porque a varredura de workspace (`scan-pendencias.ps1`, da
+skill `resolver-pendencias`) procura exatamente por este cabeçalho, e sem ele o
+VIX Radar saía invisível do raio-x de pendências dos 20 projetos, mesmo tendo
+itens abertos.
+
+1. **Fila detalhada, com causa raiz e prova** — `Obsidian VIX Radar/PENDENCIAS.md`. É o canônico desde 2026-07-27, ordenado por data, cada item fecha com correção, causa raiz e guarda sistêmica.
+2. **Resumo do estado e itens abertos em uma tela** — `status/ESTADO.md`, seção `## Itens abertos`. É o que ler primeiro ao começar sessão.
+3. **Decisões pendentes do operador, não do agente** — rotação da `routine_key` (incidente ROUTINEKEY-PLAIN1, detalhado abaixo neste arquivo) e migração KV→DO, que segue com o KV como fonte da verdade e fallback silencioso de leitura.
+
+Ao fechar um item, atualizar os dois primeiros. Não trazer a lista para cá.
+
 ## Comunicação
 
 - Toda resposta neste projeto aplica a skill `/humanizer` antes de ser entregue.

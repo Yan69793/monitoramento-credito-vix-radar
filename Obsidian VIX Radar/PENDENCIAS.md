@@ -11,6 +11,60 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 19/08 (09h15 BRT) — RESOLVIDO: RETRYCFG1, as duas tasks de retry nasceram sem as guardas do projeto
+
+Achado pela varredura de pendencias do workspace (`/resolver-pendencias`), nao por incidente novo.
+
+O monitor acusava `Szuchmacher-RetryVixMatinal` com `LastTaskResult 2147946720` desde 18/08. Esse
+codigo e `0x800710E0` (ERROR_REQUEST_REFUSED), e tanto o codigo quanto a remediacao ja estavam
+documentados em `01_PROJETOS/Jarvis/AI_OPERATING_SYSTEM/06_RISCOS_E_DIVIDAS_TECNICAS.md:72`
+("condicao de energia / maquina suspensa, flags de bateria + `StartWhenAvailable`"). O mesmo fix ja
+tinha sido aplicado em 09/08 no `Szuchmacher-MacroCron` e no `Szuchmacher-AgendaAgent`.
+
+A sessao da madrugada de hoje acertou a causa por evidencia (evento 153, maquina desligada das 03h42
+as 16h14, gatilho das 13h30 perdido) mas parou antes de aplicar a correcao.
+
+**Causa raiz.** As duas tasks de retry nasceram em 17/08 criadas a mao. Sao as **unicas** do projeto
+sem script de registro: as outras nove tem, e todas as nove setam `StartWhenAvailable`. Fix aplicado
+a instancias, nao ao padrao, entao a task criada depois nasceu sem ele.
+
+**Tres defeitos, nao um** (o dump da configuracao expos os outros dois):
+
+| Configuracao | Estava | Agora | Por que importa |
+|---|---|---|---|
+| `StartWhenAvailable` | `False` | `True` | Disparo perdido era descartado em silencio |
+| `DisallowStartIfOnBatteries` / `StopIfGoingOnBatteries` | `True` / `True` | `False` / `False` | Em bateria a task recusa iniciar, e morre se a energia cai no meio |
+| `ExecutionTimeLimit` | `PT72H` | `PT4H` | 72h com `MultipleInstances IgnoreNew`: uma instancia travada bloquearia os 3 dias seguintes de retry sem ninguem ver. Toda irma no projeto usa minutos ou poucas horas |
+
+**Guarda sistemica:** `scripts/register-retry-tasks.ps1`, que faltava. Reproduz as duas tasks com a
+configuracao correta e **verifica o resultado no fim**, saindo 1 se qualquer campo divergir. XML das
+duas versoes antigas salvo em `%TEMP%\retrytasks_bk_20260819-091356\` antes de mexer.
+
+**Prova (saida real do script):**
+```
+Szuchmacher-RetryVixMatinal
+  StartWhenAvailable         = True  (esperado True)
+  DisallowStartIfOnBatteries = False  (esperado False)
+  StopIfGoingOnBatteries     = False  (esperado False)
+  ExecutionTimeLimit         = PT4H  (esperado PT4H)
+  NextRunTime                = 19.ago.2026 13:30:00
+Szuchmacher-RetryVixNoturno
+  ... idem, NextRunTime = 19.ago.2026 21:30:00
+OK: as duas tasks estao com StartWhenAvailable, tolerancia a bateria e teto de 4h.
+```
+
+**O alerta do monitor continua vermelho ate 13h30 de hoje, e isso esta certo.** Re-registrar nao zera
+`LastTaskResult`, so uma execucao bem-sucedida zera. Rodar a task agora (09h15) seria pior: a matinal
+so roda as 10h, o retry nao acharia linha `FIM` do dia e relancaria a rotina uma hora antes da hora,
+gastando cota e colidindo com a sessao agendada. O bloco `<!-- AUTO-MONITOR-START -->` do backlog
+central e regenerado pelo `monitor-tasks.ps1`, entao nao adianta riscar a linha la a mao.
+
+**Nao confundir com um quarto item:** `Szuchmacher-RetryVixNoturno` estava com `LastTaskResult 0`, ou
+seja nunca falhou, mas carregava exatamente os mesmos tres defeitos de configuracao. Foi corrigido
+junto por isso, nao por ter dado erro.
+
+---
+
 ## 19/08 (08h30-09h00 BRT) — ABERTO: feed segue em 14/08, causa e apagao da CVM + cegueira de frescor
 
 Usuario reportou que, mesmo apos os fixes DEDUP1 e HISTFLAT1+2 da madrugada, o Painel de Eventos
