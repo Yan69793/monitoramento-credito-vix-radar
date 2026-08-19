@@ -196,7 +196,12 @@ vigia real das três hoje.
   `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` amarrado ao exit
   code antigo (1), que o script novo não usa mais (usa 2-8); catch-all genérico ainda classifica
   qualquer falha como erro, só perde o diagnóstico fino — não é blind spot. Matriz completa e
-  evidência em `Obsidian VIX Radar/10_Estado_Atual_Validado.md`.
+  evidência em `Obsidian VIX Radar/10_Estado_Atual_Validado.md`. Achado extra na verificação de
+  fechamento: `retry-vixradar.ps1` e `monitor-tasks.ps1` tinham o mesmo regex
+  `(\d+)/\d+ processados` que não casava com "N/N **emissores** processados" (palavra extra no
+  meio), causou retry falso real da matinal em 17/08 (rotina já tinha entregue 19/19 às 11:35,
+  watchdog relançou às 13:30 achando que não). Sessão relançada se autodiagnosticou sem
+  duplicar nada, mas queimou sessão à toa. Corrigido nos dois arquivos, commit `ad06ad4`.
 - **2026-08-18:** Primeira prova ao vivo de dual-execução real na fila de verificação: a sessão local
   (Claude Desktop, `origem:"local"`) e a Claude Code Routine remote (`origem:"remote"`, roda 02:00 e
   14:00 BRT, ver `ROUTINES-CLOUD.md` na pasta da rotina) drenaram a mesma fila em paralelo. Fila com 26

@@ -89,8 +89,11 @@ verificação assíncrona remota corrigido (estava 3h fora do horário prometido
 no mesmo dia, string do cron local colada sem converter fuso), `ROUTINES-CLOUD.md` de
 matinal/noturno marcados órfão/especulativo. Matriz completa das 13 rotinas locais + 2 remotas
 + 5 GitHub Actions + 4 Cloudflare Cron em
-`Obsidian VIX Radar/10_Estado_Atual_Validado.md`. Health final: `ok:true kv:true telemetria:true
-sentry_ok:true verificador_ok:true`, v4.9.198.
+`Obsidian VIX Radar/10_Estado_Atual_Validado.md`. Na verificação de fechamento, mais um achado:
+`retry-vixradar.ps1` e `monitor-tasks.ps1` tinham o mesmo regex que não reconhecia a frase real
+"N/N emissores processados" da matinal, causou um retry falso em 17/08 (rotina já tinha
+entregue, watchdog relançou à toa); corrigido nos dois arquivos, commit `ad06ad4`. Health
+final: `ok:true kv:true telemetria:true sentry_ok:true verificador_ok:true`, v4.9.198.
 
 ## Como verificar
 
