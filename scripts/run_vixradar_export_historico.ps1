@@ -292,6 +292,10 @@ try {
 
     Write-Log ("FIM: ok - {0} arquivos em {1} ({2}s, modo {3}, {4} avisos)" -f $arquivos.Count, $OutDir, $manifest.duracao_s, $manifest.modo, $erros.Count)
 
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $resultadoTxt = if ($erros.Count -gt 0) { 'PARCIAL' } else { 'OK' }
+    Write-Log ('ROTINA_RESUMO|vixradar-export-historico|local|' + $t0.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ') + '|' + $fimIso + '|' + $resultadoTxt + '|' + $comSerie + '|' + $erros.Count + '|' + $semSerie + '|')
+
     # AUTOCOMMIT-HISTORICO1 (2026-08-11): commit restrito a $OutDir (o dia exportado
     # agora). NUNCA 'git add -A' -- o working tree deste repo frequentemente tem
     # outras mudancas soltas (scripts, notas) que nao sao desta rotina. Falha aqui

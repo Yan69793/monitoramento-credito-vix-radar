@@ -492,6 +492,7 @@ foreach ($f in @($HaikuSkill, $SonnetSkill)) {
 }
 
 Write-Log "INICIO: matinal top=$TopN meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
+$inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 # Sonda a assinatura uma vez e registra no log qual credencial serviu a execucao. A linha
 # importa para proveniencia: em 30/07 o log carimbava Claude sem que isso fosse verificavel.
 Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
@@ -542,6 +543,7 @@ try {
         exit 3
     }
     Write-Log ('Health ' + $health.versao + ' ok=' + $health.ok + ' verificador_ok=' + $health.verificador_ok + ' (nao bloqueante para esta rotina)')
+    $versaoWorker = $health.versao
 } catch {
     Write-Log ('ERRO: health ' + $_.Exception.Message)
     exit 3
@@ -825,6 +827,11 @@ try {
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count +
         ' auth_fail=' + $stats.auth_fail + ' silent_fail=' + $stats.silent_fail)
+
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $errosTotal = $stats.auth_fail + $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail
+    $resultadoTxt = if ($stats.auth_fail -gt 0) { 'FALHA' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
+    Write-Log ('ROTINA_RESUMO|vixradar-matinal|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
     # Dreno da fila de verificacao assincrona pos-matinal (v4.9.150)
     # Mesmo racional do noturno: eventos CRITICO/RELEVANTE submetidos pela matinal

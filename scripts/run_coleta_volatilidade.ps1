@@ -24,6 +24,7 @@ function Write-Log([string]$Message) {
 
 $hadFailure = $false
 Write-Log 'INICIO: coleta_volatilidade'
+$inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 
 Write-Log 'Etapa 1/2: collect_cotacoes.ps1'
 try {
@@ -65,7 +66,11 @@ if (-not $hadFailure) {
 
 if ($hadFailure) {
     Write-Log 'FIM: coleta_volatilidade COM_FALHA'
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    Write-Log ('ROTINA_RESUMO|vixradar-coleta-volatilidade|local|' + $inicioIso + '|' + $fimIso + '|FALHA|0|1|0|')
     exit 1
 }
 Write-Log 'FIM: coleta_volatilidade OK'
+$fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+Write-Log ('ROTINA_RESUMO|vixradar-coleta-volatilidade|local|' + $inicioIso + '|' + $fimIso + '|OK|2|0|0|')
 exit 0

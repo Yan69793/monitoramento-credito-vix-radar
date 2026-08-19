@@ -227,6 +227,20 @@ projetos. As 5 skills `vix-radar-*` estavam duplicadas como stubs de ~300 bytes 
 `C:\Users\User\.claude\skills\` apontando por texto para o conteúdo real em
 `E:\Diretorio\Claude\.claude\skills\`, o que quebrou de verdade nesta sessão (o script obrigatório
 da auditoria falhou com `MODULE_NOT_FOUND` na primeira chamada). Stubs trocados por junctions.
+Ainda em 18/08, mais tarde: padronizada a linha `ROTINA_RESUMO|nome|modo|inicio|fim|
+resultado|processados|erros|pendentes|versao` em 5 rotinas que já funcionavam (matinal,
+noturno, coleta-volatilidade, export-historico, reconciliacao-cvm), sem tocar a lógica
+interna de nenhuma, só acrescentando a linha logo depois do `FIM:` já existente de cada
+uma. Formato espelha o que `run_vixradar_agenda_semanal.ps1` já usa (única rotina
+reescrita nesta sessão, corrigindo bug real de execução silenciosa sem Bash). Testado
+com execução real controlada: export-historico e reconciliacao-cvm rodaram inteiros em
+`-DryRun` real, coleta-volatilidade rodou de verdade forçando o branch de falha (sem
+tocar produção). O branch de sucesso de coleta-volatilidade e os scripts matinal/noturno
+completos não têm modo seguro de teste (rodá-los gastaria tokens Claude reais e gravaria
+em produção fora do agendamento), então foram validados isolando o código exato inserido
+contra dados fixture cobrindo os cenários OK/PARCIAL/FALHA. Os 5 arquivos passam no
+parser PS 5.1 e no `lint-encoding.ps1` do projeto. `verificacao-async` e `ranking-mensal`
+ainda não têm a linha `ROTINA_RESUMO`.
 
 ## Como verificar
 
@@ -266,7 +280,7 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
 - RESOLVIDO 19/08 09h15 (RETRYCFG1): as duas tasks de retry eram as únicas do projeto sem script de registro e nasceram sem as guardas que as outras nove têm. Tinham `StartWhenAvailable=False` (disparo perdido descartado em silêncio, causa do erro de 18/08), recusa de início na bateria, e `ExecutionTimeLimit` de 72h contra minutos das irmãs. Corrigidas e verificadas pelo novo `scripts/register-retry-tasks.ps1`. O alerta do monitor só some às 13h30, quando a task rodar, porque re-registrar não zera `LastTaskResult`. Detalhe em `PENDENCIAS.md`
 - P2, não bloqueante: `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` preso ao exit code antigo (1); o script novo usa 2-8, catch-all genérico ainda pega qualquer falha como erro, só perde a mensagem específica. Detalhe em `routines/README.md`
-- P2, não bloqueante: retrofit da linha `ROTINA_RESUMO` padronizada em matinal/noturno/coleta-volatilidade/export-historico/reconciliacao-cvm (hoje só a agenda-semanal, recém-reescrita, tem essa linha). Sessão separada já em andamento (task_12edfa2c)
+- RESOLVIDO 21/08 (ORF3D593D6): retrofit da linha `ROTINA_RESUMO` em matinal/noturno/coleta-volatilidade/export-historico/reconciliacao-cvm resgatado por cherry-pick do commit `3d593d6`, que ficou 3 dias preso numa worktree e nunca tinha chegado ao remoto
 - RESOLVIDO 19/08 00h10: os 24 `.ps1` + 4 `SKILL.md` (2 versionados + 2 vivos fora do repo) corrigidos, testados ao vivo (`monitor-tasks.ps1` e `retry-vixradar.ps1` rodados de verdade), guarda nova `scripts/lint-legacy-path.ps1` (Gate 5 do pre-commit). Detalhe em `PENDENCIAS.md`
 - RESOLVIDO 19/08 03h10 (DEDUP1): feed do Painel de Eventos parado em 14/08. Dedup semântica do frontend descartava atualização real de saga longa quando a única diferença textual era "nova" ou quando a redação do analista se repetia quase verbatim. Corrigido, testado (`scripts/test-dedup-eventos.mjs`), deployado v202.11, confirmado ao vivo. Detalhe em `PENDENCIAS.md`
 - RESOLVIDO 19/08 03h10 (HISTFLAT1+2): histórico de EWS não acumulava, `hist_len` preso em 1 para os 103 emissores. Duas causas (gate de leitura + mismatch de case na chave), corrigidas em sequência porque a primeira sozinha não bastou — a prova em produção pegou isso. Deploy Worker v4.9.199 depois v4.9.200, confirmado ao vivo (`hist_len` 1→2 uniforme). Detalhe em `PENDENCIAS.md`

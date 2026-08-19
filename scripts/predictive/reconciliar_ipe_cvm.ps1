@@ -86,6 +86,7 @@ if (-not $mutex.WaitOne(0)) {
 
 $exitCode = 0
 try {
+    $inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     Write-Log ('INICIO: reconciliacao IPE CVM vs estado Radar (janela {0}d, {1} semanas, DryRun={2})' -f $DiasJanela, $SemanasEstado, [bool]$DryRun)
 
     # ---------------------------------------------------------------
@@ -472,6 +473,11 @@ try {
     $metrics | ConvertTo-Json | Set-Content -Path (Join-Path $LogDir ("vixradar-reconciliacao-cvm_metrics_{0}.json" -f $Stamp)) -Encoding UTF8
 
     Write-Log ("FIM: ok - {0} documentos severos, {1} emissores casados, {2} divergencias" -f $documentosSeveros.Count, $emissoresComDocSevero.Count, $divergencias.Count)
+
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $semanasFalhas = $semanas.Count - $semanasLidas
+    $resultadoTxt = if ($semanasFalhas -gt 0) { 'PARCIAL' } else { 'OK' }
+    Write-Log ('ROTINA_RESUMO|vixradar-reconciliacao-cvm|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $emissoresComDocSevero.Count + '|' + $semanasFalhas + '|' + $divergencias.Count + '|')
 
     # AUTOCOMMIT-RECONCILIACAO1 (2026-08-11): commit restrito a $relPath e $notaPath,
     # os 2 arquivos que este run acabou de escrever. NUNCA 'git add -A'. Falha aqui

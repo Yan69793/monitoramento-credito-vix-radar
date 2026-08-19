@@ -472,6 +472,7 @@ if (Test-Path $__skillLockFile) {
 }
 
 Write-Log "INICIO: noturno meta=${TokenTarget} hard=${TokenHardCap} haiku+sonnet(EWS>=$SonnetEwsMin)"
+$inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 # Shadow DeepSeek (piloto): off por default. Nunca grava no Worker.
 # Sem a lib carregada nao ha shadow, e a funcao de teste nem existe para ser chamada.
 $ShadowDeepSeekOn = $false
@@ -542,6 +543,7 @@ try {
         exit 3
     }
     Write-Log ('Health ' + $health.versao + ' ok=' + $health.ok + ' verificador_ok=' + $health.verificador_ok + ' (nao bloqueante para esta rotina)')
+    $versaoWorker = $health.versao
 } catch {
     Write-Log ('ERRO: health ' + $_.Exception.Message)
     exit 3
@@ -889,6 +891,11 @@ try {
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' buscas=' + $stats.buscas_total +
         ' silent_fail=' + $stats.silent_fail +
         ' deferred=' + $stats.deferred + ' criticos=' + $stats.criticos.Count)
+
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail
+    $resultadoTxt = if ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
+    Write-Log ('ROTINA_RESUMO|vixradar-noturno|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
     if ($ShadowDeepSeekOn -and $statsShadow.n -gt 0) {
         try {

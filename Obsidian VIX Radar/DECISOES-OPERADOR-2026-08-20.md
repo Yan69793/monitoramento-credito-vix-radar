@@ -73,8 +73,8 @@ de domingo. Isso ataca o atraso de promoção, que é o dano concreto.
 Manter a checagem pontual no RAD só onde ela já existe, no gate de evento de RJ, default
 e rebaixamento. É consulta de um emissor por vez, quando já há suspeita, não varredura.
 
-**Decisão do operador:** ______________________
-**Data:** ______________________
+**Decisão do operador:** Recomendação aceita em 21/08/2026. Não construir o scraping do RAD. Promover para fila aprofundada por sinal de imprensa no mesmo dia, e manter a checagem pontual no RAD só no gate de evento de RJ, default e rebaixamento. Implementado na sessão de 21/08.
+**Data:** 2026-08-21
 
 ---
 
@@ -147,8 +147,8 @@ ao usuário, isso precisa dizer quantos estão ativos nesta leitura. Não foi en
 declaração explícita de "seis drivers" na tela, então isto é prevenção, não correção de
 defeito achado.
 
-**Decisão do operador:** ______________________
-**Data:** ______________________
+**Decisão do operador:** Aceita em 21/08/2026. Ordem: ANOMSCHEMA1 primeiro, momentum por decurso de prazo, Merton depois do mapa TICKERPERIMETRO1 classificado. O mapa também foi ordenado nesta sessão. A apresentação do score deve dizer quantos drivers estão ativos na leitura quando for mexida.
+**Data:** 2026-08-21
 
 ---
 
