@@ -11,6 +11,216 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 20/08 (17h00 BRT) — ABERTO: fila da auditoria geral, com tag e critério de pronto
+
+Tudo que a auditoria de 20/08 diagnosticou e **não** consertou. Cada item fecha com
+o critério de pronto explícito, para a próxima sessão não precisar redescobrir o
+escopo. Os itens resolvidos na mesma sessão estão na entrada de baixo.
+
+### P1 — TICKERPERIMETRO1: mapa de tickers com perímetro errado, bloqueia market_cap
+
+`data/cotacoes/tickers_emissores.json` declara 94 emissores listados para um universo
+de 103, número alto demais para uma carteira de crédito privado. O próprio arquivo se
+contradiz, o `_descricao` diz "Apenas emissores listados com capital aberto" e o
+`_nota` diz "~68 dos 103 emissores são listados". Uma das duas está velha.
+
+Pior que a contagem, há entradas apontando para entidade diferente da emissora.
+`Compass Gás e Energia` aponta para `CMPC3.SA`, que é de outra companhia. `MRS
+Logística` usa `MRSA6B.SA`, papel de balcão sem liquidez de tela. `Itaúsa` com
+`ITSA4` é holding pura, enquanto quem emite dívida no grupo é o banco. `Compass` é
+subsidiária da Cosan, que já tem `CSAN3` no mesmo mapa. Não fiz a classificação
+completa das 94 entradas e não afirmo contagem que não apurei.
+
+Isso é **pré-requisito bloqueante** de qualquer coleta de `market_cap` para Merton.
+Com perímetro trocado, Merton mede equity da mãe contra dívida da filha e entrega
+número plausível e errado, que é pior que o `null` de hoje.
+
+**Pronto quando:** as 94 entradas estiverem classificadas uma a uma como emissora
+própria, controladora ou relacionada, com a fonte da classificação registrada; as
+relacionadas removidas ou marcadas como inelegíveis para Merton; e o `_nota`
+reconciliado com o `_descricao`.
+
+### P2 — DRIVERMORTO1: 3 dos 6 drivers do score nunca produziram valor
+
+Diagnóstico real de cada um, corrigindo o que a sessão anterior tinha suposto.
+
+`merton` está `null` nos 103 emissores em todos os exports desde 11/07/2026. O gate
+em `worker.js:14074` exige `mktCap`, e nem `fundamentals:altman:latest` (DFP da CVM,
+balanço puro, 0 ocorrências de `market_cap` em 99 empresas) nem
+`cotacoes:volatilidade:v1` (que se recusa a publicar preço por ação como market cap,
+de propósito e com razão) fornecem. Bloqueado por TICKERPERIMETRO1.
+
+`momentum` exige `velocity_delta >= 2` sobre a série `ews:hist:{empresa}`. As 103
+chaves existem, mas o conteúdo é raso e plano. `ews:hist:oi` tem 3 pontos, 18, 19 e
+20/08, todos com score 66. A série só começou em 18/08, quando o HISTFLAT2 consertou
+o casamento de chave em minúsculo. Duas causas somadas, série curta demais para
+janela de 7 dias e score preso no piso estrutural.
+
+`mercado` exige `spread_score >= 10`, que vem de `spreadScoreDeAnomalias` lendo
+`mercado:anomalias:ativas`. Essa chave em produção tem 4 bytes, `{}`. Não é falta de
+código nem de dado, ver ANOMSCHEMA1 logo abaixo.
+
+Atenuante que baixa a severidade, `predictive_v1` é lab interno (`user_facing:false`)
+e não chega à tela do cliente.
+
+**Pronto quando:** cada um dos 3 estiver com fonte de dado no ar e cobertura maior
+que zero medida por `scripts/check-drivers-preditivos.ps1`, **ou** removido do
+`scorePreditivoRuleV1` e da lista `DRIVERS_DECLARADOS` do mesmo script. Driver
+declarado que nunca dispara faz o modelo parecer mais rico do que é.
+
+### P2 — ANOMSCHEMA1: detectores de anomalia desalinhados com o schema anbima_publico
+
+`recalcularTodasAnomalias` tem escritor, tem 8 call sites e roda por cron
+(`worker.js:17751` e `17800`). A entrada existe, 78 chaves `mercado:serie:*` frescas.
+Ainda assim o resultado é `{}`, e são dois motivos empilhados.
+
+Três dos quatro detectores são estruturalmente impossíveis com a fonte atual. O de
+volume exige `ultimo.volume != null`, o de iliquidez lê `negocios` e `volume`, o de
+concentração lê `maior_negocio`. Nenhum desses campos existe no registro
+`anbima_publico`. Existiam na fonte antiga, o export de série ainda mostra registros
+de março de 2026 com `volume:2628917` e `negocios:16`. A fonte trocou de provedor e
+os detectores nunca foram adaptados.
+
+O quarto, de spread, morre por unidade. O código faz
+`deltaPP = Math.abs(ultimo.spread_bps - media) / 100` contra `SPREAD_LIMIAR_PP: 1`.
+Com Aegea variando de 4,51 para 4,53, o delta é 0,0002 pontos percentuais contra
+limiar de 1. Precisaria de variação de 100 unidades de um dia para o outro. E como o
+SPREADUNIDADE1 mostrou, o campo carrega percentual, não ponto-base, então o `/100`
+está errado por construção.
+
+**Pronto quando:** os 3 detectores sem campo estiverem desligados explicitamente ou
+reescritos para o schema `anbima_publico`; o de spread recalibrado para a unidade
+real; e existir teste que reprove se `mercado:anomalias:ativas` ficar `{}` por N dias
+consecutivos com séries frescas no KV.
+
+### P2 — SPREADUNIDADE1 (resíduo): renomear o campo e corrigir os consumidores restantes
+
+A parte P0 foi corrigida hoje, ver entrada de baixo. Sobra o que é migração.
+
+O campo no KV continua se chamando `spread_bps` guardando taxa indicativa em % a.a.
+Renomear é migração de chave em 78 séries mais o parser mais o endpoint `op=serie`.
+O card de anomalia do frontend ainda concatena `spread_atual_bps + " bps"`, hoje
+inócuo porque `mercado:anomalias:ativas` é `{}`, mas volta a mentir junto com o
+ANOMSCHEMA1. O dataset de DEMO tem `spread_atual_bps:387` e `612`, valores em bps
+reais e internamente coerentes, que ficam como estão.
+
+**Pronto quando:** o campo tiver nome que diga a grandeza e a unidade, todos os
+consumidores acompanharem, e o card de anomalia não puder ressuscitar com o sufixo
+errado.
+
+### P2 — PUBDATA1: data_publicacao_fonte nunca foi populado
+
+Medido nos 74 eventos vivos do estado da semana W34: `data_evento` preenchido em
+74/74, `data_publicacao_fonte` preenchido em **0/74**. O campo existe no schema desde
+sempre e nunca recebeu valor. Sem ele não dá para ordenar por "apareceu agora", só
+por data do fato, que é outra coisa.
+
+**Pronto quando:** o pipeline preencher o campo no `receber_analise` e a taxa de
+preenchimento passar de 80% numa amostra de 30 dias.
+
+### P3 — FEEDNOVIDADES1: aba Novidades, parada por decisão
+
+Aprovada em conceito e adiada de propósito. Depende de PUBDATA1, senão a aba nasce
+ordenando por data do fato com cara de ordenar por novidade. A ordenação atual do
+feed é severidade primeiro e data só como desempate
+(`{CRITICO:0,RELEVANTE:1,ECO:2}` e `localeCompare` no desempate), o que prende o topo
+da tela no cluster de resultados do 2T26 até ele sair da janela de 30 dias.
+
+**Pronto quando:** PUBDATA1 fechar e o aviso de frescor (entregue hoje) tiver rodado
+uma semana em produção sem reclamação.
+
+### P3 — FONTELATENCIA1: fonte de baixa latência é decisão de produto
+
+O ramo `CIA_ABERTA/DOC` da CVM é semanal e publica aos domingos. Isso é lento demais
+para monitoramento de crédito, e o caso Casas Bahia prova a defasagem: fato relevante
+de recuperação judicial protocolado em 16/08, comunicado em 18/08, e a última linha
+da companhia dentro do ZIP é de 10/08.
+
+Alternativas com custo. RAD interativo (`rad.cvm.gov.br`) é a fonte de baixa latência
+real, custo é scraping de ASPX com viewstate e captcha em algumas rotas, manutenção
+alta. B3 publica fatos relevantes de listadas com latência de horas, cobertura menor
+que a CVM. Nenhuma das duas é recomendada antes de o operador decidir se a latência
+semanal é problema de negócio ou só incômodo.
+
+**Pronto quando:** o operador decidir, e a decisão estiver escrita aqui com a razão.
+
+### P3 — BANNERMORTO1: o banner de aviso nunca pintou para ninguém
+
+`<div id="banner" style="display:none">` tem estilo inline, e a regra
+`#banner.visible { display: block }` é de folha de estilo, que perde para inline.
+Verificado ao vivo em produção: a classe `visible` está aplicada, o texto está no
+elemento, `computed display` é `none` e a altura é 0. Removendo o inline via console,
+o elemento aparece com 31px.
+
+Consequência dupla. O falso "Serviço temporariamente indisponível" nunca chegou ao
+cliente, que é a boa notícia. E os avisos legítimos (`erro_conexao`,
+`dados_desatualizados`, `sem_chaves`) também nunca chegaram, que é a ruim.
+
+Religar exige cuidado de ordem: o gatilho já foi corrigido hoje para depender só de
+liveness, mas os outros 5 tipos de aviso nunca foram vistos por usuário nenhum.
+
+**Pronto quando:** os 6 tipos de aviso tiverem sido revisados um a um quanto a texto
+e gatilho, o inline `display:none` sair, e existir teste de DOM que confirme
+visibilidade real.
+
+### P3 — CACHEBUMP1: alinhamento manual do `?v=` a cada deploy Pages
+
+Terceira vez seguida. Os commits `01ff325` e `4276504` do v202.12 fizeram o mesmo, e
+hoje o gate 3.4 do `deploy-pages.ps1` reprovou duas vezes até os 4 módulos admin
+serem alinhados à mão. O bump do `CACHE_VERSION` no `index.html` não propaga sozinho
+para os imports em `app/js/`.
+
+**Pronto quando:** existir um `bump-cache-version.ps1` que altere os 6 pontos de uma
+vez, ou o `deploy-pages.ps1` fizer o alinhamento antes de gatear em vez de só
+reprovar.
+
+---
+
+## 20/08 (17h00 BRT) — RESOLVIDO: CVMCADENCIA1, HEALTHSPLIT1, SPREADUNIDADE1, MOJIBAKEORIGEM1
+
+**CVMCADENCIA1 (P1).** A premissa "a CVM parou de publicar", escrita em 19/08 e
+repetida por mim duas vezes em 20/08, é falsa. O ramo `CIA_ABERTA/DOC` tem cadência
+**semanal declarada** na página do dataset e publica aos domingos. Evidência:
+`ipe_cia_aberta_2026.zip` e o de 2025, corrente e A-1, regerados no mesmo domingo
+16/08 com 1 minuto de diferença, e o domingo anterior também. O portal segue vivo,
+`FI/DOC/INF_DIARIO` e `CIA_ABERTA/CAD` foram regerados em 20/08 de madrugada. E a CVM
+segue recebendo protocolo, Casas Bahia protocolou em 16 e 18/08.
+*Correção:* `CVM_FONTE_MAX_DU = 2` virou regra de ciclo perdido, alerta só após dois
+ciclos semanais sem publicar, ou seja 14 dias corridos. *Causa raiz:* medir fonte de
+cadência 7 dias com régua de 2 dias úteis fazia o health ir a vermelho toda quarta ou
+quinta, previsivelmente. *Guarda:* 3 testes novos em `cvm-frescor.test.mjs` (4 dias
+passa, 13 dias passa com 1 ciclo perdido, 14 dias reprova) e o fato da cadência
+registrado na skill `vix-radar-general-audit`.
+
+**HEALTHSPLIT1 (P1).** Frescor de fonte de terceiro saiu do `ok` agregado e foi para
+`fonte_externa_ok`. *Causa raiz:* `ok` tem 13 consumidores que o tratam como
+liveness, entre eles `rotate-routine-key.ps1` que **aborta** a rotação da chave,
+`scan-emergencia.yml` que dispara varredura, 4 workflows de CI e o banner da tela.
+Nenhum tem ação útil diante de "a CVM publica aos domingos". *Guarda:* canal de
+alerta próprio no `watch-vixradar-health.ps1` com reenvio de 48h, e o inventário dos
+13 consumidores registrado no `CLAUDE.md`.
+
+**SPREADUNIDADE1 (P0).** O card do painel do emissor dizia "Spread ANBIMA" e
+carimbava " bps" num valor que é taxa indicativa em % a.a. Medido em produção:
+Petrobras aparecia como "6,98 bps", CSN como "20,08 bps", Aegea como "4,53 bps". Erro
+de fator 100 na unidade sob nome que nem era o da grandeza. *Causa raiz:*
+`worker.js:12584` empurra `r.taxa_indicativa`, coluna 6 do arquivo público de
+debêntures da ANBIMA, para dentro de um campo chamado `spread_bps`. Nome do campo
+mentindo desde a ingestão, e a tela repetindo a mentira. *Correção:* rótulo virou
+"Taxa indicativa ANBIMA", valor recebe "% a.a." e o delta " p.p.". Resíduo de
+migração fica no SPREADUNIDADE1 acima.
+
+**MOJIBAKEORIGEM1 (P3).** `collect_cotacoes.ps1` lia `tickers_emissores.json` sem
+`-Encoding`, e o 5.1 usa a página ANSI por padrão. Arquivo UTF-8 sem BOM virava
+mojibake e era carimbado em `meta_volatilidade.json`. *Causa raiz:* a rede
+(`Repair-Mojibake` no uploader) escondeu o problema por meses, produção nunca viu
+nome errado. O custo aparecia em outro lugar, comparação por nome entre os dois
+arquivos errava em silêncio, e um diff da auditoria acusou 33 falhas onde o número
+real era 21. *Guarda:* `-Encoding UTF8` nos dois `Get-Content` do script, artefato em
+disco reparado, e `Repair-Mojibake` mantido como rede, não como conserto.
+
+---
+
 ## 20/08 (15h50 BRT) — PARCIAL: por que o feed parece congelado, e o que estava quebrado por baixo
 
 Pergunta de origem: "o sistema nao foi atualizado". Investigacao encontrou uma causa externa e
