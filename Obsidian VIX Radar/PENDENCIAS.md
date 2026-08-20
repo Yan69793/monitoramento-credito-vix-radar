@@ -11,6 +11,126 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 20/08 (19h20 BRT) — RESOLVIDO: 2 P1 de segurança, 6 P1 de perf/a11y, dívida de docs
+
+Segunda janela do dia, depois da reabertura para clientes. Auditoria dos blocos D,
+E e F mais a rotina noturna. Nada foi deployado, decisão do operador: mudança de
+autenticação sobe com ele presente. Commits `810dc2c`, `6d657f8`, `806f2c7`.
+
+**REGISTRO-ADMIN1 (P1, corrigido).** `handleRegistrar` derivava autoridade do
+e-mail no corpo da requisição, que nunca é verificado. `isAdmin` comparava com
+`ADMIN_EMAIL` e a conta nascia `aprovado` + `white_label`, e como `handleLogin`
+calcula `roleFinal` pelo mesmo e-mail, quem soubesse o endereço do admin
+registrava com senha própria e recebia JWT de admin sem nunca saber a
+`ADMIN_PASSWORD`.
+
+A contenção era acidental. Só o early return de `status === "aprovado"` barrava o
+`putUser`. Com a conta ausente, ou com status `rejeitado`, que não tem early return
+e cai no `putUser` sobrescrevendo o `senha_hash`, o vetor abria. Lido no KV de
+produção: a conta existe como `aprovado` desde 04/04, então estava fechado por
+estado e não por código.
+
+Registro passa a nascer sempre pendente. A via legítima não muda,
+`handleAdminAutoLogin` segue criando e aprovando a conta admin, gateado por
+`admin_senha === env.ADMIN_PASSWORD`. A autoridade saiu do e-mail e ficou no
+secret. Teste de regressão em `api/test/registro-admin.test.mjs`, provado nos dois
+sentidos: com asserts do comportamento antigo, os dois falham, login devolve 401
+em vez de 200.
+
+**RATELIMIT-FAILOPEN1 (P1, corrigido) e AUTHDISPO1 (decisão do operador).** Os
+três bypass de `checkRateLimitV2` devolviam `allowed:true`, então a queda do
+binding apagava o rate limit de tudo, inclusive varredura que gasta LLM por
+chamada. Criticidade agora é explícita, default `"critica"` fail-closed.
+
+O `AUTHDISPO1` é a parte que exigiu decisão. Fechar tudo trocaria brute force por
+indisponibilidade de login para cliente pagante, e o `catch` de `do_erro` pega
+qualquer exceção, inclusive timeout transitório. O gate de auth separa os dois
+casos que cobre: senha admin errada fecha (o operador com a senha certa pula o
+check antes), login de cliente comum abre com `console.error` e telemetria
+`rl_bypass_auth`, para o incidente ser curto e visível.
+
+**A11YCONTRASTE1 e mais 5 P1 de frontend (corrigidos).** Contraste WCAG com três
+substituições sistemáticas, `#6b7280` e `#64748B` para `#94A3B8`, `#374151` para
+`#7C8C9E`. O pior valor antigo era 1,74:1 em texto de 9 a 14 px, contra o mínimo
+de 4,5:1. As cores novas dão 5,57:1 e 6,17:1 calculados pela fórmula. Junto:
+guard de aba oculta nos timers (o `_v201Poll` batia na API a cada 60 s para
+sempre em segundo plano), debounce nos dois filtros de texto, navegação por
+teclado nos clicáveis que eram `div` com `onclick`, informação não cromática no
+`sev-dot` da sidebar, e `aria-live` onde não havia nenhum.
+
+**Dívida de documentação (corrigida).** A causa raiz do "vitest não roda" estava
+errada há tempo: culpava Smart App Control bloqueando `workerd.exe`. Medido,
+`VerifiedAndReputablePolicyState=0`, SAC desligado, nenhum evento de CodeIntegrity
+menciona workerd. A causa real é `npm ci --omit=dev` no deploy apagando as
+devDeps. Com `npm ci` em `api/`, a suíte roda: 8 arquivos, 44 testes.
+
+Junto: `worker.js` tem 18.597 linhas e não 17k, a migração v3 não está em
+`wrangler.toml:561`, o gate de working tree confere 4 arquivos e não a árvore
+inteira, o ponteiro do `AGENTS.md` apontava para arquivo não versionado, e a regra
+de `.gitignore` para `setup-deploy-credential.ps1` era ilusória porque o arquivo é
+trackeado desde `201ebda`.
+
+### Abertos desta janela
+
+**MANIFESTOFRAGIL1 (P3).** O `status/allclear-manifesto.json` indexa cada frase de
+ausência junto com o HTML e o estilo inline. Trocar `color:#6b7280` por `#94A3B8`
+fez duas frases idênticas aparecerem como NOVAS e reprovarem a guarda. Falso
+positivo de segurança, mas fragilidade real: qualquer mudança de CSS quebra o
+manifesto e obriga atualização manual. **Pronto quando** a chave for derivada só do
+texto visível, sem estilo nem tag.
+
+**DEDUPON2 e FEEDRERENDER1 (P2, diagnosticados, fora de escopo de propósito).** O
+`_isDupSemantico` deduplica O(n²) sobre todos os eventos, no boot e em todo
+refresh, com `normalize('NFD')` mais cascata de regex por evento. E o
+`_v201Refresh` reconstrói 30 dias de feed a cada evento novo, cada card com cerca
+de 13,8 KB de string HTML. Os dois são reais e medidos, mas exigem refactor com
+risco de regressão. **Pronto quando** houver janela dedicada, não colada no fim de
+outra.
+
+**ORF3D593D6 (P2).** O commit `3d593d6`, que padroniza a linha `ROTINA_RESUMO` em 5
+rotinas locais, nunca chegou ao remoto. Vive só na branch
+`claude/interesting-brahmagupta-4a7254`. Testado: aplica limpo nos 5 scripts,
+conflita apenas em `status/ESTADO.md:75`, porque 13 commits desde 18/08 reescreveram
+o parágrafo vizinho. O trabalho segue relevante, o `ESTADO.md:262` registra o
+retrofit como P2 aberto. **Pronto quando** o cherry-pick for feito e a branch
+apagada.
+
+**SACFALSA-RESIDUO (P3).** A causa falsa do Smart App Control ainda vive em 5
+arquivos trackeados: `api/test/agenda-validacao.test.mjs:9`,
+`scripts/test-frescor-cvm.mjs:3` e três notas do vault. O caso que importa é o
+`test-frescor-cvm.mjs`, que nasceu como alternativa ao vitest que supostamente não
+rodava. A crença errada gerou artefato de código. **Pronto quando** os 5 forem
+revisados e o script standalone tiver seu destino decidido.
+
+**WORKTREE12 (P3).** Doze worktrees registradas, incluindo de Codex e Traycer, e
+seis commits nunca empurrados. Cinco são duplicata ou ancestral já absorvido, um é
+o ORF3D593D6 acima. É a fábrica de commit órfão do projeto. O Bloco E propôs um
+hook `pre-push` que aborta quando `HEAD..origin/main` não está vazio, o que pegaria
+o caso do commit sanduichado de hoje. **Pronto quando** o hook existir e as
+worktrees mortas forem podadas.
+
+### Rotina noturna do dia
+
+103/103 no ledger, zero falha de submit, zero silent fail, zero faltante de parse,
+1 degradado para INCONCLUSIVO pela guarda de cobertura (B3 S.A., zero buscas
+efetivas). Distribuição: 43 NENHUM, 27 ECO, 27 RELEVANTE, 5 CRÍTICO.
+
+Críticos: Hapvida (cautelar da ANS barrando reajuste e rescisão em 947 mil
+contratos), Oncoclínicas (recuperação extrajudicial deferida), Oi (gestor judicial
+alerta caixa de R$ 19,6 milhões), Kora Saúde (AGDs reestruturam escritura da 2ª
+emissão), CSN (Fitch rebaixa para CCC+).
+
+A rodada R7, que entrou como cobertura preventiva sem caso comprovado, produziu o
+primeiro achado real: Cade aprovando a aquisição de 30% da Copasa pela Equatorial,
+mudança de controle em saneamento, vocabulário que R2 e R6 não alcançam.
+
+Anotação de conformidade: 3 emissores da fila aprofundada (Rumo, Simpar, Dasa)
+vieram ECO com 1 evento, e a skill especifica `eventos=[]` para ECO e NENHUM.
+Direção segura, evento registrado com classificação conservadora. Zero casos do
+inverso, que seria CRÍTICO ou RELEVANTE sem evento.
+
+---
+
 ## 20/08 (21h15 BRT) — RESOLVIDO: janela de manutenção, 7 P0/P1 de veracidade de UI + SPREADSERIE1
 
 Continuação da auditoria de 17h00. Worker foi de v4.9.203 a v4.9.206, frontend de

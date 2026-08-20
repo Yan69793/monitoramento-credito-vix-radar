@@ -1,6 +1,6 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-19 (agente: Claude Code)
+Última atualização: 2026-08-20 (agente: Claude Code)
 
 Leia este arquivo antes de começar qualquer trabalho, seja qual for o agente.
 Atualize a data e os itens abertos ao fechar uma sessão que mudou o estado.
@@ -253,9 +253,14 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 
 ## Itens abertos
 
+- NOVO 20/08 19h20, COMMITADO E NÃO DEPLOYADO: três commits prontos que ainda não subiram, `810dc2c` (Worker, segurança), `6d657f8` (frontend, perf e acessibilidade, `CACHE_VERSION` já bumpada para v202.20) e `806f2c7` (docs). Produção segue em Worker v4.9.206 e Pages v202.19. Deploy foi segurado por decisão do operador, mudança de autenticação sobe com ele presente. Comandos prontos, gates do Pages já validados em modo seco: `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.207` e `pwsh ./scripts/deploy-pages.ps1`
+- NOVO 20/08 19h20 (MANIFESTOFRAGIL1, P3): o `status/allclear-manifesto.json` indexa cada frase de ausência junto com o HTML e o estilo inline, então trocar a cor de um texto faz a mesma frase reprovar como NOVA. Aconteceu hoje com duas frases na correção de contraste. Falso positivo de segurança, fragilidade real de projeto. Detalhe em `PENDENCIAS.md`
+- NOVO 20/08 19h20 (DEDUPON2 + FEEDRERENDER1, P2): `_isDupSemantico` deduplica O(n²) sobre todos os eventos no boot e em todo refresh, e `_v201Refresh` reconstrói 30 dias de feed a cada evento. Medidos e reais, deixados de fora de propósito por exigirem refactor com risco de regressão. Detalhe em `PENDENCIAS.md`
+- NOVO 20/08 19h20 (SACFALSA-RESIDUO, P3): a causa falsa do Smart App Control ainda vive em 5 arquivos trackeados, incluindo `scripts/test-frescor-cvm.mjs`, que nasceu como alternativa ao vitest que supostamente não rodava. Crença errada que gerou artefato de código. Detalhe em `PENDENCIAS.md`
+- NOVO 20/08 19h20 (WORKTREE12, P3): 12 worktrees registradas, incluindo de Codex e Traycer, e 6 commits nunca empurrados. Um deles, `3d593d6` (ORF3D593D6), é trabalho real: aplica limpo nos 5 scripts, conflita só em `status/ESTADO.md:75`. Detalhe em `PENDENCIAS.md`
 - Rotação da `routine_key`, decisão pendente do usuário, detalhe no incidente ROUTINEKEY-PLAIN1 do CLAUDE.md
 - Migração KV→DO em andamento com KV ainda como fonte da verdade; auditar `console.warn` atrás de `[DO][dual-write]`/`[DO][read]`, detalhe no CLAUDE.md
-- `npm test` só é confiável em CI: `workerd.exe` bloqueado localmente pelo Smart App Control, detalhe no CLAUDE.md
+- CORRIGIDO 20/08 19h: `npm test` RODA local. A causa antiga escrita aqui (Smart App Control bloqueando `workerd.exe`) foi refutada por medição, `VerifiedAndReputablePolicyState=0` e nenhum evento de CodeIntegrity citando workerd. O que acontece é que `deploy-worker.ps1` roda `npm ci --omit=dev` e apaga o vitest. Rode `npm ci` dentro de `api/` e a suíte sobe: 8 arquivos, 44 testes. Detalhe no CLAUDE.md
 - Deploy de `producao/` é proibido, regrediria o frontend para v30/v40, detalhe no CLAUDE.md
 - RESOLVIDO 19/08 09h15 (RETRYCFG1): as duas tasks de retry eram as únicas do projeto sem script de registro e nasceram sem as guardas que as outras nove têm. Tinham `StartWhenAvailable=False` (disparo perdido descartado em silêncio, causa do erro de 18/08), recusa de início na bateria, e `ExecutionTimeLimit` de 72h contra minutos das irmãs. Corrigidas e verificadas pelo novo `scripts/register-retry-tasks.ps1`. O alerta do monitor só some às 13h30, quando a task rodar, porque re-registrar não zera `LastTaskResult`. Detalhe em `PENDENCIAS.md`
 - P2, não bloqueante: `monitor-tasks.ps1` tem diagnóstico específico para `VIXRadar-AgendaSemanal` preso ao exit code antigo (1); o script novo usa 2-8, catch-all genérico ainda pega qualquer falha como erro, só perde a mensagem específica. Detalhe em `routines/README.md`
