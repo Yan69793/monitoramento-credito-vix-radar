@@ -15,7 +15,8 @@
 #      ficou fora das 03h42 as 16h14, o gatilho das 13h30 morreu e a task marcou
 #      LastTaskResult 2147946720 (0x800710E0, ERROR_REQUEST_REFUSED). Este exato
 #      codigo e a remediacao por StartWhenAvailable ja estavam documentados em
-#      01_PROJETOS/Jarvis/AI_OPERATING_SYSTEM/06_RISCOS_E_DIVIDAS_TECNICAS.md, e
+#      AI_OPERATING_SYSTEM/06_RISCOS_E_DIVIDAS_TECNICAS.md (extraido de dentro
+#      do repo do Jarvis para a raiz do workspace em 20/08/2026), e
 #      o mesmo fix ja tinha sido aplicado em 09/08 no Szuchmacher-MacroCron e no
 #      Szuchmacher-AgendaAgent. So nao alcancou estas duas porque elas ainda nao
 #      existiam.

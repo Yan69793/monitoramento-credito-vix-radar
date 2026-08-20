@@ -17,7 +17,8 @@ Achado pela varredura de pendencias do workspace (`/resolver-pendencias`), nao p
 
 O monitor acusava `Szuchmacher-RetryVixMatinal` com `LastTaskResult 2147946720` desde 18/08. Esse
 codigo e `0x800710E0` (ERROR_REQUEST_REFUSED), e tanto o codigo quanto a remediacao ja estavam
-documentados em `01_PROJETOS/Jarvis/AI_OPERATING_SYSTEM/06_RISCOS_E_DIVIDAS_TECNICAS.md:72`
+documentados em `AI_OPERATING_SYSTEM/06_RISCOS_E_DIVIDAS_TECNICAS.md:72` (extraido de dentro do
+repo do Jarvis para a raiz do workspace em 20/08/2026)
 ("condicao de energia / maquina suspensa, flags de bateria + `StartWhenAvailable`"). O mesmo fix ja
 tinha sido aplicado em 09/08 no `Szuchmacher-MacroCron` e no `Szuchmacher-AgendaAgent`.
 
