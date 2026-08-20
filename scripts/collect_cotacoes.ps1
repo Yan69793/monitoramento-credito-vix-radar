@@ -23,7 +23,20 @@ if (-not (Test-Path $tickersFile)) {
     exit 1
 }
 
-$tickersMap = Get-Content $tickersFile -Raw | ConvertFrom-Json
+# MOJIBAKEORIGEM1 (auditoria 2026-08-20). Este Get-Content nao tinha -Encoding.
+# No powershell.exe 5.1 o default nao e UTF-8, e a pagina de codigo ANSI do
+# sistema (Windows-1252 aqui). O tickers_emissores.json e UTF-8 SEM BOM, entao
+# nao havia como o 5.1 adivinhar, e cada byte multibyte virava dois caracteres:
+# "Raizen" com i acentuado saia como RaA-til-...zen, "Itausa" idem. O nome
+# corrompido seguia para dentro de meta_volatilidade.json, que era gravado em
+# UTF-8 e carimbava a corrupcao no disco de forma permanente.
+# O upload_volatilidade_kv.ps1 tem Repair-Mojibake e por isso a producao nunca
+# viu nome errado, o que escondeu o problema. Mas qualquer comparacao por nome
+# entre os dois arquivos errava em silencio: na auditoria de hoje um diff acusou
+# 33 falhas de coleta onde o numero real era 21, e so bateu quando a chave da
+# comparacao virou o ticker, que e ASCII.
+# Repair-Mojibake fica onde esta, como rede. O conserto e aqui, na leitura.
+$tickersMap = Get-Content $tickersFile -Raw -Encoding UTF8 | ConvertFrom-Json
 $emissores = $tickersMap.emissores
 $total = ($emissores | Get-Member -MemberType NoteProperty).Count
 Write-Host "Emissores listados com ticker: $total de 103"
@@ -50,7 +63,9 @@ foreach ($prop in ($emissores | Get-Member -MemberType NoteProperty)) {
         if ($age.TotalHours -lt 24) {
             $skipped++
             try {
-                $cached = Get-Content $outFile -Raw | ConvertFrom-Json
+                # MOJIBAKEORIGEM1: mesmo motivo do Get-Content la de cima. Este
+                # le de volta um arquivo que o proprio script gravou em UTF-8.
+                $cached = Get-Content $outFile -Raw -Encoding UTF8 | ConvertFrom-Json
                 $cachedRows = $cached.rows
                 $n = $cachedRows.Count
                 if ($n -ge 60) {
