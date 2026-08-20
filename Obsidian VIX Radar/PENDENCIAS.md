@@ -11,6 +11,86 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 20/08 (21h15 BRT) — RESOLVIDO: janela de manutenção, 7 P0/P1 de veracidade de UI + SPREADSERIE1
+
+Continuação da auditoria de 17h00. Worker foi de v4.9.203 a v4.9.206, frontend de
+v202.12 a v202.19, 30 commits. Achados e correções, do mais grave ao mais leve:
+
+**SPREADSERIE1 (P1).** A série `mercado:serie:*` atravessa uma troca de provedor
+em abril sem tratamento: pontos legados em ponto-base (Oi 8873) misturados com
+pontos `anbima_publico` em percentual (Oi 9,75) no mesmo cálculo estatístico.
+`anbima:zscores` saía com 71 dos 73 emissores no mesmo `z_spread` de -0,55, sinal
+sem sentido. Corrigido com corte por `fonte` antes de qualquer estatística
+histórica, aplicado em `calcularZScoresANBIMA`, `handleSerie` e
+`detectarAnomaliasEmpresa`. Campo renomeado para `taxa_indicativa_pct`, com
+`spread_bps` mantido como alias por leitura dupla. Confirmado: não chega à tela
+do cliente nem a e-mail, é lab interno.
+
+**ZEROINDISPONIVEL1 (P0), a classe de bug do dia.** Cinco superfícies diferentes
+tratavam "não consegui ler o dado" como "medi zero", afirmando saúde da carteira
+sem nunca ter lido a base:
+- painel EWS da home pública dizia "Todos os emissores monitorados estão dentro
+  dos parâmetros normais" com `ewsRankingCache === null`;
+- pulso do monitor operacional ficava verde com "Mercado em estabilidade" com
+  `resultados` vazio;
+- briefing e painel de eventos diziam "Nenhum alerta de mercado ativo" a partir
+  de um detector que nunca dispara (ANOMSCHEMA1, ver abaixo);
+- painel ANBIMA tinha check verde "Nenhuma anomalia detectada" mesmo com zero
+  debêntures analisadas na amostra;
+- os 5 `mo-card` do monitor (Críticos, Relevantes, Sem alertas) calculavam
+  `(103-0-0)/103*100 = 100%` com chip verde quando `resultados` vazio, mesmo
+  depois do pulso ao lado já ter sido corrigido para dizer "sem leitura".
+
+Todos os cinco corrigidos com a guarda `_semLeitura` (ou equivalente no Worker,
+`detector_operacional`), confirmados ao vivo em produção via CDP numa sessão
+autenticada real. Achado real medido nessa sessão: 6 a 7 eventos críticos e
+42 a 54 relevantes em 25 emissores na janela de 7 dias úteis, muito longe do
+"tudo normal" que a home pública afirmava até esta rodada.
+
+**SPREADUNIDADE1 (P0, rodada anterior, confirmado ao vivo nesta).** Card do
+painel do emissor dizia "Spread ANBIMA ... bps" sobre taxa indicativa em % a.a.
+Confirmado com dado real em produção: Oi mostrando "9.75% a.a." depois do fix,
+não mais "9,75 bps".
+
+**BANNERMORTO1 (P3).** Os 6 tipos de aviso ao usuário (erro_worker,
+erro_conexao, dados_desatualizados, sem_chaves, sem_perplexity, sem_gemini)
+nunca renderizavam, `style="display:none"` inline vencia a regra de CSS.
+Corrigido, os 6 provados um a um em produção com prova de DOM (`display:block`,
+altura 30px).
+
+**ROTULOEVENTO1 (P2).** Cabeçalho do painel dizia "6 críticos" contando EVENTO
+ao lado de "25 emissores com sinal" contando EMISSOR, mesmo termo do glossário
+("Críticos") usado com grandeza diferente lado a lado. Corrigido para "N eventos
+críticos (7d)".
+
+**MOJIBAKEORIGEM1 (P3, rodada anterior).** `Get-Content` sem `-Encoding` no
+`collect_cotacoes.ps1` corrompia nome acentuado, escondido em produção pelo
+`Repair-Mojibake` do uploader mas causava diff falso em auditoria.
+
+**Guarda sistêmica desta rodada.** `scripts/check-frontend-allclear.mjs`
+substituiu a versão de 3 frases fixas por varredura de toda frase de ausência do
+arquivo (57 encontradas), com manifesto versionado
+(`status/allclear-manifesto.json`) e guardas amarradas por regex a frase
+específica, não OR cego. Provado nos dois sentidos com 3 cenários de regressão
+sintética. `scripts/audit-ui-live.mjs` substitui a inspeção por regex
+(`audit-ui-metrics.mjs`, que só via 5 métricas) por inventário do DOM ao vivo via
+CDP contra sessão autenticada real, com baseline versionado
+(`status/ui-baseline.json`, 62 superfícies). Foi essa ferramenta que achou o
+ROTULOEVENTO1.
+
+**Rollback.** `_backup-janela-20260820/ROLLBACK.md` documenta o procedimento e
+tem export de 6 chaves KV + 78 séries de mercado, tirado antes da janela. Não
+versionado, fica só no disco local.
+
+**Não executado nesta sessão, ordem original do operador previa isso para depois
+da reabertura:** Bloco D (segurança do Worker, performance, acessibilidade,
+OWASP LLM Top 10), Bloco E (TICKERPERIMETRO1 classificado, ANOMSCHEMA1
+corrigido, CACHEBUMP1 automatizado, varredura do CLAUDE.md, revisão do commit
+`a4a0b47` de sessão paralela), Bloco F (documento de decisão FONTELATENCIA1 e
+DRIVERMORTO1, sem implementar). Seguem na fila abaixo, sem mudança de status.
+
+---
+
 ## 20/08 (17h00 BRT) — ABERTO: fila da auditoria geral, com tag e critério de pronto
 
 Tudo que a auditoria de 20/08 diagnosticou e **não** consertou. Cada item fecha com
