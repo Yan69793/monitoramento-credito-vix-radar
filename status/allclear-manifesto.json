@@ -1,6 +1,6 @@
 {
   "nota": "Toda frase que afirma ausencia precisa de classificacao. nao_revisada reprova de proposito. Ver ZEROINDISPONIVEL1.",
-  "total": 55,
+  "total": 57,
   "frases": [
     {
       "chave": "sem pressao refinanc 20 anos",
@@ -207,10 +207,22 @@
       "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
     },
     {
-      "chave": "nenhumspanreturndiv class",
-      "texto": ">nenhum</span>';return'<div class=",
-      "classificacao": "rotulo",
-      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+      "chave": "nenhumspan mocardfalso1 auditoria 20260820 p0 mesma familia do zeroindisponivel1 o pulso l",
+      "texto": ">nenhum</span>';/* MOCARDFALSO1 (auditoria 2026-08-20), P0, mesma familia do ZEROINDISPONIVEL1. O pulso logo a",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "sem alertas",
+      "texto": "Sem alertas",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "span classmocardchip mocardchipwarnsem leituraspan",
+      "texto": "<span class=\"mo-card-chip mo-card-chip-warn\">sem leitura</span>",
+      "classificacao": "guardada",
+      "nota": ""
     },
     {
       "chave": "sem alertasdivdiv class",
