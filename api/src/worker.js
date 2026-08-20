@@ -12068,7 +12068,13 @@ __name222(handlePromoverAnomalia, "handlePromoverAnomalia");
 function detectarAnomaliasEmpresa(empresa, registros) {
   if (!registros || registros.length < 3) return [];
   const anomalias = [];
-  const sorted = [...registros].sort((a, b) => b.data.localeCompare(a.data));
+  // SPREADSERIE1 (2026-08-20): a janela de 20 DU nao alcanca a emenda de provedor
+  // hoje, mas alcançaria com serie curta ou backfill. Comparar 8718 (ponto-base
+  // do provedor legado) com 9,75 (percentual do atual) produziria "abertura" de
+  // milhares de p.p. num emissor parado. Corta antes de qualquer comparacao.
+  const _atual = _serieProvedorAtual(registros);
+  if (_atual.length < 3) return [];
+  const sorted = _atual.slice().sort((a, b) => b.data.localeCompare(a.data));
   const ultimo = sorted[0];
   const janela = sorted.slice(1, ANOMALIA_PARAMS.JANELA_DU + 1);
   const dataDeteccao = ultimo.data;
@@ -12315,13 +12321,19 @@ async function handleSerie(url, env2222) {
     carregarAnomalias(env2222),
     _kvGetDualEmissor(env2222, empresa, kvEwsHistKey(empresa), "getEwsHist", [empresa]).then(function(r) { return r ? JSON.parse(r) : []; }).catch(function() { return []; })
   ]);
-  const registrosAsc = (serie.registros || []).filter((r) => r && r.data && r.data >= cutDate).sort((a, b) => a.data.localeCompare(b.data));
+  // SPREADSERIE1 (2026-08-20): o filtro de horizonte sozinho nao basta. Com
+  // horizonte de 180 dias a janela alcanca marco, que e provedor legado com outra
+  // grandeza (spread em ponto-base contra taxa indicativa em percentual), e o
+  // spread_delta sairia como uma queda de milhares de "pontos" que nunca houve.
+  // _serieProvedorAtual corta pela emenda antes de qualquer conta.
+  const registrosAsc = _serieProvedorAtual(serie.registros).filter((r) => r.data >= cutDate);
   const ewsSerie = (Array.isArray(ewsHistRaw) ? ewsHistRaw : []).filter((h) => h && h.data && h.data >= cutDate).sort((a, b) => a.data.localeCompare(b.data));
-  const spreadAtual = registrosAsc.length ? registrosAsc[registrosAsc.length - 1].spread_bps : null;
+  const spreadAtual = registrosAsc.length ? _taxaIndicativaPct(registrosAsc[registrosAsc.length - 1]) : null;
   const ewsAtual = ewsSerie.length ? ewsSerie[ewsSerie.length - 1].score : null;
   let spreadDelta = null;
-  if (registrosAsc.length >= 2 && registrosAsc[0].spread_bps != null && spreadAtual != null) {
-    spreadDelta = Math.round((spreadAtual - registrosAsc[0].spread_bps) * 10) / 10;
+  const _taxaPrimeira = registrosAsc.length ? _taxaIndicativaPct(registrosAsc[0]) : null;
+  if (registrosAsc.length >= 2 && _taxaPrimeira != null && spreadAtual != null) {
+    spreadDelta = Math.round((spreadAtual - _taxaPrimeira) * 10) / 10;
   }
   let ewsDelta = null;
   if (ewsSerie.length >= 2 && ewsSerie[0].score != null && ewsAtual != null) {
@@ -12333,6 +12345,13 @@ async function handleSerie(url, env2222) {
     horizonte,
     serie: registrosAsc,
     ews_serie: ewsSerie,
+    // SPREADSERIE1: o valor e taxa indicativa em % a.a., nao spread em bps. Os
+    // nomes antigos ficam por compatibilidade com o frontend em producao ate ele
+    // migrar, e os campos de unidade e provedor dizem o que o nome nao diz.
+    taxa_indicativa_atual_pct: spreadAtual,
+    taxa_indicativa_delta_pp: spreadDelta,
+    unidade: "pct_ao_ano",
+    provedor: SERIE_PROVEDOR_ATUAL,
     spread_atual: spreadAtual,
     spread_delta: spreadDelta,
     ews_atual: ewsAtual,
@@ -12591,9 +12610,17 @@ async function salvarSerieDoArquivoANBIMA(env2222, registros, dataReal) {
   let empresasSalvas = 0;
   for (const [empresa, d] of Object.entries(porEmpresa)) {
     const avg = /* @__PURE__ */ __name22((arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null, "avg");
+    // SPREADSERIE1 (2026-08-20): `d.spreads` vem de `r.taxa_indicativa`, coluna 6
+    // do arquivo publico de debentures da ANBIMA, em PERCENTUAL AO ANO. Nunca foi
+    // spread e nunca foi ponto-base. O nome canonico agora e taxa_indicativa_pct.
+    // `spread_bps` continua sendo gravado, com o mesmo valor, so para nao quebrar
+    // leitor antigo enquanto a migracao nao termina.
+    const _taxaMedia = d.spreads.length ? +avg(d.spreads).toFixed(2) : null;
     const reg = {
       data: dataReal,
-      spread_bps: d.spreads.length ? +avg(d.spreads).toFixed(2) : null,
+      taxa_indicativa_pct: _taxaMedia,
+      unidade: "pct_ao_ano",
+      spread_bps: _taxaMedia,
       pu_indicativo: d.pus.length ? +avg(d.pus).toFixed(4) : null,
       duration: d.durations.length ? +avg(d.durations).toFixed(2) : null,
       desvio_padrao: d.desvios.length ? +avg(d.desvios).toFixed(4) : null,
@@ -12651,6 +12678,52 @@ __name(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
 __name2(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
 __name22(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
 __name222(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
+// ── SPREADSERIE1 (auditoria 2026-08-20) ─────────────────────────────────────
+// A serie de mercado atravessa uma troca de provedor e ninguem tratou a emenda.
+// Medido em producao hoje, identico nos 6 emissores amostrados:
+//   provedor legado    2026-03-02 a 2026-04-01   23 pontos   Oi entre 8718 e 9080
+//   anbima_publico     2026-04-30 em diante      78 pontos   Oi entre 4,37 e 10,49
+// Nao e so unidade diferente, e GRANDEZA diferente. O legado guardava spread
+// sobre benchmark em ponto-base, o atual guarda taxa indicativa em percentual ao
+// ano (worker.js:12584 empurra r.taxa_indicativa). Nao existe conversao entre os
+// dois, entao normalizar seria inventar dado. O corte e truncar.
+//
+// O estrago medido: calcularZScoresANBIMA lia a serie INTEIRA, sem janela, e
+// misturava 8718 com 9,75 no mesmo desvio padrao. 71 dos 73 emissores sairam com
+// spread_media_historica na casa das centenas ou milhares contra spread_atual de
+// um digito, e z_spread colado em -0,55 para todo mundo. Um z-score que da o
+// mesmo numero para 71 emissores nao e sinal, e ruido caro. A classificacao
+// derivada (CRITICO/ALERTA/ELEVADO/NORMAL) vinha junto, sempre NORMAL.
+//
+// Corte por `fonte` e nao por data, de proposito: se o provedor trocar de novo, o
+// filtro continua correto sem ninguem lembrar de mexer na constante. A data fica
+// so como documentacao e como rede para registro antigo sem o campo `fonte`.
+var SERIE_PROVEDOR_ATUAL = "anbima_publico";
+var SERIE_CORTE_PROVEDOR = "2026-04-02";
+
+// Taxa indicativa do registro, em percentual ao ano. Le o nome novo primeiro e
+// cai para o antigo. `spread_bps` e nome errado em dois eixos, nunca foi spread e
+// nunca foi ponto-base, mas esta gravado em 78 chaves mercado:serie:* e no
+// payload de anbima:zscores, entao a troca e por leitura dupla, nao por migracao
+// destrutiva de KV.
+function _taxaIndicativaPct(reg) {
+  if (!reg) return null;
+  if (reg.taxa_indicativa_pct != null) return reg.taxa_indicativa_pct;
+  if (reg.spread_bps != null) return reg.spread_bps;
+  return null;
+}
+
+// Registros do provedor vigente, em ordem crescente de data. Toda estatistica
+// historica (media, desvio, z, momentum, delta) tem que passar por aqui.
+function _serieProvedorAtual(registros) {
+  if (!Array.isArray(registros)) return [];
+  return registros.filter(function(r) {
+    if (!r || !r.data) return false;
+    if (r.fonte) return r.fonte === SERIE_PROVEDOR_ATUAL;
+    return r.data >= SERIE_CORTE_PROVEDOR;
+  }).sort(function(a, b) { return a.data.localeCompare(b.data); });
+}
+
 // ── Z-Scores ANBIMA: spread + volume ────────────────────────────────────────
 async function calcularZScoresANBIMA(env2222) {
   var MIN_DIAS = 10;
@@ -12659,17 +12732,19 @@ async function calcularZScoresANBIMA(env2222) {
     var empresa = EMISSORES_LISTA[_i];
     var serie = await carregarSerie(env2222, empresa);
     if (!serie.registros || serie.registros.length < MIN_DIAS) continue;
-    var registros = serie.registros.slice().sort(function(a, b) { return a.data.localeCompare(b.data); });
+    var registros = _serieProvedorAtual(serie.registros);
+    if (registros.length < MIN_DIAS) continue;
     var atual = registros[registros.length - 1];
+    var atualTaxa = _taxaIndicativaPct(atual);
     var spreads = [];
-    for (var _j = 0; _j < registros.length; _j++) { var r = registros[_j]; if (r.spread_bps != null) spreads.push(r.spread_bps); }
-    if (spreads.length >= MIN_DIAS && atual.spread_bps != null) {
+    for (var _j = 0; _j < registros.length; _j++) { var _tx = _taxaIndicativaPct(registros[_j]); if (_tx != null) spreads.push(_tx); }
+    if (spreads.length >= MIN_DIAS && atualTaxa != null) {
       var n = spreads.length;
       var sum = 0; for (var _k = 0; _k < spreads.length; _k++) sum += spreads[_k];
       var mean = sum / n;
       var varsum = 0; for (var _l = 0; _l < spreads.length; _l++) varsum += Math.pow(spreads[_l] - mean, 2);
       var std = Math.sqrt(varsum / n);
-      var zSpread = std > 0 ? +((atual.spread_bps - mean) / std).toFixed(2) : 0;
+      var zSpread = std > 0 ? +((atualTaxa - mean) / std).toFixed(2) : 0;
       var recent5 = spreads.slice(-5);
       var prior20 = spreads.slice(Math.max(0, n - 25), n - 5);
       var sum5 = 0; for (var _m = 0; _m < recent5.length; _m++) sum5 += recent5[_m];
@@ -12692,7 +12767,14 @@ async function calcularZScoresANBIMA(env2222) {
       resultados.push({
         empresa: empresa,
         data: atual.data,
-        spread_bps: atual.spread_bps,
+        // SPREADSERIE1: nome novo e canonico. `spread_bps` fica como alias
+        // deprecado enquanto houver consumidor lendo o nome antigo, e sai quando
+        // o ultimo deles migrar. Os dois carregam o MESMO numero, taxa
+        // indicativa em percentual ao ano, nunca ponto-base.
+        taxa_indicativa_pct: atualTaxa,
+        spread_bps: atualTaxa,
+        unidade: "pct_ao_ano",
+        provedor: SERIE_PROVEDOR_ATUAL,
         spread_media_historica: +mean.toFixed(2),
         spread_std: +std.toFixed(2),
         z_spread: zSpread,
