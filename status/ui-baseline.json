@@ -1,0 +1,314 @@
+{
+  "gerado_em_url": "https://vixradar.com/",
+  "total": 43,
+  "nota": "Baseline de superficies com numero. Superficie nova sem entrada aqui reprova o audit-ui-live. Ver FERRAMENTACEGA1.",
+  "superficies": [
+    {
+      "chave": "tc-hora::quinta-feira, 20 de agosto",
+      "rotulo": "quinta-feira, 20 de agosto",
+      "unidade": "(sem unidade)",
+      "caminho": "#topbar>#top-center>#top-center-dt>#tc-hora",
+      "reservado": []
+    },
+    {
+      "chave": "tc-data::17:24:15",
+      "rotulo": "17:24:15",
+      "unidade": "d",
+      "caminho": "#topbar>#top-center>#top-center-dt>#tc-data",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#sidebar>#sidebar-list>.emp-btn>span::Cielo",
+      "rotulo": "Cielo",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#sidebar>#sidebar-list>.emp-btn>span",
+      "reservado": []
+    },
+    {
+      "chave": "mon-rec-count::Monitorados",
+      "rotulo": "Monitorados",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#dashboard>.dash-head>div>#mon-rec-count",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#v201-header-stats>span::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#v201-header-stats>span",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::criticos (7d)",
+      "rotulo": "criticos (7d)",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
+      "reservado": [
+        "criticos"
+      ]
+    },
+    {
+      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::relevantes (7d)",
+      "rotulo": "relevantes (7d)",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
+      "reservado": [
+        "relevantes"
+      ]
+    },
+    {
+      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::de 103 emissores com sinal (7d)",
+      "rotulo": "de 103 emissores com sinal (7d)",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
+      "reservado": [
+        "emissores"
+      ]
+    },
+    {
+      "chave": "#main>#dashboard>#v201-filter-bar>div>button>span::Janela",
+      "rotulo": "Janela",
+      "unidade": "d",
+      "caminho": "#main>#dashboard>#v201-filter-bar>div>button>span",
+      "reservado": []
+    },
+    {
+      "chave": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span::CRITICO",
+      "rotulo": "CRITICO",
+      "unidade": "(sem unidade)",
+      "caminho": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span",
+      "reservado": []
+    },
+    {
+      "chave": "#ews-ranking-panel>div>.v201-ews-row>div>div>span::Oncoclínicas",
+      "rotulo": "Oncoclínicas",
+      "unidade": "(sem unidade)",
+      "caminho": "#ews-ranking-panel>div>.v201-ews-row>div>div>span",
+      "reservado": []
+    },
+    {
+      "chave": "#ews-ranking-panel>div>.v201-ews-row>div>div>span::Oi",
+      "rotulo": "Oi",
+      "unidade": "(sem unidade)",
+      "caminho": "#ews-ranking-panel>div>.v201-ews-row>div>div>span",
+      "reservado": []
+    },
+    {
+      "chave": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span::ALERTA",
+      "rotulo": "ALERTA",
+      "unidade": "(sem unidade)",
+      "caminho": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span",
+      "reservado": []
+    },
+    {
+      "chave": "#ews-ranking-panel>div>.v201-ews-row>div>div>span::Raízen",
+      "rotulo": "Raízen",
+      "unidade": "(sem unidade)",
+      "caminho": "#ews-ranking-panel>div>.v201-ews-row>div>div>span",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#dash-eventos>section>.v201-card>div>span>span::·",
+      "rotulo": "·",
+      "unidade": "(sem unidade)",
+      "caminho": "#dash-eventos>section>.v201-card>div>span>span",
+      "reservado": []
+    },
+    {
+      "chave": "#dash-eventos>section>.v201-card>div>span>span::·",
+      "rotulo": "·",
+      "unidade": "(sem unidade)",
+      "caminho": "#dash-eventos>section>.v201-card>div>span>span",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#dashboard>#dash-eventos>section>.v201-emp-agrupado>header>span::▴",
+      "rotulo": "▴",
+      "unidade": "d",
+      "caminho": "#dashboard>#dash-eventos>section>.v201-emp-agrupado>header>span",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#dashboard>#dash-eventos>section>.v201-card>div>a::Ratings PRIO Elevados para brAAA",
+      "rotulo": "Ratings PRIO Elevados para brAAA",
+      "unidade": "d",
+      "caminho": "#dashboard>#dash-eventos>section>.v201-card>div>a",
+      "reservado": []
+    },
+    {
+      "chave": "#dashboard>#dash-eventos>section>.v201-card>div>a::Vibra Energia Elevada para Investment Grade pela S&P",
+      "rotulo": "Vibra Energia Elevada para Investment Grade pela S&P",
+      "unidade": "d",
+      "caminho": "#dashboard>#dash-eventos>section>.v201-card>div>a",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
+      "rotulo": "Feed cronologico de eventos",
+      "unidade": "d",
+      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "reservado": []
+    },
+    {
+      "chave": "status-right::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "d",
+      "caminho": "#status-bar>#status-right",
+      "reservado": []
+    }
+  ]
+}
