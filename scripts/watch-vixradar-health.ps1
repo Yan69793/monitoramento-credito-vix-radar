@@ -25,7 +25,14 @@ param(
     [string]$VersaoEsperada = 'v4.9.193',
     [string]$WorkerUrl = 'https://api.vixradar.com/',
     [string]$To = 'szuchmacheryan@gmail.com',
-    [int]$ReenvioMin = 60
+    [int]$ReenvioMin = 60,
+    # HEALTHSPLIT1 (2026-08-20): canal separado para frescor de fonte externa.
+    # 2880 min = 48h. A fonte CIA_ABERTA/DOC da CVM e semanal, e o alerta so
+    # dispara depois de DOIS ciclos perdidos, ou seja quando ja passou de 14
+    # dias. Nesse regime reenviar de hora em hora, como faz o canal de servico,
+    # so ensinaria o operador a filtrar o remetente. Um aviso a cada 2 dias
+    # basta para algo que se mede em semanas.
+    [int]$ReenvioFonteMin = 2880
 )
 $ErrorActionPreference = 'Continue'
 
@@ -94,14 +101,18 @@ function Get-VixHealthSnapshot {
             telemetria      = $json.bindings.telemetria
             sentry          = $json.sentry_ok
             adminEmail      = $json.admin_email_ok
+            fonteExterna    = $json.fonte_externa_ok
             cvmFonte        = $json.cvm_fonte_ok
             cvmFonteMotivo  = $json.cvm_fonte_motivo
+            cvmCiclos       = $json.cvm_fonte_ciclos_perdidos
+            cvmProxima      = $json.cvm_fonte_proxima_prevista
         }
     } catch {
         return [PSCustomObject]@{
             code = 0; ok = $false; verificador = $false; versao = ''
             kv = $null; telemetria = $null; sentry = $null; adminEmail = $null
-            cvmFonte = $null; cvmFonteMotivo = 'health inalcancavel'
+            fonteExterna = $null; cvmFonte = $null; cvmFonteMotivo = 'health inalcancavel'
+            cvmCiclos = $null; cvmProxima = $null
         }
     }
 }
@@ -114,12 +125,52 @@ function Get-VixCausaDegradacao($snap) {
     if ($snap.verificador -eq $false) { $causas += 'verificador_ok=false' }
     if ($snap.sentry -eq $false) { $causas += 'sentry_ok=false' }
     if ($snap.adminEmail -eq $false) { $causas += 'admin_email_ok=false' }
-    if ($snap.cvmFonte -eq $false) {
-        $m = if ($snap.cvmFonteMotivo) { $snap.cvmFonteMotivo } else { 'sem motivo' }
-        $causas += ('cvm_fonte_ok=false (' + $m + ')')
-    }
+    # HEALTHSPLIT1 (2026-08-20): cvm_fonte_ok saiu daqui de proposito. Ele nao
+    # compoe mais o `ok` agregado e tem canal proprio mais abaixo, com cadencia
+    # de reenvio compativel com fonte semanal. Se aparecer aqui de novo, alguem
+    # reverteu o split no Worker.
     if ($causas.Count -eq 0) { return 'ok agregado false sem campo vermelho identificado' }
     return ($causas -join '; ')
+}
+
+# Canal unico de envio, usado tanto pelo alerta de servico quanto pelo de fonte
+# externa. Antes o corpo do e-mail estava inline no fim do script e duplicar
+# aquilo para o segundo canal criaria duas versoes para divergir.
+function Send-VixAlerta {
+    param([string]$Assunto, [string]$CorpoHtml)
+    $credScript = Join-Path $Root 'api\Get-VixAdminCredential.ps1'
+    if (-not (Test-Path $credScript)) { throw ('credencial ausente: ' + $credScript) }
+    $adminSenha = & $credScript -AsPlainText
+    if (-not $adminSenha) { throw 'Get-VixAdminCredential.ps1 devolveu vazio' }
+    $payload = @{
+        action       = 'email_enviar'
+        admin_senha  = $adminSenha
+        assunto      = $Assunto
+        html         = $CorpoHtml
+        destinatario = $To
+    }
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Depth 6 -Compress))
+    $resp = Invoke-WebRequest -Uri $WorkerUrl -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 30 -UseBasicParsing
+    $data = [System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json
+    return [bool]$data.ok
+}
+
+# O arquivo de estado guarda os dois canais. Gravar so uma chave apagaria a
+# outra e o dedup do canal apagado reiniciaria a cada rodada.
+function Get-VixEstado {
+    if (-not (Test-Path $EstadoFile)) { return @{} }
+    try {
+        $j = Get-Content $EstadoFile -Raw | ConvertFrom-Json
+        $h = @{}
+        foreach ($p in $j.PSObject.Properties) { $h[$p.Name] = $p.Value }
+        return $h
+    } catch { return @{} }
+}
+
+function Set-VixEstado {
+    param([hashtable]$Estado, [string]$Chave, [string]$Valor)
+    $Estado[$Chave] = $Valor
+    ($Estado | ConvertTo-Json -Compress) | Set-Content -Path $EstadoFile -Encoding ASCII
 }
 
 $degradado = $false
@@ -189,21 +240,54 @@ for ($i = 0; $i -lt 2; $i++) {
     Start-Sleep -Seconds 20
 }
 
+$agora = Get-Date
+$estado = Get-VixEstado
+
+# --- Canal 2, fonte externa (HEALTHSPLIT1) ---------------------------------
+# Roda ANTES do exit do caminho feliz, senao um servico saudavel com a fonte
+# parada ha tres semanas sairia em silencio. Nunca altera o exit code: o
+# contrato com o Task Scheduler continua sendo exit 0 sempre (ver cabecalho).
+if ($snap.code -eq 200 -and $snap.fonteExterna -eq $false) {
+    $ciclos = if ($null -ne $snap.cvmCiclos) { $snap.cvmCiclos } else { '?' }
+    $detFonte = ('fonte_externa_ok=false ciclos_perdidos=' + $ciclos + ' motivo=' + $snap.cvmFonteMotivo)
+    Write-WatchLog ('FONTE EXTERNA: ' + $detFonte)
+    $ultFonte = $null
+    if ($estado.ContainsKey('last_alert_fonte') -and $estado['last_alert_fonte']) {
+        try { $ultFonte = [DateTime]$estado['last_alert_fonte'] } catch { $ultFonte = $null }
+    }
+    $podeFonte = (-not $ultFonte) -or (($agora - $ultFonte).TotalMinutes -ge $ReenvioFonteMin)
+    if (-not $podeFonte) {
+        Write-WatchLog ('AVISO: alerta de fonte externa suprimido (proximo em ' + [int](($ReenvioFonteMin - ($agora - $ultFonte).TotalMinutes) / 60) + ' h)')
+    } else {
+        try {
+            $htmlF = '<h2>VIX Radar - fonte externa sem publicar</h2>' +
+                     '<p>A fonte CIA_ABERTA/DOC da CVM tem cadencia semanal declarada e publica aos domingos. Este aviso so dispara apos DOIS ciclos perdidos.</p>' +
+                     '<p><b>' + $detFonte + '</b></p>' +
+                     '<p>Ultima publicacao observada: ' + $snap.cvmFonteMotivo + '. Proxima prevista: ' + $snap.cvmProxima + '</p>' +
+                     '<p>O servico segue de pe (ok=' + $snap.ok + '). Isto e estado do mundo externo, nao falha da plataforma.</p>'
+            if (Send-VixAlerta -Assunto ('VIX Radar - fonte externa parada (' + $ciclos + ' ciclos)') -CorpoHtml $htmlF) {
+                Write-WatchLog ('ALERTA FONTE EXTERNA ENVIADO para ' + $To)
+                Set-VixEstado -Estado $estado -Chave 'last_alert_fonte' -Valor $agora.ToString('o')
+            } else {
+                Write-WatchLog 'AVISO: Worker recusou envio do alerta de fonte externa'
+            }
+        } catch {
+            Write-WatchLog ('AVISO: falha ao alertar fonte externa: ' + $_.Exception.Message)
+        }
+    }
+}
+
 if (-not $degradado) {
-    Write-WatchLog ('OK code=' + $snap.code + ' ok=' + $snap.ok + ' verificador=' + $snap.verificador + ' versao=' + $snap.versao)
+    Write-WatchLog ('OK code=' + $snap.code + ' ok=' + $snap.ok + ' verificador=' + $snap.verificador + ' fonte_externa=' + $snap.fonteExterna + ' versao=' + $snap.versao)
     exit 0
 }
 
 # Degradado: loga sempre, envia e-mail com dedup por -ReenvioMin.
 Write-WatchLog ('DEGRADADO: ' + $detalhe)
 
-$agora = Get-Date
 $ultimoAlerta = $null
-if (Test-Path $EstadoFile) {
-    try {
-        $est = Get-Content $EstadoFile -Raw | ConvertFrom-Json
-        if ($est.last_alert) { $ultimoAlerta = [DateTime]$est.last_alert }
-    } catch { }
+if ($estado.ContainsKey('last_alert') -and $estado['last_alert']) {
+    try { $ultimoAlerta = [DateTime]$estado['last_alert'] } catch { $ultimoAlerta = $null }
 }
 $podeEnviar = (-not $ultimoAlerta) -or (($agora - $ultimoAlerta).TotalMinutes -ge $ReenvioMin)
 if (-not $podeEnviar) {
@@ -212,31 +296,15 @@ if (-not $podeEnviar) {
 }
 
 try {
-    $credScript = Join-Path $Root 'api\Get-VixAdminCredential.ps1'
-    if (-not (Test-Path $credScript)) { throw ('credencial ausente: ' + $credScript) }
-    $adminSenha = & $credScript -AsPlainText
-    if (-not $adminSenha) { throw 'Get-VixAdminCredential.ps1 devolveu vazio' }
-
     $html = '<h2>VIX Radar - health degradado</h2>' +
             '<p>Vigia HEALTHWATCH1 detectou problema em ' + $agora.ToString('yyyy-MM-dd HH:mm:ss') + ' na maquina ' + $env:COMPUTERNAME + ':</p>' +
             '<p><b>' + $detalhe + '</b></p>' +
             '<p>Health publico: ' + $WorkerUrl + '</p>'
-
-    $payload = @{
-        action       = 'email_enviar'
-        admin_senha  = $adminSenha
-        assunto      = 'VIX Radar - health degradado (' + $detalhe + ')'
-        html         = $html
-        destinatario = $To
-    }
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes(($payload | ConvertTo-Json -Depth 6 -Compress))
-    $resp = Invoke-WebRequest -Uri $WorkerUrl -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 30 -UseBasicParsing
-    $data = [System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json
-    if ($data.ok) {
+    if (Send-VixAlerta -Assunto ('VIX Radar - health degradado (' + $detalhe + ')') -CorpoHtml $html) {
         Write-WatchLog ('ALERTA ENVIADO para ' + $To)
-        @{ last_alert = $agora.ToString('o') } | ConvertTo-Json -Compress | Set-Content -Path $EstadoFile -Encoding ASCII
+        Set-VixEstado -Estado $estado -Chave 'last_alert' -Valor $agora.ToString('o')
     } else {
-        Write-WatchLog ('AVISO: Worker recusou envio: ' + $data.erro)
+        Write-WatchLog 'AVISO: Worker recusou envio'
     }
 } catch {
     Write-WatchLog ('AVISO: falha ao enviar alerta: ' + $_.Exception.Message)

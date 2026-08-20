@@ -282,22 +282,28 @@ if ($SkipValidation) {
   }
   Write-Host "  versao viva: $($h.versao) OK" -ForegroundColor Green
 
-  # CVMFRESCOR1 (2026-08-19): cvm_fonte_ok entrou no _okHealth para que ingestao
-  # cega derrube o painel. So que ele mede a idade da FONTE da CVM, estado do
-  # mundo externo, nao resultado deste deploy. Se ele sozinho abortasse o passo 5,
-  # todo deploy feito durante um apagao da CVM deixaria producao nova com o repo
-  # declarando a versao velha, que e exatamente o drift que este passo existe para
-  # evitar. Os demais gates seguem abortando.
+  # HEALTHSPLIT1 (2026-08-20): frescor de fonte externa saiu do `ok` agregado e
+  # foi para `fonte_externa_ok`, entao `ok=false` voltou a significar servico
+  # degradado de verdade e este gate volta a abortar sempre. O carve-out abaixo
+  # fica como rede para o caso de rollback do Worker para um bundle anterior ao
+  # v4.9.204, em que cvm_fonte_ok ainda derrubava o agregado.
+  #
+  # CVMCADENCIA1 (2026-08-20): a redacao antiga dizia "apagao da CVM". Nao houve
+  # apagao. O ramo CIA_ABERTA/DOC da CVM tem cadencia SEMANAL declarada e publica
+  # aos domingos, entao ficar 4 dias uteis sem regerar e comportamento normal.
   if (-not $h.ok) {
     $temCampoCvm = ($h.PSObject.Properties.Name -contains 'cvm_fonte_ok')
     $outrosGatesOk = $h.bindings.kv -and $h.bindings.telemetria -and $h.admin_email_ok -and $h.sentry_ok -and $h.verificador_ok
     if ($temCampoCvm -and (-not $h.cvm_fonte_ok) -and $outrosGatesOk) {
-      Write-Host "  AVISO: ok=false causado SOMENTE por cvm_fonte_ok=false." -ForegroundColor Yellow
-      Write-Host "  Fonte CVM parada ha $($h.cvm_fonte_idade_du) dias uteis. Motivo: $($h.cvm_fonte_motivo). Last-Modified: $($h.cvm_fonte_last_modified)" -ForegroundColor Yellow
-      Write-Host "  Estado da fonte externa, nao falha deste deploy. Prosseguindo com o commit." -ForegroundColor Yellow
+      Write-Host "  AVISO: ok=false causado SOMENTE por cvm_fonte_ok=false (bundle anterior ao HEALTHSPLIT1)." -ForegroundColor Yellow
+      Write-Host "  Fonte CVM sem republicar ha $($h.cvm_fonte_idade_du) dias uteis. Motivo: $($h.cvm_fonte_motivo). Last-Modified: $($h.cvm_fonte_last_modified)" -ForegroundColor Yellow
+      Write-Host "  Cadencia da fonte e semanal (domingos), nao falha deste deploy. Prosseguindo com o commit." -ForegroundColor Yellow
     } else {
       Fail "Health ok=false — producao degradada apos o deploy."
     }
+  }
+  if ($h.PSObject.Properties.Name -contains 'fonte_externa_ok' -and -not $h.fonte_externa_ok) {
+    Write-Host "  AVISO: fonte_externa_ok=false. Motivo: $($h.cvm_fonte_motivo). Nao bloqueia deploy, e estado do mundo externo." -ForegroundColor Yellow
   }
   # Telemetria e regra inviolavel do projeto (binding RADAR_USAGE_EVENTS).
   if (-not $h.bindings.kv)         { Fail "Binding kv ausente apos o deploy." }

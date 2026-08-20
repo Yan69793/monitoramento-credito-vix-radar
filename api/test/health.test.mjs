@@ -4,11 +4,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 // Automatiza o portao de verificacao que o CLAUDE.md do projeto pede para
 // colar na mao apos deploy: GET / com ok:true, kv:true, telemetria:true.
 describe("GET / (health check)", () => {
-  // CVMFRESCOR1 (2026-08-19): cvm_fonte_ok entrou no _okHealth e e fail-closed,
-  // entao sem meta de fonte o ok agregado e false por definicao. Este teste
-  // cobre o caminho feliz, logo precisa semear uma fonte fresca. O
-  // comportamento com fonte parada, meta ausente e sync falho fica em
-  // cvm-frescor.test.mjs, que e quem guarda o contrato novo.
+  // HEALTHSPLIT1 (2026-08-20): cvm_fonte_ok SAIU do _okHealth e virou
+  // fonte_externa_ok, campo proprio. A semeadura abaixo continua porque este
+  // teste tambem afirma fonte_externa_ok:true no caminho feliz, mas o ok
+  // agregado ja nao depende dela. Comportamento da fonte com meta ausente,
+  // ciclo perdido e sync falho fica em cvm-frescor.test.mjs, que e quem guarda
+  // o contrato de cadencia (CVMCADENCIA1, regra de 2 ciclos semanais).
   beforeEach(async () => {
     const hoje = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     await env.RADAR_KV.put("cvm:fonte_meta", JSON.stringify({
@@ -36,7 +37,11 @@ describe("GET / (health check)", () => {
     expect(body.admin_email_ok).toBe(true);
     expect(body.sentry_ok).toBe(true);
     expect(body.verificador_ok).toBe(true);
-    // CVMFRESCOR1: ingestao cega derruba o health como secret ausente derruba.
+    // HEALTHSPLIT1: frescor de fonte externa tem campo proprio e NAO compoe o
+    // `ok`. Se alguem religar cvm_fonte_ok no _okHealth, o teste de 4 dias em
+    // cvm-frescor.test.mjs quebra junto e o CI reprova antes do deploy.
+    expect(body.fonte_externa_ok).toBe(true);
     expect(body.cvm_fonte_ok).toBe(true);
+    expect(body.cvm_fonte_cadencia).toBe("semanal");
   });
 });

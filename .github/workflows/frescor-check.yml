@@ -79,7 +79,7 @@ jobs:
           fi
 
           if (( ev_idade > ev_limite )); then
-            echo "::error::INGESTAO PARADA. Evento mais novo e de ${ev_data}, ${ev_idade} dias uteis atras (limite ${ev_limite}), com ${ev_total} eventos no estado. As rotinas podem estar rodando e gravando normalmente: o que este gate mede e se entrou fato NOVO, nao se alguem escreveu. Primeira coisa a conferir e o cvm_fonte_ok do health publico (GET /): se ele tambem estiver false, a causa e a mesma, a fonte da CVM parou de publicar, e nao ha bug nosso para cacar."
+            echo "::error::INGESTAO PARADA. Evento mais novo e de ${ev_data}, ${ev_idade} dias uteis atras (limite ${ev_limite}), com ${ev_total} eventos no estado. As rotinas podem estar rodando e gravando normalmente, o que este gate mede e se entrou fato NOVO, nao se alguem escreveu. CVMCADENCIA1 (2026-08-20): NAO culpe a CVM por reflexo. O ramo CIA_ABERTA/DOC tem cadencia SEMANAL declarada e publica aos domingos, entao fonte com 4 dias uteis e normal e nao explica evento parado, ja que a maior parte dos eventos vem de imprensa e rating, que publicam todo dia util. Confira nesta ordem: 1) logs em logs/routines do dia, linha FIM com submit_ok; 2) fonte_externa_ok no health publico, que so vai a false apos DOIS ciclos semanais perdidos, e ai sim a fonte parou de verdade; 3) fila de verificacao radar:verif_fila."
             exit 1
           fi
 

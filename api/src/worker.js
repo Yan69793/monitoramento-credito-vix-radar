@@ -7097,18 +7097,47 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "COMPANHIA BRASILEIRA DE DISTRIBUICAO": "P\xE3o de A\xE7\xFAcar (GPA)",
   "SENDAS DISTRIBUIDORA S/A": "Assa\xED Atacadista"
 };
-// ── CVMFRESCOR1 (auditoria 2026-08-19) ──────────────────────────────────────
-// O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde.
-// A causa foi a CVM parar de publicar (IPE/FRE/ITR com Last-Modified de
-// 2026-08-16 no servidor dela), e o sistema nao ter como perceber: o
-// heartbeat de sync_cvm mede se a funcao rodou, nao se o dado e novo, e o
-// download de um arquivo que nao mudou e um sucesso perfeito. Fonte parada
-// vira modelo re-narrando o mesmo fato todo dia, com painel verde.
-// A partir daqui toda sincronizacao carimba a idade REAL da fonte, e essa
-// idade entra no _okHealth pelo mesmo motivo do SECRETMISS1 e do SENTRY1:
-// cegueira silenciosa tem que doer.
+// ── CVMFRESCOR1 (auditoria 2026-08-19), PREMISSA CORRIGIDA EM 2026-08-20 ────
+// O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde, e
+// a instrumentacao criada aqui (carimbar a idade REAL da fonte a cada sync) foi
+// e continua sendo certa. O DIAGNOSTICO que estava escrito neste comentario nao
+// era: dizia "a CVM parou de publicar", e a CVM nao parou.
+//
+// CVMCADENCIA1 (auditoria 2026-08-20). O que a evidencia mostra:
+//   1. A propria pagina do dataset declara "Frequencia de atualizacao: Semanal"
+//      e "os arquivos do ano corrente e anterior (A-1) serao atualizados
+//      semanalmente" (dados.cvm.gov.br/dataset/cia_aberta-doc-ipe).
+//   2. ipe_cia_aberta_2026.zip e ipe_cia_aberta_2025.zip, corrente e A-1, foram
+//      regerados no MESMO domingo 16/08 com 1 minuto de diferenca. Domingo
+//      anterior, 09/08, mesma coisa (a metrica de reconciliacao pulou de 8 para
+//      25 documentos severos entre 07/08 e 10/08).
+//   3. O portal esta vivo: FI/DOC/INF_DIARIO e ate CIA_ABERTA/CAD foram
+//      regerados em 20/08 de madrugada. So o ramo CIA_ABERTA/DOC e semanal.
+//   4. A CVM segue recebendo protocolo normalmente (Casas Bahia protocolou fato
+//      relevante em 16/08 e comunicado em 18/08, nenhum dos dois no ZIP ainda).
+//
+// Consequencia: medir uma fonte de cadencia 7 dias com regua de 2 dias uteis
+// fazia o health ir a vermelho TODA quarta ou quinta-feira, previsivelmente, e
+// voltar ao verde no domingo. Alarme que toca sozinho toda semana nao e alarme.
+//
+// REGRA NOVA, em ciclos perdidos e nao em dias uteis: a publicacao esperada e
+// semanal, entao so vira alerta quando DOIS ciclos consecutivos nao ocorreram,
+// ou seja, quando a fonte passa de 14 dias corridos sem regerar. Um ciclo
+// perdido pode ser feriado, remanejo de janela ou atraso de lote e nao merece
+// acordar ninguem. Dois ciclos e a fonte parada de verdade.
 var CVM_FONTE_META_KEY = "cvm:fonte_meta";
-var CVM_FONTE_MAX_DU = 2;
+var CVM_FONTE_CICLO_DIAS = 7;
+var CVM_FONTE_MAX_CICLOS = 2;
+// Dia da semana em que o lote CIA_ABERTA/DOC roda (0 = domingo), usado so para
+// projetar a proxima publicacao prevista no aviso de frescor do painel.
+var CVM_FONTE_DOW_PUBLICACAO = 0;
+// Frescor de EVENTO no estado, deliberadamente separado do frescor da FONTE.
+// Sao coisas diferentes: os eventos vem majoritariamente de imprensa e rating,
+// que publicam todo dia util, entao 2 dias uteis sem NENHUM evento novo entre
+// 103 emissores continua sendo sinal legitimo de pipeline parado. Antes as duas
+// medidas compartilhavam a mesma constante e mexer numa mexia na outra sem
+// querer.
+var EVENTO_MAX_DU = 2;
 
 // Dias uteis decorridos APOS dataISO ate hojeISO, inclusive. Fim de semana nao
 // conta, senao toda segunda-feira acusaria fonte podre sem nada ter acontecido.
@@ -7197,15 +7226,50 @@ async function avaliarFrescorCVM(env2222) {
   if (!ref) { out.motivo = "sem_data_de_referencia"; return out; }
   var hoje = obterAgoraBRT().toISOString().slice(0, 10);
   var du = _cvmDiasUteisApos(ref, hoje);
+  // idade_du fica no payload por compatibilidade: watch-vixradar-health.ps1,
+  // deploy-worker.ps1 e o log das rotinas ja imprimem esse campo. A DECISAO,
+  // porem, nao usa mais dias uteis, usa ciclo semanal (CVMCADENCIA1).
   out.idade_du = du;
-  if (du === null) { out.motivo = "data_invalida"; return out; }
-  if (du > CVM_FONTE_MAX_DU) {
-    out.motivo = "fonte_parada_ha_" + du + "_dias_uteis";
+  var dias = _cvmDiasCorridosApos(ref, hoje);
+  out.idade_dias = dias;
+  if (dias === null) { out.motivo = "data_invalida"; return out; }
+  var ciclos = Math.floor(dias / CVM_FONTE_CICLO_DIAS);
+  out.ciclos_perdidos = ciclos;
+  out.cadencia = "semanal";
+  out.proxima_prevista = _cvmProximaPublicacaoPrevista(ref);
+  if (ciclos >= CVM_FONTE_MAX_CICLOS) {
+    out.motivo = "fonte_sem_publicar_ha_" + ciclos + "_ciclos_semanais_" + dias + "_dias";
     return out;
   }
   out.ok = true;
   out.motivo = "ok";
   return out;
+}
+
+// Dias corridos entre duas datas ISO. Ciclo de publicacao semanal nao pula fim
+// de semana, ao contrario de dias uteis, e o lote da CVM roda justamente aos
+// domingos, entao contar dia util aqui subestimaria a idade real da fonte.
+function _cvmDiasCorridosApos(dataISO, hojeISO) {
+  if (!dataISO || !hojeISO) return null;
+  var ini = new Date(dataISO + "T00:00:00Z");
+  var fim = new Date(hojeISO + "T00:00:00Z");
+  if (isNaN(ini.getTime()) || isNaN(fim.getTime())) return null;
+  if (fim <= ini) return 0;
+  return Math.floor((fim.getTime() - ini.getTime()) / 864e5);
+}
+
+// Projeta o proximo domingo apos a ultima publicacao observada. Serve so para
+// o aviso de frescor da tela dizer ao usuario quando esperar dado novo, nunca
+// para decidir health.
+function _cvmProximaPublicacaoPrevista(refISO) {
+  if (!refISO) return null;
+  var d = new Date(refISO + "T00:00:00Z");
+  if (isNaN(d.getTime())) return null;
+  var guarda = 0;
+  do {
+    d.setUTCDate(d.getUTCDate() + 1);
+  } while (d.getUTCDay() !== CVM_FONTE_DOW_PUBLICACAO && guarda++ < 10);
+  return d.toISOString().slice(0, 10);
 }
 
 function _cvmMaxDataEntrega(docs) {
@@ -16191,10 +16255,13 @@ async function executarHealthCheckDiario(env2222) {
       data: _evMax,
       idade_du: _evIdade,
       total_eventos: _evTotal,
-      // Mesmo limite da fonte CVM. 2 dias uteis sem NENHUM evento novo entre 103
-      // emissores nao e mercado quieto, e pipeline parado ou fonte seca.
-      limite_du: CVM_FONTE_MAX_DU,
-      fresco: _evIdade !== null && _evIdade <= CVM_FONTE_MAX_DU
+      // CVMCADENCIA1 (2026-08-20): antes isto reusava a constante da FONTE. As
+      // duas medidas se separaram porque medem coisas diferentes. Evento vem de
+      // imprensa e rating, que publicam todo dia util, entao 2 dias uteis sem
+      // NENHUM evento novo entre 103 emissores segue sendo pipeline parado. Ja a
+      // fonte CVM e semanal e tem regra propria em ciclos.
+      limite_du: EVENTO_MAX_DU,
+      fresco: _evIdade !== null && _evIdade <= EVENTO_MAX_DU
     };
   } catch (e2) {
     resultado.checks.estado_semanal = "erro";
@@ -16606,14 +16673,23 @@ async function __coreFetch(request, env2222, ctx) {
       // Valida formato (https://<chave>@<host>/<projeto>), nao so presenca:
       // string vazia, " " ou DSN truncado tambem tem que derrubar o health.
       var _sentryOk = /^https:\/\/[^\s@]+@[^\s@]+\/\d+$/.test(String(env2222.SENTRY_DSN || "").trim());
-      // CVMFRESCOR1 (auditoria 2026-08-19): a idade da fonte CVM passa a contar
-      // no _okHealth. De 14/08 a 19/08 o feed inteiro ficou congelado porque a
-      // CVM parou de publicar e nenhuma camada mediu isso: o heartbeat de
-      // sync_cvm ficou verde (mede se a funcao rodou), o frescor-check media
-      // updated_at do estado (fica verde com conteudo reciclado) e a tira de
-      // fontes da tela e HTML estatico. Ingestao cega e P0 pela tabela de
-      // severidade do projeto, entao tem que derrubar o health como o
-      // ADMIN_EMAIL e o SENTRY_DSN derrubam.
+      // HEALTHSPLIT1 (auditoria 2026-08-20). A versao de 19/08 jogou a idade da
+      // fonte CVM dentro do `ok` agregado, junto com KV, telemetria, Sentry e
+      // ADMIN_EMAIL. A intencao era certa, ingestao cega e P0, mas o efeito foi
+      // apagar o unico sinal acionavel que o `ok` tinha.
+      //
+      // `ok` significa "o servico esta de pe e integro", e todo consumidor dele
+      // trata assim. Sao 13 hoje, entre eles rotate-routine-key.ps1 (ABORTA a
+      // rotacao da chave), scan-emergencia.yml (dispara varredura), 4 workflows
+      // de CI e o banner da tela. Nenhum desses tem qualquer acao util diante de
+      // "a CVM publica so aos domingos". Frescor de fonte de terceiro nao e
+      // liveness: nao tem correcao do nosso lado, tem cadencia propria, e agora
+      // sai em campo proprio, `fonte_externa_ok`, com canal de alerta separado
+      // no watch-vixradar-health.ps1 e espacamento compativel com ciclo semanal.
+      //
+      // A cegueira que o CVMFRESCOR1 queria matar continua morta: quem mede
+      // ingestao parada e `checks.evento_mais_novo` no health diario, que gateia
+      // idade de EVENTO (fonte diaria de fato) e alimenta o frescor-check.yml.
       var _cvmFrescor = { ok: false, motivo: "nao_avaliado", idade_du: null };
       try {
         _cvmFrescor = await avaliarFrescorCVM(env2222);
@@ -16622,16 +16698,18 @@ async function __coreFetch(request, env2222, ctx) {
         _cvmFrescor = { ok: false, motivo: "excecao_na_avaliacao", idade_du: null };
       }
       var _cvmFonteOk = !!_cvmFrescor.ok;
-      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk && _cvmFonteOk;
+      var _fonteExternaOk = _cvmFonteOk;
+      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null }, 200, request);
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null }, 200, request);
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
       return resp({
         ok: _okHealth,
+        fonte_externa_ok: _fonteExternaOk,
         versao: WORKER_VERSAO,
         cvm_fonte_ok: _cvmFonteOk,
         cvm_fonte: _cvmFrescor,

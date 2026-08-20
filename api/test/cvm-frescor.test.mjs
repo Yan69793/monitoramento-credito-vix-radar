@@ -1,21 +1,35 @@
 import { SELF, env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 
-// CVMFRESCOR1 (auditoria 2026-08-19).
+// CVMFRESCOR1 (auditoria 2026-08-19), contrato revisado por CVMCADENCIA1 e
+// HEALTHSPLIT1 (auditoria 2026-08-20).
 //
-// De 14/08 a 19/08 o Painel de Eventos ficou congelado em 14/08 e TODO semaforo
-// do sistema permaneceu verde. A causa primaria foi externa, a CVM parou de
-// publicar (ipe/fre/itr_cia_aberta_2026 com Last-Modified de 2026-08-16 no
-// servidor da propria CVM), mas o motivo de ninguem ver foi interno: nenhuma
-// camada media frescor de DADO, todas mediam se o escritor rodou.
+// De 14/08 a 19/08 o Painel de Eventos ficou congelado e TODO semaforo do
+// sistema permaneceu verde. O motivo de ninguem ver era interno e continua
+// valendo: nenhuma camada media frescor de DADO, todas mediam se o escritor
+// rodou.
 //   - heartbeat:sync_cvm ficava "ok" porque a funcao retornava sem lancar, e
 //     baixar um arquivo que nao mudou e um sucesso perfeito;
 //   - frescor-check.yml validava estado_semanal.updated_at, que fica verde com
 //     conteudo reciclado, ja que a rotina escreve todo dia;
 //   - a tira de fontes do rodape do frontend e HTML estatico com classe "ok".
 //
-// Estes testes travam o contrato novo: a idade da fonte CVM entra no _okHealth
-// e e fail-closed. Se alguem afrouxar isso, o CI reprova antes do deploy.
+// O que estava ERRADO na versao de 19/08, e que estes testes agora travam no
+// sentido certo:
+//   1. CVMCADENCIA1 - o diagnostico dizia "a CVM parou de publicar". Nao parou.
+//      O ramo CIA_ABERTA/DOC tem cadencia SEMANAL declarada na propria pagina
+//      do dataset e publica aos domingos. Medir isso com regua de 2 dias uteis
+//      fazia o health ir a vermelho toda quarta ou quinta, previsivelmente. A
+//      regra virou ciclo perdido: so alerta apos DOIS ciclos semanais sem
+//      publicacao, ou seja passados 14 dias corridos.
+//   2. HEALTHSPLIT1 - frescor de fonte de terceiro saiu do `ok` agregado. `ok`
+//      significa "servico de pe e integro" para 13 consumidores, entre eles um
+//      que ABORTA rotacao de chave e outro que dispara varredura de emergencia.
+//      Nenhum deles tem acao util diante de "a CVM publica aos domingos". O
+//      sinal agora vive em `fonte_externa_ok`, com canal de alerta proprio.
+//
+// O fail-closed nao afrouxou: meta ausente, ilegivel ou sem data continua
+// contando como fonte NAO fresca. O que mudou e onde esse false aparece.
 
 const META_KEY = "cvm:fonte_meta";
 
@@ -51,11 +65,13 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     // sistema ficou cego antes. Ausencia de sinal nao e sinal de saude.
     const b = await health();
     expect(b.cvm_fonte_ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
     expect(b.cvm_fonte_motivo).toBe("sem_meta");
-    expect(b.ok).toBe(false);
+    // HEALTHSPLIT1: fonte externa nao derruba mais o agregado.
+    expect(b.ok).toBe(true);
   });
 
-  it("fonte publicada hoje conta como fresca e o health volta a ok:true", async () => {
+  it("fonte publicada hoje conta como fresca", async () => {
     await seedMeta({
       ok: true,
       sincronizado_em: new Date().toISOString(),
@@ -67,11 +83,67 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     });
     const b = await health();
     expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
     expect(b.cvm_fonte_idade_du).toBe(0);
+    expect(b.cvm_fonte_ciclos_perdidos).toBe(0);
+    expect(b.cvm_fonte_cadencia).toBe("semanal");
     expect(b.ok).toBe(true);
   });
 
-  it("fonte parada ha 30 dias derruba cvm_fonte_ok e o ok agregado", async () => {
+  // ── CVMCADENCIA1: a regra e ciclo perdido, nao dia util ────────────────────
+  it("4 dias corridos (menos de 1 ciclo) NAO derruba a fonte", async () => {
+    // Este e o caso real de 20/08/2026: publicacao no domingo 16/08, consulta na
+    // quinta 20/08, 4 dias uteis de idade. A regra velha reprovava e o health
+    // ficava vermelho toda semana no meio da semana, sem nada ter acontecido.
+    await seedMeta({
+      ok: true,
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(4),
+      max_data_entrega: diasAtrasISO(4),
+      documentos: 646,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
+    expect(b.cvm_fonte_ciclos_perdidos).toBe(0);
+    expect(b.ok).toBe(true);
+  });
+
+  it("13 dias (1 ciclo perdido) ainda NAO derruba, pode ser feriado ou atraso de lote", async () => {
+    await seedMeta({
+      ok: true,
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(13),
+      max_data_entrega: diasAtrasISO(13),
+      documentos: 646,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_ciclos_perdidos).toBe(1);
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
+  });
+
+  it("14 dias (2 ciclos perdidos) derruba fonte_externa_ok, e ai a fonte parou de verdade", async () => {
+    await seedMeta({
+      ok: true,
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(14),
+      max_data_entrega: diasAtrasISO(14),
+      documentos: 646,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_ciclos_perdidos).toBe(2);
+    expect(b.cvm_fonte_ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
+    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_sem_publicar_ha_\d+_ciclos_semanais_\d+_dias$/);
+    // Servico continua de pe. Este e o coracao do HEALTHSPLIT1.
+    expect(b.ok).toBe(true);
+  });
+
+  it("fonte parada ha 30 dias derruba fonte_externa_ok mas nao o servico", async () => {
     await seedMeta({
       ok: true,
       sincronizado_em: new Date().toISOString(),
@@ -82,9 +154,10 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     });
     const b = await health();
     expect(b.cvm_fonte_ok).toBe(false);
-    expect(b.cvm_fonte_idade_du).toBeGreaterThan(2);
-    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_parada_ha_\d+_dias_uteis$/);
-    expect(b.ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
+    expect(b.cvm_fonte_ciclos_perdidos).toBeGreaterThanOrEqual(4);
+    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_sem_publicar_ha_\d+_ciclos_semanais_\d+_dias$/);
+    expect(b.ok).toBe(true);
   });
 
   it("ultimo sync com falha derruba mesmo com data recente na meta", async () => {
@@ -100,16 +173,18 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     });
     const b = await health();
     expect(b.cvm_fonte_ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
     expect(String(b.cvm_fonte_motivo)).toContain("ultimo_sync_falhou");
-    expect(b.ok).toBe(false);
+    expect(b.ok).toBe(true);
   });
 
   it("meta sem nenhuma data utilizavel nao passa por omissao", async () => {
     await seedMeta({ ok: true, sincronizado_em: new Date().toISOString(), documentos: 5, origem: "teste" });
     const b = await health();
     expect(b.cvm_fonte_ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
     expect(b.cvm_fonte_motivo).toBe("sem_data_de_referencia");
-    expect(b.ok).toBe(false);
+    expect(b.ok).toBe(true);
   });
 
   it("CVMFRESCOR1b: sem meta, deriva a idade de cvm:documentos e grava o backfill", async () => {
@@ -135,8 +210,9 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     ]));
     const b = await health();
     expect(b.cvm_fonte_ok).toBe(false);
-    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_parada_ha_\d+_dias_uteis$/);
-    expect(b.ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
+    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_sem_publicar_ha_\d+_ciclos_semanais_\d+_dias$/);
+    expect(b.ok).toBe(true);
   });
 
   it("CVMFRESCOR1b: meta existente tem precedencia sobre o backfill", async () => {
@@ -209,6 +285,10 @@ describe("CVMFRESCOR1 - endpoints admin de frescor", () => {
     expect(b.ok).toBe(true);
     expect(b.frescor.ok).toBe(false);
     expect(b.frescor.idade_du).toBeGreaterThan(2);
+    // CVMCADENCIA1: o endpoint admin passa a expor ciclo perdido, que e o campo
+    // pelo qual a decisao e tomada. idade_du fica so como informacao.
+    expect(b.frescor.ciclos_perdidos).toBeGreaterThanOrEqual(2);
+    expect(b.frescor.cadencia).toBe("semanal");
   });
 
   it("admin_sync_cvm manual carimba a meta em vez de deixar invariante quebrada", async () => {
