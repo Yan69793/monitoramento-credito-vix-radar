@@ -1,5 +1,5 @@
 {
-  "gerado_em_url": "https://vixradar.com/",
+  "gerado_em_url": "https://vixradar.com/?cb=503369",
   "total": 43,
   "nota": "Baseline de superficies com numero. Superficie nova sem entrada aqui reprova o audit-ui-live. Ver FERRAMENTACEGA1.",
   "superficies": [
@@ -11,8 +11,8 @@
       "reservado": []
     },
     {
-      "chave": "tc-data::17:24:15",
-      "rotulo": "17:24:15",
+      "chave": "tc-data::17:30:42",
+      "rotulo": "17:30:42",
       "unidade": "d",
       "caminho": "#topbar>#top-center>#top-center-dt>#tc-data",
       "reservado": []
@@ -39,8 +39,8 @@
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::criticos (7d)",
-      "rotulo": "criticos (7d)",
+      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::eventos criticos (7d)",
+      "rotulo": "eventos criticos (7d)",
       "unidade": "(sem unidade)",
       "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
       "reservado": [
@@ -48,8 +48,8 @@
       ]
     },
     {
-      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::relevantes (7d)",
-      "rotulo": "relevantes (7d)",
+      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::eventos relevantes (7d)",
+      "rotulo": "eventos relevantes (7d)",
       "unidade": "(sem unidade)",
       "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
       "reservado": [
