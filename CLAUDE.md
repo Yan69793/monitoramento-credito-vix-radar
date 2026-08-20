@@ -264,6 +264,21 @@ Esperado: HTTP 200, `ok:true`, `telemetria:true`, `kv:true`, `sentry_ok:true`.
 Cole a saída real na resposta. Se falhar ou não puder executar, diga explicitamente.
 Nunca declare "funcionando" sem a saída colada.
 
+**`ok` mede o serviço, não a fonte (HEALTHSPLIT1, v4.9.204, 20/08/2026).** Entre
+19 e 20/08 o `ok` também carregava o frescor da fonte da CVM, e isso apagava o
+único sinal acionável que ele tinha. `ok:false` voltou a significar plataforma
+degradada de verdade, coisa com correção do nosso lado. Frescor de terceiro vive
+agora em `fonte_externa_ok`, com canal de alerta próprio no
+`watch-vixradar-health.ps1` e reenvio de 48h.
+
+`fonte_externa_ok:false` **não** reprova o portão. Ele só vai a false depois de
+dois ciclos semanais perdidos, porque o ramo `CIA_ABERTA/DOC` da CVM tem cadência
+semanal declarada e publica aos domingos (CVMCADENCIA1). Ver
+`cvm_fonte_ciclos_perdidos`, `cvm_fonte_cadencia` e `cvm_fonte_proxima_prevista`
+na resposta. Fonte com 4 dias úteis no meio da semana é o comportamento normal
+dela, não incidente, e a régua antiga de 2 dias úteis fazia o painel ficar
+vermelho toda quarta-feira.
+
 ## Histórico de incidentes (para não repetir)
 
 Incidentes documentados no changelog do `wrangler.toml` e no vault Obsidian.
