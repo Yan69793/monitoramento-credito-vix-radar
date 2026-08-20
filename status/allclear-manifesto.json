@@ -243,16 +243,16 @@
       "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
     },
     {
-      "chave": "div styletextaligncentercolor6b7280padding40px 20pxfontsize12pxsem leitura de eventos nest",
-      "texto": "<div style=\"text-align:center;color:#6b7280;padding:40px 20px;font-size:12px\">Sem leitura de eventos nesta ses",
+      "chave": "div styletextaligncentercolor94a3b8padding40px 20pxfontsize12pxsem leitura de eventos nest",
+      "texto": "<div style=\"text-align:center;color:#94A3B8;padding:40px 20px;font-size:12px\">Sem leitura de eventos nesta ses",
       "classificacao": "guardada",
-      "nota": ""
+      "nota": "Cor atualizada de #6b7280 para #94A3B8 em 20/08/2026 (A11YCONTRASTE1, contraste 3,66:1 reprovava WCAG). A frase e o gatilho nao mudaram, so o estilo. Ver MANIFESTOFRAGIL1 no PENDENCIAS."
     },
     {
-      "chave": "div styletextaligncentercolor6b7280padding40px 20pxfontsize12pxnenhum evento nos filtros a",
-      "texto": "<div style=\"text-align:center;color:#6b7280;padding:40px 20px;font-size:12px\">Nenhum evento nos filtros atuais",
+      "chave": "div styletextaligncentercolor94a3b8padding40px 20pxfontsize12pxnenhum evento nos filtros a",
+      "texto": "<div style=\"text-align:center;color:#94A3B8;padding:40px 20px;font-size:12px\">Nenhum evento nos filtros atuais",
       "classificacao": "guardada",
-      "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true."
+      "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true. Cor atualizada de #6b7280 para #94A3B8 em 20/08/2026 (A11YCONTRASTE1), frase e gatilho inalterados."
     },
     {
       "chave": "sem data oficial",
