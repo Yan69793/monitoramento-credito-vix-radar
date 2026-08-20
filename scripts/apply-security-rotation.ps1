@@ -1,4 +1,15 @@
-﻿# apply-security-rotation.ps1, Etapa 1: Rotacao de credenciais VIX Radar
+﻿#Requires -Version 7.0
+# A diretiva acima e trava de seguranca, nao preferencia. Adicionada 2026-08-20.
+# As linhas 97 e 142 escrevem credencial com redirect de stream ('2>&1'). No
+# powershell.exe 5.1, redirect em chamada nativa sob $ErrorActionPreference =
+# 'Stop' vira NativeCommandError terminante na primeira linha que o wrangler
+# escreve em stderr, mesmo com o 'secret put' ja concluido. O script morreria
+# DEPOIS de gravar no Cloudflare e ANTES do passo 4 (GitHub Actions), do passo 5
+# (ADMIN_EMAIL) e do passo 7 (conferencia de consistencia), deixando destino
+# divergente sem nenhum sinal. E o formato exato dos incidentes de 24/07 e de
+# 09-10/08 ja descritos nos comentarios abaixo. O pwsh 7 nao tem esse
+# comportamento. Falhar a executar e melhor que rotacionar pela metade.
+# apply-security-rotation.ps1, Etapa 1: Rotacao de credenciais VIX Radar
 # Gerado em 2026-07-24
 # Guarda adicionada 2026-07-27: passo C abaixo, apos a rotacao de 24/07 ter
 # deixado o ADMIN_PASSWORD do GitHub Actions desatualizado por 3 dias sem
