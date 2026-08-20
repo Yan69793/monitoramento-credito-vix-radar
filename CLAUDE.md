@@ -79,8 +79,11 @@ GET / em produção, e só então git add/commit/push. Token Cloudflare é vari�
 ambiente do sistema.
 
 Antes de tudo isso rodam três portões que abortam sem tocar em nada: versão de
-produção não pode estar à frente do repo, working tree tem que estar limpo, e o
-secret `SENTRY_DSN` tem que existir no Worker. O terceiro existe porque `sentry_ok`
+produção não pode estar à frente do repo, working tree tem que estar limpo nos 4
+arquivos trackeados que o deploy altera (`api/src/worker.js`, `api/wrangler.toml`,
+`scripts/build-worker.ps1`, `scripts/deploy-worker.ps1`; sujeira fora desses quatro
+não trava o gate), e o secret `SENTRY_DSN` tem que existir no Worker. O terceiro
+existe porque `sentry_ok`
 entrou no `_okHealth` — sem o secret, o deploy subiria e a validação falharia
 depois, deixando produção nova e repo declarando a versão velha.
 
@@ -93,7 +96,7 @@ os 4 arquivos do bundle, deploy, valida em produção.
 
 ### Regras invioláveis de deploy
 - Wrangler 4.x: sempre `--no-autoconfig`. Sem isso detecta `E:\Diretorio\Claude\dashboard` como projeto e ignora `wrangler.toml`.
-- Fonte do Worker: `api/src/worker.js` (17k linhas). Bundles `api/v4.*.js` são artefatos gerados, nunca editar diretamente.
+- Fonte do Worker: `api/src/worker.js` (cerca de 18,6k linhas em agosto de 2026). Bundles `api/v4.*.js` são artefatos gerados, nunca editar diretamente.
 - **Nunca ligar `no_bundle = true` nem passar `--no-bundle`.** Esta linha já mandou o contrário e estava errada: `no_bundle` nunca foi configurado, o esbuild do Wrangler sempre esteve ativo. Desde SENTRY1 (v4.9.184) o bundle tem import real de npm (`@sentry/cloudflare`) que só resolve com o bundler ligado. Desligar quebra o deploy seguinte.
 - `api/package.json` e `api/package-lock.json` são versionados e `deploy-worker.ps1` roda `npm ci` antes do deploy. Sem `node_modules`, o import não resolve.
 - Fonte do frontend: `app/index.html` (CACHE_VERSION no header). Sincronizar `app/deploy_zip/` antes do deploy.
@@ -130,7 +133,8 @@ automático e silencioso.
 Padrão de roteamento: `_rotearParaEmissorDO(env, empresa, op, args)`,
 `_rotearParaUsuarioDO`, `_rotearParaConfigDO`, análogo ao
 `_rotearParaEstadoSemanaDO` que já existe. FIFO promise chain (RACEKV1 fix)
-em todos. Migração v3 em `wrangler.toml:561` com `new_sqlite_classes`.
+em todos. Migração v3 no bloco `[[migrations]]` com `tag = "v3"` e
+`new_sqlite_classes = ["EmissorDO", "UsuarioDO", "ConfigDO"]` em `api/wrangler.toml`.
 
 Fail-open controlado: se o DO falha na escrita, o KV é atualizado normalmente
 e o `console.warn` registra o evento. Se o DO falha na leitura, o valor do KV
@@ -156,10 +160,14 @@ toca produção). Um teste isolado: `npx vitest run test/health.test.mjs`.
 `test/health.test.mjs` automatiza o `Portão de verificação` abaixo (ok/kv/telemetria/
 admin_email_ok/sentry_ok/verificador_ok). `test/rate-limit.test.mjs` cobre o `RATE_LIMITER_DO`.
 
-**Não roda local nesta máquina.** O Windows Smart App Control bloqueia `workerd.exe`
-por assinatura não reconhecida (Event Log CodeIntegrity id 3077/3033, achado em
-02/08/2026, documentado no próprio `.github/workflows/worker-tests.yml`). `npm test`
-só é confiável rodando em CI (`worker-tests.yml`, dispara em push/PR que toque `api/**`).
+**Não roda local nesta máquina com o `node_modules` do fluxo de deploy.** O
+`deploy-worker.ps1` roda `npm ci --omit=dev`, então `vitest` não existe e o `npm test`
+falha com "'vitest' não é reconhecido como um comando interno ou externo". Para rodar
+local, instalar as devDeps com `npm ci` dentro de `api/`. A causa antiga (Smart App
+Control bloqueando `workerd.exe`, Event Log CodeIntegrity id 3077/3033) foi refutada
+em 20/08/2026: `VerifiedAndReputablePolicyState=0` (SAC desligado) e nenhum evento
+CodeIntegrity menciona `workerd`. O caminho comprovado de teste segue sendo o CI
+(`worker-tests.yml`, dispara em push/PR que toque `api/**`).
 Sem lint configurado no repo, não inventar um.
 
 `app/` (frontend) não tem `package.json`, build step nem suíte de teste, é HTML/CSS/JS

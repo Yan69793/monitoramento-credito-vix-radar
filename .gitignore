@@ -30,7 +30,9 @@ API_TOKENS/
 scripts/azul_payload.json
 *_payload.json
 recovery-codes.txt
-scripts/setup-deploy-credential.ps1
+# scripts/setup-deploy-credential.ps1 e versionado de proposito (script oficial do
+# setup de deploy; token nunca fica literal, entra por parametro, Read-Host ou DPAPI).
+# Nao ignorar.
 
 # ---------- Config local e ferramentas pessoais ----------
 .codex/
@@ -178,6 +180,10 @@ gen-dashboard.ps1
 
 # ---------- Backups e arquivos grandes ----------
 backups/
+# Backups locais de janela de manutencao (JSONs de estado + ROLLBACK.md). Sem a
+# regra, um `git add -A` os pegaria. O deploy so exige limpeza nos 4 trackeados.
+_backup_*/
+_backup-janela-*/
 *.tar.gz
 *.zip
 index.html.bak*

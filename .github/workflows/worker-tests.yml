@@ -2,9 +2,12 @@
 # Roda o Worker de verdade (api/src/worker.js) num runtime workerd local via
 # Miniflare, sem tocar producao nem exigir nenhum secret real.
 #
-# NAO roda local nesta maquina: Windows Smart App Control bloqueia workerd.exe
-# por assinatura nao reconhecida (Event Log CodeIntegrity id 3077/3033,
-# 2026-08-02). GitHub Actions nao tem essa politica. Ver api/test/.
+# NAO roda local nesta maquina enquanto `api/node_modules` for o do fluxo de deploy
+# (`npm ci --omit=dev`): sem devDeps nao existe o binario `vitest` e o `npm test`
+# falha com "'vitest' nao e reconhecido como um comando interno ou externo".
+# Para rodar local: `cd api && npm ci` (instala as devDeps) e `npm test`.
+# Nao e o Smart App Control: medido em 20/08/2026, VerifiedAndReputablePolicyState=0
+# (SAC desligado) e nenhum evento CodeIntegrity menciona workerd. Ver api/test/.
 
 name: Worker Tests
 
