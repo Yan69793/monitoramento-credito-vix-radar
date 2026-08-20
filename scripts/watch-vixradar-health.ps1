@@ -80,15 +80,46 @@ function Get-VixHealthSnapshot {
         $resp = Invoke-WebRequest -Uri ($WorkerUrl + '?_=' + (Get-Date -Format 'yyyyMMddHHmmssfff')) -TimeoutSec 20 -UseBasicParsing
         $code = [int]$resp.StatusCode
         $json = $resp.Content | ConvertFrom-Json
+        # HEALTHWATCH3 (auditoria 2026-08-20): o snapshot so carregava ok/verificador/
+        # versao, entao o e-mail e o log diziam "ok=False verificador_ok=True" e nada
+        # mais. Em 17-20/08 foram 3 dias de alerta de 15 em 15 min sem nomear a causa
+        # (era cvm_fonte_ok=false, fonte da CVM parada em 16/08). Alerta que nao diz o
+        # que quebrou obriga a investigar do zero e treina o leitor a ignorar.
         return [PSCustomObject]@{
-            code        = $code
-            ok          = $json.ok
-            verificador = $json.verificador_ok
-            versao      = $json.versao
+            code            = $code
+            ok              = $json.ok
+            verificador     = $json.verificador_ok
+            versao          = $json.versao
+            kv              = $json.bindings.kv
+            telemetria      = $json.bindings.telemetria
+            sentry          = $json.sentry_ok
+            adminEmail      = $json.admin_email_ok
+            cvmFonte        = $json.cvm_fonte_ok
+            cvmFonteMotivo  = $json.cvm_fonte_motivo
         }
     } catch {
-        return [PSCustomObject]@{ code = 0; ok = $false; verificador = $false; versao = '' }
+        return [PSCustomObject]@{
+            code = 0; ok = $false; verificador = $false; versao = ''
+            kv = $null; telemetria = $null; sentry = $null; adminEmail = $null
+            cvmFonte = $null; cvmFonteMotivo = 'health inalcancavel'
+        }
     }
+}
+
+# Traduz o snapshot em "quem esta vermelho", em vez de repetir o agregado.
+function Get-VixCausaDegradacao($snap) {
+    $causas = @()
+    if ($snap.kv -eq $false) { $causas += 'kv=false' }
+    if ($snap.telemetria -eq $false) { $causas += 'telemetria=false' }
+    if ($snap.verificador -eq $false) { $causas += 'verificador_ok=false' }
+    if ($snap.sentry -eq $false) { $causas += 'sentry_ok=false' }
+    if ($snap.adminEmail -eq $false) { $causas += 'admin_email_ok=false' }
+    if ($snap.cvmFonte -eq $false) {
+        $m = if ($snap.cvmFonteMotivo) { $snap.cvmFonteMotivo } else { 'sem motivo' }
+        $causas += ('cvm_fonte_ok=false (' + $m + ')')
+    }
+    if ($causas.Count -eq 0) { return 'ok agregado false sem campo vermelho identificado' }
+    return ($causas -join '; ')
 }
 
 $degradado = $false
@@ -147,7 +178,7 @@ for ($i = 0; $i -lt 2; $i++) {
     }
     if ($snap.ok -ne $true -or $snap.verificador -ne $true) {
         $degradado = $true
-        $detalhe = ('ok=' + $snap.ok + ' verificador_ok=' + $snap.verificador + ' versao=' + $snap.versao)
+        $detalhe = ('ok=' + $snap.ok + ' versao=' + $snap.versao + ' CAUSA: ' + (Get-VixCausaDegradacao $snap))
         break
     }
     if ($snap.versao -and $snap.versao -ne $VersaoEsperada -and -not $TomlRecente) {

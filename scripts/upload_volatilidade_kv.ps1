@@ -106,12 +106,19 @@ if ($DryRun) {
     exit 0
 }
 
+# VOLTTL1 (auditoria 2026-08-20): o TTL era 86400, exatamente o intervalo entre
+# duas execucoes da rotina. Uma unica falha de upload apagava o dado de producao
+# sem deixar rastro: em 19/08 17:02 o POST falhou, a escrita de 18/08 expirou as
+# 17:01 e a chave sumiu (404 no wrangler kv key get). O pipeline preditivo le com
+# .catch(() => null), entao rodou o dia inteiro sem volatilidade e sem reclamar.
+# 3 dias dao folga para 2 falhas seguidas antes de perder o dado.
+$KV_TTL_VOLATILIDADE = 259200
 $body = @{
     admin_senha = $AdminSenha
     action = 'admin_kv_put'
     key = 'cotacoes:volatilidade:v1'
     value = $payloadJson
-    ttl = 86400
+    ttl = $KV_TTL_VOLATILIDADE
 } | ConvertTo-Json -Compress
 
 $uploadOk = $false
@@ -137,4 +144,4 @@ for ($tentativa = 1; $tentativa -le $maxRetries; $tentativa++) {
     }
 }
 if (-not $uploadOk) { throw "Falha ao publicar volatilidade apos $maxRetries tentativas. Ultimo erro: $ultimoErro" }
-Write-Host 'UPLOAD_OK key=cotacoes:volatilidade:v1 ttl=86400'
+Write-Host ('UPLOAD_OK key=cotacoes:volatilidade:v1 ttl=' + $KV_TTL_VOLATILIDADE)

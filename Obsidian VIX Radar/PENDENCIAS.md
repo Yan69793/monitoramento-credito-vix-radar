@@ -11,6 +11,64 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 20/08 (15h50 BRT) — PARCIAL: por que o feed parece congelado, e o que estava quebrado por baixo
+
+Pergunta de origem: "o sistema nao foi atualizado". Investigacao encontrou uma causa externa e
+tres defeitos internos que ninguem tinha visto, dois deles corrigidos nesta sessao.
+
+**A causa do feed parado nao e bug nosso.** O arquivo bulk da CVM parou de ser publicado:
+`Last-Modified: Sun, 16 Aug 2026 10:00:36 GMT` no
+`https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip`, 4 dias uteis
+atras. O `cvm_fonte_ok:false` no health publico esta certo e derrubando o `ok` agregado de
+proposito. As rotinas rodaram normalmente: matinal 20/20 hoje as 10h21, verificacao-async 16
+eventos submetidos as 10h37, evento mais novo em producao de 18/08 (`idade_du:2`, no limite).
+O que o usuario ve como "parado" e a soma do apagao da CVM com a lacuna de produto ja registrada
+em 19/08 (o feed mostra o evento mais material da janela de 30 dias, nao o delta do dia).
+
+**VOLTTL1 (P2, corrigido).** A chave `cotacoes:volatilidade:v1` sumiu de producao. O upload de
+19/08 17:02 falhou (`upload_volatilidade_kv.ps1 exit=1`, `LastTaskResult 1` na
+`VIXRadar-Coleta-Volatilidade`) e o TTL era 86400, exatamente o intervalo entre duas execucoes.
+A escrita de 18/08 expirou as 17:01 e a chave passou a responder 404 no
+`wrangler kv key get --remote`. O pipeline preditivo le com `.catch(() => null)`, entao rodou o
+dia inteiro sem volatilidade, sem log e sem alerta.
+*Correcao:* chave republicada agora (`UPLOAD_OK`, 73 emissores, Selic 0,139 as_of 2026-08-19) e
+TTL para 259200. *Causa raiz:* TTL igual ao intervalo de gravacao nao deixa folga para uma unica
+falha. *Guarda:* item permanente na skill `vix-radar-general-audit` exigindo TTL >= 2x o intervalo
+de gravacao para toda chave alimentada por rotina agendada.
+
+**VOLLOG1 (P2, corrigido).** O `run_coleta_volatilidade.ps1` capturava a saida do uploader em
+`$uploadOutput` e no `catch` logava so `ERRO upload: ... exit=1`. As linhas `AVISO:` com o motivo
+real eram descartadas, entao a falha de 19/08 ficou sem diagnostico possivel. *Correcao:* o
+`catch` agora despeja a saida capturada no log. *Guarda:* item permanente na skill para auditar
+todo wrapper de rotina que chame script filho.
+
+**HEALTHWATCH3 (P3, corrigido).** O `watch-vixradar-health.ps1` so lia `ok`, `verificador_ok` e
+`versao` do health. O e-mail e o log diziam `ok=False verificador_ok=True` e nada mais, por 3 dias
+seguidos de 15 em 15 minutos, sem citar `cvm_fonte_ok`. *Correcao:* o snapshot passou a carregar
+`kv`, `telemetria`, `sentry_ok`, `admin_email_ok` e `cvm_fonte_ok` + motivo, e o alerta nomeia o
+campo vermelho. Testado ao vivo: `DEGRADADO: ok=False versao=v4.9.203 CAUSA: cvm_fonte_ok=false
+(fonte_parada_ha_4_dias_uteis)`. *Guarda:* item permanente na skill exigindo que alerta automatico
+nomeie o campo, nunca so o agregado.
+
+**DRIVERMORTO1 (P2, diagnosticado, decisao do operador pendente).** 3 dos 6 drivers declarados em
+`scorePreditivoRuleV1` nunca produziram nada em producao. `merton_dd` esta `null` nos 103
+emissores em **todos** os exports desde 11/07/2026 (checado em 2026-07-11, 07-12, 07-13, 08-13,
+08-16, 08-18, 08-19 e no snapshot ao vivo de hoje). O gate em `worker.js:14074` exige `mktCap`, e
+as duas fontes possiveis nao tem esse campo: `fundamentals:altman:latest` vem da DFP da CVM
+(balanco, 0 ocorrencias de `market_cap` em 99 empresas) e `cotacoes:volatilidade:v1` se recusa a
+publicar preco por acao como market cap, de proposito e com razao. `momentum` e `mercado` tambem
+ficam em zero (`velocity_delta` 0 com `tem_serie:false`, `spread_score` 0). Isso contradiz a
+premissa MERTONLIVE1 da skill de auditoria, que afirmava que Merton movia score em producao.
+*Mitigante:* `predictive_v1` e lab interno (`user_facing:false`), nao chega na tela do cliente.
+*Guarda ja aplicada:* `scripts/check-drivers-preditivos.ps1` mede cobertura por driver no export
+diario, reprova driver novo com cobertura zero, e foi ligado no
+`run_vixradar_export_historico.ps1`. A premissa errada foi corrigida na skill.
+*Decisao pendente do operador:* ou entra uma fonte de `market_cap` (acoes em circulacao x preco,
+dado que hoje nao e coletado) e os 3 drivers passam a valer, ou eles saem do codigo. Manter
+driver declarado que nunca dispara faz o modelo parecer mais rico do que e.
+
+---
+
 ## 19/08 (09h15 BRT) — RESOLVIDO: RETRYCFG1, as duas tasks de retry nasceram sem as guardas do projeto
 
 Achado pela varredura de pendencias do workspace (`/resolver-pendencias`), nao por incidente novo.

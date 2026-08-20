@@ -48,6 +48,16 @@ if (-not $hadFailure) {
     } catch {
         $hadFailure = $true
         Write-Log "ERRO upload: $($_.Exception.Message)"
+        # VOLLOG1 (auditoria 2026-08-20): a linha acima sozinha registra so
+        # "exit=1". A causa real (AVISO: Falha HTTP, Worker recusou publicacao,
+        # payload invalido) fica em $uploadOutput e era descartada. Foi o que
+        # aconteceu em 19/08: falha sem diagnostico possivel no dia seguinte.
+        if ($uploadOutput) {
+            foreach ($linha in @($uploadOutput)) {
+                $txt = [string]$linha
+                if ($txt.Trim()) { Write-Log ("  saida_uploader: " + $txt.Trim()) }
+            }
+        }
     }
 } else {
     Write-Log 'Upload nao executado porque a coleta falhou.'

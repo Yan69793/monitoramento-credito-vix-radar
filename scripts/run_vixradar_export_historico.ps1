@@ -268,6 +268,28 @@ try {
     # Metricas no padrao das rotinas
     $manifest | ConvertTo-Json -Depth 4 | Set-Content -Path (Join-Path $LogDir ("vixradar-export_metrics_{0}.json" -f $Stamp)) -Encoding UTF8
 
+    # DRIVERMORTO1 (auditoria 2026-08-20): 3 dos 6 drivers declarados em
+    # scorePreditivoRuleV1 nunca produziram valor em producao (merton em todos os
+    # exports desde 11/07, momentum e mercado tambem zerados). Nada reclamava:
+    # o pipeline gravava, o export subia, o health ficava verde. Este cheque le o
+    # export recem-gerado e reprova driver NOVO sem cobertura nenhuma. Nao derruba
+    # a rotina: o dado ja foi exportado com sucesso acima, o canal aqui e o log,
+    # que o monitor-tasks das 07h le.
+    if (-not $DryRun) {
+        try {
+            $chkDrivers = Join-Path $PSScriptRoot 'check-drivers-preditivos.ps1'
+            $saidaChk = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $chkDrivers -Export (Join-Path $OutDir 'predictive.json') 2>&1
+            $exitChk = $LASTEXITCODE
+            foreach ($l in @($saidaChk)) {
+                $t = ([string]$l).Trim()
+                if ($t -and ($t -match '^(DRIVER|FALHA|AVISO|MERTON_DD)')) { Write-Log ('DRIVERS: ' + $t) }
+            }
+            if ($exitChk -ne 0) { Write-Log 'ALERTA DRIVERS: driver declarado sem cobertura, ver check-drivers-preditivos.ps1' }
+        } catch {
+            Write-Log ('AVISO: cheque de drivers preditivos falhou - {0}' -f $_.Exception.Message)
+        }
+    }
+
     Write-Log ("FIM: ok - {0} arquivos em {1} ({2}s, modo {3}, {4} avisos)" -f $arquivos.Count, $OutDir, $manifest.duracao_s, $manifest.modo, $erros.Count)
 
     # AUTOCOMMIT-HISTORICO1 (2026-08-11): commit restrito a $OutDir (o dia exportado
