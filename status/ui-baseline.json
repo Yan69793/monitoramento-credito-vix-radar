@@ -1,6 +1,6 @@
 {
   "gerado_em_url": "https://vixradar.com/?cb=503369",
-  "total": 43,
+  "total": 62,
   "nota": "Baseline de superficies com numero. Superficie nova sem entrada aqui reprova o audit-ui-live. Ver FERRAMENTACEGA1.",
   "superficies": [
     {
@@ -11,8 +11,8 @@
       "reservado": []
     },
     {
-      "chave": "tc-data::17:30:42",
-      "rotulo": "17:30:42",
+      "chave": "tc-data::17:46:24",
+      "rotulo": "17:46:24",
       "unidade": "d",
       "caminho": "#topbar>#top-center>#top-center-dt>#tc-data",
       "reservado": []
@@ -25,282 +25,416 @@
       "reservado": []
     },
     {
-      "chave": "mon-rec-count::Monitorados",
-      "rotulo": "Monitorados",
-      "unidade": "(sem unidade)",
-      "caminho": "#body>#main>#dashboard>.dash-head>div>#mon-rec-count",
-      "reservado": []
-    },
-    {
-      "chave": "#body>#main>#dashboard>#v201-header-stats>span::(sem rotulo)",
-      "rotulo": "(sem rotulo)",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#v201-header-stats>span",
-      "reservado": []
-    },
-    {
-      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::eventos criticos (7d)",
-      "rotulo": "eventos criticos (7d)",
-      "unidade": "(sem unidade)",
-      "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
-      "reservado": [
-        "criticos"
-      ]
-    },
-    {
-      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::eventos relevantes (7d)",
-      "rotulo": "eventos relevantes (7d)",
-      "unidade": "(sem unidade)",
-      "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
-      "reservado": [
-        "relevantes"
-      ]
-    },
-    {
-      "chave": "#body>#main>#dashboard>#v201-header-stats>span>strong::de 103 emissores com sinal (7d)",
-      "rotulo": "de 103 emissores com sinal (7d)",
-      "unidade": "(sem unidade)",
-      "caminho": "#body>#main>#dashboard>#v201-header-stats>span>strong",
-      "reservado": [
-        "emissores"
-      ]
-    },
-    {
-      "chave": "#main>#dashboard>#v201-filter-bar>div>button>span::Janela",
-      "rotulo": "Janela",
-      "unidade": "d",
-      "caminho": "#main>#dashboard>#v201-filter-bar>div>button>span",
-      "reservado": []
-    },
-    {
-      "chave": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span::CRITICO",
-      "rotulo": "CRITICO",
-      "unidade": "(sem unidade)",
-      "caminho": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span",
-      "reservado": []
-    },
-    {
-      "chave": "#ews-ranking-panel>div>.v201-ews-row>div>div>span::Oncoclínicas",
-      "rotulo": "Oncoclínicas",
-      "unidade": "(sem unidade)",
-      "caminho": "#ews-ranking-panel>div>.v201-ews-row>div>div>span",
-      "reservado": []
-    },
-    {
-      "chave": "#ews-ranking-panel>div>.v201-ews-row>div>div>span::Oi",
+      "chave": "emp-ultima-analise::Oi",
       "rotulo": "Oi",
       "unidade": "(sem unidade)",
-      "caminho": "#ews-ranking-panel>div>.v201-ews-row>div>div>span",
+      "caminho": "#main>#emp-panel>#emp-head>div>div>#emp-ultima-analise",
       "reservado": []
     },
     {
-      "chave": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span::ALERTA",
-      "rotulo": "ALERTA",
+      "chave": "emp-calendario-info::Telecom e Tecnologia · ANATEL / CADE",
+      "rotulo": "Telecom e Tecnologia · ANATEL / CADE",
+      "unidade": "d",
+      "caminho": "#main>#emp-panel>#emp-head>div>div>#emp-calendario-info",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
       "unidade": "(sem unidade)",
-      "caminho": "#dashboard>#ews-ranking-panel>div>.v201-ews-row>div>span",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
       "reservado": []
     },
     {
-      "chave": "#ews-ranking-panel>div>.v201-ews-row>div>div>span::Raízen",
-      "rotulo": "Raízen",
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
       "unidade": "(sem unidade)",
-      "caminho": "#ews-ranking-panel>div>.v201-ews-row>div>div>span",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
-      "reservado": []
-    },
-    {
-      "chave": "#dash-eventos>section>.v201-card>div>span>span::·",
-      "rotulo": "·",
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
       "unidade": "(sem unidade)",
-      "caminho": "#dash-eventos>section>.v201-card>div>span>span",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
       "reservado": []
     },
     {
-      "chave": "#dash-eventos>section>.v201-card>div>span>span::·",
-      "rotulo": "·",
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "d",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
       "unidade": "(sem unidade)",
-      "caminho": "#dash-eventos>section>.v201-card>div>span>span",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#fontes-bar>.chip::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#fontes-bar>.chip",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte::Falência declarada",
+      "rotulo": "Falência declarada",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte::Default",
+      "rotulo": "Default",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte",
       "reservado": []
     },
     {
-      "chave": "#dashboard>#dash-eventos>section>.v201-emp-agrupado>header>span::▴",
-      "rotulo": "▴",
-      "unidade": "d",
-      "caminho": "#dashboard>#dash-eventos>section>.v201-emp-agrupado>header>span",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-value::EBITDA",
+      "rotulo": "EBITDA",
+      "unidade": "R$",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-value",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-note::Negativo",
+      "rotulo": "Negativo",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-note",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte::EBITDA",
+      "rotulo": "EBITDA",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-value::Dívida Líquida",
+      "rotulo": "Dívida Líquida",
+      "unidade": "R$",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-value",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-note::Valor justo",
+      "rotulo": "Valor justo",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-note",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte::Dívida Líquida",
+      "rotulo": "Dívida Líquida",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#risk-strip>.rs-metric>.rs-fonte",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "emp-metrics-hint::Métricas",
+      "rotulo": "Métricas",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#body>#main>#emp-panel>#emp-metrics-fold>.emp-metrics-summary>#emp-metrics-hint",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "#emp-metrics-fold>#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-head::30d60d90d",
+      "rotulo": "30d60d90d",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#emp-metrics-fold>#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-head",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-periods>.p14-period::60d90d",
+      "rotulo": "60d90d",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-periods>.p14-period",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-periods>.p14-period::30d90d",
+      "rotulo": "30d90d",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-periods>.p14-period",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-periods>.p14-period::30d60d",
+      "rotulo": "30d60d",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-head-row>.p14-periods>.p14-period",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-grid>.p14-card>.p14-val::Taxa indicativa ANBIMA",
+      "rotulo": "Taxa indicativa ANBIMA",
+      "unidade": "%",
+      "caminho": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-grid>.p14-card>.p14-val",
+      "reservado": [
+        "taxa indicativa"
+      ]
+    },
+    {
+      "chave": "#p14-sparklines-host>#p14-sparklines>.p14-grid>.p14-card>.p14-val>.p14-delta-up::Taxa indicativa ANBIMA",
+      "rotulo": "Taxa indicativa ANBIMA",
+      "unidade": "p.p.",
+      "caminho": "#p14-sparklines-host>#p14-sparklines>.p14-grid>.p14-card>.p14-val>.p14-delta-up",
+      "reservado": [
+        "taxa indicativa"
+      ]
+    },
+    {
+      "chave": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-grid>.p14-card>.p14-val::EWS Score",
+      "rotulo": "EWS Score",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-metrics-body>#p14-sparklines-host>#p14-sparklines>.p14-grid>.p14-card>.p14-val",
+      "reservado": [
+        "ews",
+        "score"
+      ]
+    },
+    {
+      "chave": "#emp-metrics-body>#ews-empresa-panel>.ews-panel>.ews-panel-header>div>span::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-metrics-body>#ews-empresa-panel>.ews-panel>.ews-panel-header>div>span",
       "reservado": []
     },
     {
-      "chave": "#dashboard>#dash-eventos>section>.v201-card>div>a::Ratings PRIO Elevados para brAAA",
-      "rotulo": "Ratings PRIO Elevados para brAAA",
-      "unidade": "d",
-      "caminho": "#dashboard>#dash-eventos>section>.v201-card>div>a",
+      "chave": "#emp-metrics-body>#ews-empresa-panel>.ews-panel>.ews-panel-header>.ews-score-badge>.ews-score-num::CRÍTICO",
+      "rotulo": "CRÍTICO",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-metrics-body>#ews-empresa-panel>.ews-panel>.ews-panel-header>.ews-score-badge>.ews-score-num",
       "reservado": []
     },
     {
-      "chave": "#dashboard>#dash-eventos>section>.v201-card>div>a::Vibra Energia Elevada para Investment Grade pela S&P",
-      "rotulo": "Vibra Energia Elevada para Investment Grade pela S&P",
-      "unidade": "d",
-      "caminho": "#dashboard>#dash-eventos>section>.v201-card>div>a",
+      "chave": "#emp-metrics-fold>#emp-metrics-body>#ews-empresa-panel>.ews-panel>.ews-decomp>.ews-decomp-title::EstávelAtençãoAlertaCrítico",
+      "rotulo": "EstávelAtençãoAlertaCrítico",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-metrics-fold>#emp-metrics-body>#ews-empresa-panel>.ews-panel>.ews-decomp>.ews-decomp-title",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-pts::floor",
+      "rotulo": "floor",
+      "unidade": "(sem unidade)",
+      "caminho": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-pts",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-pts::eventos",
+      "rotulo": "eventos",
+      "unidade": "(sem unidade)",
+      "caminho": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-pts",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-pts::qualitativo",
+      "rotulo": "qualitativo",
+      "unidade": "(sem unidade)",
+      "caminho": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-pts",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-nome::eventos",
+      "rotulo": "eventos",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#ews-empresa-panel>.ews-panel>.ews-decomp>div>.ews-fator>.ews-fator-nome",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "aba-eventos::Rodadas de busca",
+      "rotulo": "Rodadas de busca",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#abas-bar>#aba-eventos",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
-      "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "chave": "aba-arquivo::Comentários",
+      "rotulo": "Comentários",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#abas-bar>#aba-arquivo",
       "reservado": []
     },
     {
-      "chave": "#body>#main>#dashboard>#dash-eventos>section>header::Feed cronologico de eventos",
-      "rotulo": "Feed cronologico de eventos",
+      "chave": "#body>#main>#emp-panel>#emp-body>#emp-hist-timeline>.emp-hist-head::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
       "unidade": "d",
-      "caminho": "#body>#main>#dashboard>#dash-eventos>section>header",
+      "caminho": "#body>#main>#emp-panel>#emp-body>#emp-hist-timeline>.emp-hist-head",
+      "reservado": []
+    },
+    {
+      "chave": "#main>#emp-panel>#emp-body>#emp-hist-timeline>.emp-hist-head>.emp-hist-count::Timeline · últimos 90 dias",
+      "rotulo": "Timeline · últimos 90 dias",
+      "unidade": "d",
+      "caminho": "#main>#emp-panel>#emp-body>#emp-hist-timeline>.emp-hist-head>.emp-hist-count",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-meta>.emp-hist-date::CRITICO",
+      "rotulo": "CRITICO",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-meta>.emp-hist-date",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title::CRITICO2026-08-06",
+      "rotulo": "CRITICO2026-08-06",
+      "unidade": "d",
+      "caminho": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title::CRITICO2026-07-29",
+      "rotulo": "CRITICO2026-07-29",
+      "unidade": "d",
+      "caminho": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title::CRITICO2026-07-20",
+      "rotulo": "CRITICO2026-07-20",
+      "unidade": "R$",
+      "caminho": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-meta>.emp-hist-date::RELEVANTE",
+      "rotulo": "RELEVANTE",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-meta>.emp-hist-date",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title::RELEVANTE2026-08-12",
+      "rotulo": "RELEVANTE2026-08-12",
+      "unidade": "R$",
+      "caminho": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title::RELEVANTE2026-07-30",
+      "rotulo": "RELEVANTE2026-07-30",
+      "unidade": "d",
+      "caminho": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title::RELEVANTE2026-07-10",
+      "rotulo": "RELEVANTE2026-07-10",
+      "unidade": "R$",
+      "caminho": "#emp-body>#emp-hist-timeline>.emp-hist-track>.emp-hist-item>.emp-hist-body>.emp-hist-title",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#emp-panel>#emp-body>.emitter-summary-v63>.change-badge-v63::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "(sem unidade)",
+      "caminho": "#body>#main>#emp-panel>#emp-body>.emitter-summary-v63>.change-badge-v63",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#emp-panel>#emp-body>.evts-header>span::Analisado às 07:17",
+      "rotulo": "Analisado às 07:17",
+      "unidade": "d",
+      "caminho": "#body>#main>#emp-panel>#emp-body>.evts-header>span",
+      "reservado": []
+    },
+    {
+      "chave": "#body>#main>#emp-panel>#emp-body>.evts-header>span::25 evento(s) identificado(s)",
+      "rotulo": "25 evento(s) identificado(s)",
+      "unidade": "d",
+      "caminho": "#body>#main>#emp-panel>#emp-body>.evts-header>span",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date::IMPRENSA",
+      "rotulo": "IMPRENSA",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-meta-v63>.ev-confidence-v63::CRÍTICO",
+      "rotulo": "CRÍTICO",
+      "unidade": "%",
+      "caminho": "#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-meta-v63>.ev-confidence-v63",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-panel>#emp-body>.ev-card>.memo-container>div>.ev-evidence-toggle::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "d",
+      "caminho": "#emp-panel>#emp-body>.ev-card>.memo-container>div>.ev-evidence-toggle",
+      "reservado": []
+    },
+    {
+      "chave": "#main>#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-titulo::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "d",
+      "caminho": "#main>#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-titulo",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date::CVM_INFORMACOES_RJ",
+      "rotulo": "CVM_INFORMACOES_RJ",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date::CVM_FATO_RELEVANTE",
+      "rotulo": "CVM_FATO_RELEVANTE",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date",
+      "reservado": []
+    },
+    {
+      "chave": "#main>#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-titulo::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "R$",
+      "caminho": "#main>#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-titulo",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-meta-v63>.ev-confidence-v63::RELEVANTE",
+      "rotulo": "RELEVANTE",
+      "unidade": "%",
+      "caminho": "#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-meta-v63>.ev-confidence-v63",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date::CVM_COMUNICADO_AO_MERCADO",
+      "rotulo": "CVM_COMUNICADO_AO_MERCADO",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date",
+      "reservado": []
+    },
+    {
+      "chave": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date::CVM_COMUNICADO_MERCADO",
+      "rotulo": "CVM_COMUNICADO_MERCADO",
+      "unidade": "(sem unidade)",
+      "caminho": "#emp-body>.ev-card>.ev-card-body>.ev-top>.ev-meta>.ev-date",
+      "reservado": []
+    },
+    {
+      "chave": "#main>#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-evidence-toggle::(sem rotulo)",
+      "rotulo": "(sem rotulo)",
+      "unidade": "d",
+      "caminho": "#main>#emp-panel>#emp-body>.ev-card>.ev-card-body>.ev-evidence-toggle",
       "reservado": []
     },
     {

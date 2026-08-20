@@ -16035,8 +16035,30 @@ async function montarBriefingInterno(env2222, _estado) {
     var empresasComAnomalia = Object.keys(anomalias).filter(function(k) {
       return anomalias[k] && anomalias[k].length > 0;
     });
+    // ALERTAMERCADOFALSO1 (auditoria 2026-08-20), P0. O briefing renderizava
+    // "Nenhum alerta de mercado ativo (spread/volume) na janela" a partir deste
+    // array vazio, como se fosse medicao. Nao e. `mercado:anomalias:ativas` esta
+    // em `{}` (4 bytes) porque o detector nao consegue disparar por construcao:
+    // dos 4 detectores em detectarAnomaliasEmpresa, 3 leem campos (volume,
+    // negocios, maior_negocio) que a fonte `anbima_publico` nao tem desde a troca
+    // de provedor em abril, e o 4o compara spread com limiar em unidade errada
+    // (ANOMSCHEMA1). Ou seja, a frase era falsa TODO DIA, independente de fetch.
+    //
+    // Como o zero de "nada anomalo" e o zero de "detector morto" sao o mesmo
+    // numero, quem sabe diferenciar e o Worker: se existe serie fresca no KV e
+    // mesmo assim nenhuma anomalia saiu, o detector nao esta operando. O
+    // frontend nao tem como deduzir isso sozinho, entao recebe o veredito pronto.
+    var _seriesNoKv = 0;
+    try {
+      var _lst = await env2222.RADAR_KV.list({ prefix: "mercado:serie:" });
+      _seriesNoKv = (_lst && _lst.keys ? _lst.keys.length : 0);
+    } catch (e0) { _seriesNoKv = 0; }
+    var _detectorOperacional = !(empresasComAnomalia.length === 0 && _seriesNoKv > 0);
     ewsData = {
       empresas_com_anomalia: empresasComAnomalia.length,
+      detector_operacional: _detectorOperacional,
+      detector_motivo: _detectorOperacional ? "ok" : ("sem_anomalia_com_" + _seriesNoKv + "_series_no_kv"),
+      series_no_kv: _seriesNoKv,
       top_alertas: empresasComAnomalia.slice(0, 5).map(function(k) {
         return { empresa: k, anomalias: anomalias[k].map(function(a) {
           return { tipo: a.tipo, severidade: a.severidade };

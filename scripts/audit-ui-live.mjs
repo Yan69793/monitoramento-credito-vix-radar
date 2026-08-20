@@ -71,9 +71,22 @@ const COLETOR = `(() => {
   const out = [];
   const seen = new Set();
   document.querySelectorAll('*').forEach(e => {
-    if (e.children.length !== 0) return;
     if (!vis(e)) return;
-    const txt = (e.textContent || '').trim();
+    // FERRAMENTACEGA1b: elemento com filho SO conta se o proprio elemento tiver
+    // um noh de TEXTO direto com numero, tipo <div>9,75% a.a.<small>+0,2</small>
+    // </div>. Sem isto, todo card cujo delta mora num <small> filho ficava de
+    // fora do inventario porque o pai "tinha filho" e o filho sozinho nao carrega
+    // o valor principal. Foi assim que o card "Taxa indicativa ANBIMA" ficou fora
+    // da primeira rodada do baseline.
+    const temFilhoElemento = e.children.length !== 0;
+    let txt;
+    if (!temFilhoElemento) {
+      txt = (e.textContent || '').trim();
+    } else {
+      const nohTexto = [...e.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').trim();
+      if (!nohTexto || !temNumero(nohTexto)) return;
+      txt = nohTexto;
+    }
     if (!txt || txt.length > 80 || !temNumero(txt)) return;
     // rotulo: irmao anterior sem digito, senao primeiro filho-irmao sem digito,
     // senao o cabecalho do bloco pai.

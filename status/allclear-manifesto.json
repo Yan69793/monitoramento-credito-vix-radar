@@ -1,0 +1,336 @@
+{
+  "nota": "Toda frase que afirma ausencia precisa de classificacao. nao_revisada reprova de proposito. Ver ZEROINDISPONIVEL1.",
+  "total": 55,
+  "frases": [
+    {
+      "chave": "sem pressao refinanc 20 anos",
+      "texto": "Sem pressão refinanc. (20+ anos)",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "sem divida liq",
+      "texto": "Sem dívida líq.",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "nenhum novo evento criticorelevante identificado no periodo 0209042026",
+      "texto": "Nenhum novo evento crítico/relevante identificado no período 02-09/04/2026",
+      "classificacao": "demo",
+      "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
+    },
+    {
+      "chave": "eventos informacionais do ri  sem impacto direto de credito adr020",
+      "texto": "Eventos informacionais do RI — sem impacto direto de crédito (ADR-020)",
+      "classificacao": "demo",
+      "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
+    },
+    {
+      "chave": "informacional sem impacto direto de creditospanspann divforconsteaof xconst tsetordee",
+      "texto": ">Informacional, sem impacto direto de crédito</span></span>\\n </div>';for(const[e,a]of x){const t=SETOR_DE[e]|",
+      "classificacao": "demo",
+      "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
+    },
+    {
+      "chave": "nenhum comentario aindadivn div style",
+      "texto": ">Nenhum comentário ainda</div>\\n <div style=",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "divn nenhum evento arquivado para esta empresa aindan divifa",
+      "texto": "></div>\\n Nenhum evento arquivado para esta empresa ainda.\\n </div>')}if(!a&&",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "nenhum registro de buscas disponiveldivif",
+      "texto": ">Nenhum registro de buscas disponível.</div>')}if(",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "divn nenhum evento arquivado aindabrn span style",
+      "texto": "></div>\\n Nenhum evento arquivado ainda.<br>\\n <span style=",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "nenhum evento relevante identificado nos ultimos 90 diasdivn ajanelabuscadiv style",
+      "texto": ">Nenhum evento relevante identificado nos últimos 90 dias</div>\\n ${a.janela_busca?`<div style=",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM emissor ja carregado na tela, nao all-clear de carteira."
+    },
+    {
+      "chave": " sem sinal",
+      "texto": "— Sem sinal",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "nenhum alerta ativo todos os emissores monitorados estao dentro dos parametros normais",
+      "texto": "Nenhum alerta ativo. Todos os emissores monitorados estao dentro dos parametros normais.",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "sem leitura",
+      "texto": "sem leitura",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "nenhum alerta ativo na janela os emissores monitorados estao dentro dos parametros nesta l",
+      "texto": "Nenhum alerta ativo na janela. Os emissores monitorados estão dentro dos parâmetros nesta leitura.",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "setores monitoradosdivn divn divndivnnx3c tabela de metricas de risco todos os emissores a",
+      "texto": ">Setores Monitorados</div>\\n </div>\\n </div>\\n</div>\\n\\n\\x3c!-- TABELA DE MÉTRICAS DE RISCO (todos os emissore",
+      "classificacao": "rotulo",
+      "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
+    },
+    {
+      "chave": "nenhum usuario i",
+      "texto": ">Nenhum usuário '+(i||",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "conta todos os eventos classificados como bcriticob  por analise de inteligencia artificia",
+      "texto": "Conta todos os eventos classificados como <b>CRÍTICO</b> — por análise de inteligência artificial ou por docum",
+      "classificacao": "rotulo",
+      "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
+    },
+    {
+      "chave": "exibe todos os emissores monitorados no setor um setor com 16 emissores aparece",
+      "texto": ">Exibe todos os emissores monitorados no setor. Um setor com 16 emissores aparece",
+      "classificacao": "rotulo",
+      "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
+    },
+    {
+      "chave": "mesmo sem eventos recentesdivdivdiv class",
+      "texto": "mesmo sem eventos recentes.</div></div><div class=",
+      "classificacao": "rotulo",
+      "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
+    },
+    {
+      "chave": "div classusoemptynenhum evento registrado nos ultimos 30 diasbros dados aparecem apos logi",
+      "texto": "<div class=\"uso-empty\">Nenhum evento registrado nos últimos 30 dias.<br>Os dados aparecem após logins e consul",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "nenhum usuario identificado aindabrdados aparecem apos logins reais via frontenddivreturnd",
+      "texto": ">Nenhum usuário identificado ainda.<br>Dados aparecem após logins reais via frontend.</div>';return`<div class",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "nenhuma anomalia detectada nos precos indicativos de debentures",
+      "texto": "Nenhuma anomalia detectada nos precos indicativos de debentures",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "div styletextaligncenterpadding20pxcolor34d399fontsize12px nenhuma anomalia passou os limi",
+      "texto": "<div style=\"text-align:center;padding:20px;color:#34D399;font-size:12px\">✓ Nenhuma anomalia passou os limiares",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "div styletextaligncenterpadding20pxcolor8899aafontsize12pxsem base analisada nesta janela ",
+      "texto": "<div style=\"text-align:center;padding:20px;color:#8899AA;font-size:12px\">Sem base analisada nesta janela, entã",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "n nenhum emissor selecionado feche esta janela escolha um emissor na barra lateral e volte",
+      "texto": ">\\n Nenhum emissor selecionado. Feche esta janela, escolha um emissor na barra lateral e volte.\\n </div>",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
+    },
+    {
+      "chave": "sem negociospann span class",
+      "texto": ">Sem negócio</span>\\n <span class=",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "debentures da 9 emissao sem negocio registrado ha 14 dias uteis consecutivos papel em zona",
+      "texto": "Debêntures da 9ª emissão sem negócio registrado há 14 dias úteis consecutivos. Papel em zona de alerta de iliq",
+      "classificacao": "demo",
+      "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
+    },
+    {
+      "chave": " sem linhagemspanspan style",
+      "texto": ">● Sem linhagem</span><span style=",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "sem linhagem verificavel",
+      "texto": "SEM LINHAGEM VERIFICÁVEL",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": " sem sessao o resultados fica vazio criticosativos e relevantesativos caem a 0 por ausenci",
+      "texto": ". Sem sessao o `resultados` fica vazio, criticosAtivos e relevantesAtivos caem a 0 por AUSENCIA e nao por medi",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "mercado em estabilidade",
+      "texto": "Mercado em estabilidade",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "sem leitura do painel nesta sessao isto nao e ausencia de risco",
+      "texto": "Sem leitura do painel nesta sessão. Isto não é ausência de risco.",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "sem alerta critico nesta leitura da janela",
+      "texto": "Sem alerta crítico nesta leitura da janela",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "nenhumspanaerelevantesativos0span class",
+      "texto": ">nenhum</span>',a=e.relevantesAtivos>0?'<span class=",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "nenhumspanreturndiv class",
+      "texto": ">nenhum</span>';return'<div class=",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "sem alertasdivdiv class",
+      "texto": ">Sem alertas</div><div class=",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "nenhum resultado para strong style",
+      "texto": ">Nenhum resultado para <strong style=",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "sem gaps",
+      "texto": "sem gaps",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "div styletextaligncentercolor6b7280padding40px 20pxfontsize12pxsem leitura de eventos nest",
+      "texto": "<div style=\"text-align:center;color:#6b7280;padding:40px 20px;font-size:12px\">Sem leitura de eventos nesta ses",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "div styletextaligncentercolor6b7280padding40px 20pxfontsize12pxnenhum evento nos filtros a",
+      "texto": "<div style=\"text-align:center;color:#6b7280;padding:40px 20px;font-size:12px\">Nenhum evento nos filtros atuais",
+      "classificacao": "guardada",
+      "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true."
+    },
+    {
+      "chave": "sem data oficial",
+      "texto": "SEM DATA OFICIAL",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
+    },
+    {
+      "chave": "nenhum evento no horizonte e filtros selecionados",
+      "texto": "Nenhum evento no horizonte e filtros selecionados.",
+      "classificacao": "guardada",
+      "nota": "Agenda: _render() aborta com STATE.payload.ok === false antes de chegar no ag-empty."
+    },
+    {
+      "chave": "sem eventos materiais na janela",
+      "texto": "Sem eventos materiais na janela.",
+      "classificacao": "guardada",
+      "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true."
+    },
+    {
+      "chave": "nenhum alerta de mercado ativo spreadvolume na janela",
+      "texto": "Nenhum alerta de mercado ativo (spread/volume) na janela",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "nada anomalo",
+      "texto": "nada anomalo",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "deteccao de anomalia de mercado indisponivel nesta janela entao nao ha leitura para report",
+      "texto": "Detecção de anomalia de mercado indisponível nesta janela, então não há leitura para reportar. Isto não signif",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "nenhuma anomalia de spread ou volume passou os limiares nesta janela",
+      "texto": "Nenhuma anomalia de spread ou volume passou os limiares nesta janela.",
+      "classificacao": "guardada",
+      "nota": ""
+    },
+    {
+      "chave": "selecione de 2 a 5 emissores para comparar lado a lado ultima analise so aparece para emis",
+      "texto": "Selecione de 2 a 5 emissores para comparar lado a lado. Última análise só aparece para emissores já varridos p",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "nenhum dado para os emissores selecionados",
+      "texto": "Nenhum dado para os emissores selecionados.",
+      "classificacao": "guardada",
+      "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true."
+    },
+    {
+      "chave": "escevtituloeveventosem titulo",
+      "texto": "+esc(ev.titulo||ev.evento||\"(sem titulo)\")+",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "div classp14emptysem seriediv",
+      "texto": "<div class=\"p14-empty\">Sem série</div>",
+      "classificacao": "rotulo",
+      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "mutednenhum destaque narrativo no periodop",
+      "texto": "muted\\\">Nenhum destaque narrativo no período.</p>",
+      "classificacao": "guardada",
+      "nota": "Dentro de buildHtml(), so invocada por window.exportar apos o guard if(!eventos.length). eventos.length>0 garantido; a frase cobre um recorte interno vazio (ex: sem criticos), nao ausencia de leitura."
+    },
+    {
+      "chave": "periodo sem alertas materiais identificados",
+      "texto": "Período sem alertas materiais identificados.",
+      "classificacao": "guardada",
+      "nota": "Dentro de buildHtml(), so invocada por window.exportar apos o guard if(!eventos.length). eventos.length>0 garantido; a frase cobre um recorte interno vazio (ex: sem criticos), nao ausencia de leitura."
+    },
+    {
+      "chave": "sem eventos no periodop ",
+      "texto": ">Sem eventos no período.</p>') +",
+      "classificacao": "guardada",
+      "nota": "Dentro de buildHtml(), so invocada por window.exportar apos o guard if(!eventos.length). eventos.length>0 garantido; a frase cobre um recorte interno vazio (ex: sem criticos), nao ausencia de leitura."
+    },
+    {
+      "chave": "nenhum evento critico ou relevante no periodo selecionado",
+      "texto": "Nenhum evento crítico ou relevante no período selecionado.",
+      "classificacao": "guardada",
+      "nota": "window.exportar() testa if(!eventos.length){alert(...);return} ANTES de chamar buildHtml. So dispara com eventos ja carregados do estado em memoria."
+    }
+  ]
+}
