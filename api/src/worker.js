@@ -5656,7 +5656,7 @@ async function _exigeLabPreditivoAdmin(request, env2222, body) {
   // fechando o brute force com oraculo (auth_via na resposta).
   if (request && senha) {
     try {
-      const _rlPred = await checkRateLimitV2(env2222, request);
+      const _rlPred = await checkRateLimitV2(env2222, request, "critica");
       if (!_rlPred.allowed) {
         return { ok: false, status: 429, erro: mensagemRateLimit(_rlPred), _rate_limit: { camada: _rlPred.camada, retry_after_sec: _rlPred.retry_after_sec } };
       }
@@ -6133,13 +6133,18 @@ async function handleRegistrar(body, env2222) {
       return resp({ ok: true, mensagem: "Voc\xEA j\xE1 tem acesso. Fa\xE7a login ou recupere sua senha." });
     }
   }
-  const isAdmin = email.toLowerCase().trim() === ADMIN_EMAIL.toLowerCase();
   const emailLc = email.toLowerCase().trim();
   const tenantId = resolverTenantPorEmail(emailLc);
   const forcReg = politicaForcadaParaEmail(emailLc);
   const tenantFinal = forcReg && forcReg.tenant || tenantId;
   const uiTrackReg = forcReg && forcReg.ui_track || UI_TRACK_CURRENT;
-  const user = { nome: nome.trim(), email: emailLc, empresa: empresa.trim(), senha_hash: await hashSenha(senha), status: isAdmin ? "aprovado" : "pendente", created_at: existing && existing.created_at || (/* @__PURE__ */ new Date()).toISOString(), updated_at: (/* @__PURE__ */ new Date()).toISOString(), aprovado_por: isAdmin ? "auto" : null, consentimento_lgpd: true, consentimento_lgpd_ts: consentimento_ts || (/* @__PURE__ */ new Date()).toISOString(), consentimento_lgpd_versao: "2026-04-06", tenant: tenantFinal, ui_track: uiTrackReg, white_label: isAdmin ? true : false, reinscricao: ehReinscricao || void 0, reinscricao_ts: ehReinscricao ? (/* @__PURE__ */ new Date()).toISOString() : void 0 };
+  // FIX(REGISTRO-ADMIN1, 2026-08-20): o e-mail do corpo do registro nao e
+  // verificado, logo nao pode ser fonte de autoridade. Quem soubesse o e-mail
+  // do admin registrava com ele e a conta nascia aprovado + white_label + role
+  // admin no login, sem nunca saber a senha admin (a contencao era so o estado
+  // da conta no KV). Registro agora nasce sempre pendente; aprovacao so pelo
+  // fluxo de aprovacao admin (email com token assinado).
+  const user = { nome: nome.trim(), email: emailLc, empresa: empresa.trim(), senha_hash: await hashSenha(senha), status: "pendente", created_at: existing && existing.created_at || (/* @__PURE__ */ new Date()).toISOString(), updated_at: (/* @__PURE__ */ new Date()).toISOString(), aprovado_por: null, consentimento_lgpd: true, consentimento_lgpd_ts: consentimento_ts || (/* @__PURE__ */ new Date()).toISOString(), consentimento_lgpd_versao: "2026-04-06", tenant: tenantFinal, ui_track: uiTrackReg, white_label: false, reinscricao: ehReinscricao || void 0, reinscricao_ts: ehReinscricao ? (/* @__PURE__ */ new Date()).toISOString() : void 0 };
   await putUser(env2222, user);
   if (env2222.RADAR_USAGE_EVENTS) {
     try {
@@ -6147,7 +6152,6 @@ async function handleRegistrar(body, env2222) {
     } catch (_) {
     }
   }
-  if (isAdmin) return resp({ ok: true, mensagem: "Conta admin criada." });
   if (env2222.RESEND_API_KEY) {
     try {
       const tokA = await gerarTokenEmail(env2222, user.email, "aprovar");
@@ -14565,14 +14569,49 @@ __name2222(resolverIdentidadeRL, "resolverIdentidadeRL");
 __name22222(resolverIdentidadeRL, "resolverIdentidadeRL");
 __name222222(resolverIdentidadeRL, "resolverIdentidadeRL");
 __name2222222(resolverIdentidadeRL, "resolverIdentidadeRL");
-async function checkRateLimitV2(env2222, request) {
-  if (!env2222) { console.warn("[rl] bypass: env_indisponivel"); return { allowed: true, headers: {}, _bypass: "env_indisponivel" }; }
+// RATELIMIT-FAILOPEN1 (2026-08-20, auditoria): os tres caminhos de bypass abaixo
+// retornavam allowed:true quando o env ou o binding RATE_LIMITER_DO falhavam, e o
+// rate limit sumia para tudo, inclusive varredura que gasta LLM e rotas de auth.
+// A criticidade do consumidor agora e explicita:
+//   "critica" (default) - fail-closed, limiter falhou = allowed:false com o motivo em _bypass
+//   "auth"              - fail-OPEN deliberado + alerta, ver AUTHDISPO1 abaixo
+//   "leitura" (barata)  - mantem o fail-open historico, sem alerta
+// Rota nova de leitura barata precisa passar "leitura" de proposito.
+//
+// AUTHDISPO1 (2026-08-20, decisao do operador): o gate de auth NAO entra em fail-closed.
+// Fechar o login quando o limiter cai troca risco de brute force por indisponibilidade
+// de entrada para cliente pagante, e o catch de do_erro pega qualquer excecao, inclusive
+// timeout transitorio. Entao auth libera e grita: console.error + telemetria, para o
+// incidente ser curto e visivel em vez de silencioso. Rota cara e admin seguem fechando.
+function _rlAlertaAuth(env2222, motivo, request) {
+  try {
+    console.error("[rl][AUTHDISPO1] limiter indisponivel, auth liberada sem rate limit. motivo=" + motivo);
+    if (env2222 && env2222.RADAR_USAGE_EVENTS) {
+      env2222.RADAR_USAGE_EVENTS.writeDataPoint({
+        indexes: ["rl_bypass_auth"],
+        blobs: ["rl_bypass_auth", String(motivo).slice(0, 64), (request && request.headers && request.headers.get("cf-connecting-ip") || "").slice(0, 64), "", "", "", ""],
+        doubles: [Date.now(), 0, 0]
+      });
+    }
+  } catch (_) {
+  }
+}
+__name(_rlAlertaAuth, "_rlAlertaAuth");
+async function checkRateLimitV2(env2222, request, criticidade = "critica") {
+  if (!env2222) {
+    console.warn("[rl] bypass: env_indisponivel");
+    if (criticidade === "leitura") return { allowed: true, headers: {}, _bypass: "env_indisponivel" };
+    if (criticidade === "auth") { _rlAlertaAuth(env2222, "env_indisponivel", request); return { allowed: true, headers: {}, _bypass: "env_indisponivel", _bypass_auth: true }; }
+    return { allowed: false, headers: {}, _bypass: "env_indisponivel", retry_after_sec: 30 };
+  }
   const token = extractToken(request);
   const payload = token ? await verificarJWT(env2222, token) : null;
   const { identidade, tenantId, autenticado, limites } = resolverIdentidadeRL(request, payload);
   if (!env2222.RATE_LIMITER_DO) {
     console.warn("[rl] bypass: do_binding_ausente");
-    return { allowed: true, headers: {}, _bypass: "do_binding_ausente", identidade, tenant: tenantId, autenticado, limites };
+    if (criticidade === "leitura") return { allowed: true, headers: {}, _bypass: "do_binding_ausente", identidade, tenant: tenantId, autenticado, limites };
+    if (criticidade === "auth") { _rlAlertaAuth(env2222, "do_binding_ausente", request); return { allowed: true, headers: {}, _bypass: "do_binding_ausente", _bypass_auth: true, identidade, tenant: tenantId, autenticado, limites }; }
+    return { allowed: false, headers: {}, _bypass: "do_binding_ausente", identidade, tenant: tenantId, autenticado, limites, retry_after_sec: 30 };
   }
   try {
     const doId = env2222.RATE_LIMITER_DO.idFromName(identidade);
@@ -14611,7 +14650,9 @@ async function checkRateLimitV2(env2222, request) {
     };
   } catch (e) {
     console.warn("[rl] bypass: do_erro", String(e).slice(0, 200));
-    return { allowed: true, headers: {}, _bypass: "do_erro", _erro: String(e).slice(0, 200), identidade, tenant: tenantId, autenticado, limites };
+    if (criticidade === "leitura") return { allowed: true, headers: {}, _bypass: "do_erro", _erro: String(e).slice(0, 200), identidade, tenant: tenantId, autenticado, limites };
+    if (criticidade === "auth") { _rlAlertaAuth(env2222, "do_erro", request); return { allowed: true, headers: {}, _bypass: "do_erro", _bypass_auth: true, _erro: String(e).slice(0, 200), identidade, tenant: tenantId, autenticado, limites }; }
+    return { allowed: false, headers: {}, _bypass: "do_erro", _erro: String(e).slice(0, 200), identidade, tenant: tenantId, autenticado, limites, retry_after_sec: 30 };
   }
 }
 __name(checkRateLimitV2, "checkRateLimitV2");
@@ -16588,7 +16629,7 @@ async function __coreFetch(request, env2222, ctx) {
         }, 200, request);
       }
       if (op === "admin_agenda_rebuild") {
-        const _rlAgenda = await checkRateLimitV2(env2222, request);
+        const _rlAgenda = await checkRateLimitV2(env2222, request, "critica");
         if (!_rlAgenda.allowed) return resp({ ok: false, erro: "Muitas requisi\xE7\xF5es." }, 429, request, _rlAgenda.headers);
         var _adminPwd = (request.headers.get("x-admin-password") || "").trim();
         if (!env2222.ADMIN_PASSWORD || _adminPwd !== env2222.ADMIN_PASSWORD) {
@@ -16627,7 +16668,7 @@ async function __coreFetch(request, env2222, ctx) {
           }
         }
         const enfileirar = url.searchParams.get("enfileirar") === "1";
-        const _rlReproc = await checkRateLimitV2(env2222, request);
+        const _rlReproc = await checkRateLimitV2(env2222, request, "critica");
         if (!_rlReproc.allowed) return resp({ ok: false, erro: "Muitas requisi\xE7\xF5es." }, 429, request, _rlReproc.headers);
         const adminAuth = (request.headers.get("X-Admin-Auth") || "").trim();
         if (!enfileirar) {
@@ -16887,7 +16928,14 @@ async function __coreFetch(request, env2222, ctx) {
     // Brute force continua throttled: senha errada segue no check.
     var _adminSenhaCorreta = typeof body.admin_senha === "string" && body.admin_senha.length > 0 && body.admin_senha === env2222.ADMIN_PASSWORD;
     if ((_ehAuthAction || _ehTentativaAdminSenha) && !_adminSenhaCorreta) {
-      const _authRl = await checkRateLimitV2(env2222, request);
+      // AUTHDISPO1 (2026-08-20): este gate cobre duas coisas que merecem tratamento oposto
+      // quando o limiter cai. Tentativa de senha admin ERRADA e brute force de credencial
+      // privilegiada, fecha (o operador com a senha certa nem chega aqui, pula em
+      // _adminSenhaCorreta acima, entao fail-closed nao tranca o painel). Login e registro de
+      // cliente comum abrem com alerta, porque negar entrada a cliente pagante por falha de
+      // infraestrutura interna e pior que a janela curta de brute force que isso expoe.
+      const _critAuth = _ehTentativaAdminSenha ? "critica" : "auth";
+      const _authRl = await checkRateLimitV2(env2222, request, _critAuth);
       if (!_authRl.allowed) {
         return resp({ ok: false, erro: mensagemRateLimit(_authRl), _rate_limit: { camada: _authRl.camada, retry_after_sec: _authRl.retry_after_sec, tenant: _authRl.tenant, autenticado: _authRl.autenticado } }, 429, request);
       }
@@ -17202,7 +17250,7 @@ async function __coreFetch(request, env2222, ctx) {
       // admin e injetar HTML via body.html (Resend renderiza HTML). Agora: rate limit
       // anonimo por IP + dedup por rotina/dia no KV + escape no corpo default. O
       // body.html segue aceito porque as rotinas legais enviam HTML proprio.
-      const _nrRl = await checkRateLimitV2(env2222, request);
+      const _nrRl = await checkRateLimitV2(env2222, request, "critica");
       if (!_nrRl.allowed) {
         return resp({ ok: false, erro: mensagemRateLimit(_nrRl), _rate_limit: { camada: _nrRl.camada, retry_after_sec: _nrRl.retry_after_sec } }, 429, request);
       }
@@ -17657,7 +17705,7 @@ async function __coreFetch(request, env2222, ctx) {
     }
     const { empresa, setor, contexto_historico, _teste } = body;
     if (!empresa || !setor) return resp({ error: "empresa e setor obrigat\xF3rios." }, 400);
-    const rl = await checkRateLimitV2(env2222, request);
+    const rl = await checkRateLimitV2(env2222, request, "critica");
     if (!rl.allowed) {
       return resp({
         ok: false,
