@@ -259,6 +259,13 @@ própria, controladora ou relacionada, com a fonte da classificação registrada
 relacionadas removidas ou marcadas como inelegíveis para Merton; e o `_nota`
 reconciliado com o `_descricao`.
 
+**RESOLVIDO 21/08, commit `bae552b`.** As 95 entradas (94 mais a Cielo, que faltava)
+estão classificadas uma a uma com fonte no próprio arquivo. 91 elegíveis, 4
+inelegíveis. Correções apuradas: Compass usa PASS3 desde o IPO de maio/2026 e não
+CMPC3, MRS é balcão sem liquidez, Itaúsa é holding, Omega virou Serena e deslistou,
+Iguá não negocia. Coleta de `market_cap` para Merton fica destravada, mas o pipeline
+de coleta em si continua sendo o próximo passo do DRIVERMORTO1.
+
 ### P2 — DRIVERMORTO1: 3 dos 6 drivers do score nunca produziram valor
 
 Diagnóstico real de cada um, corrigindo o que a sessão anterior tinha suposto.
@@ -312,6 +319,14 @@ reescritos para o schema `anbima_publico`; o de spread recalibrado para a unidad
 real; e existir teste que reprove se `mercado:anomalias:ativas` ficar `{}` por N dias
 consecutivos com séries frescas no KV.
 
+**RESOLVIDO 21/08, commit `5283636`, em produção v4.9.208.** Os três detectores sem
+campo ficaram marcados como desligados de propósito, o de taxa indicativa compara em
+ponto percentual direto, sem o `/100` herdado do provedor antigo. Teste novo em
+`api/test/anomalias-schema.test.mjs` semeia a série no formato real da fonte e exige
+que um salto de 2,75 p.p. dispare, o que falharia contra o código antigo. A parte do
+vigia que faltava, alertar `mercado:anomalias:ativas` vazio com séries frescas, fica
+registrada como MELHORIA futura no `check-drivers-preditivos.ps1`, não bloqueia.
+
 ### P2 — SPREADUNIDADE1 (resíduo): renomear o campo e corrigir os consumidores restantes
 
 A parte P0 foi corrigida hoje, ver entrada de baixo. Sobra o que é migração.
@@ -362,6 +377,13 @@ que a CVM. Nenhuma das duas é recomendada antes de o operador decidir se a lat�
 semanal é problema de negócio ou só incômodo.
 
 **Pronto quando:** o operador decidir, e a decisão estiver escrita aqui com a razão.
+
+**RESOLVIDO 21/08, decisão assinada no `DECISOES-OPERADOR-2026-08-20.md`, commit
+`5283636`, em produção v4.9.208.** Recomendação aceita: sem scraping do RAD. O Worker
+promove para FULL com motivo `imprensa_recente_7d` emissor com evento
+CRITICO/RELEVANTE dos últimos 7 dias, e a skill da noturna manda esse motivo para a
+fila aprofundada. A checagem pontual no RAD continua só no gate de evento de RJ,
+default e rebaixamento.
 
 ### P3 — BANNERMORTO1: o banner de aviso nunca pintou para ninguém
 
