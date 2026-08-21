@@ -9385,6 +9385,14 @@ async function montarPlanoRotina(env2222, opts) {
       } else if (_foiDeferido) {
         tier = "FULL";
         motivos.push("deferred_prioritario");
+      // FONTELATENCIA1 (2026-08-21, decisao do operador): evento CRITICO/RELEVANTE
+      // recente vindo de imprensa ou de rotina anterior promove para FULL na mesma
+      // semana, SEM depender de cvm_novos. A CVM e semanal, esperar o ZIP de domingo
+      // atrasava a analise aprofundada de quem ja apareceu na imprensa. A skill da
+      // noturna usa este motivo para mandar o emissor para a fila APROFUNDADA.
+      } else if (_temEventoMaterialRecente(eventos, 7)) {
+        tier = "FULL";
+        motivos.push("imprensa_recente_7d");
       } else if (ews.score >= ROTINA_EWS_FULL || horasStale > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
         tier = "FULL";
         if (ews.score >= ROTINA_EWS_FULL) motivos.push("ews_alto");
@@ -12082,17 +12090,29 @@ function detectarAnomaliasEmpresa(empresa, registros) {
   const ultimo = sorted[0];
   const janela = sorted.slice(1, ANOMALIA_PARAMS.JANELA_DU + 1);
   const dataDeteccao = ultimo.data;
-  if (ultimo.spread_bps != null && janela.length >= 5) {
-    const spreads = janela.map((r) => r.spread_bps).filter((v) => v != null && v > 0);
-    if (spreads.length >= 3) {
-      const media = spreads.reduce((s, v) => s + v, 0) / spreads.length;
-      const deltaPP = Math.abs(ultimo.spread_bps - media) / 100;
-      if (deltaPP >= ANOMALIA_PARAMS.SPREAD_LIMIAR_PP) {
-        const direcao = ultimo.spread_bps > media ? "abertura" : "fechamento";
-        anomalias.push({ tipo: "spread", severidade: deltaPP >= 2 ? "critica" : "relevante", descricao: `Spread com ${direcao} de ${deltaPP.toFixed(1)} p.p. vs m\xE9dia ${ANOMALIA_PARAMS.JANELA_DU} DU`, dados: { spread_atual_bps: ultimo.spread_bps, spread_media_bps: Math.round(media), delta_pp: parseFloat(deltaPP.toFixed(2)), direcao, data: ultimo.data }, detectada_em: dataDeteccao });
+  // ANOMSCHEMA1 (2026-08-21): a fonte atual grava taxa indicativa em percentual ao
+  // ano, nao spread em ponto-base. A unidade de delta e ponto percentual, entao a
+  // comparacao e direta, SEM o /100. O /100 antigo, herdado do provedor legado em
+  // ponto-base, exigia variacao de 100 unidades de um dia para o outro e garantia
+  // que o detector nunca disparasse com a fonte atual.
+  const _taxaAtual = _taxaIndicativaPct(ultimo);
+  if (_taxaAtual != null && janela.length >= 5) {
+    const _taxas = janela.map(_taxaIndicativaPct).filter((v) => v != null && v > 0);
+    if (_taxas.length >= 3) {
+      const _media = _taxas.reduce((s, v) => s + v, 0) / _taxas.length;
+      const _deltaPP = Math.abs(_taxaAtual - _media);
+      if (_deltaPP >= ANOMALIA_PARAMS.SPREAD_LIMIAR_PP) {
+        const _direcao = _taxaAtual > _media ? "abertura" : "fechamento";
+        anomalias.push({ tipo: "spread", severidade: _deltaPP >= 2 ? "critica" : "relevante", descricao: `Taxa indicativa com ${_direcao} de ${_deltaPP.toFixed(2)} p.p. vs m\xE9dia ${ANOMALIA_PARAMS.JANELA_DU} DU`, dados: { taxa_atual_pct: _taxaAtual, taxa_media_pct: parseFloat(_media.toFixed(2)), delta_pp: parseFloat(_deltaPP.toFixed(2)), direcao: _direcao, data: ultimo.data }, detectada_em: dataDeteccao });
       }
     }
   }
+  // ANOMSCHEMA1 (2026-08-21): os tres detectores abaixo (volume, iliquidez,
+  // concentracao) dependem de campos que NAO existem no registro anbima_publico,
+  // volume, negocios e maior_negocio vinham do provedor legado e sumiram na troca
+  // de abril. Estao desligados de proposito, as condicoes de campo nulo nunca
+  // passam com a fonte atual. Mantidos no codigo para quando o schema voltar a
+  // trazer esses campos, nao para fingir cobertura.
   if (ultimo.volume != null && janela.length >= 5) {
     const vols = janela.map((r) => r.volume).filter((v) => v != null && v > 0);
     if (vols.length >= 3) {

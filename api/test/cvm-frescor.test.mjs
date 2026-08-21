@@ -33,8 +33,14 @@ import { beforeEach, describe, expect, it } from "vitest";
 
 const META_KEY = "cvm:fonte_meta";
 
+// FUSOTESTE1 (2026-08-21): o Worker conta o dia no relogio de Brasilia
+// (obterAgoraBRT subtrai 3h fixas), mas este helper usava UTC puro. Entre 21h e
+// meia-noite BRT a data do UTC ja virou, o helper gerava referencia de um dia a
+// mais, e o teste de 14 dias via 13. A suite passava de dia e quebrava de noite
+// sem ninguem nunca roda-la nesse horario. O helper agora usa o mesmo relogio
+// BRT do Worker.
 function diasAtrasISO(n) {
-  const d = new Date();
+  const d = new Date(Date.now() - 3 * 60 * 60 * 1e3);
   d.setUTCDate(d.getUTCDate() - n);
   return d.toISOString().slice(0, 10);
 }
