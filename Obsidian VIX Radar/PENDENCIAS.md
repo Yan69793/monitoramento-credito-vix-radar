@@ -115,6 +115,25 @@ worktrees mortas forem podadas.
 1 degradado para INCONCLUSIVO pela guarda de cobertura (B3 S.A., zero buscas
 efetivas). Distribuição: 43 NENHUM, 27 ECO, 27 RELEVANTE, 5 CRÍTICO.
 
+### Deploy do dia, com o operador presente
+
+Subiu em 21/08 01h35: Worker v4.9.207 (REGISTRO-ADMIN1, RATELIMIT-FAILOPEN1,
+AUTHDISPO1) e Pages v202.20 (contraste, aba oculta, debounce, teclado, aria-live).
+O gate 3.4 reprovou duas vezes antes de publicar, desalinhamento do `?v=` nos
+módulos admin (o CACHEBUMP1 de novo) e version.json sujo de tentativa anterior, e
+abortou sem publicar nas duas. Validação pós-deploy colada no ESTADO.md.
+
+### AUTONOMIAOFF1, decisão do operador
+
+O operador mandou remover toda verificação autônoma do frontend que não esteja
+cadastrada no sistema. Em 21/08 01h40 saíram os quatro timers que consultavam o
+servidor: rate meter a cada 2 min, auto-update a cada 3 min, anomalias a cada 30
+min e status da ribbon a cada 60 s. Também saiu o loop do watchdog local, que era
+stub vazio. Restaram só timers locais sem rede (relógio, merge de anomalias
+pre-carregadas, contagem regressiva), a carga inicial e os gatilhos de evento do
+usuário (visibilitychange, pageshow, clique). Frontend em v202.21. A regra foi
+escrita no CLAUDE.md para não voltar num refactor.
+
 Críticos: Hapvida (cautelar da ANS barrando reajuste e rescisão em 947 mil
 contratos), Oncoclínicas (recuperação extrajudicial deferida), Oi (gestor judicial
 alerta caixa de R$ 19,6 milhões), Kora Saúde (AGDs reestruturam escritura da 2ª

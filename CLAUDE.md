@@ -311,6 +311,7 @@ conferir se não reabre um desses.
 
 ## CSS e frontend
 
+- Nenhum timer de rede autônomo no frontend (AUTONOMIAOFF1, 21/08/2026, decisão do operador). Status e dados só na carga inicial e em gatilhos do usuário, visibilitychange quando a aba volta ao primeiro plano, pageshow, clique. Verificação periódica é papel das rotinas cadastradas no sistema, VIXRadar-Health-Watch a cada 15 min, canonical-test a cada 6h, frescor-check diário, scan-emergencia, crons do Worker.
 - `<strong>`: sem `color` global, só `font-weight`. Cor por seletor específico.
 - Design system: gold `#B7985D`, navy `#001020`, fontes DM Sans + Cormorant Garamond + Inter.
 - Copyright Szuchmacher Consultoria Ltda (INPI). CACHE_VERSION no header de `app/index.html`.
