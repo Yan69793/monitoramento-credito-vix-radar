@@ -375,14 +375,24 @@ foreach ($task in $allTasks) {
         # 0x80070002 = ERROR_FILE_NOT_FOUND em runtime (script movido/renomeado)
         $entry.reason = 'SCRIPT AUSENTE (file-not-found em runtime)'
         $warnings += $entry
-    } elseif ($code -eq 1 -and $name -eq 'VIXRadar-AgendaSemanal') {
-        # Antes hardcoded como 'Credit balance too low'. Agora le o log real
-        # para determinar a causa. Se nao encontrar evidencia, reporta como
-        # 'causa nao identificada' e mantem como ERRO (nao warning).
+    } elseif ($code -ge 1 -and $code -le 8 -and $name -eq 'VIXRadar-AgendaSemanal') {
+        # 2026-08-21: run_vixradar_agenda_semanal.ps1 passou a usar exit 2-8 com
+        # causa fixa por codigo. O mapa fecha a causa direto; o log so e lido
+        # quando o codigo nao esta no mapa (ex: exit 1 antigo). Causa
+        # identificada vira warning, nao identificada vira ERRO.
         $staleReason = $null
+        switch ($code) {
+            2 { $staleReason = 'exit 2 - claude.exe ausente' }
+            3 { $staleReason = 'exit 3 - health do Worker inacessivel no preflight' }
+            4 { $staleReason = 'exit 4 - ROUTINE_API_KEY indisponivel localmente' }
+            5 { $staleReason = 'exit 5 - nenhuma credencial Claude disponivel' }
+            6 { $staleReason = 'exit 6 - ambiente contaminado detectado' }
+            7 { $staleReason = 'exit 7 - probe WebSearch falhou' }
+            8 { $staleReason = 'exit 8 - ROUTINE_API_KEY rejeitada (403) ou listar_calendario_stale falhou' }
+        }
         $rotinaLogDir = Join-Path $VixRoot 'logs\routines'
         $logPattern = Join-Path $rotinaLogDir ('vixradar-agenda-semanal_' + $lastRun.ToString('yyyyMMdd') + '.log')
-        if (Test-Path $logPattern) {
+        if (-not $staleReason -and (Test-Path $logPattern)) {
             try {
                 $logContent = Get-Content $logPattern -Raw -Encoding UTF8 -ErrorAction Stop
                 if ($logContent -match 'credit balance is too low|Credit balance too low|insufficient.*credit|quota exceeded') {
@@ -750,6 +760,7 @@ Write-Log "Erros: $($erros.Count)"
 Write-Log "Warnings: $($warnings.Count)"
 Write-Log "Deliberados (Disabled): $($deliberate.Count)"
 Write-Log "Skipped (falso-positivo conhecido): $skipped"
+Write-Log "Rotinas por evidencia de entrega (nao sao tasks do Scheduler, entram nas contagens acima): $($RotinasVigiadas.Count)"
 
 # Persiste erros em JSON
 $report = [ordered]@{

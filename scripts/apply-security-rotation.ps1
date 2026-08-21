@@ -230,6 +230,29 @@ if ($DryRun) {
     }
 
     Write-Host "  Todos os $($SECRETS_OBRIGATORIOS.Count) secrets obrigatorios presentes" -ForegroundColor Green
+
+    # PASSO7GH (2026-08-21): a conferencia acima prova a metade Cloudflare. O
+    # incidente que criou este passo era divergencia Worker vs GitHub Actions, e
+    # um ADMIN_PASSWORD defasado no GitHub passaria aqui sem aviso nenhum. A
+    # paridade GitHub so fica provada rodando check-gh-actions-health.ps1.
+    try {
+        $ghCheck = Join-Path $PSScriptRoot 'check-gh-actions-health.ps1'
+        if (Test-Path $ghCheck) {
+            Write-Host "  Conferindo metade GitHub (workflows que consomem ADMIN_PASSWORD)..." -ForegroundColor Yellow
+            $ghOut = pwsh -NoProfile -File $ghCheck 2>&1
+            $ghExit = $LASTEXITCODE
+            $ghOut | Where-Object { $_ } | ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+            if ($ghExit -ne 0) {
+                Write-Host "  AVISO: $ghCheck saiu com $ghExit. A paridade GitHub/Worker NAO foi provada." -ForegroundColor Red
+            } else {
+                Write-Host "  Metade GitHub conferida (exit 0)" -ForegroundColor Green
+            }
+        } else {
+            Write-Host "  AVISO: $ghCheck ausente. So a metade Worker foi conferida; a paridade com o GitHub Actions NAO foi verificada." -ForegroundColor Yellow
+        }
+    } catch {
+        Write-Host "  AVISO: falha ao conferir a metade GitHub: $($_.Exception.Message). A paridade NAO foi provada." -ForegroundColor Yellow
+    }
 }
 
 # --- Health check ------------------------------------------------------
