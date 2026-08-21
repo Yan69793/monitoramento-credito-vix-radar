@@ -130,7 +130,8 @@ Falhou o submit, espere 2s e tente 1 vez mais.
 
 Dos restantes (tier != SKIP, nao processados hoje):
 - Fila RAPIDA: todos que NAO se qualificam para a aprofundada. Lotes de 15. Processe PRIMEIRO.
-- Fila APROFUNDADA: `tier == "FULL"` E (`ews_score >= 38` OU `cvm_novos > 0`). Ordene por ews_score desc. Lotes de 11. Processe DEPOIS.
+- Fila APROFUNDADA: `tier == "FULL"` E (`ews_score >= 38` OU `cvm_novos > 0` OU `motivos` conter `imprensa_recente_7d`). Ordene por ews_score desc. Lotes de 11. Processe DEPOIS.
+  O `imprensa_recente_7d` vem do Worker (FONTELATENCIA1, decisao do operador em 21/08/2026): evento CRITICO/RELEVANTE na imprensa ou de rotina anterior promove para aprofundada na mesma semana, sem esperar o ZIP semanal da CVM.
 
 A ordem importa, rapida antes de aprofundada. Se a sessao degradar no meio, o que sobra e a fila cara, que voce defere no passo 10.
 
@@ -152,7 +153,7 @@ Respeitar o maximo de buscas por emissor e o que mantem o custo dentro do envelo
 
 ## Passo 7 - O que mandar para o subagente
 
-Para cada emissor do lote, envie SO estes campos: `empresa, setor, tier, ews_score, cvm_novos, cvm_documentos` (max 3 docs, com categoria, assunto truncado em 100 chars, data, link) e `contexto_historico` truncado (400 chars se ews_score >= 38 ou o texto casar REX/RJ/recuperacao/default/CRITICO, senao 200).
+Para cada emissor do lote, envie SO estes campos: `empresa, setor, tier, motivos, ews_score, cvm_novos, cvm_documentos` (max 3 docs, com categoria, assunto truncado em 100 chars, data, link) e `contexto_historico` truncado (400 chars se ews_score >= 38 ou o texto casar REX/RJ/recuperacao/default/CRITICO, senao 200).
 
 Nunca inclua a routine_key no prompt do subagente.
 
