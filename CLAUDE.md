@@ -194,7 +194,7 @@ não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
 | `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
 | `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |
 | `VIXRadar-Reconciliacao-CVM` | Task Scheduler | Seg 08h00 BRT | — | Reconcilia IPE CVM vs estado |
-| `VIXRadar-Health-Watch` | Task Scheduler | Seg-Sex 08h-20h, 15/15min | — | Vigia de health, alerta e-mail |
+| `VIXRadar-Health-Watch` | Task Scheduler | **DESATIVADO 21/08/2026, decisão do operador** | — | Vigia de health a cada 15 min, desligado. O alerta de queda continua existindo, mais lento, via `canonical-test` a cada 6h e `frescor-check` diário. Reativar: `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"` |
 | `VIXRadar-Ranking-Mensal` | **OBSOLETO** (task não existe) | — | — | SEO mensal, descontinuada 18/08/2026, ver `routines/README.md` |
 
 Duas Claude Code Routines remotas (nuvem, fora do Task Scheduler) também existem:
@@ -311,7 +311,7 @@ conferir se não reabre um desses.
 
 ## CSS e frontend
 
-- Nenhum timer de rede autônomo no frontend (AUTONOMIAOFF1, 21/08/2026, decisão do operador). Status e dados só na carga inicial e em gatilhos do usuário, visibilitychange quando a aba volta ao primeiro plano, pageshow, clique. Verificação periódica é papel das rotinas cadastradas no sistema, VIXRadar-Health-Watch a cada 15 min, canonical-test a cada 6h, frescor-check diário, scan-emergencia, crons do Worker.
+- Nenhum timer de rede autônomo no frontend (AUTONOMIAOFF1, 21/08/2026, decisão do operador). Status e dados só na carga inicial e em gatilhos do usuário, visibilitychange quando a aba volta ao primeiro plano, pageshow, clique. Verificação periódica é papel das rotinas cadastradas no sistema, canonical-test a cada 6h, frescor-check diário, scan-emergencia, crons do Worker.
 - `<strong>`: sem `color` global, só `font-weight`. Cor por seletor específico.
 - Design system: gold `#B7985D`, navy `#001020`, fontes DM Sans + Cormorant Garamond + Inter.
 - Copyright Szuchmacher Consultoria Ltda (INPI). CACHE_VERSION no header de `app/index.html`.
