@@ -1138,6 +1138,26 @@ conferidos manualmente contra o glossario, todos batendo.
 
 ---
 
+## 18/08 (tarde-noite) — auditoria geral pós-CONCORVERIF1 (detalhe: [[87 - Auditoria Geral 2026-08-18 (tarde-noite, pos-CONCORVERIF1)]])
+
+### P2 — Recheck pré-submit da verificação não cobre reserva expirada por lentidão
+
+`reservar_itens_fila` (CONCORVERIF1, v4.9.197) tem TTL fixo de 20 min sem renovação. O recheck de segurança antes de `confirmar_verificacao` só é obrigatório quando `protecao_ativa` veio `false` (DO indisponível), não quando o lote simplesmente demorou mais que o TTL com `protecao_ativa:true`. Lote cheio (até 20 itens, até 3 buscas web cada, processamento serial) pode passar de 20 min. Correção: tornar o recheck via `listar_fila_verificacao` com `ids` incondicional antes de todo `confirmar_verificacao`, custa 1 HTTP a mais por lote.
+
+### P2 — Export-Histórico de 18/08 sem commit
+
+`chore(data): historico 2026-08-18` não apareceu no git log até 22h57 BRT, ao contrário de 16 e 17/08 (commit por volta de 20h48-20h49 no mesmo dia). Não apurável nesta sessão remota (sem acesso a `logs/routines/` local). Hipótese: sobreposição com a inversão da junction NTFS relatada na mesma noite. Conferir `FIM:` do Export-Histórico de 18/08 na próxima sessão local.
+
+### P3 — Comentário de cabeçalho do wrangler.toml desatualizado
+
+`api/wrangler.toml:2` diz `main = v4.9.195`, real (linha 536) é `v4.9.198.js`. Sem risco de produção (guard de CI lê a diretiva real), só engana leitura humana. Atualizar comentário junto do próximo deploy.
+
+### P2 — Incidente verificador_ok de 18/08 tarde ficou fora do vault até esta auditoria
+
+`canonical-test.yml` falhou 13:04Z e 18:53Z de 18/08 (`verificador_ok:false`, mesma causa em ambas), corrigido por 3 deploys (v4.9.196/197/198) entre 17h26-18h06 BRT do mesmo dia. Nem o incidente nem o fix tinham nota no vault antes desta auditoria (notas 85 e 86 são da manhã, anteriores ao incidente). Fechado por esta própria entrada + nota 87.
+
+---
+
 ## 18/08 — execução: rotação da routine_key + envelope + limpeza (detalhe: [[86 - Rotacao routine_key e envelope noturno 2026-08-18]])
 
 ### RESOLVIDO 18/08 — P1 rotação da routine_key
