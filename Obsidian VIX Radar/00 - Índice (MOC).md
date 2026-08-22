@@ -7,16 +7,16 @@ status: ativo
 
 # VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-08-15 11h08 BRT.
+Mapa do vault. Atualizado 2026-08-22 BRT.
 
 ## Estado atual
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.195 |
-| Frontend | v202.10 |
-| Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (15/08 11h08 BRT, HTTP 200 0,31s) |
-| Cobertura | Deploy v4.9.195 + v202.10 em 15/08 (auditoria profunda: routine_key redigida do disco, OPENROUTER-ORFAO1, NOTIFYRL1, LLMXSS1, DEFERREDREC1 corrigidos). Matinal 15/08: 19/19, 3 CRITICOs. P1 aberto: rotação da routine_key pendente de permissão Secrets no PAT do GitHub. |
+| Worker | v4.9.208 |
+| Frontend | v202.29 |
+| Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (22/08, HTTP 200) |
+| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. Frontend v202.29 corrigiu a grandeza do pulso e declarou a janela de 30 dias no card. Worker segue em v4.9.208. Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]] e [[89 - Auditoria Geral 2026-08-22]]. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
@@ -36,6 +36,9 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 
 | Nota | Data | Tipo |
 |---|---|---|
+| [[89 - Auditoria Geral 2026-08-22]] | 22/08 | Geral readonly: nucleo sem achado (auth fail-closed, veracidade UI batendo com o glossario, drift zero, health verde). 5 P3 novos: WRCGL1, PULSOEVENTO1, JANELACARD1, ESTADOSTALE1, WORKTREE22 |
+| [[87 - Fechamento Rotinas 2026-08-21]] | 21/08 | Execucao manual das 3 rotinas do dia (Claude Desktop sem creditos): verificacao 23/23, matinal 19/19, noturna 103/103, health ok:true |
+| [[88 - Sessao Frontend Mobile 2026-08-21]] | 21/08 | Frontend: refresh de dados ao voltar para a aba, rodada mobile auditada com Lighthouse (A11y 100, BP 100, SEO 100), deploys v202.24-v202.28, SyntaxError v202.24 corrigido em v202.25 |
 | [[86 - Rotacao routine_key e envelope noturno 2026-08-18]] | 18/08 | Execucao: rotacao da routine_key nos 3 destinos (P1 fechado), envelope do noturno recalibrado, ROTA1, pre-flight fixes, graphify-out ignorado |
 | [[85 - Auditoria Geral e Preditiva 2026-08-18]] | 18/08 | Geral + preditiva readonly: Merton 0/103 (market_cap nunca coletado), P3s de governanca e a11y |
 | [[81 - Auditoria Geral e incidentes 2026-08-13]] | 13/08 | Geral: AUTHWEEK1 (cascade parado), GHWL1 (secret GH divergente), XSS v100 fechado, BOM fechado |

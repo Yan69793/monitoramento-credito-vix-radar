@@ -1,6 +1,6 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-20 (agente: Claude Code)
+Última atualização: 2026-08-22 (agente: Codex)
 
 Leia este arquivo antes de começar qualquer trabalho, seja qual for o agente.
 Atualize a data e os itens abertos ao fechar uma sessão que mudou o estado.
@@ -16,6 +16,39 @@ Engine), mas o cérebro de IA é local: scripts PowerShell agendados no Windows
 Task Scheduler chamam o Claude CLI e enviam o resultado ao Worker por POST
 autenticado com `routine_key`.
 
+## Estado em 2026-08-22
+
+Produção em Worker v4.9.208 e frontend v202.29. Os cinco achados P3 da
+auditoria geral foram fechados. O changelog do Worker recuperou as versões
+v4.9.196 a v4.9.208 e ganhou um portão obrigatório. O frontend passou a contar
+emissores no pulso e a declarar a janela de 30 dias no card. O fluxo de Pages
+agora só carimba `version.json` depois que todos os portões passam.
+
+
+## Estado em 2026-08-21
+
+Deploys do dia: v202.22 (hotfix de sintaxe) e v202.23 (copy da landing). Causa do
+hotfix: a edicao AUTONOMIAOFF1 deixou dois tokens orfaos nos blocos 6 e 8 do
+index.html e o painel ficou degradado desde o deploy de 21/08 01:40Z. Health do
+Worker nunca acusaria, o defeito era parse de JS no frontend. Fix em d5bb5b8,
+deploys 9794d82 e 5c77254, validados e com push. Landing corrigida de
+"100 emissores" para "103 emissores" (4 pontos), alinhando com TOTAL_EMISSORES=103.
+Pacote comercial para o Luciano pronto em
+E:\Diretorio\Claude\apresentacao-luciano-2026-08-21 (mensagem, 2 PDFs, video 9:16).
+Segue aberto: CLOUDFLARE_API_TOKEN sem permissao de Pages (CREDOAUTH1), o deploy
+cai no OAuth do wrangler.
+
+Noite de 21/08 (sessao multi-provedor, Claude Desktop sem creditos): as tres
+rotinas do dia rodaram por contrato HTTP direto (verificacao 23/23, matinal 19/19,
+noturna 103/103, health ok:true, ver nota 87 do vault). Em seguida, sessao de
+frontend: refresh de dados ao voltar para a aba (visibilitychange/pageshow chamam
+carregarResultadosCompartilhados, throttle de 60s) e rodada de melhorias mobile
+auditada com Lighthouse. Deploys v202.24 (refresh, continha SyntaxError corrigido
+em v202.25), v202.26 (contraste, labels, alvos de toque, ranking EWS empilhado),
+v202.27 (aria-labels dos filtros, bottom nav escondida com drawer aberto), v202.28
+(drawer fechado invisivel). Final: A11y 100, Best Practices 100, SEO 100 no
+Lighthouse mobile. Restam CLS ~0.16-0.43 (varia entre rodadas) e itens da
+categoria agentic browsing (llms.txt, agent-accessibility-tree). Ver nota 88.
 ## Estado em 2026-08-18
 
 Segundo o CLAUDE.md (hardened 2026-07-25) e o README: produção em Worker v4.9.198
@@ -266,6 +299,8 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - `producao/` é legado desconectado, nunca deployar
 
 ## Itens abertos
+
+- RESOLVIDO 22/08 (WRCGL1, PULSOEVENTO1, JANELACARD1, ESTADOSTALE1, WORKTREE22 e DEPLOGGATE-JSON1): auditoria fechada, deploy v202.29 validado, memória canônica atualizada e fluxo de Pages protegido contra carimbo falso antes da publicação. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 
 - RESOLVIDO 21/08 01h40 (AUTONOMIAOFF1): frontend sem nenhuma verificação autônoma de rede, decisão do operador. Saíram os quatro timers que consultavam o servidor, rate meter a cada 2 min, auto-update a cada 3 min, anomalias a cada 30 min e status da ribbon a cada 60 s. Status e dados agora só na carga inicial e em gatilho do usuário. Frontend em v202.21. Detalhe no CLAUDE.md
 - RESOLVIDO 21/08 01h50 (HEALTHWATCH-OFF1): vigia de health a cada 15 min desativado no Task Scheduler por decisão do operador. A task existe e está `Disabled`, o script `watch-vixradar-health.ps1` continua no repo, reversível com `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"`. Alerta de queda continua via `canonical-test` a cada 6h e `frescor-check` diário

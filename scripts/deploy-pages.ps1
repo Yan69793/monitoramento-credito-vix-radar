@@ -232,15 +232,11 @@ foreach ($dir in (Get-ChildItem -Path $appDir -Directory -Force)) {
   if ($assetConhecidos -contains $dir.Name) { continue }
   Fail "Subpasta 'app/$($dir.Name)' nao esta no mapa `$assetDirs nem em `$ignorarDirs de deploy-pages.ps1. Ela NAO seria publicada e o deploy passaria verde. Classifique-a antes de deployar."
 }
-# Em -DryRun o deployed_at fica null: nada foi publicado, e carimbar hora de deploy
-# num arquivo que ninguem deployou e exatamente o tipo de mentira que a auditoria
-# de 2026-08-04 encontrou em producao (version.json v201.93 sobre HTML v202.1).
-if ($DryRun) {
-  $verJson = "{`"version`":`"$ver`",`"deployed_at`":null}"
-} else {
-  $ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-  $verJson = "{`"version`":`"$ver`",`"deployed_at`":`"$ts`"}"
-}
+# DEPLOGGATE-JSON1 (2026-08-22): o passo 2 ainda nao e deploy. Manter o carimbo
+# nulo durante todos os gates impede que uma reprovacao entre o sync e o wrangler
+# deixe no repo a hora de uma publicacao que nunca aconteceu. O timestamp real so
+# nasce no passo 4, imediatamente antes de enviar o bundle.
+$verJson = "{`"version`":`"$ver`",`"deployed_at`":null}"
 Set-Content -NoNewline -Path (Join-Path $zipDir "version.json") -Value $verJson
 Set-Content -NoNewline -Path (Join-Path $appDir "version.json") -Value $verJson
 Write-Host "deploy_zip sincronizado + version.json gerado ($verJson)" -ForegroundColor Cyan
@@ -424,13 +420,16 @@ if ($DryRun) {
 }
 
 # --- 4. Deploy -------------------------------------------------------------
+$ts = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$verJson = "{`"version`":`"$ver`",`"deployed_at`":`"$ts`"}"
+Set-Content -NoNewline -Path (Join-Path $zipDir "version.json") -Value $verJson
+Set-Content -NoNewline -Path (Join-Path $appDir "version.json") -Value $verJson
+Write-Host "version.json carimbado para o envio ($verJson)" -ForegroundColor Cyan
 Write-Host "`nDeployando para Cloudflare Pages ($ProjectName / main)..." -ForegroundColor Yellow
 npx wrangler pages deploy "$zipDir" --project-name=$ProjectName --branch=main --commit-dirty=true
 if ($LASTEXITCODE -ne 0) {
-  # DEPLOYTS1 (2026-08-04): o passo 2 ja gravou deployed_at com a hora atual. Se o
-  # wrangler falha aqui, esse carimbo vira registro de um deploy que nunca existiu,
-  # exatamente o tipo de version.json mentiroso que a auditoria de hoje foi achar
-  # em producao. Reverte antes de abortar.
+  # DEPLOYTS1 (2026-08-04): se o wrangler falha, o carimbo criado logo acima nao
+  # corresponde a uma publicacao. Reverte antes de abortar.
   $verJsonFalho = "{`"version`":`"$ver`",`"deployed_at`":null}"
   Set-Content -NoNewline -Path (Join-Path $zipDir "version.json") -Value $verJsonFalho
   Set-Content -NoNewline -Path (Join-Path $appDir "version.json") -Value $verJsonFalho

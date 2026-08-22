@@ -11,6 +11,40 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 22/08 (madrugada BRT) — RESOLVIDO: auditoria geral readonly e fechamento dos achados
+
+Auditoria `vix-radar-general-audit` completa (detalhe: [[89 - Auditoria Geral 2026-08-22]]). Núcleo sem achado: auth fail-closed, veracidade da UI batendo com o glossário, drift zero, health verde completo. Itens novos abaixo.
+
+### P3 — WRCGL1: changelog do wrangler.toml parado em v4.9.195 — RESOLVIDO 22/08
+
+O cabeçalho do `api/wrangler.toml` declara `main = v4.9.195` na linha 2 e a última entrada de changelog é v4.9.195. O `main` real é `v4.9.208.js`. Zero entradas para v4.9.196 a v4.9.208. A verdade do deploy (main + bundle) está certa, mas o changelog-como-verdade que a skill de auditoria usa não registra 13 versões. Evidência: `rg "v4\.9\.20[0-9]" api/wrangler.toml` retorna 1, só o main. O `deploy-worker.ps1` não tem nenhuma menção a changelog, ou seja, nada reprova subir versão sem entrada. **RESOLVIDO 22/08, commit `9b017af`.** Treze entradas escritas, reconstruidas dos commits de git e desta fila. Gate novo no `deploy-worker.ps1` reprova deploy sem entrada de changelog para a versao que sobe.
+
+### P3 — PULSOEVENTO1: pulso do Market Overview chama emissor de evento — RESOLVIDO 22/08
+
+`app/index.html:4173`. O ramo crítico do pulso diz "Mercado com N emissores sob atenção crítica" (certo), o ramo relevante diz "N eventos relevantes em acompanhamento" contando `relevantesAtivos`, que é Set de EMISSORES. Termo reservado do glossário com grandeza trocada, irmão pequeno do ROTULOEVENTO1. **RESOLVIDO 22/08, deploy v202.29.** Pulso agora diz "N emissores em acompanhamento", confirmado no HTML servido em producao.
+
+### P3 — JANELACARD1: card "Sem alertas" sem declaração de janela — RESOLVIDO 22/08
+
+`app/index.html:4181`. O sub declara denominador ("X de Y emissores") mas não a janela fixa de 30 dias. O glossário manda declarar, ainda mais por estar ao lado do toggle 7D/30D que não o afeta. O fix de 14/08 (v202.9) dizia incluir "· 30 dias" e a string final não tem. **RESOLVIDO 22/08, deploy v202.29.** Sub do card diz "X de Y emissores · 30 dias", confirmado em producao.
+
+### P3 — ESTADOSTALE1: seção "Versoes" do 03-Estado Atual parada em v4.9.194/v202.9 — RESOLVIDO 22/08
+
+`03 - Estado Atual.md:159-161`. Topo do arquivo já declara v4.9.208/v202.28. Mesmo padrão de rodapé que não acompanha, reconciliado em 11/08 e voltou. **RESOLVIDO 22/08.** Seção atualizada para v4.9.208/v202.29/git `02c2157`.
+
+### P3 — WORKTREE22: working tree sujo da sessão de 21/08 — RESOLVIDO 22/08
+
+MOC + ESTADO modificados, notas [[87 - Fechamento Rotinas 2026-08-21]] e [[88 - Sessao Frontend Mobile 2026-08-21]] untracked, `main` ahead 1 de `origin/main` (`50384b3`, dado do historico). **RESOLVIDO 22/08.** Commits `9b017af`, `afbdc46`, `69a64dd`, `02c2157` enviados, main em sincronia com origin/main.
+
+### P3 — DEPLOGGATE-JSON1: falha em gate do deploy-pages deixa version.json carimbado — RESOLVIDO 22/08
+
+Observado em 22/08: gate 3.2 reprovou o deploy, mas `app/version.json` ficou com `deployed_at` do passo 2 sobre uma publicação que não aconteceu. **RESOLVIDO 22/08.** O passo 2 agora grava `deployed_at:null` durante o sync e todos os gates. O carimbo real nasce somente no passo 4, imediatamente antes do Wrangler. Se o envio falhar, DEPLOYTS1 volta o valor para `null`.
+
+### Observação de design, não achado — DPA2SEMANAS1
+
+`dados_para_analise` usa `carregarEstadoMultiSemana(env2222, 2)` (`worker.js:17473`). O contexto histórico entregue à rotina cobre só 2 semanas, eventos de 15 a 30 dias ficam invisíveis para o modelo. A dedup do Worker (data_evento|empresa|fonte_base) mitiga re-narração. Registrar, não mudar sem decisão do operador.
+
+---
+
 ## 20/08 (19h20 BRT) — RESOLVIDO: 2 P1 de segurança, 6 P1 de perf/a11y, dívida de docs
 
 Segunda janela do dia, depois da reabertura para clientes. Auditoria dos blocos D,

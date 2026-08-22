@@ -7,6 +7,8 @@ status: saudavel
 
 # Estado Atual — VIX Radar
 
+> [!success] 22/08 BRT — **Auditoria fechada, produção v4.9.208 e v202.29.** WRCGL1 reconstruiu as 13 entradas ausentes do changelog do Worker e o deploy agora reprova versão sem registro. PULSOEVENTO1 e JANELACARD1 foram corrigidos no frontend e confirmados em produção. DEPLOGGATE-JSON1 moveu o carimbo real de `version.json` para depois de todos os gates, evitando data falsa quando o deploy é reprovado antes da publicação. Detalhe em [[89 - Auditoria Geral 2026-08-22]] e [[PENDENCIAS.md]].
+
 > [!success] 21/08 23h30 BRT — **Duas ondas de correção fechadas, produção v4.9.208 e v202.21, 48 testes.** Noturna 20/08 rodou 103/103 com 5 críticos (Hapvida cautelar ANS 947 mil contratos, Oncoclínicas REX deferida, Oi caixa R$ 19,6 mi, Kora Saúde AGDs, CSN Fitch CCC+). Segurança: REGISTRO-ADMIN1 (e-mail do corpo não concede mais admin, teste de regressão provado nos dois sentidos), RATELIMIT-FAILOPEN1 com AUTHDISPO1 (login de cliente abre com alerta em falha do limiter, senha admin errada fecha). Frontend: contraste WCAG corrigido (pior caso foi de 1,74:1 para 5,57:1), timers de rede autônomos REMOVIDOS por decisão do operador (AUTONOMIAOFF1), vigia de 15 min desativado (HEALTHWATCH-OFF1), alerta de queda agora em até 6h. Decisões assinadas em DECISOES-OPERADOR-2026-08-20: FONTELATENCIA1 (promoção por imprensa `imprensa_recente_7d`, sem esperar ZIP semanal da CVM) e DRIVERMORTO1 (ANOMSCHEMA1 corrigido, sem o `/100` herdado de ponto-base; mapa TICKERPERIMETRO1 classificado, 95 entradas com fonte, 91 elegíveis, 4 inelegíveis). Commit órfão 3d593d6 resgatado por cherry-pick. Suite: 10 arquivos, 48 testes, incluindo correção de teste que quebrava por fuso depois das 21h. Pendências vivas: MANIFESTOFRAGIL1, DEDUPON2, FEEDRERENDER1, SACFALSA-RESIDUO, WORKTREE12. Próximo passo do Merton: pipeline de coleta de market_cap, destravado pelo mapa.
 
 > [!success] 20/08 21h15 BRT — **Janela de manutenção: 7 P0/P1 de veracidade de UI + SPREADSERIE1.** Worker v4.9.203→206, frontend v202.12→19. Os P0 do dia: home pública dizia "todos dentro dos parâmetros normais" com cache nulo lido como zero, seis banners nunca renderizaram por inline `display:none`, spread ANBIMA exibido como " bps" sendo % a.a., mo-cards verdes com leitura falha. Guarda de frases de ausência generalizada para 57 frases com manifesto versionado.
@@ -156,9 +158,9 @@ As rotinas do dia 31 foram afetadas por um incidente **diferente** do bug OAuth.
 
 | Componente | Versao | Health |
 |---|---|---|
-| Worker | **v4.9.194** | `ok:true` 14/08 04h18Z: kv/rate_limiter/telemetria true, `admin_email_ok:true`, `sentry_ok:true`, `verificador_ok:true`, providers 2/2, HTTP 200 0,17s. CUSTOBRAKE1 + notificar_rotina (AUTHWEEK1). |
-| Frontend | **v202.9** | `version.json` deployed_at 2026-08-14T07:21:11Z. Denominador no card Sem alertas, postAdmin Bearer, cache-busting ES alinhado. |
-| Git | v4.9.194 | main em `08e2557` (14/08), push OK via OAuth do gh (GH_TOKEN do ambiente estava sem write, chave keyring usada). |
+| Worker | **v4.9.208** | `ok:true`: kv/rate_limiter/telemetria true, `admin_email_ok:true`, `sentry_ok:true`, `verificador_ok:true`, providers 2/2, HTTP 200 em 22/08. |
+| Frontend | **v202.29** | Pulso conta emissores, card declara janela de 30 dias e `version.json` está alinhado com produção. |
+| Git | v4.9.208 / v202.29 | `main` sincronizada com `origin/main` após os commits técnicos `9b017af`, `afbdc46`, `69a64dd` e `02c2157`; fechamento documental nesta sessão. |
 
 ## Cobertura
 
