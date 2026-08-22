@@ -14,9 +14,9 @@ Mapa do vault. Atualizado 2026-08-22 BRT.
 | Componente | Versao |
 |---|---|
 | Worker | v4.9.208 |
-| Frontend | v202.29 |
+| Frontend | v202.30 |
 | Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (22/08, HTTP 200) |
-| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. Frontend v202.29 corrigiu a grandeza do pulso e declarou a janela de 30 dias no card. Worker segue em v4.9.208. Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]] e [[89 - Auditoria Geral 2026-08-22]]. |
+| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. O frontend v202.30 passou a separar a data do último evento da data de atualização da base, para deixar explícito que a rotina pode concluir sem fato novo. Worker segue em v4.9.208. Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]] e [[89 - Auditoria Geral 2026-08-22]]. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 

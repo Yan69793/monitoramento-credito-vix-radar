@@ -18,11 +18,16 @@ autenticado com `routine_key`.
 
 ## Estado em 2026-08-22
 
-Produção em Worker v4.9.208 e frontend v202.29. Os cinco achados P3 da
+Produção em Worker v4.9.208 e frontend v202.30. Os cinco achados P3 da
 auditoria geral foram fechados. O changelog do Worker recuperou as versões
 v4.9.196 a v4.9.208 e ganhou um portão obrigatório. O frontend passou a contar
 emissores no pulso e a declarar a janela de 30 dias no card. O fluxo de Pages
 agora só carimba `version.json` depois que todos os portões passam.
+
+O painel de eventos agora declara o horário de atualização da base separado da
+data do último evento. Em 21/08, as rotinas concluíram 103/103 sem encontrar
+fato com aquela data, e a tela só mostrava o último fato de 20/08. A mudança
+evita que ausência de fato novo pareça falha de atualização.
 
 
 ## Estado em 2026-08-21
@@ -301,6 +306,7 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 ## Itens abertos
 
 - RESOLVIDO 22/08 (WRCGL1, PULSOEVENTO1, JANELACARD1, ESTADOSTALE1, WORKTREE22 e DEPLOGGATE-JSON1): auditoria fechada, deploy v202.29 validado, memória canônica atualizada e fluxo de Pages protegido contra carimbo falso antes da publicação. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
+- RESOLVIDO 22/08 (DATAATUALIZACAO1): frontend v202.30 deixa explícita a atualização real da base, separada da data do último evento. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 
 - RESOLVIDO 21/08 01h40 (AUTONOMIAOFF1): frontend sem nenhuma verificação autônoma de rede, decisão do operador. Saíram os quatro timers que consultavam o servidor, rate meter a cada 2 min, auto-update a cada 3 min, anomalias a cada 30 min e status da ribbon a cada 60 s. Status e dados agora só na carga inicial e em gatilho do usuário. Frontend em v202.21. Detalhe no CLAUDE.md
 - RESOLVIDO 21/08 01h50 (HEALTHWATCH-OFF1): vigia de health a cada 15 min desativado no Task Scheduler por decisão do operador. A task existe e está `Disabled`, o script `watch-vixradar-health.ps1` continua no repo, reversível com `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"`. Alerta de queda continua via `canonical-test` a cada 6h e `frescor-check` diário

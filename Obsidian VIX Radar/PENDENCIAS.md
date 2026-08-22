@@ -15,6 +15,10 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 Auditoria `vix-radar-general-audit` completa (detalhe: [[89 - Auditoria Geral 2026-08-22]]). Núcleo sem achado: auth fail-closed, veracidade da UI batendo com o glossário, drift zero, health verde completo. Itens novos abaixo.
 
+### P3 — DATAATUALIZACAO1: painel confundia último evento com atualização da base — RESOLVIDO 22/08
+
+Em 22/08, a tela declarava “Evento mais recente 20 de agosto”, embora a rotina de 21/08 tivesse concluído 103/103. A ausência de fato novo em 21/08 era legítima, mas o painel não dizia quando a base havia sido atualizada. **RESOLVIDO 22/08, deploy v202.30.** O carimbo agora mostra “Painel atualizado em [data e hora BRT]” e preserva a data independente do último evento.
+
 ### P3 — WRCGL1: changelog do wrangler.toml parado em v4.9.195 — RESOLVIDO 22/08
 
 O cabeçalho do `api/wrangler.toml` declara `main = v4.9.195` na linha 2 e a última entrada de changelog é v4.9.195. O `main` real é `v4.9.208.js`. Zero entradas para v4.9.196 a v4.9.208. A verdade do deploy (main + bundle) está certa, mas o changelog-como-verdade que a skill de auditoria usa não registra 13 versões. Evidência: `rg "v4\.9\.20[0-9]" api/wrangler.toml` retorna 1, só o main. O `deploy-worker.ps1` não tem nenhuma menção a changelog, ou seja, nada reprova subir versão sem entrada. **RESOLVIDO 22/08, commit `9b017af`.** Treze entradas escritas, reconstruidas dos commits de git e desta fila. Gate novo no `deploy-worker.ps1` reprova deploy sem entrada de changelog para a versao que sobe.
