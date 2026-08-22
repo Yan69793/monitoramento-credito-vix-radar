@@ -5,9 +5,11 @@ import { describe, expect, it } from "vitest";
 // Cobre as regras do pedido 2026-08-12: fonte primaria, nunca sobrescrever
 // oficial com secundaria, cross-check, 5 status, nao inferir datas, trimestre
 // fiscal, aliases, gate de publicacao e revalidacao (stale).
-// Roda so em CI (worker-tests.yml). workerd nao roda local nesta maquina
-// (Smart App Control), a logica pura tambem e coberta pelo harness
-// tests/system-final-regressions.mjs em Node puro.
+// Roda so em CI (worker-tests.yml): deploy-worker.ps1 faz `npm ci --omit=dev`,
+// que apaga o vitest local (SACFALSA-RESIDUO, 2026-08-20 - a causa nao era Smart
+// App Control bloqueando workerd.exe, medido e refutado). `npm ci` dentro de
+// api/ restaura a suite localmente. A logica pura tambem e coberta pelo harness
+// tests/system-final-regressions.mjs em Node puro, sem precisar subir Worker.
 
 const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao";
 const JWT_SECRET = "test-jwt-secret-nao-usar-em-producao";

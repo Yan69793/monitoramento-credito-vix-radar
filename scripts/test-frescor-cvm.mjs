@@ -1,10 +1,13 @@
 // CVMFRESCOR1 (2026-08-19) - harness local do calculo de frescor da fonte CVM.
 //
-// Existe porque a suite vitest NAO roda nesta maquina: o Smart App Control
-// bloqueia workerd.exe por assinatura (CodeIntegrity 3077/3033), entao
-// api/test/cvm-frescor.test.mjs so e confiavel no CI. Este script cobre a parte
+// Nasceu da crenca errada de que a suite vitest nao roda nesta maquina (Smart
+// App Control bloqueando workerd.exe). Refutado por medicao em 2026-08-20
+// (SACFALSA-RESIDUO): a causa real e `npm ci --omit=dev` no deploy apagando o
+// vitest, `npm ci` dentro de api/ restaura a suite local, api/test/cvm-frescor.test.mjs
+// roda normal. Mantido de proposito, nao redundante: cobre so a parte
 // puramente algoritmica (contagem de dias uteis + decisao de frescor) sem
-// precisar subir Worker nenhum, e roda em qualquer node.
+// subir Worker nenhum, mais rapido que Miniflare para iteracao local e nao
+// depende de nenhuma config de ambiente.
 //
 // Regra de ouro herdada do test-dedup-eventos.mjs: extrair as funcoes DIRETO do
 // worker.js real, nunca reescrever uma copia. Copia solta passa verde enquanto o
@@ -37,21 +40,28 @@ function extrair(nome, tipo) {
 
 const fonte = [
   extrair("_cvmDiasUteisApos", "sync"),
+  extrair("_cvmDiasCorridosApos", "sync"),
+  extrair("_cvmProximaPublicacaoPrevista", "sync"),
   extrair("_cvmMaxDataEntrega", "sync"),
   extrair("gravarFonteCVMMeta", "async"),
   extrair("avaliarFrescorCVM", "async"),
 ].join("\n\n");
 
 // Constantes e dependencia que as funcoes esperam encontrar no escopo do Worker.
+// CVMCADENCIA1 (2026-08-20): a decisao de frescor trocou de dias uteis para
+// ciclo semanal (a CVM publica aos domingos). idade_du continua no payload so
+// por compatibilidade com quem ja le esse campo, mas nao decide mais nada.
 const preludio = `
 var CVM_FONTE_META_KEY = "cvm:fonte_meta";
-var CVM_FONTE_MAX_DU = 2;
+var CVM_FONTE_CICLO_DIAS = 7;
+var CVM_FONTE_MAX_CICLOS = 2;
+var CVM_FONTE_DOW_PUBLICACAO = 0;
 var __HOJE_FAKE = null;
 function obterAgoraBRT() { return new Date(__HOJE_FAKE); }
 `;
 
 const mod = new Function(
-  preludio + fonte + "\nreturn { _cvmDiasUteisApos, _cvmMaxDataEntrega, gravarFonteCVMMeta, avaliarFrescorCVM, setHoje: function(d){ __HOJE_FAKE = d; } };"
+  preludio + fonte + "\nreturn { _cvmDiasUteisApos, _cvmDiasCorridosApos, _cvmProximaPublicacaoPrevista, _cvmMaxDataEntrega, gravarFonteCVMMeta, avaliarFrescorCVM, setHoje: function(d){ __HOJE_FAKE = d; } };"
 )();
 
 function envFake(meta, docs) {
@@ -101,16 +111,36 @@ checa("cai para d quando nao ha de", mod._cvmMaxDataEntrega([{ d: "2026-08-12" }
 checa("array vazio devolve null", mod._cvmMaxDataEntrega([]), null);
 checa("nao-array devolve null", mod._cvmMaxDataEntrega(null), null);
 
+console.log("\n=== dias corridos (fim de semana CONTA, ao contrario de dias uteis) ===");
+checa("quarta 12 -> quarta 19 = 7 dias corridos (dias uteis seria 5)", mod._cvmDiasCorridosApos("2026-08-12", "2026-08-19"), 7);
+checa("sexta 14 -> segunda 17 = 3 dias corridos (dias uteis seria 1)", mod._cvmDiasCorridosApos("2026-08-14", "2026-08-17"), 3);
+checa("data invalida devolve null", mod._cvmDiasCorridosApos("lixo", "2026-08-19"), null);
+checa("data futura nao vira negativo", mod._cvmDiasCorridosApos("2026-08-25", "2026-08-19"), 0);
+
+console.log("\n=== proxima publicacao prevista (sempre o domingo seguinte) ===");
+checa("de sexta 14 -> domingo 16", mod._cvmProximaPublicacaoPrevista("2026-08-14"), "2026-08-16");
+checa("do proprio domingo 16 -> pula pro domingo seguinte 23", mod._cvmProximaPublicacaoPrevista("2026-08-16"), "2026-08-23");
+checa("de quarta 19 -> domingo 23", mod._cvmProximaPublicacaoPrevista("2026-08-19"), "2026-08-23");
+checa("sem ref devolve null", mod._cvmProximaPublicacaoPrevista(null), null);
+
 console.log("\n=== decisao de frescor (hoje fixado em 2026-08-19, quarta) ===");
+// CVMCADENCIA1 (2026-08-20): a fonte publica so aos domingos, entao o limiar
+// deixou de ser dias uteis e virou ciclo semanal perdido. So conta como parada
+// quando DOIS ciclos de 7 dias se passam sem publicacao nova (>=14 dias
+// corridos), nao mais 2/3 dias uteis. Motivo mudou de "fonte_parada_ha_N_dias_uteis"
+// para "fonte_sem_publicar_ha_N_ciclos_semanais_M_dias".
 mod.setHoje("2026-08-19T12:00:00Z");
 const casos = [
   ["meta ausente e fail-closed", undefined, { ok: false, motivo: "sem_meta" }],
   ["fonte de ontem passa", { ok: true, last_modified_iso: "2026-08-18" }, { ok: true, motivo: "ok" }],
-  ["fonte de segunda passa no limite (2 du)", { ok: true, last_modified_iso: "2026-08-17" }, { ok: true, motivo: "ok" }],
-  ["o caso real do incidente, domingo 16, reprova", { ok: true, last_modified_iso: "2026-08-16" }, { ok: false, motivo: "fonte_parada_ha_3_dias_uteis" }],
-  // sexta 14 tambem da 3 du, nao 4: 15 e 16 sao fim de semana e nao contam.
-  ["sexta 14 reprova (3 du, sabado e domingo nao contam)", { ok: true, last_modified_iso: "2026-08-14" }, { ok: false, motivo: "fonte_parada_ha_3_dias_uteis" }],
-  ["quinta 13 reprova (4 du)", { ok: true, last_modified_iso: "2026-08-13" }, { ok: false, motivo: "fonte_parada_ha_4_dias_uteis" }],
+  // Regressao do bug que motivou o CVMCADENCIA1: domingo 16 (3 dias corridos,
+  // 0 ciclos perdidos) tinha que passar. Com a regra antiga de dias uteis isso
+  // reprovava TODA quarta-feira, alarme falso semanal.
+  ["domingo 16 (ciclo normal de publicacao) passa, nao e mais falso-positivo", { ok: true, last_modified_iso: "2026-08-16" }, { ok: true, motivo: "ok" }],
+  ["13 dias corridos (1 ciclo perdido) ainda passa, no limite", { ok: true, last_modified_iso: "2026-08-06" }, { ok: true, motivo: "ok" }],
+  ["14 dias corridos (2 ciclos perdidos) reprova, no limite exato", { ok: true, last_modified_iso: "2026-08-05" }, { ok: false, motivo: "fonte_sem_publicar_ha_2_ciclos_semanais_14_dias" }],
+  ["21 dias corridos (3 ciclos perdidos) reprova", { ok: true, last_modified_iso: "2026-07-29" }, { ok: false, motivo: "fonte_sem_publicar_ha_3_ciclos_semanais_21_dias" }],
+  ["data de referencia invalida reprova com motivo proprio", { ok: true, last_modified_iso: "lixo" }, { ok: false, motivo: "data_invalida" }],
   ["ultimo sync falhou reprova mesmo com data de hoje", { ok: false, motivo: "nao_e_deflate", last_modified_iso: "2026-08-19" }, { ok: false, motivo: "ultimo_sync_falhou:nao_e_deflate" }],
   ["sem data nenhuma reprova", { ok: true }, { ok: false, motivo: "sem_data_de_referencia" }],
   ["fallback para max_data_entrega quando falta o header", { ok: true, max_data_entrega: "2026-08-18" }, { ok: true, motivo: "ok" }],
@@ -134,9 +164,9 @@ checa("backfill gravou a meta uma vez", envBackfillFresco._gravado.length, 1);
 checa("backfill marcou a origem", envBackfillFresco._gravado[0] && envBackfillFresco._gravado[0].v.origem, "backfill_documentos");
 checa("backfill escreveu na chave certa", envBackfillFresco._gravado[0] && envBackfillFresco._gravado[0].k, "cvm:fonte_meta");
 
-const envBackfillVelho = envFake(undefined, [{ de: "2026-08-15" }]);
+const envBackfillVelho = envFake(undefined, [{ de: "2026-08-01" }]);
 const rBackfillVelho = await mod.avaliarFrescorCVM(envBackfillVelho);
-checa("o caso real de hoje via backfill, sabado 15, reprova", { ok: rBackfillVelho.ok, motivo: rBackfillVelho.motivo }, { ok: false, motivo: "fonte_parada_ha_3_dias_uteis" });
+checa("backfill com documento de 18 dias atras (2 ciclos) reprova", { ok: rBackfillVelho.ok, motivo: rBackfillVelho.motivo }, { ok: false, motivo: "fonte_sem_publicar_ha_2_ciclos_semanais_18_dias" });
 
 const envSemNada = envFake(undefined, []);
 const rSemNada = await mod.avaliarFrescorCVM(envSemNada);

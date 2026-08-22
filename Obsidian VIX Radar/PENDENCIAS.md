@@ -108,14 +108,30 @@ inteira, o ponteiro do `AGENTS.md` apontava para arquivo não versionado, e a re
 de `.gitignore` para `setup-deploy-credential.ps1` era ilusória porque o arquivo é
 trackeado desde `201ebda`.
 
-### Abertos desta janela
+### Resolvidos em 22/08
 
-**MANIFESTOFRAGIL1 (P3).** O `status/allclear-manifesto.json` indexa cada frase de
-ausência junto com o HTML e o estilo inline. Trocar `color:#6b7280` por `#94A3B8`
-fez duas frases idênticas aparecerem como NOVAS e reprovarem a guarda. Falso
-positivo de segurança, mas fragilidade real: qualquer mudança de CSS quebra o
-manifesto e obriga atualização manual. **Pronto quando** a chave for derivada só do
-texto visível, sem estilo nem tag.
+**MANIFESTOFRAGIL1 — RESOLVIDO.** `normaliza()` em `check-frontend-allclear.mjs`
+agora remove tag e atributo (`<[^>]*>`) antes de gerar a chave; só o texto visível
+entra na comparação. Manifesto migrado preservando classificação: 57 frases viraram
+56 (as duas variantes de cor que só diferiam pelo estilo colapsaram numa só, sem
+perda nem `nao_revisada` órfã, sem colisão de classificação divergente).
+`node scripts/check-frontend-allclear.mjs` → `CHECK_ALLCLEAR_OK`.
+
+**SACFALSA-RESIDUO — RESOLVIDO.** Comentário corrigido em
+`api/test/agenda-validacao.test.mjs:4-10` e `scripts/test-frescor-cvm.mjs:1-13`: a
+causa real é `npm ci --omit=dev` no deploy, não Smart App Control. Destino do
+`test-frescor-cvm.mjs` decidido: mantido, não é redundante (cobre só a parte
+algorítmica sem subir Worker, mais rápido que Miniflare). Estava quebrado desde o
+CVMCADENCIA1 de 20/08 (`_cvmDiasCorridosApos is not defined`, drift real, não
+causado por esta correção — confirmado com `git stash`/pop antes de mexer). Reescrito
+para acompanhar a lógica atual de ciclo semanal, com teste de regressão explícito do
+falso-positivo de domingo do CVMCADENCIA1. `node scripts/test-frescor-cvm.mjs` →
+`TUDO VERDE em 40 casos`. As 3 notas do vault que também citam a crença errada
+(`82 -` e `85 - Auditoria Geral...`) foram revisadas e mantidas como estão: são log
+datado do que se acreditava na hora, a correção mora na entrada nova, não se reescreve
+auditoria passada.
+
+### Abertos desta janela
 
 **DEDUPON2 e FEEDRERENDER1 (P2, diagnosticados, fora de escopo de propósito).** O
 `_isDupSemantico` deduplica O(n²) sobre todos os eventos, no boot e em todo
