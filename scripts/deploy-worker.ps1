@@ -214,6 +214,18 @@ if ($matchLine) {
   Write-Host "AVISO: nao foi possivel extrair WORKER_VERSAO do bundle (formato mudou?)." -ForegroundColor Yellow
 }
 
+# --- 1.1 GATE DE CHANGELOG (WRCGL1, 2026-08-22) ------------------------------
+# O cabecalho do wrangler.toml e o changelog de verdade do projeto. Entre
+# v4.9.196 e v4.9.208 treze versoes subiram sem entrada nenhuma, porque nada
+# reprovava. Regra a partir de agora: sem a linha "# v4.9.NNN.js = ..." no
+# cabecalho, sem deploy. Mesma filosofia do VERSAO3X acima, o guard mora no
+# ato que cria a divergencia em vez de depender de alguem lembrar depois.
+$chgNeedle = "# $ver.js ="
+if ((Get-Content $toml -Raw) -notmatch [regex]::Escape($chgNeedle)) {
+  Fail "Entrada de changelog ausente para $ver no cabecalho do $toml (WRCGL1). Escreva a linha '$chgNeedle ...' descrevendo a mudanca antes de deployar. Historial do que subiu sem registro: commits de git a partir do v4.9.196."
+}
+Write-Host "Gate changelog: entrada '$ver.js' presente no cabecalho do wrangler.toml" -ForegroundColor Green
+
 # --- 2. Aponta wrangler.toml main ------------------------------------------
 $tomlRaw = Get-Content $toml -Raw
 $m = [regex]::Match($tomlRaw, '(?m)^(\s*main\s*=\s*")([^"]+)(")')

@@ -1,9 +1,49 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO — wrangler.toml  (main = v4.9.195)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.208)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.208.js = v4.9.207 + ANOMSCHEMA1 e FONTELATENCIA1 (auditoria 21/08):
+#   - ANOMSCHEMA1: tres detectores de anomalia estruturalmente impossiveis com o
+#     schema anbima_publico marcados como desligados de proposito, detector de taxa
+#     indicativa compara em ponto percentual direto, sem o /100 herdado do provedor
+#     antigo. Teste em api/test/anomalias-schema.test.mjs.
+#   - FONTELATENCIA1: decisao do operador, sem scraping do RAD. Emissor com evento
+#     CRITICO/RELEVANTE de imprensa nos ultimos 7 dias e promovido para FULL com
+#     motivo imprensa_recente_7d. Teste de fuso corrigido (quebrava apos as 21h).
+# v4.9.207.js = v4.9.206 + REGISTRO-ADMIN1 e RATELIMIT-FAILOPEN1 (auditoria 20/08):
+#   - REGISTRO-ADMIN1: handleRegistrar para de derivar autoridade do e-mail do corpo,
+#     que nunca e verificado. Registro nasce sempre pendente, a via legitima continua
+#     no handleAdminAutoLogin gateado por ADMIN_PASSWORD. Teste registro-admin.test.mjs.
+#   - RATELIMIT-FAILOPEN1 com AUTHDISPO1: criticidade explicita no checkRateLimitV2,
+#     default critica fail-closed. Login de cliente abre com telemetria rl_bypass_auth,
+#     senha admin errada fecha.
+# v4.9.206.js = v4.9.205 + ALERTAMERCADOFALSO1, ANBIMAVERDEFALSO1 e MOCARDFALSO1:
+#   detector_operacional no Worker e guarda generica de frase de ausencia no frontend
+#   (ZEROINDISPONIVEL1), para "nao li o dado" nunca mais afirmar saude de carteira.
+# v4.9.205.js = v4.9.204 + SPREADSERIE1: corte por fonte antes de estatistica historica
+#   nas series mercado:serie:*, campo taxa_indicativa_pct com spread_bps como alias.
+# v4.9.204.js = v4.9.203 + CVMCADENCIA1 e HEALTHSPLIT1: frescor da fonte CVM sai do ok
+#   agregado e vira fonte_externa_ok com cadencia semanal (2 ciclos perdidos).
+# v4.9.203.js = v4.9.202 + EVENTOFRESCOR1 (health diario mede idade do evento), FONTESFAKE1
+#   (tira de fontes decorativa removida) e CARIMBOFAKE1 (carimbo declara idade do dado).
+# v4.9.202.js = v4.9.201 + CVMFRESCOR1b: idade da fonte deriva de cvm:documentos quando
+#   a meta ainda nao existe, fim do alarme falso a cada deploy.
+# v4.9.201.js = v4.9.200 + CVMFRESCOR1: syncCVMAutomatico carimba cvm:fonte_meta com
+#   Last-Modified e max Data_Entrega, avaliarFrescorCVM em dias uteis, crons checam o
+#   retorno de syncCVMAutomatico em vez de confiar em ausencia de excecao.
+# v4.9.200.js = v4.9.199 + HISTFLAT2: lookup do historico de EWS usa a mesma normalizacao
+#   de caixa da escrita (kvEwsHistKey grava minusculo, leitura usava case original).
+# v4.9.199.js = v4.9.198 + HISTFLAT1: leitura de ews:hist sai de tras do gate de escrita,
+#   chamada admin/smoke para de sobrescrever o snapshot com payload achatado.
+# v4.9.198.js = v4.9.197 + CHAVEESCOPO1 complemento: aceite dual ROUTINE_API_KEY OU
+#   REMOTE_VERIFICACAO_KEY nas 3 acoes de verificacao (listar/confirmar/reservar).
+# v4.9.197.js = v4.9.196 + CHAVEESCOPO1: secret REMOTE_VERIFICACAO_KEY com escopo restrito
+#   as 3 acoes de verificacao, toda outra acao do contrato exige ROUTINE_API_KEY.
+# v4.9.196.js = v4.9.195 + CONCORVERIF1 e HEARTBEATVERIF1: reserva atomica da fila de
+#   verificacao via EstadoSemanaDO (TTL 20min, fail-open documentado) e heartbeat do
+#   agente verificacao_async no watchdog (limite 16h).
 # v4.9.195.js = v4.9.194 + auditoria geral 15/08:
 #   - notificar_rotina: rate limit anonimo + dedup por rotina/dia + escape no corpo
 #     e no assunto (NOTIFYRL1).
