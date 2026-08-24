@@ -53,6 +53,12 @@ recovery-codes.txt
 .DS_Store
 Thumbs.db
 desktop.ini
+.reasonix/
+reasonix.toml
+
+# Bancada de teste do bump-cache-version (scripts/test-bump-cache-version.ps1
+# cria/limpa scripts/_tmp_bump_test/bump2 sozinho; nao versionar a bancada).
+_tmp_bump_test/
 
 # ---------- Cloudflare Workers, Wrangler ----------
 .wrangler/
