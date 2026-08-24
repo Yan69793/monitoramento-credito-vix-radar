@@ -2,6 +2,17 @@
 
 Última atualização: 2026-08-24 (agente: Claude Opus 5)
 
+> [!warning] 24/08 (2ª varredura) — parte do buraco nunca foi da CVM.
+> A Eletrobras virou AXIA ENERGIA em 10/11/2025 e os documentos dela **estavam
+> gravados** no KV, invisíveis: três tabelas de alias que precisavam concordar e
+> não concordavam. Nove meses de emissor exibido como `sem_eventos`. Mesma
+> família, a Sabesp ficava órfã por acento no nome. Worker em **v4.9.211**:
+> Eletrobras 0 → 28 documentos, Sabesp 0 → 11, órfãos 2 → 1. Aliases novos para
+> MOTIVA (ex-CCR) e SERENA (ex-Omega). Guarda semanal na nuvem conferindo os 103
+> contra o cadastro vivo da CVM, com prova das duas pontas dentro do próprio CI.
+> 62 testes passando. Quatro emissores seguem sem registro ativo, tolerados com
+> motivo declarado, aguardando decisão do operador.
+
 > [!warning] 24/08 — painel travado em 20/08: a fonte da CVM morreu em silêncio.
 > `ipe_cia_aberta_2026.zip` sumiu do servidor da CVM em 23/08 (404, listagem só até
 > 2025.zip, catálogo CKAN ainda anunciando). `cvm:documentos` congelou em 15/08, as
@@ -331,6 +342,9 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
+- ABERTO 24/08 (NOMEMORTO1, decisão do operador): 4 emissores sem registro ativo na CVM, tolerados com motivo declarado em `scripts/check-emissores-cadastro.mjs`. AES Brasil (incorporada pela Auren, fundir ou remover), Banco Pan e Banco Votorantim (fecharam capital, seguem emissores de dívida sem protocolo IPE), Nexa Resources (Luxemburgo via BDR, exceção permanente). Nenhum gera documento IPE, evento só por imprensa
+- ABERTO 24/08 (cobertura): Braskem pediu recuperação extrajudicial em 24/08 e não está nos 103. Decidir se entra
+- RESOLVIDO 24/08 (NOMEMORTO1 + ACENTOMATCH1): emissor renomeado ficava cego por defeito de tabela de alias, nove meses no caso da Eletrobras. Worker v4.9.211, commit `e55d68d`, 62 testes. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - ABERTO 24/08 (CVMURL404, P1, depende da CVM): `ipe_cia_aberta_2026.zip` continua 404 no servidor da CVM desde 23/08. Enquanto não voltar, não entra Fato Relevante nem Comunicado ao Mercado, e o evento novo depende só de imprensa e RAD. O Worker já detecta e alerta: `cvm_fonte_falha_dura`, `cvm_fonte_idade_dias` e `cvm_fonte_degrada_servico` no health público, e `frescor-check.yml` nomeando o campo. Após 4 syncs falhos seguidos o `ok` agregado cai e o `canonical-test` fica vermelho. Nada a fazer do nosso lado além de acompanhar. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 24/08 (CVMURL404, CVMMETAWIPE1, CVMDURA1, VOLTTL1, CAPRESERVA1, CALIB2): auditoria do painel travado em 20/08. Worker v4.9.209 e v4.9.210 em produção, 55 testes passando, commits `c0167cd`, `1572279`. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 24/08 (WORKTREE12, continuação): das 6 worktrees do Claude Code, 4 eram checkout parado sem valor (removidas), 2 tinham trabalho real nunca commitado. RETRY-PROP1 (retry com backoff na validação pós-deploy do `deploy-worker.ps1`, commit `604c600`) e a extensão de `ROTINA_RESUMO` pras 2 rotinas que faltavam no cherry-pick de 21/08 (`run_vixradar_ranking_mensal.ps1`, `run_vixradar_verificacao_async.ps1`), ambos fundidos a mão em cima do `main` atual porque os arquivos-base tinham divergido. Achado no caminho, não corrigido por estar fora do escopo: `ranking-mensal` usa `$ErrorActionPreference = 'Stop'`, mas a rotina está OBSOLETA (task não existe mais). Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`

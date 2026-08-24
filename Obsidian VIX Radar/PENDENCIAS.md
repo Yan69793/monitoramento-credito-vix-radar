@@ -11,6 +11,52 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (segunda varredura) — RESOLVIDO: emissor renomeado ficava cego nove meses (NOMEMORTO1)
+
+Nasceu de uma pergunta do operador. Depois de eu fechar o diagnóstico dizendo que não havia o que fazer do nosso lado, ele insistiu que sempre pegou os dados na CVM e que tinha que ter solução. Refiz a varredura e ele estava certo: parte do buraco nunca foi da CVM.
+
+**O achado.** A Eletrobras virou AXIA ENERGIA em 10/11/2025, tickers ELET3/ELET5/ELET6 para AXIA3/AXIA5/AXIA6. Os documentos dela **estavam gravados** em `cvm:documentos` como `AXIA ENERGIA S.A.` e `AXIA ENERGIA NORDESTE S.A.`, e `buscarDocumentosCVM("Eletrobras")` devolvia zero. Nove meses de emissor exibido com `sem_eventos`, que na tela do cliente se lê como ausência de fato.
+
+**Causa raiz.** Três tabelas de alias que precisavam concordar e não concordavam. `SYNC_ALIAS_NOMES_CVM` decidia se a linha da CVM entrava no KV, `SYNC_ALIAS_TO_EMPRESA` decidia de qual emissor era, e `buscarDocumentosCVM` tinha cópia própria e incompleta para decidir o que procurar. O documento entrava pela primeira, era atribuído pela segunda e sumia na terceira. A Auren só escapou porque alguém lembrou de repetir `CESP` nas três.
+
+**Segundo bug, mesma família (ACENTOMATCH1).** O alias da Sabesp está escrito `CIA SANEAMENTO BASICO ESTADO SAO PAULO` e a CVM publica `CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO`. `String.includes` é literal, então o documento ficava órfão, sem nenhum emissor reclamando.
+
+**Terceiro achado, cruzando os 103 com `cad_cia_aberta.csv`.** Nem `CCR` nem `OMEGA` têm registro na CVM, nem cancelado. Quem existe e está ATIVO é a sucessora: `MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A.` (mesmo CNPJ 02.846.056/0001-97) e `SERENA ENERGIA S.A.`. Nenhum alias declarado para as duas.
+
+**Medido contra o `cvm:documentos` de produção, antes e depois:**
+
+```
+Eletrobras        0 -> 28 documentos
+Sabesp            0 -> 11 documentos
+documentos órfãos 2 ->  1
+```
+
+### Correção (Worker v4.9.211, commit `e55d68d`)
+
+- O leitor deriva os termos de `SYNC_ALIAS_TO_EMPRESA` (novo `SYNC_EMPRESA_TO_ALIASES`) em vez de manter cópia. Alias novo passa a valer nas três pontas de uma vez, sem ninguém precisar lembrar.
+- Comparação de nome de empresa contra fonte externa é sempre sem acento, dos dois lados, na ingestão e na leitura.
+- Aliases novos para MOTIVA e SERENA.
+- `admin_documentos_cvm`, somente leitura, responde o que o sistema enxerga para um emissor e com quais aliases. É a observabilidade cuja falta deixou o bug durar nove meses.
+
+### Guarda sistêmica
+
+`scripts/check-emissores-cadastro.mjs` confere os 103 contra o cadastro vivo da CVM. Exceção precisa ser declarada com motivo e data, senão reprova. Roda toda segunda em `.github/workflows/emissores-cadastro.yml`, na nuvem, deliberadamente fora da máquina local, porque o vigia local equivalente foi desligado em 21/08 e a fonte ficou escura quatro dias sem ninguém ver.
+
+O próprio workflow prova as duas pontas. Isso não é zelo decorativo: a primeira versão da guarda **aprovou** um emissor inventado chamado "Ferrovia Fantasma Renomeada", porque o casamento por prefixo de 8 caracteres batia no meio de `FERROVIA CENTRO-ATLANTICA`. Sem a prova do lado ruim, ela teria entrado no repo parecendo funcionar.
+
+### Aberto, decisão do operador
+
+Quatro emissores sem registro ativo na CVM, hoje tolerados com motivo declarado. Nenhum gera documento IPE, então evento deles só pode vir de imprensa e rating. É piso de cobertura conhecido, não falha de ingestão.
+
+- **AES Brasil**, incorporada pela Auren Energia. Fundir com Auren ou remover dos 103.
+- **Banco Pan**, fechou capital, `BANCO PAN SA` consta CANCELADA.
+- **Banco Votorantim**, sem registro como companhia aberta.
+- **Nexa Resources**, companhia de Luxemburgo listada via BDR, nunca foi companhia aberta na CVM. Exceção permanente.
+
+Fica também a pergunta de cobertura levantada na primeira varredura: a Braskem pediu recuperação extrajudicial em 24/08 e não está nos 103.
+
+---
+
 ## 24/08 — RESOLVIDO: painel travado em 20/08, fonte da CVM morta em silêncio (CVMURL404)
 
 Sintoma que o operador viu: o painel não mostrava nenhum fato, notícia ou evento depois de 20/08, com hoje sendo 24/08.
