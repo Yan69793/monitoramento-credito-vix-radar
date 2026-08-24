@@ -11,6 +11,24 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (terceira rodada) — RESOLVIDO: carteira corrigida, AES Brasil sai e Braskem entra (CARTEIRA-24AGO1)
+
+Fechamento das decisões que a guarda de cadastro levantou, mais uma correção de cobertura que apareceu na varredura de fontes.
+
+**AES Brasil saiu.** Foi incorporada pela Auren Energia, que já estava nos 103. Manter as duas contava o mesmo risco de crédito duas vezes e deixava um emissor permanentemente sem evento, porque não existe mais nada para achar. Nenhum registro AES está ativo na CVM, `AES TIETÊ ENERGIA S.A` consta CANCELADA por elisão por incorporação desde 2021. O histórico das semanas antigas fica intacto, ela só deixa de ser varrida daqui pra frente. Os aliases órfãos saíram de `SYNC_ALIAS_TO_EMPRESA` e de `TOKENS_ROBUSTOS_ANBIMA`, e a exceção saiu da guarda.
+
+**Braskem entrou.** `BRASKEM S.A.`, CNPJ 42.150.391/0001-70, ATIVO na CVM. Protocolou fato relevante de pedido de recuperação extrajudicial aprovado pelo Conselho hoje, 24/08 às 09h38, e estava fora da carteira justamente no dia do evento mais material do ano dela. Foi declarada nas três pontas de alias de uma vez, mais o mapa de setor em `Petróleo, Gás e Combustíveis`, que é a lição do NOMEMORTO1 aplicada na entrada do emissor em vez de descoberta nove meses depois.
+
+Total segue 103. Worker em v4.9.212, commit `b13b605`.
+
+**Os outros três ficam, com motivo escrito.** Banco Pan e Banco Votorantim fecharam capital e seguem emissores de dívida sem protocolo IPE. Nexa Resources é de Luxemburgo, listada via BDR, e nunca foi companhia aberta na CVM. Continuam nos 103 e continuam como exceção declarada em `scripts/check-emissores-cadastro.mjs`. Evento deles só vem de imprensa e rating, o que é piso de cobertura conhecido, não falha de ingestão.
+
+### Como a Braskem foi achada, que é o ponto que interessa
+
+Não foi auditando o código. Apareceu enquanto eu media se a Dados de Mercado tinha fato relevante mais novo que o nosso, e o primeiro item da lista pública deles era a Braskem de hoje. Ou seja, a lacuna de cobertura só ficou visível porque olhei uma fonte externa e comparei com a nossa. Vale como método, não como acaso: comparar a carteira contra um agregador de mercado de vez em quando encontra emissor faltando de um jeito que nenhuma varredura interna encontra, porque internamente tudo parece consistente.
+
+---
+
 ## 24/08 (segunda varredura) — RESOLVIDO: emissor renomeado ficava cego nove meses (NOMEMORTO1)
 
 Nasceu de uma pergunta do operador. Depois de eu fechar o diagnóstico dizendo que não havia o que fazer do nosso lado, ele insistiu que sempre pegou os dados na CVM e que tinha que ter solução. Refiz a varredura e ele estava certo: parte do buraco nunca foi da CVM.

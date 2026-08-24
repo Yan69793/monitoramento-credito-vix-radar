@@ -2,6 +2,14 @@
 
 Última atualização: 2026-08-24 (agente: Claude Opus 5)
 
+> [!info] 24/08 (3ª rodada) — carteira corrigida e noturna antecipada.
+> AES Brasil saiu (incorporada pela Auren, que já estava nos 103) e a Braskem
+> entrou, no dia em que pediu recuperação extrajudicial. Total segue 103, Worker
+> em **v4.9.212**. Braskem declarada nas três pontas de alias de saída, aplicando
+> a lição do NOMEMORTO1 na entrada em vez de descobrir depois. A rodada noturna
+> foi antecipada para as 15h58 a pedido do operador, para medir de uma vez o
+> CAPRESERVA1, o NOMEMORTO1 e o contador do CVMDURA1, que nunca rodaram juntos.
+
 > [!warning] 24/08 (2ª varredura) — parte do buraco nunca foi da CVM.
 > A Eletrobras virou AXIA ENERGIA em 10/11/2025 e os documentos dela **estavam
 > gravados** no KV, invisíveis: três tabelas de alias que precisavam concordar e
@@ -342,8 +350,9 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
-- ABERTO 24/08 (NOMEMORTO1, decisão do operador): 4 emissores sem registro ativo na CVM, tolerados com motivo declarado em `scripts/check-emissores-cadastro.mjs`. AES Brasil (incorporada pela Auren, fundir ou remover), Banco Pan e Banco Votorantim (fecharam capital, seguem emissores de dívida sem protocolo IPE), Nexa Resources (Luxemburgo via BDR, exceção permanente). Nenhum gera documento IPE, evento só por imprensa
-- ABERTO 24/08 (cobertura): Braskem pediu recuperação extrajudicial em 24/08 e não está nos 103. Decidir se entra
+- RESOLVIDO 24/08 (CARTEIRA-24AGO1): AES Brasil saiu da carteira, Braskem entrou. Total segue 103, Worker v4.9.212, commit `b13b605`. Restam 3 emissores sem registro ativo na CVM, tolerados com motivo declarado na guarda (Banco Pan, Banco Votorantim, Nexa Resources). Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
+- RESOLVIDO 24/08 (era ABERTO, NOMEMORTO1): eram 4 emissores sem registro ativo na CVM, tolerados com motivo declarado em `scripts/check-emissores-cadastro.mjs`. AES Brasil (incorporada pela Auren, fundir ou remover), Banco Pan e Banco Votorantim (fecharam capital, seguem emissores de dívida sem protocolo IPE), Nexa Resources (Luxemburgo via BDR, exceção permanente). Nenhum gera documento IPE, evento só por imprensa
+- RESOLVIDO 24/08 (cobertura): Braskem entrou na carteira em v4.9.212
 - RESOLVIDO 24/08 (NOMEMORTO1 + ACENTOMATCH1): emissor renomeado ficava cego por defeito de tabela de alias, nove meses no caso da Eletrobras. Worker v4.9.211, commit `e55d68d`, 62 testes. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - ABERTO 24/08 (CVMURL404, P1, depende da CVM): `ipe_cia_aberta_2026.zip` continua 404 no servidor da CVM desde 23/08. Enquanto não voltar, não entra Fato Relevante nem Comunicado ao Mercado, e o evento novo depende só de imprensa e RAD. O Worker já detecta e alerta: `cvm_fonte_falha_dura`, `cvm_fonte_idade_dias` e `cvm_fonte_degrada_servico` no health público, e `frescor-check.yml` nomeando o campo. Após 4 syncs falhos seguidos o `ok` agregado cai e o `canonical-test` fica vermelho. Nada a fazer do nosso lado além de acompanhar. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 24/08 (CVMURL404, CVMMETAWIPE1, CVMDURA1, VOLTTL1, CAPRESERVA1, CALIB2): auditoria do painel travado em 20/08. Worker v4.9.209 e v4.9.210 em produção, 55 testes passando, commits `c0167cd`, `1572279`. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
