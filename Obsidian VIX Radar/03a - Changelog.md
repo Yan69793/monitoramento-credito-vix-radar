@@ -11,6 +11,28 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
+> [!success] 24/08 — **CURADORIA1 v202.31. Troca de carteira aplicada só no backend deixou a Braskem sem card de métrica no dia da recuperação extrajudicial.**
+> **Status:** Marco 1 resolvido e deployado. Marco 2, recuração dos 101 emissores herdados, aberto
+> **Data da Versão:** 2026-08-24
+> **Origem do Registro:** print do operador com os quatro cards de risco da Braskem vazios. Medição direta de `EMISSORES_LISTA` (`api/src/worker.js:3798`), `METRICAS_CURADAS` e `EMISSORES` (`app/index.html`), comparadas contra o HTML servido em produção
+> **Condição de Obsolescência:** perde validade quando o Marco 2 fechar e os 103 emissores carregarem `as_of`/`source_date`/`metric_type`, ou se `METRICAS_CURADAS` deixar de ser tabela curada à mão e passar a ser servida pelo Worker
+>
+> O operador perguntou por que os cards de Alavancagem, Rating, Cobertura e EBITDA da Braskem estavam vazios, ainda mais no dia em que ela protocolou recuperação extrajudicial de US$ 10,9 bilhões. A leitura natural era falha de coleta ligada ao evento. Não é, e essa era a parte que nenhuma sessão descobria sozinha: esses cards nunca dependeram de evento, de rotina, de LLM ou da CVM. Eles saem de `METRICAS_CURADAS`, objeto literal escrito à mão dentro do `index.html`, e emissor que não é chave dele cai num placeholder mudo.
+>
+> A causa imediata tem prova documental. O commit `b13b605`, da troca de carteira CARTEIRA-24AGO1, alterou `api/src/worker.js`, `api/wrangler.toml` e `scripts/check-emissores-cadastro.mjs`, e não tocou `app/index.html`. A carteira mudou só no backend. O frontend ficou com AES Brasil no menu, sem Braskem em lugar nenhum, e sem métrica para três emissores. Ninguém viu porque nada no projeto comparava as três tabelas que precisam concordar, mesma família do NOMEMORTO1, onde eram três tabelas de alias sem nada forçando a concordância.
+>
+> Medido: carteira 103, curadas 101, menu 103 com o conjunto errado. Sem card, Braskem, Tupy e Itaú Unibanco. Órfã, AES Brasil, que também seguia no menu. Produção idêntica ao repo, `CACHE_VERSION` v202.30.
+>
+> A mesma medição derrubou duas coisas que o painel afirmava sem base. O placeholder exibia "Cobertura · ICSD", e "Cobertura" tem zero ocorrências como rótulo nos 101 emissores curados, ou seja, o card vazio prometia uma métrica que o sistema não produz para ninguém. E a idade do dado não era legível por máquina, vivia dentro do texto livre de `fonte` tipo `"CVM · 4T25"`, com 257 das 404 células declarando 4T25 em agosto de 2026, exibidas sem qualquer sinal de defasagem. Três cards do Vamos não tinham `fonte` nenhum, e ao buscar a fonte do Rating apareceu que o valor exibido estava errado, AAA(bra) com perspectiva estável quando a Fitch rebaixou para AA+(bra) com perspectiva negativa em agosto de 2024.
+>
+> Marco 1, entregue. Braskem, Tupy e Itaú Unibanco com os quatro cards, cada número de fonte primária: release do 2T26 da Braskem de 14/08 (alavancagem 6,74x, EBITDA US$ 1,04 bi, dívida líquida ajustada US$ 9,5 bi), ITR da Tupy de 06/08, 6-K do Itaú protocolado na SEC em 04/08 (lucro recorrente R$ 12,4 bi, ROE 24,3%, CET1 12,3%), Fitch RD de 17/08 na Braskem e S&P brAA de março na Tupy. Schema com `as_of`, `source_date` e `metric_type`. Placeholder virou aviso honesto. Painel exibe a idade do dado, e card sem datação exibe "idade não declarada" em vez de exibir nada.
+>
+> Guarda: `scripts/check-metricas-curadas.mjs`, offline, no CI dentro de `emissores-cadastro.yml`. Cinco checagens, cobertura de métrica com órfã, cobertura de menu, integridade do trio de campos, fonte obrigatória e frescor por tipo. Prazos concretos por tipo de métrica em vez de um N universal, porque rating, ITR, DFP, taxa ANBIMA e evento de crédito têm relógios diferentes. Três pontas provadas no CI, reprova emissor sem card, reprova card com `as_of` vencido, e aceita o repo como está, porque uma guarda que reprovasse tudo passaria nas duas negativas parecendo sadia.
+>
+> Limite declarado de propósito no cabeçalho do script: ela não consegue reprovar "card velho porque saiu rating novo", já que lê arquivos estáticos. O único candidato a oráculo, `data/labels/eventos_credito.jsonl`, foi medido e não serve, parou em 2026-07-31 e tem zero registros de Braskem, então aprovaria em silêncio justamente o caso que a originou. Guarda que promete checagem que não consegue fazer é pior que guarda ausente.
+
+---
+
 > [!success] 09/08 21h18 — **LEGALCVM1+LEGALSHARE1 v202.6. Citação CVM revogada e seção de compartilhamento de dados incompleta na Política de Privacidade.**
 > **Status:** resolvido, deploy validado em produção. CNPJ segue como pendência aberta, ver final da entrada
 > **Data da Versão:** 2026-08-09

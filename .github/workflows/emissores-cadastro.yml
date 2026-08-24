@@ -20,7 +20,9 @@ on:
   push:
     paths:
       - 'api/src/worker.js'
+      - 'app/index.html'
       - 'scripts/check-emissores-cadastro.mjs'
+      - 'scripts/check-metricas-curadas.mjs'
       - '.github/workflows/emissores-cadastro.yml'
 
 permissions:
@@ -48,6 +50,15 @@ jobs:
       # prova negativa da guarda de cadastro para falhar cedo quando o problema e interno.
       - name: Conferir coerencia das tabelas de alias
         run: node scripts/check-alias-coerencia.mjs
+
+      # CURADORIA1 (2026-08-24). A troca de carteira do commit b13b605 mexeu so no
+      # backend. O frontend ficou com AES Brasil no menu e sem card nenhum para a
+      # Braskem, que no mesmo dia protocolou recuperacao extrajudicial de US$ 10,9 bi.
+      # O painel exibia os quatro cards de risco vazios e ninguem viu, porque nada
+      # comparava EMISSORES_LISTA com EMISSORES e METRICAS_CURADAS. Offline, le so
+      # worker.js e app/index.html.
+      - name: Conferir cobertura e frescor dos cards de metrica
+        run: node scripts/check-metricas-curadas.mjs
 
       # Prova da outra ponta, dentro do proprio CI. Sem isto, um bug que fizesse a
       # guarda aprovar qualquer coisa passaria despercebido para sempre, porque o
@@ -86,3 +97,45 @@ jobs:
             exit 1
           fi
           echo "OK: guarda reprovou o alias contraditorio, como deve."
+
+      # CURADORIA1, ponta negativa 1 de 2: cobertura. Reproduz o defeito real, emissor
+      # entra na carteira e o frontend nao acompanha. Nome ASCII de proposito, o
+      # perl -0pe ja gravou byte latin-1 cru num teste anterior e ele passou pelo
+      # motivo errado, reprovando por encoding em vez de reprovar pela regra.
+      - name: Guarda tem que reprovar emissor sem card de metrica
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          # \r?\n e nao \n: o checkout do CI vem com LF, mas o working tree do Windows
+          # vem com CRLF (core.autocrlf=true). Com \n cru a substituicao nao entra no
+          # Windows, o grep abaixo pega, e o teste nao passa achando que provou algo.
+          perl -0pe 's/(var EMISSORES_LISTA\s*=\s*\[\r?\n)/$1  "Zzqx Petroquimica",\n/' \
+            api/src/worker.js > /tmp/guarda/worker_semcard.js
+          if ! grep -q '"Zzqx Petroquimica"' /tmp/guarda/worker_semcard.js; then
+            echo "::error::A injecao do teste nao entrou no arquivo. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_semcard.js node scripts/check-metricas-curadas.mjs; then
+            echo "::error::A guarda APROVOU um emissor da carteira sem card de metrica. Ela esta quebrada e nao protege nada."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o emissor sem card, como deve."
+
+      # CURADORIA1, ponta negativa 2 de 2: frescor. METRICAS_HOJE injeta o relogio,
+      # senao o teste caducaria sozinho: um as_of escolhido hoje para estar vencido
+      # pode estar valido daqui a um trimestre, e o teste passaria a falhar pelo
+      # motivo errado. Com a data fixa, 2T26 esta vencido porque 3T26 ja passou da
+      # janela de 45 dias mais 15 de tolerancia.
+      - name: Guarda tem que reprovar card com as_of vencido para o tipo
+        run: |
+          set -euo pipefail
+          if METRICAS_HOJE=2027-01-15 node scripts/check-metricas-curadas.mjs; then
+            echo "::error::A guarda APROVOU card de ITR com as_of vencido. A regra de frescor nao esta valendo."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o card defasado, como deve."
+
+      # Terceira ponta, o caso bom no mesmo relogio do caso ruim. Sem isto, uma guarda
+      # que reprovasse tudo passaria nos dois testes negativos acima e pareceria sadia.
+      - name: Guarda tem que aceitar o repo como esta
+        run: node scripts/check-metricas-curadas.mjs

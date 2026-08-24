@@ -11,7 +11,37 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (quinta rodada) — RESOLVIDO (Marco 1): carteira trocada só no backend deixou a Braskem sem card de métrica (CURADORIA1)
+
+> **Status:** Marco 1 resolvido e deployado. Marco 2 (recuração dos 101) ABERTO P2
+> **Data da Versão:** 2026-08-24
+> **Origem do Registro:** print do operador mostrando os quatro cards de risco da Braskem vazios no dia do protocolo de recuperação extrajudicial. Investigação mediu `EMISSORES_LISTA` (`api/src/worker.js:3798`), `METRICAS_CURADAS` e `EMISSORES` (`app/index.html`), e comparou contra produção
+> **Condição de Obsolescência:** perde validade quando o Marco 2 fechar e os 103 emissores tiverem `as_of`/`source_date`/`metric_type`, ou se `METRICAS_CURADAS` deixar de ser tabela curada à mão e passar a ser servida pelo Worker
+
+O operador viu os cards de Alavancagem, Rating, Cobertura e EBITDA da Braskem com traço e "Pendente", no mesmo dia em que ela protocolou recuperação extrajudicial de US$ 10,9 bi, e leu como falha de coleta ligada ao evento. Não era. Esses cards nunca dependeram de evento, rotina, LLM ou CVM.
+
+**Causa raiz.** `METRICAS_CURADAS` é objeto literal escrito à mão dentro de `app/index.html`, e o commit `b13b605` (`feat(carteira): AES Brasil sai, Braskem entra`, CARTEIRA-24AGO1) alterou `api/src/worker.js`, `api/wrangler.toml` e `scripts/check-emissores-cadastro.mjs` sem tocar em `app/index.html`. A carteira mudou só no backend. Nada no projeto comparava as três tabelas que precisam concordar, então a lacuna era silenciosa por construção. Mesma família do NOMEMORTO1, onde eram três tabelas de alias sem nada forçando concordância.
+
+**Medido.** Carteira 103, curadas 101, menu 103 mas com o conjunto errado. Sem card: Braskem, Tupy, Itaú Unibanco. Órfã: AES Brasil, que também seguia no menu. Braskem não aparecia no menu em lugar nenhum. Produção idêntica ao repo (`CACHE_VERSION` v202.30).
+
+**Defeitos de segunda ordem, achados na mesma medição.** (1) O placeholder exibia "Cobertura · ICSD", e "Cobertura" tem zero ocorrências como rótulo nos 101 curados, ou seja, o card vazio prometia métrica que o sistema não produz para ninguém. (2) A idade do dado não era legível por máquina, vivia dentro do texto livre de `fonte` tipo `"CVM · 4T25"`, e 257 das 404 células declaravam 4T25 em agosto de 2026, sem qualquer sinal de idade no painel. (3) Três cards do Vamos não tinham campo `fonte` nenhum, e ao buscar a fonte do Rating apareceu que o valor exibido estava factualmente errado, AAA(bra) com perspectiva estável quando a Fitch rebaixou para AA+(bra) com perspectiva negativa em 28/08/2024.
+
+**Correção (Marco 1).** Braskem, Tupy e Itaú Unibanco ganharam os quatro cards com número de fonte primária (release 2T26 da Braskem de 14/08, ITR da Tupy de 06/08, 6-K do Itaú na SEC de 04/08, ações de rating da Fitch e da S&P). AES Brasil saiu do menu e do curado. Braskem entrou no menu em Petróleo, Gás e Combustíveis, que é onde o backend a coloca. Schema ganhou `as_of`, `source_date` e `metric_type`. Placeholder virou aviso honesto. Painel passou a exibir a idade do dado, e card sem datação exibe "idade não declarada" em vez de exibir nada. Rating do Vamos corrigido para AA+(bra).
+
+**Guarda sistêmica.** `scripts/check-metricas-curadas.mjs`, offline, lê só `api/src/worker.js` e `app/index.html`, roda no CI em `.github/workflows/emissores-cadastro.yml`. Cinco checagens: cobertura de métrica (inclui órfã), cobertura de menu, integridade do trio de campos, fonte obrigatória, e frescor por tipo de métrica. Três pontas provadas no CI, reprova emissor sem card, reprova card com `as_of` vencido, e aceita o repo como está, porque guarda que reprova tudo passaria nas duas negativas parecendo sadia.
+
+**Limite declarado da guarda, de propósito.** Ela não consegue reprovar "card velho porque saiu rating novo" nem "porque saiu evento crítico novo", já que lê arquivos estáticos. O único candidato a oráculo no repo, `data/labels/eventos_credito.jsonl`, foi medido e não serve, parou em 2026-07-31 e tem zero registros de Braskem, então aprovaria em silêncio justamente o caso que originou a guarda. Frescor ficou por prazo fixo por tipo, e a cláusula "imediato" é revisão manual, registrada no cabeçalho do script.
+
+**Marco 2, aberto.** Os 101 emissores herdados seguem sem os três campos e aparecem como pendência declarada na saída da guarda (400 cards). Não reprovam ainda. A régua de ITR reprovaria todos eles hoje, o trimestre exigido é 2026-03-31 e eles carregam 4T25.
+
+---
+
 ## 24/08 (quarta rodada) — ABERTO P1: Braskem protocolou recuperação extrajudicial e o sistema não pegou (BRASKEMDETECT1)
+
+> **Status:** ABERTO, mas ver adendo de 24/08 ao final da entrada
+> **Data da Versão:** 2026-08-24
+> **Origem do Registro:** auditoria operacional de 24/08 ([[91 - Auditoria Operacional 2026-08-24]]), comparando o protocolo do dia contra o que a noturna das 16h trouxe
+> **Condição de Obsolescência:** perde validade quando existir fonte de Fato Relevante independente do ZIP `ipe_cia_aberta_2026.zip`, ou quando a CVM repuser o arquivo e a ingestão voltar a disparar por protocolo
 
 A Braskem protocolou recuperação extrajudicial em 24/08, US$ 10,9 bi reestruturados. A noturna analisou a Braskem às 16h e trouxe o rebaixamento da Fitch de 17/08, não o protocolo do mesmo dia. O painel segue com 20/08 como fato mais recente. Contraexemplo confirmado: falha de detecção, não ausência de fato.
 
@@ -24,6 +54,8 @@ A Braskem protocolou recuperação extrajudicial em 24/08, US$ 10,9 bi reestrutu
 **Guarda sistêmica.** Não existe ainda. Proposta: gatilho de detecção para eventos de recuperação judicial/extrajudicial a partir de fonte que não dependa do ZIP da CVM; teste com contraexemplo fixo (protocolo da Braskem de 24/08).
 
 **Status:** ABERTO. Depende da decisão de fonte alternativa.
+
+**Adendo 24/08 19h48, sem apagar o diagnóstico acima.** O print do operador, tirado às 19h48 na sessão do CURADORIA1, mostra o protocolo na timeline da Braskem: card CRÍTICO, "Conselho aprova pedido de recuperacao extrajudicial para reestruturar US$ 10,9 bilhoes", `IMPRENSA`, data 2026-08-24, fonte `braziljournal.com`, com o cabeçalho "Analisado às 15:09" e 2 eventos identificados. Ou seja, o evento entrou por imprensa em alguma rodada posterior à noturna das 16h que originou este registro, e o painel deixou de estar cego para ele. Isso **não fecha** a pendência: a causa raiz continua de pé, a detecção segue dependendo do ramo de imprensa porque o ZIP da CVM está em 404 (CVMURL404), e não há guarda que garanta a captura na próxima vez. O que muda é o enunciado "o sistema não pegou", que era verdade na hora da auditoria e não é mais. Não foi possível confirmar pelo servidor nesta sessão, `op=state` exige autenticação e devolveu HTTP 401. Confirmar com o operador antes de reclassificar.
 
 ---
 
