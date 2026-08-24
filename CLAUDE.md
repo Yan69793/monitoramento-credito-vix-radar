@@ -26,6 +26,16 @@ Ao fechar um item, atualizar os dois primeiros. Não trazer a lista para cá.
 - Resposta sempre bem resumida, direto ao ponto.
 - Isso não se aplica a evidência técnica exigida em outra regra deste arquivo (por exemplo a saída colada no `Portão de verificação`, comando, caminho de arquivo, valor numérico). Essas ficam literais. A regra acima é sobre a prosa ao redor, não sobre apagar prova.
 
+## Regras permanentes de auditoria
+
+Cinco regras que valem para todo plano e toda auditoria, daqui para frente. Nasceram de erros reais: consertar BOM onde o primeiro byte já era correto, contar arquivos de cabeça, dar função por "compila e parseia", reescrever nota datada como se fosse código vivo, e fechar guarda de segurança com prova de um lado só.
+
+1. **Medir antes de planejar.** Item de plano nunca é condicional a estado não verificado. Proibido "corrigir se X estiver quebrado". Rodar o comando, colar a saída, e só então decidir se o item existe.
+2. **Número sai de comando, com a saída citada ao lado.** Quantos arquivos, commits, worktrees — cada contagem nasce de uma linha de comando citada junto. Contagem de cabeça não vale.
+3. **Julgar código por comportamento, não por forma.** Função que compila e parseia pode estar errada. Não decidir "função incompleta" por parse nem por contagem de chaves: ler o corpo, procurar bug de comportamento e contradição interna, inclusive duas afirmações opostas no mesmo arquivo.
+4. **Separar artefato vivo de registro histórico.** Nota de auditoria datada, transcript, log e entrada antiga de `PENDENCIAS` guardam o que se acreditava naquela data e não se reescrevem. Só corrigir o que descreve o presente: código, `ESTADO.md`, `CLAUDE.md`, workflow. Antes de editar, perguntar se aquilo é estado ou é registro.
+5. **Prova de guarda é sempre de duas pontas.** Mostrar que a guarda reprova o caso ruim e que aceita o caso bom, com a saída crua da ferramenta colada. Linha de resumo não conta como prova. Esta quinta nasceu de três rodadas de Gate 6 onde uma prova de um lado só esconderia o bloqueio.
+
 ## Memória canônica
 
 Vault Obsidian: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\`
