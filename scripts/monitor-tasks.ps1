@@ -714,7 +714,23 @@ try {
 # ---------------------------------------------------------------------------
 # B3: ponte para backlog (upsert por nome de task, secao Auto-monitor)
 # ---------------------------------------------------------------------------
-if ($erros.Count -gt 0 -and (Test-Path $BacklogFile)) {
+# LATCH1 (2026-08-24): a guarda era `$erros.Count -gt 0`. Com zero erro o bloco
+# nao rodava e a tabela do ultimo dia com erro ficava congelada no backlog para
+# sempre. Alarme que acende e nunca apaga.
+#
+# Caso medido: VIXRadar-Coleta-Volatilidade falhou uma unica vez em 21/08 17:02
+# (BCB SGS 1178 devolveu HTTP 502) e voltou sozinha em 22/08. O monitor das
+# 07h de 22/08 ainda leu o LastTaskResult=1 da vespera e gravou a linha. Em
+# 23/08 nao havia erro nenhum, o bloco foi pulado, e a linha sobreviveu. Ficou
+# tres dias no topo do backlog central como se fosse falha viva.
+#
+# Agora o bloco roda sempre que o marcador existe. Sem erro, escreve a tabela
+# vazia com a data. Ausencia de erro passa a ser um fato registrado, e nao a
+# ausencia de escrita.
+#
+# Nota de defasagem, nao e bug: o monitor roda 07h e varias tasks rodam de
+# tarde. Falha noturna sempre aparece na manha seguinte e so limpa na outra.
+if (Test-Path $BacklogFile) {
     try {
         $bl = Get-Content $BacklogFile -Raw -Encoding UTF8 -ErrorAction Stop
         $markerStart = '<!-- AUTO-MONITOR-START -->'
@@ -723,9 +739,13 @@ if ($erros.Count -gt 0 -and (Test-Path $BacklogFile)) {
         $linhasAuto += ''
         $linhasAuto += '## Auto-monitor (gerado por monitor-tasks.ps1)'
         $linhasAuto += ''
-        $linhasAuto += 'Erros persistentes detectados pelo Task Scheduler. Upsert por nome de task.'
+        $linhasAuto += 'Erros persistentes detectados pelo Task Scheduler. Reescrito por inteiro a cada execucao.'
         $linhasAuto += "Ultima atualizacao: $hojeIso."
         $linhasAuto += ''
+        if ($erros.Count -eq 0) {
+            $linhasAuto += 'Nenhuma task com LastTaskResult nao-benigno nesta varredura.'
+            $linhasAuto += ''
+        }
         $linhasAuto += '| Task | Desde | Exit | Script | Motivo |'
         $linhasAuto += '|---|---|---|---|---|'
         foreach ($e in $erros) {
