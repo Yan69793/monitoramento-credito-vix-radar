@@ -1,9 +1,55 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.211)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.213)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.213.js = v4.9.212 + SENDASGPA1 e RELOGIO3H1.
+#   RELOGIO3H1, relogio de varredura gravado 3h no passado. `_last_scanned_at` e INSTANTE
+#   de varredura e e comparado contra Date.now() cru em _parseHorasStale, mas o caminho de
+#   receber_analise gravava com obterAgoraBRT(), que devolve `new Date(Date.now() - 3h)`.
+#   Todo emissor nascia com 3h de atraso, entao o gate de frescor acusava stale antes da
+#   hora e o painel exibia "sem analise" para emissor varrido na mesma noite.
+#   So atingia emissor COM evento: quem vem com sem_eventos:true entra em outro ramo de
+#   persistirResultadoCompartilhado que sobrescreve com UTC real. Metade da carteira
+#   sempre reportou certo, e foi essa assimetria que segurou o defeito invisivel.
+#   Medido em producao antes da correcao, 24/08 17:17 BRT, mesma rodada noturna, 3 minutos
+#   entre os submits: Light/Aegea/CSN/Hapvida (com evento) horas_stale=3,40 contra
+#   Rumo/Simpar (sem evento) horas_stale=0,40.
+#   A distincao que faltava: 'timestamp' continua BRT de proposito, porque dele sai o DIA
+#   CIVIL da janela. Data e relogio nao sao a mesma coisa, e o bug foi trata-los como se
+#   fossem. O fallback de :8709 tambem herdava payload.timestamp e passou a usar o
+#   instante real de persistencia.
+#   Guarda: api/test/relogio-varredura.test.mjs, 3 testes. Prova reversa executada, com o
+#   bug reinjetado os testes 1 e 3 falham com "expected 3 to be less than 0.5" e o 2
+#   (emissor sem evento) passa nos dois, reproduzindo a assimetria que escondia o defeito.
+# v4.9.213 tambem = SENDASGPA1, alias contraditorio entre emissores cindidos.
+#   A rotina noturna de 24/08 anotou sozinha, no meio da varredura, que os documentos CVM
+#   atribuidos ao Pao de Acucar vinham com empresa_cvm = SENDAS DISTRIBUIDORA S.A. Sendas
+#   e a razao social do Assai (ASAI3), cindido do GPA (PCAR3) em 2021: dois emissores
+#   distintos da carteira, com o documento de um aparecendo no outro.
+#   SYNC_ALIAS_TO_EMPRESA tinha TRES chaves quase iguais, "SENDAS DISTRIB" e
+#   "SENDAS DISTRIBUIDORA S/A" para o Assai e "SENDAS DISTRIBUIDORA" para o GPA. A do meio
+#   estava errada desde sempre, mas dormente: os dois consumidores antigos varrem a tabela
+#   com for..in e param no primeiro match, e "SENDAS DISTRIB" vem antes, entao o resultado
+#   saia certo por ordem de insercao e nao por acerto. A derivacao SYNC_EMPRESA_TO_ALIASES,
+#   introduzida no NOMEMORTO1 (v4.9.211) horas antes, coleta TODOS os aliases de cada
+#   emissor e nao tem essa protecao: foi ela que acordou a contradicao.
+#   Correcao: uma chave so, "SENDAS DISTRIB" -> Assai. O casamento e por substring, entao a
+#   mais curta cobre as duas razoes sociais. Removidas tambem 2 chaves mortas da tabela
+#   privada do leitor ("Sendas Distribuidora" e "Sendas Distribuidora (Assai)", que nao sao
+#   nome de emissor) e a duplicata "ISA Energia Brasil".
+#   ACENTOMATCH1 outra vez, agora nas CHAVES do leitor: "Itau Unibanco" e "Itausa" estavam
+#   sem acento e o emissor da carteira e "Itau Unibanco"/"Itausa" acentuado. O lookup e
+#   aliases[empresa], chave exata, sem normalizacao: nunca casava, e a copia em
+#   TOKENS_ROBUSTOS_ANBIMA sempre escreveu acentuado, entao as duas tabelas discordavam em
+#   silencio. O fallback sem acento salvava "ITAU UNIBANCO", mas "BANCO ITAU" ficava
+#   perdido (nao pegava ITAUCARD, por exemplo).
+#   Guarda: scripts/check-alias-coerencia.mjs reprova alias contido em outro alias
+#   apontando para emissor diferente, alias apontando para emissor fora da carteira, e
+#   chave do leitor que nao e nome de emissor. Entrou em emissores-cadastro.yml com prova
+#   das duas pontas. Testes SENDASGPA1 em api/test/cvm-frescor.test.mjs: 66 no total, e os
+#   2 novos reprovam quando o bug e reinjetado (verificado, nao presumido).
 # v4.9.212.js = v4.9.211 + CARTEIRA-24AGO1, troca de emissor na carteira:
 #   SAI AES Brasil. Foi incorporada pela Auren Energia, que ja esta nos 103, entao manter
 #   as duas contava o mesmo risco de credito duas vezes e deixava um emissor

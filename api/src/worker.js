@@ -6856,11 +6856,13 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
       // ISA Energia: mudou de razao social ISA CTEEP para ISA Energia Brasil em 2022.
       // CVM ainda registra documentos sob ambas as razoes sociais.
       "ISA Energia": ["ISA CTEEP", "ISA ENERGIA BRASIL", "ISA ENERGIA"],
-      "ISA Energia Brasil": ["ISA CTEEP", "ISA ENERGIA BRASIL", "ISA ENERGIA"],
+      // SENDASGPA1: "ISA Energia Brasil" saiu, e razao social, nao nome de emissor. Ja
+      // esta como alias na linha de cima, que e onde ele serve para alguma coisa.
       "Rede D'Or": ["REDE D'OR", "REDE DOR", "RDSL"],
-      // Sendas Distribuidora: razao social legal do grupo Assai.
-      "Sendas Distribuidora": ["SENDAS DISTRIBUIDORA", "SENDAS", "ASSAI"],
-      "Sendas Distribuidora (Assai)": ["SENDAS DISTRIBUIDORA", "SENDAS", "ASSAI ATACADISTA"],
+      // SENDASGPA1 (2026-08-24): saiu daqui "Sendas Distribuidora" e
+      // "Sendas Distribuidora (Assai)". Nenhum dos dois e nome de emissor da carteira, o
+      // emissor e "Assai Atacadista" (logo acima), entao a busca nunca chegava nessas
+      // chaves. Ficavam so alimentando a impressao de que Sendas e GPA eram a mesma coisa.
       // Simpar: holding do grupo JSL/Movida/Vamos.
       "Simpar": ["SIMPAR SA", "SIMPAR S"],
       // Movida: subsidiaria Simpar, pode aparecer como Movida Participacoes.
@@ -6873,8 +6875,15 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
       "Auren Energia": ["AUREN ENERGIA", "CESP", "COMPANHIA ENERGETICA DE SAO PAULO"],
       // v4.9.157: aliases financeiros CVM — razoes sociais bancarias para match correto
       "Bradesco": ["BANCO BRADESCO", "BRADESCO"],
-      "Itau Unibanco": ["ITAU UNIBANCO", "BANCO ITAU"],
-      "Itausa": ["ITAUSA"],
+      // ACENTOMATCH1 de novo, agora nas CHAVES (2026-08-24, achado pela guarda de
+      // coerencia). Estavam escritas sem acento e o emissor na carteira e "Ita\xFA
+      // Unibanco" / "Ita\xFAsa". O lookup aqui e aliases[empresa], chave exata, sem
+      // normalizacao: nunca casava. A copia em TOKENS_ROBUSTOS_ANBIMA sempre escreveu
+      // acentuado, entao as duas tabelas discordavam em silencio. O estrago era pequeno
+      // porque o fallback sem acento mais abaixo recuperava "ITAU UNIBANCO" e "ITAUSA",
+      // mas "BANCO ITAU" estava mesmo perdido (pegaria "BANCO ITAUCARD", por exemplo).
+      "Ita\xFA Unibanco": ["ITAU UNIBANCO", "BANCO ITAU"],
+      "Ita\xFAsa": ["ITAUSA"],
       "BTG Pactual": ["BTG PACTUAL", "BANCO BTG PACTUAL"],
       "Banco Pan": ["BANCO PAN", "BANCO PANAMERICANO"],
       "Banco Daycoval": ["BANCO DAYCOVAL", "DAYCOVAL"],
@@ -7029,8 +7038,18 @@ var SYNC_ALIAS_NOMES_CVM = [
 ];
 var SYNC_ALIAS_TO_EMPRESA = {
   "ISA CTEEP": "ISA Energia",
+  // SENDASGPA1 (2026-08-24): havia TRES chaves quase iguais aqui, "SENDAS DISTRIB" e
+  // "SENDAS DISTRIBUIDORA S/A" para o Assai e "SENDAS DISTRIBUIDORA" para o GPA. A do
+  // meio esta errada de fato: Sendas Distribuidora S.A. e a razao social do Assai
+  // (ASAI3), cindido do GPA (PCAR3) em 2021, e os dois sao emissores separados na
+  // carteira. O erro ficou dormente porque os dois consumidores antigos varrem a tabela
+  // com for..in e param no primeiro match, e "SENDAS DISTRIB" vem antes: o resultado
+  // saia certo por ordem de insercao, nao por acerto. A derivacao do NOMEMORTO1
+  // (SYNC_EMPRESA_TO_ALIASES) nao tem essa protecao, ela coleta TODOS os aliases de cada
+  // emissor, entao acordou o erro e passou a entregar documento do Assai para o GPA na
+  // rodada noturna de 24/08. Uma chave so, correta, e o suficiente: o casamento e por
+  // substring, entao "SENDAS DISTRIB" ja cobre as duas razoes sociais.
   "SENDAS DISTRIB": "Assa\xED Atacadista",
-  "SENDAS DISTRIBUIDORA": "P\xE3o de A\xE7\xFAcar (GPA)",
   "HAPVIDA": "Hapvida",
   "MOVIDA PART": "Movida",
   "SIMPAR": "Simpar",
@@ -7178,8 +7197,9 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "PRIO FORTE": "PRIO",
   "3R PETROLEUM OLEO E GAS": "Brava Energia",
   "ENAUTA PARTICIPACOES": "Brava Energia",
-  "COMPANHIA BRASILEIRA DE DISTRIBUICAO": "P\xE3o de A\xE7\xFAcar (GPA)",
-  "SENDAS DISTRIBUIDORA S/A": "Assa\xED Atacadista"
+  "COMPANHIA BRASILEIRA DE DISTRIBUICAO": "P\xE3o de A\xE7\xFAcar (GPA)"
+  // SENDASGPA1: "SENDAS DISTRIBUIDORA S/A" saiu daqui, redundante com "SENDAS DISTRIB"
+  // la em cima. Chave quase igual a outra e o que permitiu a contradicao passar batido.
 };
 // ── NOMEMORTO1 (auditoria 2026-08-24) ──────────────────────────────────────
 // Havia TRES tabelas de alias que precisavam concordar e nao concordavam:
@@ -8686,7 +8706,10 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
   var _agoraPersist = (/* @__PURE__ */ new Date()).toISOString();
   payload._persistido_em = payload._persistido_em || _agoraPersist;
   if (!payload.timestamp) payload.timestamp = _agoraPersist;
-  if (!payload._last_scanned_at) payload._last_scanned_at = payload.timestamp;
+  // RELOGIO3H1: o fallback herdava payload.timestamp, que chega em BRT deslocado por
+  // quem chama de receber_analise. Instante de varredura ausente vale o relogio real de
+  // agora, nunca uma data civil convertida.
+  if (!payload._last_scanned_at) payload._last_scanned_at = _agoraPersist;
   payload._versao = (anterior?._versao || 0) + 1;
   estado.results[empresa] = normalizarMojibake(payload);
   estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
@@ -17780,7 +17803,18 @@ async function __coreFetch(request, env2222, ctx) {
         _raSaneado = enriquecerPayload(_raSaneado);
         var _raTs = _raAgoraBRT.toISOString();
         _raSaneado.timestamp = _raTs;
-        _raSaneado._last_scanned_at = _raTs;
+        // RELOGIO3H1 (2026-08-24): _last_scanned_at e INSTANTE de varredura, comparado
+        // contra Date.now() cru em _parseHorasStale. Gravar com obterAgoraBRT(), que
+        // desloca o epoch 3h para tras, fazia todo emissor nascer com 3h de atraso.
+        // A distincao importa: 'timestamp' logo acima segue BRT de proposito, porque dele
+        // sai o DIA CIVIL da janela (_tsVarredura.split("T")[0]). Um e data, o outro e
+        // relogio, e o bug foi tratar os dois como a mesma coisa.
+        // Media so quem tem evento: o ramo sem_eventos de persistirResultadoCompartilhado
+        // sobrescreve com UTC real, entao emissor ECO ja estava certo. Confirmado em
+        // producao em 24/08 17:17 BRT, mesma rodada, 3 minutos entre eles:
+        // Light/Aegea/CSN/Hapvida (com evento) horas_stale=3,40 e Rumo/Simpar (sem
+        // evento) horas_stale=0,40.
+        _raSaneado._last_scanned_at = (/* @__PURE__ */ new Date()).toISOString();
         var _dpaCvmDocs = await buscarDocumentosCVM(env2222, _raEmp, _raJanelaInicio, _raHoje).catch(function() { return []; });
         _raSaneado.cvm_documentos = _dpaCvmDocs;
         await persistirResultadoCompartilhado(env2222, _raSemana, _raEmp, _raSaneado);

@@ -41,18 +41,28 @@ $TokenHardCap   = 700000   # deferred só acima disto
 # 15/08: 12,4k/emissor). A estimativa antiga de 4,5k fazia o plano achar que 89 emissores cabiam e o
 # hard cap estourava no meio. Este script nao e mais o executor (a sessao do Desktop usa a skill em
 # ~/.claude/scheduled-tasks/vixradar-noturno/), mas as constantes ficam coerentes com a skill.
-# CALIB2 (2026-08-24): custo real medido nos 4 lotes de 23/08, colado no log daquele dia
-# ("25,2k por emissor na aprofundada e 12,3k na rapida, contra 13k e 9,5k previstos").
-# A subestimativa nao era academica: com 9,5k o plano achava que a fila rapida cabia
-# folgada, gastava 673k dos 700k nela e a fila APROFUNDADA nao disparava. Em 22/08 os 19
-# emissores de maior risco sairam com DEFERIDO|0 evento, e em 23/08 foram 31.
+# CALIB3 (2026-08-24, tarde): a CALIB2 desta manha estava 4x alta e foi retirada.
+# Ela saiu da linha CUSTO: do log de 23/08, escrita pela sessao do Claude Desktop, que
+# mede o contexto inteiro do subagente. O $stats.tokens_total deste script mede outra
+# coisa. Comparar numero de duas reguas diferentes deferiu 15 emissores a toa na rodada
+# das 16h. Licao que vale alem daqui: calibragem so pode nascer do MESMO contador que
+# vai consumi-la.
+#
+# Numeros abaixo medidos na propria regua, rodada de 24/08 16:00-17:00 (log
+# vixradar-noturno_20260824.log), resolvendo o sistema com os dois lotes aprofundados:
+#   sonnet-6: 11 emissores = 141.121   ->  b + 11p = 141121
+#   sonnet-7:  1 emissor   =  25.983   ->  b +  1p =  25983
+#   p = 11.514  b = 14.469  (o boot bate com os 15k ja usados, confirmacao independente)
+# Fila rapida, com b=15.000 fixo: 2.646 / 2.298 / 2.564 por emissor nos lotes 2, 3 e 5.
+# O lote 1 sai a 3.712 porque carrega a montagem do plano. Fica 3.800, que cobre o pior
+# lote observado com folga sem voltar a estrangular a fila.
 $TokenBootOverhead     = 15000   # piso fixo por invocacao do claude (medido ~13,6k - ver Invoke-ClaudeBatch)
-$TokenPerEmissorSonnet = 25200   # medido 23/08 em 2 lotes aprofundados (152.644 + 149.312)
-$TokenPerEmissorHaiku  = 12300   # medido 23/08 em 2 lotes rapidos (180.115 + 168.861)
+$TokenPerEmissorSonnet = 11500   # medido 24/08 nos 2 lotes aprofundados (141.121 e 25.983)
+$TokenPerEmissorHaiku  = 3800    # medido 24/08 nos 4 lotes rapidos (pior deles: 3.712)
 # CAPRESERVA1 (2026-08-24): a fila rapida roda primeiro de proposito (inverter a ordem ja
 # zerou o Haiku em 09/07), mas rodar primeiro nao pode significar gastar tudo. A rapida
 # agora consome no maximo (hard cap - reserva da aprofundada). O corte cai na cauda da
-# rapida, que ja vem ordenada por EWS desc, entao sobra risco minimo, nao risco alto.
+# rapida, ordenada por EWS desc em Build-LlmQueues, entao sobra risco minimo.
 $TokenReservaFracaoAprofundada = 0.60
 $SonnetEwsMin   = 38
 $HaikuChunk     = 15
@@ -267,9 +277,15 @@ function Build-LlmQueues($analyzeList) {
         $high = ($emp.tier -eq 'FULL') -and (($emp.ews_score -ge $SonnetEwsMin) -or ($emp.cvm_novos -gt 0))
         if ($high) { $sonnet += $emp } else { $haiku += $emp }
     }
+    # ORDEMRAPIDA1 (2026-08-24): a fila rapida saia na ordem do plano, nao por risco. O
+    # comentario do CAPRESERVA1 afirmava que ela ja vinha ordenada por EWS desc e isso era
+    # falso: so a aprofundada tinha Sort-Object. Enquanto o cap nunca cortava a rapida
+    # ninguem notou, mas no momento em que ele cortou (lote haiku-4, 15 emissores, 16h24
+    # de 24/08) o corte caiu em quem calhou de estar no meio da lista. Agora as duas filas
+    # ordenam pelo mesmo criterio, entao qualquer corte cai sempre na cauda de menor risco.
     return @{
         Sonnet = @($sonnet | Sort-Object -Property ews_score, cvm_novos -Descending)
-        Haiku  = $haiku
+        Haiku  = @($haiku  | Sort-Object -Property ews_score, cvm_novos -Descending)
     }
 }
 
@@ -680,6 +696,13 @@ try {
 
     $ji = 0
     $abortAfterSubmit = $false   # RETRYDROP1: sinaliza break apos submit (preserva resultados)
+    # ORDEMRAPIDA1 (2026-08-24): uma vez que a fila bate no cap, TODOS os lotes seguintes
+    # dela sao deferidos. Antes o 'continue' pulava so o lote que nao coubesse e o proximo,
+    # menor, passava — foi o que aconteceu as 16h24 de 24/08, haiku-4 (15) cortado e haiku-5
+    # (13) rodando logo depois. Com a fila ordenada por EWS desc isso vira inversao de
+    # prioridade explicita: troca risco alto por risco baixo. Por fila, nao global, porque a
+    # aprofundada tem orcamento proprio e nao pode morrer junto com a rapida.
+    $capAtingido = @{ haiku = $false; sonnet = $false }
     foreach ($job in $jobs) {
         $ji++
 
@@ -703,12 +726,14 @@ try {
         $capDoJob = $TokenHardCap
         if ($job.Name -ne 'sonnet') { $capDoJob = $CapFilaRapida }
 
-        if (($stats.tokens_total + $estLote) -ge $capDoJob) {
+        $filaJob = if ($job.Name -eq 'sonnet') { 'sonnet' } else { 'haiku' }
+        if ($capAtingido[$filaJob] -or ($stats.tokens_total + $estLote) -ge $capDoJob) {
             $stats.tokens_hard_hit = $true
+            $capAtingido[$filaJob] = $true
             foreach ($e in $job.Chunk) { $pendingDeferred.Add($e) }
             $qualCap = 'HARD CAP'
             if ($job.Name -ne 'sonnet') { $qualCap = 'CAP FILA RAPIDA (reserva da aprofundada preservada)' }
-            Write-Log ($qualCap + ' pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $capDoJob + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores)')
+            Write-Log ($qualCap + ' pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $capDoJob + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores, cauda de menor EWS)')
             continue
         }
 
@@ -865,7 +890,14 @@ try {
                     if ($shRec.compare -and $shRec.compare.diverge) { $statsShadow.diverge++ }
                     if ($shRec.compare -and $shRec.compare.critico_divergente) { $statsShadow.critico_div++ }
                     if ($shRec.usage -and $shRec.usage.total_tokens) { $statsShadow.tokens += [int]$shRec.usage.total_tokens }
-                    $divTag = if ($shRec.compare -and $shRec.compare.diverge) { 'DIVERGE' } else { 'match' }
+                    # SHADOWFALSOVERDE1 (2026-08-24): 'match' significava tanto "os dois
+                    # concordaram" quanto "o DeepSeek nao devolveu nada parseavel", porque
+                    # sem classificacao nao ha divergencia a detectar. Na rodada de 24/08
+                    # foram 22 dos 70 assim, quase um terco do lote lido como concordancia
+                    # que nunca houve. Ausencia de comparacao agora tem rotulo proprio.
+                    $divTag = if (-not $shRec.parse_ok) { 'sem_comparacao' }
+                              elseif ($shRec.compare -and $shRec.compare.diverge) { 'DIVERGE' }
+                              else { 'match' }
                     Write-Log ('SHADOW|' + $emp.empresa + '|' + $shRec.status + '|' + $shRec.claude_classif + ' vs ' + $shRec.deepseek_classif + '|' + $divTag)
                 } catch {
                     Write-Log ('SHADOW_EXC|' + $emp.empresa + '|' + $_.Exception.Message)

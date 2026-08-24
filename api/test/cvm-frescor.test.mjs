@@ -578,3 +578,75 @@ describe("NOMEMORTO1 - leitor enxerga todo alias que a ingestao conhece", () => 
     expect(b.documentos.map((d) => d.empresa_cvm)).not.toContain("AUREN ENERGIA S.A");
   });
 });
+
+// ── SENDASGPA1 (auditoria 2026-08-24) ─────────────────────────────────────────
+// A rotina noturna deste dia anotou sozinha, no meio da varredura, que os documentos
+// CVM atribuidos ao Pao de Acucar vinham com empresa_cvm = SENDAS DISTRIBUIDORA S.A.
+// Sendas e a razao social do Assai (ASAI3), cindido do GPA (PCAR3) em 2021: sao dois
+// emissores distintos da carteira e o documento de um estava aparecendo no outro.
+//
+// A causa nao era nova, era dormente. SYNC_ALIAS_TO_EMPRESA tinha "SENDAS DISTRIB" ->
+// Assai e "SENDAS DISTRIBUIDORA" -> GPA. Como o nome que chega da CVM contem as duas
+// chaves e todo consumidor casa por substring, quem varre com for..in e para no primeiro
+// match acertava por ordem de insercao. A derivacao introduzida pelo NOMEMORTO1, no
+// mesmo dia, coleta TODOS os aliases de cada emissor e nao tem essa protecao: ela
+// acordou a contradicao.
+//
+// Estes testes prendem os dois lados. Um sozinho nao serve: so afirmar que o Assai acha
+// o documento passaria mesmo com o GPA achando tambem.
+describe("SENDASGPA1 - documento de emissor cindido nao vaza para o antigo controlador", () => {
+  const KEY = "cvm:documentos";
+  const hoje = diasAtrasISO(0);
+
+  function doc(nomeCvm) {
+    return { e: nomeCvm, d: hoje, de: hoje, c: "Fato Relevante", a: "assunto de teste", l: "https://exemplo/" + encodeURIComponent(nomeCvm) };
+  }
+
+  async function consultar(empresa) {
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "admin_documentos_cvm", admin_senha: env.ADMIN_PASSWORD, empresa }),
+    });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  beforeEach(async () => {
+    await env.RADAR_KV.delete(META_KEY);
+    await env.RADAR_KV.put(KEY, JSON.stringify([
+      doc("SENDAS DISTRIBUIDORA S.A."),
+      doc("COMPANHIA BRASILEIRA DE DISTRIBUICAO"),
+      doc("BANCO ITAUCARD S.A."),
+      doc("ITAÚSA INVESTIMENTOS ITAU S.A.")
+    ]));
+  });
+
+  it("Assai acha o documento protocolado como Sendas Distribuidora", async () => {
+    const b = await consultar("Assaí Atacadista");
+    expect(b.documentos.map((d) => d.empresa_cvm)).toContain("SENDAS DISTRIBUIDORA S.A.");
+  });
+
+  it("GPA NAO acha o documento do Sendas, e continua achando o proprio", async () => {
+    const b = await consultar("Pão de Açúcar (GPA)");
+    const nomes = b.documentos.map((d) => d.empresa_cvm);
+    expect(nomes).not.toContain("SENDAS DISTRIBUIDORA S.A.");
+    expect(nomes).toContain("COMPANHIA BRASILEIRA DE DISTRIBUICAO");
+  });
+
+  it("Itau Unibanco acha razao social bancaria que so o alias cobre", async () => {
+    // ACENTOMATCH1 nas CHAVES da tabela do leitor: ela dizia "Itau Unibanco" sem acento
+    // e o emissor da carteira e "Itaú Unibanco". O lookup e por chave exata, entao
+    // os aliases nunca eram carregados. "ITAU UNIBANCO" ainda entrava pelo fallback sem
+    // acento, mas "BANCO ITAU" ficava de fora - e e ele que casa com ITAUCARD.
+    const b = await consultar("Itaú Unibanco");
+    expect(b.documentos.map((d) => d.empresa_cvm)).toContain("BANCO ITAUCARD S.A.");
+  });
+
+  it("Itausa acha o proprio documento e nao o do Itau Unibanco", async () => {
+    const b = await consultar("Itaúsa");
+    const nomes = b.documentos.map((d) => d.empresa_cvm);
+    expect(nomes).toContain("ITAÚSA INVESTIMENTOS ITAU S.A.");
+    expect(nomes).not.toContain("BANCO ITAUCARD S.A.");
+  });
+});

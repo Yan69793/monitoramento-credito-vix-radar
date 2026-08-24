@@ -44,6 +44,11 @@ jobs:
       - name: Conferir emissores contra o cadastro vivo da CVM
         run: node scripts/check-emissores-cadastro.mjs
 
+      # SENDASGPA1 (2026-08-24). Nao depende de rede: le so o worker.js. Roda antes da
+      # prova negativa da guarda de cadastro para falhar cedo quando o problema e interno.
+      - name: Conferir coerencia das tabelas de alias
+        run: node scripts/check-alias-coerencia.mjs
+
       # Prova da outra ponta, dentro do proprio CI. Sem isto, um bug que fizesse a
       # guarda aprovar qualquer coisa passaria despercebido para sempre, porque o
       # caso bom continuaria verde. Ja aconteceu no desenvolvimento desta guarda:
@@ -59,3 +64,25 @@ jobs:
             exit 1
           fi
           echo "OK: guarda reprovou o emissor inventado, como deve."
+
+      # Mesma logica para a guarda de alias, e pelo mesmo motivo. Aqui a injecao reproduz o
+      # bug real do SENDASGPA1: dois aliases onde um contem o outro apontando para
+      # emissores diferentes. Usa um emissor ASCII de proposito - a primeira versao deste
+      # teste injetou um nome acentuado via escape \xNN, o perl gravou o byte latin-1 cru,
+      # o arquivo deixou de ser UTF-8 valido e a guarda reprovou por lixo de encoding em
+      # vez de reprovar pela regra. Teste que passa pelo motivo errado nao prova nada.
+      - name: Guarda tem que reprovar alias contraditorio
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          perl -0pe 's/(var SYNC_ALIAS_TO_EMPRESA\s*=\s*\{\r?\n)/$1  "SENDAS DISTRIBUIDORA": "Simpar",\r\n/' \
+            api/src/worker.js > /tmp/guarda/worker_alias.js
+          if ! grep -q '"SENDAS DISTRIBUIDORA": "Simpar"' /tmp/guarda/worker_alias.js; then
+            echo "::error::A injecao do teste nao entrou no arquivo. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_alias.js node scripts/check-alias-coerencia.mjs; then
+            echo "::error::A guarda APROVOU dois aliases contraditorios. Ela esta quebrada e nao protege nada."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o alias contraditorio, como deve."
