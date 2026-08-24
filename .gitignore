@@ -307,3 +307,8 @@ Obsidian VIX Radar/SEO/*(dryrun)*.md
 # Material de video do comercial. Binario pesado, regeneravel pelo pipeline de
 # captura, nao e fonte do sistema. Fica fora do repo.
 Videos Comercial/
+
+# Material comercial da apresentacao de 21/08/2026: 76 MB em 10 mp4, 40 png, wav
+# e m4a. Midia binaria nao entra em git, incha o repo para sempre e nao versiona
+# de forma util (cada regravacao e um blob novo inteiro). Fica no disco.
+apresentacao-luciano-2026-08-21/

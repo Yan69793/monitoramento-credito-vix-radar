@@ -69,7 +69,8 @@ function Add-UTF8BOM([string]$File, [byte[]]$Bytes) {
 
 # Sem -Path explicito, varre a raiz do repo. Usa git para achar a raiz, o que faz o
 # linter funcionar em worktree, clone novo e CI, ao contrario do caminho fixo anterior.
-if (-not $Path -or $Path.Count -eq 0) {
+$scanAll = (-not $Path -or $Path.Count -eq 0)
+if ($scanAll) {
     $repoRoot = & git rev-parse --show-toplevel 2>$null
     if ($LASTEXITCODE -eq 0 -and $repoRoot) {
         $repoRoot = $repoRoot -replace '/', '\'
@@ -151,21 +152,71 @@ foreach ($f in $arquivos) {
     if (-not $Json) { Write-Host "  REPROVA  $f" -ForegroundColor Red -NoNewline; Write-Host "  [$($motivo -join ' + ')]" -ForegroundColor Yellow }
 }
 
+# === Checagem 3: CRLF em script executado por sh/bash =======================
+# scripts/hooks/* e *.sh rodam sob sh. Um CR no fim da linha do shebang produz
+# "bad interpreter: /bin/sh^M" e o script simplesmente nao executa. O git nao
+# denuncia: o .gitattributes marca esses caminhos como `text`, e o atributo
+# `text` faz a comparacao ignorar fim de linha, entao arquivo quebrado no disco
+# passa por limpo no `git status`. Achado em 24/08/2026 com 3 .sh em CRLF no
+# working tree e blob em LF, sem uma linha de aviso do git. Regra declarada em
+# .gitattributes nao verifica nada sozinha, por isso a verificacao vive aqui,
+# no gate que o pre-commit ja invoca.
+$shCount = 0
+$shOk = 0
+$crlfFixed = 0
+if ($scanAll -and $repoRoot) {
+    $shFiles = @(& git ls-files 'scripts/hooks/*' '*.sh' 2>$null)
+    foreach ($rel in $shFiles) {
+        if (-not $rel) { continue }
+        $abs = Join-Path $repoRoot ($rel -replace '/', '\')
+        if (-not (Test-Path -LiteralPath $abs)) { continue }
+        $shCount++
+        $shBytes = [System.IO.File]::ReadAllBytes($abs)
+        $temCR = $false
+        for ($i = 0; $i -lt $shBytes.Length; $i++) {
+            if ($shBytes[$i] -eq 0x0D) { $temCR = $true; break }
+        }
+        if ($temCR -and $Fix) {
+            $txt = [System.IO.File]::ReadAllText($abs)
+            $txt = $txt.Replace("`r`n", "`n").Replace("`r", "`n")
+            [System.IO.File]::WriteAllText($abs, $txt, (New-Object System.Text.UTF8Encoding($false)))
+            $crlfFixed++
+            $temCR = $false
+            if (-not $Json) { Write-Host "  CRLF FIX $abs" -ForegroundColor Green }
+        }
+        if (-not $temCR) { $shOk++; continue }
+        $problemas += [ordered]@{
+            path        = $abs
+            hasBOM      = $false
+            hasNonAscii = $false
+            parseErros  = 0
+            motivo      = 'CRLF em script de shell (sh morre com bad interpreter)'
+        }
+        if (-not $Json) {
+            Write-Host "  REPROVA  $abs" -ForegroundColor Red -NoNewline
+            Write-Host '  [CRLF em script de shell]' -ForegroundColor Yellow
+        }
+    }
+}
+
 if ($Json) {
     [ordered]@{
         total    = $arquivos.Count
         ok       = $okCount
         risco    = $problemas.Count
         fixed    = $fixed
+        sh_total = $shCount
+        sh_ok    = $shOk
+        crlf_fix = $crlfFixed
         arquivos = $problemas
     } | ConvertTo-Json -Depth 4 | Write-Output
 } else {
     Write-Host ''
     Write-Host "=== SUMARIO ===" -ForegroundColor Cyan
-    Write-Host "Total : $($arquivos.Count)"
-    Write-Host "OK    : $okCount"
+    Write-Host "Total : $($arquivos.Count) .ps1 + $shCount shell"
+    Write-Host "OK    : $okCount .ps1 + $shOk shell (LF)"
     Write-Host "RISCO : $($problemas.Count)"
-    if ($Fix) { Write-Host "BOM adicionado: $fixed" }
+    if ($Fix) { Write-Host "BOM adicionado: $fixed   CRLF corrigido: $crlfFixed" }
 }
 
 if ($problemas.Count -eq 0) {
@@ -175,6 +226,7 @@ if ($problemas.Count -eq 0) {
 
 if (-not $Json) {
     Write-Host ''
-    Write-Host 'Erro de parse NAO se resolve com -Fix: e sintaxe PS 6/7 num script que roda no 5.1.' -ForegroundColor Yellow
+    Write-Host 'BOM ausente e CRLF de shell se resolvem com -Fix.' -ForegroundColor Yellow
+    Write-Host 'Erro de parse NAO: e sintaxe PS 6/7 num script que roda no 5.1.' -ForegroundColor Yellow
 }
 exit [Math]::Min($problemas.Count, 255)
