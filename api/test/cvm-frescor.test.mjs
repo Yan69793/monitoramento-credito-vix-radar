@@ -455,4 +455,24 @@ describe("CVMDURA1 - falha dura da fonte separada de cadencia", () => {
     expect(b.cvm_fonte_degrada_servico).toBe(false);
     expect(b.ok).toBe(true);
   });
+  it("CVMMETAWIPE1: meta ja destruida por versao antiga deriva a idade de cvm:documentos", async () => {
+    // Caso real de 24/08: o wipe aconteceu ANTES do fix subir, entao nao havia
+    // max_data_entrega para o merge preservar e o health seguia devolvendo
+    // idade null. O merge so protege daqui para frente; este fallback conserta
+    // o retrovisor, derivando a idade dos documentos que ainda estao no KV.
+    await env.RADAR_KV.put("cvm:documentos", JSON.stringify([
+      { e: "TESTE S.A.", d: diasAtrasISO(9), de: diasAtrasISO(9), c: "Fato Relevante", a: "x", l: "https://exemplo" }
+    ]));
+    await seedMeta({
+      ok: false,
+      motivo: "http_404",
+      sincronizado_em: new Date().toISOString(),
+      origem: "sync_automatico"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_falha_dura).toBe(true);
+    expect(b.cvm_fonte_idade_dias).toBe(9);
+    expect(b.cvm_fonte_ciclos_perdidos).toBe(1);
+    expect(b.fonte_externa_ok).toBe(false);
+  });
 });

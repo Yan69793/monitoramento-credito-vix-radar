@@ -7306,6 +7306,23 @@ async function avaliarFrescorCVM(env2222) {
     // ultimo bom. Sem isto o alerta diz "falhou" e nao diz ha quanto tempo, que
     // e a metade acionavel da informacao.
     var _refF = meta.last_modified_iso || meta.max_data_entrega || null;
+    if (!_refF) {
+      // O merge do CVMMETAWIPE1 so preserva o que existia. Meta ja destruida por
+      // uma versao anterior, ou primeira falha antes de qualquer sucesso, chega
+      // aqui sem data nenhuma e o health devolveria idade null durante o
+      // incidente, que e exatamente quando a idade importa. cvm:documentos
+      // carrega Data_Entrega por documento e da para derivar dali. Sinal mais
+      // fraco (mede so os 103 emissores), por isso so entra como ultimo recurso.
+      try {
+        var _docsF = await env2222.RADAR_KV.get("cvm:documentos", "json");
+        var _mxF = _cvmMaxDataEntrega(_docsF);
+        if (_mxF) {
+          _refF = _mxF;
+          out.max_data_entrega = _mxF;
+          out.origem_idade = "backfill_documentos";
+        }
+      } catch (_e) { /* segue sem idade, nunca derruba a avaliacao */ }
+    }
     if (_refF) {
       out.idade_du = _cvmDiasUteisApos(_refF, obterAgoraBRT().toISOString().slice(0, 10));
       out.idade_dias = _cvmDiasCorridosApos(_refF, obterAgoraBRT().toISOString().slice(0, 10));

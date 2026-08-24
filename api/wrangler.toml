@@ -4,6 +4,12 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.210.js = v4.9.209 + fallback de idade no CVMMETAWIPE1 (24/08, mesma sessao):
+#   O merge do v4.9.209 so protege dali para frente, e o wipe do incidente ja tinha
+#   acontecido: em producao o health seguia com cvm_fonte_idade_dias:null com a fonte
+#   em 404. Quando a meta de falha nao tem data nenhuma, avaliarFrescorCVM agora deriva
+#   a idade de cvm:documentos (mesmo fallback do CVMFRESCOR1b, antes so acessivel com
+#   meta ausente). Vale tambem para primeira falha antes de qualquer sync bem-sucedido.
 # v4.9.209.js = v4.9.208 + CVMURL404, CVMMETAWIPE1, CVMDURA1 e VOLTTL1 (auditoria 24/08):
 #   Painel travado em 20/08 por 4 dias com as 3 rotinas rodando e todo semaforo verde.
 #   Causa: em 23/08 a CVM removeu ipe_cia_aberta_2026.zip do servidor (404, listagem so
