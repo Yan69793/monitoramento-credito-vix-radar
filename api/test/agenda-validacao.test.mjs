@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 // Cobre as regras do pedido 2026-08-12: fonte primaria, nunca sobrescrever
 // oficial com secundaria, cross-check, 5 status, nao inferir datas, trimestre
 // fiscal, aliases, gate de publicacao e revalidacao (stale).
-// Roda so em CI (worker-tests.yml). workerd nao roda local nesta maquina
-// (Smart App Control), a logica pura tambem e coberta pelo harness
+// Roda so em CI (worker-tests.yml). Para rodar local, `cd api && npm ci`
+// (o deploy roda `npm ci --omit=dev` e apaga o vitest; medido 20/08/2026,
+// nao era Smart App Control). A logica pura tambem e coberta pelo harness
 // tests/system-final-regressions.mjs em Node puro.
 
 const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao";

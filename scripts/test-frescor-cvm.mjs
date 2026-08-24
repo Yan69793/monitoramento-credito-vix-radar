@@ -1,10 +1,14 @@
 // CVMFRESCOR1 (2026-08-19) - harness local do calculo de frescor da fonte CVM.
 //
-// Existe porque a suite vitest NAO roda nesta maquina: o Smart App Control
-// bloqueia workerd.exe por assinatura (CodeIntegrity 3077/3033), entao
-// api/test/cvm-frescor.test.mjs so e confiavel no CI. Este script cobre a parte
-// puramente algoritmica (contagem de dias uteis + decisao de frescor) sem
-// precisar subir Worker nenhum, e roda em qualquer node.
+// Existe para cobrir a parte puramente algoritmica (contagem de dias uteis +
+// decisao de frescor) em Node cru, sem subir Worker nenhum, 31 casos. A premissa
+// original, de que a suite vitest nao rodava local porque o Smart App Control
+// bloqueava workerd.exe por assinatura (CodeIntegrity 3077/3033), foi refutada
+// por medicao em 20/08/2026 (VerifiedAndReputablePolicyState=0, nenhum evento
+// CodeIntegrity cita workerd). A causa real de o vitest nao rodar local apos o
+// deploy e `npm ci --omit=dev` apagando as devDeps. O script foi mantido mesmo
+// assim porque garante o calculo em qualquer node: a premissa nasceu errada,
+// o arquivo nao.
 //
 // Regra de ouro herdada do test-dedup-eventos.mjs: extrair as funcoes DIRETO do
 // worker.js real, nunca reescrever uma copia. Copia solta passa verde enquanto o

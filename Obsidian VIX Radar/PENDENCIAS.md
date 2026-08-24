@@ -11,6 +11,16 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 — RESOLVIDO: auditoria geral readonly, nucleo sem achado
+
+Auditoria `vix-radar-general-audit` (`[[90 - Auditoria Geral 2026-08-24]]`). Portão de produção 200 com `ok:true` completo. Veracidade da UI batendo com o glossário nos 3 termos reservados (Emissores/Críticos/Relevantes + Sem alertas com janela declarada). Auth fail-closed nos 3 probes (state 401, receber_analise 403, login 401 genérico). Drift zero: prod v4.9.208/v202.30 = HEAD, os 317 arquivos "modificados" são só CRLF (`git diff -w` = 0). Nenhum P0/P1/P2 novo.
+
+Observações (não reprovam o portão):
+- **Fonte `CVM CIA_ABERTA/DOC` intermitente** — `fonte_externa_ok:false`, `cvm_fonte_motivo:ultimo_sync_falhou:http_404`, `ciclos_perdidos:null`. É fonte SEMANAL (domingos), domínio CVMCADENCIA1. 24/08 = segunda pós-domingo sem lote pode ser cadência, não incidente. Confirmar contra ramos `INF_DIARIO`/`CAD` antes de abrir qualquer coisa.
+- **`main` local ahead 2 de `origin`** — só os `chore(data): historico 2026-08-22/23`. Push na próxima sessão.
+
+---
+
 ## 22/08 (madrugada BRT) — RESOLVIDO: auditoria geral readonly e fechamento dos achados
 
 Auditoria `vix-radar-general-audit` completa (detalhe: [[89 - Auditoria Geral 2026-08-22]]). Núcleo sem achado: auth fail-closed, veracidade da UI batendo com o glossário, drift zero, health verde completo. Itens novos abaixo.
@@ -133,12 +143,7 @@ o parágrafo vizinho. O trabalho segue relevante, o `ESTADO.md:262` registra o
 retrofit como P2 aberto. **Pronto quando** o cherry-pick for feito e a branch
 apagada.
 
-**SACFALSA-RESIDUO (P3).** A causa falsa do Smart App Control ainda vive em 5
-arquivos trackeados: `api/test/agenda-validacao.test.mjs:9`,
-`scripts/test-frescor-cvm.mjs:3` e três notas do vault. O caso que importa é o
-`test-frescor-cvm.mjs`, que nasceu como alternativa ao vitest que supostamente não
-rodava. A crença errada gerou artefato de código. **Pronto quando** os 5 forem
-revisados e o script standalone tiver seu destino decidido.
+**SACFALSA-RESIDUO (P3).** **RESOLVIDO 24/08.** Correção: a causa falsa do Smart App Control foi substituída pela causa real nos 3 arquivos vivos que a carregavam, `api/test/agenda-validacao.test.mjs:8`, `scripts/test-frescor-cvm.mjs:3` e `status/ESTADO.md:292` (que contradizia a própria linha 321, já refutada por medição em 20/08). Causa raiz: a crença de que o vitest não rodava por Smart App Control nasceu sem medição e gerou artefatos de código e de documentação que se propagaram por comentários, teste e estado vivo; a medição de 20/08 (VerifiedAndReputablePolicyState=0, nenhum evento CodeIntegrity cita workerd) refutou a premissa, mas a correção havia sido aplicada só no `worker-tests.yml` e numa linha do ESTADO, deixando resíduos. O `test-frescor-cvm.mjs` foi mantido porque cobre o cálculo de dias úteis em Node cru (31 casos) sem subir Worker. Guarda: gate no `scripts/hooks/pre-commit` reprova o blob em staging contendo "Smart App Control" fora de `Obsidian VIX Radar/` e `docs/archived/`. As notas de auditoria datadas (82, 85) e entradas antigas deste arquivo ficam intactas como registro histórico.
 
 **WORKTREE12 (P3).** Doze worktrees registradas, incluindo de Codex e Traycer, e
 seis commits nunca empurrados. Cinco são duplicata ou ancestral já absorvido, um é
@@ -449,9 +454,28 @@ hoje o gate 3.4 do `deploy-pages.ps1` reprovou duas vezes até os 4 módulos adm
 serem alinhados à mão. O bump do `CACHE_VERSION` no `index.html` não propaga sozinho
 para os imports em `app/js/`.
 
-**Pronto quando:** existir um `bump-cache-version.ps1` que altere os 6 pontos de uma
-vez, ou o `deploy-pages.ps1` fizer o alinhamento antes de gatear em vez de só
-reprovar.
+**RESOLVIDO 24/08.** Dado o `bump-cache-version.ps1` (o script existe e altera os
+pontos de cache), o foco virou os TRÊS defeitos de comportamento da `Replace-InFile`
+que ele carregava, que o tornavam perigoso num `index.html` de 700 KB:
+(1) trocava `"v<n>.<n>"` entre aspas em QUALQUER lugar (copy/UI/changelog), sem âncora;
+(2) colisão de substring — versão `v202.3` casava dentro de `?v=202.30` e produzia
+`?v=203.10`; (3) a substituição do caso `?v=v<n>.<n>` usava `$newRe` (o valor JÁ
+[regex]::Escape()'d) em vez do literal `$New`, o que inseriria `v203\.1` com barra
+invertida na saída. Correção em `scripts/bump-cache-version.ps1`: troca genérica de
+aspas removida (CACHE_VERSION muda só via regex ancorada no prefixo
+`CACHE_VERSION="`), `?v=` com negative lookahead `(?![0-9])` (sem prefixo de outra
+versão), e substituição do caso `?v=v<n>.<n>` passou a usar `$New` literal (só o lado
+PADRÃO escapa; o lado SUBSTITUIÇÃO usa o valor). `$newRe`/`$newNumRe` removidas por
+ficarem órfãs. **Causa raiz (ampliada):** o defeito (3) nasceu de acreditar que
+substituição de [regex]::Replace exige o mesmo escape do padrão — não exige — e
+passou porque o teste só cobria a instância (`?v=202.30`), nunca a classe (barra
+invertida na saída via variável escapada). **Guarda:** `scripts/test-bump-cache-version.ps1`
+roda o real numa bancada isolada (`scripts/_tmp_bump_test/bump2`, criada e limpa pelo
+próprio teste) e agora também asserta (a) `?v=v202.3` → `?v=v203.1` sem barra e
+(b) a saída NÃO contém NENHUMA barra invertida — asserção que fecha a classe do
+erro, não só a instância. Validado: parse PS 5.1 (`lint-encoding.ps1` OK 1/RISCO 0 p/
+ambos), BOM único, teste verde exit 0 (8x OK, incl. `?v=v202.3⇒?v=v203.1 (sem barra)`
+e `saida sem nenhuma barra invertida`).
 
 ---
 

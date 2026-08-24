@@ -221,6 +221,70 @@ LEGADO_EOF
     fi
 fi
 
+# ─── Gate 6: causa falsa do vitest em artefato vivo (SACFALSA1) ─────────
+# Em 20/08/2026 a audiencia refutou por medicao
+# (VerifiedAndReputablePolicyState=0, nenhum evento CodeIntegrity cita workerd)
+# a premissa de que o vitest nao roda local por bloqueio do Windows de
+# executaveis por assinatura. A causa real e `npm ci --omit=dev` no
+# deploy-worker.ps1 apagando o vitest. A premissa falsa ainda sobrava em
+# artefatos vivos e contaminava quem lesse o codigo novo. Este gate reprova
+# o blob em staging com a frase da premissa refutada, exceto registro
+# historico datado/arquivado. NOTA: o corpo deste arquivo NAO contem a frase
+# literal, senao o gate reprovaria o proprio blob ao commitar o hook.
+STAGED_SACFALSA=$(git diff --cached --name-only --diff-filter=ACM || true)
+
+if [ -n "$STAGED_SACFALSA" ]; then
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        case "$f" in
+            "Obsidian VIX Radar/"*|"docs/archived/"*) continue ;;
+        esac
+        stage_blob "$f" || continue
+        BLOB_SAC="$STAGEDIR/$f"
+        # Frase-problema montada em duas metades para o proprio blob deste arquivo
+        # nao conter a frase continua e o gate se auto-reprovar ao commitar o hook.
+        SAC_PAT1="Smart"
+        SAC_PAT2="App Control"
+        # Regra: reprovar so frase orfa. Arquivo que cita a premissa tem que
+        # citar a refutacao na JANELA de +-3 linhas da propria frase (nao basta
+        # marcador em qualquer lugar do arquivo). Marcadores (case-insensitive):
+        #   Os tres primeiros sao ASCII e o -i nao era problema; os acentuados
+        #   nao podem depender do -i (em UTF-8 vira byte solto) nem de classe
+        #   de caractere ([Ãã] quebra). Listar as grafias reais de string inteira.
+        REFF_PAT='refutad|causa falsa|VerifiedAndReputablePolicyState|não é|NÃO é|Não é|não era|NÃO era|Não era|nao e|NAO E|Nao e|nao era|NAO ERA'
+        FRA_LINES=$(grep -nE "$SAC_PAT1 $SAC_PAT2" "$BLOB_SAC" 2>/dev/null | cut -d: -f1)
+        if [ -n "$FRA_LINES" ]; then
+            REFF_LINES=$(grep -nE "$REFF_PAT" "$BLOB_SAC" 2>/dev/null | cut -d: -f1)
+            ORFA=0
+            for n in $FRA_LINES; do
+                [ -z "$n" ] && continue
+                OK=0
+                for m in $REFF_LINES; do
+                    [ -z "$m" ] && continue
+                    diff=$(( n > m ? n - m : m - n ))
+                    if [ "$diff" -le 3 ]; then OK=1; break; fi
+                done
+                if [ "$OK" -eq 0 ]; then ORFA=1; break; fi
+            done
+            if [ "$ORFA" -eq 1 ]; then
+                echo ""
+                echo "GATE 6 (SACFALSA1) REPROVOU: $f"
+                echo "  A premissa do vitest quebrado por bloqueio do Windows (literal"
+                echo "  \"$SAC_PAT1 $SAC_PAT2\") nao tem refutacao na janela de +-3 linhas."
+                echo "  A premissa foi refutada por medicao 20/08/2026 e a causa real"
+                echo "  e 'npm ci --omit=dev' no deploy apagando o vitest."
+                echo "  Mova o marcador de refutacao para perto da frase (mesma linha"
+                echo "  ou +-3 linhas): 'causa falsa' | 'refutad' | 'nao e' | 'nao era'"
+                echo "  ('VerifiedAndReputablePolicyState'), senao a frase continua orfa."
+                echo "  Se for nota de auditoria historica, mova para Obsidian VIX Radar/ ou docs/archived/."
+                FALHOU=1
+            fi
+        fi
+    done <<SACFALSA_EOF
+$STAGED_SACFALSA
+SACFALSA_EOF
+fi
+
 rm -rf "$STAGEDIR"
 
 # --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------

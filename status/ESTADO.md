@@ -289,8 +289,9 @@ curl.exe -s https://radar-credito-api.prospects-intel.workers.dev -w "`nHTTP:%{h
 ```
 
 Esperado: HTTP 200, `ok:true`, `telemetria:true`, `kv:true`, `sentry_ok:true`.
-A suíte vitest não roda localmente (Smart App Control bloqueia `workerd.exe`),
-só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
+A suíte vitest só roda local após `cd api && npm ci` (o deploy roda
+`npm ci --omit=dev` e apaga o vitest; medido 20/08/2026, NÃO é Smart App Control,
+detalhe no CLAUDE.md).
 
 ## Onde está o resto
 
@@ -314,7 +315,7 @@ só em CI via `worker-tests.yml`, detalhe no CLAUDE.md.
 - RESOLVIDO 21/08 01h35, DEPLOYADO: os três commits do dia subiram com o operador presente. Worker em v4.9.207 (`810dc2c`, segurança) e Pages em v202.20 (`6d657f8`, perf e acessibilidade) mais `806f2c7` (docs). O gate 3.4 do Pages reprovou duas vezes antes de subir, uma pelo `?v=` dos módulos admin desalinhado (CACHEBUMP1) e uma por arquivos gerados sujos, e abortou sem publicar nas duas, que é o comportamento esperado. Validação pós-deploy em produção: `ok:true`, `versao:v4.9.207`, `version.json v202.20`, `CACHE_VERSION v202.20` no apex
 - NOVO 20/08 19h20 (MANIFESTOFRAGIL1, P3): o `status/allclear-manifesto.json` indexa cada frase de ausência junto com o HTML e o estilo inline, então trocar a cor de um texto faz a mesma frase reprovar como NOVA. Aconteceu hoje com duas frases na correção de contraste. Falso positivo de segurança, fragilidade real de projeto. Detalhe em `PENDENCIAS.md`
 - NOVO 20/08 19h20 (DEDUPON2 + FEEDRERENDER1, P2): `_isDupSemantico` deduplica O(n²) sobre todos os eventos no boot e em todo refresh, e `_v201Refresh` reconstrói 30 dias de feed a cada evento. Medidos e reais, deixados de fora de propósito por exigirem refactor com risco de regressão. Detalhe em `PENDENCIAS.md`
-- NOVO 20/08 19h20 (SACFALSA-RESIDUO, P3): a causa falsa do Smart App Control ainda vive em 5 arquivos trackeados, incluindo `scripts/test-frescor-cvm.mjs`, que nasceu como alternativa ao vitest que supostamente não rodava. Crença errada que gerou artefato de código. Detalhe em `PENDENCIAS.md`
+- RESOLVIDO 24/08 (SACFALSA-RESIDUO, P3): a causa falsa do Smart App Control corrigida nos 3 arquivos vivos que a carregavam (`api/test/agenda-validacao.test.mjs`, `scripts/test-frescor-cvm.mjs` e `status/ESTADO.md`), substituída pela causa real (`npm ci --omit=dev` no deploy apaga o vitest). `test-frescor-cvm.mjs` mantido, cobre o cálculo de dias úteis em Node cru (31 casos). Guarda: gate no `scripts/hooks/pre-commit` reprova "Smart App Control" em staging fora de `Obsidian VIX Radar/` e `docs/archived/`. As notas de auditoria datadas (82, 85) e as entradas antigas de PENDENCIAS ficam intactas como registro histórico. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`.
 - NOVO 20/08 19h20 (WORKTREE12, P3): 12 worktrees registradas, incluindo de Codex e Traycer, e 6 commits nunca empurrados. Um deles, `3d593d6` (ORF3D593D6), é trabalho real: aplica limpo nos 5 scripts, conflita só em `status/ESTADO.md:75`. Detalhe em `PENDENCIAS.md`
 - Rotação da `routine_key`, decisão pendente do usuário, detalhe no incidente ROUTINEKEY-PLAIN1 do CLAUDE.md
 - Migração KV→DO em andamento com KV ainda como fonte da verdade; auditar `console.warn` atrás de `[DO][dual-write]`/`[DO][read]`, detalhe no CLAUDE.md
