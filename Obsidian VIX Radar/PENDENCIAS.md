@@ -11,7 +11,23 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
-## 24/08 (auditoria operacional) — RESOLVIDO no código, aguardando deploy: `_last_scanned_at` gravado 3h no passado infla o gate de cobertura (RELOGIO3H1)
+## 24/08 (quarta rodada) — ABERTO P1: Braskem protocolou recuperação extrajudicial e o sistema não pegou (BRASKEMDETECT1)
+
+A Braskem protocolou recuperação extrajudicial em 24/08, US$ 10,9 bi reestruturados. A noturna analisou a Braskem às 16h e trouxe o rebaixamento da Fitch de 17/08, não o protocolo do mesmo dia. O painel segue com 20/08 como fato mais recente. Contraexemplo confirmado: falha de detecção, não ausência de fato.
+
+**Causa raiz (duas, somadas).** (1) O ZIP `ipe_cia_aberta_2026.zip` da CVM está em 404 desde 23/08 (CVMURL404), o que tirou o gatilho primário de evento. (2) A busca de imprensa sozinha não alcançou o protocolo. A detecção depende demais de uma fonte só, e o fallback não cobre protocolo de recuperação judicial/extrajudicial fora do IPE.
+
+**Impacto.** Cliente pago não vê o evento de crédito mais grave do dia.
+
+**Correção.** Fonte alternativa para Fato Relevante/protocolos (MZiQ, avaliado na frente 2) ou fallback de busca que cubra recuperação judicial/extrajudicial. Decisão pendente do operador.
+
+**Guarda sistêmica.** Não existe ainda. Proposta: gatilho de detecção para eventos de recuperação judicial/extrajudicial a partir de fonte que não dependa do ZIP da CVM; teste com contraexemplo fixo (protocolo da Braskem de 24/08).
+
+**Status:** ABERTO. Depende da decisão de fonte alternativa.
+
+---
+
+## 24/08 (auditoria operacional) — RESOLVIDO EM PRODUÇÃO (v4.9.213): `_last_scanned_at` gravado 3h no passado infla o gate de cobertura (RELOGIO3H1)
 
 Achado da auditoria operacional de 24/08 ([[91 - Auditoria Operacional 2026-08-24]]). O gate de cobertura apareceu ALTO com 4 emissores "stale" (Simpar 25.1h, SLC Agrícola 25.1h, Bradesco 24.9h, Totvs 24.9h), mas o log da noturna de 23/08 tem `FIM: ... 103/103` (18:33:29) e os 4 foram cobertos naquele dia (OK|FULL). Ou seja: falso incidente.
 
@@ -34,7 +50,7 @@ Achado da auditoria operacional de 24/08 ([[91 - Auditoria Operacional 2026-08-2
 
 **Guarda sistêmica (existe agora).** `api/test/relogio-varredura.test.mjs`, 3 testes. Prova reversa executada: com o bug reinjetado os testes 1 e 3 falham com `expected 3 to be less than 0.5` e o 2, do emissor sem evento, passa nos dois. O terceiro teste prende a simetria entre os dois ramos, não só os valores, porque foi a assimetria que escondeu o defeito.
 
-**Status:** código corrigido e commitado, aguardando autorização de deploy (v4.9.213).
+**Status:** RESOLVIDO EM PRODUÇÃO. Deploy v4.9.213 validado ao vivo por loop de 1 min (vix-radar-audit): c3 17:43 BRT `ver=v4.9.212`, c4 17:44 `ver=v4.9.213`, estável pós-deploy. `listar_plano_rotina` em v4.9.213: `total:103`, `max_horas:4.7`, `stale>=24h:0`; `Engie _last_scanned_at=2026-08-24T20:47 h_stale:0` (dado recém-gravado reporta 0, não 3h). Timestamps antigos gravados com a 212 (rodada das ~16h, ramo sem_eventos) tinham valor honesto, dentro do limite — não estouram mais o gate.
 
 ---
 
@@ -50,7 +66,7 @@ Na mesma varredura apareceram duas chaves mortas na tabela privada do leitor, a 
 
 A lição que passa dos aliases: numa tabela consultada por substring, duas chaves onde uma está contida na outra só podem apontar para o mesmo destino. Se apontam para destinos diferentes, o resultado depende da ordem de iteração de quem consulta, e cada consumidor novo é um sorteio.
 
-**Status:** RESOLVIDO no código, commit `2928a74`, aguardando deploy junto do RELOGIO3H1.
+**Status:** RESOLVIDO EM PRODUÇÃO, commit `2928a74`, deploy `acf920d` (v4.9.213), validado por loop de 1 min.
 
 ---
 
