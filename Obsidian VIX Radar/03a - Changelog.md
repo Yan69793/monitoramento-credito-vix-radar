@@ -11,7 +11,7 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
-> [!success] 24/08 — **CURADORIA1 v202.31. Troca de carteira aplicada só no backend deixou a Braskem sem card de métrica no dia da recuperação extrajudicial.**
+> [!success] 24/08 — **CURADORIA1 v202.32. Troca de carteira aplicada só no backend deixou a Braskem sem card de métrica no dia da recuperação extrajudicial.**
 > **Status:** Marco 1 resolvido e deployado. Marco 2, recuração dos 101 emissores herdados, aberto
 > **Data da Versão:** 2026-08-24
 > **Origem do Registro:** print do operador com os quatro cards de risco da Braskem vazios. Medição direta de `EMISSORES_LISTA` (`api/src/worker.js:3798`), `METRICAS_CURADAS` e `EMISSORES` (`app/index.html`), comparadas contra o HTML servido em produção
