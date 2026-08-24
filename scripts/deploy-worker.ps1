@@ -277,22 +277,72 @@ try {
 }
 if ($deployExit -ne 0) { Fail "wrangler deploy falhou (exit $deployExit). wrangler.toml foi alterado mas NADA foi commitado." }
 
+# --- Helper: falha pos-deploy com caminho de recuperacao explicito ---------
+# So chamado depois do passo 4 (wrangler deploy com exit 0). Nesse ponto
+# api/wrangler.toml ja esta modificado e sem commit (passo 2), e por design
+# (ver 'ORDEM IMPORTA' no cabecalho) o git so e tocado depois da validacao
+# passar. Antes desta funcao a falha aqui so imprimia o erro e deixava o
+# working tree sujo sem explicar como sair, travando o gate 0.2 na proxima
+# tentativa. Nao reverte o toml sozinho: se so ok/kv/telemetria/sentry_ok
+# falhou, o bundle novo pode estar mesmo no ar, e desfazer o toml sozinho
+# mentiria sobre o que esta em producao. Quem decide qual caminho seguir e
+# quem esta olhando os dados, nao o script.
+function Fail-PosDeploy($msg) {
+  Write-Host "ERRO: $msg" -ForegroundColor Red
+  Write-Host ""
+  Write-Host "O 'wrangler deploy' (passo 4) teve sucesso, so a validacao pos-deploy falhou. Por isso o git nao foi tocado." -ForegroundColor Yellow
+  Write-Host "api/wrangler.toml ficou modificado (main -> $bundle) e SEM commit." -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "Se depois de investigar confirmar que a producao esta saudavel em $ver, sincronize o repo a mao:" -ForegroundColor Yellow
+  Write-Host "  git add api/$bundle api/wrangler.toml" -ForegroundColor Yellow
+  Write-Host "  git commit -m `"chore(worker): deploy $ver em producao`"" -ForegroundColor Yellow
+  Write-Host "  git push origin HEAD" -ForegroundColor Yellow
+  Write-Host ""
+  Write-Host "Se preferir descartar esta tentativa e investigar antes de deployar de novo:" -ForegroundColor Yellow
+  Write-Host "  git checkout -- api/wrangler.toml" -ForegroundColor Yellow
+  exit 1
+}
+
 # --- 5. Validacao em producao ----------------------------------------------
 if ($SkipValidation) {
   Write-Host "`nValidacao pulada (-SkipValidation)." -ForegroundColor DarkGray
 } else {
   Write-Host "`nValidando producao..." -ForegroundColor Yellow
-  Start-Sleep -Seconds 4
-  try {
-    $h = Invoke-RestMethod -Uri "https://api.vixradar.com/?_=$([guid]::NewGuid())" -Headers @{ "Cache-Control" = "no-cache" }
-  } catch {
-    Fail "Falha ao ler o health de producao: $_"
+
+  # RETRY-PROP1 (2026-08-18): sleep fixo de 4s + uma tentativa unica dava falso
+  # negativo quando a propagacao na borda da Cloudflare demorava mais que isso.
+  # Visto ao vivo no deploy do v4.9.196: producao ainda respondia v4.9.195 na
+  # checagem, o script abortou com o wrangler.toml sujo, e uma reconsulta manual
+  # ~8s depois ja batia v4.9.196. O passo 4 ja tinha tido sucesso, entao abortar
+  # aqui por propagacao lenta e o proprio drift falso que este script existe pra
+  # evitar. Retry com backoff ate esgotar a janela antes de declarar falha.
+  $timeoutSec   = 60
+  $intervaloSec = 5
+  $deadline     = (Get-Date).AddSeconds($timeoutSec)
+  $h = $null
+  $tentativa = 0
+
+  while ($true) {
+    $tentativa++
+    try {
+      $h = Invoke-RestMethod -Uri "https://api.vixradar.com/?_=$([guid]::NewGuid())" -Headers @{ "Cache-Control" = "no-cache" } -TimeoutSec 10
+      if ($h.versao -eq $ver) { break }
+      Write-Host "  tentativa $tentativa - versao viva=$($h.versao), esperada=$ver, retentando..." -ForegroundColor DarkGray
+    } catch {
+      Write-Host "  tentativa $tentativa - falha ao consultar o health, retentando: $_" -ForegroundColor DarkGray
+      $h = $null
+    }
+    if ((Get-Date) -ge $deadline) { break }
+    Start-Sleep -Seconds $intervaloSec
   }
 
-  if ($h.versao -ne $ver) {
-    Fail "Versao viva=$($h.versao), esperada=$ver. Deploy nao propagou ou foi para outro Worker. NAO commitado."
+  if (-not $h) {
+    Fail-PosDeploy "Nao consegui ler o health de producao apos $timeoutSec s de retry ($tentativa tentativas)."
   }
-  Write-Host "  versao viva: $($h.versao) OK" -ForegroundColor Green
+  if ($h.versao -ne $ver) {
+    Fail-PosDeploy "Versao viva=$($h.versao), esperada=$ver, apos $timeoutSec s de retry ($tentativa tentativas). Deploy nao propagou ou foi para outro Worker."
+  }
+  Write-Host "  versao viva: $($h.versao) OK (tentativa $tentativa)" -ForegroundColor Green
 
   # HEALTHSPLIT1 (2026-08-20): frescor de fonte externa saiu do `ok` agregado e
   # foi para `fonte_externa_ok`, entao `ok=false` voltou a significar servico
@@ -311,19 +361,19 @@ if ($SkipValidation) {
       Write-Host "  Fonte CVM sem republicar ha $($h.cvm_fonte_idade_du) dias uteis. Motivo: $($h.cvm_fonte_motivo). Last-Modified: $($h.cvm_fonte_last_modified)" -ForegroundColor Yellow
       Write-Host "  Cadencia da fonte e semanal (domingos), nao falha deste deploy. Prosseguindo com o commit." -ForegroundColor Yellow
     } else {
-      Fail "Health ok=false — producao degradada apos o deploy."
+      Fail-PosDeploy "Health ok=false — producao degradada apos o deploy."
     }
   }
   if ($h.PSObject.Properties.Name -contains 'fonte_externa_ok' -and -not $h.fonte_externa_ok) {
     Write-Host "  AVISO: fonte_externa_ok=false. Motivo: $($h.cvm_fonte_motivo). Nao bloqueia deploy, e estado do mundo externo." -ForegroundColor Yellow
   }
   # Telemetria e regra inviolavel do projeto (binding RADAR_USAGE_EVENTS).
-  if (-not $h.bindings.kv)         { Fail "Binding kv ausente apos o deploy." }
-  if (-not $h.bindings.telemetria) { Fail "Binding de telemetria ausente — painel de Engajamento cego." }
+  if (-not $h.bindings.kv)         { Fail-PosDeploy "Binding kv ausente apos o deploy." }
+  if (-not $h.bindings.telemetria) { Fail-PosDeploy "Binding de telemetria ausente — painel de Engajamento cego." }
   # SENTRY1: redundante com o gate 0.3 no caminho feliz, mas pega o caso em que
   # o secret existe com valor malformado (o gate so ve o nome, o health valida
   # o formato do DSN). Sentry mudo nao avisa que esta mudo.
-  if (-not $h.sentry_ok)           { Fail "sentry_ok=false — SENTRY_DSN ausente ou malformado. Captura de excecao cega." }
+  if (-not $h.sentry_ok)           { Fail-PosDeploy "sentry_ok=false — SENTRY_DSN ausente ou malformado. Captura de excecao cego." }
   Write-Host "  ok=$($h.ok) kv=true telemetria=true sentry_ok=true cvm_fonte_ok=$($h.cvm_fonte_ok)" -ForegroundColor Green
 }
 
