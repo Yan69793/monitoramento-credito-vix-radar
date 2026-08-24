@@ -5,6 +5,15 @@
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
 # v4.9.213.js = v4.9.212 + SENDASGPA1 e RELOGIO3H1.
+#   CARREGA a troca de carteira CARTEIRA-24AGO1 por heranca, ela ja subiu na v4.9.212 e
+#   esta viva em producao. Conferido no endpoint antes de versionar, e nao no plano:
+#   listar_plano_rotina devolve total=103, Braskem presente com setor "Petroleo, Gas e
+#   Combustiveis" e tier FULL, "AES Brasil" ausente. A unica ocorrencia de "AES" na
+#   carteira e a Taesa, que e outro emissor. Auren Energia, que incorporou a AES, segue
+#   nos 103. Os 5 pontos da troca conferidos um a um no fonte: EMISSORES_LISTA,
+#   SYNC_ALIAS_NOMES_CVM, SYNC_ALIAS_TO_EMPRESA, TOKENS_ROBUSTOS_ANBIMA e mapa de setor,
+#   mais a remocao da excecao antiga em scripts/check-emissores-cadastro.mjs. Nenhuma
+#   referencia viva a AES sobrou, so comentario de registro.
 #   RELOGIO3H1, relogio de varredura gravado 3h no passado. `_last_scanned_at` e INSTANTE
 #   de varredura e e comparado contra Date.now() cru em _parseHorasStale, mas o caminho de
 #   receber_analise gravava com obterAgoraBRT(), que devolve `new Date(Date.now() - 3h)`.
