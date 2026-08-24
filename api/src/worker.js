@@ -6897,7 +6897,40 @@ __name22222(buscarDocumentosCVM, "buscarDocumentosCVM");
 __name222222(buscarDocumentosCVM, "buscarDocumentosCVM");
 __name2222222(buscarDocumentosCVM, "buscarDocumentosCVM");
 __name22222222(buscarDocumentosCVM, "buscarDocumentosCVM");
-var CVM_ZIP_URL = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_2026.zip";
+// CVMURL404 (auditoria 2026-08-24). O nome do arquivo era constante fixa com o
+// ano cravado, e isso tinha duas falhas. A obvia: em 01/01/2027 o Worker
+// continuaria pedindo o ZIP de 2026 para sempre. A que estourou primeiro: em
+// 23/08/2026 a CVM removeu ipe_cia_aberta_2026.zip do diretorio (404 no disco,
+// listagem indo so ate 2025.zip) enquanto o catalogo CKAN seguia anunciando o
+// arquivo e regenerando o de 2025 no mesmo dia. Com URL fixa nao havia como
+// descobrir que o recurso mudou de lugar ou de nome, so como falhar em silencio.
+// Agora o ano sai do relogio BRT e, no 404, a URL e reperguntada ao catalogo.
+var CVM_ZIP_BASE = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/";
+var CVM_CATALOGO_URL = "https://dados.cvm.gov.br/api/3/action/package_show?id=cia_aberta-doc-ipe";
+function cvmZipUrlDoAno(ano) {
+  return CVM_ZIP_BASE + "ipe_cia_aberta_" + String(ano) + ".zip";
+}
+__name(cvmZipUrlDoAno, "cvmZipUrlDoAno");
+// Resolve a URL do ZIP do ano corrente pelo catalogo CKAN da CVM. Devolve null
+// quando o catalogo nao responde ou nao lista o ano, e nesse caso quem chama
+// trata como fonte ausente, nunca como sucesso vazio.
+async function resolverUrlZipPeloCatalogo(ano) {
+  try {
+    const res = await fetch(CVM_CATALOGO_URL, { cf: { cacheTtl: 900 }, signal: AbortSignal.timeout(2e4) });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const recursos = j && j.result && Array.isArray(j.result.resources) ? j.result.resources : [];
+    const alvo = "ipe_cia_aberta_" + String(ano) + ".zip";
+    for (const r of recursos) {
+      const u = String(r && r.url || "");
+      if (u.toLowerCase().endsWith(alvo)) return u;
+    }
+    return null;
+  } catch (_e) {
+    return null;
+  }
+}
+__name(resolverUrlZipPeloCatalogo, "resolverUrlZipPeloCatalogo");
 var CVM_CATEGORIAS = [
   "Fato Relevante",
   "Comunicado ao Mercado",
@@ -7132,6 +7165,19 @@ var SYNC_ALIAS_TO_EMPRESA = {
 var CVM_FONTE_META_KEY = "cvm:fonte_meta";
 var CVM_FONTE_CICLO_DIAS = 7;
 var CVM_FONTE_MAX_CICLOS = 2;
+// CVMDURA1 (auditoria 2026-08-24). CVM_FONTE_MAX_CICLOS acima cobre UM caso:
+// arquivo presente e velho. Ele foi calibrado para nao gritar com a cadencia
+// semanal normal, e para isso esta certo. O que ele nunca cobriu foi falha
+// DURA de fetch: 404, 5xx, excecao de rede. Entre 23 e 24/08/2026 o ZIP do ano
+// corrente sumiu do servidor da CVM e o Worker tratou esse 404 com a mesma
+// tolerancia de 14 dias criada para cadencia, entao `ok` agregado ficou true e
+// o canonical-test ficou verde com a fonte primaria de eventos morta. Nao e a
+// mesma coisa: fonte que responde velho e cadencia, fonte que nao responde e
+// incidente. Falha dura derruba fonte_externa_ok na hora, e depois de
+// CVM_FONTE_MAX_FALHAS sincronizacoes falhas seguidas escala para o `ok`
+// agregado. Com crons matinal e noturno, 4 falhas sao 2 dias.
+var CVM_FONTE_MAX_FALHAS = 4;
+var CVM_FONTE_MOTIVOS_DUROS = /^(http_\d{3}|excecao:|fonte_ausente_no_catalogo|nao_e_zip|nao_e_deflate)/;
 // Dia da semana em que o lote CIA_ABERTA/DOC roda (0 = domingo), usado so para
 // projetar a proxima publicacao prevista no aviso de frescor do painel.
 var CVM_FONTE_DOW_PUBLICACAO = 0;
@@ -7162,13 +7208,44 @@ function _cvmDiasUteisApos(dataISO, hojeISO) {
   return n;
 }
 
+// CVMMETAWIPE1 (auditoria 2026-08-24). O caminho de erro sobrescrevia a meta
+// INTEIRA com {ok:false, motivo, sincronizado_em}, apagando max_data_entrega e
+// last_modified_iso do ultimo sucesso. Consequencia medida em producao: com a
+// fonte em 404, o health devolvia cvm_fonte_idade_dias:null e
+// cvm_fonte_ciclos_perdidos:null, ou seja, era impossivel saber se a fonte
+// estava parada ha 1 hora ou ha 9 dias, justamente quando essa era a unica
+// pergunta que importava. Falha nao pode destruir a ultima medida boa: ela
+// carimba por cima do estado de saude, nunca por cima do historico da fonte.
 async function gravarFonteCVMMeta(env2222, meta) {
   if (!env2222 || !env2222.RADAR_KV) return;
   try {
+    var anterior = null;
+    try {
+      anterior = await env2222.RADAR_KV.get(CVM_FONTE_META_KEY, "json");
+    } catch (_e) {
+      anterior = null;
+    }
+    var final = meta;
+    if (meta && meta.ok === false) {
+      var falhasAnt = anterior && Number(anterior.falhas_consecutivas) > 0 ? Number(anterior.falhas_consecutivas) : 0;
+      final = {
+        ...meta,
+        // Ultimo bom preservado. Se o proprio erro trouxe valor novo (ex.: o
+        // fetch respondeu mas o ZIP veio corrompido), o valor novo ganha.
+        last_modified: meta.last_modified != null ? meta.last_modified : (anterior && anterior.last_modified) || null,
+        last_modified_iso: meta.last_modified_iso != null ? meta.last_modified_iso : (anterior && anterior.last_modified_iso) || null,
+        max_data_entrega: meta.max_data_entrega != null ? meta.max_data_entrega : (anterior && anterior.max_data_entrega) || null,
+        documentos: meta.documentos != null ? meta.documentos : (anterior && anterior.documentos) || null,
+        ultimo_sync_ok_em: (anterior && (anterior.ok === true ? anterior.sincronizado_em : anterior.ultimo_sync_ok_em)) || null,
+        falhas_consecutivas: falhasAnt + 1
+      };
+    } else if (meta && meta.ok === true) {
+      final = { ...meta, ultimo_sync_ok_em: meta.sincronizado_em || null, falhas_consecutivas: 0 };
+    }
     // Sem expirationTtl de proposito: meta que expira volta a "sem_meta" e o
     // health teria que decidir no escuro. Meta velha e informacao, meta
     // ausente e cegueira.
-    await env2222.RADAR_KV.put(CVM_FONTE_META_KEY, JSON.stringify(meta));
+    await env2222.RADAR_KV.put(CVM_FONTE_META_KEY, JSON.stringify(final));
   } catch (e) {
     console.error("[cvm][fonte_meta] gravacao falhou:", e && e.message ? e.message : String(e));
   }
@@ -7221,7 +7298,24 @@ async function avaliarFrescorCVM(env2222) {
   out.max_data_entrega = meta.max_data_entrega || null;
   out.sincronizado_em = meta.sincronizado_em || null;
   if (meta.ok === false) {
-    out.motivo = "ultimo_sync_falhou:" + String(meta.motivo || "desconhecido").slice(0, 60);
+    var _motRaw = String(meta.motivo || "desconhecido");
+    out.motivo = "ultimo_sync_falhou:" + _motRaw.slice(0, 60);
+    out.falhas_consecutivas = Number(meta.falhas_consecutivas) || 0;
+    out.ultimo_sync_ok_em = meta.ultimo_sync_ok_em || null;
+    // CVMDURA1: a idade continua mensuravel porque CVMMETAWIPE1 preservou o
+    // ultimo bom. Sem isto o alerta diz "falhou" e nao diz ha quanto tempo, que
+    // e a metade acionavel da informacao.
+    var _refF = meta.last_modified_iso || meta.max_data_entrega || null;
+    if (_refF) {
+      out.idade_du = _cvmDiasUteisApos(_refF, obterAgoraBRT().toISOString().slice(0, 10));
+      out.idade_dias = _cvmDiasCorridosApos(_refF, obterAgoraBRT().toISOString().slice(0, 10));
+      if (out.idade_dias != null) out.ciclos_perdidos = Math.floor(out.idade_dias / CVM_FONTE_CICLO_DIAS);
+    }
+    out.cadencia = "semanal";
+    out.falha_dura = CVM_FONTE_MOTIVOS_DUROS.test(_motRaw);
+    // Escalada: falha dura repetida deixa de ser frescor de terceiro e vira
+    // plataforma degradada, porque a ingestao de fato relevante esta parada.
+    out.degrada_servico = out.falha_dura && out.falhas_consecutivas >= CVM_FONTE_MAX_FALHAS;
     return out;
   }
   // Last-Modified do servidor da CVM e o sinal mais direto de "a fonte mudou".
@@ -7294,9 +7388,28 @@ async function syncCVMAutomatico(env2222) {
   let _lastModIso = null;
   let _lastModRaw = null;
   try {
-    const res = await fetch(CVM_ZIP_URL, { cf: { cacheTtl: 3600 }, signal: AbortSignal.timeout(6e4) }); // TIMEOUT1 (auditoria 2026-08-15)
+    // CVMURL404: ano do relogio BRT, nunca cravado. Primeira tentativa e o nome
+    // canonico do arquivo; se ele nao existir mais, o catalogo CKAN e quem diz
+    // onde o recurso foi parar.
+    const _ano = obterAgoraBRT().getUTCFullYear();
+    let _url = cvmZipUrlDoAno(_ano);
+    let res = await fetch(_url, { cf: { cacheTtl: 3600 }, signal: AbortSignal.timeout(6e4) }); // TIMEOUT1 (auditoria 2026-08-15)
+    if (!res.ok && res.status === 404) {
+      log.etapas.push({ etapa: "fetch", ok: false, status: 404, url: _url, acao: "consultando_catalogo" });
+      const _urlCat = await resolverUrlZipPeloCatalogo(_ano);
+      if (_urlCat && _urlCat !== _url) {
+        _url = _urlCat;
+        res = await fetch(_url, { cf: { cacheTtl: 3600 }, signal: AbortSignal.timeout(6e4) });
+      } else if (!_urlCat) {
+        // Catalogo tambem nao conhece o ano corrente. Nao ha para onde apontar,
+        // e isso e diferente de "servidor devolveu 404 para uma URL velha".
+        log.etapas.push({ etapa: "catalogo", ok: false, motivo: "ano_ausente_no_catalogo", ano: _ano });
+        await gravarFonteCVMMeta(env2222, { ok: false, motivo: "fonte_ausente_no_catalogo", sincronizado_em: _agoraIso, origem: "sync_automatico" });
+        return { ok: false, log };
+      }
+    }
     if (!res.ok) {
-      log.etapas.push({ etapa: "fetch", ok: false, status: res.status });
+      log.etapas.push({ etapa: "fetch", ok: false, status: res.status, url: _url });
       await gravarFonteCVMMeta(env2222, { ok: false, motivo: "http_" + res.status, sincronizado_em: _agoraIso, origem: "sync_automatico" });
       return { ok: false, log };
     }
@@ -7381,7 +7494,12 @@ async function syncCVMAutomatico(env2222) {
       docs.push({ e: (cols[iNome] || "").trim(), d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim().replace(/\r/g, ""), l: (cols[iLink] || "").trim().replace(/\r/g, "") });
     }
     docs.sort((a, b) => b.d.localeCompare(a.d));
-    await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(docs), { expirationTtl: 60 * 60 * 24 * 14 });
+    // VOLTTL1 aplicado aqui em 2026-08-24: a chave so e reescrita em sync
+    // BEM-SUCEDIDO, e o lote util da CVM e semanal. TTL de 14 dias dava margem
+    // de apenas 2 ciclos, entao a fonte cair por 2 semanas apagaria a base de
+    // documentos e o frescor viraria imensuravel justamente durante o incidente.
+    // 30 dias mantem o ultimo bom vivo por 4 ciclos.
+    await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(docs), { expirationTtl: 60 * 60 * 24 * 30 });
     const empresasUnicas = [...new Set(docs.map((d) => d.e))].length;
     log.etapas.push({ etapa: "store", ok: true, documentos: docs.length, empresas: empresasUnicas });
     log.etapas.push({ etapa: "frescor", last_modified: _lastModRaw || null, max_data_entrega_fonte: maxEntregaFonte });
@@ -16864,11 +16982,18 @@ async function __coreFetch(request, env2222, ctx) {
       }
       var _cvmFonteOk = !!_cvmFrescor.ok;
       var _fonteExternaOk = _cvmFonteOk;
-      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk;
+      // CVMDURA1 (2026-08-24): HEALTHSPLIT1 tirou o frescor da CVM do `ok` de
+      // proposito, e continua certo para cadencia. Mas falha DURA persistente
+      // nao e frescor de terceiro, e ingestao parada, e isso e degradacao da
+      // plataforma com correcao do nosso lado. Depois de CVM_FONTE_MAX_FALHAS
+      // syncs falhos seguidos, volta a pesar no `ok` agregado, o que reacende
+      // canonical-test e daily-status-email sem depender do Health-Watch local.
+      var _cvmDegrada = _cvmFrescor.degrada_servico === true;
+      const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk && !_cvmDegrada;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null }, 200, request);
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null }, 200, request);
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };

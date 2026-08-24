@@ -66,6 +66,22 @@ Se `ok` nao for true, aborte. Se `total` for 0, encerre limpo. Se `total` != 15,
 Cada emissor traz: `empresa, setor, tier, motivos, rodadas, ews_score, cvm_novos, cvm_documentos, contexto_historico, janela_inicio, janela_fim`.
 Tudo que voce precisa ja vem aqui. NAO chame `dados_para_analise`.
 
+### Feed bulk da CVM escuro (CVMURL404, 2026-08-24)
+
+No health, olhe `cvm_fonte_falha_dura`. Quando for `true`, o Worker nao esta conseguindo
+baixar o ZIP do ano corrente da CVM, entao `cvm_novos` e `cvm_documentos` vem congelados
+na ultima carga boa. Foi o que travou o painel em 20/08/2026 por 4 dias.
+
+Nesse estado, **ausencia de documento novo nao significa ausencia de fato novo**.
+Registre no log:
+
+```
+FONTE_CVM_ESCURA: cvm_fonte_falha_dura=true motivo=<cvm_fonte_motivo> ultimo_bom=<cvm_fonte_ultimo_sync_ok_em>
+```
+
+E busque imprensa e `rad.cvm.gov.br` para todo emissor da fila, inclusive os que estao
+com `cvm_novos=0`. A rotina segue, nao aborta.
+
 ## Passo 5 - Idempotencia
 
 Log do dia: `E:\Diretorio\Claude\Monitoramento de Credito\logs\routines\vixradar-matinal_<yyyyMMdd>.log` (ex: vixradar-matinal_20260804.log).

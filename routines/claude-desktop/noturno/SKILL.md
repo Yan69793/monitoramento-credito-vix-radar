@@ -104,6 +104,24 @@ Tudo que a analise precisa ja vem aqui. NAO chame `dados_para_analise`.
 
 Extraia a janela do primeiro emissor (`janela_inicio`, `janela_fim`). Ela vai no cabecalho de todo prompt de subagente.
 
+### Feed bulk da CVM escuro (CVMURL404, 2026-08-24)
+
+No health do Passo 2, olhe `cvm_fonte_falha_dura`. Quando for `true`, o arquivo bulk
+da CVM nao esta sendo baixado: o Worker nao consegue pegar o ZIP do ano corrente. Foi
+o que aconteceu entre 23 e 24/08/2026, quando a CVM removeu `ipe_cia_aberta_2026.zip`
+do servidor e o painel ficou 4 dias sem nenhum fato novo.
+
+Nesse estado, `cvm_novos` e `cvm_documentos` vem congelados na ultima carga boa e
+**ausencia de documento novo nao significa ausencia de fato novo**. Registre no log:
+
+```
+FONTE_CVM_ESCURA: cvm_fonte_falha_dura=true motivo=<cvm_fonte_motivo> ultimo_bom=<cvm_fonte_ultimo_sync_ok_em>
+```
+
+E mude a busca dos subagentes: nao trate `cvm_novos=0` como sinal de silencio do
+emissor, busque imprensa e `rad.cvm.gov.br` normalmente para todo emissor da fila,
+inclusive os que nao tem documento novo listado. A rotina segue, nao aborta.
+
 ## Passo 4 - Idempotencia
 
 Log do dia: `E:\Diretorio\Claude\Monitoramento de Credito\logs\routines\vixradar-noturno_<yyyyMMdd>.log` (ex: vixradar-noturno_20260804.log). Este e o caminho fisico canonico desde a inversao da junction em 18/08/2026. O caminho antigo (prefixo FREQUENTE) ainda resolve por junction legada de compatibilidade, mas nao usar mais - usar sempre o caminho canonico acima.

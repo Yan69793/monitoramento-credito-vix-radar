@@ -41,9 +41,19 @@ $TokenHardCap   = 700000   # deferred só acima disto
 # 15/08: 12,4k/emissor). A estimativa antiga de 4,5k fazia o plano achar que 89 emissores cabiam e o
 # hard cap estourava no meio. Este script nao e mais o executor (a sessao do Desktop usa a skill em
 # ~/.claude/scheduled-tasks/vixradar-noturno/), mas as constantes ficam coerentes com a skill.
+# CALIB2 (2026-08-24): custo real medido nos 4 lotes de 23/08, colado no log daquele dia
+# ("25,2k por emissor na aprofundada e 12,3k na rapida, contra 13k e 9,5k previstos").
+# A subestimativa nao era academica: com 9,5k o plano achava que a fila rapida cabia
+# folgada, gastava 673k dos 700k nela e a fila APROFUNDADA nao disparava. Em 22/08 os 19
+# emissores de maior risco sairam com DEFERIDO|0 evento, e em 23/08 foram 31.
 $TokenBootOverhead     = 15000   # piso fixo por invocacao do claude (medido ~13,6k - ver Invoke-ClaudeBatch)
-$TokenPerEmissorSonnet = 13000   # sem medicao recente - revalidar no proximo run aprofundado
-$TokenPerEmissorHaiku  = 9500    # medido 17/08: 9,4k/emissor em lotes de 15 (era 4500, desenho original)
+$TokenPerEmissorSonnet = 25200   # medido 23/08 em 2 lotes aprofundados (152.644 + 149.312)
+$TokenPerEmissorHaiku  = 12300   # medido 23/08 em 2 lotes rapidos (180.115 + 168.861)
+# CAPRESERVA1 (2026-08-24): a fila rapida roda primeiro de proposito (inverter a ordem ja
+# zerou o Haiku em 09/07), mas rodar primeiro nao pode significar gastar tudo. A rapida
+# agora consome no maximo (hard cap - reserva da aprofundada). O corte cai na cauda da
+# rapida, que ja vem ordenada por EWS desc, entao sobra risco minimo, nao risco alto.
+$TokenReservaFracaoAprofundada = 0.60
 $SonnetEwsMin   = 38
 $HaikuChunk     = 15
 $SonnetChunk    = 11
@@ -626,6 +636,23 @@ try {
     $queues = Build-LlmQueues $analyzeList
     Write-Log ('Filas: sonnet=' + $queues.Sonnet.Count + ' haiku=' + $queues.Haiku.Count)
 
+    # CAPRESERVA1: reserva de orcamento da fila APROFUNDADA, calculada antes de gastar
+    # o primeiro token. Vale o que a fila realmente precisa, limitado a fracao do hard
+    # cap, para nao acontecer o inverso (aprofundada gigante zerando a rapida).
+    $sonnetLotesPrev = 0
+    if ($queues.Sonnet.Count -gt 0) { $sonnetLotesPrev = [Math]::Ceiling($queues.Sonnet.Count / $SonnetChunk) }
+    $reservaNecessaria = ($sonnetLotesPrev * $TokenBootOverhead) + ($queues.Sonnet.Count * $TokenPerEmissorSonnet)
+    $reservaTeto = [int]([Math]::Floor($TokenHardCap * $TokenReservaFracaoAprofundada))
+    $ReservaAprofundada = $reservaNecessaria
+    if ($ReservaAprofundada -gt $reservaTeto) { $ReservaAprofundada = $reservaTeto }
+    $CapFilaRapida = $TokenHardCap - $ReservaAprofundada
+    Write-Log ('RESERVA: aprofundada=' + $ReservaAprofundada + ' (necessario=' + $reservaNecessaria +
+        ' teto=' + $reservaTeto + ') cap_fila_rapida=' + $CapFilaRapida + ' hard=' + $TokenHardCap)
+    if ($reservaNecessaria -gt $reservaTeto) {
+        Write-Log ('AVISO: fila aprofundada precisa de ' + $reservaNecessaria + ' e a reserva foi limitada a ' +
+            $reservaTeto + '. Parte da aprofundada vai ser deferida mesmo com a rapida contida. Rever $TokenHardCap.')
+    }
+
     # v4.9.151: Haiku primeiro garante cobertura total (LIGHT/AUDIT/FULL resto).
     # Sonnet depois com orcamento restante - se o hard cap estourar nos Sonnet,
     # pelo menos a cobertura base ja foi feita. Ordem anterior (Sonnet primeiro)
@@ -671,10 +698,17 @@ try {
         $unit = if ($job.Name -eq 'sonnet') { $TokenPerEmissorSonnet } else { $TokenPerEmissorHaiku }
         $estLote = $TokenBootOverhead + ($job.Chunk.Count * $unit)
 
-        if (($stats.tokens_total + $estLote) -ge $TokenHardCap) {
+        # CAPRESERVA1: a fila rapida (haiku) bate no cap reduzido, que protege a reserva
+        # da aprofundada. A aprofundada (sonnet) segue batendo no hard cap cheio.
+        $capDoJob = $TokenHardCap
+        if ($job.Name -ne 'sonnet') { $capDoJob = $CapFilaRapida }
+
+        if (($stats.tokens_total + $estLote) -ge $capDoJob) {
             $stats.tokens_hard_hit = $true
             foreach ($e in $job.Chunk) { $pendingDeferred.Add($e) }
-            Write-Log ('HARD CAP pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $TokenHardCap + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores)')
+            $qualCap = 'HARD CAP'
+            if ($job.Name -ne 'sonnet') { $qualCap = 'CAP FILA RAPIDA (reserva da aprofundada preservada)' }
+            Write-Log ($qualCap + ' pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $capDoJob + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores)')
             continue
         }
 

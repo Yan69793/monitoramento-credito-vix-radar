@@ -4,6 +4,27 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.209.js = v4.9.208 + CVMURL404, CVMMETAWIPE1, CVMDURA1 e VOLTTL1 (auditoria 24/08):
+#   Painel travado em 20/08 por 4 dias com as 3 rotinas rodando e todo semaforo verde.
+#   Causa: em 23/08 a CVM removeu ipe_cia_aberta_2026.zip do servidor (404, listagem so
+#   ate 2025.zip, catalogo CKAN ainda anunciando o arquivo). cvm:documentos congelou em
+#   Data_Entrega 15/08, as rotinas perderam o gatilho primario de evento e passaram a
+#   reciclar o mesmo acervo de imprensa.
+#   - CVMURL404: o ano do ZIP sai do relogio BRT em vez de cravado (o codigo pediria o
+#     arquivo de 2026 para sempre a partir de 01/01/2027) e, em 404, a URL e reperguntada
+#     ao catalogo CKAN da CVM. Nao resolvendo em nenhuma via, motivo fonte_ausente_no_catalogo.
+#   - CVMMETAWIPE1: o caminho de erro de gravarFonteCVMMeta sobrescrevia a meta inteira e
+#     apagava max_data_entrega. Health devolvia idade_dias:null durante o incidente, ou seja,
+#     era impossivel saber ha quanto tempo a fonte estava escura. Agora faz merge e conta
+#     falhas_consecutivas e ultimo_sync_ok_em.
+#   - CVMDURA1: falha DURA (http_4xx/5xx, excecao, arquivo ausente, ZIP invalido) deixa de ser
+#     tratada com a tolerancia de 14 dias do CVM_FONTE_MAX_CICLOS, que foi feita para cadencia
+#     semanal (CVMCADENCIA1). Derruba fonte_externa_ok na hora e, apos CVM_FONTE_MAX_FALHAS=4
+#     syncs falhos seguidos, volta a pesar no `ok` agregado. Campos novos no health:
+#     cvm_fonte_falha_dura, cvm_fonte_degrada_servico, cvm_fonte_falhas_consecutivas,
+#     cvm_fonte_ultimo_sync_ok_em. Testes em api/test/cvm-frescor.test.mjs.
+#   - VOLTTL1 aplicado a cvm:documentos: TTL de 14 para 30 dias, porque a chave so e reescrita
+#     em sync bem-sucedido e o lote util da CVM e semanal.
 # v4.9.208.js = v4.9.207 + ANOMSCHEMA1 e FONTELATENCIA1 (auditoria 21/08):
 #   - ANOMSCHEMA1: tres detectores de anomalia estruturalmente impossiveis com o
 #     schema anbima_publico marcados como desligados de proposito, detector de taxa

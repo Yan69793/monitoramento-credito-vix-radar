@@ -83,4 +83,29 @@ jobs:
             exit 1
           fi
 
-          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total"
+          # CVMDURA1 / HEALTHWATCH3 (2026-08-24). Ate aqui nada neste workflow
+          # olhava a FONTE, so o resultado dela. Em 23/08 o ZIP do ano corrente
+          # da CVM sumiu do servidor (404) e a ingestao de fato relevante morreu,
+          # mas o gate de evento acima levou 6 dias para acusar porque o fim de
+          # semana nao conta dia util e o limite e 2. O unico canal que cobria
+          # a fonte era o watch-vixradar-health.ps1, desligado em 21/08.
+          # Este bloco fecha o buraco e roda na nuvem, sem depender da maquina
+          # local. A mensagem nomeia o campo especifico: alerta que so repete
+          # "ok=false" treina o operador a ignorar.
+          pub=$(curl --fail-with-body -sS 'https://api.vixradar.com/' --max-time 60)
+          cvm_dura=$(echo "$pub" | jq -r '.cvm_fonte_falha_dura // false')
+          cvm_degrada=$(echo "$pub" | jq -r '.cvm_fonte_degrada_servico // false')
+          cvm_motivo=$(echo "$pub" | jq -r '.cvm_fonte_motivo // "ausente"')
+          cvm_falhas=$(echo "$pub" | jq -r '.cvm_fonte_falhas_consecutivas // 0')
+          cvm_idade=$(echo "$pub" | jq -r '.cvm_fonte_idade_dias // "null"')
+          cvm_ok_em=$(echo "$pub" | jq -r '.cvm_fonte_ultimo_sync_ok_em // "null"')
+
+          if [[ "$cvm_degrada" == "true" ]]; then
+            echo "::error::FONTE CVM MORTA. cvm_fonte_motivo=${cvm_motivo} falhas_consecutivas=${cvm_falhas} idade_dias=${cvm_idade} ultimo_sync_ok_em=${cvm_ok_em}. Isto NAO e cadencia semanal (CVMCADENCIA1): e falha dura de fetch repetida, o Worker nao consegue baixar o arquivo. Confira a URL viva em https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ e o catalogo em https://dados.cvm.gov.br/api/3/action/package_show?id=cia_aberta-doc-ipe antes de mexer em rotina."
+            exit 1
+          fi
+          if [[ "$cvm_dura" == "true" ]]; then
+            echo "::warning::Fonte CVM com falha dura recente. cvm_fonte_motivo=${cvm_motivo} falhas_consecutivas=${cvm_falhas} idade_dias=${cvm_idade}. Ainda abaixo do limite de escalada, mas se repetir a ingestao de fato relevante para."
+          fi
+
+          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"

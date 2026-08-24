@@ -314,3 +314,145 @@ describe("CVMFRESCOR1 - endpoints admin de frescor", () => {
     expect(b.cvm_fonte_ok).toBe(true);
   });
 });
+
+// ── CVMDURA1 + CVMMETAWIPE1 (auditoria 2026-08-24) ────────────────────────────
+//
+// Incidente: em 23/08/2026 a CVM removeu ipe_cia_aberta_2026.zip do servidor.
+// O sync passou a responder 404, `cvm:documentos` congelou na carga de 15/08, e
+// as rotinas perderam o gatilho primario de evento. O painel ficou 4 dias sem
+// nenhum fato novo (evento mais recente 20/08 com 103 emissores varridos em
+// 23/08) e NADA ficou vermelho:
+//   - CVM_FONTE_MAX_CICLOS tolera 14 dias, regra desenhada para CADENCIA
+//     semanal, e engolia um 404 duro com a mesma paciencia;
+//   - o caminho de erro de gravarFonteCVMMeta sobrescrevia a meta inteira,
+//     apagando max_data_entrega, entao o health devolvia idade_dias:null e nem
+//     dava para saber ha quanto tempo a fonte estava escura;
+//   - VIXRadar-Health-Watch, unico canal que alertava em fonte_externa_ok,
+//     estava Disabled desde 21/08.
+//
+// Contrato travado aqui: fonte que NAO RESPONDE e incidente, nao cadencia. Cai
+// na hora em fonte_externa_ok e, repetindo, escala para o `ok` agregado.
+describe("CVMDURA1 - falha dura da fonte separada de cadencia", () => {
+  beforeEach(async () => {
+    await env.RADAR_KV.delete(META_KEY);
+    await env.RADAR_KV.delete("cvm:documentos");
+  });
+
+  it("404 recente marca falha dura e derruba a fonte, sem derrubar o servico", async () => {
+    await seedMeta({
+      ok: false,
+      motivo: "http_404",
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(1),
+      max_data_entrega: diasAtrasISO(1),
+      ultimo_sync_ok_em: new Date().toISOString(),
+      falhas_consecutivas: 1,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_ok).toBe(false);
+    expect(b.fonte_externa_ok).toBe(false);
+    expect(b.cvm_fonte_falha_dura).toBe(true);
+    expect(b.cvm_fonte_falhas_consecutivas).toBe(1);
+    expect(b.cvm_fonte_degrada_servico).toBe(false);
+    // Uma falha pode ser blip de rede. Nao acorda ninguem pelo `ok`.
+    expect(b.ok).toBe(true);
+  });
+
+  it("404 repetido acima do limite escala para o ok agregado", async () => {
+    await seedMeta({
+      ok: false,
+      motivo: "http_404",
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(9),
+      max_data_entrega: diasAtrasISO(9),
+      ultimo_sync_ok_em: null,
+      falhas_consecutivas: 4,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_falha_dura).toBe(true);
+    expect(b.cvm_fonte_degrada_servico).toBe(true);
+    // Este e o ponto do fix: ingestao de fato relevante parada ha 2 dias de
+    // crons deixa de ser "frescor de terceiro" e vira plataforma degradada.
+    expect(b.ok).toBe(false);
+  });
+
+  it("CVMMETAWIPE1: falha preserva a idade da fonte em vez de devolver null", async () => {
+    // O sintoma real em producao: cvm_fonte_idade_dias e ciclos_perdidos vinham
+    // null porque o erro tinha apagado max_data_entrega. Alerta que diz "falhou"
+    // sem dizer ha quanto tempo perde a metade acionavel da informacao.
+    await seedMeta({
+      ok: false,
+      motivo: "http_404",
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(9),
+      max_data_entrega: diasAtrasISO(9),
+      ultimo_sync_ok_em: "2026-08-17T08:01:16.000Z",
+      falhas_consecutivas: 2,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_idade_dias).toBe(9);
+    expect(b.cvm_fonte_ciclos_perdidos).toBe(1);
+    expect(b.cvm_fonte_idade_du).toBeGreaterThan(0);
+    expect(b.cvm_fonte_ultimo_sync_ok_em).toBe("2026-08-17T08:01:16.000Z");
+  });
+
+  it("fonte_ausente_no_catalogo tambem conta como falha dura", async () => {
+    // Estado em que nem a URL canonica nem o catalogo CKAN conhecem o arquivo
+    // do ano corrente. E o pior caso: nao ha para onde apontar.
+    await seedMeta({
+      ok: false,
+      motivo: "fonte_ausente_no_catalogo",
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(2),
+      max_data_entrega: diasAtrasISO(2),
+      falhas_consecutivas: 5,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_falha_dura).toBe(true);
+    expect(b.cvm_fonte_degrada_servico).toBe(true);
+    expect(b.ok).toBe(false);
+  });
+
+  it("caso bom: sync ok recente nao marca falha dura nem degrada nada", async () => {
+    // Prova da outra ponta. Sem ela, um bug que marcasse falha_dura sempre
+    // passaria despercebido e o `ok` ficaria preso em false.
+    await seedMeta({
+      ok: true,
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(0),
+      max_data_entrega: diasAtrasISO(0),
+      ultimo_sync_ok_em: new Date().toISOString(),
+      falhas_consecutivas: 0,
+      documentos: 646,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
+    expect(b.cvm_fonte_falha_dura).toBe(false);
+    expect(b.cvm_fonte_degrada_servico).toBe(false);
+    expect(b.ok).toBe(true);
+  });
+
+  it("motivo NAO duro nao escala, mesmo com muitas falhas", async () => {
+    // CVM_FONTE_MAX_CICLOS continua sendo o dono do caso "arquivo presente e
+    // velho". A escalada nova so vale para fonte que nao responde.
+    await seedMeta({
+      ok: false,
+      motivo: "sem_data_de_referencia",
+      sincronizado_em: new Date().toISOString(),
+      last_modified_iso: diasAtrasISO(1),
+      max_data_entrega: diasAtrasISO(1),
+      falhas_consecutivas: 9,
+      origem: "teste"
+    });
+    const b = await health();
+    expect(b.cvm_fonte_falha_dura).toBe(false);
+    expect(b.cvm_fonte_degrada_servico).toBe(false);
+    expect(b.ok).toBe(true);
+  });
+});
