@@ -11,6 +11,24 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (continuação) — RESOLVIDO: 2 fixes órfãos em worktree resgatados (WORKTREE12)
+
+Das 6 worktrees do Claude Code, 4 eram checkout parado (BOM removido + caminho revertido para o legado `FREQUENTE\`, mesmo commit `e7f70d1` nas 4, sem nada de valor, removidas). As outras 2 tinham trabalho real nunca commitado, extraído a mão porque os arquivos-base já tinham divergido de `main` desde que as worktrees pararam de ser atualizadas.
+
+### RETRY-PROP1 — validação pós-deploy falso-negativa em propagação lenta da borda
+
+`deploy-worker.ps1` abortava com sleep fixo de 4s + tentativa única quando a propagação da Cloudflare demorava mais que isso. Incidente real no deploy do v4.9.196: produção já respondia a versão nova ~8s depois do script já ter abortado com `wrangler.toml` sujo e sem commit. Corrigido na worktree `quizzical-nightingale-0c534b` (base `6011d9a`), que não conhecia os gates HEALTHSPLIT1/CVMCADENCIA1 que entraram em `main` depois (`9b017af`). Fundido a mão em cima do `main` atual, não copiado por cima, os dois pontos não se sobrepõem no arquivo. Retry com backoff (60s, passo de 5s) substitui o sleep fixo, e `Fail-PosDeploy` documenta o caminho de recuperação explícito (commit manual ou `git checkout` do toml) em todo ponto de falha depois do passo 4 já ter tido sucesso, inclusive nos gates HEALTHSPLIT1/CVMCADENCIA1. Parse PS 5.1 e `lint-encoding.ps1` limpos. Commit `604c600`.
+
+### ROTINA_RESUMO — 2 rotinas que faltavam no retrofit de 21/08 (ORF3D593D6)
+
+O cherry-pick de 21/08 (ver `RESOLVIDO 21/08 (ORF3D593D6)` no `ESTADO.md`) trouxe a linha `ROTINA_RESUMO` pra matinal/noturno/coleta-volatilidade/export-historico/reconciliação-cvm, mas o commit original (`3d593d6`) tinha working tree com mais 2 arquivos nunca commitados: `run_vixradar_ranking_mensal.ps1` e `run_vixradar_verificacao_async.ps1`, esta última ainda ativa no Task Scheduler do Claude Desktop. Extraído da worktree `interesting-brahmagupta-4a7254`, reaplicado a mão porque `main` tinha divergido nos dois arquivos desde então (`82f5a0d`, migração de caminho canônico, 1 linha cada, sem sobreposição com os pontos de inserção do log). Parse PS 5.1 e `lint-encoding.ps1` limpos.
+
+Achado no caminho, **não corrigido** por estar fora do escopo desta extração: `run_vixradar_ranking_mensal.ps1` linha 20 usa `$ErrorActionPreference = 'Stop'`, o mesmo anti-padrão que o `CLAUDE.md` documenta como causa de perda silenciosa de exit code no Task Scheduler (`adc9dbf`, `run-daily-scan.ps1`). Risco reduzido, a tabela de rotinas do `CLAUDE.md` marca `VIXRadar-Ranking-Mensal` como **OBSOLETO**, task não existe mais no Scheduler, então não há disparo agendado pra engolir o erro. Fica como pendência caso a rotina volte a ser agendada.
+
+As duas worktrees removidas depois do commit. `3d593d6` (branch `claude/interesting-brahmagupta-4a7254`) e `2317dcd` (branch `claude/quizzical-nightingale-0c534b`) seguem alcançáveis pelos branches, só o diretório de trabalho saiu.
+
+---
+
 ## 24/08 — RESOLVIDO: auditoria geral readonly, nucleo sem achado
 
 Auditoria `vix-radar-general-audit` (`[[90 - Auditoria Geral 2026-08-24]]`). Portão de produção 200 com `ok:true` completo. Veracidade da UI batendo com o glossário nos 3 termos reservados (Emissores/Críticos/Relevantes + Sem alertas com janela declarada). Auth fail-closed nos 3 probes (state 401, receber_analise 403, login 401 genérico). Drift zero: prod v4.9.208/v202.30 = HEAD, os 317 arquivos "modificados" são só CRLF (`git diff -w` = 0). Nenhum P0/P1/P2 novo.

@@ -62,6 +62,7 @@ if (-not $mutex.WaitOne(0)) {
 
 $exitCode = 0
 try {
+    $inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     Write-Log ("INICIO ranking mensal - mes de referencia {0} (DryRun={1})" -f $MesRef, [bool]$DryRun)
 
     if (-not (Test-Path $CfgPath)) { Write-Log 'ERRO: keywords.json ausente'; exit 1 }
@@ -346,6 +347,12 @@ Regras:
     $metrics | ConvertTo-Json | Set-Content -Path (Join-Path $LogDir ("vixradar-ranking_metrics_{0}.json" -f $Stamp)) -Encoding UTF8
 
     Write-Log ("FIM: ok - {0} keywords, {1} alertas, baseline={2}" -f @($posicoes).Count, $alertas.Count, $baselineMode)
+
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $errosMedicao = $keywords.Count - @($posicoes).Count
+    $resultadoTxt = if ($errosMedicao -gt 0) { 'PARCIAL' } else { 'OK' }
+    Write-Log ('ROTINA_RESUMO|vixradar-ranking-mensal|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + @($posicoes).Count + '|' + $errosMedicao + '|' + $alertas.Count + '|')
+
     $exitCode = 0
 } finally {
     $mutex.ReleaseMutex()

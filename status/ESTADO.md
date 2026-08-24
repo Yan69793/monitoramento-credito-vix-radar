@@ -8,10 +8,11 @@
 > falsa do vitest (marcador de refutação na janela ±3). O `bump-cache-version.ps1`
 > daí de bater no copy/UI (âncora em CACHE_VERSION= e ?v=) e de colidir `?v=202.3`
 > com `?v=202.30` (lookahead), com teste de regressão. Cinco regras permanentes de
-> auditoria adicionadas ao CLAUDE.md. WORKTREE12: relatório entregue, só o `3d593d6`
-> da worktree interesting-brahmagupta está fora de main (conteúdo já absorvido);
-> nenhuma poda, descarte é decisão do operador. Zero push (main ahead 5 de origin,
-> incluindo os 3 commits desta sessão + os 2 `chore(data)` de 22 e 23/08).
+> auditoria adicionadas ao CLAUDE.md. WORKTREE12 fechado na continuação: 4 das 6
+> worktrees do Claude Code eram checkout parado sem valor (removidas), 2 tinham
+> trabalho real (RETRY-PROP1 em `deploy-worker.ps1` + extensão de `ROTINA_RESUMO`
+> em 2 rotinas), fundido a mão em cima do main atual e commitado, as 2 worktrees
+> removidas depois. Push feito.
 
 Leia este arquivo antes de começar qualquer trabalho, seja qual for o agente.
 Atualize a data e os itens abertos ao fechar uma sessão que mudou o estado.
@@ -317,6 +318,7 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
+- RESOLVIDO 24/08 (WORKTREE12, continuação): das 6 worktrees do Claude Code, 4 eram checkout parado sem valor (removidas), 2 tinham trabalho real nunca commitado. RETRY-PROP1 (retry com backoff na validação pós-deploy do `deploy-worker.ps1`, commit `604c600`) e a extensão de `ROTINA_RESUMO` pras 2 rotinas que faltavam no cherry-pick de 21/08 (`run_vixradar_ranking_mensal.ps1`, `run_vixradar_verificacao_async.ps1`), ambos fundidos a mão em cima do `main` atual porque os arquivos-base tinham divergido. Achado no caminho, não corrigido por estar fora do escopo: `ranking-mensal` usa `$ErrorActionPreference = 'Stop'`, mas a rotina está OBSOLETA (task não existe mais). Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 22/08 (WRCGL1, PULSOEVENTO1, JANELACARD1, ESTADOSTALE1, WORKTREE22 e DEPLOGGATE-JSON1): auditoria fechada, deploy v202.29 validado, memória canônica atualizada e fluxo de Pages protegido contra carimbo falso antes da publicação. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 22/08 (DATAATUALIZACAO1): frontend v202.30 deixa explícita a atualização real da base, separada da data do último evento. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 

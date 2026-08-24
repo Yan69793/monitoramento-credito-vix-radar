@@ -297,6 +297,7 @@ if (-not $__verifMutex.WaitOne(0)) {
 }
 
 Write-Log ('INICIO: drenar fila de verificacao assincrona meta=' + $TokenTarget + ' hard=' + $TokenHardCap)
+$inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 
 # PREFLIGHT DE CREDENCIAL (2026-08-05): Worker antes de Claude.
 # A ordem anterior gastava Initialize-VixClaudeAuth + probe WebSearch (uma chamada
@@ -309,6 +310,7 @@ Write-Log ('INICIO: drenar fila de verificacao assincrona meta=' + $TokenTarget 
 try {
     $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30
     Write-Log ('Health ' + $health.versao + ' verificador_ok=' + $health.verificador_ok)
+    $versaoWorker = $health.versao
 } catch {
     Write-Log ('ERRO: health ' + $_.Exception.Message)
     exit 3
@@ -382,6 +384,8 @@ try {
 
     if ($stats.total_fila -eq 0) {
         Write-Log 'FIM: fila vazia, nada a fazer'
+        $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        Write-Log ('ROTINA_RESUMO|vixradar-verificacao-async|local|' + $inicioIso + '|' + $fimIso + '|OK|0|0|0|' + $versaoWorker)
         @{ data = $DateTag; total_fila = 0; lotes = 0 } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
         exit 0
     }
@@ -545,6 +549,11 @@ try {
     } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
 
     Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos)
+
+    $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    $errosTotal = $stats.erros_parse + $stats.refusals
+    $resultadoTxt = if ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
+    Write-Log ('ROTINA_RESUMO|vixradar-verificacao-async|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + ($stats.aprovados + $stats.rejeitados) + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
     if ($stats.erros_parse -gt 0) { $exitCode = 6 } elseif ($stats.refusals -gt 0) { $exitCode = 8 }
 } catch {
