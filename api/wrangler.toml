@@ -4,6 +4,20 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.212.js = v4.9.211 + CARTEIRA-24AGO1, troca de emissor na carteira:
+#   SAI AES Brasil. Foi incorporada pela Auren Energia, que ja esta nos 103, entao manter
+#   as duas contava o mesmo risco de credito duas vezes e deixava um emissor
+#   permanentemente sem evento. Nenhum registro AES esta ativo na CVM, AES Tiete consta
+#   CANCELADA por elisao por incorporacao desde 2021. Historico das semanas antigas fica
+#   intacto, so para de ser varrido. Aliases "AES TIETE" e "AES TIETE ENERGIA" removidos
+#   de SYNC_ALIAS_TO_EMPRESA e de TOKENS_ROBUSTOS_ANBIMA, e a excecao saiu da guarda.
+#   ENTRA Braskem. BRASKEM S.A., CNPJ 42.150.391/0001-70, ATIVO na CVM. Protocolou fato
+#   relevante de pedido de recuperacao extrajudicial aprovado pelo Conselho em 24/08/2026,
+#   e estava fora da carteira justamente no dia do evento mais material do ano dela.
+#   Declarada nas tres pontas de alias de uma vez (SYNC_ALIAS_NOMES_CVM,
+#   SYNC_ALIAS_TO_EMPRESA, TOKENS_ROBUSTOS_ANBIMA) mais o mapa de setor em
+#   "Petroleo, Gas e Combustiveis", que e a licao do NOMEMORTO1 aplicada na entrada e nao
+#   depois de nove meses. Total segue 103.
 # v4.9.211.js = v4.9.210 + NOMEMORTO1 e ACENTOMATCH1 (auditoria 24/08, segunda varredura):
 #   Dois emissores cegos por defeito de tabela, nao por ausencia de fato. Achado ao
 #   perguntar se o buraco do painel era so externo. Nao era.

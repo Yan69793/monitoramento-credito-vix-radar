@@ -60,7 +60,9 @@ function desescapar(s) {
 // IPE novo, entao evento dele so pode vir de imprensa e rating. Isso e piso de
 // cobertura conhecido, nao falha de ingestao.
 const EXCECOES = {
-  "AES Brasil": "Incorporada pela Auren Energia. Todo registro AES na CVM esta CANCELADA (AES Tiete, elisao por incorporacao em 2021). Pendente decisao do operador: fundir com Auren Energia ou remover dos 103. Aberto em 2026-08-24.",
+  // AES Brasil saiu da carteira em 2026-08-24 (CARTEIRA-24AGO1). Foi incorporada
+  // pela Auren Energia, que ja estava nos 103, entao manter as duas contava o
+  // mesmo risco duas vezes. Nao precisa mais de excecao porque nao e mais emissor.
   "Banco Pan": "BANCO PAN SA consta CANCELADA no cadastro. Fechamento de capital. Segue como emissor de divida, sem protocolo IPE. Aberto em 2026-08-24.",
   "Banco Votorantim": "Sem registro ativo como companhia aberta. VOTORANTIM FINANCAS esta CANCELADA e Banco BV nao consta. Emissor de divida sem protocolo IPE. Aberto em 2026-08-24.",
   "Nexa Resources": "Companhia de Luxemburgo, listada via BDR. Nunca foi companhia aberta registrada na CVM, entao nao ha nome a casar. Excecao permanente."

@@ -3811,7 +3811,12 @@ var EMISSORES_LISTA = [
   "Omega Energia",
   "Comerc Energia",
   "Light",
-  "AES Brasil",
+  // CARTEIRA-24AGO1 (2026-08-24): AES Brasil SAIU da carteira. Foi incorporada
+  // pela Auren Energia, que ja esta nos 103, entao manter as duas contava o mesmo
+  // risco de credito duas vezes e deixava um emissor permanentemente sem evento.
+  // Nao ha nenhum registro AES ativo na CVM: AES Tiete consta CANCELADA por
+  // elisao por incorporacao desde 2021. Historico das semanas antigas fica
+  // intacto, so para de ser varrido daqui pra frente.
   "CCR",
   "Rumo",
   "Simpar",
@@ -3838,6 +3843,12 @@ var EMISSORES_LISTA = [
   "Vibra Energia",
   "Cosan",
   "Brava Energia",
+  // CARTEIRA-24AGO1: entra no lugar da AES Brasil, que saiu. Braskem S.A. esta
+  // ATIVA na CVM (CNPJ 42.150.391/0001-70) e protocolou fato relevante de pedido
+  // de recuperacao extrajudicial em 24/08/2026, aprovado pelo Conselho. Emissor
+  // grande de credito privado que estava fora da carteira justamente no dia do
+  // evento mais material do ano dele.
+  "Braskem",
   "Compass G\xE1s e Energia",
   "Vale",
   "Gerdau",
@@ -4491,10 +4502,10 @@ var REGULADORES = {
 var SETOR_DE_EMPRESA = {};
 (function() {
   var EMISSORES_MAP = {
-    "Energia El\xE9trica": ["Equatorial Energia", "CEMIG", "Eletrobras", "Eneva", "Engie Brasil Energia", "Energisa", "Copel", "ISA Energia", "Neoenergia", "Taesa", "Auren Energia", "CPFL Energia", "Omega Energia", "Comerc Energia", "Light", "AES Brasil"],
+    "Energia El\xE9trica": ["Equatorial Energia", "CEMIG", "Eletrobras", "Eneva", "Engie Brasil Energia", "Energisa", "Copel", "ISA Energia", "Neoenergia", "Taesa", "Auren Energia", "CPFL Energia", "Omega Energia", "Comerc Energia", "Light"],
     "Transportes e Log\xEDstica": ["CCR", "Rumo", "Simpar", "MRS Log\xEDstica", "Santos Brasil", "EcoRodovias", "Hidrovias do Brasil", "JSL", "Embraer", "VLI", "Tegma", "Arteris", "Azul"],
     "Saneamento": ["Sabesp", "Aegea Saneamento", "Igu\xE1 Saneamento", "Copasa", "Sanepar", "BRK Ambiental"],
-    "Petr\xF3leo, G\xE1s e Combust\xEDveis": ["Petrobras", "Ra\xEDzen", "PRIO", "Vibra Energia", "Cosan", "Brava Energia", "Compass G\xE1s e Energia"],
+    "Petr\xF3leo, G\xE1s e Combust\xEDveis": ["Petrobras", "Ra\xEDzen", "PRIO", "Vibra Energia", "Cosan", "Brava Energia", "Compass G\xE1s e Energia", "Braskem"],
     "Minera\xE7\xE3o e Siderurgia": ["Vale", "Gerdau", "CSN", "Usiminas", "Tupy", "CBA", "Nexa Resources", "CSN Minera\xE7\xE3o"],
     "Financeiro": ["Ita\xFAsa", "Ita\xFA Unibanco", "BTG Pactual", "Banco Pan", "Banco Daycoval", "Cielo", "B3 S.A.", "Banco Votorantim", "Bradesco"],
     "Loca\xE7\xE3o de Ve\xEDculos e Mobilidade": ["Localiza", "Movida", "Unidas", "Vamos"],
@@ -7010,7 +7021,11 @@ var SYNC_ALIAS_NOMES_CVM = [
   "MOTIVA INFRAESTRUTURA",
   "MOTIVA",
   "SERENA ENERGIA",
-  "SERENA GERACAO"
+  "SERENA GERACAO",
+  // CARTEIRA-24AGO1: Braskem entrou na carteira. Razao social na CVM e
+  // "BRASKEM S.A.", CNPJ 42.150.391/0001-70, ATIVO. Declarada aqui de saida
+  // porque emissor novo sem alias cai exatamente no buraco do NOMEMORTO1.
+  "BRASKEM"
 ];
 var SYNC_ALIAS_TO_EMPRESA = {
   "ISA CTEEP": "ISA Energia",
@@ -7030,8 +7045,11 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "CIA SANEAMENTO BASICO ESTADO SAO PAULO": "Sabesp",
   // v4.9.69 (2026-05-07): aliases adicionados apos diagnostico empirico do TXT 2026-05-06
   // Bloco 1: razoes sociais distintas confirmadas no TXT
-  "AES TIETE": "AES Brasil",
-  "AES TIETE ENERGIA": "AES Brasil",
+  // CARTEIRA-24AGO1: "AES TIETE" e "AES TIETE ENERGIA" sairam com a AES Brasil.
+  // Alias apontando para emissor que nao esta mais na lista e lixo que confunde
+  // a proxima auditoria e faz documento ser atribuido a ninguem.
+  "BRASKEM": "Braskem",
+  "BRASKEM SA": "Braskem",
   "DIAGNOSTICOS DA AMERICA": "Dasa",
   "REDE DOR": "Rede D'Or",
   "REDE DOR SAO LUIZ": "Rede D'Or",
@@ -12741,7 +12759,9 @@ __name22(_normalizarNomeAnbima, "_normalizarNomeAnbima");
 __name222(_normalizarNomeAnbima, "_normalizarNomeAnbima");
 var TOKENS_ROBUSTOS_ANBIMA = {
   // Bloco 1: frozen recuperaveis (10 confirmados no diagnostico)
-  "AES Brasil": ["AES TIETE", "AES BRASIL S"],
+  // CARTEIRA-24AGO1: AES Brasil saiu, Braskem entrou. Braskem tem debenture
+  // liquida na ANBIMA, entao precisa de token robusto para o nome casar.
+  "Braskem": ["BRASKEM", "BRASKEM S"],
   "B3 S.A.": ["B3 S/A - BRASIL", "B3 - BRASIL", "B3 SA - BRASIL"],
   "Comerc Energia": ["COMERC PARTICIPACOES"],
   "CSN Minera\xE7\xE3o": ["CSN MINERACAO"],
