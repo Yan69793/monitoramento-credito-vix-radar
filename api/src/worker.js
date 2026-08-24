@@ -6875,11 +6875,25 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
     if (aliases[empresa]) {
       for (const a of aliases[empresa]) termos.push(a.toUpperCase());
     }
+    // NOMEMORTO1: fonte unica de verdade. O mapa `aliases` acima vira reforco
+    // opcional; quem manda e a tabela que o proprio sync usa para atribuir o
+    // documento. Sem isto, emissor renomeado tem o doc gravado e invisivel.
+    var _derivados = SYNC_EMPRESA_TO_ALIASES[empresa];
+    if (_derivados) {
+      for (var _i = 0; _i < _derivados.length; _i++) {
+        var _t = _derivados[_i].toUpperCase();
+        if (termos.indexOf(_t) < 0) termos.push(_t);
+      }
+    }
     const semAcento = nomeUp.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     if (semAcento !== nomeUp) termos.push(semAcento);
+    // ACENTOMATCH1: compara sempre sem acento, dos dois lados. O alias e escrito a
+    // mao e a CVM publica com acento, entao includes() literal deixava documento
+    // gravado e orfao (caso Sabesp, medido em 24/08).
+    const termosSA = termos.map(_semAcentoUp);
     return docs.filter((d) => {
-      const docEmp = (d.e || "").toUpperCase();
-      const match = termos.some((t) => docEmp.includes(t));
+      const docEmp = _semAcentoUp(d.e);
+      const match = termosSA.some((t) => docEmp.includes(t));
       if (!match) return false;
       const data = d.d || "";
       return data >= trintaDiasAtras && data <= hoje;
@@ -6987,7 +7001,16 @@ var SYNC_ALIAS_NOMES_CVM = [
   "AXIA ENERGIA",
   // Sabesp: razao social no CVM e "CIA SANEAMENTO BASICO ESTADO SAO PAULO".
   // matchPrincipal usa primeiros 8 chars de "SABESP" = "SABESP" — nao encontrado no nome CVM extenso.
-  "CIA SANEAMENTO BASICO ESTADO SAO PAULO"
+  "CIA SANEAMENTO BASICO ESTADO SAO PAULO",
+  // NOMEMORTO1 (auditoria 2026-08-24): duas renomeacoes que nunca chegaram aqui.
+  // Conferido contra cad_cia_aberta.csv do dia: "CCR" e "OMEGA" nao tem NENHUM
+  // registro na CVM, nem cancelado. Quem existe e esta ATIVO e a sucessora.
+  //   CCR S.A.        -> MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A. (CNPJ 02.846.056/0001-97, o mesmo)
+  //   Omega Energia   -> SERENA ENERGIA S.A. (CNPJ 42.500.384/0001-51) e SERENA GERACAO S.A.
+  "MOTIVA INFRAESTRUTURA",
+  "MOTIVA",
+  "SERENA ENERGIA",
+  "SERENA GERACAO"
 ];
 var SYNC_ALIAS_TO_EMPRESA = {
   "ISA CTEEP": "ISA Energia",
@@ -7033,6 +7056,12 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "CPFL ENERGIA": "CPFL Energia",
   "OMEGA ENERGIA": "Omega Energia",
   "OMEGA GERACAO": "Omega Energia",
+  // NOMEMORTO1 (2026-08-24): sucessoras vivas das duas renomeacoes. Ver comentario
+  // no SYNC_ALIAS_NOMES_CVM acima com os CNPJs conferidos no cadastro da CVM.
+  "SERENA ENERGIA": "Omega Energia",
+  "SERENA GERACAO": "Omega Energia",
+  "MOTIVA INFRAESTRUTURA": "CCR",
+  "MOTIVA": "CCR",
   "ENGIE BRASIL": "Engie Brasil Energia",
   "ENEVA": "Eneva",
   "LIGHT": "Light",
@@ -7134,6 +7163,40 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "COMPANHIA BRASILEIRA DE DISTRIBUICAO": "P\xE3o de A\xE7\xFAcar (GPA)",
   "SENDAS DISTRIBUIDORA S/A": "Assa\xED Atacadista"
 };
+// ── NOMEMORTO1 (auditoria 2026-08-24) ──────────────────────────────────────
+// Havia TRES tabelas de alias que precisavam concordar e nao concordavam:
+//   1. SYNC_ALIAS_NOMES_CVM      decide se a linha da CVM entra em cvm:documentos
+//   2. SYNC_ALIAS_TO_EMPRESA     decide de qual emissor aquele documento e
+//   3. um mapa privado dentro de buscarDocumentosCVM  decide o que o LEITOR procura
+// O documento entrava pela 1, era atribuido pela 2, e sumia na 3, porque o leitor
+// tinha copia propria e incompleta. Medido em producao em 24/08: "AXIA ENERGIA S.A."
+// e "AXIA ENERGIA NORDESTE S.A." estavam gravados em cvm:documentos, e
+// buscarDocumentosCVM("Eletrobras") montava termos=["ELETROBRAS"] e devolvia 0.
+// Mesmo padrao em CCR e Omega Energia. Auren escapou so porque alguem lembrou de
+// repetir "CESP" na terceira tabela.
+// Correcao estrutural: o leitor deriva os termos da tabela 2 em vez de manter copia.
+// Alias novo agora vale nas tres pontas de uma vez, sem ninguem precisar lembrar.
+// ACENTOMATCH1 (auditoria 2026-08-24). Segundo achado da mesma varredura, e da
+// mesma familia: o alias da Sabesp esta escrito "CIA SANEAMENTO BASICO ESTADO SAO
+// PAULO" e o nome que a CVM publica e "CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO".
+// String.includes e literal, entao o documento entrava em cvm:documentos e ficava
+// orfao, sem nenhum emissor reclamando. Medido em producao: 117 empresas distintas
+// gravadas, 2 sem dono, uma delas a Sabesp. Comparacao de nome de empresa contra
+// fonte externa passa a ser sempre sem acento, dos dois lados.
+function _semAcentoUp(s) {
+  return String(s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+__name(_semAcentoUp, "_semAcentoUp");
+var SYNC_EMPRESA_TO_ALIASES = (function () {
+  var out = {};
+  for (var a in SYNC_ALIAS_TO_EMPRESA) {
+    if (!Object.prototype.hasOwnProperty.call(SYNC_ALIAS_TO_EMPRESA, a)) continue;
+    var emp = SYNC_ALIAS_TO_EMPRESA[a];
+    if (!out[emp]) out[emp] = [];
+    if (out[emp].indexOf(a) < 0) out[emp].push(a);
+  }
+  return out;
+})();
 // ── CVMFRESCOR1 (auditoria 2026-08-19), PREMISSA CORRIGIDA EM 2026-08-20 ────
 // O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde, e
 // a instrumentacao criada aqui (carimbar a idade REAL da fonte a cada sync) foi
@@ -7487,8 +7550,8 @@ async function syncCVMAutomatico(env2222) {
     const iLink = header.indexOf("Link_Download");
     const trintaDiasAtras = new Date(Date.now() - 35 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
     const hoje = obterAgoraBRT().toISOString().split("T")[0];
-    const emissoresUp = EMISSORES_LISTA.map((e) => e.toUpperCase());
-    const aliasesUp = SYNC_ALIAS_NOMES_CVM.map((a) => a.toUpperCase());
+    const emissoresUp = EMISSORES_LISTA.map(_semAcentoUp);
+    const aliasesUp = SYNC_ALIAS_NOMES_CVM.map(_semAcentoUp);
     const docs = [];
     // CVMFRESCOR1: maior Data_Entrega do arquivo INTEIRO, antes de qualquer
     // filtro. Se medisse so os 103 emissores, um dia em que a CVM publicou
@@ -7502,7 +7565,9 @@ async function syncCVMAutomatico(env2222) {
       const cat = (cols[iCat] || "").trim();
       if (!CVM_CATEGORIAS.includes(cat)) continue;
       if (entrega < trintaDiasAtras) continue;
-      const nome = (cols[iNome] || "").trim().toUpperCase();
+      // ACENTOMATCH1: mesma normalizacao do lado da ingestao. Sem isto, emissor
+      // cujo nome na CVM tem acento so entrava por coincidencia de prefixo.
+      const nome = _semAcentoUp(cols[iNome]);
       const matchPrincipal = emissoresUp.some((e) => nome.includes(e.substring(0, Math.min(e.length, 8))));
       const matchAlias = aliasesUp.some((a) => nome.includes(a.substring(0, Math.min(a.length, 10))));
       if (!matchPrincipal && !matchAlias) continue;
@@ -17164,6 +17229,31 @@ async function __coreFetch(request, env2222, ctx) {
     if (body.action === "admin_frescor_cvm") {
       if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       return resp({ ok: true, frescor: await avaliarFrescorCVM(env2222) }, 200, request);
+    }
+    // NOMEMORTO1 (2026-08-24): observabilidade que faltava. O bug do emissor
+    // renomeado durou nove meses porque nao havia como perguntar ao sistema "o
+    // que voce enxerga para este emissor?". O documento estava gravado, o leitor
+    // nao achava, e o painel exibia sem_eventos como se fosse ausencia de fato.
+    // Somente leitura, gateado por senha de admin, nao escreve nada.
+    if (body.action === "admin_documentos_cvm") {
+      if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      var _adcEmp = typeof body.empresa === "string" ? body.empresa.trim() : "";
+      if (!_adcEmp) return resp({ ok: false, erro: "Informe empresa." }, 400, request);
+      var _adcHoje = obterAgoraBRT().toISOString().split("T")[0];
+      var _adcDesde = typeof body.desde === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.desde)
+        ? body.desde
+        : new Date(obterAgoraBRT().getTime() - 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+      var _adcDocs = await buscarDocumentosCVM(env2222, _adcEmp, _adcDesde, _adcHoje);
+      return resp({
+        ok: true,
+        empresa: _adcEmp,
+        janela: { desde: _adcDesde, ate: _adcHoje },
+        // Os aliases que o leitor de fato usou. E o campo que responde "por que
+        // este emissor nao acha nada", sem precisar ler codigo.
+        aliases_derivados: SYNC_EMPRESA_TO_ALIASES[_adcEmp] || [],
+        total: _adcDocs.length,
+        documentos: _adcDocs.slice(0, 50)
+      }, 200, request);
     }
     if (body.action === "admin_sync_mercado") return await handleSyncMercado(body, env2222);
     if (body.action === "admin_recalcular_anomalias") {

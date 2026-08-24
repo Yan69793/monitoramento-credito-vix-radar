@@ -4,6 +4,29 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.211.js = v4.9.210 + NOMEMORTO1 e ACENTOMATCH1 (auditoria 24/08, segunda varredura):
+#   Dois emissores cegos por defeito de tabela, nao por ausencia de fato. Achado ao
+#   perguntar se o buraco do painel era so externo. Nao era.
+#   - NOMEMORTO1: havia TRES tabelas de alias que precisavam concordar e nao concordavam.
+#     O documento entrava por SYNC_ALIAS_NOMES_CVM, era atribuido por SYNC_ALIAS_TO_EMPRESA,
+#     e sumia no leitor, que tinha copia propria e incompleta dentro de buscarDocumentosCVM.
+#     Medido no cvm:documentos de producao: "AXIA ENERGIA S.A." e "AXIA ENERGIA NORDESTE
+#     S.A." estavam gravados e buscarDocumentosCVM("Eletrobras") devolvia 0. A Eletrobras
+#     virou AXIA em 10/11/2025, entao eram nove meses de emissor exibido como sem_eventos.
+#     Depois do fix, 28 documentos. Correcao estrutural: o leitor deriva os termos de
+#     SYNC_ALIAS_TO_EMPRESA (novo SYNC_EMPRESA_TO_ALIASES) em vez de manter copia.
+#     Aliases novos: MOTIVA (CCR renomeou) e SERENA (Omega Energia renomeou), conferidos
+#     no cad_cia_aberta.csv, onde "CCR" e "OMEGA" nao tem registro nenhum.
+#   - ACENTOMATCH1: alias da Sabesp escrito "CIA SANEAMENTO BASICO ESTADO SAO PAULO" contra
+#     "CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO" publicado pela CVM. includes() e literal,
+#     documento ficava orfao. Comparacao de nome agora e sem acento nas duas pontas,
+#     ingestao e leitura. Depois do fix, Sabesp passou de 0 para 11 documentos.
+#   - admin_documentos_cvm: endpoint somente leitura que responde "o que o sistema enxerga
+#     para este emissor", com os aliases derivados. E a observabilidade que faltava e que
+#     deixou o bug durar nove meses.
+#   Guarda: scripts/check-emissores-cadastro.mjs confere os 103 contra o cadastro vivo da
+#   CVM, com excecoes declaradas e motivo. Roda semanal em .github/workflows/emissores-cadastro.yml,
+#   na nuvem, e o proprio workflow prova as duas pontas. Testes em api/test/cvm-frescor.test.mjs.
 # v4.9.210.js = v4.9.209 + fallback de idade no CVMMETAWIPE1 (24/08, mesma sessao):
 #   O merge do v4.9.209 so protege dali para frente, e o wipe do incidente ja tinha
 #   acontecido: em producao o health seguia com cvm_fonte_idade_dias:null com a fonte

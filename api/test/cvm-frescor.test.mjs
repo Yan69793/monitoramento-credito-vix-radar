@@ -476,3 +476,105 @@ describe("CVMDURA1 - falha dura da fonte separada de cadencia", () => {
     expect(b.fonte_externa_ok).toBe(false);
   });
 });
+
+// ── NOMEMORTO1 + ACENTOMATCH1 (auditoria 2026-08-24) ──────────────────────────
+//
+// Dois bugs da mesma familia, achados medindo o cvm:documentos de producao.
+//
+// NOMEMORTO1: existiam TRES tabelas de alias que precisavam concordar. O
+// documento entrava por SYNC_ALIAS_NOMES_CVM, era atribuido por
+// SYNC_ALIAS_TO_EMPRESA, e sumia no leitor, que tinha copia propria e
+// incompleta. Medido em 24/08: "AXIA ENERGIA S.A." e "AXIA ENERGIA NORDESTE
+// S.A." estavam gravados no KV e buscarDocumentosCVM("Eletrobras") devolvia 0.
+// A Eletrobras virou AXIA em 10/11/2025, entao eram nove meses de emissor cego,
+// exibido como sem_eventos, que o painel apresenta como ausencia de fato.
+// Depois do fix, 28 documentos.
+//
+// ACENTOMATCH1: o alias da Sabesp e escrito sem acento e a CVM publica
+// "CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO". String.includes e literal, entao o
+// documento ficava orfao. Depois do fix, 11 documentos.
+//
+// O contrato travado aqui NAO e uma contagem, que depende do que a CVM publicou.
+// E a invariante: o leitor enxerga todo alias que a ingestao conhece.
+describe("NOMEMORTO1 - leitor enxerga todo alias que a ingestao conhece", () => {
+  const KEY = "cvm:documentos";
+  const hoje = diasAtrasISO(0);
+
+  function doc(nomeCvm) {
+    return { e: nomeCvm, d: hoje, de: hoje, c: "Fato Relevante", a: "assunto de teste", l: "https://exemplo/" + encodeURIComponent(nomeCvm) };
+  }
+
+  async function consultar(empresa) {
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "admin_documentos_cvm", admin_senha: env.ADMIN_PASSWORD, empresa }),
+    });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  beforeEach(async () => {
+    await env.RADAR_KV.delete(META_KEY);
+    await env.RADAR_KV.put(KEY, JSON.stringify([
+      doc("AXIA ENERGIA S.A."),
+      doc("AXIA ENERGIA NORDESTE S.A."),
+      doc("MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A."),
+      doc("SERENA ENERGIA S.A."),
+      doc("CIA SANEAMENTO B\u00c1SICO ESTADO S\u00c3O PAULO"),
+      doc("AUREN ENERGIA S.A"),
+      doc("EMPRESA QUE NINGUEM MONITORA S.A.")
+    ]));
+  });
+
+  it("exige senha de admin", async () => {
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "admin_documentos_cvm", admin_senha: "errada", empresa: "Eletrobras" }),
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it("emissor renomeado acha o documento da razao social nova", async () => {
+    // Este e o caso Eletrobras/AXIA, que ficou nove meses invisivel.
+    const b = await consultar("Eletrobras");
+    expect(b.total).toBe(2);
+    expect(b.aliases_derivados).toContain("AXIA ENERGIA");
+    expect(b.documentos.map((d) => d.empresa_cvm)).toContain("AXIA ENERGIA S.A.");
+  });
+
+  it("CCR acha documento protocolado como Motiva", async () => {
+    const b = await consultar("CCR");
+    expect(b.total).toBe(1);
+    expect(b.documentos[0].empresa_cvm).toBe("MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A.");
+  });
+
+  it("Omega Energia acha documento protocolado como Serena", async () => {
+    const b = await consultar("Omega Energia");
+    expect(b.total).toBe(1);
+    expect(b.documentos[0].empresa_cvm).toBe("SERENA ENERGIA S.A.");
+  });
+
+  it("ACENTOMATCH1: alias sem acento casa com razao social acentuada", async () => {
+    const b = await consultar("Sabesp");
+    expect(b.total).toBe(1);
+    expect(b.documentos[0].empresa_cvm).toContain("SANEAMENTO");
+  });
+
+  it("caso bom: emissor sem renomeacao continua funcionando", async () => {
+    // Prova da outra ponta. Sem ela, um fix que quebrasse o caminho normal
+    // passaria despercebido enquanto os casos de renomeacao ficassem verdes.
+    const b = await consultar("Auren Energia");
+    expect(b.total).toBe(1);
+    expect(b.documentos[0].empresa_cvm).toBe("AUREN ENERGIA S.A");
+  });
+
+  it("nao devolve documento de empresa que nao e do emissor consultado", async () => {
+    // Guarda contra o erro oposto: alias frouxo demais que passa a puxar
+    // documento alheio e contamina a analise de credito com fato de terceiro.
+    const b = await consultar("Eletrobras");
+    expect(b.documentos.map((d) => d.empresa_cvm)).not.toContain("EMPRESA QUE NINGUEM MONITORA S.A.");
+    expect(b.documentos.map((d) => d.empresa_cvm)).not.toContain("AUREN ENERGIA S.A");
+  });
+});

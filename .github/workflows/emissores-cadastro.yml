@@ -1,0 +1,61 @@
+name: Cadastro dos Emissores
+
+# NOMEMORTO1 (2026-08-24). A Eletrobras virou AXIA ENERGIA em 10/11/2025 e o
+# projeto passou nove meses procurando documento e noticia por um nome que a CVM
+# nao registra mais. Na mesma varredura apareceram CCR -> Motiva e Omega -> Serena.
+# Nenhuma das tres tinha como ser notada: nada comparava a lista de emissores com
+# o cadastro vivo da CVM.
+#
+# Roda na nuvem de proposito. O canal local equivalente, VIXRadar-Health-Watch,
+# foi desligado em 21/08 e a fonte da CVM ficou escura quatro dias sem ninguem ver.
+# Guarda que depende de maquina ligada nao e guarda.
+#
+# Semanal porque renomeacao societaria e evento raro e o cadastro so muda de
+# madrugada. Diario aqui seria ruido sem ganho.
+
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'api/src/worker.js'
+      - 'scripts/check-emissores-cadastro.mjs'
+      - '.github/workflows/emissores-cadastro.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: emissores-cadastro
+  cancel-in-progress: false
+
+jobs:
+  cadastro:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Conferir emissores contra o cadastro vivo da CVM
+        run: node scripts/check-emissores-cadastro.mjs
+
+      # Prova da outra ponta, dentro do proprio CI. Sem isto, um bug que fizesse a
+      # guarda aprovar qualquer coisa passaria despercebido para sempre, porque o
+      # caso bom continuaria verde. Ja aconteceu no desenvolvimento desta guarda:
+      # a primeira versao aprovava um emissor inventado.
+      - name: Guarda tem que reprovar emissor com nome morto
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          perl -0pe 's/(var EMISSORES_LISTA\s*=\s*\[\n)/$1  "Zzqx Holdings Renomeada",\n/' \
+            api/src/worker.js > /tmp/guarda/worker_fake.js
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_fake.js node scripts/check-emissores-cadastro.mjs; then
+            echo "::error::A guarda APROVOU um emissor com nome que a CVM nao registra. Ela esta quebrada e nao protege nada."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o emissor inventado, como deve."
