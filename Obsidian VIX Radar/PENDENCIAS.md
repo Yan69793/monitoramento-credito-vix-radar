@@ -11,6 +11,73 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (auditoria operacional) — RESOLVIDO no código, aguardando deploy: `_last_scanned_at` gravado 3h no passado infla o gate de cobertura (RELOGIO3H1)
+
+Achado da auditoria operacional de 24/08 ([[91 - Auditoria Operacional 2026-08-24]]). O gate de cobertura apareceu ALTO com 4 emissores "stale" (Simpar 25.1h, SLC Agrícola 25.1h, Bradesco 24.9h, Totvs 24.9h), mas o log da noturna de 23/08 tem `FIM: ... 103/103` (18:33:29) e os 4 foram cobertos naquele dia (OK|FULL). Ou seja: falso incidente.
+
+**Causa raiz.** `obterAgoraBRT()` retorna `new Date(Date.now() - 3*36e5)` — desloca o epoch 3h para trás. Isso é correto para derivar o **dia civil** BRT (`hoje`), mas no `receber_analise` (worker.js:17781) o `_last_scanned_at` é gravado com `_raAgoraBRT.toISOString()` como se fosse o **instante da varredura**. Na leitura `_parseHorasStale` (worker.js:9464) compara contra `Date.now()` cru, então toda varredura parece 3h mais velha. Reproduzido: dado recém-gravado reporta `horas_stale` = 3h.
+
+**Correção.** Gravar `_last_scanned_at` como `new Date().toISOString()` (UTC real) e usar `obterAgoraBRT()` apenas para `_raSemana`/`_raHoje`/`_raJanelaInicio` (objetos que não viram timestamp comparável). Alternativa: `new Date(_raAgoraBRT.getTime() + 3*36e5).toISOString()`.
+
+**Guarda sistêmica (falta hoje).** Teste que falha se `horas_stale` de um dado recém-gravado via `receber_analise` não for `0`. Nenhum teste hoje compara `_last_scanned_at` com o relógio real; `obterAgoraBRT` foi tratado como fuso só no caminho de **data** (FUSOTESTE1), não como instante de varredura. Proposta de revisão de skill: o checklist da matriz passa a incluir "todo timestamp gravado que será comparado com o relógio real deve ser UTC puro".
+
+**Correção aplicada (24/08 17h, commit `2928a74`).** `_last_scanned_at` passa a ser `new Date().toISOString()` no `receber_analise`, e o fallback de `persistirResultadoCompartilhadoInterno` deixa de herdar `payload.timestamp` e usa o instante real de persistência. O `timestamp` continua em BRT de propósito, porque dele sai o dia civil da janela. A distinção que faltava é essa: data e relógio não são a mesma coisa.
+
+**Correção ao diagnóstico acima, sem apagá-lo.** O defeito é real e foi confirmado, mas os quatro emissores citados como evidência provavelmente não eram sintoma dele. Simpar e os demais vieram `sem_eventos` na varredura, e esse ramo do `persistirResultadoCompartilhado` sempre gravou UTC real. Os 25,1h deles são cadência diária honesta, não os 3h. A assinatura verdadeira só aparece comparando os dois ramos lado a lado, e é o que mantinha o defeito invisível: metade da carteira sempre reportou certo.
+
+**Medição de produção, antes da correção, 24/08 17:17 BRT.** Mesma rodada noturna, três minutos entre os submits:
+
+| Emissor | Evento na rodada | `horas_stale` |
+|---|---|---|
+| Light, Aegea, CSN, Hapvida | com evento | 3,40 |
+| Rumo, Simpar | sem evento | 0,40 |
+
+**Guarda sistêmica (existe agora).** `api/test/relogio-varredura.test.mjs`, 3 testes. Prova reversa executada: com o bug reinjetado os testes 1 e 3 falham com `expected 3 to be less than 0.5` e o 2, do emissor sem evento, passa nos dois. O terceiro teste prende a simetria entre os dois ramos, não só os valores, porque foi a assimetria que escondeu o defeito.
+
+**Status:** código corrigido e commitado, aguardando autorização de deploy (v4.9.213).
+
+---
+
+## 24/08 (quarta rodada) — RESOLVIDO: documento do Assaí aparecendo no Pão de Açúcar (SENDASGPA1)
+
+A própria rotina noturna anotou o sintoma no meio da varredura: `Docs CVM do emissor Pão de Açúcar (GPA) têm empresa_cvm=SENDAS DISTRIBUIDORA S.A.`. Sendas é a razão social do Assaí (ASAI3), cindido do GPA (PCAR3) em 2021, e os dois estão na carteira como emissores separados.
+
+**Causa raiz.** `SYNC_ALIAS_TO_EMPRESA` tinha três chaves quase iguais, `SENDAS DISTRIB` e `SENDAS DISTRIBUIDORA S/A` para o Assaí e `SENDAS DISTRIBUIDORA` para o GPA. A do meio está errada desde sempre, mas ficou dormente porque os consumidores antigos varrem a tabela com `for..in` e param no primeiro match, e `SENDAS DISTRIB` vem antes. O resultado saía certo por ordem de inserção, não por acerto. A derivação `SYNC_EMPRESA_TO_ALIASES` do NOMEMORTO1, do mesmo dia, coleta todos os aliases de cada emissor e não tem essa proteção. Foi ela que acordou a contradição.
+
+Na mesma varredura apareceram duas chaves mortas na tabela privada do leitor, a duplicata `ISA Energia Brasil`, e o ACENTOMATCH1 outra vez: as chaves `Itau Unibanco` e `Itausa` estavam sem acento contra emissor acentuado, e o lookup é por chave exata. O fallback sem acento salvava `ITAU UNIBANCO`, mas `BANCO ITAU` ficava perdido.
+
+**Guarda sistêmica.** `scripts/check-alias-coerencia.mjs` reprova alias contido em outro alias apontando para emissor diferente, alias apontando para emissor fora da carteira, e chave do leitor que não é nome de emissor. Entrou em `emissores-cadastro.yml` com injeção do bug real. Prova das duas pontas executada nos três casos.
+
+A lição que passa dos aliases: numa tabela consultada por substring, duas chaves onde uma está contida na outra só podem apontar para o mesmo destino. Se apontam para destinos diferentes, o resultado depende da ordem de iteração de quem consulta, e cada consumidor novo é um sorteio.
+
+**Status:** RESOLVIDO no código, commit `2928a74`, aguardando deploy junto do RELOGIO3H1.
+
+---
+
+## 24/08 (quarta rodada) — RESOLVIDO: três defeitos no script da noturna, achados observando a rodada rodar
+
+**CALIB3, calibragem de token 4x alta.** A CALIB2 da manhã de 24/08 saiu da linha `CUSTO:` do log de 23/08, escrita pela sessão do Claude Desktop, que mede o contexto inteiro do subagente. O `$stats.tokens_total` do script mede outra coisa. Comparar número de duas réguas diferentes deferiu 15 emissores à toa às 16h24. Números novos, medidos na régua do próprio script resolvendo o sistema com os dois lotes aprofundados de hoje: Sonnet 11.500 por emissor e boot 14.469, que confirma de forma independente os 15.000 já usados. Haiku 3.800, cobrindo o pior lote observado. A rodada fechou em 390.287 contra teto de 700.000, então o teto não precisa subir. Corrige o que eu havia dito antes, que faltava orçamento.
+
+**ORDEMRAPIDA1, fila rápida não era ordenada por risco.** O comentário do CAPRESERVA1 afirmava que ela já vinha ordenada por EWS desc. Era falso, só a aprofundada tinha `Sort-Object`. Enquanto o cap nunca cortava a rápida ninguém notou, mas no momento em que cortou o corte caiu em quem calhou de estar no meio da lista. Agravante: o cap usava `continue`, então pulou o lote de 15 e deixou passar o de 13 logo atrás. Agora as duas filas ordenam pelo mesmo critério e o cap defere toda a cauda da fila, por fila e não global.
+
+**SHADOWFALSOVERDE1, `parse_fail` lido como concordância.** O `divTag` só distinguia DIVERGE de match, e sem classificação do DeepSeek não há divergência a detectar, então ausência de comparação saía rotulada `match`. Foram 22 de 70 na rodada de hoje, quase um terço do lote. Ausência de comparação agora tem rótulo próprio, `sem_comparacao`.
+
+**Status:** RESOLVIDO, commit `2928a74`. Vale na próxima execução da noturna, não precisa de deploy.
+
+---
+
+## 24/08 (quarta rodada) — ABERTO: fato relevante da Braskem de 24/08 não foi detectado
+
+A Braskem protocolou recuperação extrajudicial em 24/08, reestruturação de US$ 10,9 bilhões, com 90 dias de proteção contra execuções. É o evento de crédito mais material do dia na carteira. A noturna analisou a Braskem às 16h e trouxe o rebaixamento da Fitch para RD de 17/08, não o protocolo de hoje.
+
+Consequência prática: o painel continua com 20/08 como fato mais recente. O intervalo 21 a 24/08 é sexta, fim de semana e hoje, dois dias úteis, mas a ausência não é honesta, é falha de detecção com contraexemplo confirmado.
+
+**Duas causas somadas.** O `ipe_cia_aberta_2026.zip` da CVM está em 404 desde 23/08 (CVMURL404), então o gatilho primário de fato relevante não existe. E a busca de imprensa da rotina, sozinha, não alcançou o protocolo do mesmo dia. A Braskem entrou na carteira horas antes da rodada, com `contexto_historico` vazio.
+
+**Status:** ABERTO. Liga direto na decisão pendente sobre fonte alternativa de fato relevante, Dados de Mercado (token pago, API viva) ou adaptador MZiQ (grátis, cobertura não provada).
+
+---
+
 ## 24/08 (terceira rodada) — RESOLVIDO: carteira corrigida, AES Brasil sai e Braskem entra (CARTEIRA-24AGO1)
 
 Fechamento das decisões que a guarda de cadastro levantou, mais uma correção de cobertura que apareceu na varredura de fontes.

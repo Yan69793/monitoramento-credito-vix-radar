@@ -2,6 +2,14 @@
 
 Última atualização: 2026-08-24 (agente: Claude Opus 5)
 
+> [!warning] 24/08 (4ª rodada) — a noturna antecipada rodou inteira e o painel não andou.
+> `FIM: tokens=390287 submit_ok=70 submit_fail=0 silent_fail=0 deferred=15 criticos=10`,
+> fila de verificação drenada até zerar, 12 aprovados e 3 rejeitados. Mesmo assim o fato
+> mais recente continua 20/08. Não é ausência de fato: a Braskem protocolou recuperação
+> extrajudicial hoje e o sistema não pegou. Falha de detecção com contraexemplo
+> confirmado. A rodada rendeu 5 defeitos, 2 no Worker e 3 no script da noturna, todos
+> corrigidos e commitados em `2928a74`. Os do Worker aguardam autorização de deploy.
+
 > [!info] 24/08 (3ª rodada) — carteira corrigida e noturna antecipada.
 > AES Brasil saiu (incorporada pela Auren, que já estava nos 103) e a Braskem
 > entrou, no dia em que pediu recuperação extrajudicial. Total segue 103, Worker
@@ -350,6 +358,9 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
+- ABERTO 24/08 (BRASKEMDETECT1, P1): a Braskem protocolou recuperação extrajudicial em 24/08, US$ 10,9 bi reestruturados, e o sistema não pegou. A noturna analisou a Braskem às 16h e trouxe o rebaixamento da Fitch de 17/08, não o protocolo do mesmo dia. O painel segue com 20/08 como fato mais recente. Duas causas somadas, o ZIP da CVM em 404 desde 23/08 tirou o gatilho primário, e a busca de imprensa sozinha não alcançou o protocolo. Liga na decisão pendente sobre fonte alternativa. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
+- AGUARDANDO DEPLOY 24/08 (SENDASGPA1 + RELOGIO3H1, commit `2928a74`): dois defeitos corrigidos no código, ainda não em produção. Alias contraditório entregava documento do Assaí para o Pão de Açúcar, e `_last_scanned_at` nascia 3h no passado para todo emissor com evento, inflando o gate de frescor. Guardas novas com prova das duas pontas, `scripts/check-alias-coerencia.mjs` e `api/test/relogio-varredura.test.mjs`. Suíte em 69 testes, 11 arquivos. Produção segue em v4.9.212
+- RESOLVIDO 24/08 (CALIB3 + ORDEMRAPIDA1 + SHADOWFALSOVERDE1, commit `2928a74`): três defeitos no script da noturna, achados observando a rodada rodar. A calibragem de token que eu havia colocado de manhã estava 4x alta e deferiu 15 emissores à toa, a fila rápida não era ordenada por risco apesar do comentário afirmar que era, e `parse_fail` do shadow saía rotulado `match` em 22 de 70 comparações. Não precisa de deploy, vale na próxima execução. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 24/08 (CARTEIRA-24AGO1): AES Brasil saiu da carteira, Braskem entrou. Total segue 103, Worker v4.9.212, commit `b13b605`. Restam 3 emissores sem registro ativo na CVM, tolerados com motivo declarado na guarda (Banco Pan, Banco Votorantim, Nexa Resources). Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 24/08 (era ABERTO, NOMEMORTO1): eram 4 emissores sem registro ativo na CVM, tolerados com motivo declarado em `scripts/check-emissores-cadastro.mjs`. AES Brasil (incorporada pela Auren, fundir ou remover), Banco Pan e Banco Votorantim (fecharam capital, seguem emissores de dívida sem protocolo IPE), Nexa Resources (Luxemburgo via BDR, exceção permanente). Nenhum gera documento IPE, evento só por imprensa
 - RESOLVIDO 24/08 (cobertura): Braskem entrou na carteira em v4.9.212

@@ -1,11 +1,13 @@
 ---
-data: 2026-08-21
+data: 2026-08-24
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
-status: saudavel
+status: saudavel-com-achado
 ---
 
 # Estado Atual — VIX Radar
+
+> [!success] 24/08 BRT — **Produção v4.9.212 / frontend v202.30.** CARTEIRA-24AGO1: AES Brasil sai (incorporada pela Auren), Braskem entra. Auditoria operacional completa feita e registrada em [[91 - Auditoria Operacional 2026-08-24]]. Health `ok:true`, auth fail-closed, drift repo=prod zerado, guarda de cadastro 103 casando (two-way). **Achado ALTO novo: RELOGIO3H1** — `_last_scanned_at` gravado pela rotina (worker.js:17781, via `obterAgoraBRT()` = -3h no epoch) fica 3h no passado do relógio real, inflando `horas_stale` em 3h. Gate de cobertura disparou falso ALTO hoje (4 emissores "stale" que na real foram cobertos 103/103 no dia 23/08, `FIM` no log). Correção pendente (P0): gravar `_last_scanned_at` em UTC real; usar `obterAgoraBRT()` só para datas. A rotação da `routine_key` segue pendente (decisão do operador).
 
 > [!success] 22/08 BRT — **Frontend v202.30.** A rotina de 21/08 processou os 103 emissores, mas não encontrou fato com `data_evento` em 21/08. A tela mostrava apenas o último evento de 20/08 e sugeria, de forma enganosa, que o painel não tinha sido atualizado. O carimbo agora mostra também o horário real da base, em BRT. Deploy validado no Pages.
 
