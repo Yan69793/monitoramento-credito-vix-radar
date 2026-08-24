@@ -1,8 +1,21 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-24 (agente: Reasonix)
+Última atualização: 2026-08-24 (agente: Claude Opus 5)
 
-> [!success] 24/08 — sessão fechada. SACFALSA-RESIDUO e CACHEBUMP1 resolvidos e
+> [!warning] 24/08 — painel travado em 20/08: a fonte da CVM morreu em silêncio.
+> `ipe_cia_aberta_2026.zip` sumiu do servidor da CVM em 23/08 (404, listagem só até
+> 2025.zip, catálogo CKAN ainda anunciando). `cvm:documentos` congelou em 15/08, as
+> rotinas perderam o gatilho primário de evento e passaram a reciclar imprensa velha.
+> As 3 rotinas rodaram normalmente nos dias 21, 22 e 23, 103 emissores varridos toda
+> noite. Worker em **v4.9.210** com CVMURL404, CVMMETAWIPE1, CVMDURA1 e VOLTTL1:
+> falha dura de fetch deixa de ser tratada como cadência semanal, escala para o `ok`
+> agregado após 4 syncs falhos, e o `frescor-check.yml` passa a nomear o campo sem
+> depender do Health-Watch (desligado desde 21/08). Cap da noturna com reserva para a
+> fila aprofundada (CAPRESERVA1), que vinha sendo deferida inteira. 55 testes passando.
+> **A CVM ainda não repôs o arquivo**, então a ingestão de Fato Relevante segue parada
+> e os eventos dependem só de imprensa e RAD até lá.
+
+> [!success] 24/08 — sessão anterior fechada. SACFALSA-RESIDUO e CACHEBUMP1 resolvidos e
 > commitados. 3 commits em main (`6b4b34d` Gate 6/SACFALSA, `2af4c82` CACHEBUMP1,
 > `3e0691c` nota 90). Gate 6 do pre-commit agora reprova só a frase órfã da causa
 > falsa do vitest (marcador de refutação na janela ±3). O `bump-cache-version.ps1`
@@ -318,6 +331,8 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
+- ABERTO 24/08 (CVMURL404, P1, depende da CVM): `ipe_cia_aberta_2026.zip` continua 404 no servidor da CVM desde 23/08. Enquanto não voltar, não entra Fato Relevante nem Comunicado ao Mercado, e o evento novo depende só de imprensa e RAD. O Worker já detecta e alerta: `cvm_fonte_falha_dura`, `cvm_fonte_idade_dias` e `cvm_fonte_degrada_servico` no health público, e `frescor-check.yml` nomeando o campo. Após 4 syncs falhos seguidos o `ok` agregado cai e o `canonical-test` fica vermelho. Nada a fazer do nosso lado além de acompanhar. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
+- RESOLVIDO 24/08 (CVMURL404, CVMMETAWIPE1, CVMDURA1, VOLTTL1, CAPRESERVA1, CALIB2): auditoria do painel travado em 20/08. Worker v4.9.209 e v4.9.210 em produção, 55 testes passando, commits `c0167cd`, `1572279`. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 24/08 (WORKTREE12, continuação): das 6 worktrees do Claude Code, 4 eram checkout parado sem valor (removidas), 2 tinham trabalho real nunca commitado. RETRY-PROP1 (retry com backoff na validação pós-deploy do `deploy-worker.ps1`, commit `604c600`) e a extensão de `ROTINA_RESUMO` pras 2 rotinas que faltavam no cherry-pick de 21/08 (`run_vixradar_ranking_mensal.ps1`, `run_vixradar_verificacao_async.ps1`), ambos fundidos a mão em cima do `main` atual porque os arquivos-base tinham divergido. Achado no caminho, não corrigido por estar fora do escopo: `ranking-mensal` usa `$ErrorActionPreference = 'Stop'`, mas a rotina está OBSOLETA (task não existe mais). Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 22/08 (WRCGL1, PULSOEVENTO1, JANELACARD1, ESTADOSTALE1, WORKTREE22 e DEPLOGGATE-JSON1): auditoria fechada, deploy v202.29 validado, memória canônica atualizada e fluxo de Pages protegido contra carimbo falso antes da publicação. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - RESOLVIDO 22/08 (DATAATUALIZACAO1): frontend v202.30 deixa explícita a atualização real da base, separada da data do último evento. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`

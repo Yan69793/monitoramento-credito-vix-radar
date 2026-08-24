@@ -11,6 +11,41 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 — RESOLVIDO: painel travado em 20/08, fonte da CVM morta em silêncio (CVMURL404)
+
+Sintoma que o operador viu: o painel não mostrava nenhum fato, notícia ou evento depois de 20/08, com hoje sendo 24/08.
+
+**As rotinas não pararam.** Rodaram nos dias 21, 22 e 23, varreram os 103 emissores em todas as noites (`_last_scanned_at: 2026-08-23` nos 103) e submeteram normalmente. O estado da semana W34 em produção tem 154 eventos, 0 pendentes de verificação, e o `data_evento` mais novo é `2026-08-20`. O painel estava dizendo a verdade.
+
+**A causa é a fonte.** Em 23/08 a CVM removeu `ipe_cia_aberta_2026.zip` do servidor. Medido na auditoria: `HTTP 404` no arquivo do ano corrente, listagem do diretório indo só até `2025.zip`, e o catálogo CKAN ainda anunciando o recurso com `last_modified 2026-08-17T08:01:16`. O portal está vivo (`CAD` regenerado em 24/08 04:21 GMT, `ipe_cia_aberta_2025.zip` regenerado em 24/08 08:01). Não é o caso CVMCADENCIA1 de cadência semanal, é queda do arquivo do ano corrente, do lado da CVM. O zip de 2025 não carrega linha de 2026, então não havia fallback pronto em A-1.
+
+Consequência: `cvm:documentos` congelou em `Data_Entrega 2026-08-15`, as rotinas perderam o gatilho primário de evento e a análise passou a reciclar o mesmo acervo de imprensa já conhecido. O volume decaiu antes de zerar, 68 eventos datados de 12 a 14/08 contra 17 datados de 18 a 20/08.
+
+**Por que ninguém viu.** Três camadas falharam ao mesmo tempo. `avaliarFrescorCVM` tratava um 404 duro com a tolerância de 2 ciclos semanais (14 dias) criada para cadência, então `ok` agregado ficou `true` e o `canonical-test` verde. O caminho de erro de `gravarFonteCVMMeta` sobrescrevia a meta inteira e apagava `max_data_entrega`, então o health devolvia `cvm_fonte_idade_dias:null` e nem dava para saber há quanto tempo a fonte estava escura. E o `VIXRadar-Health-Watch`, único canal que alertava em `fonte_externa_ok`, está `Disabled` desde 21/08, um dia depois da fonte congelar. O gate de evento do `frescor-check.yml` só acusaria em 26/08, porque o fim de semana não conta dia útil e o limite é 2.
+
+**Contribuinte secundário.** O cap de token da noturna deferiu a fila APROFUNDADA inteira em 22/08 (19 emissores, entre eles Oncoclínicas, Oi, Raízen, GPA, Light, CSN, Hapvida, Dasa) e 31 emissores em 23/08. Custo real medido em 23/08 é 25,2k por emissor na aprofundada e 12,3k na rápida, contra 13k e 9,5k calibrados. A fila rápida consumia 673k dos 700k e a aprofundada não disparava.
+
+### Correção (Worker v4.9.209 e v4.9.210, commits `c0167cd`, `1572279`)
+
+- **CVMURL404**: o ano do ZIP sai do relógio BRT em vez de cravado no código, que também consertava um bug latente de virada de ano, e em 404 a URL é reperguntada ao catálogo CKAN. Não resolvendo em nenhuma via, motivo `fonte_ausente_no_catalogo`.
+- **CVMMETAWIPE1**: `gravarFonteCVMMeta` faz merge no caminho de erro, preserva `max_data_entrega` e `last_modified_iso`, e passa a contar `falhas_consecutivas` e `ultimo_sync_ok_em`. Como o wipe do incidente aconteceu antes do fix subir, o v4.9.210 acrescentou fallback que deriva a idade de `cvm:documentos` quando a meta de falha não tem data nenhuma.
+- **CVMDURA1**: falha dura (`http_4xx/5xx`, exceção, arquivo ausente, ZIP inválido) derruba `fonte_externa_ok` na hora e escala para o `ok` agregado após `CVM_FONTE_MAX_FALHAS = 4` syncs falhos seguidos, ou seja 2 dias de crons. `CVM_FONTE_MAX_CICLOS` continua sendo o dono do caso "arquivo presente e velho".
+- **VOLTTL1** aplicado a `cvm:documentos`: TTL de 14 para 30 dias, porque a chave só é reescrita em sync bem-sucedido e o lote útil da CVM é semanal.
+- **CAPRESERVA1 e CALIB2** em `run_vixradar_noturno_claude.ps1`: reserva de orçamento para a fila aprofundada calculada antes do primeiro token, e calibragem pelo custo medido. A fila rápida continua rodando primeiro, porque inverter a ordem já zerou o Haiku em 09/07, mas agora bate num cap reduzido.
+- **Alerta**: `frescor-check.yml` passa a checar a fonte e nomear o campo específico (HEALTHWATCH3), rodando na nuvem sem depender do Health-Watch local.
+
+### Causa raiz e guarda
+
+Causa raiz: o sistema tratava "fonte respondeu velho" e "fonte não respondeu" como o mesmo evento, medidos pela mesma régua de 14 dias. A régua estava certa para o primeiro caso e cega para o segundo. Somado a isso, o único alerta que cobria a fonte tinha sido desligado 2 dias antes por outra razão, e o caminho de erro destruía a evidência necessária para diagnosticar.
+
+Guarda sistêmica: 8 testes novos em `api/test/cvm-frescor.test.mjs` travando o contrato nas duas pontas, falha dura reprovando e sync bom aceitando; bloco novo no `frescor-check.yml` que roda diário na nuvem e cita o campo; escalada automática para o `ok` agregado, que reacende `canonical-test` e `daily-status-email` sem depender de máquina ligada.
+
+### Aberto, decisão do operador
+
+A CVM ainda não repôs `ipe_cia_aberta_2026.zip`. Enquanto não repuser, a ingestão de Fato Relevante segue parada e os eventos dependem só de imprensa e RAD. Escopo decidido nesta sessão: **não construir fonte de ingestão nova**, detectar e alertar. Quando a CVM repuser, o sync volta sozinho. Se passar de 4 syncs falhos, o `ok` agregado cai e o alerta dispara.
+
+---
+
 ## 24/08 (continuação) — RESOLVIDO: 2 fixes órfãos em worktree resgatados (WORKTREE12)
 
 Das 6 worktrees do Claude Code, 4 eram checkout parado (BOM removido + caminho revertido para o legado `FREQUENTE\`, mesmo commit `e7f70d1` nas 4, sem nada de valor, removidas). As outras 2 tinham trabalho real nunca commitado, extraído a mão porque os arquivos-base já tinham divergido de `main` desde que as worktrees pararam de ser atualizadas.
