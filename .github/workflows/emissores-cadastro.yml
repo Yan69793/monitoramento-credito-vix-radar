@@ -163,7 +163,10 @@ jobs:
       - name: Excecao nao pode blindar card sem excecao
         run: |
           set -uo pipefail
-          saida=$(METRICAS_HOJE=2027-01-15 node scripts/check-metricas-curadas.mjs 2>&1); rc=$?
+          set +e
+          saida=$(METRICAS_HOJE=2027-01-15 node scripts/check-metricas-curadas.mjs 2>&1)
+          rc=$?
+          set -e
           if [ $rc -eq 0 ]; then
             echo "::error::A guarda APROVOU card de ITR vencido. A regua nao esta valendo."
             exit 1
@@ -180,7 +183,10 @@ jobs:
           set -uo pipefail
           sed 's|"Unidas / Rating": {|"Localiza / Rating": {|' scripts/check-metricas-curadas.mjs > /tmp/guarda-exc.mjs
           grep -q '"Localiza / Rating"' /tmp/guarda-exc.mjs || { echo "::error::A injecao nao entrou, o teste nao provaria nada."; exit 1; }
-          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1); rc=$?
+          set +e
+          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1)
+          rc=$?
+          set -e
           if [ $rc -eq 0 ]; then echo "::error::A guarda APROVOU excecao sobre card sem datacao."; exit 1; fi
           case "$saida" in
             *excecao_sem_trio*) echo "OK: reprovou por excecao_sem_trio, como deve." ;;
@@ -194,7 +200,10 @@ jobs:
           set -uo pipefail
           sed 's|"Unidas / Rating": {|"Tupy / Rating": {|' scripts/check-metricas-curadas.mjs > /tmp/guarda-exc.mjs
           grep -q '"Tupy / Rating"' /tmp/guarda-exc.mjs || { echo "::error::A injecao nao entrou."; exit 1; }
+          set +e
           saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1)
+          rc=$?
+          set -e
           case "$saida" in
             *"excecao de frescor que ja nao e necessaria"*) echo "OK: acusou a excecao ociosa." ;;
             *) echo "::error::Excecao sobre card fresco passou sem aviso."; exit 1 ;;
@@ -206,7 +215,10 @@ jobs:
           set -uo pipefail
           sed 's|"Unidas / Rating": {|"Zzqx Petroquimica / Rating": {|' scripts/check-metricas-curadas.mjs > /tmp/guarda-exc.mjs
           grep -q '"Zzqx Petroquimica / Rating"' /tmp/guarda-exc.mjs || { echo "::error::A injecao nao entrou."; exit 1; }
-          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1); rc=$?
+          set +e
+          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1)
+          rc=$?
+          set -e
           if [ $rc -eq 0 ]; then echo "::error::A guarda APROVOU excecao apontando para card inexistente."; exit 1; fi
           case "$saida" in
             *excecao_orfa*) echo "OK: reprovou por excecao_orfa, como deve." ;;
@@ -219,7 +231,10 @@ jobs:
       - name: Caso bom tem que nomear a excecao, nao so passar
         run: |
           set -uo pipefail
-          saida=$(node scripts/check-metricas-curadas.mjs 2>&1); rc=$?
+          set +e
+          saida=$(node scripts/check-metricas-curadas.mjs 2>&1)
+          rc=$?
+          set -e
           if [ $rc -ne 0 ]; then echo "::error::O repo como esta nao passou."; exit 1; fi
           case "$saida" in
             *"Unidas / Rating"*) echo "OK: passou e nomeou a excecao na saida." ;;
