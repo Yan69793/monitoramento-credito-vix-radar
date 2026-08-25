@@ -65,10 +65,16 @@ if (-not (Test-Path $toml)) { Fail "Nao achei $toml" }
 
 # CREDOAUTH1 (2026-08-04): mesmo problema achado no deploy-pages. O
 # CLOUDFLARE_API_TOKEN do registro foi trocado em 02/08 por um com permissao de
-# Workers KV Storage, para destravar o Export-Historico, e esse token nao alcanca
-# nem Workers Scripts nem Pages. O script exigia o token e nunca tentava a sessao
-# OAuth do wrangler, que funciona. Sem a sonda, a credencial errada so aparecia
-# depois do build ja ter gerado bundle e mexido no wrangler.toml.
+# Workers KV Storage, para destravar o Export-Historico. O script exigia o token e
+# nunca tentava a sessao OAuth do wrangler, que funciona. Sem a sonda, a credencial
+# errada so aparecia depois do build ja ter gerado bundle e mexido no wrangler.toml.
+#
+# ATUALIZADO 25/08/2026, a redacao anterior caducou. Ela dizia que o token "nao
+# alcanca nem Workers Scripts nem Pages". A primeira metade e falsa: medido no
+# deploy do v4.9.214 e por `wrangler secret list`, o token alcanca Workers Scripts
+# normalmente e a sonda abaixo devolve exit 0. So Pages continua faltando, e e por
+# isso que o deploy-pages.ps1 cai no OAuth e este aqui nao. Nao reintroduzir a
+# afirmacao antiga: ela faria alguem procurar defeito no lado que funciona.
 $usandoOAuth = $false
 
 function Test-CredencialWorkers {

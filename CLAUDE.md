@@ -111,7 +111,7 @@ os 4 arquivos do bundle, deploy, valida em produção.
 - `api/package.json` e `api/package-lock.json` são versionados e `deploy-worker.ps1` roda `npm ci` antes do deploy. Sem `node_modules`, o import não resolve.
 - Fonte do frontend: `app/index.html` (CACHE_VERSION no header). Sincronizar `app/deploy_zip/` antes do deploy.
 - Git commit só depois de deploy validado em produção (anti-drift).
-- `CLOUDFLARE_API_TOKEN` é variável de ambiente do sistema, nunca no repo.
+- `CLOUDFLARE_API_TOKEN` é variável de ambiente, nunca no repo. **Escopo `User`, não `Machine`** (medido em 25/08/2026: `Machine` está ausente, o valor vive em `User`). A redação anterior dizia "do sistema" e induziu instrução errada de instalar em `Machine` com elevação. As tarefas do Task Scheduler rodam sob esta mesma conta e enxergam o escopo `User`, comprovado pelo deploy do Worker e pela rotina Export-Historico funcionando com ele. Para trocar o valor sem que ele apareça na tela, em log ou no histórico do shell, usar `Read-Host -AsSecureString` e `[Environment]::SetEnvironmentVariable(..., 'User')`, mesmo idioma do `api/Set-VixAdminCredential.ps1`.
 
 ### Bindings obrigatórios
 `RADAR_KV` (KV `c6805b8d8a7b468e9f854ab4f91fb93a`), `RATE_LIMITER_DO` (RateLimiterDO),

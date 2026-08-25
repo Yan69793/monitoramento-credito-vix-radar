@@ -11,6 +11,35 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 25/08 — ABERTO P1 (uma ação do operador): token colado no chat, e o substituto criado mas não instalado (TOKENCHAT1)
+
+> **Status:** o token exposto foi revogado. Falta **instalar** o substituto na variável de ambiente. Enquanto isso, Pages segue no fallback OAuth
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** o operador colou o valor de um token da Cloudflare direto na conversa, pedindo que o agente o instalasse
+> **Condição de Obsolescência:** fecha quando `pwsh ./scripts/deploy-pages.ps1 -DryRun` imprimir `Credencial: CLOUDFLARE_API_TOKEN com acesso a Pages OK` em vez dos dois `AVISO:`
+
+Um valor de token foi colado na conversa. O agente recusou usá-lo e recomendou revogação imediata, que foi feita. O registro fica porque **é a mesma família do ROUTINEKEY-PLAIN1**, e aquele caso mostra o custo de descobrir tarde: transcripts e backups são append-only, preservam o valor, e a chave de lá segue sem rotação até hoje porque rotacionar depois quebra toda rotina que autentica com ela. Aqui a exposição teve minutos e a revogação foi barata. A diferença entre os dois casos é só tempo de detecção.
+
+**Por que o agente não gera nem instala token.** Duas razões independentes, e a segunda vale mesmo se a primeira cair. O MCP do Cloudflare carregado não tem ferramenta de criação, só `token_verify`. E criar token exige `User API Tokens: Edit`, que o token atual não tem, além de o valor secreto voltar uma única vez no corpo da resposta, que iria parar no contexto e no transcript. Seria fabricar o incidente em vez de resolvê-lo. O classificador de segurança bloqueou duas tentativas de leitura que tocavam a credencial, e estava certo nas duas.
+
+**Estado medido em 25/08, não presumido.** O token instalado na variável **ainda é o antigo** e **continua vivo**: `wrangler secret list` devolve exit 0 e lista os 22 secrets do Worker. Ou seja, as rotinas agendadas e o deploy do Worker não quebraram. O que falta é só `Cloudflare Pages: Edit`, e por isso o `deploy-pages.ps1` segue caindo no OAuth do wrangler.
+
+**A variável não está onde o CLAUDE.md dizia.** Medido: escopo `Machine` **ausente**, valor em escopo `User`. O `CLAUDE.md` afirmava "variável de ambiente do sistema", o que levou o agente a instruir instalação em `Machine` com elevação, desnecessariamente. Corrigido no `CLAUDE.md` na mesma sessão. As tarefas do Task Scheduler rodam sob esta conta e enxergam `User`, comprovado por o deploy do Worker e o Export-Historico funcionarem.
+
+**O que falta, uma ação do operador:**
+
+```powershell
+$s = Read-Host 'Token novo' -AsSecureString
+$b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($s)
+try { [Environment]::SetEnvironmentVariable('CLOUDFLARE_API_TOKEN', [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b), 'User') } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
+```
+
+Sem elevação, sem eco na tela, sem entrar no histórico do shell. Mesmo idioma do `api/Set-VixAdminCredential.ps1`, que já documenta esse padrão no repo. Depois reiniciar o terminal, porque processo aberto não relê ambiente.
+
+**Guarda que já existe e não precisou ser criada.** As sondas `Test-CredencialWorkers` e `Test-CredencialPages` dentro dos próprios scripts de deploy já detectam e nomeiam a permissão faltante antes de tocar em qualquer coisa. Foi o que permitiu medir tudo acima sem adivinhar. O que faltava não era detecção, era o operador executar a troca.
+
+---
+
 
 ## 24/08 (oitava rodada) — RESOLVIDO: card recurado e vencido ganha estado próprio (EXCECAO-FRESCOR1)
 
