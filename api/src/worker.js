@@ -5993,6 +5993,123 @@ __name22222(enviarResend, "enviarResend");
 __name222222(enviarResend, "enviarResend");
 __name2222222(enviarResend, "enviarResend");
 __name22222222(enviarResend, "enviarResend");
+
+// EMAILSILENT1 (2026-08-24). Todo envio transacional ao usuario final morria em
+// `catch {}` vazio. Aprovar alguem devolvia ok:true tivesse o e-mail saido ou
+// nao, e a unica fonte que sabia a verdade era o painel da Resend, fora do
+// sistema. Sem log, sem telemetria, sem alerta, sem rastro por destinatario.
+// O caso que abriu a auditoria: joao.tavano@mirabaud.com.br aprovado, painel
+// exibindo "aprovado", e nenhuma forma interna de saber se a mensagem chegou.
+//
+// enviarResend JA devolvia o id gerado pela Resend, e nenhum dos 14 call sites
+// de producao lia esse retorno. Nada aqui inventa instrumentacao nova, so
+// consome o que ja voltava. Quatro destinos, cada um com um papel distinto, e e
+// por isso que sao quatro e nao um:
+//   console.error  -> `wrangler tail`, custo zero, visivel na hora do incidente
+//   Sentry         -> alerta que alcanca o operador sem ninguem ir consultar
+//   Analytics Eng. -> agregacao e tendencia, mesma malha do resto da telemetria
+//   KV             -> o rastro por destinatario, que e exatamente o que faltava
+//
+// LGPD. A chave usa o e-mail em texto puro de proposito, nao por descuido. Ele
+// ja esta no mesmo namespace em `user:{email}` e em `bounce:{email}:{ts}`, logo
+// hash aqui nao reduziria identificabilidade nenhuma, so quebraria a correlacao
+// com o registro de bounce e a consulta por prefixo. O controle que de fato vale
+// e retencao: TTL de 90 dias, o mesmo do bounce, para que entrega e devolucao
+// expirem juntas. Nao grava corpo da mensagem, nem IP, nem user agent. Para a
+// Sentry, que e terceiro, o endereco vai redigido (ver _redigirEmails).
+var EMAIL_TRACE_TTL_S = 90 * 24 * 60 * 60;
+
+function _emailDominio(e) {
+  var s = String(e == null ? "" : e);
+  var i = s.lastIndexOf("@");
+  return i >= 0 ? s.slice(i + 1).toLowerCase() : "";
+}
+
+// A Resend ecoa o endereco no corpo do erro de validacao. O bloco dataCollection
+// do withSentry foi fechado a dedo (SENTRY-PII1) e mandar e-mail de cliente pelo
+// texto da excecao furaria aquilo pela porta dos fundos.
+function _redigirEmails(s) {
+  return String(s == null ? "" : s).replace(/[^\s@"'<>,;()]+@[^\s@"'<>,;()]+/g, "[email]");
+}
+
+// enviarResend devolve o objeto unico da Resend quando ha 1 destinatario e
+// { batch, enviados, ids } quando ha varios. Os dois formatos entram aqui.
+function _resendIdDe(r) {
+  if (!r) return null;
+  if (typeof r.id === "string" && r.id) return r.id;
+  if (Array.isArray(r.ids) && r.ids.length && r.ids[0]) return String(r.ids[0]);
+  return null;
+}
+
+async function _registrarEnvioEmail(env2222, info) {
+  var evento = String(info && info.evento || "desconhecido").slice(0, 48);
+  var dest = String(info && info.destinatario || "").toLowerCase().trim();
+  var ok = !!(info && info.ok === true);
+  var resendId = info && info.resend_id ? String(info.resend_id).slice(0, 128) : null;
+  var erro = info && info.erro ? String(info.erro).slice(0, 200) : null;
+  var ts = (/* @__PURE__ */ new Date()).toISOString();
+  if (!ok) {
+    console.error("[email] FALHA evento=" + evento + " dominio=" + _emailDominio(dest) + " erro=" + _redigirEmails(erro || "sem detalhe"));
+  }
+  try {
+    if (env2222.RADAR_USAGE_EVENTS) {
+      // Mesmo layout de blobs de tel(): [evento, email, empresa, rota, ua, ipHash, extra].
+      // O slot de ipHash fica vazio porque estes handlers nao recebem o request,
+      // igual ja acontece nos writeDataPoint vizinhos de admin_aprovar.
+      env2222.RADAR_USAGE_EVENTS.writeDataPoint({
+        indexes: [(dest || "anon").slice(0, 128)],
+        blobs: [ok ? "email_envio_ok" : "email_envio_falha", dest.slice(0, 128), "", "POST /", "email", "", JSON.stringify({ tipo: evento, resend_id: resendId, erro: erro }).slice(0, 2048)],
+        doubles: [Date.now(), 0, ok ? 200 : 502]
+      });
+    }
+  } catch (_) {
+  }
+  try {
+    if (env2222.RADAR_KV && dest) {
+      await env2222.RADAR_KV.put(
+        "email_envio:" + dest + ":" + ts.replace(/[^0-9]/g, ""),
+        JSON.stringify({ evento: evento, email: dest, ok: ok, resend_id: resendId, erro: erro, ts: ts }),
+        { expirationTtl: EMAIL_TRACE_TTL_S }
+      );
+    }
+  } catch (e) {
+    console.error("[email] rastro KV falhou:", e && e.message ? e.message : String(e));
+  }
+  if (!ok) {
+    try {
+      Sentry.captureException(new Error("[email] envio falhou: " + evento + " (" + _redigirEmails(erro || "sem detalhe") + ")"), {
+        tags: { area: "email_transacional", email_evento: evento, email_dominio: _emailDominio(dest) },
+        extra: { resend_id: resendId }
+      });
+    } catch (_) {
+    }
+  }
+}
+
+// NUNCA lanca. O ponto inteiro e que a acao primaria (aprovar, rejeitar, gerar
+// token de reset) ja aconteceu e continua valendo; o envio e efeito colateral.
+// Devolve { ok, resend_id, erro } para o chamador decidir o que dizer na
+// resposta HTTP, que era a outra metade do defeito.
+async function enviarEmailRastreado(env2222, spec) {
+  var evento = spec && spec.evento || "desconhecido";
+  var dest = spec && spec.destinatario || "";
+  if (!env2222.RESEND_API_KEY) {
+    // Antes isto era um `if` mudo em volta do envio: sem a chave, nada saia e
+    // ninguem ficava sabendo. Agora chave ausente e uma falha como outra.
+    await _registrarEnvioEmail(env2222, { evento: evento, destinatario: dest, ok: false, erro: "RESEND_API_KEY ausente" });
+    return { ok: false, resend_id: null, erro: "RESEND_API_KEY ausente" };
+  }
+  try {
+    var r = await enviarResend(env2222.RESEND_API_KEY, spec.assunto, spec.html, [dest], spec.extraHeaders || null, spec.opts || null, env2222);
+    var id = _resendIdDe(r);
+    await _registrarEnvioEmail(env2222, { evento: evento, destinatario: dest, ok: true, resend_id: id });
+    return { ok: true, resend_id: id, erro: null };
+  } catch (e) {
+    var msg = e && e.message ? e.message : String(e);
+    await _registrarEnvioEmail(env2222, { evento: evento, destinatario: dest, ok: false, erro: msg });
+    return { ok: false, resend_id: null, erro: msg };
+  }
+}
 async function enviarWhatsAppAdmin(env2222, usuario) {
   const _telWa = (motivo, http, extra) => {
     try {
@@ -6271,13 +6388,21 @@ async function handleSolicitarReset(body, env2222) {
   const token = crypto.randomUUID();
   await env2222.RADAR_KV.put(`reset:${token}`, JSON.stringify({ email: user.email, created_at: Date.now() }), { expirationTtl: 86400 });
   const resetUrl = `${FRONTEND_URL}?reset_token=${token}`;
-  if (env2222.RESEND_API_KEY) {
-    try {
-      await enviarResend(env2222.RESEND_API_KEY, "Redefinir senha, Radar de Credito Privado", emailResetSenha(user, resetUrl), [user.email], null, null, env2222);
-    } catch (e) {
-      console.error("[solicitar_reset] falha envio Resend:", e && e.message);
-    }
-  }
+  // EMAILSILENT1. Este era o menos cego dos cinco, ja tinha console.error, mas
+  // nao tinha rastro, telemetria nem alerta. Agora tem os quatro canais.
+  await enviarEmailRastreado(env2222, {
+    evento: "reset_senha",
+    assunto: "Redefinir senha, Radar de Credito Privado",
+    html: emailResetSenha(user, resetUrl),
+    destinatario: user.email
+  });
+  // A resposta continua identica nos dois desfechos DE PROPOSITO, e esta e a
+  // excecao a regra de "a resposta para de mentir". Contar ao chamador que o
+  // envio falhou revelaria que a conta existe e esta aprovada, que e exatamente
+  // o que as duas saidas iguais acima (usuario ausente ou nao aprovado) evitam.
+  // Enumeracao de conta vale mais que a conveniencia do aviso. O sinal de falha
+  // sai por log, Sentry, telemetria e rastro KV, canais do operador, nao do
+  // anonimo que chamou o endpoint.
   return resp({ ok: true, mensagem: "Se o e-mail estiver cadastrado, enviaremos um link de redefini\xE7\xE3o." });
 }
 __name(handleSolicitarReset, "handleSolicitarReset");
@@ -6362,7 +6487,11 @@ async function handleAdminAprovar(body, env2222) {
   if (!email) return resp({ ok: false, erro: "E-mail obrigat\xF3rio." }, 400);
   const user = await getUser(env2222, email);
   if (!user) return resp({ ok: false, erro: "N\xE3o encontrado." }, 404);
-  if (user.status === "aprovado") return resp({ ok: true, mensagem: "J\xE1 aprovado." });
+  // EMAILSILENT1: `email_enviado: null` e "nao houve tentativa", distinto de
+  // false, que e "tentou e falhou". Sem o campo aqui, quem testar
+  // `if (!r.email_enviado)` avisaria falha de envio num caminho onde nada foi
+  // enviado porque nada mudou. Campo sempre presente nesta action.
+  if (user.status === "aprovado") return resp({ ok: true, mensagem: "J\xE1 aprovado.", email_enviado: null, email_erro: null, resend_id: null });
   user.status = "aprovado";
   user.updated_at = (/* @__PURE__ */ new Date()).toISOString();
   user.aprovado_por = "admin";
@@ -6373,13 +6502,23 @@ async function handleAdminAprovar(body, env2222) {
     } catch (_) {
     }
   }
-  if (env2222.RESEND_API_KEY) {
-    try {
-      await enviarResend(env2222.RESEND_API_KEY, "Acesso ao Radar de Credito Privado aprovado", emailAprovado(user, env2222), [user.email], null, null, env2222);
-    } catch {
-    }
-  }
-  return resp({ ok: true, mensagem: `${user.nome} aprovado.` });
+  // EMAILSILENT1: a aprovacao ja esta gravada acima e continua valendo mesmo se
+  // o e-mail nao sair, entao isto NAO vira fail-closed. O que muda e a resposta
+  // parar de mentir: aprovado-com-aviso e aprovado-sem-aviso sao dois resultados
+  // diferentes e o admin precisa distinguir para avisar por outro canal.
+  var _envioAprov = await enviarEmailRastreado(env2222, {
+    evento: "aprovacao_admin",
+    assunto: "Acesso ao Radar de Credito Privado aprovado",
+    html: emailAprovado(user, env2222),
+    destinatario: user.email
+  });
+  return resp({
+    ok: true,
+    mensagem: _envioAprov.ok ? `${user.nome} aprovado.` : `${user.nome} aprovado, mas o e-mail de confirmacao NAO saiu. Avise por outro canal.`,
+    email_enviado: _envioAprov.ok,
+    email_erro: _envioAprov.ok ? null : _envioAprov.erro,
+    resend_id: _envioAprov.resend_id
+  });
 }
 __name(handleAdminAprovar, "handleAdminAprovar");
 __name2(handleAdminAprovar, "handleAdminAprovar");
@@ -6405,13 +6544,22 @@ async function handleAdminRejeitar(body, env2222) {
     } catch (_) {
     }
   }
-  if (env2222.RESEND_API_KEY) {
-    try {
-      await enviarResend(env2222.RESEND_API_KEY, "Solicitacao de acesso ao Radar nao aprovada", emailRejeitado(user, env2222), [user.email], null, null, env2222);
-    } catch {
-    }
-  }
-  return resp({ ok: true, mensagem: `${user.nome} rejeitado.` });
+  // EMAILSILENT1: mesmo defeito e mesmo tratamento do handleAdminAprovar acima.
+  // Este call site NAO estava na lista original da auditoria e so apareceu na
+  // varredura dos 16 call sites de enviarResend.
+  var _envioRejeit = await enviarEmailRastreado(env2222, {
+    evento: "rejeicao_admin",
+    assunto: "Solicitacao de acesso ao Radar nao aprovada",
+    html: emailRejeitado(user, env2222),
+    destinatario: user.email
+  });
+  return resp({
+    ok: true,
+    mensagem: _envioRejeit.ok ? `${user.nome} rejeitado.` : `${user.nome} rejeitado, mas o e-mail de aviso NAO saiu.`,
+    email_enviado: _envioRejeit.ok,
+    email_erro: _envioRejeit.ok ? null : _envioRejeit.erro,
+    resend_id: _envioRejeit.resend_id
+  });
 }
 __name(handleAdminRejeitar, "handleAdminRejeitar");
 __name2(handleAdminRejeitar, "handleAdminRejeitar");
@@ -6765,12 +6913,18 @@ async function handleEmailActionConfirm(fd, action, env2222) {
       if (env2222.RADAR_KV) await env2222.RADAR_KV.put(_consumoKey, "1", { expirationTtl: 60 * 60 * 24 * 7 });
     } catch (_) {
     }
-    if (env2222.RESEND_API_KEY) {
-      try {
-        await enviarResend(env2222.RESEND_API_KEY, "Acesso ao Radar de Credito Privado aprovado", emailAprovado(user, env2222), [user.email], null, null, env2222);
-      } catch {
-      }
-    }
+    // EMAILSILENT1. Segue verde porque a aprovacao aconteceu de fato; o X
+    // vermelho diria que ela falhou, o que seria uma segunda mentira. Quem
+    // carrega o aviso e o titulo e o texto. O detalhe do erro NAO entra aqui:
+    // htmlResp interpola msg sem escapar e o corpo de erro da Resend e texto
+    // de terceiro.
+    var _envioApEmail = await enviarEmailRastreado(env2222, {
+      evento: "aprovacao_email",
+      assunto: "Acesso ao Radar de Credito Privado aprovado",
+      html: emailAprovado(user, env2222),
+      destinatario: user.email
+    });
+    if (!_envioApEmail.ok) return htmlResp("Aprovado, sem aviso", `${user.nome} pode acessar, mas o e-mail de confirmacao nao saiu. Avise por outro canal.`, true);
     return htmlResp("Aprovado", `${user.nome} pode acessar.`, true);
   } else {
     user.status = "rejeitado";
@@ -6780,12 +6934,14 @@ async function handleEmailActionConfirm(fd, action, env2222) {
       if (env2222.RADAR_KV) await env2222.RADAR_KV.put(_consumoKey, "1", { expirationTtl: 60 * 60 * 24 * 7 });
     } catch (_) {
     }
-    if (env2222.RESEND_API_KEY) {
-      try {
-        await enviarResend(env2222.RESEND_API_KEY, "Solicitacao de acesso ao Radar nao aprovada", emailRejeitado(user, env2222), [user.email], null, null, env2222);
-      } catch {
-      }
-    }
+    // EMAILSILENT1, mesmo tratamento do ramo de aprovacao acima.
+    var _envioRjEmail = await enviarEmailRastreado(env2222, {
+      evento: "rejeicao_email",
+      assunto: "Solicitacao de acesso ao Radar nao aprovada",
+      html: emailRejeitado(user, env2222),
+      destinatario: user.email
+    });
+    if (!_envioRjEmail.ok) return htmlResp("Rejeitado, sem aviso", `Solicita\xE7\xE3o de ${user.nome} recusada, mas o e-mail de aviso nao saiu.`, true);
     return htmlResp("Rejeitado", `Solicita\xE7\xE3o de ${user.nome} recusada.`, true);
   }
 }
@@ -17296,6 +17452,58 @@ async function __coreFetch(request, env2222, ctx) {
         aliases_derivados: SYNC_EMPRESA_TO_ALIASES[_adcEmp] || [],
         total: _adcDocs.length,
         documentos: _adcDocs.slice(0, 50)
+      }, 200, request);
+    }
+    // EMAILSILENT1: o rastro por destinatario so serve se der para consultar sem
+    // abrir o console do KV. Junta numa resposta o que o sistema sabe sobre um
+    // endereco: o que tentamos enviar, o que a Resend aceitou (resend_id, que da
+    // para colar no painel dela) e o que voltou como bounce ou complaint pelo
+    // webhook que ja existia. E a resposta para "o e-mail de aprovacao chegou?".
+    if (body.action === "admin_email_envios") {
+      if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      var _aeeEmail = typeof body.email === "string" ? body.email.toLowerCase().trim() : "";
+      if (!_aeeEmail) return resp({ ok: false, erro: "Informe email." }, 400, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 503, request);
+      var _aeeLer = async function(prefixo) {
+        var out = [];
+        var lista = await env2222.RADAR_KV.list({ prefix: prefixo });
+        for (var _i = 0; _i < lista.keys.length; _i++) {
+          var raw = await env2222.RADAR_KV.get(lista.keys[_i].name);
+          if (!raw) continue;
+          try {
+            out.push(JSON.parse(raw));
+          } catch (_) {
+          }
+        }
+        return out;
+      };
+      var _aeeEnvios = await _aeeLer("email_envio:" + _aeeEmail + ":");
+      _aeeEnvios.sort(function(a, b) {
+        return String(b && b.ts || "").localeCompare(String(a && a.ts || ""));
+      });
+      var _aeeBounces = await _aeeLer("bounce:" + _aeeEmail + ":");
+      var _aeeCompRaw = await env2222.RADAR_KV.get("complaint:" + _aeeEmail);
+      var _aeeComp = null;
+      if (_aeeCompRaw) {
+        try {
+          _aeeComp = JSON.parse(_aeeCompRaw);
+        } catch (_) {
+        }
+      }
+      return resp({
+        ok: true,
+        email: _aeeEmail,
+        total: _aeeEnvios.length,
+        falhas: _aeeEnvios.filter(function(e) {
+          return e && e.ok === false;
+        }).length,
+        envios: _aeeEnvios.slice(0, 50),
+        bounces: _aeeBounces,
+        complaint: _aeeComp,
+        // Explicito porque lista vazia tem duas leituras: nunca enviamos, ou
+        // enviamos ha mais de 90 dias e o TTL levou. Sem isto, some silencio com
+        // ausencia, que e o erro que abriu esta auditoria.
+        retencao_dias: 90
       }, 200, request);
     }
     if (body.action === "admin_sync_mercado") return await handleSyncMercado(body, env2222);

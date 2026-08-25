@@ -1,9 +1,68 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.213)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.214)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.214.js = v4.9.213 + EMAILSILENT1, falha de envio de e-mail transacional era invisivel.
+#   Quatro `catch {}` literalmente vazios em volta da chamada a Resend, em handleAdminAprovar,
+#   handleAdminRejeitar e nos dois ramos de handleEmailActionConfirm, mais um console.error
+#   solto em handleSolicitarReset. Aprovar alguem devolvia ok:true tivesse a mensagem saido ou
+#   nao, e a unica fonte que sabia a verdade era o painel da Resend, fora do sistema. Motivador:
+#   um cadastro corporativo aprovado, painel exibindo "aprovado", e nenhuma forma interna de
+#   saber se o e-mail de aprovacao chegou.
+#   A lista da auditoria estava errada em dois pontos, e a varredura dos 16 call sites de
+#   enviarResend corrigiu: handleSolicitarReset ja tinha console.error, nao era catch vazio, e
+#   handleAdminRejeitar tinha o defeito identico e nao estava citado. Corrigidos os 5 caminhos
+#   cujo destinatario e o usuario final.
+#   CAUSA RAIZ: enviarResend JA devolvia o id gerado pela Resend e nenhum dos 16 call sites de
+#   producao lia esse retorno. A informacao para diagnosticar sempre existiu e era descartada.
+#   O unico que aproveitava era newsletter_teste, que devolvia resend_id na resposta HTTP e
+#   nao persistia.
+#   enviarEmailRastreado centraliza e NUNCA lanca, porque a acao primaria (aprovar, rejeitar,
+#   gerar token de reset) ja aconteceu e continua valendo. Nao virou fail-closed. Quatro canais,
+#   cada um com papel distinto, e e por isso que sao quatro e nao um: console.error para
+#   wrangler tail, Sentry para alerta que alcanca o operador sem ninguem consultar nada,
+#   Analytics Engine para agregacao e tendencia, e KV email_envio:{email}:{ts} com TTL de 90
+#   dias para o rastro por destinatario, que era o que nao existia em canto nenhum.
+#   Respostas de aprovar e rejeitar ganharam email_enviado, email_erro e resend_id, com
+#   tri-estado deliberado: null e "nao tentou", false e "tentou e falhou". O caminho
+#   "Ja aprovado" devolve null porque nada foi enviado, senao quem testa if (!r.email_enviado)
+#   avisaria falha num caminho onde nada mudou.
+#   solicitar_reset mantem a resposta generica nos dois desfechos DE PROPOSITO, e e a unica
+#   excecao a regra de "a resposta para de mentir". Contar ao chamador que o envio falhou
+#   revelaria que a conta existe e esta aprovada, que e exatamente o que a mensagem generica
+#   protege. Anti-enumeracao vale mais que a conveniencia do aviso, e o sinal de falha sai
+#   pelos canais do operador.
+#   NAO entrou no _okHealth, seguindo o HEALTHSPLIT1: falha de um e-mail nao e plataforma
+#   degradada e poluiria o unico sinal acionavel que o `ok` agregado tem.
+#   LGPD: a chave usa o e-mail em texto puro de proposito, nao por descuido. Ele ja esta no
+#   mesmo namespace em user:{email} e bounce:{email}:{ts}, entao hash nao reduziria
+#   identificabilidade nenhuma, so quebraria a correlacao com o registro de bounce e a consulta
+#   por prefixo. O controle que de fato vale e retencao, TTL de 90 dias igual ao do bounce,
+#   para que entrega e devolucao expirem juntas. Nao grava corpo da mensagem, IP nem user
+#   agent. Para a Sentry, que e terceiro, o endereco vai redigido e so o dominio segue como
+#   tag, preservando o bloco dataCollection fechado a dedo no SENTRY-PII1.
+#   Action admin_email_envios responde "o e-mail chegou?" por destinatario, cruzando os envios
+#   com os registros de bounce e complaint que o webhook da Resend ja gravava. Devolve
+#   retencao_dias explicito porque lista vazia tem duas leituras, nunca enviamos ou o TTL
+#   levou, e confundir silencio com ausencia e o erro que abriu esta auditoria.
+#   GUARDA: api/test/email-falha-silenciosa.test.mjs, 7 testes, roda no CI por
+#   worker-tests.yml. Prova de duas pontas MEDIDA: contra o codigo pre-correcao os 7 falham,
+#   o primeiro com "expected undefined to be false", que e literalmente a mentira antiga, o
+#   campo nao existia. Contra o corrigido os 7 passam. Suite em 76 testes, 12 arquivos.
+#   Determinismo por outboundService em vitest.config.mts que intercepta so api.resend.com e
+#   decide pelo campo `to` do payload, porque @cloudflare/vitest-pool-workers v0.20.x nao
+#   exporta mais fetchMock de cloudflare:test, so o tipo MockAgent sobrou no .d.ts sem
+#   implementacao em dist/. Efeito colateral bom, a suite parou de bater em api.resend.com de
+#   verdade a cada rodada de CI.
+#   DEIXADO ABERTO P3: os dois envios de notificacao ao admin em handleRegistrar (cadastro novo
+#   e reenvio com dedup de 24h) seguem fora do helper. Nao sao silenciosos, tem console.log
+#   mais evento de Analytics Engine, e a audiencia e outra, mas ficam sem rastro por
+#   destinatario e sem alerta na Sentry. Segundo item, enviarResend devolve o objeto unico
+#   quando resultados.length === 1, entao um lote de 2 em que 1 falhou retorna forma
+#   indistinguivel de envio unico bem-sucedido. Nao afeta os 5 caminhos corrigidos, que sao
+#   todos de 1 destinatario, mas engana quem for instrumentar os call sites de lote.
 # v4.9.213.js = v4.9.212 + SENDASGPA1 e RELOGIO3H1.
 #   CARREGA a troca de carteira CARTEIRA-24AGO1 por heranca, ela ja subiu na v4.9.212 e
 #   esta viva em producao. Conferido no endpoint antes de versionar, e nao no plano:

@@ -11,6 +11,33 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (sexta rodada) — RESOLVIDO: falha de envio de e-mail transacional era invisível por construção (EMAILSILENT1)
+
+> **Status:** RESOLVIDO no código, NÃO deployado (aguarda autorização do operador)
+> **Data da Versão:** 2026-08-24
+> **Origem do Registro:** `joao.tavano@mirabaud.com.br` foi aprovado, o painel exibiu "João Tavano aprovado", e não havia forma interna de saber se o e-mail de aprovação chegou. A única fonte autoritativa era o painel da Resend, fora do sistema
+> **Condição de Obsolescência:** perde validade se `enviarResend` deixar de devolver o `id` da Resend, ou se o rastro migrar de KV para DO na migração v5
+
+Aprovar alguém devolvia `ok:true` tivesse a mensagem saído ou não. O admin lia "aprovado" e não tinha como distinguir aprovado-com-aviso de aprovado-sem-aviso. Recusa por domínio corporativo do destinatário é o desfecho mais provável e o mais invisível, porque acontece do lado de lá e nunca virava exceção aqui dentro.
+
+**Causa raiz.** Quatro `catch {}` literalmente vazios em volta da chamada à Resend (`handleAdminAprovar`, `handleAdminRejeitar` e os dois ramos de `handleEmailActionConfirm`), mais um `console.error` solto em `handleSolicitarReset`. A informação para diagnosticar já existia e era descartada: `enviarResend` monta e devolve o `id` que a Resend gera, e nenhum dos 16 call sites de produção lia esse retorno. O único que aproveitava era `newsletter_teste`, que devolvia `resend_id` na resposta HTTP e não persistia.
+
+**Medido.** Varredura dos 16 call sites de `enviarResend`, não a lista da auditoria. A lista original tinha dois erros: apontava `handleSolicitarReset` como `catch {}` vazio quando ele já tinha `console.error`, e não citava `handleAdminRejeitar`, que tinha o defeito idêntico. Corrigidos os cinco caminhos cujo destinatário é o usuário final.
+
+**Correção.** `enviarEmailRastreado` centraliza os cinco envios e nunca lança, porque a ação primária (aprovar, rejeitar, gerar token) já aconteceu e continua valendo. Quatro canais, cada um com papel distinto: `console.error` para `wrangler tail`, Sentry para alerta que alcança o operador sem ninguém consultar nada, Analytics Engine para agregação, e KV para o rastro por destinatário. As respostas de aprovar e rejeitar ganharam `email_enviado`, `email_erro` e `resend_id`, com tri-estado deliberado (`null` é "não tentou", `false` é "tentou e falhou").
+
+**Exceção deliberada em `solicitar_reset`.** A resposta continua idêntica nos dois desfechos. Contar ao chamador que o envio falhou revelaria que a conta existe e está aprovada, que é exatamente o que a mensagem genérica protege. Anti-enumeração vale mais que a conveniência do aviso, e o sinal de falha sai pelos canais do operador.
+
+**LGPD.** A chave `email_envio:{email}:{ts}` usa o endereço em texto puro de propósito. Ele já está no mesmo namespace em `user:{email}` e `bounce:{email}:{ts}`, então hash não reduziria identificabilidade, só quebraria a correlação com bounce e a consulta por prefixo. O controle real é retenção, TTL de 90 dias igual ao do bounce, para que entrega e devolução expirem juntas. Não grava corpo da mensagem, IP nem user agent. Para a Sentry, que é terceiro, o endereço vai redigido e só o domínio segue como tag, preservando o bloco `dataCollection` fechado a dedo no SENTRY-PII1.
+
+**Guarda sistêmica.** `api/test/email-falha-silenciosa.test.mjs`, 7 testes, roda no CI por `worker-tests.yml`. Prova de duas pontas medida: contra o código pré-correção os 7 falham, contra o corrigido os 7 passam. O determinismo vem de um `outboundService` em `vitest.config.mts` que intercepta só `api.resend.com` e decide pelo campo `to` do payload, porque este pacote (`@cloudflare/vitest-pool-workers` v0.20.x) não exporta mais `fetchMock` de `cloudflare:test`, só o tipo `MockAgent` sobrou no `.d.ts` sem implementação em `dist/`. Efeito colateral bom, a suíte parou de bater em `api.resend.com` de verdade a cada rodada de CI.
+
+**Consulta.** Action admin `admin_email_envios` responde "o e-mail chegou?" por destinatário, cruzando os envios com os registros de bounce e complaint que o webhook da Resend já gravava. Devolve `retencao_dias` explícito porque lista vazia tem duas leituras, nunca enviamos ou o TTL levou, e confundir silêncio com ausência é o erro que abriu esta auditoria.
+
+**Deixado aberto de propósito, P3.** Os dois envios de notificação ao admin (`handleRegistrar`, o de cadastro novo e o de reenvio com dedup de 24h) não passam pelo helper. Não são silenciosos, já têm `console.log` mais evento de Analytics Engine, e a audiência é outra, se falharem o admin simplesmente não vê a solicitação. Ficam sem rastro por destinatário e sem alerta na Sentry. Segundo item, `enviarResend` devolve o objeto único quando `resultados.length === 1`, então um lote de 2 em que 1 falhou retorna forma indistinguível de envio único bem-sucedido. Não afeta os cinco caminhos corrigidos, que são todos de 1 destinatário, mas engana quem for instrumentar os call sites de lote.
+
+---
+
 ## 24/08 (quinta rodada) — RESOLVIDO (Marco 1): carteira trocada só no backend deixou a Braskem sem card de métrica (CURADORIA1)
 
 > **Status:** Marco 1 resolvido e deployado. Marco 2 (recuração dos 101) ABERTO P2
