@@ -150,6 +150,82 @@ jobs:
       - name: Guarda tem que aceitar o repo como esta
         run: node scripts/check-metricas-curadas.mjs
 
+      # EXCECAO-FRESCOR1. O terceiro estado (card recurado, datacao real, fora da
+      # janela) so vale se nao virar um segundo silencio. As quatro etapas abaixo
+      # existem porque cada uma cobre um jeito diferente de o mecanismo apodrecer.
+      #
+      # ARMADILHA para quem for mexer nestas etapas: nao usar `node ... | grep`. Com
+      # pipefail a pipeline herda o exit 1 do node e o grep nunca decide nada, o que
+      # faz todo caso negativo passar pelo motivo errado. Capturar em variavel.
+
+      # A regua continua valendo para quem NAO tem excecao, e a excecao de um card nao
+      # blinda os irmaos do mesmo emissor.
+      - name: Excecao nao pode blindar card sem excecao
+        run: |
+          set -uo pipefail
+          saida=$(METRICAS_HOJE=2027-01-15 node scripts/check-metricas-curadas.mjs 2>&1); rc=$?
+          if [ $rc -eq 0 ]; then
+            echo "::error::A guarda APROVOU card de ITR vencido. A regua nao esta valendo."
+            exit 1
+          fi
+          case "$saida" in
+            *"Unidas / card 1 (Alavancagem)"*) echo "OK: a excecao do Rating nao blindou os outros cards da Unidas." ;;
+            *) echo "::error::Os demais cards da Unidas nao apareceram entre as falhas. A excecao pode estar cobrindo o emissor inteiro."; exit 1 ;;
+          esac
+
+      # O buraco que este mecanismo fecha, invertido: excecao sobre card sem datacao
+      # seria exatamente o silencio de novo, so que declarado.
+      - name: Excecao sobre card sem trio tem que reprovar
+        run: |
+          set -uo pipefail
+          sed 's|"Unidas / Rating": {|"Localiza / Rating": {|' scripts/check-metricas-curadas.mjs > /tmp/guarda-exc.mjs
+          grep -q '"Localiza / Rating"' /tmp/guarda-exc.mjs || { echo "::error::A injecao nao entrou, o teste nao provaria nada."; exit 1; }
+          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1); rc=$?
+          if [ $rc -eq 0 ]; then echo "::error::A guarda APROVOU excecao sobre card sem datacao."; exit 1; fi
+          case "$saida" in
+            *excecao_sem_trio*) echo "OK: reprovou por excecao_sem_trio, como deve." ;;
+            *) echo "::error::Reprovou pelo motivo errado, a regra excecao_sem_trio nao disparou."; exit 1 ;;
+          esac
+
+      # Anti-apodrecimento: card que volta para dentro da janela tem que largar a
+      # excecao, senao ela fica cobrindo algo que ja nao precisa e ninguem percebe.
+      - name: Excecao ociosa tem que ser acusada
+        run: |
+          set -uo pipefail
+          sed 's|"Unidas / Rating": {|"Tupy / Rating": {|' scripts/check-metricas-curadas.mjs > /tmp/guarda-exc.mjs
+          grep -q '"Tupy / Rating"' /tmp/guarda-exc.mjs || { echo "::error::A injecao nao entrou."; exit 1; }
+          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1)
+          case "$saida" in
+            *"excecao de frescor que ja nao e necessaria"*) echo "OK: acusou a excecao ociosa." ;;
+            *) echo "::error::Excecao sobre card fresco passou sem aviso."; exit 1 ;;
+          esac
+
+      # Label renomeado deixa a excecao viva cobrindo nada.
+      - name: Excecao orfa tem que reprovar
+        run: |
+          set -uo pipefail
+          sed 's|"Unidas / Rating": {|"Zzqx Petroquimica / Rating": {|' scripts/check-metricas-curadas.mjs > /tmp/guarda-exc.mjs
+          grep -q '"Zzqx Petroquimica / Rating"' /tmp/guarda-exc.mjs || { echo "::error::A injecao nao entrou."; exit 1; }
+          saida=$(EMISSORES_WORKER_PATH="$PWD/api/src/worker.js" METRICAS_FRONTEND_PATH="$PWD/app/index.html" node /tmp/guarda-exc.mjs 2>&1); rc=$?
+          if [ $rc -eq 0 ]; then echo "::error::A guarda APROVOU excecao apontando para card inexistente."; exit 1; fi
+          case "$saida" in
+            *excecao_orfa*) echo "OK: reprovou por excecao_orfa, como deve." ;;
+            *) echo "::error::Reprovou pelo motivo errado."; exit 1 ;;
+          esac
+
+      # A ponta que fecha a regra 5 do CLAUDE.md aqui. Nao basta a guarda TOLERAR a
+      # excecao, ela tem que NOMEAR na saida. Tolerancia silenciosa seria o buraco de
+      # volta com outro nome, e passaria nas quatro etapas acima parecendo sadia.
+      - name: Caso bom tem que nomear a excecao, nao so passar
+        run: |
+          set -uo pipefail
+          saida=$(node scripts/check-metricas-curadas.mjs 2>&1); rc=$?
+          if [ $rc -ne 0 ]; then echo "::error::O repo como esta nao passou."; exit 1; fi
+          case "$saida" in
+            *"Unidas / Rating"*) echo "OK: passou e nomeou a excecao na saida." ;;
+            *) echo "::error::Passou em silencio. Excecao tolerada sem aparecer e o buraco de volta."; exit 1 ;;
+          esac
+
       # CURADORIA2, ponta negativa: emissor novo entra na carteira e ninguem decide de
       # qual companhia da CVM sai o numero dele. E o mesmo defeito do CURADORIA1 um
       # nivel acima, e o que faria a recuracao puxar dado de outra empresa em silencio.
