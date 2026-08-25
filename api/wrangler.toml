@@ -1,9 +1,30 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.214)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.215)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.215.js = v4.9.214 + SUBSTRINGDONO1, documento da CVM ia para o emissor errado.
+#   Cada emissor perguntava "este documento contem meu nome?", pergunta que N emissores
+#   respondem sim ao mesmo tempo. Medido em producao: dos 28 documentos entregues a Oi,
+#   4 eram dela, o resto era Tres Tentos, Saneamento de Goias, Sequoia e Ecoponte,
+#   casando por substring dentro de SEQU(OI)A, AGR(OI)NDUSTRIAL, G(OI)AS e NITER(OI).
+#   A CSN recebia os 6 documentos da CSN Mineracao, outro emissor. E a CSN nunca teve
+#   alias, entao o relatorio da Fitch de 05/08 (rebaixamento B para CCC+) nunca chegou
+#   a entrar no KV. Fase 1, arbitro unico _donoDocumentoCVM com ancora de inicio de
+#   palavra e termo mais longo vencendo. Fase 2, atribuicao passa a usar CNPJ (a CVM
+#   publica CNPJ_Companhia e nunca foi lido), com CNPJ_PRIMARIO_EMISSOR (ITR/balanco,
+#   espelho de scripts/emissores-cnpj.mjs) e CNPJ_FAMILIA_CVM (holding + subsidiarias,
+#   46 CNPJs em 26 emissores) separados de proposito, para a familia nao vazar no
+#   primario. Nome vira excecao (entidade estrangeira) e caminho de compatibilidade
+#   (registro antigo sem CNPJ). Sync para de descartar documento sem match em
+#   silencio, grava com CNPJ e alimenta fila de revisao (admin_cvm_quarentena) para
+#   CNPJ nao declarado. Cobertura (cnpj/nome/quarentena) exposta no health, fora do
+#   `ok` agregado. Guardas: api/test/cvm-atribuicao.test.mjs (28 testes, 7 falham
+#   contra o codigo anterior nomeando o incidente), check-emissores-cnpj.mjs estendida
+#   para reconciliar as 4 copias de CNPJ (canonico, predictiva, primario e familia do
+#   Worker), check-cnpj-familia.mjs nova reproduzindo e reprovando o buraco original
+#   da CSN. Suite em 104 testes, 13 arquivos.
 # v4.9.214.js = v4.9.213 + EMAILSILENT1, falha de envio de e-mail transacional era invisivel.
 #   Quatro `catch {}` literalmente vazios em volta da chamada a Resend, em handleAdminAprovar,
 #   handleAdminRejeitar e nos dois ramos de handleEmailActionConfirm, mais um console.error
