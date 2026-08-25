@@ -11,12 +11,12 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
-## 25/08 — RESOLVIDO no repo, DEPLOY PENDENTE (SUBSTRINGDONO1): documento da CVM ia para o emissor errado, e dois emissores nunca recebiam nada
+## 25/08 — RESOLVIDO e DEPLOYADO (SUBSTRINGDONO1): documento da CVM ia para o emissor errado, e dois emissores nunca recebiam nada
 
-> **Status:** corrigido e testado no repo, **não deployado**. Produção segue em v4.9.214 com o defeito
+> **Status:** RESOLVIDO. Worker v4.9.215 em produção desde 25/08 17:18 BRT, commit `ef3a5f4`, portão validado
 > **Data da Versão:** 2026-08-25
 > **Origem do Registro:** a rotina matinal de 25/08 entregou `cvm_documentos` contaminados para "Oi" e "CSN" no `listar_plano_rotina`
-> **Condição de Obsolescência:** fecha quando o Worker com a correção estiver em produção e `admin_documentos_cvm` para "CSN" devolver documento da Cia Siderurgica Nacional
+> **Condição de Obsolescência:** ATENDIDA em 25/08. Resta observar a primeira rodada do sync sob o código novo, quando `cvm_atribuicao_por_cnpj` no health deixa de ser 0 e a fila de quarentena passa a ter dado real
 
 **O que estava acontecendo.** Cada emissor perguntava ao acervo "este documento contém meu nome?". É uma pergunta que vários emissores respondem sim ao mesmo tempo, então o mesmo documento tinha dois donos, e às vezes o dono errado. Medido em produção, no acervo real de 776 documentos:
 
@@ -49,7 +49,9 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 **Suíte:** 93 testes, 13 arquivos, todos passando.
 
-**O que falta:** deployar. `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.215`. Enquanto não subir, produção segue entregando documento da Três Tentos como se fosse da Oi.
+**Fase 2, o nome deixou de decidir (25/08, mesma sessão).** A correção acima ainda não bastava: mesmo com âncora, `AGRO INDÚSTRIAS DO VALE SÃO FRANCISCO` e `VALE BONITO AGROPECUÁRIA` continuavam casando com o emissor Vale, porque VALE começa palavra nas duas. Âncora não salva quando o nome do emissor é palavra comum. A atribuição passou a usar CNPJ, que a CVM já publicava e o Worker nunca lia. Duas tabelas separadas de propósito, primário para ITR e família para IPE, porque a subsidiária protocola no CNPJ dela e juntar as duas faria o card de balanço ler ITR de distribuidora. Conferido contra o cadastro vivo: `37.663.076/0001-07`, que a tabela predictiva ainda chamava de AES Brasil, hoje é AUREN PARTICIPAÇÕES e entrou na família da Auren em vez de ser descartado como órfã.
+
+**Deployado.** Worker v4.9.215 em produção em 25/08 17:18 BRT. Saída do portão: `{"ok":true,"versao":"v4.9.215","bindings":{"kv":true,"rate_limiter":true,"telemetria":true},"sentry_ok":true}`. Os campos `cvm_atribuicao_*` saem zerados até o primeiro sync sob o código novo, porque o meta ainda é o do sync anterior. Os 776 documentos já no KV não têm o campo de CNPJ e seguem atribuídos pelo nome, que é o caminho de compatibilidade previsto e testado, então o painel não esvazia.
 
 ---
 
