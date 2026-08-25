@@ -212,7 +212,7 @@ verificação async (02h/14h BRT) e frescor diário (23h BRT). Detalhe e trigger
 `routines/README.md`.
 
 A matinal usa Haiku em lotes de 6 + Sonnet para EWS≥38 em lotes de 4.
-A noturna varre os 103 emissores: Haiku lotes de 15 + Sonnet lotes de 11.
+A noturna varre os 103 emissores: fila rápida em Haiku, lotes de até 15, fila aprofundada em Sonnet, lotes de até 16.
 Disjuntores de custo LLM barram matinal/noturno se estouro; watchdog e agenda rodam sempre.
 
 Scripts de suporte relevantes: `monitor-tasks.ps1`, `verify-rotinas-v2.ps1`,

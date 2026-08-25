@@ -106,7 +106,7 @@ Extraia a janela do primeiro emissor (`janela_inicio`, `janela_fim`). Ela vai no
 
 ### Feed bulk da CVM escuro (CVMURL404, 2026-08-24)
 
-No health do Passo 2, olhe `cvm_fonte_falha_dura`. Quando for `true`, o arquivo bulk
+No health do Passo 1, olhe `cvm_fonte_falha_dura`. Quando for `true`, o arquivo bulk
 da CVM nao esta sendo baixado: o Worker nao consegue pegar o ZIP do ano corrente. Foi
 o que aconteceu entre 23 e 24/08/2026, quando a CVM removeu `ipe_cia_aberta_2026.zip`
 do servidor e o painel ficou 4 dias sem nenhum fato novo.
@@ -121,6 +121,15 @@ FONTE_CVM_ESCURA: cvm_fonte_falha_dura=true motivo=<cvm_fonte_motivo> ultimo_bom
 E mude a busca dos subagentes: nao trate `cvm_novos=0` como sinal de silencio do
 emissor, busque imprensa e `rad.cvm.gov.br` normalmente para todo emissor da fila,
 inclusive os que nao tem documento novo listado. A rotina segue, nao aborta.
+
+O subagente NAO le esta secao, ele so recebe o cabecalho do Passo 7. Entao mudar a
+busca dele nao e figura de linguagem, e uma troca literal de linha: o cabecalho tem
+uma `LINHA FONTE CVM` com duas variantes e voce cola a variante FONTE CVM ESCURA
+neste estado. Sem essa troca a guarda fica so no log e o subagente segue com a
+instrucao de nao rebuscar CVM, que e o oposto do que este bloco pede.
+
+Dia de fonte escura custa mais, porque todo emissor do lote ganha busca que nao
+teria. Orce pelo topo da faixa observada, nao pela media.
 
 ## Passo 4 - Idempotencia
 
@@ -146,26 +155,65 @@ Falhou o submit, espere 2s e tente 1 vez mais.
 
 ## Passo 6 - Lotes e ordem
 
-Dos restantes (tier != SKIP, nao processados hoje):
-- Fila RAPIDA: todos que NAO se qualificam para a aprofundada. Lotes de 15. Processe PRIMEIRO.
-- Fila APROFUNDADA: `tier == "FULL"` E (`ews_score >= 38` OU `cvm_novos > 0` OU `motivos` conter `imprensa_recente_7d`). Ordene por ews_score desc. Lotes de 11. Processe DEPOIS.
+Dos restantes (tier != SKIP, nao processados hoje), ordene cada fila por `ews_score` desc ANTES de lotear. O corte de orcamento sempre cai na cauda, e com a fila ordenada essa cauda e de ews 0-1, nao de nome que importa.
+
+- Fila RAPIDA: todos que NAO se qualificam para a aprofundada. Lotes de ate 15. Processe PRIMEIRO.
+- Fila APROFUNDADA: `tier == "FULL"` E (`ews_score >= 38` OU `cvm_novos > 0` OU `motivos` conter `imprensa_recente_7d`). Lotes de ate 16. Processe DEPOIS.
   O `imprensa_recente_7d` vem do Worker (FONTELATENCIA1, decisao do operador em 21/08/2026): evento CRITICO/RELEVANTE na imprensa ou de rotina anterior promove para aprofundada na mesma semana, sem esperar o ZIP semanal da CVM.
 
-A ordem importa, rapida antes de aprofundada. Se a sessao degradar no meio, o que sobra e a fila cara, que voce defere no passo 10.
+Lote cheio e mais barato que lote pequeno, o custo e quase todo boot fixo de subagente (ver `Orcamento de tokens`). Dividir a mesma fila em mais lotes so multiplica boot. Encha o lote ate o teto antes de abrir o proximo. O teto de 16 na aprofundada e limite de contexto do subagente, nao de custo, medido em 25/08/2026: 16 emissores com ate 3 buscas cada couberam num lote so, 39 chamadas de ferramenta, sem truncar e sem perder emissor. Nao subir acima de 16 sem medir de novo.
+
+A ordem importa, rapida antes de aprofundada. Se a sessao degradar no meio, o que sobra e a fila cara, que voce defere no passo 10. Isso NAO autoriza deferir a fila aprofundada inteira para caber mais lote rapido, ela e curta e concentra os ews altos. Reserve o custo dela primeiro, conforme a regra de decisao do `Orcamento de tokens`.
 
 Um subagente por lote. Rode no maximo 3 subagentes em paralelo, para nao saturar WebSearch.
 
 Para cada lote, decida o caminho do arquivo de saida ANTES de disparar o subagente: diretorio scratchpad desta sessao (nunca o repo git), nome `out_rapida_<n>.txt` ou `out_aprofundada_<n>.txt`, `<n>` = ordem do lote na fila. Passe esse caminho absoluto no prompt do subagente (Passo 7). O subagente nao escolhe o proprio nome de arquivo.
 
-NUNCA reabra um subagente apos o retorno (via SendMessage ou qualquer outro mecanismo) so para gravar linhas em arquivo. Reabrir um subagente custa o replay do transcript inteiro - medido em 17/08: +142260 tokens em UM lote, preco equivalente ao da analise original, e foi isso que estourou o hard cap daquele dia. Se o arquivo de saida voltou ausente, vazio ou incompleto, extraia as linhas RESULTADO| do RETORNO do subagente e grave-as voce mesmo no arquivo com Add-Content via PowerShell.
+NUNCA reabra um subagente apos o retorno (via SendMessage ou qualquer outro mecanismo) so para gravar linhas em arquivo. Reabrir um subagente custa o replay do transcript inteiro - medido em 17/08: +142260 tokens em UM lote, preco equivalente ao da analise original, e foi isso que estourou o orcamento daquele dia. Se o arquivo de saida voltou ausente, vazio ou incompleto, extraia as linhas RESULTADO| do RETORNO do subagente e grave-as voce mesmo no arquivo com Add-Content via PowerShell.
 
 ## Orcamento de tokens
 
-Meta 500000 tokens (500k). Hard cap 700000 tokens (700k). Herdado do desenho original, onde a fila rapida rodava em Haiku (lotes de 15) e a aprofundada em Sonnet (lotes de 11).
+Meta 500000 tokens (500k). Soft cap operacional 700000 tokens (700k). Tolerancia maxima 725000 tokens (725k).
 
-Voce nao tem contagem exata de tokens nesta sessao. Use o orcamento como envelope de custo, nao como numero a medir. Estimativa calibrada 2026-08-18: cerca de 15000 fixos mais 9500 por emissor na fila rapida (medido: 9,4k/emissor em 17/08, 12,4k/emissor em 15/08) e 13000 por emissor na aprofundada (sem medicao recente, revalidar). Use isso para decidir se ainda cabe mais um lote antes de dispara-lo.
+Os tres numeros nao sao sinonimos. 500k e o alvo. 700k e o teto de DECISAO, nunca dispare deliberadamente um lote cuja estimativa leve o acumulado acima disso. 725k e so a folga que absorve o erro de estimativa de um lote JA disparado, porque o `subagent_tokens` so fica conhecido quando o subagente volta e ate la voce ja esta comprometido com o gasto. Tolerancia nao e permissao. Passar de 700k por escolha e violacao, passar por overshoot de lote em voo e o custo previsto de nao saber o numero antes.
 
-Chegando perto do hard cap, NAO dispare o proximo lote. Defira os emissores restantes conforme o passo 10.
+**O custo e por LOTE, nao por emissor.** Orce com `130000 x numero_de_lotes + 5000 x numero_de_emissores`.
+
+Medido em 25/08/2026, quatro lotes reais, pelo campo `subagent_tokens` que a sessao recebe no retorno de cada subagente, mesma regua que consome o orcamento:
+
+| Lote | Emissores | Chamadas de ferramenta | Custo |
+|---|---|---|---|
+| rapida_3 | 8 | 24 | 147565 |
+| rapida_2 | 15 | 27 | 162612 |
+| rapida_1 | 15 | 45 | 199815 |
+| aprofundada_1 | 16 | 39 | 208325 |
+
+Resolvendo os dois lotes de busca leve, 8 e 15 emissores, sai boot de 130365 por lote e 2150 por emissor. Os outros dois mostram de onde vem a variancia real, e nao e do tamanho do lote. rapida_1 e rapida_2 tem 15 emissores cada e custaram 37k de diferenca, com 45 contra 27 chamadas de ferramenta. Profundidade de busca e que move o numero. Por isso a formula usa marginal de 5000 e nao 2150, e folga deliberada. Ela cobre os quatro pontos medidos, 170k sobre 147,6k, 205k sobre 199,8k e 210k sobre 208,3k.
+
+A calibragem anterior dizia 15000 fixos mais 9500 por emissor na rapida e 13000 na aprofundada. Estava invertida, subestimava o fixo em quase 9 vezes e superestimava o marginal, e acreditar nela leva a quebrar a fila em muitos lotes pequenos, que e o jeito mais caro de rodar. Os tamanhos 15 e 11 do texto antigo vinham do desenho original em Haiku e Sonnet, que e historia de modelo, nao medicao de custo.
+
+**Regra de decisao antes de disparar cada lote:**
+
+Calcule uma vez, no inicio, a `reserva_aprofundada` = `130000 x lotes_aprofundada + 5000 x emissores_aprofundada`. Ela cobre a fila aprofundada inteira e so diminui conforme lote APROFUNDADO e executado, nunca conforme lote rapido roda.
+
+1. Antes de cada lote RAPIDO, exija as duas condicoes ao mesmo tempo:
+   - `restante_do_cap >= 130000 + 5000 x tamanho_do_lote`
+   - `restante_do_cap - custo_estimado_do_lote_rapido >= reserva_aprofundada_ainda_nao_executada`
+   Falhando qualquer uma, NAO dispare o lote rapido. Pare a fila rapida ali e defira o resto dela conforme o passo 10.
+2. Antes de cada lote APROFUNDADO, so a primeira condicao. A reserva ja era dele.
+3. Depois que a fila aprofundada inteira tiver sido executada, `reserva_aprofundada_ainda_nao_executada` e zero e a segunda condicao deixa de morder sozinha.
+4. `restante_do_cap` = 700000 menos o acumulado REALIZADO, a soma dos `subagent_tokens` que ja voltaram. Nunca menos a soma das estimativas.
+5. Com a fila ordenada por ews desc no Passo 6, a cauda deferida e sempre a de menor risco.
+
+A segunda condicao do item 1 e o que impede o modo de falha obvio, que e queimar o cap inteiro em lote rapido e chegar na aprofundada sem orcamento, deferindo justamente os ews mais altos. Como a rapida roda PRIMEIRO, sem essa guarda a reserva nao sobrevive.
+
+Voce nao tem contagem exata durante a sessao, mas TEM o custo real de cada lote depois que ele volta, no `subagent_tokens` do retorno. Some conforme os lotes fecham e decida o proximo com o acumulado real, nao com a estimativa.
+
+**Consequencia estrutural do cap.** Pela formula conservadora cabem uma aprofundada de 16 e dois lotes rapidos de 15, ou seja 46 emissores por cerca de 620000 estimados. O terceiro lote rapido levaria a estimativa a 825000 e por isso nao pode ser disparado.
+
+Em 25/08 sairam 54 analisados fechando em 718317 realizados, e isso NAO desmente o paragrafo acima. Aconteceu porque o custo realizado veio abaixo da estimativa conservadora, nao porque 700k comprem 50 a 55 emissores. Pela regra de decisao acima o terceiro lote rapido daquele dia nao teria sido disparado, a condicao de reserva reprovava (restante 337573 menos 205000 estimados = 132573, abaixo da reserva de 210000), e a entrega teria sido 46 analisados por cerca de 571000 realizados. Nao planeje contando com essa folga. Ela existe do lado da estimativa, nao do lado do compromisso, e so aparece depois que o lote ja voltou.
+
+Cobrir os 81 nao-SKIP num dia exigiria perto de 1,2 milhao. Subir ou nao o cap e decisao do operador, nao do agente.
 
 Respeitar o maximo de buscas por emissor e o que mantem o custo dentro do envelope. Nao estoure o limite de buscas para "melhorar" a analise.
 
@@ -187,6 +235,22 @@ mudanca de controle, intervencao legislativa fogem do vocabulario de R2/R6), nao
 comprovado. Escopo restrito aos 3 setores estruturalmente expostos, para nao estourar o orcamento dos outros 2/3
 dos emissores, que hoje fazem so 1 busca. R2 e R6 ficam com a definicao exatamente como estava.
 
+LINHA FONTE CVM. O cabecalho abaixo tem o marcador `<LINHA FONTE CVM>`. Substitua por UMA
+das duas linhas, conforme o `cvm_fonte_falha_dura` lido no Passo 1. Nunca as duas, nunca
+nenhuma, e nunca deixe o marcador cru chegar ao subagente.
+
+- `cvm_fonte_falha_dura=false`, fonte saudavel, comportamento de sempre:
+
+```
+Dados CVM ja vem no JSON, nao rebuscar CVM.
+```
+
+- `cvm_fonte_falha_dura=true`, fonte escura (CVMURL404, ver Passo 3):
+
+```
+FONTE CVM ESCURA: o feed bulk da CVM esta fora do ar e os campos cvm_novos e cvm_documentos vieram congelados na ultima carga boa. cvm_novos=0 NAO significa silencio do emissor, significa que a fonte parou de publicar para todo mundo. Para TODO emissor deste lote, inclusive os sem documento novo listado, faca a busca de imprensa normalmente e cheque rad.cvm.gov.br por Fato Relevante ou Comunicado ao Mercado dentro da janela. A lista de documentos que veio no JSON continua valida, so nao esta completa, entao nao a use para concluir ausencia de evento.
+```
+
 Cabecalho do prompt do subagente, literal:
 
 ```
@@ -196,7 +260,7 @@ BUSCAS por emissor (WebSearch).
 [fila RAPIDA]  R2 sempre (noticias de credito: rating, divida, default, covenant, M&A, resultado). R6 (cross-check rating/regulatorio) SOMENTE se R2 trouxe sinal CRITICO/RELEVANTE, ou ews_score>=20, ou cvm_novos>0. R7 (estrutura societaria: privatizacao, mudanca de controle, intervencao legislativa ou regulatoria) roda SEMPRE, alem de R2, quando setor for Energia Eletrica, Saneamento ou Transportes e Logistica - independente do ews_score, porque R6 exige ews_score>=20 e por isso nao cobre emissor de risco baixo nesses 3 setores. Fora desses 3 setores, R7 nao roda por padrao. R2 limpo em emissor de EWS baixo: classificar ECO/NENHUM com 1 busca e cobertura_nota de 1 frase; nos 3 setores acima, R7 conta como busca adicional antes de fechar ECO/NENHUM, nao substitui R2.
 [fila APROFUNDADA]  max 3 buscas, adaptativas. R2 primeiro. R6 se R2 trouxe sinal ou ews_score>=38. Nos mesmos 3 setores (Energia Eletrica, Saneamento, Transportes e Logistica), R7 roda sempre, contando dentro do orcamento de 3 buscas junto com R2 e adaptativo como as demais. R5 (covenants, rolagem, liquidez) SOMENTE se R2/R6 confirmaram evento CRITICO/RELEVANTE.
 
-Dados CVM ja vem no JSON, nao rebuscar CVM.
+<LINHA FONTE CVM>
 Emissor cujo contexto_historico indica CRITICO/REX/RJ/default: NAO re-descobrir o historico, buscar so o delta na janela.
 
 EVENTOS - gate obrigatorio antes de criar evento CRITICO/RELEVANTE:

@@ -65,6 +65,13 @@ $TokenPerEmissorHaiku  = 3800    # medido 24/08 nos 4 lotes rapidos (pior deles:
 # rapida, ordenada por EWS desc em Build-LlmQueues, entao sobra risco minimo.
 $TokenReservaFracaoAprofundada = 0.60
 $SonnetEwsMin   = 38
+# LEGADO1 (2026-08-25): os dois chunks abaixo pertencem ao caminho CLI legado, hoje DORMENTE.
+# O claude CLI standalone parou de autenticar em 04/08 e a task nativa VIXRadar-Noturno esta
+# Disabled de proposito. Quem roda hoje e a scheduled task pela skill vixradar-noturno, que
+# lotea rapida ate 15 e aprofundada ate 16. NAO usar estes valores como referencia para ela.
+# As constantes de token acima tambem sao de OUTRA regua, o $stats.tokens_total deste script,
+# nao o subagent_tokens que a skill mede. Misturar as duas ja deferiu 15 emissores a toa em
+# 24/08. Reativar este caminho exige remedir na regua dele antes de mexer em qualquer numero.
 $HaikuChunk     = 15
 $SonnetChunk    = 11
 $PauseSec       = 2

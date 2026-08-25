@@ -32,7 +32,7 @@ Estado da task nativa verificado na máquina em 2026-08-07, as três `Disabled`.
 | Rotina | Gatilho | Script | Função |
 |------|---------|--------|--------|
 | `VIXRadar-Matinal` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4) |
-| `VIXRadar-Noturno` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, Haiku primeiro (lotes 15) + Sonnet depois (lotes 11) |
+| `VIXRadar-Noturno` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, fila rápida em Haiku primeiro (lotes de até 15) + fila aprofundada em Sonnet depois (lotes de até 16) |
 | `VIXRadar-Verificacao-Async` | Diário 10:20 BRT | `run_vixradar_verificacao_async.ps1` | Dreno da fila `radar:verif_fila:{data}` (também acionado inline pós-matinal e pós-noturno) |
 
 ## Tasks ativas no Windows Task Scheduler
