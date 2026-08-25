@@ -11,6 +11,43 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 24/08 (sétima rodada) — RESOLVIDO: Unidas decidida e primeira recuração de fato do Marco 2 (UNIDAS-CONTROLADORA1)
+
+> **Status:** RESOLVIDO no repo, commit `ba8322a`. Frontend NÃO deployado, a mudança em `app/index.html` só vai ao ar no próximo deploy de Pages
+> **Data da Versão:** 2026-08-24
+> **Origem do Registro:** decisão do operador sobre a única linha do `A_DECIDIR`, mais o achado de que os 4 cards da Unidas estavam factualmente errados
+> **Condição de Obsolescência:** perde validade se a Unidas for reorganizada de novo, se a controladora deixar de protocolar ITR, ou quando sair ação de rating nova e o card de Rating puder ser datado
+
+Duas companhias Unidas protocolam ITR do 2T26 e o nome não separa. A decisão do operador foi pela controladora, `UNIDAS LOCAÇÕES E SERVIÇOS S.A.` (75.609.123/0001-23), pelo critério que a tabela já aplica, vale quem emite a dívida que o radar acompanha. Dela são as séries públicas 12ª a 23ª com preço ANBIMA (ISIN BROVSADBS*, B3 OVSAA2), rating AA.br Moody's Local e AA(bra) Fitch, registrante CVM 53214. A `UNIDAS LOCADORA` (45.736.131) virou subsidiária integral no 3T23 e só emitiu as séries 1ª a 3ª, privadas e atreladas a CRI.
+
+**Corroborado por dentro, não só pela fonte externa.** O próprio ITR mostra debêntures somando R$ 9,56 bi dos R$ 13,06 bi de dívida bruta consolidada em 2026-06-30. É a entidade que carrega o papel.
+
+**O card estava factualmente errado, não só velho.** Os 4 diziam "Incorporada Localiza", "Fusão concluída 2022", "Via Localiza", fonte `Localiza · 2025`. Casamento por nome que ignorava a saída do grupo Localiza pelo Cade/Brookfield em 2022-23. Alavancagem exibia `N/A` e EBITDA exibia "Consolidado Localiza". Mesma família do NOMEMORTO1 e do SENDASGPA1, atribuição por nome apontando para a companhia errada.
+
+**Números, todos derivados dos CSV da CVM** (`itr_cia_aberta_2026.zip` e `dfp_cia_aberta_2025.zip`, ambos Last-Modified 2026-08-23), nenhum digitado à mão:
+
+| | |
+|---|---|
+| Dívida bruta (2.01.04 + 2.02.01) | R$ 13.055,3 mi |
+| Caixa (1.01.01) | R$ 4.096,9 mi |
+| **Dívida líquida** | **R$ 8.958,4 mi** |
+| EBITDA LTM = 2S25 + 1S26, com 2S25 = FY2025 − 1S25 | **R$ 2.684,4 mi** |
+| **Alavancagem** | **3,34x** |
+
+EBITDA = EBIT (DRE 3.05) + D&A (DFC 6.01.01.02). Status `warn` na alavancagem porque 3,34x fica acima de todo par "ok" da carteira (Localiza 2,9x, Simpar 3,0x, Movida 2,6x, JSL 2,8x) e perto da régua de 3,5x que o card da Localiza cita como covenant do setor.
+
+**Divergência registrada, não escondida.** A decisão do operador citava dívida bruta consolidada de R$ 12,5 bi. O ITR 2T26 diz R$ 13,06 bi com arrendamento IFRS 16, ou R$ 12,85 bi contando só empréstimos e debêntures. Não muda a decisão de qual companhia é, mas a citação externa e o demonstrativo não batem exatamente, provavelmente corte de data ou definição diferente na fonte de research. O card usa o ITR.
+
+**Contrato da recuração aplicado.** `DT_REFER` 2026-06-30 vira `as_of`, `DT_RECEB` 2026-08-11 vira `source_date`, `metric_type` `itr`. Pendência declarada caiu de 400 para 397 cards.
+
+**O card de Rating ficou como pendência declarada, de propósito.** A ação de rating mais recente que a decisão cita é de jul/2025, fora da janela de 365 dias que `julgarFrescor` cobra de `metric_type: "rating"`. Datar com o trio reprovaria `check-metricas-curadas.mjs`, e inventar reafirmação mais nova seria pior. O valor AA.br fica visível com a data na fonte, sem o trio, até sair ação nova. **Isto é decisão pendente do operador:** ou aparece ação de rating dentro da janela, ou a régua de 365 dias precisa de tratamento para emissor cujo rating simplesmente não é reafirmado com essa frequência.
+
+**`A_DECIDIR` ficou vazio**, mas o bloco continua existindo. É o destino de emissor novo sem decisão, e é o que permite a guarda reprovar "entrou na carteira e ninguém decidiu". Bloco vazio não é bloco desnecessário.
+
+**Aceite, saída real colada na conversa.** `check-emissores-cnpj.mjs` exit 0 (99 com CNPJ, `a decidir: 0`), `check-metricas-curadas.mjs` exit 0 (397 pendentes), vitest 76 testes em 12 arquivos, e o `emissores-cadastro.yml` verde no commit `ba8322a`. A etapa que confronta os CNPJs contra o ITR vivo é `skipped` em push por desenho (só roda em `schedule`/`workflow_dispatch`), então foi disparada à mão no mesmo commit e passou com `conferidos no indice CVM: 99/99, razao social conferida contra o indice vivo`.
+
+---
+
 ## 24/08 (sexta rodada) — RESOLVIDO: falha de envio de e-mail transacional era invisível por construção (EMAILSILENT1)
 
 > **Status:** RESOLVIDO e DEPLOYADO. Worker v4.9.214 em produção desde 24/08 21:54 BRT, commit `db2842e`, merge `5768c3c`. Validado no portão (`ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`) e por sonda sem efeito colateral, `admin_email_envios` sem senha devolve 403 em produção, onde o código antigo devolvia 401. CI `Worker Tests` verde em `db2842e`, 12 arquivos
@@ -59,7 +96,7 @@ O operador viu os cards de Alavancagem, Rating, Cobertura e EBITDA da Braskem co
 
 **Limite declarado da guarda, de propósito.** Ela não consegue reprovar "card velho porque saiu rating novo" nem "porque saiu evento crítico novo", já que lê arquivos estáticos. O único candidato a oráculo no repo, `data/labels/eventos_credito.jsonl`, foi medido e não serve, parou em 2026-07-31 e tem zero registros de Braskem, então aprovaria em silêncio justamente o caso que originou a guarda. Frescor ficou por prazo fixo por tipo, e a cláusula "imediato" é revisão manual, registrada no cabeçalho do script.
 
-**Marco 2, aberto.** Os 101 emissores herdados seguem sem os três campos e aparecem como pendência declarada na saída da guarda (400 cards). Não reprovam ainda. A régua de ITR reprovaria todos eles hoje, o trimestre exigido é 2026-03-31 e eles carregam 4T25.
+**Marco 2, em andamento.** Os emissores herdados seguem sem os três campos e aparecem como pendência declarada na saída da guarda. Não reprovam ainda. A régua de ITR reprovaria todos eles hoje, o trimestre exigido é 2026-03-31 e eles carregam 4T25. Andou em 24/08 com a Unidas, primeira recuração de fato: pendência declarada caiu de 400 para 397 cards. Ver a entrada UNIDAS-CONTROLADORA1 abaixo.
 
 **Adendo 24/08, verificação independente da entrega.** Até aqui o fechamento do Marco 1 valia pela palavra da sessão que entregou. Medido de novo em `main` (`54030f2`) por outra sessão, sem editar nada, rodando a própria guarda e reextraindo as tabelas do disco. Confere. `check-metricas-curadas.mjs` sai `EXIT=0` com `Carteira (EMISSORES_LISTA): 103 | Com card (METRICAS_CURADAS): 103 | No menu (EMISSORES): 103` e 400 cards de pendência declarada. Total de 412 cards, que fecha em 103 × 4 e em 400 pendentes mais 12 datados. Zero card sem fonte, zero label "Cobertura". Trio de campos em 12 cards, distribuição `{"itr":9,"evento_credito":1,"rating":2}`. Braskem e Tupy presentes na carteira e no curado, AES Brasil ausente nos dois. Valores conferidos no literal, Braskem 6,74x `breach` e Rating `RD` com fonte `Fitch 17/08 · RE 24/08/2026`, Tupy 4,14x `warn` e `brAA` S&P mar/2026, Itaú Basileia 12,3% `ok` e ROE 24,3%. "idade não declarada" presente 2 vezes em `app/index.html`.
 
