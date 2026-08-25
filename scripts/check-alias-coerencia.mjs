@@ -61,12 +61,17 @@ function extrairAliasToEmpresa(src) {
   return pares;
 }
 
-// Tabela privada dentro de buscarDocumentosCVM. Ela sobrevive ao NOMEMORTO1 de proposito
-// (tem aliases que nao servem para atribuir, so para buscar), mas as chaves dela tem que
-// ser nome de emissor, senao sao entradas que nunca sao consultadas.
+// Tabela do leitor. Ela sobrevive ao NOMEMORTO1 de proposito (tem aliases que nao
+// servem para atribuir, so para buscar), mas as chaves dela tem que ser nome de
+// emissor, senao sao entradas que nunca sao consultadas.
+//
+// SUBSTRINGDONO1 (2026-08-25): deixou de ser privada dentro de buscarDocumentosCVM e
+// virou ALIASES_LEITOR_CVM em escopo de modulo, para poder alimentar o indice do
+// _donoDocumentoCVM e para poder ser auditada daqui. O nome antigo fica no erro
+// abaixo so para quem for procurar pela redacao velha achar o caminho.
 function extrairAliasesDoLeitor(src) {
-  const m = src.match(/async function buscarDocumentosCVM[\s\S]*?const aliases = \{([\s\S]*?)\n    \};/);
-  if (!m) throw new Error("tabela 'aliases' de buscarDocumentosCVM nao encontrada");
+  const m = src.match(/var ALIASES_LEITOR_CVM\s*=\s*\{([\s\S]*?)\n\};/);
+  if (!m) throw new Error("tabela ALIASES_LEITOR_CVM nao encontrada (antes era a `aliases` privada dentro de buscarDocumentosCVM)");
   return [...m[1].matchAll(/^\s*"([^"]+)"\s*:\s*\[/gm)].map((x) => desescapar(x[1]));
 }
 

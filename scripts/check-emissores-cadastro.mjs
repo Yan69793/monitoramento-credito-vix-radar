@@ -87,6 +87,58 @@ function extrairAliases(src) {
   return porEmpresa;
 }
 
+// SUBSTRINGDONO1 (2026-08-25): terceira tabela que a guarda precisa enxergar. O
+// mapa de aliases do leitor era privado dentro de buscarDocumentosCVM e virou
+// ALIASES_LEITOR_CVM justamente para poder ser auditado daqui.
+function extrairAliasesLeitor(src) {
+  const m = src.match(/var ALIASES_LEITOR_CVM\s*=\s*\{([\s\S]*?)\n\};/);
+  if (!m) throw new Error("ALIASES_LEITOR_CVM nao encontrada em api/src/worker.js");
+  const porEmpresa = {};
+  for (const par of m[1].matchAll(/"([^"]+)"\s*:\s*\[([^\]]*)\]/g)) {
+    const empresa = desescapar(par[1]);
+    porEmpresa[empresa] = [...par[2].matchAll(/"([^"]+)"/g)].map((x) => desescapar(x[1]));
+  }
+  return porEmpresa;
+}
+
+// ── SUBSTRINGDONO1: espelho do _donoDocumentoCVM do Worker ──────────────────
+// Precisa ser o MESMO criterio, pelo mesmo motivo que semAcentoUp precisa ser o
+// mesmo: guarda que julga por regra diferente da que roda em producao aprova o
+// que o Worker reprova, e vice-versa. Se o Worker mudar de criterio, o teste
+// api/test/cvm-atribuicao.test.mjs quebra primeiro.
+function montarIndiceDono(emissores, aliasPorEmpresa, leitorPorEmpresa) {
+  const out = [];
+  const vistos = new Set();
+  const add = (termo, dono) => {
+    const t = semAcentoUp(termo);
+    if (t.length < 2) return;
+    const chave = t + "\0" + dono;
+    if (vistos.has(chave)) return;
+    vistos.add(chave);
+    out.push({ termo: t, dono });
+  };
+  for (const e of emissores) add(e, e);
+  for (const emp in aliasPorEmpresa) for (const a of aliasPorEmpresa[emp]) add(a, emp);
+  for (const emp in leitorPorEmpresa) for (const a of leitorPorEmpresa[emp]) add(a, emp);
+  return out.sort((x, y) => y.termo.length - x.termo.length);
+}
+
+function casaInicioDePalavra(nomeSA, termo) {
+  let i = nomeSA.indexOf(termo);
+  while (i >= 0) {
+    if (i === 0 || !/[A-Z0-9]/.test(nomeSA.charAt(i - 1))) return true;
+    i = nomeSA.indexOf(termo, i + 1);
+  }
+  return false;
+}
+
+function donoDe(indice, razaoSocial) {
+  const n = semAcentoUp(razaoSocial);
+  if (!n) return null;
+  for (const c of indice) if (casaInicioDePalavra(n, c.termo)) return c.dono;
+  return null;
+}
+
 // Parser de CSV simples basta: o cad_cia_aberta usa ';' e nao tem campo com
 // aspas nem ';' embutido. Se isso mudar, o teste de sanidade abaixo reprova.
 function parseCad(texto) {
@@ -155,8 +207,50 @@ async function main() {
     mortos.push({ emissor: emp, aliases: alts });
   }
 
+  // ── SUBSTRINGDONO1 (2026-08-25) ──────────────────────────────────────────
+  // A checagem acima pergunta "existe alguma companhia ativa que casa com este
+  // emissor?". A CSN passava nela e mesmo assim ficou nove meses sem documento
+  // proprio, porque a companhia que casava era a CSN MINERACAO, que pertence a
+  // OUTRO emissor da carteira. Casar com a empresa do vizinho nao e casar.
+  //
+  // Esta segunda checagem pergunta o contrario, e e a pergunta que faltava:
+  // "existe alguma companhia ativa da qual este emissor seja o dono?". Dono no
+  // sentido do arbitro que roda em producao, ou seja, o termo mais longo que casa
+  // no inicio de uma palavra da razao social. Emissor que nao e dono de nada
+  // nunca vai receber documento da CVM, por mais verde que o painel esteja.
+  //
+  // SO DENOM_SOCIAL, deliberadamente, e este detalhe e a diferenca entre a guarda
+  // funcionar e nao funcionar. O ipe_cia_aberta publica Nome_Companhia com a razao
+  // social, nunca com o nome fantasia, e e esse valor que vai parar no campo `e` de
+  // cvm:documentos e chega ao _donoDocumentoCVM. A CSN tem DENOM_COMERC "CSN" no
+  // cadastro, entao aceitar o nome fantasia aqui faria a guarda aprovar a CSN por
+  // um nome que o pipeline nunca ve. Medido: com os dois campos a guarda passava
+  // mesmo sem o alias, que e exatamente o defeito que ela existe para pegar.
+  // A checagem `casa()` la em cima continua olhando os dois de proposito, porque a
+  // pergunta dela e outra, "esta companhia existe na CVM", e para isso nome
+  // fantasia e prova legitima.
+  const indice = montarIndiceDono(emissores, aliases, extrairAliasesLeitor(src));
+  const possui = {};
+  for (const a of ativos) {
+    if (!a.social) continue;
+    const d = donoDe(indice, a.social);
+    if (d) (possui[d] = possui[d] || []).push(a.social);
+  }
+  const semRazaoPropria = [];
+  for (const emp of emissores) {
+    if (possui[emp]) continue;
+    // Emissor ja reprovado como nome morto nao entra duas vezes no relatorio, e
+    // excecao declarada continua tolerada: quem nao tem registro ativo nenhum
+    // tambem nao tem como ser dono de razao social ativa.
+    if (EXCECOES[emp]) continue;
+    if (mortos.some((m) => m.emissor === emp)) continue;
+    semRazaoPropria.push({ emissor: emp, aliases: aliases[emp] || [] });
+  }
+
+  const reprovado = mortos.length > 0 || semRazaoPropria.length > 0;
+
   if (JSON_OUT) {
-    console.log(JSON.stringify({ ok: mortos.length === 0, total: emissores.length, ativos_cvm: ativos.length, mortos, tolerados, excecoes_ociosas: excecoesOciosas }, null, 2));
+    console.log(JSON.stringify({ ok: !reprovado, total: emissores.length, ativos_cvm: ativos.length, mortos, sem_razao_propria: semRazaoPropria, tolerados, excecoes_ociosas: excecoesOciosas }, null, 2));
   } else {
     console.log(`Emissores: ${emissores.length} | Companhias ATIVAS no cadastro CVM: ${ativos.length}`);
     if (tolerados.length) {
@@ -166,19 +260,33 @@ async function main() {
     if (excecoesOciosas.length) {
       console.log(`\nAVISO: excecao que ja nao e necessaria, remover de EXCECOES: ${excecoesOciosas.join(", ")}`);
     }
-    if (mortos.length === 0) {
+    if (!reprovado) {
       console.log("\nOK: todo emissor casa com companhia ativa, por nome, por alias declarado, ou tem excecao registrada.");
-    } else {
+      console.log("OK: todo emissor e dono de pelo menos uma razao social ativa, nenhum depende da companhia de outro.");
+    }
+    if (mortos.length) {
       console.error(`\nREPROVADO: ${mortos.length} emissor(es) sem registro ativo na CVM.`);
       for (const m of mortos) {
         console.error(`  - ${m.emissor}${m.aliases.length ? `  (aliases: ${m.aliases.join(", ")})` : "  (sem alias declarado)"}`);
       }
       console.error("\nProvavel renomeacao ou incorporacao. Confira a sucessora em");
       console.error("https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv e declare o alias");
-      console.error("em SYNC_ALIAS_NOMES_CVM e SYNC_ALIAS_TO_EMPRESA, nesta ordem. O leitor deriva da segunda.");
+      console.error("em SYNC_ALIAS_TO_EMPRESA. Desde SUBSTRINGDONO1 essa tabela e a unica: a ingestao e o");
+      console.error("leitor consultam o mesmo arbitro, entao declarar uma vez vale nas duas pontas.");
+    }
+    if (semRazaoPropria.length) {
+      console.error(`\nREPROVADO: ${semRazaoPropria.length} emissor(es) sem razao social propria no cadastro ativo.`);
+      for (const s of semRazaoPropria) {
+        console.error(`  - ${s.emissor}${s.aliases.length ? `  (aliases: ${s.aliases.join(", ")})` : "  (sem alias declarado)"}`);
+      }
+      console.error("\nO emissor existe na carteira mas nenhuma companhia ATIVA da CVM pertence a ele. Ou o nome");
+      console.error("dele so aparece dentro do nome de outra companhia (foi o caso da CSN, cujo unico casamento");
+      console.error("era CSN MINERACAO, que e outro emissor), ou a razao social real nunca foi declarada. Enquanto");
+      console.error("ficar assim, este emissor nao recebe documento nenhum da CVM e so gera evento por imprensa.");
+      console.error("Declare a razao social em SYNC_ALIAS_TO_EMPRESA, que desde SUBSTRINGDONO1 e a unica tabela.");
     }
   }
-  process.exit(mortos.length === 0 ? 0 : 1);
+  process.exit(reprovado ? 1 : 0);
 }
 
 main().catch((e) => {

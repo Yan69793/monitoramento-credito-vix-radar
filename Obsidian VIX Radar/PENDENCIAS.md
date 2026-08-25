@@ -11,6 +11,48 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 25/08 — RESOLVIDO no repo, DEPLOY PENDENTE (SUBSTRINGDONO1): documento da CVM ia para o emissor errado, e dois emissores nunca recebiam nada
+
+> **Status:** corrigido e testado no repo, **não deployado**. Produção segue em v4.9.214 com o defeito
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** a rotina matinal de 25/08 entregou `cvm_documentos` contaminados para "Oi" e "CSN" no `listar_plano_rotina`
+> **Condição de Obsolescência:** fecha quando o Worker com a correção estiver em produção e `admin_documentos_cvm` para "CSN" devolver documento da Cia Siderurgica Nacional
+
+**O que estava acontecendo.** Cada emissor perguntava ao acervo "este documento contém meu nome?". É uma pergunta que vários emissores respondem sim ao mesmo tempo, então o mesmo documento tinha dois donos, e às vezes o dono errado. Medido em produção, no acervo real de 776 documentos:
+
+- **Oi**: 28 documentos entregues, **4 eram dela**. Os outros 24 eram Três Tentos (10), Saneamento de Goiás (6), Sequoia (3), Ecoponte (3) e Equatorial Goiás (2). Nenhuma dessas empresas tem "Oi" como palavra. O que casava era a substring dentro de SEQU**OI**A, AGR**OI**NDUSTRIAL, G**OI**AS e NITER**ÓI**. O card da Oi podia exibir Fato Relevante da Três Tentos como evento dela.
+- **CSN**: 6 documentos, **todos da CSN Mineração**, que é outro emissor da carteira, com outro CNPJ. Exatamente os mesmos que o plano entregava para "CSN Mineração".
+
+**A segunda metade, que era pior.** A CSN nunca teve alias declarado. A CVM registra a companhia como `CIA SIDERURGICA NACIONAL` (CNPJ 33.042.730/0001-04, ATIVO), nome que não contém "CSN" em lugar nenhum, então o documento dela **nunca chegava nem a entrar** em `cvm:documentos`. A aparência de saúde vinha do defeito vizinho: o emissor exibia 5 documentos e ninguém percebia que eram da mineradora. Consequência concreta: a Fitch rebaixou a CSN de B para CCC+ em 31/07/2026, o relatório foi protocolado na CVM em 05/08, e havia 15 documentos da CSN no IPE desde 25/07, 3 deles Fato Relevante. A rotina caiu para imprensa com a fonte primária disponível o tempo todo.
+
+**Terceiro caso, achado pela guarda nova.** A **Copasa** está no mesmo buraco. Razão social `COMPANHIA DE SANEAMENTO DE MINAS GERAIS` (CNPJ 17.281.106/0001-03, ATIVO), e o nome "COPASA" só existe no `DENOM_COMERC` do cadastro, campo que o `ipe_cia_aberta` não publica. São 271 documentos protocolados em 2026, 16 nos últimos 30 dias, nenhum jamais chegou ao emissor.
+
+**Quarto achado, no caminho.** A tabela `SYNC_ALIAS_NOMES_CVM`, que decidia se a linha entrava no KV, divergia da tabela que decidia de quem o documento era. **Dasa, Natura, Vivo, TIM e Taesa** tinham alias na segunda e não na primeira: o sistema sabia de quem era o documento e o descartava na porta. Cinco emissores cegos pelo mesmo motivo da Eletrobras no NOMEMORTO1.
+
+**Causa raiz.** Não é o `includes()`, é a pergunta. Enquanto a atribuição for "contém meu nome", ela é ambígua por construção e nenhuma quantidade de alias resolve. E manter três tabelas que precisam concordar garante que uma hora não concordem, que é o NOMEMORTO1 se repetindo pela terceira vez (a primeira foi a Eletrobras, a segunda o SENDASGPA1, onde a resposta certa vinha por ordem de inserção do `for..in`, ou seja, por sorteio).
+
+**Correção.** Um árbitro só, `_donoDocumentoCVM`, que responde de quem o documento é:
+
+- índice único montado das 3 tabelas de uma vez, então alias novo vale nas três pontas
+- **âncora no início de palavra**, e só no início: o fim pode cair no meio da palavra, senão alias deliberadamente prefixo (`SENDAS DISTRIB` para `SENDAS DISTRIBUIDORA S.A.`, `MOVIDA PART`) para de funcionar e a correção troca um bug por outro
+- **termo mais longo vence**, então `CSN MINERACAO` ganha de `CSN`
+- os 4 call sites (leitor, ingestão, painel de cobertura e a ação de admin) passam a consultar o mesmo lugar
+- `SYNC_ALIAS_NOMES_CVM` aposentada, medida como 100% redundante antes de remover
+- aliases de CSN e Copasa declarados
+
+**Delta medido, não estimado.** Sobre os 776 documentos de produção, mudam **exatamente 6 razões sociais**, as contaminadas, e nenhuma das outras 121. Oi vai de 28 para 4 documentos, CSN de 6 para 0 (e volta a receber os próprios no próximo sync, com o alias). Sobre o `ipe_cia_aberta_2026.csv` real, a ingestão sai de 144 para 130 empresas: saem 19 companhias que não são de ninguém, entram os 5 emissores cegos.
+
+**Guardas, com prova das duas pontas.**
+
+1. `api/test/cvm-atribuicao.test.mjs`, 17 testes. Contra o código pré-correção **7 falham**, nomeando o incidente (`expected [ 'CSN MINERAÇÃO S.A.' ] to deeply equal [ 'CIA SIDERURGICA NACIONAL' ]`, e a invariante de dono único acusando `[["EQUATORIAL GOIAS...",["Oi","Equatorial Energia"]],["CSN MINERAÇÃO S.A.",["CSN","CSN Mineração"]]]`). Com a correção, 17 passam. Inclui a invariante "um documento tem no máximo um dono", que teria pego o defeito sozinha.
+2. `scripts/check-emissores-cadastro.mjs` ganhou uma segunda checagem. A antiga pergunta "existe companhia ativa que casa com este emissor?", e a CSN **passava** nela, porque casava com a CSN Mineração. A nova pergunta o contrário: "existe companhia ativa da qual este emissor seja o dono?". Julga só por `DENOM_SOCIAL`, deliberadamente, porque é o campo que o IPE publica. Com `DENOM_COMERC` junto a guarda aprovava a CSN por um nome que o pipeline nunca vê, medido. Roda semanal no `emissores-cadastro.yml`.
+
+**Suíte:** 93 testes, 13 arquivos, todos passando.
+
+**O que falta:** deployar. `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.215`. Enquanto não subir, produção segue entregando documento da Três Tentos como se fosse da Oi.
+
+---
+
 ## 25/08 — ABERTO P1 (uma ação do operador): token colado no chat, e o substituto criado mas não instalado (TOKENCHAT1)
 
 > **Status:** o token exposto foi revogado. Falta **instalar** o substituto na variável de ambiente. Enquanto isso, Pages segue no fallback OAuth

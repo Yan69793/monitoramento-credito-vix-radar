@@ -7004,73 +7004,14 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
     const raw = await env2222.RADAR_KV.get("cvm:documentos", "text");
     if (!raw) return [];
     const docs = JSON.parse(raw);
-    const nomeUp = empresa.toUpperCase();
-    const aliases = {
-      "P\xE3o de A\xE7\xFAcar (GPA)": ["COMPANHIA BRASILEIRA DE DIST", "GPA", "CBD"],
-      "Assa\xED Atacadista": ["SENDAS DISTRIBUIDORA", "SENDAS"],
-      "Ra\xEDzen": ["RAIZEN ENERGIA", "RAIZEN", "RA\xCDZEN"],
-      // ISA Energia: mudou de razao social ISA CTEEP para ISA Energia Brasil em 2022.
-      // CVM ainda registra documentos sob ambas as razoes sociais.
-      "ISA Energia": ["ISA CTEEP", "ISA ENERGIA BRASIL", "ISA ENERGIA"],
-      // SENDASGPA1: "ISA Energia Brasil" saiu, e razao social, nao nome de emissor. Ja
-      // esta como alias na linha de cima, que e onde ele serve para alguma coisa.
-      "Rede D'Or": ["REDE D'OR", "REDE DOR", "RDSL"],
-      // SENDASGPA1 (2026-08-24): saiu daqui "Sendas Distribuidora" e
-      // "Sendas Distribuidora (Assai)". Nenhum dos dois e nome de emissor da carteira, o
-      // emissor e "Assai Atacadista" (logo acima), entao a busca nunca chegava nessas
-      // chaves. Ficavam so alimentando a impressao de que Sendas e GPA eram a mesma coisa.
-      // Simpar: holding do grupo JSL/Movida/Vamos.
-      "Simpar": ["SIMPAR SA", "SIMPAR S"],
-      // Movida: subsidiaria Simpar, pode aparecer como Movida Participacoes.
-      "Movida": ["MOVIDA PARTICIPACOES", "MOVIDA PART", "MOVIDA SA"],
-      // Vamos: subsidiaria Simpar.
-      "Vamos": ["VAMOS LOCACAO", "VAMOS SA", "VAMOS S.A"],
-      // Hapvida: Hapvida Participacoes e Investimentos.
-      "Hapvida": ["HAPVIDA PARTICIPACOES", "HAPVIDA PART", "HAPVIDA NOTRE"],
-      // Auren Energia: antes CESP.
-      "Auren Energia": ["AUREN ENERGIA", "CESP", "COMPANHIA ENERGETICA DE SAO PAULO"],
-      // v4.9.157: aliases financeiros CVM — razoes sociais bancarias para match correto
-      "Bradesco": ["BANCO BRADESCO", "BRADESCO"],
-      // ACENTOMATCH1 de novo, agora nas CHAVES (2026-08-24, achado pela guarda de
-      // coerencia). Estavam escritas sem acento e o emissor na carteira e "Ita\xFA
-      // Unibanco" / "Ita\xFAsa". O lookup aqui e aliases[empresa], chave exata, sem
-      // normalizacao: nunca casava. A copia em TOKENS_ROBUSTOS_ANBIMA sempre escreveu
-      // acentuado, entao as duas tabelas discordavam em silencio. O estrago era pequeno
-      // porque o fallback sem acento mais abaixo recuperava "ITAU UNIBANCO" e "ITAUSA",
-      // mas "BANCO ITAU" estava mesmo perdido (pegaria "BANCO ITAUCARD", por exemplo).
-      "Ita\xFA Unibanco": ["ITAU UNIBANCO", "BANCO ITAU"],
-      "Ita\xFAsa": ["ITAUSA"],
-      "BTG Pactual": ["BTG PACTUAL", "BANCO BTG PACTUAL"],
-      "Banco Pan": ["BANCO PAN", "BANCO PANAMERICANO"],
-      "Banco Daycoval": ["BANCO DAYCOVAL", "DAYCOVAL"],
-      "Cielo": ["CIELO"],
-      "B3 S.A.": ["B3 S.A.", "B3 - BRASIL", "B3 BRASIL BOLSA BALCAO"],
-      "Banco Votorantim": ["BANCO VOTORANTIM", "BANCO BV", "BV"]
-    };
-    const termos = [nomeUp];
-    if (aliases[empresa]) {
-      for (const a of aliases[empresa]) termos.push(a.toUpperCase());
-    }
-    // NOMEMORTO1: fonte unica de verdade. O mapa `aliases` acima vira reforco
-    // opcional; quem manda e a tabela que o proprio sync usa para atribuir o
-    // documento. Sem isto, emissor renomeado tem o doc gravado e invisivel.
-    var _derivados = SYNC_EMPRESA_TO_ALIASES[empresa];
-    if (_derivados) {
-      for (var _i = 0; _i < _derivados.length; _i++) {
-        var _t = _derivados[_i].toUpperCase();
-        if (termos.indexOf(_t) < 0) termos.push(_t);
-      }
-    }
-    const semAcento = nomeUp.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (semAcento !== nomeUp) termos.push(semAcento);
-    // ACENTOMATCH1: compara sempre sem acento, dos dois lados. O alias e escrito a
-    // mao e a CVM publica com acento, entao includes() literal deixava documento
-    // gravado e orfao (caso Sabesp, medido em 24/08).
-    const termosSA = termos.map(_semAcentoUp);
+    // SUBSTRINGDONO1 (2026-08-25): o leitor nao monta mais lista de termos propria
+    // e nao pergunta "este documento contem meu nome?". Ele pergunta ao arbitro
+    // unico de quem o documento E, e so aceita se a resposta for ele mesmo. Ver
+    // _donoDocumentoCVM. A pergunta antiga nao tinha como dar certo: "Oi" esta
+    // contido em SEQUOIA, AGROINDUSTRIAL, GOIAS e NITEROI, e "CSN" esta contido em
+    // "CSN MINERACAO", que e outro emissor da carteira.
     return docs.filter((d) => {
-      const docEmp = _semAcentoUp(d.e);
-      const match = termosSA.some((t) => docEmp.includes(t));
-      if (!match) return false;
+      if (_donoDocumentoCVM(d.e) !== empresa) return false;
       const data = d.d || "";
       return data >= trintaDiasAtras && data <= hoje;
     }).map((d) => ({ categoria: d.c, assunto: d.a, data: d.d, data_entrega: d.de || d.d, link: d.l, empresa_cvm: d.e, fonte: "CVM" }));
@@ -7078,6 +7019,48 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
     return [];
   }
 }
+var ALIASES_LEITOR_CVM = {
+  "P\xE3o de A\xE7\xFAcar (GPA)": ["COMPANHIA BRASILEIRA DE DIST", "GPA", "CBD"],
+  "Assa\xED Atacadista": ["SENDAS DISTRIBUIDORA", "SENDAS"],
+  "Ra\xEDzen": ["RAIZEN ENERGIA", "RAIZEN", "RA\xCDZEN"],
+  // ISA Energia: mudou de razao social ISA CTEEP para ISA Energia Brasil em 2022.
+  // CVM ainda registra documentos sob ambas as razoes sociais.
+  "ISA Energia": ["ISA CTEEP", "ISA ENERGIA BRASIL", "ISA ENERGIA"],
+  // SENDASGPA1: "ISA Energia Brasil" saiu, e razao social, nao nome de emissor. Ja
+  // esta como alias na linha de cima, que e onde ele serve para alguma coisa.
+  "Rede D'Or": ["REDE D'OR", "REDE DOR", "RDSL"],
+  // SENDASGPA1 (2026-08-24): saiu daqui "Sendas Distribuidora" e
+  // "Sendas Distribuidora (Assai)". Nenhum dos dois e nome de emissor da carteira, o
+  // emissor e "Assai Atacadista" (logo acima), entao a busca nunca chegava nessas
+  // chaves. Ficavam so alimentando a impressao de que Sendas e GPA eram a mesma coisa.
+  // Simpar: holding do grupo JSL/Movida/Vamos.
+  "Simpar": ["SIMPAR SA", "SIMPAR S"],
+  // Movida: subsidiaria Simpar, pode aparecer como Movida Participacoes.
+  "Movida": ["MOVIDA PARTICIPACOES", "MOVIDA PART", "MOVIDA SA"],
+  // Vamos: subsidiaria Simpar.
+  "Vamos": ["VAMOS LOCACAO", "VAMOS SA", "VAMOS S.A"],
+  // Hapvida: Hapvida Participacoes e Investimentos.
+  "Hapvida": ["HAPVIDA PARTICIPACOES", "HAPVIDA PART", "HAPVIDA NOTRE"],
+  // Auren Energia: antes CESP.
+  "Auren Energia": ["AUREN ENERGIA", "CESP", "COMPANHIA ENERGETICA DE SAO PAULO"],
+  // v4.9.157: aliases financeiros CVM — razoes sociais bancarias para match correto
+  "Bradesco": ["BANCO BRADESCO", "BRADESCO"],
+  // ACENTOMATCH1 de novo, agora nas CHAVES (2026-08-24, achado pela guarda de
+  // coerencia). Estavam escritas sem acento e o emissor na carteira e "Ita\xFA
+  // Unibanco" / "Ita\xFAsa". O lookup aqui e aliases[empresa], chave exata, sem
+  // normalizacao: nunca casava. A copia em TOKENS_ROBUSTOS_ANBIMA sempre escreveu
+  // acentuado, entao as duas tabelas discordavam em silencio. O estrago era pequeno
+  // porque o fallback sem acento mais abaixo recuperava "ITAU UNIBANCO" e "ITAUSA",
+  // mas "BANCO ITAU" estava mesmo perdido (pegaria "BANCO ITAUCARD", por exemplo).
+  "Ita\xFA Unibanco": ["ITAU UNIBANCO", "BANCO ITAU"],
+  "Ita\xFAsa": ["ITAUSA"],
+  "BTG Pactual": ["BTG PACTUAL", "BANCO BTG PACTUAL"],
+  "Banco Pan": ["BANCO PAN", "BANCO PANAMERICANO"],
+  "Banco Daycoval": ["BANCO DAYCOVAL", "DAYCOVAL"],
+  "Cielo": ["CIELO"],
+  "B3 S.A.": ["B3 S.A.", "B3 - BRASIL", "B3 BRASIL BOLSA BALCAO"],
+  "Banco Votorantim": ["BANCO VOTORANTIM", "BANCO BV", "BV"]
+};
 __name(buscarDocumentosCVM, "buscarDocumentosCVM");
 __name2(buscarDocumentosCVM, "buscarDocumentosCVM");
 __name22(buscarDocumentosCVM, "buscarDocumentosCVM");
@@ -7147,51 +7130,31 @@ var CVM_CATEGORIAS = [
   "Assembleia",
   "Calend\xE1rio de Eventos Corporativos"
 ];
-var SYNC_ALIAS_NOMES_CVM = [
-  // ISA Energia Brasil (antes: ISA CTEEP Transmissao de Energia)
-  "ISA CTEEP",
-  // Sendas Distribuidora S.A. (razao social do Assai Atacadista)
-  "SENDAS DISTRIB",
-  // Hapvida Participacoes e Investimentos S.A.
-  "HAPVIDA",
-  // Movida Participacoes S.A.
-  "MOVIDA PART",
-  // Simpar S.A.
-  "SIMPAR",
-  // Vamos Locacao de Caminhoes Maquinas e Equipamentos S.A.
-  "VAMOS LOCACAO",
-  // JSL S.A. (grupo Simpar)
-  "JSL SA",
-  // Cia Brasileira de Distribuicao (GPA / Pao de Acucar)
-  "CIA BRASILEIRA DE DIST",
-  // Raizen Energia S.A.
-  "RAIZEN ENERGIA",
-  // Aegea Saneamento e Participacoes S.A.
-  "AEGEA",
-  // Auren Energia S.A. (antes: CESP)
-  "AUREN",
-  "CESP",
-  // D35 (2026-04-29): aliases CVM ausentes que causavam sem_eventos artificial.
-  // Eletrobras renomeou para AXIA ENERGIA S.A. em 10/11/2025 (tickers AXIA3/AXIA5/AXIA6).
-  // Docs CVM arquivados sob razao social "AXIA ENERGIA" nao batiam com "Eletrobras" no matchPrincipal.
-  "AXIA ENERGIA",
-  // Sabesp: razao social no CVM e "CIA SANEAMENTO BASICO ESTADO SAO PAULO".
-  // matchPrincipal usa primeiros 8 chars de "SABESP" = "SABESP" — nao encontrado no nome CVM extenso.
-  "CIA SANEAMENTO BASICO ESTADO SAO PAULO",
-  // NOMEMORTO1 (auditoria 2026-08-24): duas renomeacoes que nunca chegaram aqui.
-  // Conferido contra cad_cia_aberta.csv do dia: "CCR" e "OMEGA" nao tem NENHUM
-  // registro na CVM, nem cancelado. Quem existe e esta ATIVO e a sucessora.
-  //   CCR S.A.        -> MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A. (CNPJ 02.846.056/0001-97, o mesmo)
-  //   Omega Energia   -> SERENA ENERGIA S.A. (CNPJ 42.500.384/0001-51) e SERENA GERACAO S.A.
-  "MOTIVA INFRAESTRUTURA",
-  "MOTIVA",
-  "SERENA ENERGIA",
-  "SERENA GERACAO",
-  // CARTEIRA-24AGO1: Braskem entrou na carteira. Razao social na CVM e
-  // "BRASKEM S.A.", CNPJ 42.150.391/0001-70, ATIVO. Declarada aqui de saida
-  // porque emissor novo sem alias cai exatamente no buraco do NOMEMORTO1.
-  "BRASKEM"
-];
+// ── SYNC_ALIAS_NOMES_CVM: APOSENTADA em 2026-08-25 (SUBSTRINGDONO1) ────────
+// Esta era a tabela 1 das tres do NOMEMORTO1, a que decidia se a linha da CVM
+// entrava em cvm:documentos. Existia porque a ingestao tinha criterio proprio, e
+// ter criterio proprio era o defeito: toda entrada aqui precisava ser repetida na
+// SYNC_ALIAS_TO_EMPRESA abaixo, ninguem verificava, e quando as duas discordavam
+// o sistema ficava cego em silencio.
+//
+// Medido em 25/08/2026 antes de remover: as 21 entradas reais desta lista ja
+// tinham dono declarado na tabela abaixo, ou seja, ela era 100% redundante. E a
+// divergencia no sentido contrario estava viva e custando caro: Dasa, Natura,
+// Vivo, TIM e Taesa tinham alias na tabela de atribuicao e NAO tinham aqui, entao
+// o documento delas era descartado na porta de entrada e nenhum dos cinco recebia
+// documento da CVM. Mesmo defeito da Eletrobras no NOMEMORTO1, cinco vezes.
+//
+// A ingestao agora chama _donoDocumentoCVM, o mesmo arbitro do leitor. Declarar o
+// alias UMA vez, na SYNC_ALIAS_TO_EMPRESA, passa a valer nas duas pontas.
+//
+// O que esta lista sabia, preservado como registro (regra 4 do CLAUDE.md):
+//   ISA CTEEP      ISA Energia Brasil, antes ISA CTEEP Transmissao de Energia
+//   SENDAS DISTRIB Sendas Distribuidora S.A., razao social do Assai Atacadista
+//   AXIA ENERGIA   Eletrobras renomeou em 10/11/2025 (D35, 2026-04-29)
+//   CIA SANEAMENTO BASICO ESTADO SAO PAULO   razao social da Sabesp
+//   MOTIVA         CCR S.A. para Motiva Infraestrutura (CNPJ 02.846.056/0001-97)
+//   SERENA         Omega Energia para Serena Energia (CNPJ 42.500.384/0001-51)
+//   BRASKEM        entrou na carteira em 24/08 (CARTEIRA-24AGO1)
 var SYNC_ALIAS_TO_EMPRESA = {
   "ISA CTEEP": "ISA Energia",
   // SENDASGPA1 (2026-08-24): havia TRES chaves quase iguais aqui, "SENDAS DISTRIB" e
@@ -7233,6 +7196,28 @@ var SYNC_ALIAS_TO_EMPRESA = {
   "TELEFONICA BRASIL": "Vivo (Telef\xF4nica Brasil)",
   "NATURA COSMETICOS": "Natura &Co",
   "CSN MINERACAO": "CSN Minera\xE7\xE3o",
+  // SUBSTRINGDONO1 (2026-08-25): a CSN nunca teve alias, e o nome que a CVM
+  // registra e "CIA SIDERURGICA NACIONAL" (CNPJ 33.042.730/0001-04, ATIVO), que
+  // nao contem "CSN" em lugar nenhum. Sem alias o documento da CSN nunca entrava
+  // em cvm:documentos, e a aparencia de saude vinha do defeito vizinho: "CSN"
+  // casava por substring com "CSN MINERACAO" e o emissor exibia 5 documentos,
+  // todos da mineradora, que e outro emissor com outro CNPJ (08.902.291/0001-15).
+  // Consequencia medida: em 31/07/2026 a Fitch rebaixou a CSN de B para CCC+, o
+  // relatorio foi protocolado na CVM em 05/08 sob a categoria Dados
+  // Economico-Financeiros, e a rotina caiu para imprensa com a fonte primaria
+  // disponivel. Havia 15 documentos da CSN no IPE desde 25/07, 3 Fato Relevante.
+  // As duas grafias declaradas porque a ancora e no inicio de palavra: "CIA
+  // SIDERURGICA NACIONAL" nao cobre "COMPANHIA SIDERURGICA NACIONAL".
+  "CIA SIDERURGICA NACIONAL": "CSN",
+  "COMPANHIA SIDERURGICA NACIONAL": "CSN",
+  // SUBSTRINGDONO1, mesmo buraco, achado pela guarda nova em 25/08: a razao
+  // social da Copasa na CVM e "COMPANHIA DE SANEAMENTO DE MINAS GERAIS" (CNPJ
+  // 17.281.106/0001-03, ATIVO) e o nome "COPASA" so existe no DENOM_COMERC, que
+  // o ipe_cia_aberta nao publica. Resultado: 271 documentos protocolados em 2026,
+  // 16 deles nos ultimos 30 dias, e nenhum jamais chegou ao emissor.
+  "COMPANHIA DE SANEAMENTO DE MINAS GERAIS": "Copasa",
+  "CIA DE SANEAMENTO DE MINAS GERAIS": "Copasa",
+  "CIA SANEAMENTO DE MINAS GERAIS": "Copasa",
   "COMERC PARTICIPACOES": "Comerc Energia",
   "B3 S/A - BRASIL": "B3 S.A.",
   "B3 - BRASIL BOLSA BALCAO": "B3 S.A.",
@@ -7369,6 +7354,16 @@ var SYNC_ALIAS_TO_EMPRESA = {
 // Mesmo padrao em CCR e Omega Energia. Auren escapou so porque alguem lembrou de
 // repetir "CESP" na terceira tabela.
 // Correcao estrutural: o leitor deriva os termos da tabela 2 em vez de manter copia.
+//
+// ATUALIZACAO 2026-08-25 (SUBSTRINGDONO1): a correcao acima estava certa e era
+// insuficiente. Ela fez o leitor parar de manter copia, mas deixou de pe as
+// tabelas 1 e 3 e, principalmente, deixou de pe a PERGUNTA errada. Enquanto cada
+// emissor perguntasse "este documento contem meu nome?", N emissores podiam
+// responder sim para o mesmo documento, e foi o que aconteceu com CSN e CSN
+// Mineracao. Agora a tabela 1 esta aposentada, a 3 virou ALIASES_LEITOR_CVM em
+// escopo de modulo, e as tres alimentam um indice unico consultado por um arbitro
+// unico, _donoDocumentoCVM, que responde de quem o documento E. Ingestao, leitor e
+// painel de cobertura fazem a mesma pergunta ao mesmo lugar.
 // Alias novo agora vale nas tres pontas de uma vez, sem ninguem precisar lembrar.
 // ACENTOMATCH1 (auditoria 2026-08-24). Segundo achado da mesma varredura, e da
 // mesma familia: o alias da Sabesp esta escrito "CIA SANEAMENTO BASICO ESTADO SAO
@@ -7391,6 +7386,84 @@ var SYNC_EMPRESA_TO_ALIASES = (function () {
   }
   return out;
 })();
+// ── SUBSTRINGDONO1 (auditoria 2026-08-25) ──────────────────────────────────
+// A rotina matinal de 25/08 entregou documento da Tres Tentos, da Sequoia e do
+// Saneamento de Goias como se fossem da Oi, e entregou a CSN Mineracao inteira
+// como se fosse a CSN. Duas falhas independentes na mesma linha de codigo, um
+// `docEmp.includes(termo)` cru:
+//
+//   1. SEM FRONTEIRA DE PALAVRA. O termo da Oi e "OI", duas letras, e "OI" esta
+//      dentro de SEQU(OI)A, AGR(OI)NDUSTRIAL, G(OI)AS e RIO-NITER(OI). Medido em
+//      producao: dos 28 documentos que o leitor entregava para a Oi, 4 eram dela.
+//   2. SEM DESEMPATE POR ESPECIFICIDADE. "CSN" esta contido em "CSN MINERACAO",
+//      que e outro emissor da carteira. Os dois recebiam os mesmos 5 documentos, e
+//      a CSN nunca recebia nenhum documento proprio.
+//
+// A correcao inverte a pergunta. Antes cada emissor perguntava "este documento
+// contem meu nome?", pergunta que N emissores podem responder sim ao mesmo tempo.
+// Agora existe UM arbitro que responde "de quem e este documento?", e o emissor so
+// aceita se a resposta for ele. Documento tem um dono so, por definicao.
+//
+// Duas regras, nesta ordem:
+//   ANCORA: o termo tem que comecar em inicio de palavra. O fim pode cair no meio,
+//     senao alias deliberadamente prefixo para de funcionar ("SENDAS DISTRIB" tem
+//     que continuar casando "SENDAS DISTRIBUIDORA S.A.", "MOVIDA PART" idem).
+//   TERMO MAIS LONGO VENCE: "CSN MINERACAO" (13) ganha de "CSN" (3). E o mesmo
+//     criterio que o SENDASGPA1 conseguia por acidente, via ordem de insercao do
+//     for..in. Sorteio que sai certo continua sendo sorteio.
+//
+// Fonte unica de verdade, na linha do NOMEMORTO1: o indice nasce das tres tabelas
+// de uma vez (EMISSORES_LISTA, SYNC_ALIAS_TO_EMPRESA e o mapa do leitor, que
+// deixou de ser privado e virou ALIASES_LEITOR_CVM). Alias novo passa a valer nas
+// tres pontas sem ninguem precisar lembrar de repetir.
+var _INDICE_DONO_CVM = (function () {
+  var out = [];
+  var vistos = {};
+  function add(termo, dono) {
+    var t = _semAcentoUp(termo);
+    // Termo de 1 caractere casaria em quase tudo. Nao existe hoje, e a guarda
+    // custa nada.
+    if (t.length < 2) return;
+    var chave = t + "\0" + dono;
+    if (vistos[chave]) return;
+    vistos[chave] = 1;
+    out.push({ termo: t, dono: dono });
+  }
+  for (var i = 0; i < EMISSORES_LISTA.length; i++) add(EMISSORES_LISTA[i], EMISSORES_LISTA[i]);
+  for (var a in SYNC_ALIAS_TO_EMPRESA) {
+    if (!Object.prototype.hasOwnProperty.call(SYNC_ALIAS_TO_EMPRESA, a)) continue;
+    add(a, SYNC_ALIAS_TO_EMPRESA[a]);
+  }
+  for (var e in ALIASES_LEITOR_CVM) {
+    if (!Object.prototype.hasOwnProperty.call(ALIASES_LEITOR_CVM, e)) continue;
+    var lista = ALIASES_LEITOR_CVM[e];
+    for (var j = 0; j < lista.length; j++) add(lista[j], e);
+  }
+  // Ordenado uma vez, do mais longo para o mais curto: o primeiro que casar ja e
+  // o mais especifico, entao a busca para no primeiro acerto.
+  out.sort(function (x, y) { return y.termo.length - x.termo.length; });
+  return out;
+})();
+function _casaInicioDePalavra(nomeSA, termo) {
+  var i = nomeSA.indexOf(termo);
+  while (i >= 0) {
+    if (i === 0 || !/[A-Z0-9]/.test(nomeSA.charAt(i - 1))) return true;
+    i = nomeSA.indexOf(termo, i + 1);
+  }
+  return false;
+}
+__name(_casaInicioDePalavra, "_casaInicioDePalavra");
+function _donoDocumentoCVM(razaoSocial) {
+  // ACENTOMATCH1: sem acento dos dois lados, sempre. A CVM publica "CIA SANEAMENTO
+  // BÁSICO" e o alias e escrito a mao sem acento.
+  var n = _semAcentoUp(razaoSocial);
+  if (!n) return null;
+  for (var i = 0; i < _INDICE_DONO_CVM.length; i++) {
+    if (_casaInicioDePalavra(n, _INDICE_DONO_CVM[i].termo)) return _INDICE_DONO_CVM[i].dono;
+  }
+  return null;
+}
+__name(_donoDocumentoCVM, "_donoDocumentoCVM");
 // ── CVMFRESCOR1 (auditoria 2026-08-19), PREMISSA CORRIGIDA EM 2026-08-20 ────
 // O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde, e
 // a instrumentacao criada aqui (carimbar a idade REAL da fonte a cada sync) foi
@@ -7744,8 +7817,6 @@ async function syncCVMAutomatico(env2222) {
     const iLink = header.indexOf("Link_Download");
     const trintaDiasAtras = new Date(Date.now() - 35 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
     const hoje = obterAgoraBRT().toISOString().split("T")[0];
-    const emissoresUp = EMISSORES_LISTA.map(_semAcentoUp);
-    const aliasesUp = SYNC_ALIAS_NOMES_CVM.map(_semAcentoUp);
     const docs = [];
     // CVMFRESCOR1: maior Data_Entrega do arquivo INTEIRO, antes de qualquer
     // filtro. Se medisse so os 103 emissores, um dia em que a CVM publicou
@@ -7759,12 +7830,24 @@ async function syncCVMAutomatico(env2222) {
       const cat = (cols[iCat] || "").trim();
       if (!CVM_CATEGORIAS.includes(cat)) continue;
       if (entrega < trintaDiasAtras) continue;
-      // ACENTOMATCH1: mesma normalizacao do lado da ingestao. Sem isto, emissor
-      // cujo nome na CVM tem acento so entrava por coincidencia de prefixo.
-      const nome = _semAcentoUp(cols[iNome]);
-      const matchPrincipal = emissoresUp.some((e) => nome.includes(e.substring(0, Math.min(e.length, 8))));
-      const matchAlias = aliasesUp.some((a) => nome.includes(a.substring(0, Math.min(a.length, 10))));
-      if (!matchPrincipal && !matchAlias) continue;
+      // SUBSTRINGDONO1 (2026-08-25): a ingestao passa a usar o MESMO arbitro do
+      // leitor. Antes tinha criterio proprio, e criterio proprio foi a doenca:
+      //   - matchPrincipal truncava o nome do emissor em 8 caracteres e procurava
+      //     em qualquer posicao. "Oi" virava "OI" e arrastava para dentro do KV a
+      //     Sequoia, a Tres Tentos, o Saneamento de Goias e a Ecoponte.
+      //   - matchAlias truncava o alias em 10 caracteres, o que destroi justamente
+      //     a especificidade do alias. Um alias comecando em "COMPANHIA " viraria
+      //     um curinga que puxa metade das companhias abertas do Brasil.
+      //   - e a tabela que ele consultava, SYNC_ALIAS_NOMES_CVM, era uma TERCEIRA
+      //     lista que precisava concordar com SYNC_ALIAS_TO_EMPRESA e nao concordava.
+      //     Medido em 25/08 no ipe_cia_aberta_2026.csv: Dasa, Natura, Vivo, TIM e
+      //     Taesa tinham alias declarado na tabela de atribuicao e ausente na de
+      //     ingestao, entao o documento delas nunca chegava a entrar no KV. Cinco
+      //     emissores cegos pelo mesmo motivo da Eletrobras no NOMEMORTO1.
+      // Com um arbitro so, alias novo vale nas duas pontas e nao existe mais estado
+      // em que o documento entra e ninguem o reivindica, ou vice-versa.
+      // Medido no mesmo arquivo: 144 -> 130 empresas, sai lixo, entram os 5 acima.
+      if (!_donoDocumentoCVM(cols[iNome])) continue;
       const dataRef = (cols[iData] || "").trim();
       if (dataRef > hoje || dataRef < trintaDiasAtras) continue;
       docs.push({ e: (cols[iNome] || "").trim(), d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim().replace(/\r/g, ""), l: (cols[iLink] || "").trim().replace(/\r/g, "") });
@@ -16365,29 +16448,20 @@ async function handleCoberturaStatus(env2222, request) {
   let ok_com_eventos = 0, ok_sem_eventos_comprovado = 0, inconclusivos = 0, sem_estado = 0;
   const lista_inconclusivos = [];
   const trintaDiasAtras = new Date(Date.now() - 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
-  const emissoresUp = EMISSORES_LISTA.map((e) => e.toUpperCase());
-  const aliasEntradas = Object.entries(SYNC_ALIAS_TO_EMPRESA);
   const docsCvmCount = {};
   try {
     const cvmDocs = await env2222.RADAR_KV.get("cvm:documentos", { type: "json" });
     if (Array.isArray(cvmDocs)) {
       for (const doc of cvmDocs) {
-        const nome = (doc.e || "").toUpperCase();
         const data = doc.d || "";
         if (data < trintaDiasAtras) continue;
-        const idxP = emissoresUp.findIndex((e) => nome.includes(e.substring(0, Math.min(e.length, 8))));
-        if (idxP >= 0) {
-          const emp = EMISSORES_LISTA[idxP];
-          docsCvmCount[emp] = (docsCvmCount[emp] || 0) + 1;
-          continue;
-        }
-        for (const [alias, empresa] of aliasEntradas) {
-          const aUp = alias.toUpperCase();
-          if (nome.includes(aUp.substring(0, Math.min(aUp.length, 10)))) {
-            docsCvmCount[empresa] = (docsCvmCount[empresa] || 0) + 1;
-            break;
-          }
-        }
+        // SUBSTRINGDONO1: era a QUARTA copia da regra de atribuicao, com o mesmo
+        // defeito das outras. Prefixo de 8 chars do nome do emissor casando em
+        // qualquer posicao: "Oi" virava "OI" e contava documento da Sequoia e da
+        // Tres Tentos como cobertura da Oi, inflando o painel de cobertura com
+        // documento de terceiro. Agora pergunta ao mesmo arbitro que o leitor usa.
+        const dono = _donoDocumentoCVM(doc.e);
+        if (dono) docsCvmCount[dono] = (docsCvmCount[dono] || 0) + 1;
       }
     }
   } catch (e2) {
