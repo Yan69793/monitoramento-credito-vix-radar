@@ -13,7 +13,7 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ## 24/08 (sexta rodada) — RESOLVIDO: falha de envio de e-mail transacional era invisível por construção (EMAILSILENT1)
 
-> **Status:** RESOLVIDO no código, NÃO deployado (aguarda autorização do operador)
+> **Status:** RESOLVIDO e DEPLOYADO. Worker v4.9.214 em produção desde 24/08 21:54 BRT, commit `db2842e`, merge `5768c3c`. Validado no portão (`ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`) e por sonda sem efeito colateral, `admin_email_envios` sem senha devolve 403 em produção, onde o código antigo devolvia 401. CI `Worker Tests` verde em `db2842e`, 12 arquivos
 > **Data da Versão:** 2026-08-24
 > **Origem do Registro:** `joao.tavano@mirabaud.com.br` foi aprovado, o painel exibiu "João Tavano aprovado", e não havia forma interna de saber se o e-mail de aprovação chegou. A única fonte autoritativa era o painel da Resend, fora do sistema
 > **Condição de Obsolescência:** perde validade se `enviarResend` deixar de devolver o `id` da Resend, ou se o rastro migrar de KV para DO na migração v5
