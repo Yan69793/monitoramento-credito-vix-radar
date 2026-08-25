@@ -23,6 +23,8 @@ on:
       - 'app/index.html'
       - 'scripts/check-emissores-cadastro.mjs'
       - 'scripts/check-metricas-curadas.mjs'
+      - 'scripts/check-emissores-cnpj.mjs'
+      - 'scripts/emissores-cnpj.mjs'
       - '.github/workflows/emissores-cadastro.yml'
 
 permissions:
@@ -59,6 +61,14 @@ jobs:
       # worker.js e app/index.html.
       - name: Conferir cobertura e frescor dos cards de metrica
         run: node scripts/check-metricas-curadas.mjs
+
+      # CURADORIA2 (2026-08-24). De qual companhia da CVM sai o numero de cada
+      # emissor. Casar por nome erra e erra feio, holding e subsidiaria compartilham
+      # o nome: Sabesp casava com a COPASA, Taesa com a Copel GT, CBA com a CEB, CSN
+      # com a CSN Mineracao. Offline, so confere que a carteira inteira esta
+      # declarada e que ninguem ficou orfao ou repetido.
+      - name: Conferir tabela emissor para companhia da CVM
+        run: node scripts/check-emissores-cnpj.mjs
 
       # Prova da outra ponta, dentro do proprio CI. Sem isto, um bug que fizesse a
       # guarda aprovar qualquer coisa passaria despercebido para sempre, porque o
@@ -139,3 +149,36 @@ jobs:
       # que reprovasse tudo passaria nos dois testes negativos acima e pareceria sadia.
       - name: Guarda tem que aceitar o repo como esta
         run: node scripts/check-metricas-curadas.mjs
+
+      # CURADORIA2, ponta negativa: emissor novo entra na carteira e ninguem decide de
+      # qual companhia da CVM sai o numero dele. E o mesmo defeito do CURADORIA1 um
+      # nivel acima, e o que faria a recuracao puxar dado de outra empresa em silencio.
+      - name: Guarda tem que reprovar emissor sem companhia declarada
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          perl -0pe 's/(var EMISSORES_LISTA\s*=\s*\[\r?\n)/$1  "Zzqx Participacoes",\n/' \
+            api/src/worker.js > /tmp/guarda/worker_nodecl.js
+          if ! grep -q '"Zzqx Participacoes"' /tmp/guarda/worker_nodecl.js; then
+            echo "::error::A injecao do teste nao entrou no arquivo. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_nodecl.js node scripts/check-emissores-cnpj.mjs; then
+            echo "::error::A guarda APROVOU emissor sem companhia da CVM declarada. A recuracao puxaria numero de outra empresa."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o emissor nao declarado, como deve."
+
+      # Confere os 98 CNPJs declarados contra o indice real do ITR, que e a unica
+      # checagem que pega CNPJ digitado errado. Baixa 19 MB, entao so no agendado e no
+      # disparo manual, nao a cada push. O ramo DOC/ITR esta vivo, quem esta em 404
+      # desde 23/08 e o DOC/IPE (CVMURL404), sao arquivos diferentes.
+      - name: Conferir os CNPJs declarados contra o ITR da CVM
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/itr && cd /tmp/itr
+          curl -sS --fail --max-time 300 -O https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/ITR/DADOS/itr_cia_aberta_2026.zip
+          unzip -o -q itr_cia_aberta_2026.zip
+          cd "$GITHUB_WORKSPACE"
+          ITR_DIR=/tmp/itr node scripts/check-emissores-cnpj.mjs
