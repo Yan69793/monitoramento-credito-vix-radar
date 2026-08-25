@@ -1,11 +1,11 @@
-/**
+﻿/**
  * VIX Radar — Admin Engajamento (Fase 2)
  * v202.1 — ES module refactor (was vr-admin-engajamento.js IIFE)
  *
  * Imports from shared.js; wraps core usoCarregar/usoMudarVisao with skeleton + error handling.
  */
 
-import { esc, skeletonBlock, wrapWhenReady } from './shared.js?v=202.32';
+import { esc, skeletonBlock, wrapWhenReady } from './shared.js?v=202.33';
 
 /* ── Styles ───────────────────────────────────────────────── */
 function injectEngStyles() {

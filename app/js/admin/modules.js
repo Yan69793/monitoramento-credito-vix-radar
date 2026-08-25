@@ -1,4 +1,4 @@
-/**
+﻿/**
  * VIX Radar — Admin Modules (HEART + endpoints)
  * v202.1 — ES module refactor (was vr-admin-modules.js IIFE)
  *
@@ -7,7 +7,7 @@
  *   initTabHoje, injectHojeTab
  */
 
-import { API_BASE, esc, getSenha, authHeaders, postAdmin } from './shared.js?v=202.32';
+import { API_BASE, esc, getSenha, authHeaders, postAdmin } from './shared.js?v=202.33';
 
 /* ── Helpers ──────────────────────────────────────────────── */
 async function fetchHealth() {
