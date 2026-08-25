@@ -7010,11 +7010,11 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
     // _donoDocumentoCVM. A pergunta antiga nao tinha como dar certo: "Oi" esta
     // contido em SEQUOIA, AGROINDUSTRIAL, GOIAS e NITEROI, e "CSN" esta contido em
     // "CSN MINERACAO", que e outro emissor da carteira.
-    return docs.filter((d) => {
-      if (_donoDocumentoCVM(d.e) !== empresa) return false;
-      const data = d.d || "";
+    return docs.map((d) => ({ d, atrib: _atribuirDocumentoCVM(d.j, d.e) })).filter((x) => {
+      if (x.atrib.emissor !== empresa) return false;
+      const data = x.d.d || "";
       return data >= trintaDiasAtras && data <= hoje;
-    }).map((d) => ({ categoria: d.c, assunto: d.a, data: d.d, data_entrega: d.de || d.d, link: d.l, empresa_cvm: d.e, fonte: "CVM" }));
+    }).map(({ d, atrib }) => ({ categoria: d.c, assunto: d.a, data: d.d, data_entrega: d.de || d.d, link: d.l, empresa_cvm: d.e, cnpj_cvm: d.j || null, atribuicao: atrib.origem, fonte: "CVM" }));
   } catch {
     return [];
   }
@@ -7386,6 +7386,205 @@ var SYNC_EMPRESA_TO_ALIASES = (function () {
   }
   return out;
 })();
+// ── SUBSTRINGDONO1, fase CNPJ (2026-08-25) ─────────────────────────────────
+// O nome deixa de decidir de quem e o documento. Quem decide e o CNPJ, que a CVM
+// publica na coluna 0 do ipe_cia_aberta e que o Worker nunca leu.
+//
+// Por que o nome nao tinha conserto, e nao e falta de alias. Tres razoes medidas:
+//   1. Nome MUDA. Eletrobras virou AXIA, CCR virou MOTIVA, Omega virou SERENA, e a
+//      AES Brasil virou AUREN PARTICIPACOES. Lista correta hoje erra em seis meses.
+//   2. Nome COLIDE. "CSN" dentro de "CSN MINERACAO". E mesmo com ancora de inicio
+//      de palavra sobram falsos positivos: "AGRO INDUSTRIAS DO VALE SAO FRANCISCO"
+//      e "VALE BONITO AGROPECUARIA" casam com o emissor Vale porque VALE comeca
+//      palavra nas duas. Ancora nao salva quando o nome do emissor e palavra comum.
+//   3. Nome e ESCRITO DIFERENTE em cada lugar. CIA contra COMPANHIA, com e sem
+//      acento.
+// O CNPJ nao tem nenhum dos tres problemas. E o mesmo criterio que a industria
+// chama de identificador primario, deterministico, e nao similaridade de string.
+//
+// DUAS TABELAS COM PAPEIS DIFERENTES, e junta-las quebra os dois lados.
+//
+// CNPJ_PRIMARIO_EMISSOR  um CNPJ por emissor, a entidade consolidada listada que
+//   carrega a divida. E de onde sai ITR e balanco. Espelho de EMISSOR_CNPJ em
+//   scripts/emissores-cnpj.mjs (CURADORIA2, 24/08), que o Worker nao consegue
+//   importar por ser codigo local de guarda. Existe aqui para a guarda comparar as
+//   duas pontas e reprovar divergencia. NAO e consultada pela atribuicao de IPE.
+//
+// CNPJ_FAMILIA_CVM  muitos CNPJs por emissor, holding mais as subsidiarias que
+//   protocolam. E a que a atribuicao usa. Inclui os primarios.
+//   Precisa ser separada porque a subsidiaria protocola no CNPJ dela e o documento
+//   dela e noticia de credito da holding: a CEMIG Distribuicao protocolou 36
+//   documentos em 2026 e o mercado le isso como CEMIG. Se estes CNPJs entrassem no
+//   primario, o card de alavancagem da CEMIG passaria a ler o ITR da distribuidora.
+//
+// A familia e proposta por scripts/gerar-familia-cnpj.mjs a partir do indice do ANO
+// em data/cvm-referencia/, revisada a mao e colada aqui. Nada e inferido em runtime,
+// mesma disciplina do CURADORIA2, cada linha e uma decisao.
+var CNPJ_PRIMARIO_EMISSOR = {
+  "08.827.501/0001-58": "Aegea Saneamento",
+  "71.208.516/0001-74": "Algar Telecom",
+  "02.919.555/0001-67": "Arteris",
+  "06.057.223/0001-71": "Assa\xED Atacadista",
+  "28.594.234/0001-23": "Auren Energia",
+  "09.305.994/0001-29": "Azul",
+  "09.346.601/0001-25": "B3 S.A.",
+  "62.232.889/0001-90": "Banco Daycoval",
+  "10.807.374/0001-77": "Boa Safra Sementes",
+  "60.746.948/0001-12": "Bradesco",
+  "42.150.391/0001-70": "Braskem",
+  "12.091.809/0001-55": "Brava Energia",
+  "01.838.723/0001-27": "BRF",
+  "04.601.397/0001-28": "Brisanet",
+  "24.396.489/0001-20": "BRK Ambiental",
+  "30.306.294/0001-45": "BTG Pactual",
+  "64.904.295/0001-03": "Camil Alimentos",
+  "61.409.892/0001-73": "CBA",
+  "02.846.056/0001-97": "CCR",
+  "17.155.730/0001-64": "CEMIG",
+  "01.027.058/0001-91": "Cielo",
+  "02.800.026/0001-40": "Cogna Educa\xE7\xE3o",
+  "25.369.840/0001-57": "Comerc Energia",
+  "21.389.501/0001-81": "Compass G\xE1s e Energia",
+  "17.281.106/0001-03": "Copasa",
+  "76.483.817/0001-20": "Copel",
+  "50.746.577/0001-15": "Cosan",
+  "02.429.144/0001-93": "CPFL Energia",
+  "33.042.730/0001-04": "CSN",
+  "08.902.291/0001-15": "CSN Minera\xE7\xE3o",
+  "08.797.760/0001-83": "Cury Construtora",
+  "73.178.600/0001-18": "Cyrela",
+  "61.486.650/0001-83": "Dasa",
+  "16.614.075/0001-00": "Direcional Engenharia",
+  "04.149.454/0001-80": "EcoRodovias",
+  "00.001.180/0001-26": "Eletrobras",
+  "07.689.002/0001-89": "Embraer",
+  "00.864.214/0001-06": "Energisa",
+  "04.423.567/0001-21": "Eneva",
+  "02.474.103/0001-19": "Engie Brasil Energia",
+  "03.220.438/0001-73": "Equatorial Energia",
+  "43.470.988/0001-65": "Even Construtora",
+  "60.840.055/0001-31": "Fleury",
+  "33.611.500/0001-19": "Gerdau",
+  "24.990.777/0001-09": "Grupo Mateus",
+  "05.197.443/0001-38": "Hapvida",
+  "12.648.327/0001-53": "Hidrovias do Brasil",
+  "08.159.965/0001-33": "Igu\xE1 Saneamento",
+  "60.543.816/0001-93": "Iguatemi",
+  "92.791.243/0001-03": "Irani",
+  "02.998.611/0001-04": "ISA Energia",
+  "60.872.504/0001-23": "Ita\xFA Unibanco",
+  "61.532.644/0001-15": "Ita\xFAsa",
+  "02.916.265/0001-60": "JBS",
+  "52.548.435/0001-79": "JSL",
+  "89.637.490/0001-45": "Klabin",
+  "13.270.520/0001-66": "Kora Sa\xFAde",
+  "03.378.521/0001-75": "Light",
+  "16.670.085/0001-55": "Localiza",
+  "09.041.168/0001-10": "Log Commercial Properties",
+  "02.351.877/0001-52": "LWSA",
+  "03.853.896/0001-40": "Marfrig",
+  "67.620.377/0001-14": "Minerva Foods",
+  "21.314.559/0001-66": "Movida",
+  "01.417.222/0001-77": "MRS Log\xEDstica",
+  "08.343.492/0001-20": "MRV Engenharia",
+  "07.816.890/0001-53": "Multiplan",
+  "71.673.990/0001-77": "Natura &Co",
+  "01.083.200/0001-18": "Neoenergia",
+  "42.500.384/0001-51": "Omega Energia",
+  "12.104.241/0004-02": "Oncocl\xEDnicas",
+  "47.508.411/0001-56": "P\xE3o de A\xE7\xFAcar (GPA)",
+  "33.000.167/0001-01": "Petrobras",
+  "10.629.105/0001-68": "PRIO",
+  "33.453.598/0001-23": "Ra\xEDzen",
+  "06.047.087/0001-39": "Rede D'Or",
+  "02.387.241/0001-60": "Rumo",
+  "43.776.517/0001-80": "Sabesp",
+  "76.484.013/0001-45": "Sanepar",
+  "02.762.121/0001-04": "Santos Brasil",
+  "51.466.860/0001-56": "S\xE3o Martinho",
+  "07.415.333/0001-20": "Simpar",
+  "89.096.457/0001-55": "SLC Agr\xEDcola",
+  "16.404.287/0001-55": "Suzano",
+  "07.859.971/0001-30": "Taesa",
+  "02.351.144/0001-18": "Tegma",
+  "40.337.136/0001-06": "Terra Santa Agro",
+  "02.421.421/0001-11": "TIM Brasil",
+  "53.113.791/0001-22": "Totvs",
+  "08.811.643/0001-27": "Trisul",
+  "84.683.374/0001-49": "Tupy",
+  "33.256.439/0001-39": "Ultrapar",
+  "75.609.123/0001-23": "Unidas",
+  "60.894.730/0001-05": "Usiminas",
+  "33.592.510/0001-54": "Vale",
+  "23.373.000/0001-32": "Vamos",
+  "34.274.233/0001-02": "Vibra Energia",
+  "02.558.157/0001-62": "Vivo (Telef\xF4nica Brasil)",
+  "42.276.907/0001-28": "VLI"
+};
+var CNPJ_FAMILIA_CVM = (function () {
+  var out = {};
+  for (var c in CNPJ_PRIMARIO_EMISSOR) {
+    if (Object.prototype.hasOwnProperty.call(CNPJ_PRIMARIO_EMISSOR, c)) out[_soDigito(c)] = CNPJ_PRIMARIO_EMISSOR[c];
+  }
+  // Subsidiarias que protocolam. Conferidas uma a uma contra o ipe_cia_aberta de
+  // 2026 e, nos casos de renomeacao, contra o cad_cia_aberta do dia.
+  var _subs = {
+    "00.194.724/0001-13": "Auren Energia", // AUREN OPERAÇÕES S.A.
+    "60.933.603/0001-78": "Auren Energia", // CESP - COMPANHIA ENERGÉTICA DE SÃO PAULO
+    "37.663.076/0001-07": "Auren Energia", // AUREN PARTICIPAÇÕES S.A.
+    "59.285.411/0001-13": "Banco Pan", // BANCO PAN SA
+    "47.509.120/0001-82": "Bradesco", // BRADESCO LEASING S.A. - ARRENDAMENTO MERCANTIL
+    "39.580.673/0001-01": "BRK Ambiental", // BRK AMBIENTAL - REGIÃO METROPOLITANA DE MACEIÓ S.A.
+    "04.626.426/0001-06": "BTG Pactual", // BTG PACTUAL COMMODITIES SERTRADING S.A.
+    "03.025.305/0001-46": "CCR", // RODOVIAS DAS COLINAS S.A.
+    "06.981.180/0001-16": "CEMIG", // CEMIG DISTRIBUIÇÃO S/A
+    "06.981.176/0001-58": "CEMIG", // CEMIG GERAÇÃO E TRANSMISSÃO S/A
+    "04.368.898/0001-06": "Copel", // COPEL DISTRIBUIÇÃO S.A.
+    "04.370.282/0001-70": "Copel", // COPEL GERAÇÃO E TRANSMISSÃO S/A
+    "08.439.659/0001-50": "CPFL Energia", // CPFL ENERGIAS RENOVÁVEIS S.A.
+    "08.873.873/0001-10": "EcoRodovias", // ECORODOVIAS CONCESSÕES E SERVIÇOS S/A
+    "33.541.368/0001-16": "Eletrobras", // AXIA ENERGIA NORDESTE S.A.
+    "00.357.038/0001-16": "Eletrobras", // AXIA ENERGIA NORTE S.A.
+    "02.016.507/0001-69": "Eletrobras", // AXIA ENERGIA SUL S.A.
+    "09.391.823/0001-60": "Eletrobras", // AXIA ENERGIA UHE SANTO ANTÔNIO S.A.
+    "03.467.321/0001-99": "Energisa", // ENERGISA MATO GROSSO-DISTRIBUIDORA DE ENERGIA S/A
+    "15.413.826/0001-50": "Energisa", // ENERGISA MATO GROSSO DO SUL - DIST DE ENERGIA S.A.
+    "09.095.183/0001-40": "Energisa", // ENERGISA PARAÍBA - DISTRIBUIDORA DE ENERGIA S/A
+    "07.282.377/0001-20": "Energisa", // ENERGISA SUL-SUDESTE - DISTRIBUIDORA DE ENERGIA S.A.
+    "13.017.462/0001-63": "Energisa", // ENERGISA SERGIPE - DISTRIBUIDORA DE ENERGIA S/A
+    "19.527.639/0001-58": "Energisa", // ENERGISA MINAS RIO - DISTRIBUIDORA DE ENERGIA S/A
+    "28.201.130/0001-01": "Energisa", // ENERGISA TRANSMISSÃO DE ENERGIA S.A.
+    "04.895.728/0001-80": "Equatorial Energia", // EQUATORIAL PARÁ DISTRIBUIDORA DE ENERGIA S.A.
+    "01.543.032/0001-04": "Equatorial Energia", // EQUATORIAL GOIAS DISTRIBUIDORA DE ENERGIA S.A.
+    "06.272.793/0001-84": "Equatorial Energia", // EQUATORIAL MARANHÃO DISTRIBUIDORA DE ENERGIA S.A.
+    "92.690.783/0001-09": "Gerdau", // METALURGICA GERDAU SA
+    "51.218.147/0001-93": "Iguatemi", // IGUATEMI EMPRESA DE SHOPPING CENTERS S/A
+    "49.115.815/0001-05": "JBS", // JBS N.V.
+    "60.444.437/0001-46": "Light", // LIGHT SERVIÇOS DE ELETRICIDADE SA
+    "01.917.818/0001-36": "Light", // LIGHT ENERGIA S.A.
+    "02.286.479/0001-08": "Localiza", // LOCALIZA  FLEET S.A.
+    "76.535.764/0001-43": "Oi", // OI S.A. - EM RECUPERAÇÃO JUDICIAL
+    "09.149.503/0001-06": "Omega Energia", // SERENA GERAÇÃO S.A.
+    "08.926.302/0001-05": "PRIO", // PRIO FORTE S.A.
+    "08.070.508/0001-78": "Ra\xEDzen", // RAÍZEN ENERGIA S.A.
+    "02.502.844/0001-66": "Rumo", // RUMO MALHA PAULISTA S.A.
+    "33.572.408/0001-97": "Rumo", // RUMO MALHA CENTRAL S.A.
+    "24.962.466/0001-36": "Rumo", // RUMO MALHA NORTE S.A.
+    "39.115.514/0001-28": "Rumo", // RUMO MALHA OESTE S.A.
+    "01.258.944/0001-26": "Rumo", // RUMO MALHA SUL S.A.
+    "60.651.809/0001-05": "Suzano", // SUZANO HOLDING S.A.
+    "02.600.854/0001-34": "TIM Brasil", // TIM BRASIL SERVIÇOS E PARTICIPAÇÕES S.A.
+    "45.736.131/0001-70": "Unidas", // UNIDAS LOCADORA S.A.
+  };
+  for (var s in _subs) {
+    if (Object.prototype.hasOwnProperty.call(_subs, s)) out[_soDigito(s)] = _subs[s];
+  }
+  return out;
+})();
+function _soDigito(s) {
+  return String(s || "").replace(/\D/g, "");
+}
+__name(_soDigito, "_soDigito");
 // ── SUBSTRINGDONO1 (auditoria 2026-08-25) ──────────────────────────────────
 // A rotina matinal de 25/08 entregou documento da Tres Tentos, da Sequoia e do
 // Saneamento de Goias como se fossem da Oi, e entregou a CSN Mineracao inteira
@@ -7464,6 +7663,37 @@ function _donoDocumentoCVM(razaoSocial) {
   return null;
 }
 __name(_donoDocumentoCVM, "_donoDocumentoCVM");
+// SUBSTRINGDONO1, fase CNPJ: e por aqui que todo mundo pergunta de quem e o
+// documento. Devolve tambem COMO chegou na resposta, porque "atribuido pelo CNPJ"
+// e "atribuido pelo nome" tem confianca diferente e a diferenca precisa ser
+// mensuravel. Cobertura caindo e o sintoma de renomeacao ou subsidiaria nova, e
+// aparece antes de alguem notar card errado.
+//
+// Ordem, e a ordem importa:
+//   1. CNPJ declarado na familia            -> atribui, origem "cnpj"
+//   2. CNPJ presente e NAO declarado        -> NAO atribui, origem "quarentena"
+//   3. CNPJ ausente ou zerado               -> cai no arbitro por nome
+//
+// O passo 2 e fail-closed de proposito, decisao do operador em 25/08. Documento de
+// CNPJ desconhecido nao vira evento de ninguem, vai para a fila de revisao e alguem
+// decide. O caminho antigo faria dele um palpite por nome, que e como a Tres Tentos
+// virou evento da Oi.
+//
+// O passo 3 nao e sobra de codigo. Cobre dois casos reais: entidade estrangeira que
+// a CVM publica com CNPJ 00.000.000/0000-00 (JBS Foods International), e os
+// registros ja gravados em cvm:documentos antes desta fase, que nao tem o campo
+// `j`. Sem ele o painel esvaziaria entre o deploy e o primeiro sync novo.
+function _atribuirDocumentoCVM(cnpj, razaoSocial) {
+  var d = _soDigito(cnpj);
+  if (d && d !== "00000000000000") {
+    var dono = CNPJ_FAMILIA_CVM[d];
+    if (dono) return { emissor: dono, origem: "cnpj" };
+    return { emissor: null, origem: "quarentena" };
+  }
+  var porNome = _donoDocumentoCVM(razaoSocial);
+  return { emissor: porNome, origem: porNome ? "nome" : "sem_dono" };
+}
+__name(_atribuirDocumentoCVM, "_atribuirDocumentoCVM");
 // ── CVMFRESCOR1 (auditoria 2026-08-19), PREMISSA CORRIGIDA EM 2026-08-20 ────
 // O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde, e
 // a instrumentacao criada aqui (carimbar a idade REAL da fonte a cada sync) foi
@@ -7809,6 +8039,8 @@ async function syncCVMAutomatico(env2222) {
     const lines = csv.split("\n");
     log.etapas.push({ etapa: "decompress", ok: true, linhas: lines.length });
     const header = lines[0].split(";").map((h) => h.trim().replace(/\r/, ""));
+    // SUBSTRINGDONO1, fase CNPJ: a coluna existe desde sempre e nunca foi lida.
+    const iCnpj = header.indexOf("CNPJ_Companhia");
     const iNome = header.indexOf("Nome_Companhia");
     const iData = header.indexOf("Data_Referencia");
     const iCat = header.indexOf("Categoria");
@@ -7847,12 +8079,44 @@ async function syncCVMAutomatico(env2222) {
       // Com um arbitro so, alias novo vale nas duas pontas e nao existe mais estado
       // em que o documento entra e ninguem o reivindica, ou vice-versa.
       // Medido no mesmo arquivo: 144 -> 130 empresas, sai lixo, entram os 5 acima.
-      if (!_donoDocumentoCVM(cols[iNome])) continue;
+      // SUBSTRINGDONO1, fase CNPJ: a ingestao PAROU de decidir de quem e o
+      // documento. Antes ela descartava aqui, em silencio, tudo que nao casasse
+      // por nome, e esse descarte era invisivel por construcao: sem log, sem
+      // contagem, e o documento simplesmente nao existia para o resto do sistema.
+      // Foi assim que a CSN passou meses sem fonte primaria sem nada ficar vermelho.
+      //
+      // Agora o filtro de entrada e so categoria e janela de data, que sao fatos do
+      // documento e nao juizo sobre ele. A atribuicao virou etapa de LEITURA.
+      // Documento de CNPJ desconhecido fica gravado, sem dono, e alimenta a fila de
+      // revisao. E a diferenca entre "nao sei de quem e" e "nunca vi".
       const dataRef = (cols[iData] || "").trim();
       if (dataRef > hoje || dataRef < trintaDiasAtras) continue;
-      docs.push({ e: (cols[iNome] || "").trim(), d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim().replace(/\r/g, ""), l: (cols[iLink] || "").trim().replace(/\r/g, "") });
+      docs.push({ e: (cols[iNome] || "").trim(), j: iCnpj >= 0 ? (cols[iCnpj] || "").trim() : "", d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim().replace(/\r/g, ""), l: (cols[iLink] || "").trim().replace(/\r/g, "") });
     }
     docs.sort((a, b) => b.d.localeCompare(a.d));
+    // TETO DE VOLUME, com numero medido e nao com "deveria caber".
+    // Base: data/cvm-referencia/ipe_janela_2026-08-25.json.gz, a mesma janela de 35
+    // dias que o sync usa, medida sobre o acervo real. Da 2175 documentos, 510
+    // empresas, 0,82 MB serializado. O limite de valor do KV e 25 MB, entao a folga
+    // e de 30x. O teto de 4000 e cerca de 2x a medicao e ainda 6% do limite.
+    //
+    // Ao estourar, sai primeiro o que NAO tem dono, do mais antigo por Data_Entrega,
+    // porque quarentena vale menos que documento de emissor da carteira. E a
+    // contagem descartada vai para o log e para o meta: truncamento silencioso e
+    // exatamente a classe de falha que esta mudanca existe para matar.
+    const TETO_DOCS = 4e3;
+    let descartadosPorTeto = 0;
+    if (docs.length > TETO_DOCS) {
+      const comDono = [], semDono = [];
+      for (const d of docs) (_atribuirDocumentoCVM(d.j, d.e).emissor ? comDono : semDono).push(d);
+      semDono.sort((a, b) => (b.de || b.d).localeCompare(a.de || a.d));
+      const vagas = Math.max(0, TETO_DOCS - comDono.length);
+      descartadosPorTeto = docs.length - Math.min(docs.length, comDono.length + vagas);
+      docs.length = 0;
+      docs.push(...comDono, ...semDono.slice(0, vagas));
+      docs.sort((a, b) => b.d.localeCompare(a.d));
+      console.warn("[cvm][teto] acervo acima de " + TETO_DOCS + ", descartados " + descartadosPorTeto + " documentos sem dono");
+    }
     // VOLTTL1 aplicado aqui em 2026-08-24: a chave so e reescrita em sync
     // BEM-SUCEDIDO, e o lote util da CVM e semanal. TTL de 14 dias dava margem
     // de apenas 2 ciclos, entao a fonte cair por 2 semanas apagaria a base de
@@ -7860,7 +8124,12 @@ async function syncCVMAutomatico(env2222) {
     // 30 dias mantem o ultimo bom vivo por 4 ciclos.
     await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(docs), { expirationTtl: 60 * 60 * 24 * 30 });
     const empresasUnicas = [...new Set(docs.map((d) => d.e))].length;
-    log.etapas.push({ etapa: "store", ok: true, documentos: docs.length, empresas: empresasUnicas });
+    // Cobertura da atribuicao. E o sinal preditivo desta fase: renomeacao ou
+    // subsidiaria nova aparece aqui como quarentena subindo, dias antes de alguem
+    // notar card errado ou card vazio.
+    const _cob = { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
+    for (const d of docs) _cob[_atribuirDocumentoCVM(d.j, d.e).origem]++;
+    log.etapas.push({ etapa: "store", ok: true, documentos: docs.length, empresas: empresasUnicas, cobertura: _cob, descartados_teto: descartadosPorTeto });
     log.etapas.push({ etapa: "frescor", last_modified: _lastModRaw || null, max_data_entrega_fonte: maxEntregaFonte });
     await gravarFonteCVMMeta(env2222, {
       ok: true,
@@ -7870,6 +8139,10 @@ async function syncCVMAutomatico(env2222) {
       max_data_entrega: maxEntregaFonte,
       documentos: docs.length,
       empresas: empresasUnicas,
+      // SUBSTRINGDONO1, fase CNPJ: a cobertura vive no meta para o health poder
+      // expor sem reprocessar o acervo inteiro a cada GET.
+      cobertura: _cob,
+      descartados_teto: descartadosPorTeto,
       origem: "sync_automatico"
     });
     return { ok: true, documentos: docs.length, empresas: empresasUnicas, ultimo: docs[0]?.d || null, last_modified: _lastModRaw, last_modified_iso: _lastModIso, max_data_entrega: maxEntregaFonte, log };
@@ -16460,7 +16733,7 @@ async function handleCoberturaStatus(env2222, request) {
         // qualquer posicao: "Oi" virava "OI" e contava documento da Sequoia e da
         // Tres Tentos como cobertura da Oi, inflando o painel de cobertura com
         // documento de terceiro. Agora pergunta ao mesmo arbitro que o leitor usa.
-        const dono = _donoDocumentoCVM(doc.e);
+        const dono = _atribuirDocumentoCVM(doc.j, doc.e).emissor;
         if (dono) docsCvmCount[dono] = (docsCvmCount[dono] || 0) + 1;
       }
     }
@@ -17344,11 +17617,26 @@ async function __coreFetch(request, env2222, ctx) {
       // syncs falhos seguidos, volta a pesar no `ok` agregado, o que reacende
       // canonical-test e daily-status-email sem depender do Health-Watch local.
       var _cvmDegrada = _cvmFrescor.degrada_servico === true;
+      // SUBSTRINGDONO1, fase CNPJ: cobertura da atribuicao, lida do meta que o sync
+      // gravou. Nao reprocessa o acervo a cada GET.
+      //
+      // Deliberadamente NAO entra no `ok` agregado. Segue a licao do HEALTHSPLIT1:
+      // `ok:false` significa plataforma degradada com correcao do nosso lado, e
+      // quarentena alta pede uma decisao de curadoria, nao um conserto de codigo.
+      // Meter isso no `ok` faria o canonical-test ficar vermelho toda vez que uma
+      // companhia nova protocolasse, que e alarme que toca sozinho.
+      // O canal proprio e a guarda scripts/check-cnpj-familia.mjs e a action
+      // admin_cvm_quarentena.
+      var _cvmCob = (_cvmFrescor.cobertura && typeof _cvmFrescor.cobertura === "object")
+        ? _cvmFrescor.cobertura
+        : { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
+      var _cvmCobTotal = (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0);
+      var _cvmCobPct = _cvmCobTotal > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotal * 1e3) / 10 : null;
       const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk && !_cvmDegrada;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null }, 200, request);
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0 }, 200, request);
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
@@ -17508,6 +17796,50 @@ async function __coreFetch(request, env2222, ctx) {
     // que voce enxerga para este emissor?". O documento estava gravado, o leitor
     // nao achava, e o painel exibia sem_eventos como se fosse ausencia de fato.
     // Somente leitura, gateado por senha de admin, nao escreve nada.
+    // SUBSTRINGDONO1, fase CNPJ (2026-08-25). A fila de revisao.
+    //
+    // E a peca que responde "como esse erro para de acontecer". Antes, documento de
+    // companhia que o sistema nao reconhecia era descartado na ingestao sem log e
+    // sem contagem: nao dava para perguntar ao sistema o que ele estava jogando
+    // fora, porque ele nao guardava. A CSN passou meses assim, e a Copasa 271
+    // documentos.
+    //
+    // Agora tudo que entra na janela fica gravado, e o que nao tem CNPJ declarado
+    // aparece aqui, com nome, contagem e data do mais recente. Renomeacao societaria
+    // e subsidiaria nova viram uma linha nesta lista, nao um card errado descoberto
+    // semanas depois. Somente leitura, gateado por senha de admin.
+    if (body.action === "admin_cvm_quarentena") {
+      if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 503, request);
+      var _qRaw = await env2222.RADAR_KV.get("cvm:documentos", "text");
+      var _qDocs = _qRaw ? JSON.parse(_qRaw) : [];
+      var _qFila = {};
+      var _qCob = { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
+      for (var _qi = 0; _qi < _qDocs.length; _qi++) {
+        var _qd = _qDocs[_qi];
+        var _qa = _atribuirDocumentoCVM(_qd.j, _qd.e);
+        _qCob[_qa.origem]++;
+        if (_qa.origem !== "quarentena" && _qa.origem !== "sem_dono") continue;
+        var _qk = _soDigito(_qd.j) || "sem_cnpj";
+        if (!_qFila[_qk]) _qFila[_qk] = { cnpj: _qd.j || null, nome: _qd.e, documentos: 0, mais_recente: "", origem: _qa.origem, sugestao_por_nome: _donoDocumentoCVM(_qd.e) };
+        _qFila[_qk].documentos++;
+        var _qde = _qd.de || _qd.d || "";
+        if (_qde > _qFila[_qk].mais_recente) _qFila[_qk].mais_recente = _qde;
+      }
+      var _qLista = Object.keys(_qFila).map(function (k) { return _qFila[k]; });
+      _qLista.sort(function (a, b) { return b.documentos - a.documentos; });
+      var _qTotal = _qCob.cnpj + _qCob.nome + _qCob.quarentena + _qCob.sem_dono;
+      return resp({
+        ok: true,
+        acervo: _qDocs.length,
+        cobertura: _qCob,
+        cobertura_pct: _qTotal > 0 ? Math.round((_qCob.cnpj + _qCob.nome) / _qTotal * 1e3) / 10 : null,
+        // `sugestao_por_nome` e so pista para quem for decidir, NAO e atribuicao.
+        // O documento continua sem dono ate o CNPJ ser declarado no worker.
+        entidades_em_quarentena: _qLista.length,
+        fila: _qLista.slice(0, 100)
+      }, 200, request);
+    }
     if (body.action === "admin_documentos_cvm") {
       if (!body.admin_senha || body.admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _adcEmp = typeof body.empresa === "string" ? body.empresa.trim() : "";

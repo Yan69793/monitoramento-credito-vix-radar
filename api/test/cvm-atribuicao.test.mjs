@@ -213,3 +213,160 @@ describe("SUBSTRINGDONO1 - atribuicao de documento CVM por emissor", () => {
     });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SUBSTRINGDONO1, fase CNPJ (2026-08-25).
+//
+// A fase anterior consertou o casamento por nome. Estes testes travam a mudanca
+// seguinte, que e o nome parar de decidir. O motivo de nao bastar consertar o nome
+// esta medido no proprio arquivo: mesmo com ancora de inicio de palavra, "AGRO
+// INDUSTRIAS DO VALE SAO FRANCISCO" e "VALE BONITO AGROPECUARIA" continuam casando
+// com o emissor Vale, porque VALE comeca palavra nas duas. Ancora nao salva quando
+// o nome do emissor e palavra comum do portugues. CNPJ salva.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CNPJ_CSN = "33.042.730/0001-04";           // CIA SIDERURGICA NACIONAL
+const CNPJ_CSN_MINERACAO = "08.902.291/0001-15"; // CSN MINERACAO S.A.
+const CNPJ_CEMIG = "17.155.730/0001-64";         // primario, CIA ENERG MINAS GERAIS
+const CNPJ_CEMIG_DIST = "06.981.180/0001-16";    // subsidiaria que protocola
+const CNPJ_VALE = "33.592.510/0001-54";          // VALE S.A.
+const CNPJ_AGRO_VALE = "13.642.699/0001-35";     // AGRO INDUSTRIAS DO VALE SAO FRANCISCO
+const CNPJ_ZERADO = "00.000.000/0000-00";        // entidade estrangeira
+
+function docCnpj(cnpj, razaoSocial, categoria = "Fato Relevante") {
+  const d = hojeBRT();
+  return { e: razaoSocial, j: cnpj, d, de: d, c: categoria, a: "assunto de teste", l: "https://exemplo.invalid/doc" };
+}
+
+async function quarentena() {
+  const r = await SELF.fetch("https://exemplo.invalid/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "admin_cvm_quarentena", admin_senha: env.ADMIN_PASSWORD })
+  });
+  expect(r.status).toBe(200);
+  const j = await r.json();
+  expect(j.ok).toBe(true);
+  return j;
+}
+
+describe("SUBSTRINGDONO1 fase CNPJ - o nome deixa de decidir", () => {
+  describe("caso ruim: o que o nome errava, o CNPJ acerta", () => {
+    it("nome que casa com Vale nao vira documento da Vale quando o CNPJ e de outra empresa", async () => {
+      // O caso que a ancora de inicio de palavra NAO pega. Sem CNPJ este documento
+      // seria da Vale, com CNPJ ele nao e de ninguem.
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+        docCnpj(CNPJ_VALE, "VALE S.A."),
+        docCnpj(CNPJ_AGRO_VALE, "AGRO INDÚSTRIAS DO VALE SÃO FRANCISCO S/A")
+      ]));
+      expect(await documentosDe("Vale")).toEqual(["VALE S.A."]);
+    });
+
+    it("CNPJ desconhecido nao e atribuido a ninguem, mesmo com nome sugestivo", async () => {
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([docCnpj(CNPJ_AGRO_VALE, "AGRO INDÚSTRIAS DO VALE SÃO FRANCISCO S/A")]));
+      for (const emissor of ["Vale", "CSN", "CEMIG", "Oi"]) {
+        expect(await documentosDe(emissor)).toEqual([]);
+      }
+    });
+
+    it("o CNPJ manda mesmo quando o nome aponta para outro emissor", async () => {
+      // Razao social propositalmente enganosa. Se o nome ainda decidisse, este
+      // documento iria para a CSN Mineracao. O CNPJ e da CSN.
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([docCnpj(CNPJ_CSN, "CSN MINERAÇÃO S.A.")]));
+      expect(await documentosDe("CSN")).toEqual(["CSN MINERAÇÃO S.A."]);
+      expect(await documentosDe("CSN Mineração")).toEqual([]);
+    });
+  });
+
+  describe("caso bom: quem tem CNPJ declarado recebe", () => {
+    it("CSN e CSN Mineracao recebem cada uma o seu, pelo CNPJ", async () => {
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+        docCnpj(CNPJ_CSN, "CIA SIDERURGICA NACIONAL"),
+        docCnpj(CNPJ_CSN_MINERACAO, "CSN MINERAÇÃO S.A.")
+      ]));
+      expect(await documentosDe("CSN")).toEqual(["CIA SIDERURGICA NACIONAL"]);
+      expect(await documentosDe("CSN Mineração")).toEqual(["CSN MINERAÇÃO S.A."]);
+    });
+
+    it("subsidiaria da familia conta para a holding", async () => {
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+        docCnpj(CNPJ_CEMIG, "CIA ENERG MINAS GERAIS - CEMIG"),
+        docCnpj(CNPJ_CEMIG_DIST, "CEMIG DISTRIBUIÇÃO S/A")
+      ]));
+      const docs = await documentosDe("CEMIG");
+      expect(docs).toContain("CIA ENERG MINAS GERAIS - CEMIG");
+      expect(docs).toContain("CEMIG DISTRIBUIÇÃO S/A");
+    });
+
+    it("a atribuicao declara por onde chegou", async () => {
+      // Sem este campo nao da para medir cobertura, e sem medir cobertura a
+      // renomeacao volta a ser invisivel ate alguem notar card errado.
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([docCnpj(CNPJ_CSN, "CIA SIDERURGICA NACIONAL")]));
+      const r = await SELF.fetch("https://exemplo.invalid/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "admin_documentos_cvm", admin_senha: env.ADMIN_PASSWORD, empresa: "CSN" })
+      });
+      const j = await r.json();
+      expect(j.documentos[0].atribuicao).toBe("cnpj");
+      expect(j.documentos[0].cnpj_cvm).toBe(CNPJ_CSN);
+    });
+  });
+
+  describe("compatibilidade: o painel nao pode esvaziar no deploy", () => {
+    it("registro antigo sem CNPJ continua atribuido pelo nome", async () => {
+      // Os registros ja gravados em cvm:documentos nao tem o campo `j`. Entre o
+      // deploy e o primeiro sync novo, eles precisam continuar valendo.
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+        { e: "CIA SIDERURGICA NACIONAL", d: hojeBRT(), de: hojeBRT(), c: "Fato Relevante", a: "sem campo j", l: "https://exemplo.invalid/doc" }
+      ]));
+      expect(await documentosDe("CSN")).toEqual(["CIA SIDERURGICA NACIONAL"]);
+    });
+
+    it("CNPJ zerado da CVM tambem cai no arbitro por nome", async () => {
+      // A CVM publica entidade estrangeira com 00.000.000/0000-00. Tratar isso como
+      // CNPJ valido mandaria o documento para quarentena para sempre.
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([docCnpj(CNPJ_ZERADO, "JBS N.V.")]));
+      expect(await documentosDe("JBS")).toEqual(["JBS N.V."]);
+    });
+  });
+
+  describe("fila de revisao: o descarte deixa de ser silencioso", () => {
+    it("CNPJ desconhecido aparece na fila, com contagem e sugestao", async () => {
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+        docCnpj(CNPJ_CSN, "CIA SIDERURGICA NACIONAL"),
+        docCnpj(CNPJ_AGRO_VALE, "AGRO INDÚSTRIAS DO VALE SÃO FRANCISCO S/A"),
+        docCnpj(CNPJ_AGRO_VALE, "AGRO INDÚSTRIAS DO VALE SÃO FRANCISCO S/A", "Comunicado ao Mercado")
+      ]));
+      const q = await quarentena();
+      expect(q.entidades_em_quarentena).toBe(1);
+      expect(q.fila[0].cnpj).toBe(CNPJ_AGRO_VALE);
+      expect(q.fila[0].documentos).toBe(2);
+      // A sugestao por nome e pista para quem decide, e nao atribuicao.
+      expect(q.fila[0].sugestao_por_nome).toBe("Vale");
+      expect(await documentosDe("Vale")).toEqual([]);
+    });
+
+    it("acervo todo declarado devolve fila vazia e cobertura cheia", async () => {
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+        docCnpj(CNPJ_CSN, "CIA SIDERURGICA NACIONAL"),
+        docCnpj(CNPJ_CEMIG_DIST, "CEMIG DISTRIBUIÇÃO S/A")
+      ]));
+      const q = await quarentena();
+      expect(q.entidades_em_quarentena).toBe(0);
+      expect(q.fila).toEqual([]);
+      expect(q.cobertura.cnpj).toBe(2);
+      expect(q.cobertura.quarentena).toBe(0);
+      expect(q.cobertura_pct).toBe(100);
+    });
+
+    it("a fila exige senha de admin", async () => {
+      const r = await SELF.fetch("https://exemplo.invalid/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "admin_cvm_quarentena" })
+      });
+      expect(r.status).toBe(403);
+    });
+  });
+});
