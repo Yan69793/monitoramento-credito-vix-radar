@@ -11,6 +11,31 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+
+## 24/08 (oitava rodada) — RESOLVIDO: card recurado e vencido ganha estado próprio (EXCECAO-FRESCOR1)
+
+> **Status:** RESOLVIDO, commits `e7d40b7` e `35bc990`. CI verde no run `32802931668` com as 5 provas novas
+> **Data da Versão:** 2026-08-24
+> **Origem do Registro:** P2 da auditoria independente de `ba8322a`, que pegou o card de Rating da Unidas mudo para a máquina
+> **Condição de Obsolescência:** perde validade se a régua de 365d para rating for revista, ou quando o bloco passar de 15 exceções e o estopim disparar
+
+Havia só dois estados. Card sem o trio caía no balde de pendência e não reprovava, card com o trio era julgado pela régua. Faltava o terceiro, "eu curei, a data é esta, e ela não passa".
+
+Sem ele, quem cura um emissor e esbarra num card vencido tem duas saídas e as duas são ruins. Deixar o card mudo, e aí ele some dentro dos herdados fingindo que ninguém mexeu, ou inventar data mais nova. A primeira foi o que eu fiz no Rating da Unidas.
+
+**Causa raiz.** O balde de pendência conflava dois significados, "nunca recurado" e "recurado e não passou". Enquanto todos os 400 eram do primeiro tipo isso não custava nada. No primeiro emissor recurado virou buraco, porque permite curar o que passa e silenciar o que não passa mantendo o agregado verde.
+
+**Correção.** `EXCECOES_FRESCOR` espelha o `EXCECOES_COBERTURA` que já existia no mesmo arquivo. O que impede a exceção de virar um segundo silêncio: exige o trio completo no card (exceção suspende veredicto, nunca datação), é chaveada por `"Emissor / label"` e não por emissor, é impressa por nome em toda rodada com o veredicto que a régua deu, é contada separada, e a linha final de OK deixa de afirmar que todo card datado está no prazo quando há exceção viva. Exceção órfã por label renomeado reprova.
+
+**Estopim.** Acima de 15 exceções a guarda avisa que o suspeito passa a ser a régua, não o card. Nasce de uma medição da auditoria: são 103 cards de Rating e só 2 datados dentro da janela. Os outros 100 estão **sem data**, que não é o mesmo que vencidos, então não dá para condenar os 365 dias ainda. Medido de fato: 1 vencido (Unidas, 419 dias) contra 2 aprovados. Se o bloco encher conforme a recuração avança, essa é a evidência para alargar a régua em vez de empilhar linha. Existe para não sonambular até 101 exceções achando que cada uma foi decisão consciente.
+
+**Achado no caminho, P3a.** O relógio da guarda usava `new Date().toISOString()`, dia civil UTC, e entre 21h e 24h BRT imprimia o dia seguinte. É a lição do RELOGIO3H1 ao contrário. Lá o defeito foi usar BRT para **instante**, aqui era UTC para **dia civil**. As duas convivem, instante é UTC cru e dia civil é BRT.
+
+**O CI reprovou a primeira tentativa, e o motivo vale registrar.** O runner do GitHub invoca `run:` como `bash -e {0}`, e `set -uo pipefail` dentro do script não desliga o `-e` herdado. `saida=$(comando); rc=$?` é atribuição simples, não condição de `if`, então sob `-e` o script aborta na hora em que o comando sai diferente de zero, antes do `rc=$?` e do `if` rodarem. As etapas antigas do arquivo escapam porque testam o comando direto na condição do `if`, que é isento. As 5 novas usavam o padrão errado e morriam mudas. Não doeu no teste local porque o script de prova roda sem `-e`. Corrigido com `set +e`/`set -e` em volta de cada captura, e reproduzido localmente com `bash -e` explícito sobre os 5 blocos extraídos do YAML antes de empurrar de novo.
+
+**Aceite.** As duas guardas em exit 0, vitest 76 testes em 12 arquivos, e as 5 provas novas `success` no run `32802931668`, cada uma imprimindo sua linha. Pendência declarada caiu de 397 para 396, e o Rating da Unidas saiu do balde para a exceção nomeada.
+
+---
 ## 24/08 (sétima rodada) — RESOLVIDO: Unidas decidida e primeira recuração de fato do Marco 2 (UNIDAS-CONTROLADORA1)
 
 > **Status:** RESOLVIDO no repo, commit `ba8322a`. Frontend NÃO deployado, a mudança em `app/index.html` só vai ao ar no próximo deploy de Pages
@@ -40,7 +65,7 @@ EBITDA = EBIT (DRE 3.05) + D&A (DFC 6.01.01.02). Status `warn` na alavancagem po
 
 **Contrato da recuração aplicado.** `DT_REFER` 2026-06-30 vira `as_of`, `DT_RECEB` 2026-08-11 vira `source_date`, `metric_type` `itr`. Pendência declarada caiu de 400 para 397 cards.
 
-**O card de Rating ficou como pendência declarada, de propósito.** A ação de rating mais recente que a decisão cita é de jul/2025, fora da janela de 365 dias que `julgarFrescor` cobra de `metric_type: "rating"`. Datar com o trio reprovaria `check-metricas-curadas.mjs`, e inventar reafirmação mais nova seria pior. O valor AA.br fica visível com a data na fonte, sem o trio, até sair ação nova. **Isto é decisão pendente do operador:** ou aparece ação de rating dentro da janela, ou a régua de 365 dias precisa de tratamento para emissor cujo rating simplesmente não é reafirmado com essa frequência.
+**O card de Rating ficou como pendência declarada, de propósito.** *(Superado em 24/08 pelo EXCECAO-FRESCOR1, ver a entrada logo acima. O card passou a ser datado e a exceção é declarada e nomeada. O texto abaixo fica como registro do que se acreditava na hora.)* A ação de rating mais recente que a decisão cita é de jul/2025, fora da janela de 365 dias que `julgarFrescor` cobra de `metric_type: "rating"`. Datar com o trio reprovaria `check-metricas-curadas.mjs`, e inventar reafirmação mais nova seria pior. O valor AA.br fica visível com a data na fonte, sem o trio, até sair ação nova. **Isto é decisão pendente do operador:** ou aparece ação de rating dentro da janela, ou a régua de 365 dias precisa de tratamento para emissor cujo rating simplesmente não é reafirmado com essa frequência.
 
 **`A_DECIDIR` ficou vazio**, mas o bloco continua existindo. É o destino de emissor novo sem decisão, e é o que permite a guarda reprovar "entrou na carteira e ninguém decidiu". Bloco vazio não é bloco desnecessário.
 
