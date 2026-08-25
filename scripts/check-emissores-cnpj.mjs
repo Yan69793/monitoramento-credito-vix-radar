@@ -31,7 +31,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { EMISSOR_CNPJ, SEM_ITR_CVM, EXERCICIO_DESLOCADO, A_DECIDIR } from "./emissores-cnpj.mjs";
+import { EMISSOR_CNPJ, SEM_ITR_CVM, EXERCICIO_DESLOCADO, A_DECIDIR, SNAPSHOT_CVM, SNAPSHOT_CVM_EM } from "./emissores-cnpj.mjs";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKER = process.env.EMISSORES_WORKER_PATH || join(RAIZ, "api", "src", "worker.js");
@@ -88,7 +88,22 @@ function main() {
     else porCnpj.set(cnpj, emp);
   }
 
-  // 5. Opcional, so com o ITR baixado: o CNPJ existe mesmo no indice da CVM?
+  // 5. Snapshot, offline. Antes desta checagem, um CNPJ bem formado mas digitado
+  // errado so era pego pela rodada agendada, que baixa o indice, e podia ficar ate
+  // uma semana no repo. Agora cai no push. O snapshot tambem e o que torna a
+  // declaracao revisavel a olho, porque poe a razao social ao lado do emissor.
+  for (const [emp, cnpj] of Object.entries(EMISSOR_CNPJ)) {
+    if (!Object.prototype.hasOwnProperty.call(SNAPSHOT_CVM, cnpj)) {
+      falhas.push({ regra: "fora_do_snapshot", emissor: emp, detalhe: cnpj + " nao esta no SNAPSHOT_CVM. Se e CNPJ novo, rode a rodada agendada para regravar o snapshot; se e digitacao errada, corrija o CNPJ" });
+    } else if (!SNAPSHOT_CVM[cnpj]) {
+      falhas.push({ regra: "snapshot_vazio", emissor: emp, detalhe: cnpj + " esta no snapshot sem razao social. Snapshot foi gravado de um indice incompleto" });
+    }
+  }
+  for (const cnpj of Object.keys(SNAPSHOT_CVM)) {
+    if (!porCnpj.has(cnpj)) falhas.push({ regra: "snapshot_orfao", emissor: SNAPSHOT_CVM[cnpj] || cnpj, detalhe: cnpj + " esta no SNAPSHOT_CVM e nenhum emissor aponta para ele" });
+  }
+
+  // 6. Opcional, so com o ITR baixado: o CNPJ existe mesmo no indice da CVM?
   let conferidosNaCvm = 0, semItrDir = true;
   if (ITR_DIR) {
     const idxPath = join(ITR_DIR, "itr_cia_aberta_2026.csv");
@@ -106,8 +121,16 @@ function main() {
     }
     if (noIndice.size < 200) { console.error("ERRO: so " + noIndice.size + " companhias no indice do ITR, download truncado."); process.exit(2); }
     for (const [emp, cnpj] of Object.entries(EMISSOR_CNPJ)) {
-      if (!noIndice.has(cnpj)) falhas.push({ regra: "cnpj_ausente_cvm", emissor: emp, detalhe: cnpj + " nao aparece no itr_cia_aberta_2026. CNPJ errado, ou a companhia deixou de protocolar e o emissor pertence a SEM_ITR_CVM" });
-      else conferidosNaCvm++;
+      if (!noIndice.has(cnpj)) { falhas.push({ regra: "cnpj_ausente_cvm", emissor: emp, detalhe: cnpj + " nao aparece no itr_cia_aberta_2026. CNPJ errado, ou a companhia deixou de protocolar e o emissor pertence a SEM_ITR_CVM" }); continue; }
+      conferidosNaCvm++;
+      // Snapshot contra o indice vivo. E aqui que renomeacao societaria aparece,
+      // e ela nao e teorica neste projeto: a Eletrobras virou AXIA em 2025 e ficou
+      // nove meses invisivel, a CCR virou Motiva e a Omega virou Serena (NOMEMORTO1).
+      const vivo = noIndice.get(cnpj);
+      const congelado = SNAPSHOT_CVM[cnpj];
+      if (congelado && vivo !== congelado) {
+        falhas.push({ regra: "snapshot_desatualizado", emissor: emp, detalhe: cnpj + " mudou de razao social na CVM. Snapshot de " + SNAPSHOT_CVM_EM + " diz " + JSON.stringify(congelado) + ", o indice vivo diz " + JSON.stringify(vivo) + ". Confirme que ainda e a companhia certa e regrave o snapshot" });
+      }
     }
   }
 
@@ -129,7 +152,8 @@ function main() {
   console.log("  sem ITR na CVM:          " + resumo.sem_itr + "  (" + Object.keys(SEM_ITR_CVM).join(", ") + ")");
   console.log("  a decidir:               " + resumo.a_decidir + (resumo.a_decidir ? "  (" + Object.keys(A_DECIDIR).join(", ") + ")" : ""));
   console.log("  exercicio deslocado:     " + resumo.exercicio_deslocado + (resumo.exercicio_deslocado ? "  (" + Object.keys(EXERCICIO_DESLOCADO).join(", ") + ")" : ""));
-  console.log("  conferidos no indice CVM: " + (semItrDir ? "nao conferido, rode com ITR_DIR para checar CNPJ digitado errado" : conferidosNaCvm + "/" + resumo.com_cnpj));
+  console.log("  snapshot da CVM:         " + Object.keys(SNAPSHOT_CVM).length + " razoes sociais congeladas em " + SNAPSHOT_CVM_EM);
+  console.log("  conferidos no indice CVM: " + (semItrDir ? "nao conferido offline. O snapshot ja pega digitacao errada; rode com ITR_DIR para pegar renomeacao societaria" : conferidosNaCvm + "/" + resumo.com_cnpj + ", razao social conferida contra o indice vivo"));
 
   if (resumo.a_decidir) {
     console.log("\nFora da recuracao ate alguem decidir:");

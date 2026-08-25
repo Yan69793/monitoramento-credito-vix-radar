@@ -169,6 +169,28 @@ jobs:
           fi
           echo "OK: guarda reprovou o emissor nao declarado, como deve."
 
+      # CURADORIA2, ponta negativa 2: CNPJ bem formado mas digitado errado. Roda
+      # OFFLINE de proposito, e essa e a graca: antes do SNAPSHOT_CVM so a rodada
+      # agendada baixava o indice, entao uma tipografia podia ficar ate uma semana
+      # no repo sem ninguem ver. A troca abaixo inverte dois digitos do CNPJ da
+      # Sabesp, que e o formato de erro mais provavel de quem digita a mao.
+      - name: Guarda tem que reprovar CNPJ digitado errado, sem rede
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda/cnpj
+          cp scripts/check-emissores-cnpj.mjs /tmp/guarda/cnpj/
+          perl -0pe 's{"Sabesp": "43\.776\.517/0001-80"}{"Sabesp": "43.776.157/0001-80"}' \
+            scripts/emissores-cnpj.mjs > /tmp/guarda/cnpj/emissores-cnpj.mjs
+          if ! grep -q '43\.776\.157/0001-80' /tmp/guarda/cnpj/emissores-cnpj.mjs; then
+            echo "::error::A injecao do teste nao entrou no arquivo. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH="$GITHUB_WORKSPACE/api/src/worker.js" node /tmp/guarda/cnpj/check-emissores-cnpj.mjs; then
+            echo "::error::A guarda APROVOU CNPJ digitado errado sem tocar na rede. O SNAPSHOT_CVM nao esta valendo."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o CNPJ trocado offline, como deve."
+
       # Confere os 98 CNPJs declarados contra o indice real do ITR, que e a unica
       # checagem que pega CNPJ digitado errado. Baixa 19 MB, entao so no agendado e no
       # disparo manual, nao a cada push. O ramo DOC/ITR esta vivo, quem esta em 404

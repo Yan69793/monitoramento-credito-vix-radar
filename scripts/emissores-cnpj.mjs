@@ -183,3 +183,126 @@ export const EXERCICIO_DESLOCADO = {
 export const A_DECIDIR = {
   "Unidas": "Duas companhias ativas com ITR do 2T26, UNIDAS LOCADORA S.A. (45.736.131/0001-70) e UNIDAS LOCACOES E SERVICOS S.A. (75.609.123/0001-23). Depois da compra pela Localiza em 2022 a estrutura mudou e nao da para dizer pelo nome qual carrega a debenture acompanhada. Precisa de decisao do operador."
 };
+
+// Razao social que a CVM tinha para cada CNPJ declarado acima, congelada em
+// 2026-08-24 a partir do itr_cia_aberta_2026 (Last-Modified 2026-08-23).
+//
+// Serve a dois propositos, os dois vindos de vigilancia registrada na revisao do
+// commit 3f17943.
+//
+// 1. Erro de digitacao passa a ser pego no push, offline. Antes so a rodada
+//    agendada baixava o indice da CVM, entao um CNPJ bem formado mas trocado
+//    ficava ate uma semana sem ser notado. Agora a guarda confere o declarado
+//    contra este bloco sem tocar na rede, e a rodada agendada confere este bloco
+//    contra o indice vivo. Uma ponta pega tipografia, a outra pega renomeacao.
+//
+// 2. A declaracao fica revisavel a olho. A guarda valida estrutura, nao semantica:
+//    CNPJ real de outra empresa passa em toda checagem automatica, e nao da para
+//    automatizar esse julgamento sem voltar ao casamento por nome que falhou. O que
+//    da para fazer e deixar o erro visivel. "Sabesp" ao lado de "CIA SANEAMENTO
+//    BASICO EST SAO PAULO" se le sozinho, e se um dia virar "COPASA MG" salta aos
+//    olhos de quem passar o olho no diff, que e a unica defesa real dessa classe.
+export const SNAPSHOT_CVM = {
+  "03.220.438/0001-73": "EQUATORIAL S.A.",  // Equatorial Energia
+  "17.155.730/0001-64": "CIA ENERGETICA DE MINAS GERAIS - CEMIG",  // CEMIG
+  "00.001.180/0001-26": "AXIA ENERGIA S.A.",  // Eletrobras
+  "04.423.567/0001-21": "ENEVA S.A",  // Eneva
+  "02.474.103/0001-19": "ENGIE BRASIL ENERGIA S.A.",  // Engie Brasil Energia
+  "00.864.214/0001-06": "ENERGISA S.A.",  // Energisa
+  "76.483.817/0001-20": "CIA PARANAENSE DE ENERGIA - COPEL",  // Copel
+  "02.998.611/0001-04": "ISA ENERGIA BRASIL",  // ISA Energia
+  "01.083.200/0001-18": "NEOENERGIA S.A.",  // Neoenergia
+  "07.859.971/0001-30": "TRANSMISSORA ALIANÇA DE ENERGIA ELÉTRICA S.A.",  // Taesa
+  "28.594.234/0001-23": "AUREN ENERGIA S.A.",  // Auren Energia
+  "02.429.144/0001-93": "CPFL ENERGIA S.A.",  // CPFL Energia
+  "42.500.384/0001-51": "SERENA ENERGIA S.A.",  // Omega Energia
+  "25.369.840/0001-57": "COMERC ENERGIA S.A.",  // Comerc Energia
+  "03.378.521/0001-75": "LIGHT S.A. - EM RECUPERAÇÃO JUDICIAL",  // Light
+  "02.846.056/0001-97": "MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A.",  // CCR
+  "02.387.241/0001-60": "RUMO S.A.",  // Rumo
+  "07.415.333/0001-20": "SIMPAR S.A.",  // Simpar
+  "01.417.222/0001-77": "MRS LOGISTICA S.A.",  // MRS Logística
+  "02.762.121/0001-04": "SANTOS BRASIL PARTICIPACOES S.A.",  // Santos Brasil
+  "02.919.555/0001-67": "ARTERIS S.A.",  // Arteris
+  "09.305.994/0001-29": "AZUL S.A.",  // Azul
+  "04.149.454/0001-80": "ECORODOVIAS INFRAESTRUTURA E LOGÍSTICA S.A.",  // EcoRodovias
+  "12.648.327/0001-53": "HIDROVIAS DO BRASIL S.A.",  // Hidrovias do Brasil
+  "52.548.435/0001-79": "JSL S.A.",  // JSL
+  "07.689.002/0001-89": "EMBRAER S.A.",  // Embraer
+  "42.276.907/0001-28": "VLI MULTIMODAL S.A",  // VLI
+  "02.351.144/0001-18": "TEGMA GESTAO LOGISTICA S.A.",  // Tegma
+  "23.373.000/0001-32": "VAMOS LOCAÇÃO DE CAMINHÕES, MÁQUINAS E EQUIPAMENTOS S.A.",  // Vamos
+  "43.776.517/0001-80": "CIA SANEAMENTO BASICO EST SAO PAULO",  // Sabesp
+  "08.827.501/0001-58": "AEGEA SANEAMENTO E PARTICIPAÇÕES S.A.",  // Aegea Saneamento
+  "08.159.965/0001-33": "IGUA SANEAMENTO S.A.",  // Iguá Saneamento
+  "17.281.106/0001-03": "CIA SANEAMENTO DE MINAS GERAIS-COPASA MG",  // Copasa
+  "76.484.013/0001-45": "CIA SANEAMENTO DO PARANA - SANEPAR",  // Sanepar
+  "24.396.489/0001-20": "BRK AMBIENTAL PARTICIPAÇÕES S.A.",  // BRK Ambiental
+  "33.000.167/0001-01": "PETROLEO BRASILEIRO S.A. PETROBRAS",  // Petrobras
+  "33.453.598/0001-23": "RAÍZEN S.A.",  // Raízen
+  "10.629.105/0001-68": "PRIO S.A.",  // PRIO
+  "34.274.233/0001-02": "VIBRA ENERGIA S/A",  // Vibra Energia
+  "50.746.577/0001-15": "COSAN S.A.",  // Cosan
+  "12.091.809/0001-55": "BRAVA ENERGIA S.A.",  // Brava Energia
+  "21.389.501/0001-81": "COMPASS GÁS E ENERGIA S.A.",  // Compass Gás e Energia
+  "42.150.391/0001-70": "BRASKEM S.A.",  // Braskem
+  "33.592.510/0001-54": "VALE S.A.",  // Vale
+  "33.611.500/0001-19": "GERDAU S.A.",  // Gerdau
+  "33.042.730/0001-04": "CIA SIDERURGICA NACIONAL",  // CSN
+  "60.894.730/0001-05": "USINAS SID DE MINAS GERAIS S.A.-USIMINAS",  // Usiminas
+  "61.409.892/0001-73": "COMPANHIA BRASILEIRA DE ALUMÍNIO",  // CBA
+  "08.902.291/0001-15": "CSN MINERAÇÃO S.A.",  // CSN Mineração
+  "84.683.374/0001-49": "TUPY S.A.",  // Tupy
+  "61.532.644/0001-15": "ITAÚSA S.A.",  // Itaúsa
+  "60.872.504/0001-23": "ITAU UNIBANCO HOLDING S.A.",  // Itaú Unibanco
+  "30.306.294/0001-45": "BCO BTG PACTUAL S.A.",  // BTG Pactual
+  "62.232.889/0001-90": "BCO DAYCOVAL S.A.",  // Banco Daycoval
+  "01.027.058/0001-91": "CIELO S.A. -  INSTITUIÇÃO DE PAGAMENTO",  // Cielo
+  "09.346.601/0001-25": "B3 S.A. - BRASIL, BOLSA, BALCÃO",  // B3 S.A.
+  "60.746.948/0001-12": "BCO BRADESCO S.A.",  // Bradesco
+  "16.670.085/0001-55": "LOCALIZA RENT A CAR S.A.",  // Localiza
+  "21.314.559/0001-66": "MOVIDA PARTICIPACOES SA",  // Movida
+  "89.637.490/0001-45": "KLABIN S.A.",  // Klabin
+  "16.404.287/0001-55": "SUZANO S.A.",  // Suzano
+  "92.791.243/0001-03": "IRANI PAPEL E EMBALAGEM S.A.",  // Irani
+  "02.916.265/0001-60": "JBS S.A.",  // JBS
+  "01.838.723/0001-27": "BRF S.A.",  // BRF
+  "03.853.896/0001-40": "MARFRIG GLOBAL FOODS S.A.",  // Marfrig
+  "67.620.377/0001-14": "MINERVA S.A.",  // Minerva Foods
+  "51.466.860/0001-56": "SAO MARTINHO S.A.",  // São Martinho
+  "89.096.457/0001-55": "SLC AGRICOLA S.A.",  // SLC Agrícola
+  "10.807.374/0001-77": "BOA SAFRA SEMENTES S.A.",  // Boa Safra Sementes
+  "40.337.136/0001-06": "TERRA SANTA PROPRIEDADES AGRÍCOLAS S.A.",  // Terra Santa Agro
+  "64.904.295/0001-03": "CAMIL ALIMENTOS S.A.",  // Camil Alimentos
+  "06.047.087/0001-39": "REDE D'OR SÃO LUIZ S.A.",  // Rede D'Or
+  "05.197.443/0001-38": "HAPVIDA PARTICIPAÇÕES E INVESTIMENTOS S.A.",  // Hapvida
+  "60.840.055/0001-31": "FLEURY S.A.",  // Fleury
+  "12.104.241/0004-02": "ONCOCLÍNICAS DO BRASIL SERVIÇOS MÉDICOS S.A.",  // Oncoclínicas
+  "61.486.650/0001-83": "DIAGNOSTICOS DA AMERICA S.A.",  // Dasa
+  "13.270.520/0001-66": "KORA SAÚDE PARTICIPAÇÕES S.A.",  // Kora Saúde
+  "02.421.421/0001-11": "TIM S.A.",  // TIM Brasil
+  "53.113.791/0001-22": "TOTVS S.A.",  // Totvs
+  "02.558.157/0001-62": "TELEFÔNICA BRASIL S.A",  // Vivo (Telefônica Brasil)
+  "04.601.397/0001-28": "BRISANET SERVIÇOS DE TELECOMUNICAÇÕES S.A.",  // Brisanet
+  "71.208.516/0001-74": "ALGAR TELECOM S/A",  // Algar Telecom
+  "08.343.492/0001-20": "MRV ENGENHARIA E PARTICIPACOES S.A.",  // MRV Engenharia
+  "73.178.600/0001-18": "CYRELA BRAZIL REALTY S.A.EMPREEND E PART",  // Cyrela
+  "16.614.075/0001-00": "DIRECIONAL ENGENHARIA S.A.",  // Direcional Engenharia
+  "08.797.760/0001-83": "CURY CONSTRUTORA E INCORPORADORA S.A.",  // Cury Construtora
+  "43.470.988/0001-65": "EVEN CONSTRUTORA E INCORPORADORA S.A.",  // Even Construtora
+  "08.811.643/0001-27": "TRISUL S.A.",  // Trisul
+  "60.543.816/0001-93": "IGUATEMI S.A.",  // Iguatemi
+  "07.816.890/0001-53": "MULTIPLAN - EMPREEND IMOBILIARIOS S.A.",  // Multiplan
+  "09.041.168/0001-10": "LOG COMMERCIAL PROPERTIES E PARTICIPAÇÕES",  // Log Commercial Properties
+  "06.057.223/0001-71": "SENDAS DISTRIBUIDORA S.A.",  // Assaí Atacadista
+  "47.508.411/0001-56": "CIA BRASILEIRA DE DISTRIBUICAO",  // Pão de Açúcar (GPA)
+  "02.800.026/0001-40": "COGNA EDUCAÇÃO S.A.",  // Cogna Educação
+  "24.990.777/0001-09": "GRUPO MATEUS S.A.",  // Grupo Mateus
+  "02.351.877/0001-52": "LWSA S/A",  // LWSA
+  "71.673.990/0001-77": "NATURA COSMÉTICOS S.A.",  // Natura &Co
+  "33.256.439/0001-39": "ULTRAPAR PARTICIPACOES S.A.",  // Ultrapar
+};
+
+// Quando o snapshot foi tirado. A guarda usa para dizer ha quanto tempo ele nao e
+// confrontado com a CVM.
+export const SNAPSHOT_CVM_EM = "2026-08-24";
