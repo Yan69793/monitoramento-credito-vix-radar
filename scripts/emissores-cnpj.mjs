@@ -107,6 +107,22 @@ export const EMISSOR_CNPJ = {
   // --- Locacao de Veiculos e Mobilidade ---
   "Localiza": "16.670.085/0001-55",           // LOCALIZA RENT A CAR, nao Localiza Fleet
   "Movida": "21.314.559/0001-66",
+  // Unidas saiu do A_DECIDIR em 24/08/2026, decisao do operador. As duas candidatas
+  // protocolam ITR do 2T26 e o nome nao separa, entao a decisao foi por QUEM EMITE a
+  // divida que o radar acompanha, que e a regra ja aplicada nesta tabela.
+  //   UNIDAS LOCACOES E SERVICOS (75.609.123) e a controladora e a registrante CVM
+  //   53214. E dela as series publicas 12a a 23a de debentures, com preco ANBIMA,
+  //   ISIN BROVSADBS*, codigo B3 OVSAA2, rating AA.br da Moody's Local e AA(bra) da
+  //   Fitch. Confirmado no proprio ITR: debentures somam R$ 9,56 bi dos R$ 13,06 bi
+  //   de divida bruta consolidada em 2026-06-30.
+  //   UNIDAS LOCADORA (45.736.131) virou subsidiaria integral da controladora no
+  //   3T23 e so emitiu as series 1a a 3a, privadas e atreladas a CRI. Nao e o papel
+  //   que o radar precifica.
+  // Fontes da decisao: Moody's Local (jun/24 e jul/25), XP Research Unidas 4T25,
+  // financialreports.eu. Cuidado ao revisar: o card antigo dizia "Incorporada
+  // Localiza", casamento por nome que ignorava a saida do grupo Localiza pelo
+  // Cade/Brookfield em 2022-23. Nao voltar a casar Unidas com Localiza.
+  "Unidas": "75.609.123/0001-23",             // UNIDAS LOCACOES E SERVICOS, a controladora, nao a Unidas Locadora
 
   // --- Papel e Celulose ---
   "Klabin": "89.637.490/0001-45",
@@ -180,9 +196,11 @@ export const EXERCICIO_DESLOCADO = {
 // Emissor onde a companhia certa ainda nao foi decidida. Fica FORA da recuracao ate
 // alguem decidir, de proposito: chute com carimbo da CVM e pior que dado velho
 // honesto. Esvaziar este bloco e trabalho aberto do Marco 2.
-export const A_DECIDIR = {
-  "Unidas": "Duas companhias ativas com ITR do 2T26, UNIDAS LOCADORA S.A. (45.736.131/0001-70) e UNIDAS LOCACOES E SERVICOS S.A. (75.609.123/0001-23). Depois da compra pela Localiza em 2022 a estrutura mudou e nao da para dizer pelo nome qual carrega a debenture acompanhada. Precisa de decisao do operador."
-};
+// Vazio desde 24/08/2026, quando a Unidas foi decidida e migrou para EMISSOR_CNPJ.
+// Manter o bloco existindo mesmo vazio: e aqui que emissor novo sem decisao cai, e a
+// guarda so consegue reprovar "entrou na carteira e ninguem decidiu" porque os tres
+// blocos sao um destino declarado. Bloco vazio nao e bloco desnecessario.
+export const A_DECIDIR = {};
 
 // Razao social que a CVM tinha para cada CNPJ declarado acima, congelada em
 // 2026-08-24 a partir do itr_cia_aberta_2026 (Last-Modified 2026-08-23).
@@ -262,6 +280,7 @@ export const SNAPSHOT_CVM = {
   "60.746.948/0001-12": "BCO BRADESCO S.A.",  // Bradesco
   "16.670.085/0001-55": "LOCALIZA RENT A CAR S.A.",  // Localiza
   "21.314.559/0001-66": "MOVIDA PARTICIPACOES SA",  // Movida
+  "75.609.123/0001-23": "UNIDAS LOCAÇÕES E SERVIÇOS S.A.",  // Unidas
   "89.637.490/0001-45": "KLABIN S.A.",  // Klabin
   "16.404.287/0001-55": "SUZANO S.A.",  // Suzano
   "92.791.243/0001-03": "IRANI PAPEL E EMBALAGEM S.A.",  // Irani
