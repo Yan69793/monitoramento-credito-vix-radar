@@ -45,12 +45,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
-const WORKER = process.env.EMISSORES_WORKER_PATH || join(RAIZ, "api", "src", "worker.js");
+export const WORKER = process.env.EMISSORES_WORKER_PATH || join(RAIZ, "api", "src", "worker.js");
 // NAO em data/cvm/, que esta no .gitignore de proposito para cache de CSV grande e
 // regeneravel da CVM. Estes dois artefatos sao o oposto: pequenos, curados, e existem
 // exatamente para NAO mudar com o que a CVM estiver servindo no dia. Base ignorada
 // nao serve de referencia para guarda remedir.
-const DIR_SNAP = join(RAIZ, "data", "cvm-referencia");
+export const DIR_SNAP = join(RAIZ, "data", "cvm-referencia");
 const JSON_OUT = process.argv.includes("--json");
 const iSnap = process.argv.indexOf("--snapshot");
 const CSV_ENTRADA = iSnap >= 0 ? process.argv[iSnap + 1] : null;
@@ -62,10 +62,10 @@ const DIAS_JANELA = 35;
 function semAcentoUp(s) {
   return String(s || "").toUpperCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
-function soDigito(s) {
+export function soDigito(s) {
   return String(s || "").replace(/\D/g, "");
 }
-function formatarCnpj(d) {
+export function formatarCnpj(d) {
   const x = soDigito(d).padStart(14, "0");
   return x.slice(0, 2) + "." + x.slice(2, 5) + "." + x.slice(5, 8) + "/" + x.slice(8, 12) + "-" + x.slice(12);
 }
@@ -100,7 +100,7 @@ function lerMapaLista(src, nome) {
   }
   return out;
 }
-function montarArbitroPorNome(src) {
+export function montarArbitroPorNome(src) {
   const emissores = lerLista(src, "EMISSORES_LISTA");
   const aliasToEmp = lerMapa(src, "SYNC_ALIAS_TO_EMPRESA");
   const leitor = lerMapaLista(src, "ALIASES_LEITOR_CVM");
@@ -255,7 +255,7 @@ function gravarSnapshot(csvPath) {
   return { destino, payload, destinoEnt, payloadEnt };
 }
 
-function lerEntidades() {
+export function lerEntidades() {
   if (!existsSync(DIR_SNAP)) return null;
   const arquivos = readdirSync(DIR_SNAP).filter((f) => /^ipe_entidades_.*\.json\.gz$/.test(f)).sort();
   if (!arquivos.length) return null;

@@ -179,13 +179,13 @@
     "motivo": "PRED3: zero ocorrencias de 'NEXA' no cadastro CVM. Nexa Resources e listada na TSX/NYSE (emissora estrangeira). Subsidiaria brasileira Nexa Recursos Minerais S.A. (CNPJ 42.416.651/0001-07) encontrada via cbonds/LEI. CONFIRMAR se esta entidade carrega a divida antes de usar em reconciliacao - pode ser apenas subsidiaria operacional."
   },
   "Omega Energia": {
-    "cnpj": "09.149.503/0001-06",
-    "denom": "OMEGA GERAÇÃO S.A.",
-    "motivo": "PRED3: zero ocorrencias de 'OMEGA' no cadastro CVM. Holding renomeada para Serena Energia S.A. (ticker OMGE3 → SRNA3?). CNPJ 09.149.503/0001-06 e da subsidiaria de geracao (Omega Geracao S.A., depois Serena Geracao S.A.), obtido via CVM/RAD (protocolo 906571). CONFIRMAR se a holding Serena Energia tem CNPJ diferente antes de usar em reconciliacao."
+    "cnpj": "42.500.384/0001-51",
+    "denom": "SERENA ENERGIA S.A.",
+    "motivo": "SUBSTRINGDONO1 fase CNPJ (2026-08-25): resolve a incerteza aberta em 2026-07-16 (\"CONFIRMAR se a holding Serena Energia tem CNPJ diferente\"). Confirmado, tem, 42.500.384/0001-51, e e a holding consolidada listada, decisao do operador. O CNPJ anterior aqui, 09.149.503/0001-06 (SERENA GERACAO S.A., antes OMEGA GERACAO), e a subsidiaria operacional, quem mais protocola no IPE (47 docs contra 19 em 2026) mas nao quem carrega a divida consolidada. Segue como CNPJ_FAMILIA_CVM no worker.js, contando para o emissor na atribuicao de documento, so nao e mais o primario do ITR/Altman."
   },
-  "AES Brasil": {
-    "cnpj": "37.663.076/0001-07",
-    "denom": "AES BRASIL ENERGIA S.A.",
-    "motivo": "PRED3: AES Brasil fundiu-se com Auren Energia em 2024. CNPJ 37.663.076/0001-07 obtido via CVM/RAD (protocolo 921055, Fato Relevante 30/11/2021 sobre incorporacao da AES Tiete). ATENCAO: 'Auren Energia' ja e emissor separado no Radar (CNPJ 28.594.234/0001-23). Nao mapear AES Brasil para o mesmo CNPJ da Auren - criaria colisao 1:1 no join do reconciliador. Se a fusao ja foi concluida e AES Brasil nao existe mais como entidade independente, considerar remover 'AES Brasil' como emissor distinto do Radar."
+  "TIM Brasil": {
+    "cnpj": "02.421.421/0001-11",
+    "denom": "TIM S.A.",
+    "motivo": "SUBSTRINGDONO1 fase CNPJ (2026-08-25): sem override, a heuristica de ativo total escolhia TIM BRASIL SERVICOS E PARTICIPACOES S.A. (02.600.854/0001-34), a holding de participacao, e nao TIM S.A. (a listada, TIMS3), que e quem o mercado quer dizer com \"TIM Brasil\" e quem mais protocola no IPE (64 docs contra 16 em 2026). Decisao do operador confirma TIM S.A. como primario. TIM BRASIL SERVICOS segue como CNPJ_FAMILIA_CVM no worker.js."
   }
 }

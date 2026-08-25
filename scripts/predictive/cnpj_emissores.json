@@ -30,8 +30,8 @@
     "match": "forte - desempate por ativo"
   },
   "Omega Energia": {
-    "cnpj": "09.149.503/0001-06",
-    "denom": "OMEGA GERAÇÃO S.A.",
+    "cnpj": "42.500.384/0001-51",
+    "denom": "SERENA ENERGIA S.A.",
     "match": "manual-cvm"
   },
   "Minerva Foods": {
@@ -40,9 +40,9 @@
     "match": "manual-cvm"
   },
   "TIM Brasil": {
-    "cnpj": "02.600.854/0001-34",
-    "denom": "TIM BRASIL SERVIÇOS E PARTICIPAÇÕES S.A.",
-    "match": "forte - desempate por ativo"
+    "cnpj": "02.421.421/0001-11",
+    "denom": "TIM S.A.",
+    "match": "manual-cvm"
   },
   "Vale": {
     "cnpj": "33.592.510/0001-54",
@@ -209,9 +209,9 @@
     "denom": "CYRELA BRAZIL REALTY S.A.EMPREEND E PART",
     "match": "forte"
   },
-  "AES Brasil": {
-    "cnpj": "37.663.076/0001-07",
-    "denom": "AES BRASIL ENERGIA S.A.",
+  "Braskem": {
+    "cnpj": "42.150.391/0001-70",
+    "denom": "BRASKEM S.A.",
     "match": "manual-cvm"
   },
   "Oi": {

@@ -33,10 +33,50 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { EMISSOR_CNPJ, SEM_ITR_CVM, EXERCICIO_DESLOCADO, A_DECIDIR, SNAPSHOT_CVM, SNAPSHOT_CVM_EM } from "./emissores-cnpj.mjs";
 
+// SUBSTRINGDONO1, fase CNPJ (2026-08-25). Existem agora QUATRO copias de dado
+// relacionado: este arquivo (canonico, ITR/Altman), scripts/predictive/
+// cnpj_emissores.json (o mesmo uso, gerado por atualizar_altman_cvm.ps1),
+// CNPJ_PRIMARIO_EMISSOR no worker.js (espelho deste arquivo, porque o Worker roda
+// no Cloudflare e nao importa codigo local) e CNPJ_FAMILIA_CVM no worker.js (holding
+// mais subsidiarias, usado na atribuicao de IPE).
+//
+// O projeto ja foi mordido exatamente por isto, tres tabelas de alias que
+// precisavam concordar e nao concordavam (NOMEMORTO1, 2026-08-24). Sem uma guarda
+// comparando as quatro, a camada CNPJ recria o mesmo problema que veio resolver, so
+// que em dado mais dificil de conferir a olho: divergencia de nome se ve lendo o
+// card, divergencia de CNPJ so aparece quando alguem confere numero contra numero.
+
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKER = process.env.EMISSORES_WORKER_PATH || join(RAIZ, "api", "src", "worker.js");
+const PREDICTIVE = process.env.CNPJ_PREDICTIVE_PATH || join(RAIZ, "scripts", "predictive", "cnpj_emissores.json");
 const ITR_DIR = process.env.ITR_DIR || "";
 const JSON_OUT = process.argv.includes("--json");
+
+function soDigito(s) {
+  return String(s || "").replace(/\D/g, "");
+}
+
+// CNPJ_PRIMARIO_EMISSOR no worker.js e declarado invertido em relacao a
+// EMISSOR_CNPJ, chave e o CNPJ e valor e o nome do emissor, porque e assim que
+// _atribuirDocumentoCVM consulta (recebe CNPJ, quer o emissor). A guarda devolve
+// no formato emissor -> CNPJ, espelhando EMISSOR_CNPJ, para a comparacao ficar
+// simetrica.
+function extrairMapaWorker(src, nome) {
+  const m = src.match(new RegExp("var " + nome + "\\s*=\\s*\\{([\\s\\S]*?)\\n\\};"));
+  if (!m) throw new Error(nome + " nao encontrada em " + WORKER);
+  const out = {};
+  for (const p of m[1].matchAll(/"([^"]+)"\s*:\s*"([^"]+)"/g)) out[desescapar(p[2])] = desescapar(p[1]);
+  return out;
+}
+// CNPJ_FAMILIA_CVM e uma IIFE, nao um literal. O que a guarda precisa e o bloco
+// `_subs` interno, que e a parte curada a mao (o resto vem de CNPJ_PRIMARIO_EMISSOR).
+function extrairFamiliaWorker(src) {
+  const m = src.match(/var _subs\s*=\s*\{([\s\S]*?)\n {2}\};/);
+  if (!m) throw new Error("_subs (bloco interno de CNPJ_FAMILIA_CVM) nao encontrado em " + WORKER);
+  const out = {};
+  for (const p of m[1].matchAll(/"([^"]+)"\s*:\s*"([^"]+)"/g)) out[desescapar(p[1])] = desescapar(p[2]);
+  return out;
+}
 
 const desescapar = (s) => String(s)
   .replace(/\\x([0-9a-fA-F]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
@@ -134,6 +174,54 @@ function main() {
     }
   }
 
+  // 7. Reconciliacao das quatro fontes. Requisito, nao item de lista: sem isto a
+  // camada CNPJ recria o NOMEMORTO1 em dado que ninguem confere a olho.
+  let primarioWorker = {}, familiaWorker = {}, predictiva = {};
+  const workerSrc = readFileSync(WORKER, "utf8");
+  try { primarioWorker = extrairMapaWorker(workerSrc, "CNPJ_PRIMARIO_EMISSOR"); }
+  catch (e) { falhas.push({ regra: "worker_sem_primario", emissor: "(estrutural)", detalhe: e.message }); }
+  try { familiaWorker = extrairFamiliaWorker(workerSrc); }
+  catch (e) { falhas.push({ regra: "worker_sem_familia", emissor: "(estrutural)", detalhe: e.message }); }
+  try { predictiva = JSON.parse(readFileSync(PREDICTIVE, "utf8")); }
+  catch (e) { falhas.push({ regra: "predictiva_ilegivel", emissor: "(estrutural)", detalhe: PREDICTIVE + ": " + e.message }); }
+
+  // 7a. CNPJ_PRIMARIO_EMISSOR no worker.js tem que ser espelho fiel de EMISSOR_CNPJ.
+  // Se divergirem, a guarda daqui aprova e o Worker em producao reprova, ou vice-versa.
+  if (Object.keys(primarioWorker).length) {
+    for (const emp of new Set([...Object.keys(EMISSOR_CNPJ), ...Object.keys(primarioWorker)])) {
+      const a = soDigito(EMISSOR_CNPJ[emp]), b = soDigito(primarioWorker[emp]);
+      if (a === b) continue;
+      falhas.push({ regra: "primario_worker_diverge", emissor: emp, detalhe: "canonico=" + (EMISSOR_CNPJ[emp] || "ausente") + " worker.js=" + (primarioWorker[emp] || "ausente") + ". CNPJ_PRIMARIO_EMISSOR precisa ser copia fiel de EMISSOR_CNPJ" });
+    }
+  }
+
+  // 7b. Familia nao pode conter um CNPJ que ja e primario de OUTRO emissor. Se
+  // vazasse, o card de balanco de um emissor passaria a ler o ITR do outro.
+  const primariosDig = new Map();
+  for (const [emp, cnpj] of Object.entries(EMISSOR_CNPJ)) primariosDig.set(soDigito(cnpj), emp);
+  for (const [cnpj, emp] of Object.entries(familiaWorker)) {
+    const donoPrimario = primariosDig.get(soDigito(cnpj));
+    if (donoPrimario && donoPrimario !== emp) {
+      falhas.push({ regra: "familia_vaza_primario", emissor: emp, detalhe: cnpj + " esta em CNPJ_FAMILIA_CVM apontando para " + emp + ", mas e o CNPJ PRIMARIO de " + donoPrimario + ". Um emissor nao pode aparecer na familia de outro" });
+    }
+  }
+
+  // 7c. Predictiva contra canonico. SEM_ITR_CVM e excecao tolerada de proposito: o
+  // canonico nao declara primario para quem nao protocola ITR, mas a predictiva
+  // (uso de Altman/reconciliador) pode ter CNPJ de IPE mesmo assim.
+  if (Object.keys(predictiva).length) {
+    for (const emp of emissores) {
+      const a = EMISSOR_CNPJ[emp] ? soDigito(EMISSOR_CNPJ[emp]) : null;
+      const b = predictiva[emp] ? soDigito(predictiva[emp].cnpj) : null;
+      if (a === b) continue;
+      if (a === null && SEM_ITR_CVM[emp]) continue; // tolerado, ver 7c acima
+      falhas.push({ regra: "predictiva_diverge", emissor: emp, detalhe: "canonico=" + (EMISSOR_CNPJ[emp] || "ausente, SEM_ITR_CVM") + " predictiva=" + (predictiva[emp] ? predictiva[emp].cnpj + " (" + predictiva[emp].denom + ")" : "ausente") + ". Resolver em scripts/predictive/cnpj_emissores.overrides.json e regenerar" });
+    }
+    for (const emp of Object.keys(predictiva)) {
+      if (!emissores.includes(emp)) falhas.push({ regra: "predictiva_orfa", emissor: emp, detalhe: "declarado na predictiva mas nao esta mais na carteira" });
+    }
+  }
+
   const resumo = {
     ok: falhas.length === 0,
     carteira: emissores.length,
@@ -142,6 +230,11 @@ function main() {
     a_decidir: Object.keys(A_DECIDIR).length,
     exercicio_deslocado: Object.keys(EXERCICIO_DESLOCADO).length,
     conferidos_no_indice_cvm: semItrDir ? null : conferidosNaCvm,
+    reconciliacao: {
+      primario_worker: Object.keys(primarioWorker).length,
+      familia_worker: Object.keys(familiaWorker).length,
+      predictiva: Object.keys(predictiva).length
+    },
     falhas
   };
 
@@ -154,6 +247,7 @@ function main() {
   console.log("  exercicio deslocado:     " + resumo.exercicio_deslocado + (resumo.exercicio_deslocado ? "  (" + Object.keys(EXERCICIO_DESLOCADO).join(", ") + ")" : ""));
   console.log("  snapshot da CVM:         " + Object.keys(SNAPSHOT_CVM).length + " razoes sociais congeladas em " + SNAPSHOT_CVM_EM);
   console.log("  conferidos no indice CVM: " + (semItrDir ? "nao conferido offline. O snapshot ja pega digitacao errada; rode com ITR_DIR para pegar renomeacao societaria" : conferidosNaCvm + "/" + resumo.com_cnpj + ", razao social conferida contra o indice vivo"));
+  console.log("  reconciliacao (SUBSTRINGDONO1): worker.js primario=" + resumo.reconciliacao.primario_worker + " familia=" + resumo.reconciliacao.familia_worker + " | predictiva=" + resumo.reconciliacao.predictiva + " entradas");
 
   if (resumo.a_decidir) {
     console.log("\nFora da recuracao ate alguem decidir:");
@@ -163,7 +257,9 @@ function main() {
   if (!falhas.length) { console.log("\nOK: toda a carteira esta declarada, sem orfa, sem CNPJ repetido."); process.exit(0); }
 
   console.error("\nREPROVADO: " + falhas.length + " problema(s).");
-  for (const r of ["nao_declarado", "duplo_bloco", "orfa", "deslocado_sem_cnpj", "cnpj_formato", "cnpj_duplicado", "cnpj_ausente_cvm"]) {
+  for (const r of ["nao_declarado", "duplo_bloco", "orfa", "deslocado_sem_cnpj", "cnpj_formato", "cnpj_duplicado", "cnpj_ausente_cvm",
+                   "worker_sem_primario", "worker_sem_familia", "predictiva_ilegivel",
+                   "primario_worker_diverge", "familia_vaza_primario", "predictiva_diverge", "predictiva_orfa"]) {
     const doTipo = falhas.filter((f) => f.regra === r);
     if (!doTipo.length) continue;
     console.error("\n  [" + r + "] " + doTipo.length);

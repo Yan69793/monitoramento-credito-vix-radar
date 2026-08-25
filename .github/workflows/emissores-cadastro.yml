@@ -25,6 +25,11 @@ on:
       - 'scripts/check-metricas-curadas.mjs'
       - 'scripts/check-emissores-cnpj.mjs'
       - 'scripts/emissores-cnpj.mjs'
+      - 'scripts/check-cnpj-familia.mjs'
+      - 'scripts/gerar-familia-cnpj.mjs'
+      - 'scripts/predictive/cnpj_emissores.json'
+      - 'scripts/predictive/cnpj_emissores.overrides.json'
+      - 'data/cvm-referencia/**'
       - '.github/workflows/emissores-cadastro.yml'
 
 permissions:
@@ -62,13 +67,29 @@ jobs:
       - name: Conferir cobertura e frescor dos cards de metrica
         run: node scripts/check-metricas-curadas.mjs
 
-      # CURADORIA2 (2026-08-24). De qual companhia da CVM sai o numero de cada
-      # emissor. Casar por nome erra e erra feio, holding e subsidiaria compartilham
-      # o nome: Sabesp casava com a COPASA, Taesa com a Copel GT, CBA com a CEB, CSN
-      # com a CSN Mineracao. Offline, so confere que a carteira inteira esta
-      # declarada e que ninguem ficou orfao ou repetido.
+      # CURADORIA2 (2026-08-24), estendida em 2026-08-25 pelo SUBSTRINGDONO1. De
+      # qual companhia da CVM sai o numero de cada emissor. Casar por nome erra e
+      # erra feio, holding e subsidiaria compartilham o nome: Sabesp casava com a
+      # COPASA, Taesa com a Copel GT, CBA com a CEB, CSN com a CSN Mineracao.
+      # Offline, confere cobertura e exclusividade da carteira, e desde a fase CNPJ
+      # tambem reconcilia as quatro copias de dado que passaram a existir: este
+      # arquivo (canonico), scripts/predictive/cnpj_emissores.json (mesmo uso, gerado
+      # por outro script), e CNPJ_PRIMARIO_EMISSOR / CNPJ_FAMILIA_CVM dentro do
+      # worker.js (o Worker roda no Cloudflare e nao importa codigo local de guarda).
+      # E o mesmo padrao do NOMEMORTO1, tres tabelas de alias que precisavam
+      # concordar e nao concordavam, agora em quatro tabelas de CNPJ.
       - name: Conferir tabela emissor para companhia da CVM
         run: node scripts/check-emissores-cnpj.mjs
+
+      # SUBSTRINGDONO1 (2026-08-25). A atribuicao de documento do IPE passou a usar
+      # CNPJ_FAMILIA_CVM em vez de nome. Esta guarda pergunta o oposto do que o
+      # CURADORIA2 pergunta: existe CNPJ que protocolou no ano, cujo NOME sugere um
+      # emissor da carteira, e que ninguem declarou nem recusou? Foi exatamente esse
+      # estado que deixou a CSN sem fonte primaria por meses, so que la ninguem via
+      # porque nada perguntava. Offline, le so o worker.js e o indice do ano em
+      # data/cvm-referencia/, versionado e fixo de proposito.
+      - name: Conferir familia de CNPJ para atribuicao de documento CVM
+        run: node scripts/check-cnpj-familia.mjs
 
       # Prova da outra ponta, dentro do proprio CI. Sem isto, um bug que fizesse a
       # guarda aprovar qualquer coisa passaria despercebido para sempre, porque o
@@ -281,6 +302,82 @@ jobs:
             exit 1
           fi
           echo "OK: guarda reprovou o CNPJ trocado offline, como deve."
+
+      # SUBSTRINGDONO1, ponta negativa 1: CNPJ_PRIMARIO_EMISSOR no worker.js
+      # divergindo do canonico. Se isto passasse despercebido, a guarda daqui
+      # aprovaria o que o Worker em producao reprova, ou o contrario.
+      - name: Guarda tem que reprovar CNPJ_PRIMARIO_EMISSOR divergindo do canonico
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          perl -0pe 's{"08\.827\.501/0001-58": "Aegea Saneamento",}{"08.827.501/0009-99": "Aegea Saneamento",}' \
+            api/src/worker.js > /tmp/guarda/worker_cnpj_diverge.js
+          if ! grep -q '0009-99' /tmp/guarda/worker_cnpj_diverge.js; then
+            echo "::error::A injecao do teste nao entrou no arquivo. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_cnpj_diverge.js node scripts/check-emissores-cnpj.mjs; then
+            echo "::error::A guarda APROVOU CNPJ_PRIMARIO_EMISSOR divergindo do canonico."
+            exit 1
+          fi
+          echo "OK: guarda reprovou a divergencia entre worker.js e o canonico, como deve."
+
+      # SUBSTRINGDONO1, ponta negativa 2: um CNPJ que ja e PRIMARIO de um emissor
+      # vazando para dentro da familia de outro. Se isto passasse, o card de balanco
+      # de um emissor passaria a ler o ITR do outro.
+      - name: Guarda tem que reprovar CNPJ primario vazando para a familia de outro emissor
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          perl -0pe 's{("60\.933\.603/0001-78": "Auren Energia", // CESP.*\n)}{$1  "33.592.510/0001-54": "Auren Energia", // CNPJ da Vale, injetado pelo teste\n}' \
+            api/src/worker.js > /tmp/guarda/worker_familia_vaza.js
+          if ! grep -q '33.592.510/0001-54": "Auren Energia"' /tmp/guarda/worker_familia_vaza.js; then
+            echo "::error::A injecao do teste nao entrou no arquivo. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_familia_vaza.js node scripts/check-emissores-cnpj.mjs; then
+            echo "::error::A guarda APROVOU CNPJ primario de um emissor dentro da familia de outro."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o vazamento entre familia e primario, como deve."
+
+      # SUBSTRINGDONO1, ponta negativa 3: scripts/predictive/cnpj_emissores.json
+      # divergindo do canonico, a mesma classe de erro que deixou Omega Energia e
+      # TIM Brasil apontando para entidade diferente em cada tabela ate 25/08.
+      - name: Guarda tem que reprovar predictiva divergindo do canonico
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          node -e "
+            const fs = require('fs');
+            const p = JSON.parse(fs.readFileSync('scripts/predictive/cnpj_emissores.json', 'utf8'));
+            p['Omega Energia'] = { cnpj: '09.149.503/0001-06', denom: 'OMEGA GERAÇÃO S.A.', match: 'manual-cvm' };
+            fs.writeFileSync('/tmp/guarda/cnpj_emissores_diverge.json', JSON.stringify(p, null, 2));
+          "
+          if CNPJ_PREDICTIVE_PATH=/tmp/guarda/cnpj_emissores_diverge.json node scripts/check-emissores-cnpj.mjs; then
+            echo "::error::A guarda APROVOU predictiva divergindo do canonico (caso Omega Energia)."
+            exit 1
+          fi
+          echo "OK: guarda reprovou a divergencia entre predictiva e canonico, como deve."
+
+      # SUBSTRINGDONO1, ponta negativa 4: reproduz o buraco original do incidente.
+      # Remove a CSN de CNPJ_FAMILIA_CVM, e a guarda de quarentena tem que achar o
+      # CNPJ dela sozinha, pelo nome, no indice do ano.
+      - name: Guarda de quarentena tem que reproduzir o buraco original da CSN
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda
+          perl -0pe 's{  "33\.042\.730/0001-04": "CSN",\n}{}' \
+            api/src/worker.js > /tmp/guarda/worker_sem_csn.js
+          if grep -q '"33.042.730/0001-04": "CSN"' /tmp/guarda/worker_sem_csn.js; then
+            echo "::error::A remocao do teste nao surtiu efeito. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if EMISSORES_WORKER_PATH=/tmp/guarda/worker_sem_csn.js node scripts/check-cnpj-familia.mjs; then
+            echo "::error::A guarda de quarentena APROVOU acervo sem o CNPJ da CSN declarado."
+            exit 1
+          fi
+          echo "OK: guarda de quarentena reproduziu e reprovou o buraco original da CSN."
 
       # Confere os 98 CNPJs declarados contra o indice real do ITR, que e a unica
       # checagem que pega CNPJ digitado errado. Baixa 19 MB, entao so no agendado e no
