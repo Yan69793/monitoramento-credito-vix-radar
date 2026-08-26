@@ -1,4 +1,4 @@
-# Protocolo Operacional — VIX Radar (hardened 2026-07-25)
+# Protocolo Operacional — VIX Radar (hardened 2026-08-26)
 
 ## Estado do projeto
 
@@ -35,6 +35,22 @@ Cinco regras que valem para todo plano e toda auditoria, daqui para frente. Nasc
 3. **Julgar código por comportamento, não por forma.** Função que compila e parseia pode estar errada. Não decidir "função incompleta" por parse nem por contagem de chaves: ler o corpo, procurar bug de comportamento e contradição interna, inclusive duas afirmações opostas no mesmo arquivo.
 4. **Separar artefato vivo de registro histórico.** Nota de auditoria datada, transcript, log e entrada antiga de `PENDENCIAS` guardam o que se acreditava naquela data e não se reescrevem. Só corrigir o que descreve o presente: código, `ESTADO.md`, `CLAUDE.md`, workflow. Antes de editar, perguntar se aquilo é estado ou é registro.
 5. **Prova de guarda é sempre de duas pontas.** Mostrar que a guarda reprova o caso ruim e que aceita o caso bom, com a saída crua da ferramenta colada. Linha de resumo não conta como prova. Esta quinta nasceu de três rodadas de Gate 6 onde uma prova de um lado só esconderia o bloqueio.
+
+## Grafo do código (graphify)
+
+Orientação antes de grep/read é o grafo em `graphify-out/graph.json`, rebuild
+quase diário. O hook de pré-leitura exige `graphify query "<pergunta>"` antes de
+grep e de leitura de fonte; consultar pela skill `/graphify` (fast path, nunca
+reconstruir) ou pelo intérprete do uv tool:
+
+```
+"C:/Users/User/AppData/Roaming/uv/tools/graphifyy/Scripts/python.exe" -m graphify query "<pergunta>"
+```
+
+O grafo é dominado pelas skills do projeto e orienta pouco o Worker; para símbolo
+de `api/src/worker.js`, ler o fonte direto depois da orientação. Descoberta de
+skills também não é varredura: ler `.claude/SKILLS-ROUTER.md` primeiro, índice via
+`pwsh scripts/skills-index.ps1`, nunca recursivo em `.claude/skills/`.
 
 ## Memória canônica
 
@@ -194,6 +210,12 @@ task homônima do Windows Task Scheduler mantida `Disabled` de propósito, como
 guarda anti-duplicata verificada pelo próprio script (`GUARD_OK` no log). Nunca
 reabilitar essas três. O `LastTaskResult` delas está congelado desde 06/08/2026 e
 não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
+
+O agendamento real das três sessões vive no CCD store
+`%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`,
+lido pelo app só na ativação (INVERSAO-CD1, 26/08). Editar o arquivo não vale até
+reiniciar o Claude Desktop, e a task nativa `Disabled` é guarda anti-duplicata,
+não sinal de saúde.
 
 **Os nomes estão invertidos em relação aos horários desde 25/08/2026, e é de
 propósito.** `vixradar-noturno` é a varredura completa e roda **de manhã**;
