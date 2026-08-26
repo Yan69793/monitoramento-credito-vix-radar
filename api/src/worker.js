@@ -9113,7 +9113,14 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         anterior._ultima_checagem_vazia_inicio = _inicioJanela;
         // DEFERREDREC1-FIX (2026-08-15): sem este write o flag morria no cliente e o
         // "Priorizar amanha" do ledger de cap nunca virava FULL no tiering seguinte.
+        // DEFERGRUDA1 (2026-08-25): ligava e nunca desligava. A bandeira significa "nao
+        // foi analisado porque o teto bateu", entao analise real tem que apaga-la. Sem o
+        // else, emissor deferido uma vez ficava FULL para sempre, gastando token todo dia
+        // e realimentando o proprio deferimento. Medido: modo pontual devolveu os MESMOS
+        // 8 emissores em duas execucoes seguidas, 4 deles ja analisados com ok:true na
+        // primeira. Sem isto, a varredura pontual entra em laco.
         if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
+        else delete anterior._token_cap_deferred;
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -9128,7 +9135,14 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         anterior._ultima_checagem_vazia_inicio = _inicioJanela;
         // DEFERREDREC1-FIX (2026-08-15): sem este write o flag morria no cliente e o
         // "Priorizar amanha" do ledger de cap nunca virava FULL no tiering seguinte.
+        // DEFERGRUDA1 (2026-08-25): ligava e nunca desligava. A bandeira significa "nao
+        // foi analisado porque o teto bateu", entao analise real tem que apaga-la. Sem o
+        // else, emissor deferido uma vez ficava FULL para sempre, gastando token todo dia
+        // e realimentando o proprio deferimento. Medido: modo pontual devolveu os MESMOS
+        // 8 emissores em duas execucoes seguidas, 4 deles ja analisados com ok:true na
+        // primeira. Sem isto, a varredura pontual entra em laco.
         if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
+        else delete anterior._token_cap_deferred;
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -9141,7 +9155,10 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       estadoInc.timestamp = _tsVarredura;
       estadoInc._ultima_checagem_vazia_fim = _fimJanela;
       estadoInc._ultima_checagem_vazia_inicio = _inicioJanela;
+      // DEFERGRUDA1: mesmo motivo. INCONCLUSIVO tambem foi analisado, so nao concluiu,
+      // e ja tem gatilho proprio pelo status. Manter as duas bandeiras seria dupla contagem.
       if (payload._token_cap_deferred === true) estadoInc._token_cap_deferred = true;
+      else delete estadoInc._token_cap_deferred;
       estadoInc.sem_eventos = true;
       estadoInc._status = "INCONCLUSIVO";
       estadoInc._motivo = "cobertura_incompleta: " + _cobertura + "/" + _coberturaMin + "+ (tier=" + (_tierPayload || "?") + ")";
@@ -9156,7 +9173,9 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       anterior.timestamp = _tsVarredura;
       anterior._ultima_checagem_vazia_fim = _fimJanela;
       anterior._ultima_checagem_vazia_inicio = _inicioJanela;
+      // DEFERGRUDA1: mesmo motivo dos ramos acima.
       if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
+      else delete anterior._token_cap_deferred;
       estado.results[empresa] = anterior;
       estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
       await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -9167,7 +9186,9 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     estadoAtual.timestamp = _tsVarredura;
     estadoAtual._ultima_checagem_vazia_fim = _fimJanela;
     estadoAtual._ultima_checagem_vazia_inicio = _inicioJanela;
+    // DEFERGRUDA1: mesmo motivo dos ramos acima.
     if (payload._token_cap_deferred === true) estadoAtual._token_cap_deferred = true;
+    else delete estadoAtual._token_cap_deferred;
     estadoAtual.sem_eventos = true;
     estadoAtual._status = "OK";
     delete estadoAtual._motivo;

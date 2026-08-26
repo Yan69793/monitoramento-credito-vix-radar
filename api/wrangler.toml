@@ -1,9 +1,30 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.216)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.217)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.217.js = v4.9.216 + DEFERGRUDA1, o flag de deferido ligava e nunca desligava.
+#   Achado ao rodar a Sentinela contra producao, nao por leitura de codigo: o modo
+#   pontual devolveu os MESMOS 8 emissores em duas execucoes seguidas (VLI, Embraer,
+#   Nexa Resources e Even Construtora entre eles), sendo que os 4 primeiros ja tinham
+#   sido analisados e submetidos com ok:true na primeira. Causa: os cinco ramos de
+#   persistirResultadoCompartilhadoInterno faziam `if (payload._token_cap_deferred
+#   === true) X._token_cap_deferred = true` sem else, e os ramos de sem_eventos
+#   reaproveitam o objeto anterior em vez de reconstrui-lo, entao a bandeira
+#   sobrevivia a qualquer analise real. O DEFERREDREC1-FIX de 15/08 colocou o write
+#   e nao colocou o apagamento.
+#   Dano alem da rotina nova: emissor deferido uma vez virava FULL permanente no
+#   tiering da noturna (motivo deferred_prioritario tem precedencia), gastando 9
+#   rodadas de busca todo dia e realimentando o proprio deferimento. Explica o
+#   backlog de 34 emissores medido em producao em 25/08. Sem a correcao, a varredura
+#   pontual entraria em laco, reanalisando os mesmos 8 duas vezes por hora.
+#   Fix: `else delete X._token_cap_deferred` nos 5 ramos. A bandeira significa "nao
+#   foi analisado porque o teto bateu", entao analise real tem que apaga-la. Submit
+#   de cap-deferred continua marcando normalmente.
+#   Guardas: 2 testes novos em api/test/sentinela-pontual.test.mjs com prova das duas
+#   pontas, analise real limpa e submit de cap-deferred mantem.
+#   Rollback: main = "v4.9.216.js".
 # v4.9.216.js = v4.9.215 + SENTINELA1, gatilho de documento novo passa a ser por
 #   identidade, e nasce o modo pontual da varredura por gatilho.
 #   (1) _cvmNovosDesde comparava YYYY-MM-DD, entao documento entregue no MESMO dia

@@ -311,3 +311,71 @@ describe("SENTINELA1 parte 4: gatilho da matinal nao depende mais do horario", (
     }
   });
 });
+
+// DEFERGRUDA1 (2026-08-25, achado ao rodar a Sentinela em producao).
+//
+// `_token_cap_deferred` ligava e nunca desligava. Os cinco ramos de
+// persistirResultadoCompartilhadoInterno faziam `if (payload... === true) X = true`
+// sem else, e os ramos de sem_eventos reaproveitam o objeto anterior, entao a
+// bandeira sobrevivia a qualquer analise real.
+//
+// Consequencia medida em producao antes da correcao: o modo pontual devolveu os
+// MESMOS 8 emissores em duas execucoes seguidas (VLI, Embraer, Nexa Resources,
+// Even Construtora entre eles), sendo que os 4 primeiros ja tinham sido analisados
+// e submetidos com ok:true na primeira. A varredura pontual entraria em laco,
+// reanalisando os mesmos emissores duas vezes por hora o dia inteiro. E explica o
+// backlog de 34: emissor deferido uma vez virava FULL permanente na noturna,
+// gastando token todo dia e realimentando o proprio deferimento.
+//
+// Prova reversa: contra o codigo anterior o primeiro teste falha, porque
+// deferido continua true depois da analise real.
+describe("DEFERGRUDA1: analise real limpa o flag de deferido", () => {
+  it("PONTA BOA: emissor deferido que recebe analise real deixa de sair como deferido", async () => {
+    const semana = chaveEstadoSemanaCorrente();
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semana, JSON.stringify({
+      week: semana,
+      updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: new Date().toISOString(),
+          eventos: [], sem_eventos: true, _token_cap_deferred: true
+        }
+      }
+    }));
+
+    const antes = await plano("pontual");
+    expect(antes.emissores.map((e) => e.empresa)).toContain(DASA);
+    expect(antes.emissores.find((e) => e.empresa === DASA).deferido).toBe(true);
+
+    const res = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true }
+    });
+    expect(res.status).toBe(200);
+
+    const depois = await plano("pontual");
+    expect(depois.emissores.map((e) => e.empresa)).not.toContain(DASA);
+  });
+
+  it("PONTA RUIM: submit de cap-deferred CONTINUA marcando o emissor", async () => {
+    const semana = chaveEstadoSemanaCorrente();
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semana, JSON.stringify({
+      week: semana, updated_at: new Date().toISOString(),
+      results: { [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true } }
+    }));
+
+    const res = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true, _token_cap_deferred: true }
+    });
+    expect(res.status).toBe(200);
+
+    const depois = await plano("pontual");
+    const dasa = depois.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.deferido).toBe(true);
+    expect(dasa.motivos).toContain("deferred_prioritario");
+  });
+});

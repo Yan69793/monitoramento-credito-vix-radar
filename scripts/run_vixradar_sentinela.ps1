@@ -57,6 +57,13 @@ $McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $Teto           = 8        # emissores por execucao, espelha ROTINA_PONTUAL_TETO no Worker
 $TokenHardCap   = 120000   # teto de tokens da execucao; muito menor que o da noturna de proposito
+# Teto de relogio, nao so de token. Medido em 25/08: dois lotes seguidos ficaram 20+
+# min com o processo vivo e ~1,5s de CPU, esperando rede (provavel limite de taxa da
+# assinatura depois da noturna). Sem este teto, um lote lento empurra os seguintes e a
+# execucao so morre no ExecutionTimeLimit de 40 min da task, com o mutex preso ate la.
+# NAO e timeout por lote: o `claude -p` ja disparado nao e interrompido no meio (ver
+# pendencia SENTINELA-HANG1). Este guarda impede o efeito cascata para os lotes seguintes.
+$TempoMaxMin    = 22
 $SonnetEwsMin   = 38
 $LoteMax        = 4
 $PauseSec       = 2
@@ -66,11 +73,29 @@ if (-not (Test-Path $LogDir)) { New-Item -ItemType Directory -Path $LogDir -Forc
 
 function Write-Log([string]$msg) {
     $line = (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + ' ' + $msg
-    # Retry curto: OneDrive e SearchIndexer ja seguraram o handle do log por minutos
-    # (LOGLOCK1-REC). Perder a linha FIM: e' pior do que esperar.
+    # Retry curto: OneDrive, SearchIndexer e um `tail -f` aberto por qualquer um ja
+    # seguraram o handle do log por minutos (LOGLOCK1-REC). Medido nesta sessao em
+    # 25/08: um tail -f de monitoramento comeu as linhas finais da primeira execucao,
+    # inclusive o FIM:, e a versao anterior desta funcao DESCARTAVA a linha em silencio
+    # depois de 5 tentativas. Descartar linha e falha silenciosa, familia EMAILSILENT1.
+    # Agora, esgotado o retry, a linha vai para um arquivo alternativo por PID e a
+    # execucao continua. Perder o rastro nunca e' opcao aceitavel.
+    # -ErrorAction Stop e OBRIGATORIO aqui, nao e enfeite. Com $ErrorActionPreference
+    # = 'Continue' (exigido pelo CLAUDE.md deste projeto), o IOException do Add-Content
+    # e erro NAO-TERMINANTE: ele nao entra no catch, imprime em stderr e a execucao cai
+    # direto na linha seguinte. Sem o -ErrorAction Stop, o retry abaixo era decorativo e
+    # a linha se perdia em silencio. Medido em 25/08 nesta sessao: um tail -f segurou o
+    # handle e o FIM: sumiu do log de uma execucao inteira, com o loop de retry no lugar.
+    $escreveu = $false
     for ($i = 0; $i -lt 5; $i++) {
-        try { Add-Content -Path $LogFile -Value $line -Encoding UTF8; break }
+        try { Add-Content -Path $LogFile -Value $line -Encoding UTF8 -ErrorAction Stop; $escreveu = $true; break }
         catch { Start-Sleep -Milliseconds 250 }
+    }
+    if (-not $escreveu) {
+        # Rastro nunca se perde. Se o log principal esta preso, a linha vai para um
+        # arquivo por PID e a execucao segue.
+        $fallback = Join-Path $LogDir ('vixradar-sentinela_' + $DateTag + '_fallback_' + $PID + '.log')
+        try { Add-Content -Path $fallback -Value $line -Encoding UTF8 -ErrorAction Stop } catch { }
     }
     Write-Host $line
 }
@@ -434,10 +459,17 @@ foreach ($fila in @(@{ N = 'sonnet'; M = 'claude-sonnet-4-6'; S = $SonnetSkill; 
     }
 }
 
+$inicioExec = Get-Date
 foreach ($job in $jobs) {
     if ($tokensAcum -ge $TokenHardCap) {
         $deferidos += $job.Chunk.Count
         Write-Log ('CAP: teto de ' + $TokenHardCap + ' tokens atingido. ' + $job.Chunk.Count + ' emissores deferidos no lote ' + $job.Label + ' - voltam na proxima execucao pelo mesmo gatilho.')
+        continue
+    }
+    $decorridoMin = ((Get-Date) - $inicioExec).TotalMinutes
+    if ($decorridoMin -ge $TempoMaxMin) {
+        $deferidos += $job.Chunk.Count
+        Write-Log ('CAP_TEMPO: ' + [math]::Round($decorridoMin, 1) + ' min decorridos (teto ' + $TempoMaxMin + '). ' + $job.Chunk.Count + ' emissores deferidos no lote ' + $job.Label + ' - voltam na proxima execucao pelo mesmo gatilho.')
         continue
     }
     $promptPath = Join-Path $LogDir ('sentinela_' + $job.Label + '_' + $DateTag + '_' + $PID + '.txt')
