@@ -1,9 +1,24 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.219)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.220)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.220.js = v4.9.219 + STATUSGRUDA1, _status sofria o mesmo descarte do
+#   DEFERGRUDA2 e agora segue a mesma regra conceitual.
+#   O ramo de carregarEstadoMultiSemana para "semana nova sem evento, semana velha
+#   com evento" devolve o objeto da semana velha para nao perder conteudo. _status
+#   descreve a ULTIMA VARREDURA ("concluiu" ou "nao concluiu"), nao o acervo de
+#   eventos, entao a semana velha nao pode responder por ele. Medido junto com o
+#   DEFERGRUDA2: a W35 do VLI dizia _status:"INCONCLUSIVO" e o plano exibia vazio.
+#   Consequencia real: o inconclusivo_stale_breakout do plano noturno, que existe
+#   justamente para quebrar loop de cobertura incompleta, ficava cego para esses
+#   emissores. _motivo viaja junto porque so faz sentido ao lado do _status que o
+#   gerou; deixar um explicando o outro de outra semana seria pior que apagar.
+#   Conteudo (eventos, memos, cobertura_nota) continua vindo da semana velha, e ha
+#   teste travando exatamente isso para a correcao nao virar perda de historico.
+#   Guardas: 3 testes novos, os 3 falham contra o codigo anterior. Suite 128/128.
+#   Rollback: main = "v4.9.219.js".
 # v4.9.219.js = v4.9.218 + DEFERGRUDA3, "inconclusivo" sai do gatilho da pontual.
 #   Segundo laco, achado ao PROVAR a convergencia do primeiro em vez de assumi-la.
 #   Medido em producao sob v4.9.218: dos 20 emissores que a Sentinela ja tinha

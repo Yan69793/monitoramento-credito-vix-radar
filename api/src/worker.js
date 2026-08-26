@@ -9032,6 +9032,19 @@ async function carregarEstadoMultiSemana(env2222, numSemanas) {
         // campos de conteudo continuam vindo da semana velha de proposito.
         if (res._token_cap_deferred === true) merged[emp]._token_cap_deferred = true;
         else delete merged[emp]._token_cap_deferred;
+        // STATUSGRUDA1 (2026-08-25): _status sofria o MESMO descarte, e a regra
+        // conceitual e identica. Ele descreve a ultima varredura ("concluiu" ou "nao
+        // concluiu"), nao o acervo historico de eventos, entao a semana velha nao pode
+        // responder por ele. Medido junto com o DEFERGRUDA2: a W35 do VLI dizia
+        // INCONCLUSIVO e o plano exibia vazio, porque a mescla devolvia o objeto da W34.
+        // Consequencia real: o inconclusivo_stale_breakout do plano noturno, que existe
+        // para quebrar loop de cobertura incompleta, ficava cego para esses emissores.
+        // _motivo viaja junto de proposito: ele so faz sentido junto do _status que o
+        // gerou, e deixar um explicando o outro de outra semana seria pior que apagar.
+        if (res._status) { merged[emp]._status = res._status; }
+        else { delete merged[emp]._status; }
+        if (res._motivo) { merged[emp]._motivo = res._motivo; }
+        else { delete merged[emp]._motivo; }
         continue;
       }
       if (newEvs.length > 0 && prevEvs.length === 0) {

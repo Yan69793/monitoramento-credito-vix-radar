@@ -557,3 +557,112 @@ describe("DEFERGRUDA3: inconclusivo nao e gatilho da pontual", () => {
     expect(p2.emissores.map((e) => e.empresa)).toContain(DASA);
   });
 });
+
+// STATUSGRUDA1 (2026-08-25). Mesmo descarte do DEFERGRUDA2, outro campo.
+//
+// Medido junto com o DEFERGRUDA2: a W35 do VLI dizia _status:"INCONCLUSIVO" e o
+// plano exibia vazio, porque o ramo "semana nova sem evento, semana velha com
+// evento" devolvia o objeto da semana velha. Consequencia real: o
+// inconclusivo_stale_breakout do plano noturno, que existe para quebrar loop de
+// cobertura incompleta, ficava cego para esses emissores.
+//
+// Regra conceitual identica a do deferred: _status descreve a ULTIMA VARREDURA,
+// nao o acervo historico de eventos, entao o registro mais recente manda. Conteudo
+// (eventos, memos) continua vindo da semana velha, e ha teste travando isso.
+//
+// Prova reversa: contra o codigo anterior o primeiro teste falha, porque o
+// breakout nao dispara.
+describe("STATUSGRUDA1: _status vem do registro mais recente", () => {
+  afterEach(async () => {
+    try { await env.RADAR_KV.delete(semanaAnterior()); } catch (_) { }
+  });
+
+  it("PONTA BOA: INCONCLUSIVO na semana corrente aciona o breakout mesmo com evento na semana velha", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semanaAnterior(), JSON.stringify({
+      week: "anterior", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(7) + "T12:00:00.000Z",
+          eventos: [{ classificacao: "ECO", titulo: "evento antigo", data_evento: diasAtras(20) }],
+          sem_eventos: false
+        }
+      }
+    }));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(3) + "T12:00:00.000Z",
+          eventos: [], sem_eventos: true, _status: "INCONCLUSIVO"
+        }
+      }
+    }));
+
+    const n = await plano("noturno");
+    const dasa = n.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.status).toBe("INCONCLUSIVO");
+    expect(dasa.inconclusivo).toBe(true);
+    // Contra o codigo anterior o status saia null e este motivo nao aparecia.
+    expect(dasa.motivos).toContain("inconclusivo_stale_breakout");
+  });
+
+  it("PONTA RUIM: status da semana velha NAO sobrevive a uma varredura conclusiva na corrente", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semanaAnterior(), JSON.stringify({
+      week: "anterior", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(7) + "T12:00:00.000Z",
+          eventos: [{ classificacao: "ECO", titulo: "evento antigo", data_evento: diasAtras(20) }],
+          sem_eventos: false,
+          _status: "INCONCLUSIVO",
+          _motivo: "cobertura_incompleta: 1/7+ (tier=FULL)"
+        }
+      }
+    }));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true }
+      }
+    }));
+
+    const n = await plano("noturno");
+    const dasa = n.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.inconclusivo).toBe(false);
+    expect(dasa.motivos).not.toContain("inconclusivo_stale_breakout");
+  });
+
+  it("conteudo historico continua mesclado, so o estado operacional e que vem do novo", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semanaAnterior(), JSON.stringify({
+      week: "anterior", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(7) + "T12:00:00.000Z",
+          eventos: [{ classificacao: "RELEVANTE", titulo: "evento que nao pode sumir", data_evento: diasAtras(3) }],
+          sem_eventos: false,
+          memo_acontecimento: "memo historico que deve sobreviver"
+        }
+      }
+    }));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true, _status: "OK" }
+      }
+    }));
+
+    const n = await plano("noturno");
+    const dasa = n.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.status).toBe("OK");
+    // O evento e o memo da semana velha sobrevivem: promocao por imprensa recente e
+    // contexto_historico montado a partir do memo.
+    expect(dasa.motivos).toContain("imprensa_recente_7d");
+    expect(dasa.contexto_historico).toContain("memo historico que deve sobreviver");
+  });
+});

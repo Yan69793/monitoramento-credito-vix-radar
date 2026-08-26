@@ -21,15 +21,21 @@
 #      analise que falhou). Sem esta segunda regra, um deferido so voltaria a ser
 #      olhado se a CVM publicasse de novo, o que pode nunca acontecer.
 #
-# LIMITE DE SLA, LEIA ANTES DE PROMETER COISA
-# A latencia de ate uma hora vale entre o Worker INGERIR o documento e a analise
-# sair, dentro da janela operacional. NAO vale entre a CVM PUBLICAR e a analise
-# sair: a ingestao continua presa aos crons do Worker das 12h30 e 18h30 BRT.
-# Fechar essa ponta exigiria uma acao de sincronizacao autenticada por
-# ROUTINE_API_KEY, que hoje nao existe (admin_sync_cvm_auto e sync_cvm pedem
-# admin_senha, e dar a senha de admin a uma rotina contraria o CHAVEESCOPO1).
-# O HEAD no zip abaixo mede exatamente esse atraso e registra no log, para a
-# decisao de criar essa acao nascer de dado e nao de palpite.
+# SLA (SENTINELA-SYNC1 fechado em 25/08/2026)
+# A latencia de ate uma hora conta da PUBLICACAO na CVM ate a analise sair, dentro
+# da janela operacional. Quando o HEAD acusa Last-Modified novo, a rotina manda o
+# Worker reingerir na hora, via admin_sync_cvm_auto, em vez de esperar os crons das
+# 12h30 e 18h30.
+#
+# A credencial disso NAO e nova e NAO fica em texto puro. Sai do mesmo cofre DPAPI
+# local que Coleta-Volatilidade, monitor-tasks e watch-vixradar-health ja usam,
+# lido por api\Get-VixAdminCredential.ps1, cifrado no escopo CurrentUser. Nada de
+# segredo novo, nada de arquitetura paralela.
+#
+# Degradacao explicita: sem cofre, a rotina NAO aborta. Ela registra o atraso
+# medido entre a publicacao e a ingestao e segue trabalhando com o acervo que o
+# Worker ja tem, que e exatamente o comportamento anterior. Perder a sincronizacao
+# nao pode custar a varredura.
 #
 # EXIT CODES (mesma convencao de run_vixradar_agenda_semanal.ps1)
 #   0 ok, inclusive o caminho sem gatilho em 0 token
@@ -134,6 +140,19 @@ function Get-NomeNormalizado([string]$s) {
     return $sb.ToString().Trim()
 }
 
+function Get-AdminSenha {
+    # SENTINELA-SYNC1: mesma via ja usada por upload_volatilidade_kv.ps1,
+    # monitor-tasks.ps1 e watch-vixradar-health.ps1. Cofre DPAPI CurrentUser, so
+    # esta conta nesta maquina abre. Nunca em texto puro, nunca em parametro.
+    $helper = Join-Path $ProjectRoot 'api\Get-VixAdminCredential.ps1'
+    if (Test-Path -LiteralPath $helper) {
+        $s = & $helper -AsPlainText 2>$null
+        if ($s) { return $s }
+    }
+    if ($env:ADMIN_PASSWORD) { return $env:ADMIN_PASSWORD }
+    return $null
+}
+
 function Get-RoutineKey {
     # ROTA1: o registro User e a fonte da verdade, processo longevo herda env do boot.
     $doRegistro = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
@@ -199,13 +218,17 @@ foreach ($rot in @('vixradar-noturno', 'vixradar-matinal')) {
 # --- Portao barato: o que mudou? -------------------------------------------
 $estado = Read-State
 
-# HEAD no zip da CVM. Nao decide nada sozinho, mas mede o atraso entre a CVM
-# publicar e o Worker ingerir, que e o numero que falta para decidir se vale criar
-# uma acao de sync com escopo de rotina.
+# HEAD no zip da CVM. Custo desprezivel e e o unico jeito de saber que a fonte
+# publicou algo antes do Worker ingerir.
 $zipLm = ''
+$zipLmUtc = $null
 try {
     $head = Invoke-WebRequest -Uri $CvmZipUrl -Method Head -TimeoutSec 45 -UseBasicParsing
     $zipLm = '' + $head.Headers['Last-Modified']
+    if ($zipLm) {
+        $tmp = [datetime]::MinValue
+        if ([datetime]::TryParse($zipLm, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal -bor [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$tmp)) { $zipLmUtc = $tmp }
+    }
 } catch {
     Write-Log ('AVISO: HEAD no zip da CVM falhou (' + $_.Exception.Message + ') - seguindo pelo health do Worker.')
 }
@@ -231,14 +254,58 @@ if ($estado.pending -eq $true) { $pendingAnterior = $true }
 $streak = 0
 if ($estado.pending_streak) { $streak = [int]$estado.pending_streak }
 
-$acervoMudou = ($workerLm -ne ('' + $estado.worker_cvm_last_modified))
-if ($zipLm -and ($zipLm -ne ('' + $estado.zip_last_modified))) {
-    Write-Log ('FONTE: zip da CVM com Last-Modified novo (' + $zipLm + '). Worker ingeriu ate ' + $workerLm + '.')
+# --- SENTINELA-SYNC1: a fonte publicou, o Worker ingere AGORA ---------------
+# Duas condicoes, e a segunda existe porque a primeira e cega a republicacao no
+# mesmo dia: o zip esta a frente do que o Worker ingeriu, OU o Last-Modified mudou
+# desde a ultima vez que esta rotina agiu. `zip_last_modified` so avanca no estado
+# quando a sincronizacao volta ok, entao falha de sync nao consome o gatilho e a
+# proxima execucao tenta de novo.
+$syncFeito = $false
+$zipLmParaEstado = '' + $estado.zip_last_modified
+if ($zipLmUtc) {
+    $zipDia = $zipLmUtc.ToString('yyyy-MM-dd')
+    $precisaSync = ($zipDia -gt $workerLm) -or ($zipLm -ne ('' + $estado.zip_last_modified))
+    if ($precisaSync) {
+        $atrasoMin = [math]::Round(((Get-Date).ToUniversalTime() - $zipLmUtc).TotalMinutes, 0)
+        Write-Log ('FONTE: zip da CVM publicado em ' + $zipLm + ' (ha ' + $atrasoMin + ' min). Worker ingeriu ate ' + $workerLm + '. Sincronizando.')
+        $senha = Get-AdminSenha
+        if (-not $senha) {
+            # Degradacao explicita, nunca aborto: sem cofre a rotina segue com o
+            # acervo que o Worker ja tem, que e o comportamento de antes.
+            Write-Log 'AVISO: cofre DPAPI da senha admin indisponivel - sem sincronizacao sob demanda. Rode api\Set-VixAdminCredential.ps1. Seguindo com o acervo atual.'
+        } else {
+            try {
+                $rs = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'admin_sync_cvm_auto'; admin_senha = $senha } -TimeoutSec 180
+                if ($rs -and $rs.ok -eq $true) {
+                    $syncFeito = $true
+                    $zipLmParaEstado = $zipLm
+                    Write-Log ('SYNC: CVM reingerida sob demanda. documentos=' + $rs.sync.documentos + ' empresas=' + $rs.sync.empresas + ' last_modified=' + $rs.sync.last_modified_iso)
+                } else {
+                    Write-Log ('AVISO: admin_sync_cvm_auto devolveu nao-ok (' + ($rs.sync.motivo) + '). Gatilho preservado para a proxima execucao.')
+                }
+            } catch {
+                Write-Log ('AVISO: admin_sync_cvm_auto falhou (' + $_.Exception.Message + '). Gatilho preservado para a proxima execucao.')
+            }
+            $senha = $null
+        }
+    } else {
+        $zipLmParaEstado = $zipLm
+    }
 }
+# Health relido depois do sync: o acervo mudou agora, e e sobre o valor NOVO que o
+# portao decide.
+if ($syncFeito) {
+    try {
+        $h2 = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 45
+        if ($h2) { $workerLm = '' + $h2.cvm_fonte_last_modified }
+    } catch { }
+}
+
+$acervoMudou = ($workerLm -ne ('' + $estado.worker_cvm_last_modified)) -or $syncFeito
 
 if (-not $acervoMudou -and -not $pendingAnterior) {
     Write-Log ('PORTAO: acervo do Worker inalterado (' + $workerLm + ') e sem backlog. Nada a fazer.')
-    Write-State $workerLm $zipLm $false 0
+    Write-State $workerLm $zipLmParaEstado $false 0
     Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=sem_novidade'
     exit 0
 }
@@ -275,7 +342,7 @@ Write-Log ('PLANO: candidatos=' + $plano.pontual_candidatos + ' selecionados=' +
 
 if ($alvos.Count -eq 0) {
     Write-Log 'PLANO: nenhum emissor com gatilho. Backlog drenado.'
-    Write-State $workerLm $zipLm $false 0
+    Write-State $workerLm $zipLmParaEstado $false 0
     Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=plano_vazio'
     exit 0
 }
@@ -286,14 +353,14 @@ foreach ($a in $alvos) {
 # --- A partir daqui gasta LLM. Guardas de ambiente antes do primeiro token. --
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     Write-Log 'ERRO: claude.exe ausente.'
-    Write-State $workerLm $zipLm $true ($streak + 1)
+    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
     Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=claude_ausente'
     exit 2
 }
 foreach ($f in @($HaikuSkill, $SonnetSkill)) {
     if (-not (Test-Path $f)) {
         Write-Log ('ERRO: skill de lote ausente ' + $f)
-        Write-State $workerLm $zipLm $true ($streak + 1)
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
         Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=skill_ausente'
         exit 6
     }
@@ -305,7 +372,7 @@ Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
 Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
 if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
     Write-Log 'ERRO: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
-    Write-State $workerLm $zipLm $true ($streak + 1)
+    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
     Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=sem_credencial'
     exit 5
 }
@@ -320,7 +387,7 @@ if ($ambientViolacao) {
 }
 if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
     Write-Log 'ERRO: probe WebSearch falhou - busca indisponivel. Nenhum submit feito.'
-    Write-State $workerLm $zipLm $true ($streak + 1)
+    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
     Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=websearch_indisponivel'
     exit 7
 }
@@ -366,29 +433,74 @@ $skill
 "@
 }
 
-function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model) {
+function Stop-ArvoreProcesso([int]$ProcId) {
+    # PS 5.1 nao tem Process.Kill($true), que so existe do .NET Core 3.0 em diante.
+    # Matar so o pai deixaria o node filho vivo segurando a conexao, que e onde o
+    # trabalho de verdade acontece: `claude.exe` e lancador. taskkill /T mata a arvore.
+    try { & taskkill.exe /PID $ProcId /T /F 2>&1 | Out-Null } catch { }
+    Start-Sleep -Milliseconds 300
+    try {
+        $p = Get-Process -Id $ProcId -ErrorAction SilentlyContinue
+        if ($p) { Stop-Process -Id $ProcId -Force -ErrorAction SilentlyContinue }
+    } catch { }
+}
+
+function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$TimeoutMin) {
+    # SENTINELA-HANG1: timeout de verdade, com morte da arvore de processos.
+    #
+    # O desenho antigo era `Get-Content | claude -p`, pipeline sem timeout nenhum.
+    # Medido em 25/08: dois lotes ficaram 20+ min com o processo vivo e ~1,5s de CPU
+    # acumulado, esperando rede. O lote so morreria no ExecutionTimeLimit de 40 min da
+    # task, com o mutex preso ate la.
+    #
+    # Start-Process com os tres fluxos redirecionados para ARQUIVO, em vez de pipe,
+    # tambem elimina o deadlock classico: com pipe, o buffer de stderr enche, o filho
+    # bloqueia escrevendo e o pai bloqueia lendo stdout. Com arquivo, quem escreve e o
+    # sistema. O stdin sai do proprio arquivo de prompt, que ja existia.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $LogDir ('sentinela_stderr_' + $DateTag + '_' + $PID + '.txt')
+    $stdoutFile = Join-Path $LogDir ('sentinela_stdout_' + $DateTag + '_' + $PID + '.json')
     $raw = $null
+    $timedOut = $false
     try {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
         Set-VixClaudeAuthEnv
-        $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
-            --model $Model `
-            --permission-mode bypassPermissions `
-            --output-format json `
-            --tools 'WebSearch,WebFetch' `
-            --strict-mcp-config --mcp-config $McpConfigFile `
-            --setting-sources project `
-            --disable-slash-commands `
-            --no-session-persistence `
-            --exclude-dynamic-system-prompt-sections 2>> $stderrFile
+        $exe = (Get-Command claude -ErrorAction SilentlyContinue).Source
+        if (-not $exe) { throw 'claude.exe ausente no PATH' }
+        $argumentos = @(
+            '-p',
+            '--model', $Model,
+            '--permission-mode', 'bypassPermissions',
+            '--output-format', 'json',
+            '--tools', 'WebSearch,WebFetch',
+            '--strict-mcp-config', '--mcp-config', $McpConfigFile,
+            '--setting-sources', 'project',
+            '--disable-slash-commands',
+            '--no-session-persistence',
+            '--exclude-dynamic-system-prompt-sections'
+        )
+        Remove-Item $stdoutFile -Force -ErrorAction SilentlyContinue
+        $proc = Start-Process -FilePath $exe -ArgumentList $argumentos `
+            -RedirectStandardInput $promptPath `
+            -RedirectStandardOutput $stdoutFile `
+            -RedirectStandardError $stderrFile `
+            -NoNewWindow -PassThru
+        if (-not $proc.WaitForExit($TimeoutMin * 60 * 1000)) {
+            $timedOut = $true
+            Write-Log ('TIMEOUT: lote passou de ' + $TimeoutMin + ' min sem terminar. Matando a arvore do PID ' + $proc.Id + '.')
+            Stop-ArvoreProcesso $proc.Id
+            # Sem re-disparo imediato de proposito: um lote que estourou o relogio quase
+            # sempre estoura de novo na sequencia, e gastaria o teto duas vezes. Quem
+            # reexecuta e o backlog, na proxima janela, com os emissores intactos.
+        }
+        if (Test-Path $stdoutFile) { $raw = Get-Content $stdoutFile -Encoding UTF8 }
     } catch {
         Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho.')
     } finally {
         $ErrorActionPreference = $prevEAP
+        Remove-Item $stdoutFile -Force -ErrorAction SilentlyContinue
     }
     $textOut = @($raw)
     $tokens = -1
@@ -406,7 +518,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model) {
     } catch {
         Write-Log ('AVISO: parse do envelope JSON falhou - tokens DESCONHECIDO.')
     }
-    return @{ Output = $textOut; Tokens = $tokens; AuthFailure = (Test-VixClaudeAuthFailure $textOut) }
+    return @{ Output = $textOut; Tokens = $tokens; AuthFailure = (Test-VixClaudeAuthFailure $textOut); TimedOut = $timedOut }
 }
 
 function Get-ParsedResultadosSentinela($outputLines) {
@@ -475,12 +587,24 @@ foreach ($job in $jobs) {
     $promptPath = Join-Path $LogDir ('sentinela_' + $job.Label + '_' + $DateTag + '_' + $PID + '.txt')
     New-BatchPromptSentinela $job.Chunk $job.Label $job.Model $job.Skill $janelaInicio $janelaFim | Set-Content -Path $promptPath -Encoding UTF8
     Write-Log ('LOTE ' + $job.Label + ': ' + $job.Chunk.Count + ' emissores, modelo ' + $job.Model)
-    $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model
+    # O teto por lote e o que sobra do teto da execucao, nunca mais que isso, com um
+    # piso de 4 min para nao nascer expirado quando a janela ja esta quase no fim.
+    $restanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
+    $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model $restanteMin
     if ($res.Tokens -ge 0) { $tokensAcum += $res.Tokens }
+    if ($res.TimedOut) {
+        # Emissores do lote ficam intactos: nada de submit, nada marcado em cvm_vistos.
+        # Contam como sem_resultado, o que liga o backlog e devolve todos na proxima
+        # janela pelo mesmo gatilho. Nenhum lote fica pendurado e nada se perde.
+        $semResultado += $job.Chunk.Count
+        Write-Log ('CAP_TEMPO: lote ' + $job.Label + ' morto por timeout, ' + $job.Chunk.Count + ' emissores preservados no backlog.')
+        Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+        continue
+    }
     if ($res.AuthFailure) {
         Write-Log 'ERRO: falha de autenticacao do claude no lote. Interrompendo, backlog preservado.'
         $null = Send-VixRoutineAlert -Rotina 'sentinela' -Motivo 'claude CLI nao autenticado ou limite atingido - emissores com gatilho nao foram analisados' -RoutineKey $routineKey
-        Write-State $workerLm $zipLm $true ($streak + 1)
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
         Write-Log ('FIM: sentinela abortada. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' motivo=auth_falhou')
         exit 7
     }
@@ -541,7 +665,7 @@ foreach ($job in $jobs) {
 $sobrou = ($excedente -gt 0) -or ($deferidos -gt 0) -or ($submitFail -gt 0) -or ($semResultado -gt 0)
 $novoStreak = 0
 if ($sobrou) { $novoStreak = $streak + 1 }
-Write-State $workerLm $zipLm $sobrou $novoStreak
+Write-State $workerLm $zipLmParaEstado $sobrou $novoStreak
 
 Write-Log ('FIM: sentinela concluida. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou)
 exit 0
