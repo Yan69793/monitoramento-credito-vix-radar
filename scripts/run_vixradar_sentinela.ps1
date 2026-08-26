@@ -469,13 +469,21 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         Set-VixClaudeAuthEnv
         $exe = (Get-Command claude -ErrorAction SilentlyContinue).Source
         if (-not $exe) { throw 'claude.exe ausente no PATH' }
+        # ASPAS OBRIGATORIAS no caminho do mcp-config. Start-Process junta o
+        # -ArgumentList com espaco e NAO cita nada, entao
+        # "E:\Diretorio\Claude\Monitoramento de Credito\..." chegava ao claude como
+        # tres argumentos e todo lote morria com "Invalid MCP configuration:
+        # MCP config file not found: E:\Diretorio\Claude\Monitoramento".
+        # O pipeline antigo nao sofria porque quem montava a linha era o PowerShell.
+        # Achado na verificacao de entrega de 26/08, antes da primeira execucao
+        # agendada: sem isto a rotina rodaria 16 vezes por dia entregando zero analise.
         $argumentos = @(
             '-p',
             '--model', $Model,
             '--permission-mode', 'bypassPermissions',
             '--output-format', 'json',
             '--tools', 'WebSearch,WebFetch',
-            '--strict-mcp-config', '--mcp-config', $McpConfigFile,
+            '--strict-mcp-config', '--mcp-config', ('"' + $McpConfigFile + '"'),
             '--setting-sources', 'project',
             '--disable-slash-commands',
             '--no-session-persistence',
