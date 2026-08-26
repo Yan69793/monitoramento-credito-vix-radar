@@ -489,3 +489,71 @@ describe("DEFERGRUDA2: bandeira de semana anterior nao ressuscita o deferido", (
     expect(dasa.motivos).toContain("imprensa_recente_7d");
   });
 });
+
+// DEFERGRUDA3 (2026-08-25). Segundo laco, achado ao provar a convergencia do primeiro.
+//
+// A pontual analisa em lote Haiku com ~2 buscas. O tier FULL exige _coberturaMin=7 em
+// persistirResultadoCompartilhadoInterno, entao TODA analise dela grava
+// _status:"INCONCLUSIVO". Com inconclusivo no gatilho, a rotina reapresentava o proprio
+// trabalho. Medido em producao: 13 dos 20 emissores ja analisados com submit_ok
+// voltaram a fila pontual, todos por esse gatilho.
+//
+// Gatilho da pontual e FATO NOVO ou DIVIDA. "Rodou e nao concluiu" e qualidade de
+// cobertura e ja tem dono, o ramo inconclusivo_stale_breakout do plano noturno.
+//
+// Prova reversa: contra o codigo anterior o primeiro teste falha, porque o emissor
+// inconclusivo entra na pontual.
+describe("DEFERGRUDA3: inconclusivo nao e gatilho da pontual", () => {
+  it("PONTA BOA: emissor INCONCLUSIVO sem documento novo e sem deferido NAO entra na pontual", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: new Date().toISOString(),
+          eventos: [], sem_eventos: true, _status: "INCONCLUSIVO"
+        }
+      }
+    }));
+
+    const p = await plano("pontual");
+    expect(p.emissores.map((e) => e.empresa)).not.toContain(DASA);
+  });
+
+  it("PONTA BOA: o noturno CONTINUA cuidando do inconclusivo, nada ficou orfao", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    // Stale > 48h aciona o inconclusivo_stale_breakout do plano noturno.
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(3) + "T12:00:00.000Z",
+          eventos: [], sem_eventos: true, _status: "INCONCLUSIVO"
+        }
+      }
+    }));
+
+    const n = await plano("noturno");
+    const dasa = n.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.tier).toBe("FULL");
+    expect(dasa.motivos).toContain("inconclusivo_stale_breakout");
+  });
+
+  it("PONTA RUIM: documento novo ou deferido continuam entrando", async () => {
+    await estadoDasaVarridaHoje();
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000050", hojeBRT())]));
+    const p1 = await plano("pontual");
+    expect(p1.emissores.map((e) => e.empresa)).toContain(DASA);
+
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true, _token_cap_deferred: true }
+      }
+    }));
+    const p2 = await plano("pontual");
+    expect(p2.emissores.map((e) => e.empresa)).toContain(DASA);
+  });
+});

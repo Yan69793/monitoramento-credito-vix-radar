@@ -10375,9 +10375,19 @@ async function montarPlanoRotina(env2222, opts) {
   var _pontualCandidatos = 0;
   if (modo === "pontual") {
     var _pTeto = opts.teto ? Math.max(1, Number(opts.teto)) : ROTINA_PONTUAL_TETO;
+    // DEFERGRUDA3 (2026-08-25): "inconclusivo" SAIU do gatilho, e a razao e um laco
+    // determinístico medido em producao. A pontual analisa em lote Haiku com ~2 buscas;
+    // o tier FULL exige _coberturaMin=7 em persistirResultadoCompartilhadoInterno, entao
+    // TODA analise dela grava _status:"INCONCLUSIVO". Com inconclusivo como gatilho, ela
+    // reapresentava o proprio trabalho: 13 dos 20 emissores ja analisados voltaram a fila.
+    //
+    // O criterio certo e o mesmo ja escrito para EWS e staleness: gatilho da pontual e
+    // FATO NOVO ("a CVM publicou algo que ninguem olhou") ou DIVIDA ("devemos uma analise
+    // que o teto impediu"). "Rodou e nao concluiu" e qualidade de cobertura, e ja tem dono:
+    // o ramo inconclusivo_stale_breakout do plano noturno promove a FULL depois de 48h.
     var _gatilhados = plano.filter(function(p) {
       if (p.tier === "SKIP") return false;
-      return p.cvm_novos > 0 || p.deferido === true || p.inconclusivo === true;
+      return p.cvm_novos > 0 || p.deferido === true;
     });
     _pontualCandidatos = _gatilhados.length;
     _gatilhados.sort(function(a, b) {

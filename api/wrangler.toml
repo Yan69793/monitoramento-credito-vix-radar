@@ -1,9 +1,26 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.218)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.219)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.219.js = v4.9.218 + DEFERGRUDA3, "inconclusivo" sai do gatilho da pontual.
+#   Segundo laco, achado ao PROVAR a convergencia do primeiro em vez de assumi-la.
+#   Medido em producao sob v4.9.218: dos 20 emissores que a Sentinela ja tinha
+#   analisado com submit_ok, 13 voltaram para a fila pontual. Nenhum por deferido
+#   (esse ficou 0 de 20, o DEFERGRUDA2 fechou), todos por inconclusivo.
+#   Mecanica, deterministica: a pontual analisa em lote Haiku com ~2 buscas, e o tier
+#   FULL exige _coberturaMin=7 em persistirResultadoCompartilhadoInterno, entao TODA
+#   analise dela grava _status:"INCONCLUSIVO". Com inconclusivo no gatilho, a rotina
+#   fabricava o proprio trabalho e nunca convergiria.
+#   Fix minimo, 1 linha no filtro do modo pontual. O criterio passa a ser o mesmo ja
+#   escrito para EWS e staleness: gatilho da pontual e FATO NOVO (documento da CVM que
+#   ninguem olhou) ou DIVIDA (analise que o teto de tokens impediu). "Rodou e nao
+#   concluiu" e qualidade de cobertura e ja tem dono, o ramo inconclusivo_stale_breakout
+#   do plano noturno, que promove a FULL depois de 48h. Ha teste travando que esse dono
+#   continua funcionando, para o inconclusivo nao virar orfao.
+#   Guardas: 3 testes novos, 1 falha contra o codigo anterior. Suite 125/125.
+#   Rollback: main = "v4.9.218.js".
 # v4.9.218.js = v4.9.217 + DEFERGRUDA2, a leitura ressuscitava a bandeira que a
 #   escrita ja tinha apagado. O DEFERGRUDA1 (v4.9.217) estava certo e nao bastava.
 #   Prova crua colhida do KV de producao, com o VLI ja analisado com submit_ok:
