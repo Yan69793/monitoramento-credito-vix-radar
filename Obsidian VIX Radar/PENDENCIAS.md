@@ -11,6 +11,48 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 26/08 (madrugada) — BLOQUEIO EXTERNO (INVERSAO-CD1): scheduler real achado, alteração aplicada, ativação depende do operador reiniciar o app
+
+> **Status:** BLOQUEIO EXTERNO. A alteração de horário foi aplicada no arquivo do scheduler real, mas só entra em vigor quando o operador reiniciar o Claude Desktop (o arquivo é lido apenas na ativação do app, e a sessão que editou roda hospedada por ele, não pode reiniciá-lo)
+> **Data da Versão:** 2026-08-26
+> **Origem do Registro:** leitura do store CCD (`scheduled-tasks.json`), log do app (`main.log`) e logs das rotinas, cruzados com o Task Scheduler e o Cowork
+> **Condição de Obsolescência:** cai quando a alteração estiver ativa (app reiniciado e os horários novos observados no log) ou quando o mecanismo de agendamento do Claude Desktop mudar
+
+### O que era sabido e se mostrou errado
+
+O fechamento de 25/08 registrou "sem superfície programável": buscas em `config.json`, no `Local Storage\leveldb` e no help do CLI não achavam agendamento, e o `RemoteTrigger list` só mostrava os triggers de nuvem. O fato novo que reabriu a auditoria: o Cowork (`mcp__scheduled-tasks`) **não contém** `vixradar-noturno`, `vixradar-matinal` nem `vixradar-verificacao-async`. E o mecanismo que de fato agenda os três não era nenhum dos dois.
+
+### O executor real e a prova
+
+O agendamento dos três vive no **CCD store**: `%APPDATA%\Claude\claude-code-sessions\<accountId>\<deviceId>\scheduled-tasks.json`. É lido pelo app só no initialize e persistido do mapa em memória com guarda de `_initCounter` (verificado no bundle `app.asar`). Quatro provas independentes:
+
+1. `cronExpression` do arquivo bate com os horários observados nas execuções dos dias anteriores.
+2. `lastRunAt` do arquivo casa com o `INICIO:` dos logs: matinal `15:08:06Z` → log `12:09` BRT, noturno `21:56:26Z` → log `18:57` BRT, verificação `21:56:26Z` → mesmo horário.
+3. `main.log` do app mostra o CCD disparando a sessão com o cron e o campo `missed` (mecanismo de catch-up que explica os atrasos de 12:08/18:56 em vez dos horários exatos).
+4. O Cowork responde "Scheduled tasks not initialized" e as tasks nativas do Task Scheduler (`VIXRadar-Matinal`, `VIXRadar-Noturno`, `VIXRadar-Verificacao-Async`) estão `Disabled` de propósito, como guarda anti-duplicata. Os retries (`Szuchmacher-RetryVixNoturno`, `Szuchmacher-RetryVixMatinal`) são outra coisa, são vigias de Task Scheduler.
+
+### Alteração aplicada
+
+Editado `scheduled-tasks.json` em 26/08, com backup `scheduled-tasks.json.bak-20260826` (4.467 bytes):
+
+| Task | Cron antigo | Cron novo | Validação |
+|---|---|---|---|
+| `vixradar-matinal` | `0 10 * * 1-5` | `0 18 * * 1-5` | `enabled:true`, 18h Seg-Sex |
+| `vixradar-noturno` | `0 18 * * *` | `0 10 * * *` | `enabled:true`, 10h diário |
+| `vixradar-verificacao-async` | `20 10,18 * * *` | `0,45 11,18 * * *` | `enabled:true`, dispara 11h00, 11h45, 18h00 e 18h45 |
+
+As duas obrigatórias (11h00 e 18h45) ficam satisfeitas. As outras duas (11h45 e 18h00) são sobra da restrição de um cron só; disparos extras são inofensivos porque a rotina sai cedo quando a fila está vazia. JSON validado com `ConvertFrom-Json`, 5 tasks, as 3 `enabled:true`.
+
+### Ação manual mínima (por isso BLOQUEIO EXTERNO)
+
+Reiniciar o Claude Desktop para reler o arquivo na ativação. Risco real: se o app gravar o snapshot em memória (que ainda tem os crons velhos) antes do restart, a edição é revertida; nesse caso reaplicar após o restart, ou trocar pelo UI de scheduled tasks do app. Prazo recomendado: antes da próxima gravação, no limite antes do próximo disparo agendado de hoje.
+
+### Preservado
+
+`VIXRadar-Matinal`, `VIXRadar-Noturno`, `VIXRadar-Verificacao-Async` continuam `Disabled` no Task Scheduler. Sentinela habilitada. `Szuchmacher-RetryVixNoturno` 13h30 diário e `Szuchmacher-RetryVixMatinal` 21h30 Seg-Sex intactos. Nada de TOKENCHAT1, BRASKEMDETECT1, CURADORIA1, `routine_key`, KV→DO, P2/P3 ou achados laterais foi tocado.
+
+---
+
 ## 25/08 (noite) — RESOLVIDO e DEPLOYADO (DEFERGRUDA1): a bandeira de deferido ligava e nunca desligava
 
 > **Status:** RESOLVIDO. Worker v4.9.217 em produção, portão validado
