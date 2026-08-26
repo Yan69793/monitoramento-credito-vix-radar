@@ -193,18 +193,29 @@ admin a uma rotina contraria o CHAVEESCOPO1. A rotina faz um `HEAD` no zip da CV
 a cada execução e registra no log quando o arquivo está à frente do que o Worker
 ingeriu, justamente para essa decisão nascer de dado medido.
 
+**Sincronização sob demanda (SENTINELA-SYNC1).** Quando o `HEAD` acusa
+`Last-Modified` novo, a rotina manda o Worker reingerir na hora via
+`admin_sync_cvm_auto`, em vez de esperar os crons das 12h30 e 18h30. **O SLA conta da
+publicação na CVM até a análise sair.** A credencial sai do cofre DPAPI `CurrentUser`
+que `upload_volatilidade_kv.ps1`, `monitor-tasks.ps1` e `watch-vixradar-health.ps1` já
+usam, lido por `api/Get-VixAdminCredential.ps1`. Nenhum segredo novo. Sem cofre a
+rotina **não aborta**: registra o atraso medido e segue com o acervo atual.
+`zip_last_modified` só avança no estado quando o sync volta `ok`, então falha de sync
+não consome o gatilho.
+
 **Tetos.** Oito emissores, 120k tokens e **22 minutos de relógio** por execução. O
 teto de tempo é conferido antes de cada lote, então um lote lento não empurra os
 seguintes. O que passar de qualquer um dos três fica deferido e volta pelo mesmo
 gatilho, porque nada é marcado em `cvm_vistos`.
 
-**Limitação conhecida, SENTINELA-HANG1.** O teto de tempo não interrompe um
-`claude -p` já disparado. Medido em 25/08: duas execuções ficaram 20+ minutos no
-segundo lote com o processo vivo e **1,5 segundo de CPU acumulado**, esperando rede.
-Causa provável é limite de taxa da assinatura, porque a noturna tinha rodado às 19h30
-e dois runs saíram em quinze minutos. Fundo de poço é o `ExecutionTimeLimit` de 40 min
-da task, e o mutex é liberado pelo sistema quando o processo morre. Fechar de vez
-exige trocar o pipeline por `System.Diagnostics.Process` com `WaitForExit`.
+**Timeout por lote (SENTINELA-HANG1).** O `claude -p` roda por `Start-Process` com os
+três fluxos redirecionados para arquivo, o que dá `WaitForExit(ms)` e de quebra elimina
+o deadlock clássico de pipe, onde o buffer de `stderr` enche, o filho bloqueia
+escrevendo e o pai bloqueia lendo `stdout`. O teto por lote é o que sobra do teto da
+execução, com piso de 4 min. No estouro, `taskkill /T /F` mata a **árvore**, porque
+`claude.exe` é lançador e o trabalho real está no `node` filho. Não há re-disparo
+imediato de propósito: lote que estourou o relógio estoura de novo e gastaria o teto
+duas vezes. Quem reexecuta é o backlog, com os emissores intactos.
 
 Medição que motivou a rotina: em 25/08 a CVM republicou o arquivo às 07h58 BRT e o
 Worker só ingeriu às 12h30. E o `modo=pontual` em produção acusou **34 emissores

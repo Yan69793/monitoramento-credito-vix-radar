@@ -122,12 +122,101 @@ Duas execuções ficaram 20+ minutos no segundo lote, com o processo `claude.exe
 
 ---
 
-## 25/08 (noite) — ABERTO P1 (INVERSAO-CD1): as três sessões do Claude Desktop ainda estão nos horários antigos
+## 25/08 (noite) — RESOLVIDO e DEPLOYADO (SENTINELA-SYNC1, Worker v4.9.220 + script): o SLA passa a contar da publicação
 
-> **Status:** ABERTO. Uma ação do operador, na interface do Claude Desktop
+> **Status:** RESOLVIDO
 > **Data da Versão:** 2026-08-25
-> **Origem do Registro:** `Get-ScheduledTask` ao vivo em 25/08 confirma que as tasks homônimas seguem `Disabled`, e não existe arquivo de agendamento no repo nem em `%APPDATA%\Claude`
+> **Origem do Registro:** implementado e provado ao vivo contra produção
+> **Condição de Obsolescência:** cai se `admin_sync_cvm_auto` mudar de contrato, ou se o cofre DPAPI for aposentado
+
+O bloqueio anterior era de credencial, não de arquitetura: `admin_sync_cvm_auto` pede `admin_senha` e a rotina só tinha `ROUTINE_API_KEY`. **A senha admin já tinha um caminho seguro estabelecido nesta máquina** e eu não tinha olhado: cofre DPAPI `CurrentUser` em `api/.admin_credencial.dat`, lido por `api/Get-VixAdminCredential.ps1`, já usado por `upload_volatilidade_kv.ps1`, `monitor-tasks.ps1`, `watch-vixradar-health.ps1` e outros três. Reusar isso não cria segredo novo nem arquitetura paralela.
+
+Agora, quando o `HEAD` acusa `Last-Modified` novo, a Sentinela manda o Worker reingerir na hora. **O SLA conta da publicação na CVM até a análise sair.**
+
+Duas condições de disparo, e a segunda existe porque a primeira é cega a republicação no mesmo dia: o zip está à frente do que o Worker ingeriu, **ou** o `Last-Modified` mudou desde a última vez que a rotina agiu. `zip_last_modified` só avança no estado quando o sync volta `ok`, então falha não consome o gatilho.
+
+**Degradação explícita, nunca aborto.** Sem cofre, a rotina registra o atraso medido e segue com o acervo atual, que é o comportamento anterior. Perder a sincronização não pode custar a varredura.
+
+Prova ao vivo, com o estado forçado como uma publicação nova faria:
+
+```
+23:59:26 FONTE: zip da CVM publicado em Tue, 25 Aug 2026 10:58:47 GMT (ha 961 min). Worker ingeriu ate 2026-08-25. Sincronizando.
+23:59:31 SYNC: CVM reingerida sob demanda. documentos=2126 empresas=506 last_modified=2026-08-25
+23:59:31 PORTAO: entrando por acervo_novo.
+23:59:54 PLANO: candidatos=0 selecionados=0 excedente=0 worker=v4.9.220
+```
+
+Detecta, sincroniza, planeja. Cinco segundos entre detectar e ingerir, contra as até 4h32 de espera pelo cron que a medição de 25/08 tinha exposto.
+
+---
+
+## 25/08 (noite) — RESOLVIDO (SENTINELA-HANG1): timeout real, com morte da árvore de processos
+
+> **Status:** RESOLVIDO
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** medido em duas execuções travadas em 25/08, corrigido e provado com árvore de processos sintética
+> **Condição de Obsolescência:** cai se o invocador voltar a usar pipeline sem timeout
+
+O desenho antigo era `Get-Content | claude -p`, pipeline sem teto nenhum. Medido: dois lotes ficaram 20+ minutos com o processo vivo e ~1,5 segundo de CPU acumulado, esperando rede. O lote só morreria no `ExecutionTimeLimit` de 40 min da task, com o mutex preso até lá.
+
+Agora `Start-Process` com os três fluxos redirecionados para **arquivo**, o que resolve duas coisas de uma vez. Dá o objeto de processo para `WaitForExit(ms)`, e elimina o deadlock clássico de pipe, onde o buffer de `stderr` enche, o filho bloqueia escrevendo e o pai bloqueia lendo `stdout`. Com arquivo, quem escreve é o sistema.
+
+O teto por lote é o que sobra do teto da execução, com piso de 4 minutos para não nascer expirado. No estouro, `taskkill /T /F` mata a **árvore**: matar só o pai deixaria o `node` filho vivo, porque `claude.exe` é lançador e o trabalho real está no filho.
+
+**Sem re-disparo imediato, de propósito.** Lote que estourou o relógio estoura de novo na sequência e gastaria o teto duas vezes. Quem reexecuta é o backlog, na próxima janela, com os emissores intactos e nada marcado em `cvm_vistos`.
+
+Prova com árvore real, mesmo mecanismo do código:
+
+```
+pai PID=2964  filho PID=28796
+ANTES  -> pai vivo=True  filho vivo=True
+WaitForExit(3000ms) devolveu False   (False = estourou o teto)
+DEPOIS -> pai vivo=False  filho vivo=False
+```
+
+---
+
+## 25/08 (noite) — RESOLVIDO e DEPLOYADO (STATUSGRUDA1, Worker v4.9.220): `_status` seguia o mesmo descarte do deferido
+
+> **Status:** RESOLVIDO
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** observado durante o DEFERGRUDA2 e deixado em aberto de propósito; fechado agora com a mesma regra conceitual
+> **Condição de Obsolescência:** cai se `carregarEstadoMultiSemana` mudar de contrato
+
+Mesmo ramo, mesmo descarte, outro campo. `_status` descreve a **última varredura**, "concluiu" ou "não concluiu", não o acervo histórico de eventos, então a semana velha não pode responder por ele. Medido junto com o DEFERGRUDA2: a W35 do VLI dizia `INCONCLUSIVO` e o plano exibia vazio.
+
+O dano concreto: o `inconclusivo_stale_breakout` do plano noturno existe justamente para quebrar loop de cobertura incompleta, e ficava cego para esses emissores.
+
+`_motivo` viaja junto porque só faz sentido ao lado do `_status` que o gerou. Deixar um explicando o outro de outra semana seria pior que apagar. Conteúdo (eventos, memos, `cobertura_nota`) continua vindo da semana velha, e há teste travando exatamente isso, para a correção não virar perda de histórico.
+
+Guardas: 3 testes novos, os 3 falham contra o código anterior.
+
+---
+
+## 25/08 (noite) — BLOQUEIO EXTERNO P1 (INVERSAO-CD1): as três sessões do Claude Desktop ainda estão nos horários antigos
+
+> **Status:** BLOQUEIO EXTERNO. Não existe superfície programável. Uma ação do operador, na interface do Claude Desktop
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** três provas independentes, abaixo
 > **Condição de Obsolescência:** fecha quando o log do dia seguinte mostrar `INICIO` da varredura completa perto das 10h e `INICIO` do top 15 perto das 18h
+
+**As três provas de que não há caminho por código.**
+
+1. **Não está em disco.** As chaves de topo de `%APPDATA%\Claude\config.json` são 17 e nenhuma é de agendamento (`updaterLastSeenVersion`, `first_launch_at`, `locale`, `userThemeMode`, `oauth:tokenCache`, e assim por diante). Busca por `schedule|cron|vixradar|routine` em `Local Storage\leveldb`: **zero ocorrências**. `IndexedDB` vazio.
+2. **Não está no CLI.** A lista completa de subcomandos do `claude` é `agents`, `auth`, `auto-mode`, `doctor`, `gateway`, `import`, `install`, `mcp`, `plugin`, `project`, `setup-token`, `ultrareview`. Busca por `schedul|cron|routine` no help inteiro: **ausente**.
+3. **Não está na API de triggers.** `RemoteTrigger list` devolve o conjunto completo da conta (`has_more:false`). Só existem **2** triggers VIX habilitados, `VIX Radar — Verificação Async Remote` (`0 5,17 * * *`) e `VIX Radar — frescor diário` (`0 2 * * *`). **Nenhum** dos três agendamentos do Desktop aparece.
+
+Migrar as três para `RemoteTrigger` resolveria por código, e foi descartado de propósito: trocaria o substrato de execução (nuvem em vez da máquina local com o Claude CLI), que é arquitetura paralela e escopo novo.
+
+**Ação manual mínima exata**, três alterações na interface do Claude Desktop:
+
+| Sessão | De | Para |
+|---|---|---|
+| `vixradar-noturno` (varredura completa dos 103) | 18h00 diário | **10h00 diário** |
+| `vixradar-matinal` (top 15) | 10h00 Seg-Sex | **18h00 Seg-Sex** |
+| `vixradar-verificacao-async` | 10h20, uma sessão | **11h00 e 18h45, duas sessões** |
+
+Apagar o agendamento velho antes de criar o novo. Deixar os dois armados dispara a rotina duas vezes no mesmo dia.
 
 Horários a colocar: `vixradar-noturno` (varredura completa dos 103) **10h00 diário**, `vixradar-matinal` (top 15) **18h00 Seg-Sex**, `vixradar-verificacao-async` em **duas** sessões, **11h00 e 18h45**.
 
