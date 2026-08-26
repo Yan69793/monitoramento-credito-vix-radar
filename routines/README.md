@@ -145,6 +145,14 @@ controlada antes de reclassificar como ativa).
 
 ### Nota sobre `VIXRadar-Sentinela` (SENTINELA1, criada 2026-08-25)
 
+> **A task está `Disabled` desde a criação, e isso é deliberado.** O DEFERGRUDA2
+> deixa quatro emissores presos na fila de deferidos mesmo depois de análise real,
+> então 4 das 8 vagas de cada execução seriam desperdiçadas e a rotina entraria em
+> toda tentativa por causa do backlog. Dezesseis execuções por dia a cerca de 70k
+> tokens cada atrapalhariam a noturna e a matinal. Reabilitar só depois de fechar o
+> DEFERGRUDA2: `Enable-ScheduledTask -TaskName "VIXRadar-Sentinela"`. Detalhe e
+> medição em `Obsidian VIX Radar/PENDENCIAS.md`.
+
 **Status:** vigente · **Data da Versão:** 2026-08-25 · **Origem do Registro:**
 implementada e medida contra produção v4.9.216 nesta sessão ·
 **Condição de Obsolescência:** perde validade se o modo `pontual` mudar de

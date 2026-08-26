@@ -16,7 +16,7 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 > **Status:** RESOLVIDO. Worker v4.9.217 em produção, portão validado
 > **Data da Versão:** 2026-08-25
 > **Origem do Registro:** achado **rodando** a Sentinela contra produção, não lendo código
-> **Condição de Obsolescência:** ATENDIDA no código. Falta observar `pontual_candidatos` cair, porque o estado gravado sob o código antigo só é limpo na próxima análise real de cada emissor
+> **Condição de Obsolescência:** PARCIAL. Ver o adendo abaixo, quatro emissores não limpam e a rotina Sentinela está `Disabled` por causa disso
 
 O modo pontual devolveu os **mesmos 8 emissores em duas execuções seguidas** (VLI, Embraer, Nexa Resources, Even Construtora, Copel, Neoenergia, CPFL Energia, Comerc Energia), sendo que os quatro primeiros já tinham sido analisados e submetidos com `ok:true` na primeira. A varredura pontual entraria em laço, reanalisando os mesmos oito duas vezes por hora o dia inteiro.
 
@@ -27,6 +27,29 @@ O modo pontual devolveu os **mesmos 8 emissores em duas execuções seguidas** (
 **Fix.** `else delete` nos cinco ramos. A bandeira significa "não foi analisado porque o teto bateu", então análise real tem que apagá-la. Submit de cap-deferred continua marcando normalmente. Guarda com prova das duas pontas, 1 dos 15 testes falha contra o código anterior. Suíte 119/119.
 
 **Lição de método.** Este defeito não apareceu em nenhuma leitura de código nem em nenhum teste unitário. Apareceu na segunda execução real, comparando duas listas de alvos. Rodar duas vezes e comparar a saída é barato e pega classe de bug que revisão não pega.
+
+### ADENDO, ABERTO P1 (DEFERGRUDA2): a correção fecha para uns e não para outros, e a Sentinela ficou `Disabled`
+
+> **Status:** ABERTO. Bloqueia a Sentinela, que está `Disabled` no Task Scheduler
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** quatro execuções reais da Sentinela contra produção v4.9.217, com o plano consultado antes e depois de cada uma
+> **Condição de Obsolescência:** fecha quando `pontual_candidatos` cair de forma monotônica e VLI sair da lista após uma análise real. Só então reabilitar: `Enable-ScheduledTask -TaskName "VIXRadar-Sentinela"`
+
+Medido, com o Worker já em v4.9.217 nas duas execuções:
+
+| Emissor | `status` antes | Analisado com `ok:true` | Bandeira limpou |
+|---|---|---|---|
+| Copel, Neoenergia, CPFL Energia, Comerc Energia | vazio | run 3, 22h46 | **sim** |
+| Vibra, Compass, Iguá Saneamento, PRIO | `INCONCLUSIVO` | run 4, 22h56 | **sim** |
+| VLI, Embraer, Nexa Resources, Even Construtora | vazio | run 3 **e** run 4 | **não** |
+
+Os candidatos saíram de 34 para 33 e travaram. Os quatro últimos foram analisados duas vezes sob o código corrigido, com `submit_ok`, e continuam `deferido=True` com `horas_stale=0,1`. Não é propagação: quatro minutos e meio sem escrita nova e o quadro não mudou.
+
+**Hipótese, não confirmada.** `montarPlanoRotina` lê com `carregarEstadoMultiSemana(env, 3)`, três semanas mescladas, enquanto `persistirResultadoCompartilhado` escreve só na semana corrente. A bandeira pode estar viva num registro de semana anterior que a mescla traz de volta. Família do STATELEAK1. **Isto é hipótese, não medição** — para confirmar, ler o registro cru de VLI em cada uma das 3 chaves de semana.
+
+**Por que a Sentinela ficou desligada.** Com quatro das oito vagas presas e o backlog ligado, a rotina entraria em toda tentativa. Dezesseis execuções por dia a cerca de 70k tokens cada dá mais de um milhão de tokens por dia em trabalho repetido, o que atrapalharia a noturna e a matinal. O gatilho de documento novo da CVM funciona e é perda real ficar sem ele, mas não compensa esse custo. A task está registrada, com os dois gatilhos corretos, só `Disabled`.
+
+**Contra-medida que já existe.** O `pending_streak` da Sentinela alerta no log a partir de 6 execuções seguidas com backlog, então este laço nunca seria silencioso.
 
 ---
 
