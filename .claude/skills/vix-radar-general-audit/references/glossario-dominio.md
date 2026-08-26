@@ -1,5 +1,10 @@
 # Glossario de dominio — VIX Radar
 
+> **Governanca (2026-08-26).** Status: vigente. Data da versao alinhada a producao:
+> Frontend v202.33 (version.json ao vivo em 26/08, deploy 2026-08-25). Origem do
+> registro: producao, depois Obsidian, depois codigo. Condicao de obsolescencia:
+> revisar quando o frontend avancar de v202.33 ou surgir termo reservado novo.
+
 Fonte canonica dos termos que aparecem em rotulo de UI, campo de KV, nome de
 variavel, prompt de LLM e texto de e-mail. Existe por uma razao concreta: em
 2026-07-27 um card da Visao Geral exibia "Cobertura 62%" medindo, na verdade,
@@ -25,7 +30,7 @@ com outro sentido.
 | **Varredura** | Execucao de analise sobre o universo (matinal/noturna) | Contagem de alertas encontrados |
 | **Sem alertas** | Emissores sem evento CRITICO nem RELEVANTE na janela de 30 dias | Cobertura |
 | **Health** | Estado dos bindings e providers do Worker (`ok`, `kv`, `telemetria`, `verificador_ok`) | Saude do mercado de credito |
-| **Cobertura ANBIMA** | Disponibilidade da serie no arquivo de precos diario da ANBIMA (db*.txt) para UM emissor. Usado no aviso "Cobertura ANBIMA" do painel do emissor (`app/index.html` ~5486): emissor possui debentures registradas, mas sem preco na fonte ANBIMA | Cobertura do universo varrido (termo reservado "Cobertura" simples). Nunca usar "Cobertura" sem o qualificador "ANBIMA" para esse sentido |
+| **Cobertura ANBIMA** | Disponibilidade da serie no arquivo de precos diario da ANBIMA (db*.txt) para UM emissor. Usado no aviso "Cobertura ANBIMA" do painel do emissor (grep "Cobertura ANBIMA" em `app/index.html`, ~L5678 no v202.33): emissor possui debentures registradas, mas sem preco na fonte ANBIMA | Cobertura do universo varrido (termo reservado "Cobertura" simples). Nunca usar "Cobertura" sem o qualificador "ANBIMA" para esse sentido |
 
 ## Colisao perigosa conhecida
 

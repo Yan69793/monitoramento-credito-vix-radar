@@ -78,7 +78,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | Projeto | `.grok/skills/` (junctions) + `.claude/skills/` — 11 skills VIX |
 | Rotinas 103 | `~/.claude/scheduled-tasks/vixradar-{matinal,noturno}/` — **independente** do chat |
 
-**Verificar:** `pwsh scripts/skills-verify-tokens.ps1` + `pwsh scripts/verify-emissores-103.ps1`
+**Verificar:** `pwsh scripts/skills-verify-tokens.ps1` + `node scripts/check-emissores-cnpj.mjs` + `node scripts/check-emissores-cadastro.mjs`
 
 **Restaurar tudo:** `pwsh scripts/skills-restore.ps1` + backup `config.toml.bak-pre-skills-fix`
 
