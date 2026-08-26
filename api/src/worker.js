@@ -6842,7 +6842,7 @@ async function handleSyncCVM(body, env2222) {
   if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403);
   if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indispon\xEDvel." }, 500);
   if (!Array.isArray(documentos)) return resp({ ok: false, erro: "'documentos' deve ser array." }, 400);
-  await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(documentos), { expirationTtl: 60 * 60 * 24 * 14 });
+  await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(documentos), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
   // CVMFRESCOR1: carga manual tambem carimba a meta. Sem isto, um POST admin
   // sobrescreveria os documentos e deixaria o frescor apontando para o sync
   // automatico anterior, que e exatamente o tipo de invariante quebrada que
@@ -7723,6 +7723,7 @@ __name(_atribuirDocumentoCVM, "_atribuirDocumentoCVM");
 // perdido pode ser feriado, remanejo de janela ou atraso de lote e nao merece
 // acordar ninguem. Dois ciclos e a fonte parada de verdade.
 var CVM_FONTE_META_KEY = "cvm:fonte_meta";
+var CVM_DOCUMENTOS_TTL_SEG = 60 * 60 * 24 * 30; // TTL unico de cvm:documentos (VOLTTL1). A escrita manual (handleSyncCVM) e a automatica (syncCVMAutomatico) precisam concordar: o fix v4.9.210 (14->30) passou so no caminho automatico e o POST manual de admin seguiu com 14, capaz de expirar a base durante fonte parada, que e justamente quando se usa a via de emergencia.
 var CVM_FONTE_CICLO_DIAS = 7;
 var CVM_FONTE_MAX_CICLOS = 2;
 // CVMDURA1 (auditoria 2026-08-24). CVM_FONTE_MAX_CICLOS acima cobre UM caso:
@@ -7857,6 +7858,14 @@ async function avaliarFrescorCVM(env2222) {
   out.last_modified = meta.last_modified_iso || null;
   out.max_data_entrega = meta.max_data_entrega || null;
   out.sincronizado_em = meta.sincronizado_em || null;
+  // ATRIBTEL1 (auditoria 2026-08-26): a meta guarda cobertura/descartados_teto
+  // para o health expor sem reprocessar o acervo, e o ultimo sync ok no ramo ok.
+  // Sem este mapeamento, os campos cvm_atribuicao_* do health ficavam sempre
+  // zerados e cvm_fonte_ultimo_sync_ok_em null no verde, cegando a guarda do
+  // SUBSTRINGDONO1 e escondendo se a ingestao de documentos rodou.
+  out.cobertura = meta.cobertura && typeof meta.cobertura === "object" ? meta.cobertura : null;
+  out.descartados_teto = meta.descartados_teto != null ? meta.descartados_teto : null;
+  out.ultimo_sync_ok_em = meta.ultimo_sync_ok_em || meta.sincronizado_em || null;
   if (meta.ok === false) {
     var _motRaw = String(meta.motivo || "desconhecido");
     out.motivo = "ultimo_sync_falhou:" + _motRaw.slice(0, 60);
@@ -8122,7 +8131,7 @@ async function syncCVMAutomatico(env2222) {
     // de apenas 2 ciclos, entao a fonte cair por 2 semanas apagaria a base de
     // documentos e o frescor viraria imensuravel justamente durante o incidente.
     // 30 dias mantem o ultimo bom vivo por 4 ciclos.
-    await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(docs), { expirationTtl: 60 * 60 * 24 * 30 });
+    await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(docs), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
     const empresasUnicas = [...new Set(docs.map((d) => d.e))].length;
     // Cobertura da atribuicao. E o sinal preditivo desta fase: renomeacao ou
     // subsidiaria nova aparece aqui como quarentena subindo, dias antes de alguem

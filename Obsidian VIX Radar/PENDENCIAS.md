@@ -11,6 +11,40 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 26/08 (tarde) — P2, CORRIGIDO NO FONTE, aguarda deploy (CVMTTL1): TTL de cvm:documentos divergente entre os dois caminhos de sync
+
+> **Status:** CORRIGIDO NO FONTE. Edits em `api/src/worker.js`, testes verdes, **não deployado** (deploy e commit são passos do operador, fluxo anti-drift)
+> **Data da Versão:** 2026-08-26
+> **Origem do Registro:** auditoria `/vix-radar-general-audit` em 26/08, confirmada por revisor independente (duas leituras de fonte, health ao vivo)
+> **Condição de Obsolescência:** cai quando o fix for deployado e as duas escritas de `cvm:documentos` usarem a mesma constante, ou se a fonte voltar a ter TTL próprio diferente
+
+O fix do CVMURL404 (v4.9.210) subiu o TTL de `cvm:documentos` de 14 para 30 dias **só no caminho automático** (`syncCVMAutomatico`). O POST manual de admin (`handleSyncCVM`) continuou com 14 dias. Com a fonte semanal, 14 dias não cobrem dois ciclos, e uma fonte parada por duas semanas via caminho manual expirava a base no pior momento, que é justamente quando a via de emergência existe.
+
+**Causa raiz:** a mesma política de vida de chave vivia em duas literais, e o fix de 10/08 alcançou só uma das duas. Nenhuma camada comparava as duas escritas da mesma chave.
+
+**Correção:** constante única `CVM_DOCUMENTOS_TTL_SEG` (60×60×24×30) declarada ao lado de `CVM_FONTE_META_KEY`, usada nos dois call sites. A regra VOLTTL1 da matriz (TTL ≥ 2× intervalo de gravação) continua valendo como guarda de auditoria.
+
+**Guarda:** constante compartilhada, o que torna divergência de TTL entre as duas vias uma contradição estrutural, não um número solto.
+
+---
+
+## 26/08 (tarde) — P2, CORRIGIDO NO FONTE, aguarda deploy (ATRIBTEL1): telemetria de atribuição CVM cega por construção
+
+> **Status:** CORRIGIDO NO FONTE. Edits em `api/src/worker.js` + teste de duas pontas em `api/test/cvm-frescor.test.mjs`, 61/61 verdes, **não deployado**
+> **Data da Versão:** 2026-08-26
+> **Origem do Registro:** auditoria `/vix-radar-general-audit` em 26/08, confirmada por revisor independente (leitura do `avaliarFrescorCVM` + health ao vivo)
+> **Condição de Obsolescência:** cai quando o fix for deployado e o health mostrar `cvm_atribuicao_cobertura_pct` não-nulo com `cvm_fonte_ultimo_sync_ok_em` datado
+
+`avaliarFrescorCVM` nunca copiava `meta.cobertura` nem `meta.descartados_teto` para o `out`, e `out.ultimo_sync_ok_em` só existia no ramo de falha. A meta **tem** os dados: `gravarFonteCVMMeta` grava `cobertura`/`descartados_teto` e, no ramo ok, `ultimo_sync_ok_em = sincronizado_em`. O elo meta→health é que não existia. Medido em produção em 26/08: `cvm_atribuicao_por_cnpj:0`, `por_nome:0`, `quarentena:0`, `cobertura_pct:null`, `ultimo_sync_ok_em:null`, com ingestão e fonte verdes. A guarda do SUBSTRINGDONO1 (os campos `cvm_atribuicao_*`) era cega por construção, e não havia como saber se a ingestão de documentos avançou de verdade.
+
+**Causa raiz:** o writer foi migrado para a meta (v4.9.210/215) e o leitor não acompanhou. A guarda de duas pontas do SUBSTRINGDONO1 validou o lado de atribuição mas nunca o lado de exposição, e o caso bom do teste seeda os dados e não os lê.
+
+**Correção (só no leitor, o writer já grava certo):** `avaliarFrescorCVM` mapeia `meta.cobertura` → `out.cobertura`, `meta.descartados_teto` → `out.descartados_teto` e `out.ultimo_sync_ok_em = meta.ultimo_sync_ok_em || meta.sincronizado_em`. O `_cvmCob` do health já tem fallback defensivo e não muda.
+
+**Guarda:** o caso bom de `cvm-frescor.test.mjs` agora seeda `cobertura {cnpj:500, nome:50, quarentena:5, sem_dono:20}` e `descartados_teto:12` e asserta que o health expõe 500/50/5, `cobertura_pct > 0`, `descartados_teto:12` e `ultimo_sync_ok_em` com data. Contra o código anterior, esses asserts falham. 61/61 testes passam com o fix.
+
+---
+
 ## 26/08 (madrugada) — BLOQUEIO EXTERNO (INVERSAO-CD1): scheduler real achado, alteração aplicada, ativação depende do operador reiniciar o app
 
 > **Status:** BLOQUEIO EXTERNO. A alteração de horário foi aplicada no arquivo do scheduler real, mas só entra em vigor quando o operador reiniciar o Claude Desktop (o arquivo é lido apenas na ativação do app, e a sessão que editou roda hospedada por ele, não pode reiniciá-lo)

@@ -420,14 +420,21 @@ describe("CVMDURA1 - falha dura da fonte separada de cadencia", () => {
   it("caso bom: sync ok recente nao marca falha dura nem degrada nada", async () => {
     // Prova da outra ponta. Sem ela, um bug que marcasse falha_dura sempre
     // passaria despercebido e o `ok` ficaria preso em false.
+    const bomSyncEm = "2026-08-24T03:00:00.000Z";
     await seedMeta({
       ok: true,
       sincronizado_em: new Date().toISOString(),
       last_modified_iso: diasAtrasISO(0),
       max_data_entrega: diasAtrasISO(0),
-      ultimo_sync_ok_em: new Date().toISOString(),
+      ultimo_sync_ok_em: bomSyncEm,
       falhas_consecutivas: 0,
       documentos: 646,
+      // ATRIBTEL1: a meta guarda a cobertura da atribuicao para o health expor
+      // sem reprocessar o acervo. Se o leitor nao mapear meta.cobertura ->
+      // out.cobertura, cvm_atribuicao_* fica preso em zero e a guarda do
+      // SUBSTRINGDONO1 fica cega.
+      cobertura: { cnpj: 500, nome: 50, quarentena: 5, sem_dono: 20 },
+      descartados_teto: 12,
       origem: "teste"
     });
     const b = await health();
@@ -436,6 +443,14 @@ describe("CVMDURA1 - falha dura da fonte separada de cadencia", () => {
     expect(b.cvm_fonte_falha_dura).toBe(false);
     expect(b.cvm_fonte_degrada_servico).toBe(false);
     expect(b.ok).toBe(true);
+    // Prova da outra ponta do ATRIBTEL1: no ramo ok o health expoe a cobertura
+    // real e o ultimo sync bem-sucedido, em vez de zero e null.
+    expect(b.cvm_atribuicao_por_cnpj).toBe(500);
+    expect(b.cvm_atribuicao_por_nome).toBe(50);
+    expect(b.cvm_atribuicao_quarentena).toBe(5);
+    expect(b.cvm_atribuicao_cobertura_pct).toBeGreaterThan(0);
+    expect(b.cvm_atribuicao_descartados_teto).toBe(12);
+    expect(b.cvm_fonte_ultimo_sync_ok_em).toBe(bomSyncEm);
   });
 
   it("motivo NAO duro nao escala, mesmo com muitas falhas", async () => {
