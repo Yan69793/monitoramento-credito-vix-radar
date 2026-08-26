@@ -2,6 +2,23 @@
 
 Última atualização: 2026-08-26 (agente: Claude Opus 5)
 
+> [!info] 26/08 (tarde) — deploy v4.9.221: TTL de `cvm:documentos` unificado e telemetria de atribuição CVM ligada.
+> **Status:** vigente · **Data da Versão:** 2026-08-26 · **Origem do Registro:** deploy validado
+> contra produção v4.9.221, health ao vivo (`ok=true`, `kv=true`, `telemetria=true`, `sentry_ok=true`) ·
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.221.
+>
+> Auditoria geral achou dois P2, confirmados por revisor independente e corrigidos nesta versão.
+> `cvm:documentos` tinha TTL de 14 dias na escrita manual de admin e 30 no caminho automático,
+> o fix do v4.9.210 tinha alcançado só um dos dois (CVMTTL1). Agora é uma constante única,
+> `CVM_DOCUMENTOS_TTL_SEG`, nos dois call sites.
+> E a telemetria de atribuição CVM era cega por construção: a meta grava cobertura, descartados
+> e último sync ok, mas o leitor não lia, e o health devolvia zeros no verde (ATRIBTEL1). O elo
+> meta→health foi ligado, medido ao vivo: `cvm_atribuicao_por_cnpj:793`, `quarentena:1333`,
+> `cobertura_pct:37,3`, `cvm_fonte_ultimo_sync_ok_em` datado. A guarda do SUBSTRINGDONO1 deixou
+> de ser cega.
+> Testes: suíte 128/128, alvo 61/61. Commits `91246e1`, `e3d3490`, `2e45676` (deploy, pushado),
+> `08dd511` (PENDENCIAS fechado), `933825f` (governança da skill em v4.9.221).
+
 > [!info] 25/08 (noite) — horários invertidos e nasce a varredura pontual. Worker **v4.9.217**.
 > **Status:** vigente · **Data da Versão:** 2026-08-25 · **Origem do Registro:** medido
 > contra produção v4.9.216, `Get-ScheduledTask` ao vivo, suíte 117/117 ·
