@@ -353,6 +353,36 @@ Sem elevação, sem eco na tela, sem entrar no histórico do shell. Mesmo idioma
 ---
 
 
+## 25/08 — RESOLVIDO: skill da noturna reescrita para orçar por lote (PASSOCUSTO1)
+
+> **Status:** RESOLVIDO. Skill atualizada no commit `f144d49` ("fix(noturno): recalibra lotes e fecha fallback CVM"); reescrita verificada em 25/08 lendo `routines/claude-desktop/noturno/SKILL.md`
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** log da noturna de 25/08 (`logs/routines/vixradar-noturno_20260825.log`, linhas `DECISAO:` e `CUSTO:`), relatório da rodada para o operador
+> **Condição de Obsolescência:** ATENDIDA em 25/08. A condição era reescrever Passo 6 + "Orçamento de tokens" para orçar por número de lotes; a skill foi reescrita e incorpora todos os pontos
+
+**O que foi medido.** Sessão de 25/08, 103/103 no ledger, 54 analisados, 4 lotes de subagente:
+
+```
+CUSTO: rapida_1=199815 rapida_2=162612 rapida_3=147565 aprofundada_1=208325 total=718317 (cap 700k, estouro 2,6%)
+```
+
+- Boot fixo do subagente **~130k por lote**, domina o custo. Marginal por emissor dentro do lote **~2–13k** (registrado na linha `DECISAO:` do log).
+- A skill orça 15k fixos + 9,5k/emissor (rápida) e 13k/emissor (aprofundada, "sem medição recente, revalidar"). Os dois estão errados **na forma**: o custo quase não escala com o número de emissores, escala com o número de lotes. Disparar um lote custa ~130k, tenha ele 1 ou 16 emissores.
+- Consequência prática: seguir o texto atual leva a multiplicar lotes achando que economiza, e o corte de cap atinge justamente a cauda de EWS alto. Em 25/08, dois lotes de aprofundada (11+11, conforme a skill) gastariam ~130k a mais de partida e o cap cortaria Oi, Braskem e Raízen — três dos cinco CRITICO do dia. A rodada fundiu os 16 num lote só (desvio deliberado, registrado no log) e cobriu todos.
+
+**Como a reescrita incorporou a recomendação.** Verificado lendo o `SKILL.md` atual:
+
+- `custo = 130000 x numero_de_lotes + 5000 x numero_de_emissores`, com a tabela dos 4 lotes medidos em 25/08 e a análise de que é a **profundidade de busca** (nº de chamadas de ferramenta) que move o custo, não o tamanho do lote.
+- Aprofundada de 11 → **até 16**; teto declarado como limite de contexto do subagente, não de custo, com a medição citada (16 emissores, 39 chamadas, 208k).
+- Fila ordenada por `ews_score` desc **antes** de lotear, para o corte de orçamento cair na cauda de EWS 0-1.
+- **Guarda que a recomendação não tinha:** reserva do custo da fila aprofundada calculada no início (`reserva_aprofundada = 130000 x lotes + 5000 x emissores`), e a fila rápida só dispara se sobrar cap acima da reserva ainda não executada — impede queimar o cap na rápida e deferir os EWS altos.
+- Política de cap mais rigorosa que a recomendada (~5%): **700k é teto de decisão** (nunca disparar lote cuja estimativa passe disso), **725k é só a folga para overshoot de um lote já disparado**, porque o `subagent_tokens` só é conhecido depois. Tolerância ≠ permissão.
+
+**Histórico da saga, para não recalibrar por emissor de novo.** 18/08 calibrou 9,5k/emissor → 19/08 medido 14,6k/emissor (registro abaixo) → 24/08 CALIB3: calibragem "4x alta" deferiu 15 à toa → 25/08: o modelo por emissor está errado na forma, não no fator. O fator certo é por lote. O "Contribuinte secundário" do bloco CVMURL404 (24/08) já tinha medido 25,2k/emissor na aprofundada e 12,3k na rápida — variações de um número que não é a variável certa.
+
+---
+
+
 ## 24/08 (oitava rodada) — RESOLVIDO: card recurado e vencido ganha estado próprio (EXCECAO-FRESCOR1)
 
 > **Status:** RESOLVIDO, commits `e7d40b7` e `35bc990`. CI verde no run `32802931668` com as 5 provas novas
@@ -658,6 +688,8 @@ Guarda sistêmica: 8 testes novos em `api/test/cvm-frescor.test.mjs` travando o 
 ### Aberto, decisão do operador
 
 A CVM ainda não repôs `ipe_cia_aberta_2026.zip`. Enquanto não repuser, a ingestão de Fato Relevante segue parada e os eventos dependem só de imprensa e RAD. Escopo decidido nesta sessão: **não construir fonte de ingestão nova**, detectar e alertar. Quando a CVM repuser, o sync volta sozinho. Se passar de 4 syncs falhos, o `ok` agregado cai e o alerta dispara.
+
+**Adendo 25/08, sem apagar o diagnóstico acima — a fonte voltou.** O log da noturna de 25/08 registra `cvm_fonte_ok=true cvm_idade_dias=0`, e o relatório da rodada confirma `cvm_fonte_idade_dias:0, last_modified 25/08, falhas_consecutivas:0`. A CVM repôs o ZIP do ano corrente; o sync voltou sozinho, como previsto neste bloco, e a ingestão de Fato Relevante está ativa de novo. Nenhuma correção nossa foi necessária, só a detecção e o alerta que já existiam. O item CVMURL404 fecha por resolução externa.
 
 ---
 
