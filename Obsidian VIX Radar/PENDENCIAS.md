@@ -39,13 +39,14 @@ Editado `scheduled-tasks.json` em 26/08, com backup `scheduled-tasks.json.bak-20
 |---|---|---|---|
 | `vixradar-matinal` | `0 10 * * 1-5` | `0 18 * * 1-5` | `enabled:true`, 18h Seg-Sex |
 | `vixradar-noturno` | `0 18 * * *` | `0 10 * * *` | `enabled:true`, 10h diário |
-| `vixradar-verificacao-async` | `20 10,18 * * *` | `0,45 11,18 * * *` | `enabled:true`, dispara 11h00, 11h45, 18h00 e 18h45 |
+| `vixradar-verificacao-async-11h` | (nova, ver original abaixo) | `0 11 * * *` | `enabled:true`, 11h00 |
+| `vixradar-verificacao-async-1845` | (nova) | `45 18 * * *` | `enabled:true`, 18h45 |
 
-As duas obrigatórias (11h00 e 18h45) ficam satisfeitas. As outras duas (11h45 e 18h00) são sobra da restrição de um cron só; disparos extras são inofensivos porque a rotina sai cedo quando a fila está vazia. JSON validado com `ConvertFrom-Json`, 5 tasks, as 3 `enabled:true`.
+O cron cartesiano `0,45 11,18 * * *` também disparava 11h45 e 18h00, horários indesejados. Ele foi substituído por **duas scheduled tasks independentes**, clonando o prompt e a configuração da original (`SKILL.md` e `ROUTINES-CLOUD.md` copiados para pasta própria de cada clone, hash idêntico ao original). Só id e cron diferem. Estado final dispara exatamente 11h00 e 18h45, sem 11h45 nem 18h00. JSON validado com `ConvertFrom-Json`, 6 tasks, IDs únicos, as 4 sessões VIX `enabled:true`. Backup do estado anterior com cartesiano: `scheduled-tasks.json.bak-cartesian-20260826`.
 
 ### Ação manual mínima (por isso BLOQUEIO EXTERNO)
 
-Reiniciar o Claude Desktop para reler o arquivo na ativação. Risco real: se o app gravar o snapshot em memória (que ainda tem os crons velhos) antes do restart, a edição é revertida; nesse caso reaplicar após o restart, ou trocar pelo UI de scheduled tasks do app. Prazo recomendado: antes da próxima gravação, no limite antes do próximo disparo agendado de hoje.
+Reiniciar o Claude Desktop **antes das 10h BRT de hoje**. O processo do app (`claude.exe` PID 10756) está vivo desde 25/08 18:56 e só lê o arquivo na ativação, então o snapshot em memória ainda é o cron original e o próximo dispatch (matinal às 10h de hoje) grava esse snapshot velho por cima do arquivo. Depois do restart as 4 sessões novas carregam e o próximo `INICIO:` do log confirma. Alternativa: trocar pelo UI de scheduled tasks do app. A sessão que editou roda hospedada pelo app e não pode reiniciá-lo.
 
 ### Preservado
 
