@@ -11,12 +11,12 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
-## 26/08 (tarde) — P2, CORRIGIDO NO FONTE, aguarda deploy (CVMTTL1): TTL de cvm:documentos divergente entre os dois caminhos de sync
+## 26/08 (tarde) — P2, CORRIGIDO E DEPLOYADO no v4.9.221 (CVMTTL1): TTL de cvm:documentos divergente entre os dois caminhos de sync
 
-> **Status:** CORRIGIDO NO FONTE. Edits em `api/src/worker.js`, testes verdes, **não deployado** (deploy e commit são passos do operador, fluxo anti-drift)
+> **Status:** CORRIGIDO E DEPLOYADO. v4.9.221 em produção em 26/08, deploy validado (`ok=true`, `kv=true`, `telemetria=true`, `sentry_ok=true`). Constante única `CVM_DOCUMENTOS_TTL_SEG` nos dois call sites.
 > **Data da Versão:** 2026-08-26
 > **Origem do Registro:** auditoria `/vix-radar-general-audit` em 26/08, confirmada por revisor independente (duas leituras de fonte, health ao vivo)
-> **Condição de Obsolescência:** cai quando o fix for deployado e as duas escritas de `cvm:documentos` usarem a mesma constante, ou se a fonte voltar a ter TTL próprio diferente
+> **Condição de Obsolescência:** registro histórico de correção; torna a divergir se as duas escritas de `cvm:documentos` voltarem a usar literais diferentes
 
 O fix do CVMURL404 (v4.9.210) subiu o TTL de `cvm:documentos` de 14 para 30 dias **só no caminho automático** (`syncCVMAutomatico`). O POST manual de admin (`handleSyncCVM`) continuou com 14 dias. Com a fonte semanal, 14 dias não cobrem dois ciclos, e uma fonte parada por duas semanas via caminho manual expirava a base no pior momento, que é justamente quando a via de emergência existe.
 
@@ -28,12 +28,12 @@ O fix do CVMURL404 (v4.9.210) subiu o TTL de `cvm:documentos` de 14 para 30 dias
 
 ---
 
-## 26/08 (tarde) — P2, CORRIGIDO NO FONTE, aguarda deploy (ATRIBTEL1): telemetria de atribuição CVM cega por construção
+## 26/08 (tarde) — P2, CORRIGIDO E DEPLOYADO no v4.9.221 (ATRIBTEL1): telemetria de atribuição CVM cega por construção
 
-> **Status:** CORRIGIDO NO FONTE. Edits em `api/src/worker.js` + teste de duas pontas em `api/test/cvm-frescor.test.mjs`, 61/61 verdes, **não deployado**
+> **Status:** CORRIGIDO E DEPLOYADO. v4.9.221 em produção, elo meta→health verificado ao vivo em 26/08: `cvm_atribuicao_por_cnpj:793`, `quarentena:1333`, `cobertura_pct:37,3`, `ultimo_sync_ok_em:26.ago..2026 15:30:43`.
 > **Data da Versão:** 2026-08-26
 > **Origem do Registro:** auditoria `/vix-radar-general-audit` em 26/08, confirmada por revisor independente (leitura do `avaliarFrescorCVM` + health ao vivo)
-> **Condição de Obsolescência:** cai quando o fix for deployado e o health mostrar `cvm_atribuicao_cobertura_pct` não-nulo com `cvm_fonte_ultimo_sync_ok_em` datado
+> **Condição de Obsolescência:** registro histórico de correção; cai se `cvm_atribuicao_cobertura_pct` ou `cvm_fonte_ultimo_sync_ok_em` voltarem a ficar nulos com a meta povoada
 
 `avaliarFrescorCVM` nunca copiava `meta.cobertura` nem `meta.descartados_teto` para o `out`, e `out.ultimo_sync_ok_em` só existia no ramo de falha. A meta **tem** os dados: `gravarFonteCVMMeta` grava `cobertura`/`descartados_teto` e, no ramo ok, `ultimo_sync_ok_em = sincronizado_em`. O elo meta→health é que não existia. Medido em produção em 26/08: `cvm_atribuicao_por_cnpj:0`, `por_nome:0`, `quarentena:0`, `cobertura_pct:null`, `ultimo_sync_ok_em:null`, com ingestão e fonte verdes. A guarda do SUBSTRINGDONO1 (os campos `cvm_atribuicao_*`) era cega por construção, e não havia como saber se a ingestão de documentos avançou de verdade.
 
