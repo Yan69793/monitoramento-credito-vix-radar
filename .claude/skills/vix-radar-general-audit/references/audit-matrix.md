@@ -1,10 +1,10 @@
 # Audit Matrix
 
 > **Governanca (2026-08-26).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.220 e Frontend v202.33, medidos ao vivo em 26/08 no health publico e
+> Worker v4.9.221 e Frontend v202.33, medidos ao vivo em 26/08 no health publico e
 > no version.json, coincidindo com o repo. Origem do registro: producao, depois
 > Obsidian, depois codigo (api/wrangler.toml main + changelog). Condicao de
-> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.220 ou
+> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.221 ou
 > surgir binding, fila, endpoint, rotina ou incidente novo que nenhuma secao alcance.
 
 Referencia rapida para auditoria geral backend/frontend do VIX Radar.
@@ -20,11 +20,12 @@ Referencia rapida para auditoria geral backend/frontend do VIX Radar.
 
 ## Backend Worker
 
-> Producao em 2026-08-26: Worker v4.9.220 e Frontend v202.33, medidos ao vivo no
-> health publico e no version.json, coincidindo com o repo (main = v4.9.220.js).
+> Producao em 2026-08-26: Worker v4.9.221 e Frontend v202.33, medidos ao vivo no
+> health publico e no version.json, coincidindo com o repo (main = v4.9.221.js).
 > Marcos pos v4.9.197 no changelog do wrangler.toml: v4.9.205 SPREADSERIE1,
 > v4.9.209-210 CVMURL404/CVMDURA1, v4.9.214 EMAILSILENT1, v4.9.215 SUBSTRINGDONO1,
-> v4.9.216 SENTINELA1, v4.9.217-219 DEFERGRUDA1/2/3, v4.9.220 STATUSGRUDA1.
+> v4.9.216 SENTINELA1, v4.9.217-219 DEFERGRUDA1/2/3, v4.9.220 STATUSGRUDA1,
+> v4.9.221 CVMTTL1/ATRIBTEL1.
 
 Checklist:
 
@@ -50,9 +51,9 @@ Checklist:
 - Fila de verificacao com reserva atomica (CONCORVERIF1, desde v4.9.196): acao `reservar_itens_fila` faz claim via `EstadoSemanaDO` (`op:"reservar"`, `this.state.storage`, TTL 20min) antes de gastar verificacao adversarial num item, evitando que poller Local e Remote processem o mesmo evento em paralelo. Fail-open documentado: se o DO falhar, `protecao_ativa:false` e o lote inteiro e tratado como reservado sem protecao real. Confirmar que todo caller (local e remote) checa `protecao_ativa` na resposta em vez de assumir protecao silenciosamente.
 - Credencial escopada para poller remoto (CHAVEESCOPO1, desde v4.9.197): secret `REMOTE_VERIFICACAO_KEY` autentica só as 3 acoes de verificacao (`listar_fila_verificacao`, `confirmar_verificacao`, `reservar_itens_fila`); toda outra acao do contrato exige `ROUTINE_API_KEY`. Ao revisar acao nova dessas 3, replicar o aceite dual (`routine_key !== ROUTINE_API_KEY && routine_key !== REMOTE_VERIFICACAO_KEY`); qualquer acao fora do grupo que aceite `REMOTE_VERIFICACAO_KEY` e escopo vazando.
 - Heartbeat de agente remoto (HEARTBEATVERIF1, desde v4.9.196): `verificacao_async` entra no `expectedAgents` do watchdog cron (limite 16h). Todo agente/rotina remota nova precisa entrar nesta lista, senão fica invisivel ao watchdog mesmo publicando heartbeat.
-- Atribuicao CVM por CNPJ (SUBSTRINGDONO1, desde v4.9.215): `_donoDocumentoCVM` arbitra com ancora de inicio de palavra e termo mais longo vencendo; `CNPJ_PRIMARIO_EMISSOR` (ITR/balanco) e `CNPJ_FAMILIA_CVM` (holding + subsidiarias) separados de proposito para a familia nao vazar no primario. Nome e excecao (entidade estrangeira). Sem-match vai a `admin_cvm_quarentena`. Health expoe `cvm_atribuicao_por_cnpj`/`por_nome`/`quarentena`/`cobertura_pct`/`descartados_teto`, fora do `ok` agregado. Conferir que emissor renomeado nao fica cego.
+- Atribuicao CVM por CNPJ (SUBSTRINGDONO1, desde v4.9.215): `_donoDocumentoCVM` arbitra com ancora de inicio de palavra e termo mais longo vencendo; `CNPJ_PRIMARIO_EMISSOR` (ITR/balanco) e `CNPJ_FAMILIA_CVM` (holding + subsidiarias) separados de proposito para a familia nao vazar no primario. Nome e excecao (entidade estrangeira). Sem-match vai a `admin_cvm_quarentena`. Health expoe `cvm_atribuicao_por_cnpj`/`por_nome`/`quarentena`/`cobertura_pct`/`descartados_teto`, fora do `ok` agregado. Desde v4.9.221 (ATRIBTEL1) o elo meta→health esta ligado, esses campos saem da meta em vez de ficarem zerados no verde. Conferir que emissor renomeado nao fica cego.
 - Email rastreado (EMAILSILENT1, desde v4.9.214): todo envio ao usuario final passa por `enviarEmailRastreado`, que nunca lanca (a acao primaria continua valendo). Respostas de aprovar/rejeitar carregam `email_enviado`/`email_erro`/`resend_id` (tri-estado). Rastro em KV `email_envio:{email}:{ts}` (TTL 90d, igual bounce). Conferir que call site novo le o retorno.
-- Fonte CVM (CVMURL404/CVMDURA1, desde v4.9.209-210): 404 do ZIP `ipe_cia_aberta_*.zip` repergunta o catalogo CKAN; falha DURA derruba `fonte_externa_ok` na hora (nao usa a tolerancia semanal de `CVM_FONTE_MAX_CICLOS`). Campos novos no health: `cvm_fonte_falha_dura`, `cvm_fonte_degrada_servico`, `cvm_fonte_ultimo_sync_ok_em`, `cvm_fonte_falhas_consecutivas`. TTL de `cvm:documentos` e 30 dias desde o v4.9.210. Conferir que alerta nenhum le so o agregado `ok`.
+- Fonte CVM (CVMURL404/CVMDURA1, desde v4.9.209-210): 404 do ZIP `ipe_cia_aberta_*.zip` repergunta o catalogo CKAN; falha DURA derruba `fonte_externa_ok` na hora (nao usa a tolerancia semanal de `CVM_FONTE_MAX_CICLOS`). Campos novos no health: `cvm_fonte_falha_dura`, `cvm_fonte_degrada_servico`, `cvm_fonte_ultimo_sync_ok_em`, `cvm_fonte_falhas_consecutivas`. TTL de `cvm:documentos` e 30 dias desde o v4.9.210, unificado numa constante unica no v4.9.221 (CVMTTL1). Conferir que alerta nenhum le so o agregado `ok`.
 - Sentinela pontual (SENTINELA1 v4.9.216, DEFERGRUDA1/2/3 v4.9.217-219, STATUSGRUDA1 v4.9.220): modo "pontual" em `montarPlanoRotina`/`listar_plano_rotina` com teto `ROTINA_PONTUAL_TETO=8` e excedente declarado em `pontual_candidatos`/`pontual_excedente`; gatilho so por fato novo (protocolo ausente de `radar:cvm_vistos:{empresa}`) ou divida (`_token_cap_deferred`), nunca por inconclusivo (v4.9.219). `_status` descreve a ULTIMA VARREDURA, nao o acervo. Conferir que a pontual converge, que a bandeira `_token_cap_deferred` e gravada E apagada nos 5 ramos, e que a leitura multi-semana nao ressuscita bandeira apagada.
 
 Comandos uteis:

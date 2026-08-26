@@ -18,13 +18,13 @@ date: 2026-08-26
 # VIX Radar General Audit
 
 > **Governanca (2026-08-26).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.220 e Frontend v202.33, medidos ao vivo em 26/08 no health publico
+> Worker v4.9.221 e Frontend v202.33, medidos ao vivo em 26/08 no health publico
 > (os dois dominios) e no version.json de vixradar.com, coincidindo com o repo
-> (main = v4.9.220.js e CACHE_VERSION v202.33). Origem do registro: producao
+> (main = v4.9.221.js e CACHE_VERSION v202.33). Origem do registro: producao
 > (health + version.json), depois Obsidian (03 - Estado Atual ainda registra
 > v4.9.216 de 25/08, defasado), depois codigo (api/wrangler.toml main + changelog).
 > Condicao de obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar
-> v4.9.220, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
+> v4.9.221, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
 > nenhuma secao desta skill alcance.
 
 Auditoria ampla de engenharia para o VIX Radar. Esta skill complementa
