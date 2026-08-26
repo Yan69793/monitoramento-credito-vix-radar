@@ -1,9 +1,25 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.220)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.221)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.221.js = v4.9.220 + CVMTTL1 + ATRIBTEL1 (auditoria 26/08, general-audit).
+#   CVMTTL1: o TTL de cvm:documentos vivia em duas literais. O fix v4.9.210 (14
+#   para 30 dias, VOLTTL1) alcancou so o caminho automatico (syncCVMAutomatico);
+#   a escrita manual de admin (handleSyncCVM, POST) ficou em 14 dias, capaz de
+#   expirar a base durante fonte parada, justamente quando se usa a via de
+#   emergencia. Constante unica CVM_DOCUMENTOS_TTL_SEG nos dois call sites.
+#   ATRIBTEL1: a telemetria de atribuicao CVM era cega por construcao. A meta
+#   grava cobertura/descartados_teto/ultimo_sync_ok_em (writer v4.9.210/215) mas
+#   avaliarFrescorCVM nao mapeava esses campos para o health no ramo ok, entao
+#   cvm_atribuicao_* ficava zerado e cvm_fonte_ultimo_sync_ok_em null no verde,
+#   cegando a guarda do SUBSTRINGDONO1. Fix so no leitor (writer ja correto,
+#   confirmado na revisao). Elo meta->health ligado.
+#   Guardas: caso bom do cvm-frescor.test.mjs asserta cvm_atribuicao_por_cnpj/
+#   nome/quarentena/cobertura_pct/descartados_teto e ultimo_sync_ok_em no ramo
+#   ok, falha contra o codigo anterior. Alvo 61/61, suite 128/128.
+#   Rollback: main = "v4.9.220.js".
 # v4.9.220.js = v4.9.219 + STATUSGRUDA1, _status sofria o mesmo descarte do
 #   DEFERGRUDA2 e agora segue a mesma regra conceitual.
 #   O ramo de carregarEstadoMultiSemana para "semana nova sem evento, semana velha
