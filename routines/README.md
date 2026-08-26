@@ -184,10 +184,28 @@ admin a uma rotina contraria o CHAVEESCOPO1. A rotina faz um `HEAD` no zip da CV
 a cada execução e registra no log quando o arquivo está à frente do que o Worker
 ingeriu, justamente para essa decisão nascer de dado medido.
 
+**Tetos.** Oito emissores, 120k tokens e **22 minutos de relógio** por execução. O
+teto de tempo é conferido antes de cada lote, então um lote lento não empurra os
+seguintes. O que passar de qualquer um dos três fica deferido e volta pelo mesmo
+gatilho, porque nada é marcado em `cvm_vistos`.
+
+**Limitação conhecida, SENTINELA-HANG1.** O teto de tempo não interrompe um
+`claude -p` já disparado. Medido em 25/08: duas execuções ficaram 20+ minutos no
+segundo lote com o processo vivo e **1,5 segundo de CPU acumulado**, esperando rede.
+Causa provável é limite de taxa da assinatura, porque a noturna tinha rodado às 19h30
+e dois runs saíram em quinze minutos. Fundo de poço é o `ExecutionTimeLimit` de 40 min
+da task, e o mutex é liberado pelo sistema quando o processo morre. Fechar de vez
+exige trocar o pipeline por `System.Diagnostics.Process` com `WaitForExit`.
+
 Medição que motivou a rotina: em 25/08 a CVM republicou o arquivo às 07h58 BRT e o
 Worker só ingeriu às 12h30. E o `modo=pontual` em produção acusou **34 emissores
-parados na fila de deferidos** por teto de tokens, backlog que antes só era
-revisitado pela rotina do dia seguinte, que deferia de novo.
+parados na fila de deferidos** por teto de tokens. A causa apareceu ao **rodar a
+rotina duas vezes e comparar as listas de alvo**: eram os mesmos 8 emissores, quatro
+deles já analisados com `ok:true` na primeira execução. A bandeira
+`_token_cap_deferred` ligava e nunca desligava (DEFERGRUDA1, corrigido no Worker
+v4.9.217). Emissor deferido uma vez virava FULL permanente no tiering da noturna,
+gastando 9 rodadas de busca todo dia e realimentando o próprio deferimento. Nenhuma
+leitura de código tinha achado isso; rodar duas vezes e comparar a saída achou.
 
 ## Claude Code Routines remotas (nuvem, `claude.ai/code`)
 

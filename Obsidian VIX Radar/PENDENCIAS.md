@@ -11,6 +11,40 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 25/08 (noite) — RESOLVIDO e DEPLOYADO (DEFERGRUDA1): a bandeira de deferido ligava e nunca desligava
+
+> **Status:** RESOLVIDO. Worker v4.9.217 em produção, portão validado
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** achado **rodando** a Sentinela contra produção, não lendo código
+> **Condição de Obsolescência:** ATENDIDA no código. Falta observar `pontual_candidatos` cair, porque o estado gravado sob o código antigo só é limpo na próxima análise real de cada emissor
+
+O modo pontual devolveu os **mesmos 8 emissores em duas execuções seguidas** (VLI, Embraer, Nexa Resources, Even Construtora, Copel, Neoenergia, CPFL Energia, Comerc Energia), sendo que os quatro primeiros já tinham sido analisados e submetidos com `ok:true` na primeira. A varredura pontual entraria em laço, reanalisando os mesmos oito duas vezes por hora o dia inteiro.
+
+**Causa.** Os cinco ramos de `persistirResultadoCompartilhadoInterno` faziam `if (payload._token_cap_deferred === true) X._token_cap_deferred = true` sem `else`. E os ramos de `sem_eventos` **reaproveitam o objeto anterior** em vez de reconstruí-lo, então a bandeira sobrevivia a qualquer análise real. O DEFERREDREC1-FIX de 15/08 colocou a escrita e não colocou o apagamento.
+
+**O dano é maior que a rotina nova, e é antigo.** Emissor deferido uma vez virava FULL permanente no tiering da noturna, porque `deferred_prioritario` tem precedência sobre quase tudo. Gastava 9 rodadas de busca todo dia e realimentava o próprio deferimento. **Isso explica o backlog de 34.** Liga direto com PASSOCUSTO1: parte do estouro de teto da noturna era esse laço se pagando.
+
+**Fix.** `else delete` nos cinco ramos. A bandeira significa "não foi analisado porque o teto bateu", então análise real tem que apagá-la. Submit de cap-deferred continua marcando normalmente. Guarda com prova das duas pontas, 1 dos 15 testes falha contra o código anterior. Suíte 119/119.
+
+**Lição de método.** Este defeito não apareceu em nenhuma leitura de código nem em nenhum teste unitário. Apareceu na segunda execução real, comparando duas listas de alvos. Rodar duas vezes e comparar a saída é barato e pega classe de bug que revisão não pega.
+
+---
+
+## 25/08 (noite) — ABERTO P2 (SENTINELA-HANG1): lote pode ficar pendurado esperando rede
+
+> **Status:** ABERTO, com mitigação parcial no ar
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** medido em duas execuções seguidas em 25/08, ambas travaram no segundo lote
+> **Condição de Obsolescência:** fecha quando o invocador do `claude -p` tiver timeout próprio por lote, ou quando a causa (provável limite de taxa) for confirmada e tratada
+
+Duas execuções ficaram 20+ minutos no segundo lote, com o processo `claude.exe` vivo e **1,5 segundo de CPU acumulado**, ou seja esperando rede, não trabalhando. Causa provável é limite de taxa da assinatura: a noturna rodou às 19h30 e eu disparei dois runs em quinze minutos.
+
+**Mitigação já no ar.** Teto de relógio de 22 minutos por execução, conferido antes de cada lote. Um lote lento não empurra mais os seguintes, e quem não rodou fica deferido e volta pelo mesmo gatilho. O `ExecutionTimeLimit` de 40 min da task é o fundo de poço, e o mutex é liberado pelo sistema quando o processo morre.
+
+**O que falta.** O teto não interrompe um `claude -p` já disparado, porque o `Invoke-ClaudeBatchSentinela` usa pipeline simples, sem timeout. A noturna tem o mesmo desenho e nunca precisou, mas a Sentinela roda 16 vezes por dia contra 1. Fechar isso exige trocar o pipeline por `System.Diagnostics.Process` com `WaitForExit(ms)`, mudança que merece teste próprio e não foi feita às 23h sem poder exercitar o caminho de timeout.
+
+---
+
 ## 25/08 (noite) — ABERTO P1 (INVERSAO-CD1): as três sessões do Claude Desktop ainda estão nos horários antigos
 
 > **Status:** ABERTO. Uma ação do operador, na interface do Claude Desktop
