@@ -9996,6 +9996,10 @@ var ROTINA_STALE_LIGHT_H = 48;
 var ROTINA_AUDIT_POR_DIA = 5;
 var ROTINA_MAX_SKIP_STREAK = 3;
 var ROTINA_MATINAL_TOP = 15;
+// SENTINELA1: teto de emissores por execucao da varredura pontual. Existe para que
+// um lote grande da CVM nao vire gasto descontrolado. O que passar do teto nao se
+// perde, sai no campo excedente e volta na execucao seguinte.
+var ROTINA_PONTUAL_TETO = 8;
 function _parseHorasStale(lastTs) {
   if (!lastTs) return 9999;
   return (Date.now() - new Date(lastTs).getTime()) / 36e5;
@@ -10012,6 +10016,105 @@ function _cvmNovosDesde(docs, sinceIso) {
 }
 __name(_cvmNovosDesde, "_cvmNovosDesde");
 __name2(_cvmNovosDesde, "_cvmNovosDesde");
+// SENTINELA1 (2026-08-25): identidade de documento CVM.
+//
+// _cvmNovosDesde acima compara YYYY-MM-DD, entao documento entregue no MESMO dia
+// civil de uma varredura nunca conta como novo. Isso ja mordia o top 15, que e
+// analisado duas vezes por dia: documento que entra pela manha nao promove o
+// emissor a FULL na passada da noite. Nao cega o sistema (os documentos dos 30
+// dias vao para o modelo em cvm_documentos de qualquer jeito), mas estraga o
+// tiering. Para a varredura pontual seria fatal, ela nunca dispararia.
+//
+// O identificador estavel e o numero de protocolo da CVM, que ja e extraido do
+// link em _corrigirDatasEventosCvm. Quando o link nao traz protocolo, cai para
+// _cvmChaveDoc, a mesma chave de deduplicacao usada no resto do arquivo
+// (declaracao de funcao, hoisted, definida adiante).
+function _cvmIdDoc(doc) {
+  if (!doc) return "";
+  var m = String(doc.link || "").match(/numProtocolo=(\d+)/i);
+  if (m) return "p:" + m[1];
+  var k = _cvmChaveDoc(doc);
+  return k ? "k:" + k : "";
+}
+__name(_cvmIdDoc, "_cvmIdDoc");
+__name2(_cvmIdDoc, "_cvmIdDoc");
+function _kvCvmVistosKey(empresa) {
+  return "radar:cvm_vistos:" + String(empresa || "").toLowerCase().trim();
+}
+__name(_kvCvmVistosKey, "_kvCvmVistosKey");
+__name2(_kvCvmVistosKey, "_kvCvmVistosKey");
+async function lerCvmVistos(env2222, empresa) {
+  var v = await env2222.RADAR_KV.get(_kvCvmVistosKey(empresa), "json").catch(function() { return null; });
+  return v && Array.isArray(v.ids) ? v.ids : [];
+}
+__name(lerCvmVistos, "lerCvmVistos");
+__name2(lerCvmVistos, "lerCvmVistos");
+// SENTINELA1: a marcacao acontece SO depois da analise entregue com sucesso, no
+// receber_analise. Ler o plano nao marca nada. Rotina que morre no meio, estoura
+// o teto de tokens ou toma erro de rede deixa o gatilho intacto, e o emissor
+// volta na execucao seguinte. Marcar na leitura perderia o evento em silencio,
+// que e a familia de falha de EMAILSILENT1 e CVMURL404.
+//
+// Idempotente por construcao: uniao de conjunto, reentrega do mesmo protocolo
+// nao duplica e converge para o mesmo estado mesmo com duas execucoes.
+async function marcarCvmVistos(env2222, empresa, ids) {
+  if (!ids || !ids.length) return 0;
+  var atual = await lerCvmVistos(env2222, empresa);
+  var set = new Set(atual);
+  var antes = set.size;
+  for (var i = 0; i < ids.length; i++) {
+    if (ids[i]) set.add(String(ids[i]));
+  }
+  if (set.size === antes) return 0;
+  var lista = Array.from(set).slice(-400);
+  await env2222.RADAR_KV.put(_kvCvmVistosKey(empresa), JSON.stringify({ ids: lista, ts: (/* @__PURE__ */ new Date()).toISOString() }), { expirationTtl: 45 * 24 * 3600 }).catch(function() {});
+  return set.size - antes;
+}
+__name(marcarCvmVistos, "marcarCvmVistos");
+__name2(marcarCvmVistos, "marcarCvmVistos");
+// Documento conta como novo quando NAO foi entregue a analise (id ausente de
+// cvm_vistos) e nao e anterior a ultima varredura. O corte por data continua,
+// so que ESTRITO (dt < since em vez de dt <= since): documento do proprio dia da
+// ultima varredura passa a depender da identidade, que e exatamente o furo que
+// esta funcao fecha. Sem historico gravado, o delta em relacao ao comportamento
+// atual e apenas "documentos entregues no dia da ultima varredura", tipicamente
+// zero ou um por emissor, entao nao ha pico de custo no primeiro plano.
+// RELOGIO3H1, segunda ocorrencia (medida 2026-08-25 as 22h12 BRT). _last_scanned_at
+// e INSTANTE UTC; data_entrega da CVM e DIA CIVIL BRT. Cortar os 10 primeiros
+// caracteres do instante compara uma data UTC contra uma data BRT, e entre 21h e
+// meia-noite a data UTC ja virou: documento entregue hoje ficava "anterior" a uma
+// varredura de minutos atras. O corte tem que ser no dia civil BRT dos dois lados.
+function _diaCivilBRT(iso) {
+  if (!iso) return null;
+  var t = new Date(iso).getTime();
+  if (!isFinite(t)) return null;
+  return new Date(t - 3 * 60 * 60 * 1e3).toISOString().slice(0, 10);
+}
+__name(_diaCivilBRT, "_diaCivilBRT");
+__name2(_diaCivilBRT, "_diaCivilBRT");
+function _cvmNovosEfetivo(docs, vistosIds, lastTs) {
+  if (!docs || !docs.length) return [];
+  var since = _diaCivilBRT(lastTs) || "1970-01-01";
+  var set = new Set(vistosIds || []);
+  return docs.filter(function(d) {
+    var id = _cvmIdDoc(d);
+    if (id && set.has(id)) return false;
+    var dt = String(d.data_entrega || d.data || "").slice(0, 10);
+    if (dt && dt < since) return false;
+    return true;
+  });
+}
+__name(_cvmNovosEfetivo, "_cvmNovosEfetivo");
+__name2(_cvmNovosEfetivo, "_cvmNovosEfetivo");
+function _temFatoRelevanteCvm(docs) {
+  if (!docs || !docs.length) return false;
+  for (var i = 0; i < docs.length; i++) {
+    if (/fato relevante/i.test(String(docs[i] && docs[i].categoria || ""))) return true;
+  }
+  return false;
+}
+__name(_temFatoRelevanteCvm, "_temFatoRelevanteCvm");
+__name2(_temFatoRelevanteCvm, "_temFatoRelevanteCvm");
 function _temEventoMaterialRecente(eventos, dias) {
   if (!eventos || !eventos.length) return false;
   var cutoff = Date.now() - dias * 24 * 36e5;
@@ -10062,7 +10165,11 @@ __name(_selecionarAuditSkip, "_selecionarAuditSkip");
 __name2(_selecionarAuditSkip, "_selecionarAuditSkip");
 async function montarPlanoRotina(env2222, opts) {
   opts = opts || {};
-  var modo = opts.modo === "matinal" ? "matinal" : "noturno";
+  // SENTINELA1: "pontual" e a varredura por gatilho. Percorre os mesmos 103 e usa o
+  // MESMO tiering do noturno, mas no fim so devolve quem tem gatilho duro, com teto.
+  // Nao e um terceiro criterio de risco, e um recorte do plano noturno.
+  var modo = opts.modo === "matinal" ? "matinal" : opts.modo === "pontual" ? "pontual" : "noturno";
+  var modoTier = modo === "pontual" ? "noturno" : modo;
   var agoraBRT = obterAgoraBRT();
   var hoje = agoraBRT.toISOString().split("T")[0];
   var janelaInicio = new Date(agoraBRT.getTime() - 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
@@ -10096,14 +10203,21 @@ async function montarPlanoRotina(env2222, opts) {
     var _foiDeferido = !!(res && res._token_cap_deferred === true);
     var horasStale = _parseHorasStale(lastTs);
     var docs = await buscarDocumentosCVM(env2222, emp, janelaInicio, hoje).catch(function() { return []; });
-    var sinceScan = lastTs ? lastTs.slice(0, 10) : "1970-01-01";
-    var cvmNovos = _cvmNovosDesde(docs, sinceScan);
+    // SENTINELA1: "novo" passa a ser identidade de protocolo, nao data. Ver
+    // _cvmNovosEfetivo. A marcacao so acontece no receber_analise bem-sucedido.
+    var _cvmVistos = await lerCvmVistos(env2222, emp);
+    var cvmNovos = _cvmNovosEfetivo(docs, _cvmVistos, lastTs);
     var matMax = res && res._qualidade_sinal && res._qualidade_sinal.materialidade_max ? res._qualidade_sinal.materialidade_max : 0;
     var motivos = [];
     var tier = "LIGHT";
-    if (modo === "matinal") {
-      var overnightSince = new Date(agoraBRT.getTime() - 16 * 60 * 60 * 1e3).toISOString().split("T")[0];
-      var cvmOvernight = _cvmNovosDesde(docs, overnightSince);
+    if (modoTier === "matinal") {
+      // SENTINELA1 (2026-08-25): aqui havia uma janela fixa de 16h
+      // (overnightSince = agoraBRT - 16h) para detectar documento da madrugada.
+      // Ela so funciona se a matinal rodar de manha. Com a matinal as 18h, a conta
+      // da 02h do MESMO dia e, como a comparacao era por data, cvmOvernight ficava
+      // permanentemente vazio: o gatilho morria calado. Passa a usar cvmNovos, que
+      // e por identidade de protocolo e nao depende do horario da execucao.
+      var cvmOvernight = cvmNovos;
       // v4.9.157: Financeiro sempre FULL (Sonnet) também na matinal.
       if (setor === "Financeiro") {
         tier = "FULL";
@@ -10187,6 +10301,11 @@ async function montarPlanoRotina(env2222, opts) {
       ews_score: ews.score,
       horas_stale: Math.round(horasStale * 10) / 10,
       cvm_novos: cvmNovos.length,
+      // SENTINELA1: os ids voltam no receber_analise para so entao entrarem em
+      // cvm_vistos. Quem falha nao marca nada e reaparece na execucao seguinte.
+      cvm_novos_ids: cvmNovos.map(_cvmIdDoc).filter(Boolean),
+      cvm_novos_fato_relevante: _temFatoRelevanteCvm(cvmNovos),
+      deferido: _foiDeferido,
       cvm_documentos: docs.slice(0, 8),
       contexto_historico: ctxHist,
       janela_inicio: janelaInicio,
@@ -10208,6 +10327,30 @@ async function montarPlanoRotina(env2222, opts) {
       }
     }
   }
+  // SENTINELA1: recorte da varredura pontual. Entra so quem tem gatilho duro, e
+  // gatilho duro aqui e fato, nao score: documento da CVM ainda nao entregue a
+  // analise, emissor deferido por teto de tokens, ou analise anterior inconclusiva.
+  // EWS alto e staleness NAO entram de proposito — os dois ja sao cobertos pelas
+  // passadas diarias, e traze-los para ca faria a pontual virar uma terceira
+  // varredura cara disfarcada.
+  var _pontualExcedente = 0;
+  var _pontualCandidatos = 0;
+  if (modo === "pontual") {
+    var _pTeto = opts.teto ? Math.max(1, Number(opts.teto)) : ROTINA_PONTUAL_TETO;
+    var _gatilhados = plano.filter(function(p) {
+      if (p.tier === "SKIP") return false;
+      return p.cvm_novos > 0 || p.deferido === true || p.inconclusivo === true;
+    });
+    _pontualCandidatos = _gatilhados.length;
+    _gatilhados.sort(function(a, b) {
+      // Fato Relevante na frente, depois deferido (ja esperou um ciclo), depois EWS.
+      var pa = (a.cvm_novos_fato_relevante ? 2e3 : 0) + (a.deferido ? 1e3 : 0) + (a.ews_score || 0);
+      var pb = (b.cvm_novos_fato_relevante ? 2e3 : 0) + (b.deferido ? 1e3 : 0) + (b.ews_score || 0);
+      return pb - pa;
+    });
+    _pontualExcedente = Math.max(0, _gatilhados.length - _pTeto);
+    plano = _gatilhados.slice(0, _pTeto);
+  }
   var contagem = { SKIP: 0, LIGHT: 0, FULL: 0, AUDIT: 0 };
   var buscasEstimadas = 0;
   for (var c = 0; c < plano.length; c++) {
@@ -10225,6 +10368,12 @@ async function montarPlanoRotina(env2222, opts) {
     buscas_estimadas: buscasEstimadas,
     buscas_full_legacy: plano.length * 8,
     economia_pct: plano.length > 0 ? Math.round((1 - buscasEstimadas / (plano.length * 8)) * 100) : 0,
+    // SENTINELA1: excedente declarado. Teto que corta em silencio vira "cobri tudo"
+    // no log de quem le depois. Quem sobrou volta na proxima execucao pelo mesmo
+    // gatilho, porque nada foi marcado em cvm_vistos.
+    pontual_candidatos: modo === "pontual" ? _pontualCandidatos : null,
+    pontual_excedente: modo === "pontual" ? _pontualExcedente : null,
+    pontual_teto: modo === "pontual" ? (opts.teto ? Math.max(1, Number(opts.teto)) : ROTINA_PONTUAL_TETO) : null,
     emissores: plano
   };
 }
@@ -18344,9 +18493,10 @@ async function __coreFetch(request, env2222, ctx) {
     }
     if (body.action === "listar_plano_rotina") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
-      var _lprModo = body.modo === "matinal" ? "matinal" : "noturno";
+      var _lprModo = body.modo === "matinal" ? "matinal" : body.modo === "pontual" ? "pontual" : "noturno";
       var _lprOpts = { modo: _lprModo };
       if (body.top_n) _lprOpts.top_n = Number(body.top_n);
+      if (body.teto) _lprOpts.teto = Number(body.teto);
       var _plano = await montarPlanoRotina(env2222, _lprOpts);
       _plano.varredura_cron_ai = varreduraCronAiHabilitada(env2222);
       return resp(_plano, 200, request);
@@ -18432,8 +18582,16 @@ async function __coreFetch(request, env2222, ctx) {
         var _dpaCvmDocs = await buscarDocumentosCVM(env2222, _raEmp, _raJanelaInicio, _raHoje).catch(function() { return []; });
         _raSaneado.cvm_documentos = _dpaCvmDocs;
         await persistirResultadoCompartilhado(env2222, _raSemana, _raEmp, _raSaneado);
+        // SENTINELA1 (2026-08-25): so aqui, DEPOIS da persistencia dar certo, os
+        // documentos entram em cvm_vistos. Qualquer falha acima cai no catch e
+        // devolve 500 sem marcar nada, entao o gatilho sobrevive e o emissor volta
+        // na execucao seguinte. Marcar na leitura do plano perderia o evento calado.
+        var _raCvmMarcados = 0;
+        if (Array.isArray(body.cvm_ids_analisados) && body.cvm_ids_analisados.length > 0) {
+          _raCvmMarcados = await marcarCvmVistos(env2222, _raEmp, body.cvm_ids_analisados.slice(0, 200).map(String));
+        }
         await tel(env2222, request, { evento: "routine_analise_recebida", empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length, provedor: _raProv, pendente_async: _raVerificacao.pendente_verificacao_async || 0 });
-        return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0 }, 200, request);
+        return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0, cvm_marcados: _raCvmMarcados }, 200, request);
       } catch (_raErr) {
         return resp({ ok: false, erro: _raErr.message }, 500, request);
       }

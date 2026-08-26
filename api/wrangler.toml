@@ -1,9 +1,42 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.215)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.216)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.216.js = v4.9.215 + SENTINELA1, gatilho de documento novo passa a ser por
+#   identidade, e nasce o modo pontual da varredura por gatilho.
+#   (1) _cvmNovosDesde comparava YYYY-MM-DD, entao documento entregue no MESMO dia
+#   civil de uma varredura nunca contava como novo. Isso ja mordia o top 15, que e
+#   analisado duas vezes por dia: documento que entra pela manha nao promovia o
+#   emissor a FULL na passada da noite. Nao cegava o painel (os documentos dos 30
+#   dias seguem indo ao modelo em cvm_documentos), mas estragava o tiering.
+#   Agora "novo" e protocolo da CVM ausente de radar:cvm_vistos:{empresa}, com
+#   _cvmChaveDoc como fallback quando o link nao traz numProtocolo. O corte por data
+#   continua, so que estrito (dt < since), entao o delta em relacao ao comportamento
+#   anterior e apenas "documentos entregues no dia da ultima varredura".
+#   (2) A marcacao em cvm_vistos acontece SO no receber_analise bem-sucedido, depois
+#   de persistirResultadoCompartilhado. Ler o plano nao marca nada. Analise que morre
+#   no meio, estoura teto ou toma erro deixa o gatilho intacto e o emissor volta na
+#   execucao seguinte. Marcar na leitura perderia o evento calado, familia
+#   EMAILSILENT1 e CVMURL404. Uniao de conjunto, entao reentrega e idempotente.
+#   (3) RELOGIO3H1 de novo, segunda ocorrencia, medida ao vivo as 22h12 BRT de 25/08.
+#   _last_scanned_at e instante UTC e data_entrega e dia civil BRT. Cortar os 10
+#   primeiros caracteres do instante compara data UTC contra data BRT, e entre 21h e
+#   meia-noite a data UTC ja virou: documento entregue hoje aparecia como anterior a
+#   uma varredura de minutos atras. _diaCivilBRT normaliza os dois lados.
+#   (4) modo "pontual" em montarPlanoRotina e em listar_plano_rotina. Mesmo tiering
+#   do noturno, mas devolve so quem tem gatilho duro (documento nao entregue a
+#   analise, deferido por teto, ou inconclusivo), ordenado com Fato Relevante na
+#   frente, com teto ROTINA_PONTUAL_TETO=8 e excedente declarado em
+#   pontual_candidatos/pontual_excedente em vez de cortado em silencio. EWS e
+#   staleness NAO entram de proposito, ja sao cobertos pelas passadas diarias.
+#   (5) O ramo matinal usava janela fixa de 16h para "cvm_overnight". Com a matinal
+#   as 18h a conta da 02h do mesmo dia e o gatilho morria calado. Passa a usar
+#   cvmNovos, que nao depende do horario da execucao.
+#   Guardas: api/test/sentinela-pontual.test.mjs, 13 testes, prova das duas pontas
+#   medida contra o codigo pre-correcao (6 dos 13 falham la). Suite completa 117/117.
+#   Rollback: main = "v4.9.215.js".
 # v4.9.215.js = v4.9.214 + SUBSTRINGDONO1, documento da CVM ia para o emissor errado.
 #   Cada emissor perguntava "este documento contem meu nome?", pergunta que N emissores
 #   respondem sim ao mesmo tempo. Medido em producao: dos 28 documentos entregues a Oi,
