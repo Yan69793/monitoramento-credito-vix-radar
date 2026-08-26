@@ -145,13 +145,14 @@ controlada antes de reclassificar como ativa).
 
 ### Nota sobre `VIXRadar-Sentinela` (SENTINELA1, criada 2026-08-25)
 
-> **A task está `Disabled` desde a criação, e isso é deliberado.** O DEFERGRUDA2
-> deixa quatro emissores presos na fila de deferidos mesmo depois de análise real,
-> então 4 das 8 vagas de cada execução seriam desperdiçadas e a rotina entraria em
-> toda tentativa por causa do backlog. Dezesseis execuções por dia a cerca de 70k
-> tokens cada atrapalhariam a noturna e a matinal. Reabilitar só depois de fechar o
-> DEFERGRUDA2: `Enable-ScheduledTask -TaskName "VIXRadar-Sentinela"`. Detalhe e
-> medição em `Obsidian VIX Radar/PENDENCIAS.md`.
+**Gatilhos da pontual, e o que ficou de fora de propósito.** Entra quem tem
+documento da CVM ainda não entregue à análise (**fato novo**) ou quem ficou deferido
+pelo teto de tokens (**dívida**). Não entram EWS, staleness nem `inconclusivo`. Os
+dois primeiros já são cobertos pelas passadas diárias. O terceiro saiu no
+DEFERGRUDA3, porque a pontual analisa em lote Haiku com ~2 buscas contra um
+`_coberturaMin` de 7 no tier FULL, então toda análise dela grava `INCONCLUSIVO` e a
+rotina reapresentava o próprio trabalho. Quem cuida do inconclusivo é o ramo
+`inconclusivo_stale_breakout` do plano noturno, que promove a FULL depois de 48h.
 
 **Status:** vigente · **Data da Versão:** 2026-08-25 · **Origem do Registro:**
 implementada e medida contra produção v4.9.216 nesta sessão ·

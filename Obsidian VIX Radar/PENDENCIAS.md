@@ -28,12 +28,66 @@ O modo pontual devolveu os **mesmos 8 emissores em duas execuções seguidas** (
 
 **Lição de método.** Este defeito não apareceu em nenhuma leitura de código nem em nenhum teste unitário. Apareceu na segunda execução real, comparando duas listas de alvos. Rodar duas vezes e comparar a saída é barato e pega classe de bug que revisão não pega.
 
-### ADENDO, ABERTO P1 (DEFERGRUDA2): a correção fecha para uns e não para outros, e a Sentinela ficou `Disabled`
+### ADENDO, RESOLVIDO e DEPLOYADO (DEFERGRUDA2, Worker v4.9.218): a leitura ressuscitava a bandeira que a escrita já tinha apagado
 
-> **Status:** ABERTO. Bloqueia a Sentinela, que está `Disabled` no Task Scheduler
+> **Status:** RESOLVIDO. Worker v4.9.218 em produção
 > **Data da Versão:** 2026-08-25
-> **Origem do Registro:** quatro execuções reais da Sentinela contra produção v4.9.217, com o plano consultado antes e depois de cada uma
-> **Condição de Obsolescência:** fecha quando `pontual_candidatos` cair de forma monotônica e VLI sair da lista após uma análise real. Só então reabilitar: `Enable-ScheduledTask -TaskName "VIXRadar-Sentinela"`
+> **Origem do Registro:** quatro execuções reais da Sentinela contra produção, mais leitura crua das 3 chaves `radar:estado:*` que a mescla consome
+> **Condição de Obsolescência:** ATENDIDA. Cai se `carregarEstadoMultiSemana` mudar de contrato, ou se aparecer outro campo de controle sofrendo o mesmo descarte
+
+**A prova crua, que inocenta o DEFERGRUDA1.** Com o VLI já analisado com `submit_ok`:
+
+```
+radar:estado:2026-W35 (corrente) VLI:   eventos=0 sem_eventos=true  _token_cap_deferred=undefined
+radar:estado:2026-W34            VLI:   eventos=1 sem_eventos=false _token_cap_deferred=true
+radar:estado:2026-W33            VLI:   eventos=0                   _token_cap_deferred=undefined
+radar:estado:2026-W35 (corrente) Copel: eventos=1 sem_eventos=false _token_cap_deferred=undefined
+radar:estado:2026-W34            Copel: eventos=0                   _token_cap_deferred=undefined
+```
+
+Na semana corrente a bandeira do VLI **já estava ausente**. A escrita funcionou. Quem trazia de volta era a leitura.
+
+**Rastro de chaves.** `receber_analise` escreve em **uma** chave, `radar:estado:{semana corrente}`, via `chaveEstadoCompartilhado`. `montarPlanoRotina` lê **três**, com `carregarEstadoMultiSemana(env, 3)`, e mescla da mais velha para a mais nova. Para o VLI: W33 semeia, W34 tem evento e substitui trazendo a bandeira, e W35 chega sem evento e cai no ramo "semana nova sem evento, semana velha com evento", que devolve o objeto da **W34** corrigindo apenas `_last_scanned_at`. Daí o sintoma exato medido, `horas_stale=0,1` com `deferido=true`. A Copel não sofria porque a semana corrente dela tem evento e cai no ramo de dedup, que espalha o registro novo com `{ ...res }`.
+
+**Causa real.** Não era `persistirResultadoCompartilhado`. Era `carregarEstadoMultiSemana` descartando em silêncio qualquer campo de controle gravado na semana nova, sempre que essa semana não tivesse evento.
+
+**Correção, 2 linhas, só no ramo culpado.** `_token_cap_deferred` passa a vir sempre do registro mais recente, gravando se presente e apagando se ausente. É estado de agendamento, não de conteúdo. Os campos de conteúdo continuam vindo da semana velha de propósito, e há teste travando isso.
+
+**Prova em produção, custo zero.** Logo após o deploy, sem nenhuma análise nova, VLI, Embraer, Nexa Resources e Even Construtora sumiram do plano pontual e os candidatos caíram de 33 para 31.
+
+**Observado e não corrigido, de propósito.** `_status` sofre o mesmo descarte nesse ramo: a W35 do VLI diz `INCONCLUSIVO` e o plano exibia vazio. Não mexi porque `_status` alimenta promoção de tier e mudá-lo tem alcance bem maior que o desta pendência.
+
+### ADENDO 2, RESOLVIDO e DEPLOYADO (DEFERGRUDA3, Worker v4.9.219): a pontual fabricava o próprio trabalho
+
+> **Status:** RESOLVIDO. Worker v4.9.219 em produção
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** medido ao **provar** a convergência do DEFERGRUDA2 em vez de assumi-la
+> **Condição de Obsolescência:** ATENDIDA. Cai se `_coberturaMin` mudar de forma que a pontual passe a produzir cobertura completa, ou se o ramo `inconclusivo_stale_breakout` do noturno sair
+
+Fechado o DEFERGRUDA2, o backlog de deferidos caiu de 34 para 0 reincidentes, mas a fila pontual não convergia. Medição da fila **completa** (`teto=200`, custo zero) sob v4.9.218: 29 candidatos, sendo **11 deferidos e 18 inconclusivos**. E dos 20 emissores que a Sentinela já tinha analisado com `submit_ok`, **13 voltaram** — nenhum por deferido, todos por inconclusivo.
+
+**Mecânica, e ela é determinística.** A pontual analisa em lote Haiku produzindo cerca de 2 buscas. O tier FULL exige `_coberturaMin = 7` em `persistirResultadoCompartilhadoInterno`. Logo **toda** análise da pontual grava `_status: "INCONCLUSIVO"`. Com `inconclusivo` no gatilho, a rotina reapresentava o próprio trabalho e nunca convergiria, independente do DEFERGRUDA2.
+
+**Correção, 1 linha.** `inconclusivo` sai do filtro do modo pontual. O critério passa a ser o mesmo que já estava escrito para EWS e staleness: gatilho da pontual é **fato novo** (documento da CVM que ninguém olhou) ou **dívida** (análise que o teto de tokens impediu). "Rodou e não concluiu" é qualidade de cobertura e já tem dono, o ramo `inconclusivo_stale_breakout` do plano noturno, que promove a FULL depois de 48h. Há teste travando que esse dono continua funcionando, para o inconclusivo não virar órfão.
+
+**Prova em produção.** Fila pontual completa caiu de 29 para **11, todos `deferido`**, zero inconclusivo. Dos 20 já analisados, **0 reaparecem por qualquer gatilho**.
+
+**Lição, e é a mesma de antes com uma volta a mais.** O DEFERGRUDA2 fechou de verdade e ainda assim a rotina não convergia. Só apareceu porque fui medir a fila **inteira** por composição de gatilho, em vez de olhar a janela de 8 que a rotina consome. Janela pequena esconde laço.
+
+### As três condições exigidas antes de habilitar a Sentinela, provadas
+
+A task foi habilitada em 25/08 23h30, depois de as três passarem. Próxima execução 26/08 09h25.
+
+**1. `submit_ok` limpa deferred em todos os casos.** 31 emissores analisados nas execuções 3 a 7. Zero permanecem deferidos. Cobre os dois caminhos da mescla, o de semana corrente com evento (Copel) e o sem evento (VLI), que era exatamente o que separava quem limpava de quem não limpava.
+
+**2. O plano pontual não reapresenta emissor já concluído.** Medido sobre a fila completa, não sobre a janela de 8: dos 20 analisados até então, 13 reapareciam sob v4.9.218 e **0** reaparecem sob v4.9.219, por gatilho nenhum.
+
+**3. O backlog converge a zero sem CVM nova.** Trajetória medida da fila completa: **34 → 29 → 11 → 3 → 0**. As últimas três execuções bateram a aritmética exata, 11 menos 8 igual a 3, 3 menos 3 igual a 0, sem nenhuma entrada nova. E a execução seguinte fecha o ciclo com custo zero:
+
+```
+23:29:53 PORTAO: acervo do Worker inalterado (2026-08-25) e sem backlog. Nada a fazer.
+23:29:53 FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=sem_novidade
+```
 
 Medido, com o Worker já em v4.9.217 nas duas execuções:
 
