@@ -1,5 +1,32 @@
 # Rotinas Operacionais — VIX Radar (fonte canônica versionada)
 
+**Status:** vigente
+**Data da Versão:** 2026-08-25
+**Origem do Registro:** `Get-ScheduledTask` ao vivo em 25/08/2026, logs em
+`logs/routines/`, e decisão do operador sobre a inversão de horários.
+**Condição de Obsolescência:** perde validade quando o mecanismo de agendamento
+do Claude Desktop mudar, quando qualquer linha das duas tabelas divergir do que
+`Get-ScheduledTask` responde, ou quando a rotina Sentinela for aposentada.
+
+> **INVERSÃO DE HORÁRIOS (2026-08-25). Os nomes das rotinas estão invertidos em
+> relação aos horários, e isso é deliberado.**
+>
+> A rotina chamada `vixradar-noturno` roda **de manhã, às 10h**, e é ela que varre
+> os 103 emissores. A chamada `vixradar-matinal` roda **à noite, às 18h**, e é a
+> passada curta no top 15. Os identificadores não foram renomeados de propósito:
+> eles aparecem em nome de arquivo de log, no argumento `-RoutineId` dos dois
+> vigias de retry, na leitura do `scripts/monitor-tasks.ps1`, nos nomes de
+> heartbeat dentro do Worker (`varredura_matinal`, `varredura_batch`) e na lista
+> `expectedAgents` do watchdog. Renomear tocaria tudo isso para ganho de função
+> zero. **Ao ler um log, vá pelo horário, não pelo nome.**
+>
+> Motivo da inversão: quem abre o painel ao meio-dia via 88 dos 103 emissores com
+> dado da noite anterior, e fato relevante no Brasil sai principalmente depois do
+> fechamento. Com a varredura completa às 10h, o lote da noite anterior entra 15h
+> depois em vez de 23h, e ao meio-dia as 103 foram olhadas há uma hora e meia.
+> Custo aceito: notícia intradiária em emissor fora do top 15 espera a manhã
+> seguinte, em vez de ser pega às 18h do mesmo dia.
+
 > **Atualizado 2026-08-07. Leia o aviso abaixo antes de mexer em qualquer task.**
 >
 > O agendamento está **dividido entre dois mecanismos**, e confundi-los causa
@@ -31,9 +58,19 @@ Estado da task nativa verificado na máquina em 2026-08-07, as três `Disabled`.
 
 | Rotina | Gatilho | Script | Função |
 |------|---------|--------|--------|
-| `VIXRadar-Matinal` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4) |
-| `VIXRadar-Noturno` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, fila rápida em Haiku primeiro (lotes de até 15) + fila aprofundada em Sonnet depois (lotes de até 16) |
-| `VIXRadar-Verificacao-Async` | Diário 10:20 BRT | `run_vixradar_verificacao_async.ps1` | Dreno da fila `radar:verif_fila:{data}` (também acionado inline pós-matinal e pós-noturno) |
+| `VIXRadar-Noturno` | **Diário 10h00 BRT** | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, fila rápida em Haiku primeiro (lotes de até 15) + fila aprofundada em Sonnet depois (lotes de até 16). **É a varredura completa, e roda de manhã** |
+| `VIXRadar-Matinal` | **Seg-Sex 18h00 BRT** | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4). **É a passada curta, e roda à noite** |
+| `VIXRadar-Verificacao-Async` | **Diário 11h00 e 18h45 BRT** | `run_vixradar_verificacao_async.ps1` | Dreno da fila `radar:verif_fila:{data}` (também acionado inline pós-varredura) |
+
+A verificação passou a ter **duas sessões, e a das 18h45 não é opcional**. Sem
+ela, tudo que a passada das 18h enfileira fica preso até o dia seguinte. A task
+desabilitada guarda dois triggers (10h20 e 18h20), o que indica que a cobertura
+dupla já foi o desenho original e se perdeu em algum momento. Critério de aceite,
+fila em zero antes da virada do dia, conferido por `listar_fila_verificacao`.
+
+A das 11h existe porque a varredura completa fecha por volta de 10h35 (medido:
+18:06→18:33 em 18/08, 18:05→18:40 em 20/08, no horário antigo). Drenar às 10h20
+seria esvaziar fila que ainda está enchendo.
 
 ## Tasks ativas no Windows Task Scheduler
 
@@ -49,8 +86,9 @@ raiz diferente) compartilham a mesma máquina e ficam fora de escopo deste docum
 | `VIXRadar-Export-Historico` | Diário 20:45 BRT | `run_vixradar_export_historico.ps1` | Exporta estado preditivo do KV para `data/historico/`. Sem LLM |
 | `VIXRadar-Reconciliacao-CVM` | Seg 08:00 BRT | `scripts/predictive/reconciliar_ipe_cvm.ps1` | Reconcilia IPE CVM (RJ/RE/default) vs estado semanal do Radar; publica KV `radar:reconciliacao_cvm:latest` + nota Obsidian. Sem LLM |
 | `VIXRadar-Health-Watch` | **DESATIVADO 21/08/2026** | `watch-vixradar-health.ps1` | Vigia de health a cada 15 min (criado 13/08, `HEALTHWATCH1`), desligado por decisão do operador. Alerta de queda continua via `canonical-test` (6h) e `frescor-check` (diário). Reativar: `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"` |
-| `Szuchmacher-RetryVixMatinal` | Seg-Sex 13:30 BRT | `retry-vixradar.ps1 -RoutineId vixradar-matinal` | Relança a matinal via `claude` CLI local se o log do dia não tiver `FIM:` válido até o horário. Watchdog da sessão Claude Desktop, não duplica se ela ainda estiver rodando (lock de 3h da skill) |
-| `Szuchmacher-RetryVixNoturno` | Diário 21:30 BRT | `retry-vixradar.ps1 -RoutineId vixradar-noturno` | Mesmo watchdog, para a noturna |
+| `VIXRadar-Sentinela` | **Seg-Sex, 09h25 e 09h55 até 17h25 e 17h55 BRT** | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho. Consulta `listar_plano_rotina modo=pontual` e analisa só quem tem documento da CVM ainda não entregue à análise, deferido por teto ou inconclusivo. Teto de 8 emissores e 120k tokens por execução. Na maioria das execuções sai em 0 token. Ver seção própria abaixo |
+| `Szuchmacher-RetryVixMatinal` | **Seg-Sex 21:30 BRT** | `retry-vixradar.ps1 -RoutineId vixradar-matinal` | Relança a matinal (top 15, que agora roda às 18h) via `claude` CLI local se o log do dia não tiver `FIM:` válido até o horário. Watchdog da sessão Claude Desktop, não duplica se ela ainda estiver rodando (lock de 3h da skill) |
+| `Szuchmacher-RetryVixNoturno` | **Diário 13:30 BRT** | `retry-vixradar.ps1 -RoutineId vixradar-noturno` | Mesmo watchdog, para a varredura completa, que agora roda às 10h |
 | `VIXRadar-Ranking-Mensal` | — | `run_vixradar_ranking_mensal.ps1` | **OBSOLETO.** Task não existe no Scheduler (confirmado 18/08, 0 resultado). Script funcional, sem LLM quebrado (usa `claude -p` só para a medição, do jeito certo), simplesmente não está agendado desde antes de 11/07. Ver nota abaixo |
 | `Szuchmacher-AgendaMacro-Claude` | Sex 07:07 BRT | `run_claude_routine.ps1 -RoutineId atualizar-agenda-macro-szuchmacher` | Calendário macro semanal de szuchmacher.com.br (projeto irmão, mesmo runner genérico). Deploy exige aprovação humana explícita (SKILL.md Passo 6) |
 
@@ -104,6 +142,52 @@ sentida em 5+ semanas sem rodar. Script e `SKILL.md` seguem intactos no repo/`.c
 com nota de quarentena, `scripts/register-ranking-mensal-task.ps1` existe se a
 decisão for revertida no futuro (registrar de novo + validar com execução
 controlada antes de reclassificar como ativa).
+
+### Nota sobre `VIXRadar-Sentinela` (SENTINELA1, criada 2026-08-25)
+
+**Status:** vigente · **Data da Versão:** 2026-08-25 · **Origem do Registro:**
+implementada e medida contra produção v4.9.216 nesta sessão ·
+**Condição de Obsolescência:** perde validade se o modo `pontual` mudar de
+contrato no Worker, se o protocolo `RESULTADO|` do lote mudar, ou quando existir
+uma ação de sincronização da CVM autenticada por `ROUTINE_API_KEY` (ver o limite
+de SLA abaixo, que só então deixa de valer).
+
+Detector barato na frente, análise cara atrás. Roda duas vezes por hora, aos :25 e
+aos :55, das 09h25 às 17h55 em dias úteis.
+
+**Por que dois disparos.** Com um por hora, colisão vira buraco. Documento
+ingerido às 10h05, tentativa das 10h25 encontra a varredura completa rodando e
+aborta, próxima só às 11h25, quase duas horas. Com o segundo disparo o mesmo caso
+é pego às 10h55. Escolheu-se gatilho fixo em vez de bandeira de colisão porque
+bandeira é estado que pode ficar preso, máquina reinicia com ela ligada e ninguém
+vê.
+
+**Regra de entrada.** Age quando o acervo da CVM que o Worker enxerga
+(`cvm_fonte_last_modified` do health, público, sem credencial) mudou desde a
+última vez que a rotina agiu, **ou** quando sobrou backlog da execução anterior.
+A segunda metade não é detalhe: sem ela, emissor deferido por teto de tokens só
+voltaria a ser olhado se a CVM publicasse de novo, o que pode nunca acontecer.
+Estado em `logs/routines/sentinela_state.json`.
+
+**Marcação de documento.** O plano devolve `cvm_novos_ids` por emissor, e esses ids
+só entram em `radar:cvm_vistos:{empresa}` no `receber_analise` bem-sucedido.
+Execução que morre no meio, estoura teto ou toma submit recusado deixa o gatilho
+intacto e o emissor volta na execução seguinte.
+
+**Limite de SLA, e este é o ponto honesto da rotina.** A latência de até uma hora
+vale entre o **Worker ingerir** o documento e a análise sair, dentro da janela
+operacional. **Não** vale entre a CVM **publicar** e a análise sair: a ingestão
+continua presa aos crons do Worker das 12h30 e 18h30 BRT. Fechar essa ponta
+exigiria uma ação de sincronização autenticada por `ROUTINE_API_KEY`, que hoje não
+existe — `admin_sync_cvm_auto` e `sync_cvm` pedem `admin_senha`, e dar a senha de
+admin a uma rotina contraria o CHAVEESCOPO1. A rotina faz um `HEAD` no zip da CVM
+a cada execução e registra no log quando o arquivo está à frente do que o Worker
+ingeriu, justamente para essa decisão nascer de dado medido.
+
+Medição que motivou a rotina: em 25/08 a CVM republicou o arquivo às 07h58 BRT e o
+Worker só ingeriu às 12h30. E o `modo=pontual` em produção acusou **34 emissores
+parados na fila de deferidos** por teto de tokens, backlog que antes só era
+revisitado pela rotina do dia seguinte, que deferia de novo.
 
 ## Claude Code Routines remotas (nuvem, `claude.ai/code`)
 

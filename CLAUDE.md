@@ -195,11 +195,20 @@ guarda anti-duplicata verificada pelo próprio script (`GUARD_OK` no log). Nunca
 reabilitar essas três. O `LastTaskResult` delas está congelado desde 06/08/2026 e
 não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
 
+**Os nomes estão invertidos em relação aos horários desde 25/08/2026, e é de
+propósito.** `vixradar-noturno` é a varredura completa e roda **de manhã**;
+`vixradar-matinal` é a passada curta e roda **à noite**. Os identificadores não
+foram renomeados porque aparecem em nome de log, no `-RoutineId` dos vigias, no
+`monitor-tasks.ps1`, nos heartbeats do Worker e na lista `expectedAgents`.
+Ao ler log, vá pelo horário, não pelo nome. Motivo e evidência em
+`routines/README.md`.
+
 | Tarefa | Mecanismo | Frequência | Script | Escopo |
 |---|---|---|---|---|
-| `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Seg-Sex 10h00 BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
-| `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Diário 18h00 BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores |
-| `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário 10h20 BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}` |
+| `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Diário **10h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
+| `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Seg-Sex **18h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
+| `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário **11h00 e 18h45** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 18h45 impede fila presa até o dia seguinte |
+| `VIXRadar-Sentinela` | Task Scheduler | Seg-Sex, :25 e :55 de 09h25 a 17h55 BRT | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho, teto 8 emissores e 120k tokens. Quase sempre sai em 0 token |
 | `VIXRadar-AgendaSemanal` | Task Scheduler | Dom 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale |
 | `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
 | `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |

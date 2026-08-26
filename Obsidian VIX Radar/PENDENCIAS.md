@@ -11,6 +11,74 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 25/08 (noite) — ABERTO P1 (INVERSAO-CD1): as três sessões do Claude Desktop ainda estão nos horários antigos
+
+> **Status:** ABERTO. Uma ação do operador, na interface do Claude Desktop
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** `Get-ScheduledTask` ao vivo em 25/08 confirma que as tasks homônimas seguem `Disabled`, e não existe arquivo de agendamento no repo nem em `%APPDATA%\Claude`
+> **Condição de Obsolescência:** fecha quando o log do dia seguinte mostrar `INICIO` da varredura completa perto das 10h e `INICIO` do top 15 perto das 18h
+
+Horários a colocar: `vixradar-noturno` (varredura completa dos 103) **10h00 diário**, `vixradar-matinal` (top 15) **18h00 Seg-Sex**, `vixradar-verificacao-async` em **duas** sessões, **11h00 e 18h45**.
+
+**Apagar o agendamento velho antes de criar o novo.** Deixar os dois armados dispara a rotina duas vezes no mesmo dia.
+
+**A segunda sessão de verificação não é enfeite.** Sem ela, tudo que a passada das 18h enfileira fica preso até o dia seguinte. A task desabilitada guarda dois triggers (10h20 e 18h20), o que indica que a cobertura dupla já foi o desenho original e se perdeu.
+
+**O que já foi feito e não depende de você.** Os dois vigias de retry trocaram de horário: `Szuchmacher-RetryVixNoturno` para diário 13h30 e `Szuchmacher-RetryVixMatinal` para Seg-Sex 21h30. **Não há janela de risco entre uma coisa e outra**, porque `scripts/retry-vixradar.ps1:36-39` sai sem relançar quando o log do dia não existe. O que existe no intervalo é perda de cobertura, não relançamento à toa: enquanto os horários novos não entrarem, a varredura completa fica sem vigia.
+
+---
+
+## 25/08 (noite) — ABERTO P2 (SENTINELA-SYNC1): a Sentinela não alcança o trecho entre a CVM publicar e o Worker ingerir
+
+> **Status:** ABERTO. Decisão do operador, exige mudança no Worker
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** medido em 25/08, `Last-Modified` do zip da CVM em `Tue, 25 Aug 2026 10:58:47 GMT` (07h58 BRT) contra crons do Worker às 12h30 e 18h30
+> **Condição de Obsolescência:** fecha quando existir uma ação de sincronização da CVM autenticada por `ROUTINE_API_KEY`, ou quando a ingestão deixar de depender dos crons
+
+A rotina Sentinela promete latência de até uma hora entre o **Worker ingerir** um documento e a análise sair. Ela **não** cobre o trecho anterior. Medido: a CVM republicou o arquivo às 07h58 e o Worker só ingeriu às 12h30. São 4h32 de atraso estrutural, todo dia, no sinal mais forte que o sistema tem, com todo semáforo verde.
+
+**Por que não foi resolvido agora.** `admin_sync_cvm_auto` e `sync_cvm` exigem `admin_senha`, não `routine_key`. Dar a senha de admin a uma rotina agendada contraria o CHAVEESCOPO1, que existe justamente para credencial de rotina ter escopo mínimo. Criar uma ação nova com escopo de rotina é mudança de arquitetura e não foi improvisada dentro desta entrega.
+
+A Sentinela faz `HEAD` no zip a cada execução e registra no log quando o arquivo está à frente do que o Worker ingeriu. Em duas semanas isso dá a distribuição real do atraso, e a decisão de criar a ação nasce de dado em vez de palpite.
+
+---
+
+## 25/08 (noite) — ABERTO P2 (DEFERIDO-BACKLOG1): 34 emissores parados na fila de deferidos
+
+> **Status:** ABERTO. Observação, com mitigação parcial já no ar
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** `listar_plano_rotina modo=pontual` contra produção v4.9.216 devolveu `candidatos=34`, todos com motivo `deferred_prioritario`
+> **Condição de Obsolescência:** fecha quando o campo `pontual_candidatos` ficar estável perto de zero por uma semana
+
+Emissor deferido por teto de tokens marca `_token_cap_deferred` e deveria entrar prioritário na rotina seguinte. Na prática o dia seguinte defere de novo, então o backlog não drenava.
+
+A Sentinela drena 8 por execução, então em tese ele some em poucos dias. Mas o número inicial sugere que o teto de 700k da noturna está apertado para 103 emissores, e isso é decisão de orçamento, não de código. Liga com PASSOCUSTO1.
+
+---
+
+## 25/08 (noite) — RESOLVIDO e DEPLOYADO (SENTINELA1): documento novo era detectado por data, e a data errada
+
+> **Status:** RESOLVIDO. Worker v4.9.216 em produção desde 25/08 22h BRT, portão validado
+> **Data da Versão:** 2026-08-25
+> **Origem do Registro:** achado ao preparar a inversão de horários; cada defeito medido contra produção ou contra o código pré-correção
+> **Condição de Obsolescência:** ATENDIDA. Resta observar a primeira execução da Sentinela com gatilho real da CVM, quando `cvm_marcados` deixa de ser 0
+
+**Defeito 1, o principal.** `_cvmNovosDesde` comparava `YYYY-MM-DD`, então documento entregue no **mesmo dia civil** de uma varredura nunca contava como novo. Isso já mordia o top 15 hoje, que é analisado duas vezes por dia: documento que entra pela manhã não promovia o emissor a FULL na passada da noite. Não cegava o painel, porque os documentos dos 30 dias seguem indo ao modelo em `cvm_documentos`, mas estragava a decisão de analisar raso ou fundo. E para a varredura pontual seria fatal, ela nunca dispararia.
+
+Agora "novo" é protocolo da CVM ausente de `radar:cvm_vistos:{empresa}`, com `_cvmChaveDoc` como fallback quando o link não traz `numProtocolo`. O corte por data continua, só que estrito, então o delta em relação ao comportamento anterior é apenas "documentos entregues no dia da última varredura", tipicamente zero ou um por emissor. Sem pico de custo.
+
+**Defeito 2, RELOGIO3H1 pela segunda vez.** `_last_scanned_at` é instante UTC e `data_entrega` é dia civil BRT. Cortar os 10 primeiros caracteres do instante compara data UTC contra data BRT, e entre 21h e meia-noite a data UTC já virou: documento entregue hoje aparecia como anterior a uma varredura de minutos atrás. Achado ao vivo, o teste falhou às 22h12 exatamente por isso. `_diaCivilBRT` normaliza os dois lados. **É a mesma família do bug de 24/08**, e reaparecer em outro ponto do arquivo diz que a distinção instante x dia civil merece regra, não correção pontual.
+
+**Defeito 3, que a inversão criaria.** O ramo matinal usava janela fixa de 16h para detectar documento da madrugada. Com a matinal às 18h, a conta dá 02h do **mesmo** dia e, como a comparação era por data, `cvmOvernight` ficaria permanentemente vazio. O gatilho morreria calado. Passou a usar `cvmNovos`, que não depende do horário da execução.
+
+**Marcação só após entrega.** `cvm_vistos` é escrito no `receber_analise` bem-sucedido, depois de `persistirResultadoCompartilhado`. Ler o plano não marca nada. Execução que morre no meio, estoura teto ou toma submit recusado deixa o gatilho intacto. Marcar na leitura perderia o evento calado, que é a família de EMAILSILENT1 e CVMURL404. União de conjunto, então reentrega é idempotente.
+
+**Modo pontual.** Recorte do plano noturno por gatilho duro, com teto 8 e excedente declarado em `pontual_candidatos`/`pontual_excedente` em vez de cortado em silêncio. EWS e staleness **não** entram de propósito: já são cobertos pelas passadas diárias, e trazê-los faria a pontual virar uma terceira varredura cara disfarçada.
+
+**Guarda.** `api/test/sentinela-pontual.test.mjs`, 13 testes, prova das duas pontas. Medida contra o código pré-correção: **6 dos 13 falham lá**. Suíte completa 117/117, 14 arquivos.
+
+---
+
 ## 25/08 — RESOLVIDO e DEPLOYADO (SUBSTRINGDONO1): documento da CVM ia para o emissor errado, e dois emissores nunca recebiam nada
 
 > **Status:** RESOLVIDO. Worker v4.9.215 em produção desde 25/08 17:18 BRT, commit `ef3a5f4`, portão validado

@@ -474,7 +474,10 @@ foreach ($f in @($HaikuSkill, $SonnetSkill)) {
     if (-not (Test-Path $f)) { Write-Log ('ERRO: skill ausente ' + $f); exit 1 }
 }
 
-# Mutex global: impede execucao concorrente da noturna. O Task Scheduler nativo (VIXRadar-Noturno, 18:00)
+# Mutex global: impede execucao concorrente da varredura completa. Desde 25/08/2026 ela roda as
+# 10h, nao as 18h, embora o nome da rotina continue "noturno" (ver routines/README.md). A rotina
+# Sentinela tambem consulta este mutex antes de gastar qualquer token. O Task Scheduler nativo
+# (VIXRadar-Noturno, hoje Disabled)
 # e a scheduled-task Claude Code (vixradar-noturno, ~18:06) disparam o MESMO PS1; sem exclusao mutua, a 2a
 # instancia colidia com a 1a e submetia cobertura minima (incidente 2026-07-06). WaitOne(0) = nao-bloqueante:
 # se outra instancia ja detem o mutex, esta sai limpa em 0 tokens (o SO libera o mutex ao encerrar o processo).

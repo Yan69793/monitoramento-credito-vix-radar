@@ -4,7 +4,12 @@
 # ANTHROPIC_API_KEY e removida do ambiente em Invoke-ClaudeBatch; claude -p usa OAuth.
 # Motivo: saldo pre-pago esgotou 3x em 10 dias (03/07, 04/07, 10/07), interrompendo cobertura.
 # Get-AnthropicApiKey e demais guards permanecem no codigo para eventual retorno a pay-per-token.
-# Programado para rodar pouco depois de vixradar-matinal (10h BRT) e vixradar-noturno (18h BRT).
+# Programado para rodar pouco depois de cada varredura. Desde a inversao de 25/08/2026:
+# 11h00 (depois da varredura completa, que hoje roda as 10h sob o nome vixradar-noturno) e
+# 18h45 (depois da passada do top 15, que hoje roda as 18h sob o nome vixradar-matinal).
+# A sessao das 18h45 nao e opcional: sem ela a fila enfileirada as 18h fica presa ate o dia
+# seguinte. Os nomes das rotinas estao invertidos em relacao aos horarios de proposito, ver
+# routines/README.md.
 # 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
 # aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
 $ErrorActionPreference = 'Continue'
