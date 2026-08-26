@@ -379,3 +379,113 @@ describe("DEFERGRUDA1: analise real limpa o flag de deferido", () => {
     expect(dasa.motivos).toContain("deferred_prioritario");
   });
 });
+
+// DEFERGRUDA2 (2026-08-25). A correcao do DEFERGRUDA1 estava certa e nao bastava.
+//
+// montarPlanoRotina le com carregarEstadoMultiSemana(env, 3) e a escrita de
+// receber_analise vai so para a semana corrente. A mescla percorre da semana mais
+// VELHA para a mais NOVA, e tem um ramo que devolve o objeto da semana velha quando
+// a nova nao tem evento e a velha tem, corrigindo apenas _last_scanned_at. Toda
+// bandeira de controle gravada na semana nova sumia ali.
+//
+// Prova crua colhida do KV de producao antes da correcao:
+//   W35 (corrente) VLI: eventos=0 sem_eventos=true _token_cap_deferred=undefined
+//   W34            VLI: eventos=1 sem_eventos=false _token_cap_deferred=true
+//   W35 (corrente) Copel: eventos=1 sem_eventos=false _token_cap_deferred=undefined
+// VLI saia deferido com horas_stale=0,1. Copel limpava, porque a semana corrente dela
+// tem evento e cai no ramo de dedup, que espalha o registro novo.
+//
+// Prova reversa: contra o codigo anterior o primeiro teste falha, porque o plano
+// reapresenta o emissor mesmo com a semana corrente limpa.
+function semanaAnterior() {
+  const d = agoraBRT();
+  d.setUTCDate(d.getUTCDate() - 7);
+  return `radar:estado:${semanaISO(d)}`;
+}
+
+describe("DEFERGRUDA2: bandeira de semana anterior nao ressuscita o deferido", () => {
+  afterEach(async () => {
+    try { await env.RADAR_KV.delete(semanaAnterior()); } catch (_) { }
+  });
+
+  it("PONTA BOA: semana corrente sem evento e sem flag vence a semana anterior com evento e flag", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    // Semana anterior: TEM evento e TEM a bandeira. E o registro que a mescla preserva.
+    await env.RADAR_KV.put(semanaAnterior(), JSON.stringify({
+      week: "anterior", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(7) + "T12:00:00.000Z",
+          eventos: [{ classificacao: "ECO", titulo: "evento antigo", data_evento: diasAtras(7) }],
+          sem_eventos: false,
+          _token_cap_deferred: true
+        }
+      }
+    }));
+    // Semana corrente: analise real, sem evento e SEM a bandeira.
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true }
+      }
+    }));
+
+    const p = await plano("pontual");
+    // Contra o codigo anterior, DASA voltava aqui com deferido=true e horas_stale fresco.
+    expect(p.emissores.map((e) => e.empresa)).not.toContain(DASA);
+  });
+
+  it("PONTA RUIM: se a semana CORRENTE tem a bandeira, ela continua valendo", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semanaAnterior(), JSON.stringify({
+      week: "anterior", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(7) + "T12:00:00.000Z",
+          eventos: [{ classificacao: "ECO", titulo: "evento antigo", data_evento: diasAtras(7) }],
+          sem_eventos: false
+        }
+      }
+    }));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true, _token_cap_deferred: true }
+      }
+    }));
+
+    const p = await plano("pontual");
+    const dasa = p.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.deferido).toBe(true);
+  });
+
+  it("evento da semana velha NAO e perdido pela correcao", async () => {
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+    await env.RADAR_KV.put(semanaAnterior(), JSON.stringify({
+      week: "anterior", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: {
+          _last_scanned_at: diasAtras(7) + "T12:00:00.000Z",
+          eventos: [{ classificacao: "RELEVANTE", titulo: "evento que nao pode sumir", data_evento: diasAtras(3) }],
+          sem_eventos: false,
+          _token_cap_deferred: true
+        }
+      }
+    }));
+    await env.RADAR_KV.put(chaveEstadoSemanaCorrente(), JSON.stringify({
+      week: "corrente", updated_at: new Date().toISOString(),
+      results: {
+        [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true }
+      }
+    }));
+
+    // O plano noturno traz os 103; DASA tem que continuar sendo promovido pelo evento
+    // material recente da semana anterior, prova de que a correcao mexeu so na bandeira.
+    const n = await plano("noturno");
+    const dasa = n.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    expect(dasa.tier).toBe("FULL");
+    expect(dasa.motivos).toContain("imprensa_recente_7d");
+  });
+});

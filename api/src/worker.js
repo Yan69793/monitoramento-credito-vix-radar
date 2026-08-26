@@ -9015,6 +9015,23 @@ async function carregarEstadoMultiSemana(env2222, numSemanas) {
         const newerTs = res._last_scanned_at || res.timestamp;
         const prevTs = prev._last_scanned_at || prev.timestamp;
         if (newerTs && (!prevTs || newerTs > prevTs)) merged[emp]._last_scanned_at = newerTs;
+        // DEFERGRUDA2 (2026-08-25): este ramo devolve o objeto da semana VELHA e so
+        // corrige o relogio, para nao perder evento de conteudo. O efeito colateral era
+        // que TODA bandeira de controle escrita na semana nova sumia em silencio.
+        //
+        // Medido em producao: VLI analisado com submit_ok, W35 gravou sem
+        // _token_cap_deferred (o fix do DEFERGRUDA1 funcionou), mas W34 tinha evento e
+        // a bandeira true, entao a mescla devolvia o objeto da W34 com o
+        // _last_scanned_at da W35. Sintoma: horas_stale=0,1 com deferido preso, e a
+        // varredura pontual reapresentando o mesmo emissor para sempre. Copel nao sofria
+        // porque a semana corrente dela TEM evento e cai no ramo de dedup, que espalha o
+        // registro novo.
+        //
+        // _token_cap_deferred e estado de AGENDAMENTO, nao de conteudo: quem manda e
+        // sempre o registro mais recente, mesmo que ele nao traga evento nenhum. Os
+        // campos de conteudo continuam vindo da semana velha de proposito.
+        if (res._token_cap_deferred === true) merged[emp]._token_cap_deferred = true;
+        else delete merged[emp]._token_cap_deferred;
         continue;
       }
       if (newEvs.length > 0 && prevEvs.length === 0) {

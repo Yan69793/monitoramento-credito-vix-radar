@@ -1,9 +1,34 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.217)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.218)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.218.js = v4.9.217 + DEFERGRUDA2, a leitura ressuscitava a bandeira que a
+#   escrita ja tinha apagado. O DEFERGRUDA1 (v4.9.217) estava certo e nao bastava.
+#   Prova crua colhida do KV de producao, com o VLI ja analisado com submit_ok:
+#     radar:estado:2026-W35 (corrente) VLI: eventos=0 sem_eventos=true _token_cap_deferred=undefined
+#     radar:estado:2026-W34            VLI: eventos=1 sem_eventos=false _token_cap_deferred=true
+#     radar:estado:2026-W35 (corrente) Copel: eventos=1 sem_eventos=false _token_cap_deferred=undefined
+#   Ou seja a escrita funcionou: na semana corrente a bandeira do VLI ja estava
+#   ausente. Quem trazia de volta era a leitura.
+#   montarPlanoRotina usa carregarEstadoMultiSemana(env, 3) e a escrita de
+#   receber_analise vai so para a semana corrente. A mescla percorre da semana mais
+#   VELHA para a mais NOVA e tem um ramo para "semana nova sem evento, semana velha
+#   com evento" que devolve o objeto da semana VELHA corrigindo apenas
+#   _last_scanned_at, para nao perder evento de conteudo. O efeito colateral e que
+#   TODA bandeira de controle gravada na semana nova sumia em silencio.
+#   Sintoma medido: VLI com horas_stale=0,1 (relogio da W35) e deferido=true
+#   (bandeira da W34), reapresentado pela varredura pontual em toda execucao. Copel
+#   nao sofria porque a semana corrente dela TEM evento e cai no ramo de dedup, que
+#   espalha o registro novo com `{ ...res }`.
+#   Fix minimo, 2 linhas, so no ramo culpado: _token_cap_deferred passa a vir sempre
+#   do registro mais recente (grava se presente, apaga se ausente). E estado de
+#   AGENDAMENTO, nao de conteudo. Campos de conteudo continuam vindo da semana velha
+#   de proposito, e ha teste travando isso.
+#   Guardas: 3 testes novos em api/test/sentinela-pontual.test.mjs, os 3 falham
+#   contra o codigo anterior. Suite 122/122, 14 arquivos.
+#   Rollback: main = "v4.9.217.js".
 # v4.9.217.js = v4.9.216 + DEFERGRUDA1, o flag de deferido ligava e nunca desligava.
 #   Achado ao rodar a Sentinela contra producao, nao por leitura de codigo: o modo
 #   pontual devolveu os MESMOS 8 emissores em duas execucoes seguidas (VLI, Embraer,
