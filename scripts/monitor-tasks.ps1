@@ -243,31 +243,11 @@ foreach ($task in $allTasks) {
         continue
     }
 
-    # Pula benignos
-    if ($code -in $BenignCodes) {
-        $ok++
-        continue
-    }
-
-    # Verifica falso-positivo conhecido
-    if ($KnownFalsePositives.ContainsKey($name)) {
-        $kfp = $KnownFalsePositives[$name]
-        if ($code -eq $kfp.code) {
-            $ageDays = ((Get-Date) - $lastRun).Days
-            if ($ageDays -le $kfp.graceDays) {
-                Write-Log "INFO: $name exit=$code (falso-positivo conhecido, dia $ageDays/$($kfp.graceDays))"
-                $skipped++
-                continue
-            }
-            # Excedeu periodo de graca - escala para warning
-            $warnings += [ordered]@{
-                task = $name; code = $code; lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm')
-                reason = "falso-positivo conhecido ha $ageDays dias (> $($kfp.graceDays)d) - reavaliar"
-            }
-            continue
-        }
-    }
-
+    # ORDEM1 (2026-08-27): este bloco ficava DEPOIS do "Pula benignos" logo abaixo,
+    # que faz `continue` para code 0/267009. A condicao `$staleHours -and $code -in
+    # $BenignCodes` era portanto inalcancavel desde que nasceu (staleness 02/08,
+    # pulo de benignos 16/07): o unico caso que ela existe para pegar, task que nao
+    # rodou com LastTaskResult=0 congelado, nunca chegava aqui. Precisa vir ANTES.
     # Staleness check: tasks que nao rodaram no periodo esperado. Roda mesmo quando
     # LastTaskResult=0, porque o que importa aqui e que a task NAO EXECUTOU, nao que a
     # ultima execucao falhou. Matinal 01/08 nao rodou e ninguem viu porque o codigo de
@@ -303,6 +283,41 @@ foreach ($task in $allTasks) {
             }
         }
     }
+    # WEEKLY1 (2026-08-27): mesma ideia do $dailyTasks, para cadencia semanal. Aqui
+    # "faltou um ciclo" nao e "passou de 24h", e sim "a ultima ocorrencia prevista ja
+    # venceu e o lastRun e anterior a ela".
+    #
+    # Motivo: $dailyTasks so cobre VIXRadar-*, todas diarias. As tres tasks do Site
+    # rodam em dias fixos da semana e nao tinham cobertura nenhuma de staleness, entao
+    # uma semana inteira pulada apareceria como LastTaskResult=0 congelado da execucao
+    # anterior, sem nada sinalizando. Auditoria de 27/08/2026 nao encontrou nenhuma
+    # ocorrencia real desse tipo, os logs agendados batem com o calendario previsto.
+    # Isto e cobertura preventiva do mesmo buraco que a ORDEM1 acima destrava.
+    $weeklyTasks = @{
+        'Szuchmacher-AgendaAgent'        = @{ days = @('Sunday', 'Monday', 'Thursday'); hour = 8 }
+        'Szuchmacher-MacroAgent'         = @{ days = @('Friday');                       hour = 18 }
+        'Szuchmacher-AgendaMacro-Claude' = @{ days = @('Friday');                       hour = 7 }
+    }
+    if (-not $staleHours -and $weeklyTasks.ContainsKey($name)) {
+        $wcfg = $weeklyTasks[$name]
+        $now = Get-Date
+        # Ocorrencia prevista mais recente que ja venceu, com 2h de graca, olhando no
+        # maximo 7 dias para tras. Sem a graca o monitor das 07:00 acusaria a task das
+        # 08:00 do mesmo dia como atrasada em todo dia previsto.
+        $ultimaPrevista = $null
+        for ($d = 0; $d -le 7; $d++) {
+            $dia = $now.Date.AddDays(-$d)
+            if ($wcfg.days -notcontains [string]$dia.DayOfWeek) { continue }
+            $prevista = $dia.AddHours($wcfg.hour)
+            if ($prevista.AddHours(2) -le $now) { $ultimaPrevista = $prevista; break }
+        }
+        if ($ultimaPrevista -and $lastRun -lt $ultimaPrevista) {
+            $staleHours = [Math]::Round(($now - $lastRun).TotalHours, 1)
+            $staleMsg = ("nao rodou no ciclo semanal esperado (previsto " +
+                         $ultimaPrevista.ToString('yyyy-MM-dd HH:mm') +
+                         ", ultimo ha ${staleHours}h)")
+        }
+    }
     # Stale com exit code benigno e o caso mais perigoso: task simplesmente nao
     # disparou e ninguem percebeu (Matinal 01/08). Reportar como warning distinto.
     if ($staleHours -and $code -in $BenignCodes) {
@@ -312,6 +327,31 @@ foreach ($task in $allTasks) {
             script = $scriptPath; reason = $staleMsg
         }
         continue
+    }
+
+    # Pula benignos
+    if ($code -in $BenignCodes) {
+        $ok++
+        continue
+    }
+
+    # Verifica falso-positivo conhecido
+    if ($KnownFalsePositives.ContainsKey($name)) {
+        $kfp = $KnownFalsePositives[$name]
+        if ($code -eq $kfp.code) {
+            $ageDays = ((Get-Date) - $lastRun).Days
+            if ($ageDays -le $kfp.graceDays) {
+                Write-Log "INFO: $name exit=$code (falso-positivo conhecido, dia $ageDays/$($kfp.graceDays))"
+                $skipped++
+                continue
+            }
+            # Excedeu periodo de graca - escala para warning
+            $warnings += [ordered]@{
+                task = $name; code = $code; lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm')
+                reason = "falso-positivo conhecido ha $ageDays dias (> $($kfp.graceDays)d) - reavaliar"
+            }
+            continue
+        }
     }
 
     # Classifica severidade ($ageDays, $action e $scriptPath vem do topo do laco)
