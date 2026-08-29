@@ -13,7 +13,7 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ## 29/08 (tarde) — P0, ABERTO (SCANFALLBACK-MORTO1): o fallback de varredura nunca rodou uma vez, e o histórico verde dele é do caminho que não faz nada
 
-> **Status:** ABERTO. Uma ação do operador (criar secret no repo) mais uma guarda.
+> **Status:** CORRIGIDO NA BRANCH, aguarda merge em main para valer no cron. Secret `ANTHROPIC_API_KEY` criado pelo operador em 29/08 e pré-check de secrets adicionado ao workflow (`ab2622f`).
 > **Data da Versão:** 2026-08-29
 > **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08, medida em `gh run list` e `gh secret list` ao vivo
 > **Condição de Obsolescência:** cai quando `scan-emergencia.yml` completar uma execução com o gate aberto
@@ -56,9 +56,9 @@ defeito volta na próxima chave que o script passar a exigir.
 
 ---
 
-## 29/08 (tarde) — P1, ABERTO (WATCHDOG-NAOINICIOU1): rotina que não começa não tem alerta nenhum, e o vigia reporta sucesso
+## 29/08 (tarde) — P1, CORRIGIDO (WATCHDOG-NAOINICIOU1): rotina que não começa não tinha alerta nenhum, e o vigia reportava sucesso
 
-> **Status:** ABERTO
+> **Status:** CORRIGIDO em 29/08 (`5acbca2`), efetivo no Task Scheduler. Ramo de log inexistente agora emite alerta via `notificar_rotina` e sai 1. Prova de duas pontas medida: dia sem log depois do horário → `EXITCODE=1` com tentativa de alerta; dia com `FIM:` válido → `EXITCODE=0`.
 > **Data da Versão:** 2026-08-29
 > **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08, `ls logs/routines/` e leitura de `scripts/retry-vixradar.ps1`
 > **Condição de Obsolescência:** cai quando o ramo "log inexistente" emitir alerta em vez de sair 0
@@ -104,6 +104,23 @@ o script deve sair diferente de 0 e emitir alerta pelo mesmo canal do
 
 **Guarda exigida.** Prova de duas pontas, o vigia reprova no dia sem log depois do
 horário e aceita no dia com `FIM:` válido, com a saída crua colada.
+
+---
+
+## 29/08 (noite) — P2, CORRIGIDO (FRESCORNOTIFY1): o frescor-check reprovava e o aviso morria dentro do GitHub
+
+> **Status:** CORRIGIDO em 29/08 (`a1c5283`), aguarda merge em main para valer no cron. Passo `Notificar queda de frescor` com `if: failure()`, mesma `action=notificar_rotina` do watch de health, dedup do Worker por rotina/dia (NOTIFYRL1), no máximo 1 email por dia.
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08; o `frescor-check.yml` reprovou em 28/08 e 29/08 (evento mais novo de 25/08) e o passo único do workflow morreu sem canal de aviso
+> **Condição de Obsolescência:** cai quando o passo de notificação enviar alerta numa falha real de frescor, com a saída do GitHub colada
+
+O workflow reprovava com `INGESTAO PARADA` e ninguém ficava sabendo, o alerta existia só como falha de Action. Em 28/08 e 29/08 o operador descobriu por leitura manual do log, não por notificação.
+
+**Causa raiz.** O workflow tinha um único step e nenhuma saída. A falha acionável estava lá, mas o aviso não saía do GitHub.
+
+**Correção aplicada.** Passo que roda só em falha (`if: failure()`), re-deriva o detalhe do `admin_health_check` para nomear o campo (EVENTOFRESCOR1/HEALTHWATCH3) e chama `notificar_rotina` com `rotina=frescor-ingestao`. Verificado na sessão: YAML válido e contrato do Worker conferido (POST com chave errada → 403 `Acesso negado.`, a action existe e rejeita chave inválida, nenhum email enviado).
+
+**Guarda exigida.** O `if: failure()` cobre a regressão: se o gate voltar a reprovar, o alerta sai. Prova de duas pontas em execução real fica pendente do primeiro gate que abrir depois do merge em main.
 
 ---
 

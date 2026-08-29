@@ -1,6 +1,25 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-26 (agente: Claude Opus 5)
+Última atualização: 2026-08-29 (sessão P1/P2/P3)
+
+> [!info] 29/08 (tarde) — auditoria geral fechada, P0, P1, P2 e P3 corrigidos na branch `fix/silent-green-2026-08-27`.
+> **Status:** vigente · **Data da Versão:** 2026-08-29 · **Origem do Registro:** sessão de correção
+> após auditoria `/vix-radar-general-audit` (29/08) ·
+> **Condição de Obsolescência:** cai quando a branch chegar a `main` e o cron rodar com as guardas novas.
+>
+> Diagnóstico do feed: o painel não mentiu. Não existe evento datado >= 26/08 em produção
+> (re-probe: TOTAL 496, MAX `2026-08-25`, 0 eventos depois). A noturna de 29/08 varreu 103/103
+> mas deferiu 60 emissores da cauda por orçamento de tokens. Próxima atualização natural:
+> publicação da CVM em 30/08.
+>
+> P0 `SCANFALLBACK-MORTO1`: secret `ANTHROPIC_API_KEY` criado pelo operador e pré-check de
+> secrets no `scan-emergencia.yml` (`ab2622f`). P1 `WATCHDOG-NAOINICIOU1`: `retry-vixradar.ps1`
+> alerta via `notificar_rotina` e sai 1 no dia sem log (`5acbca2`), efetivo local. P2
+> `FRESCORNOTIFY1`: `frescor-check.yml` ganhou passo `if: failure()` de notificação (`a1c5283`).
+> P3: docs commitados (CLAUDE.md, ARQUITETURA-TECNICA, recado `92 - Vistoria Feed Noticias`).
+> Portão: HTTP 200, `ok:true`, v4.9.221.
+> **Ação pendente do operador:** merge da branch em `main` para P0 e P2 valerem no cron.
+> `VERIFCACHE-ROUNDTRIP1` segue ABERTO (exige deploy).
 
 > [!info] 26/08 (tarde) — deploy v4.9.221: TTL de `cvm:documentos` unificado e telemetria de atribuição CVM ligada.
 > **Status:** vigente · **Data da Versão:** 2026-08-26 · **Origem do Registro:** deploy validado
@@ -403,6 +422,7 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
+- **29/08 (tarde), P0/P1/P2/P3 da auditoria geral fechados na branch `fix/silent-green-2026-08-27`:** `SCANFALLBACK-MORTO1` (secret `ANTHROPIC_API_KEY` criado pelo operador + pré-check de secrets, `ab2622f`), `WATCHDOG-NAOINICIOU1` (`retry-vixradar.ps1` alerta e sai 1 no dia sem log, `5acbca2`, efetivo local), `FRESCORNOTIFY1` (`frescor-check.yml` com passo `if: failure()` de notificação, `a1c5283`), P3 docs. Feed diagnosticado como verdadeiro: sem evento >= 26/08 em produção (MAX 25/08, TOTAL 496). **Pendente:** merge em `main` para P0 e P2 valerem no cron. `VERIFCACHE-ROUNDTRIP1` segue ABERTO (exige deploy). Detalhe em `PENDENCIAS.md`
 - **ATUALIZADO 26/08 (INVERSAO-CD1, P1), scheduler real achado e alterado, ativação é BLOQUEIO EXTERNO.** O fechamento de 25/08 dizia "sem superfície programável" e estava errado: o agendamento dos três vive no CCD store `%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`, lido pelo app só no initialize, não no Cowork nem no Task Scheduler. Quatro provas: (1) `cronExpression` bate com os horários observados; (2) `lastRunAt` casa com o `INICIO:` dos logs (matinal 15:08Z→12:09 BRT, noturno 21:56Z→18:57 BRT, verif 21:56Z); (3) `main.log` do app mostra o CCD disparando a sessão com o cron e `missed` (catch-up que explica os atrasos de 12:08/18:56); (4) o Cowork responde "not initialized" e as tasks nativas estão `Disabled` de propósito. **Alteração aplicada 26/08, backup `scheduled-tasks.json.bak-20260826`:** `vixradar-matinal` `0 18 * * 1-5` (18h Seg-Sex), `vixradar-noturno` `0 10 * * *` (10h diário), a verificação passou de um cron cartesiano para **duas tasks independentes**: `vixradar-verificacao-async-11h` `0 11 * * *` (11h00) e `vixradar-verificacao-async-1845` `45 18 * * *` (18h45), clonadas do original (SKILL.md + ROUTINES-CLOUD.md em pasta própria, hash idêntico). Sai o disparo espúrio das 11h45 e das 18h00 que o cartesiano introduzia. Estado final: `vixradar-matinal` `0 18 * * 1-5`, `vixradar-noturno` `0 10 * * *`, verificação 11h00 e 18h45. JSON validado, 6 tasks, IDs únicos, as 4 sessões VIX `enabled:true`. **Ação manual mínima, urgente:** o processo do app (`claude.exe` PID 10756) está vivo desde **25/08 18:56**, só lê o arquivo na ativação, e o próximo dispatch em memória (matinal às 10h de hoje) grava o snapshot velho por cima do arquivo. Reiniciar o Claude Desktop **antes das 10h BRT de hoje** para carregar as 4 sessões novas; a sessão que editou roda hospedada por ele e não pode reiniciá-lo. Depois do restart, conferir o próximo `INICIO:` no log. Preservados: `VIXRadar-Matinal/Noturno/Verificacao-Async` `Disabled`, Sentinela habilitada, `Szuchmacher-RetryVixNoturno` 13h30 e `Szuchmacher-RetryVixMatinal` 21h30. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - **RESOLVIDO 25/08 (SENTINELA-SYNC1, Worker v4.9.220 + script):** o SLA passa a contar **da publicação na CVM** até a análise sair. O bloqueio era de credencial, não de arquitetura, e a solução já existia na máquina: cofre DPAPI `CurrentUser` em `api/.admin_credencial.dat`, lido por `api/Get-VixAdminCredential.ps1`, já usado por seis scripts vivos. Reusar não cria segredo novo. Quando o `HEAD` acusa `Last-Modified` novo, a Sentinela manda o Worker reingerir na hora via `admin_sync_cvm_auto`. `zip_last_modified` só avança no estado quando o sync volta `ok`, então falha não consome o gatilho. Sem cofre a rotina **não aborta**, registra o atraso medido e segue com o acervo atual. Prova ao vivo: detectou publicação de 961 min atrás, sincronizou em 5 segundos (`documentos=2126 empresas=506`) e planejou, contra as até 4h32 de espera pelo cron
 - **RESOLVIDO 25/08 (STATUSGRUDA1, Worker v4.9.220):** `_status` sofria o mesmo descarte do DEFERGRUDA2 no ramo "semana nova sem evento, semana velha com evento". Ele descreve a última varredura, não o acervo de eventos, então o registro mais recente manda. Dano concreto: o `inconclusivo_stale_breakout` do noturno, que existe para quebrar loop de cobertura incompleta, ficava cego. `_motivo` viaja junto por só fazer sentido ao lado do `_status` que o gerou. Conteúdo continua vindo da semana velha, com teste travando isso. Guarda: 3 testes novos, os 3 falham contra o código anterior
