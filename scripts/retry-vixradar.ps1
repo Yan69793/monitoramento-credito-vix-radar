@@ -5,8 +5,9 @@
 # Contexto (17/08/2026): as rotinas migraram do Task Scheduler para sessoes
 # agendadas do Claude Desktop. A sessao entra em idle no meio do cascade e a
 # rotina morre sem rastro (noturno 16/08, matinal 14/08). Este script roda via
-# Task Scheduler apos a janela (noturno 21:30 diario, matinal 13:30 dias uteis)
-# e, se o log do dia nao tem FIM valido, relanca a rotina via claude CLI usando
+# Task Scheduler apos a janela (noturno 13:30 diario, matinal 21:30 dias uteis;
+# INVERSAO-CD1 25/08: o nome "noturno" roda de manha, "matinal" a noite) e, se o
+# log do dia nao tem FIM valido, relanca a rotina via claude CLI usando
 # run_claude_routine.ps1 (o pre-flight dele limpa o ambiente que quebrou o CLI
 # em 04/08 e sonda WebSearch antes de rodar).
 #
@@ -15,7 +16,8 @@
 param(
     [Parameter(Mandatory)]
     [ValidateSet('vixradar-noturno', 'vixradar-matinal')]
-    [string]$RoutineId
+    [string]$RoutineId,
+    [string]$WorkerUrl = 'https://api.vixradar.com/'
 )
 
 $ErrorActionPreference = 'Continue'
@@ -33,9 +35,30 @@ function Write-Log([string]$msg) {
     Write-Host $line
 }
 
+# WATCHDOG-NAOINICIOU1 (auditoria 2026-08-29): rotina que nao iniciou era
+# silencio total (exit 0), e o gap de 28/08 (app do Claude Desktop fechado)
+# passou sem alerta nenhum. O retry roda DEPOIS da janela da rotina, entao log
+# ausente no horario do retry significa sessao que nao disparou. Vira falha +
+# alerta via action=notificar_rotina (mesmo canal do watch-vixradar-health.ps1,
+# ROTINAGAP1), com dedup do Worker por rotina/dia (NOTIFYRL1). Sem relancamento:
+# app fechado nao vai entregar de novo; o alerta e a acao correta.
 if (-not (Test-Path $RotLog)) {
-    Write-Log "SEM LOG: $RotLog nao existe, rotina nao iniciou. Sem retry (fora do alcance deste watchdog)."
-    exit 0
+    $motivo = 'Rotina ' + $RoutineId + ' nao deixou log ate ' + (Get-Date -Format 'HH:mm') + ' BRT (janela do dia ja passou). Sessao Claude Desktop pode nao ter disparado (app fechado ou cron perdido).'
+    Write-Log "SEM LOG: $RotLog nao existe, rotina nao iniciou. ALERTA."
+    $rk = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
+    if (-not $rk) {
+        Write-Log 'AVISO: ROUTINE_API_KEY ausente do escopo User, alerta nao enviado'
+    } else {
+        try {
+            $p = @{ action='notificar_rotina'; routine_key=$rk; rotina=('retry-' + $RoutineId); motivo=$motivo }
+            $bytes = [System.Text.Encoding]::UTF8.GetBytes(($p | ConvertTo-Json -Compress))
+            Invoke-WebRequest -Uri $WorkerUrl -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 30 -UseBasicParsing | Out-Null
+            Write-Log 'ALERTA ROTINA enviado (dedup do Worker limita a 1/dia por rotina)'
+        } catch {
+            Write-Log ('AVISO: falha ao alertar rotina faltante: ' + $_.Exception.Message)
+        }
+    }
+    exit 1
 }
 
 $conteudo = Get-Content $RotLog -Raw -Encoding UTF8
