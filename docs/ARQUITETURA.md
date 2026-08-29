@@ -2,7 +2,8 @@
 
 > **DESATUALIZADO desde 2026-06-14.** Conteúdo histórico preservado abaixo para registro.
 > Cita `radar-standalone-worker.js` (v3.6) e `index.html` v19 — a arquitetura atual usa `api/v4.9.187.js` e `radar-standalone-worker.js` não existe mais.
-> **Fonte atual:** [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
+> **Fonte atual:** [ARQUITETURA-TECNICA.md](ARQUITETURA-TECNICA.md) (retrato medido em 2026-08-26, v4.9.221),
+> [README.md](../README.md) e [`Obsidian VIX Radar/03 - Estado Atual.md`](../Obsidian%20VIX%20Radar/03%20-%20Estado%20Atual.md).
 
 ---
 

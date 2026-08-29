@@ -39,8 +39,11 @@ Cinco regras que valem para todo plano e toda auditoria, daqui para frente. Nasc
 ## Grafo do código (graphify)
 
 Orientação antes de grep/read é o grafo em `graphify-out/graph.json`, rebuild
-quase diário. O hook de pré-leitura exige `graphify query "<pergunta>"` antes de
-grep e de leitura de fonte; consultar pela skill `/graphify` (fast path, nunca
+quase diário. O hook `PreToolUse` de pré-leitura foi removido em 26/08/2026,
+porque injetava cerca de 100 tokens de contexto em cada Read e Glob e outros 60
+em cada Bash, acumulando no transcript e sendo reenviado a cada turno. Consultar
+o grafo antes de grep e de leitura de fonte continua sendo a ordem, agora por
+disciplina e não por trava. Consultar pela skill `/graphify` (fast path, nunca
 reconstruir) ou pelo intérprete do uv tool:
 
 ```
@@ -75,8 +78,16 @@ Isso significa que este repositório tem dois lados que sessão nenhuma descobre
 1. **Lado Cloudflare** — `api/` e `app/`, deploy via scripts, bindings em `wrangler.toml`
 2. **Lado Task Scheduler** — scripts em `scripts/` e `routines/`, agendamento documentado em `routines/README.md`
 
-Os dois lados se comunicam pelo contrato de rotina (POST para `https://api.vixradar.com`
-com header `X-Routine-Key`). Se um lado quebrar, o sistema para.
+Os dois lados se comunicam pelo contrato de rotina, POST para `https://api.vixradar.com`
+com a chave em `body.routine_key`, dentro do JSON. Se um lado quebrar, o sistema para.
+
+**Não existe header `X-Routine-Key`.** Esta linha afirmou o contrário até 26/08/2026 e
+estava errada. Medido nessa data, os 8 handlers de rotina conferem
+`body.routine_key !== env.ROUTINE_API_KEY` e devolvem 403, e a string `X-Routine-Key`
+só aparece uma vez no Worker, num comentário sobre PII do Sentry (`api/src/worker.js:19812`).
+Quem escrever cliente novo baseado na redação antiga toma 403 e não descobre por quê.
+A verificação assíncrona aceita uma segunda chave no mesmo campo,
+`REMOTE_VERIFICACAO_KEY`, com escopo restrito a três actions (CHAVEESCOPO1).
 
 ### Diretórios fora do fluxo operacional
 
@@ -267,9 +278,27 @@ working tree. Instalar com `scripts/install-hooks.ps1`. Emergência: `git commit
 
 ## Cascade de IA
 
-Provedores configurados no Worker: Claude Haiku 4.5 (manual Pulso), Haiku + Sonnet 4.6
-(lotes nas rotinas), Gemini (fallback), Perplexity (busca). OpenRouter saiu do cascade
-no v4.9.108. Chaves de API em secrets do Cloudflare, nunca no repo.
+**O cascade não é mais multi-provedor.** Hoje é Anthropic puro, medido em 26/08/2026.
+Os 7 arrays de provedor no Worker têm entrada única, `["claude-haiku-analise",
+chamarClaudeAnalise, env.ANTHROPIC_API_KEY]` (`api/src/worker.js:9637`, `9640`, `9833`,
+`9836`, `10481`, `10484`, `18883`). Análise usa `claude-haiku-4-5-20251001` com busca
+web nativa. O verificador adversarial começa em Haiku e escala para `claude-sonnet-4-6`
+quando a confiança fica abaixo de 0,7 (`VERIFICADOR_CONFIG`). O health confirma,
+`providers_configurados: 2/2`, e os dois são Resend e Anthropic.
+
+Esta seção listava Gemini como fallback e Perplexity como busca, e as duas afirmações
+estavam erradas. `GEMINI_API_KEY`, `chamarGemini` e qualquer chamada a
+`generativelanguage` não existem no arquivo, restaram só contadores de quota e o status
+fixo `"removido"`. `chamarPerplexity` ainda existe mas não tem call site no cascade, os
+dois únicos são probe de health rotulado `perplexity_direto_legado`
+(`api/src/worker.js:11462`, `15449`), e só ativa se `PERPLEXITY_API_KEY` estiver
+presente. OpenRouter saiu do cascade no v4.9.108 e teve as funções removidas no
+v4.9.180, sobrou só a consulta de saldo. Chaves de API em secrets do Cloudflare, nunca
+no repo.
+
+Ao planejar mudança de provedor, medir o array antes. A redação antiga sugeria que havia
+fallback de terceiro para onde cair, e não há. Se a Anthropic ficar indisponível, a
+análise para.
 
 A máquina local usa o Claude CLI (conta Szuchmacher) para análise e verificação.
 O contrato de rotina expõe: `listar_todos_emissores`, `listar_emissores_prioritarios`,

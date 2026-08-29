@@ -1,0 +1,357 @@
+<title>Arquitetura VIX Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+:root{
+  --ground:#F6F8FA;
+  --surface:#FFFFFF;
+  --ink:#0B1620;
+  --ink-mid:#3C4C5A;
+  --ink-dim:#68798A;
+  --rule:#DCE3E9;
+  --rule-soft:#EBF0F4;
+  --accent:#8A6F3A;
+  --accent-bg:#F3EEE3;
+  --warn:#9A5A24;
+  --crit:#9B3438;
+  --ok:#2F6B4F;
+  --shadow:0 1px 2px rgba(11,22,32,.05),0 8px 28px rgba(11,22,32,.05);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --ground:#001020;
+    --surface:#001830;
+    --ink:#DDD6C8;
+    --ink-mid:#9FAEBA;
+    --ink-dim:#7F8F9C;
+    --rule:#0E2740;
+    --rule-soft:#08192B;
+    --accent:#C9A96E;
+    --accent-bg:#0A2135;
+    --warn:#D19A5A;
+    --crit:#D97A7E;
+    --ok:#6FBF95;
+    --shadow:none;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#001020;
+  --surface:#001830;
+  --ink:#DDD6C8;
+  --ink-mid:#9FAEBA;
+  --ink-dim:#7F8F9C;
+  --rule:#0E2740;
+  --rule-soft:#08192B;
+  --accent:#C9A96E;
+  --accent-bg:#0A2135;
+  --warn:#D19A5A;
+  --crit:#D97A7E;
+  --ok:#6FBF95;
+  --shadow:none;
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0;
+  background:var(--ground);
+  color:var(--ink);
+  font-family:"Manrope",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  font-size:15px;
+  line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+.sheet{
+  max-width:53rem;
+  margin:0 auto;
+  padding:3.5rem 2rem 5rem;
+  display:flex;
+  flex-direction:column;
+  gap:2.4rem;
+}
+
+/* ---- cabecalho ---- */
+.masthead{display:flex;flex-direction:column;gap:.9rem;padding-bottom:1.6rem;border-bottom:2px solid var(--accent)}
+.eyebrow{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--accent);font-weight:500;
+}
+h1{
+  font-family:"Cormorant Garamond",Georgia,serif;
+  font-weight:600;font-size:clamp(2.3rem,5.5vw,3.1rem);
+  line-height:1.04;margin:0;letter-spacing:-.01em;text-wrap:balance;
+}
+.deck{margin:0;color:var(--ink-mid);font-size:1.02rem;max-width:44rem}
+.stamps{display:flex;flex-wrap:wrap;gap:.45rem;margin-top:.3rem}
+.stamp{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.7rem;letter-spacing:.03em;
+  padding:.24rem .6rem;border:1px solid var(--rule);border-radius:2px;
+  color:var(--ink-mid);background:var(--surface);
+  font-variant-numeric:tabular-nums;
+}
+.stamp b{color:var(--accent);font-weight:700}
+
+/* ---- secoes ---- */
+section{display:flex;flex-direction:column;gap:.85rem}
+h2{
+  display:flex;align-items:baseline;gap:.75rem;
+  font-family:"Cormorant Garamond",Georgia,serif;
+  font-weight:600;font-size:1.72rem;line-height:1.15;
+  margin:0;padding-bottom:.45rem;border-bottom:1px solid var(--rule);
+  text-wrap:balance;
+}
+h2 .n{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.78rem;font-weight:700;color:var(--accent);
+  letter-spacing:.06em;flex:none;position:relative;top:-.28rem;
+}
+h3{
+  font-family:"Manrope",sans-serif;font-weight:700;
+  font-size:.76rem;letter-spacing:.11em;text-transform:uppercase;
+  color:var(--ink-dim);margin:.7rem 0 -.35rem;
+}
+p{margin:0;max-width:44rem}
+strong{font-weight:700;color:var(--ink)}
+code,.mono{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.845em;
+}
+code{color:var(--accent);word-break:break-word}
+ul{margin:0;padding-left:1.15rem;display:flex;flex-direction:column;gap:.45rem;max-width:44rem}
+li{padding-left:.15rem}
+li::marker{color:var(--accent)}
+
+/* ---- tabelas ---- */
+.tw{overflow-x:auto;border:1px solid var(--rule);border-radius:3px;background:var(--surface);box-shadow:var(--shadow)}
+table{border-collapse:collapse;width:100%;font-size:.87rem}
+th{
+  text-align:left;font-weight:700;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--ink-dim);padding:.6rem .8rem;border-bottom:1px solid var(--rule);
+  white-space:nowrap;background:var(--rule-soft);
+}
+td{padding:.58rem .8rem;border-bottom:1px solid var(--rule-soft);vertical-align:top;color:var(--ink-mid)}
+tr:last-child td{border-bottom:none}
+td:first-child{color:var(--ink);font-weight:500}
+td .mono{color:var(--ink);font-size:.8rem}
+
+/* ---- bloco de dados ---- */
+.payload{
+  background:var(--surface);border:1px solid var(--rule);border-left:3px solid var(--accent);
+  border-radius:3px;padding:.85rem 1rem;overflow-x:auto;
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.76rem;line-height:1.75;color:var(--ink-mid);
+  font-variant-numeric:tabular-nums;white-space:pre;
+}
+.payload b{color:var(--accent);font-weight:500}
+
+/* ---- riscos ---- */
+.risks{display:grid;gap:.6rem}
+.risk{
+  background:var(--surface);border:1px solid var(--rule);border-radius:3px;
+  padding:.7rem .9rem .75rem 1rem;position:relative;box-shadow:var(--shadow);
+}
+.risk::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--warn);border-radius:3px 0 0 3px}
+.risk[data-sev="alto"]::before{background:var(--crit)}
+.risk[data-sev="baixo"]::before{background:var(--ok)}
+.risk h4{
+  margin:0 0 .2rem;font-size:.94rem;font-weight:700;
+  display:flex;align-items:baseline;gap:.55rem;flex-wrap:wrap;
+}
+.sev{
+  font-family:"JetBrains Mono",ui-monospace,monospace;
+  font-size:.6rem;letter-spacing:.11em;text-transform:uppercase;font-weight:700;
+  padding:.1rem .4rem;border-radius:2px;background:var(--accent-bg);color:var(--warn);
+}
+.risk[data-sev="alto"] .sev{color:var(--crit)}
+.risk[data-sev="baixo"] .sev{color:var(--ok)}
+.risk p{font-size:.87rem;color:var(--ink-mid);max-width:none}
+
+.footnote{
+  border-top:1px solid var(--rule);padding-top:1rem;
+  font-size:.78rem;color:var(--ink-dim);max-width:44rem;
+}
+
+@media (max-width:640px){
+  body{font-size:14px}
+  .sheet{padding:2.2rem 1.1rem 3rem;gap:2rem}
+  h2{font-size:1.45rem}
+}
+
+@media print{
+  :root{--ground:#fff;--surface:#fff;--ink:#000;--ink-mid:#222;--ink-dim:#555;--rule:#bbb;--rule-soft:#e2e2e2;--accent:#6B5528;--shadow:none}
+  body{font-size:9.3pt;line-height:1.42}
+  .sheet{max-width:none;padding:0;gap:1.15rem}
+  section{break-inside:avoid;gap:.5rem}
+  h1{font-size:23pt}
+  h2{font-size:12.5pt;padding-bottom:.2rem;margin-top:.2rem}
+  .deck{font-size:9.6pt}
+  table{font-size:8.1pt}
+  th,td{padding:.28rem .45rem}
+  .payload{font-size:7.1pt;line-height:1.5}
+  .risk{padding:.4rem .5rem .45rem .6rem;break-inside:avoid}
+  .risk p{font-size:8.2pt}
+  .risks{gap:.32rem}
+  .tw{box-shadow:none}
+  @page{margin:14mm}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="sheet">
+
+  <header class="masthead">
+    <div class="eyebrow">Documento técnico · uso interno e consultoria</div>
+    <h1>Arquitetura VIX Radar</h1>
+    <p class="deck">Monitoramento de risco de crédito privado de 103 emissores brasileiros. Retrato do sistema em 26/08/2026, medido, não estimado.</p>
+    <div class="stamps">
+      <span class="stamp">Worker <b>v4.9.221</b></span>
+      <span class="stamp">Frontend <b>v202.33</b></span>
+      <span class="stamp">Emissores <b>103</b></span>
+      <span class="stamp">Health <b>ok:true</b></span>
+    </div>
+  </header>
+
+  <section>
+    <h2><span class="n">01</span>O que o sistema faz</h2>
+    <p>Ingere documentos regulatórios da CVM, cotações e imprensa, roda análise por LLM sobre cada emissor, calcula um score de alerta antecipado (EWS), verifica a análise contra fonte externa antes de publicar, e serve o resultado num painel web com alerta por e-mail. A lista canônica de emissores é uma constante no próprio Worker, <code>EMISSORES_LISTA</code> em <code>api/src/worker.js:3798-3913</code>, com 103 entradas.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">02</span>Topologia</h2>
+    <p>Três planos, e o segundo é o que ninguém descobre lendo o repositório.</p>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Plano</th><th>Onde roda</th><th>O que faz</th></tr></thead>
+        <tbody>
+          <tr><td>Borda</td><td>Cloudflare</td><td>Worker <span class="mono">radar-credito-api</span> em <span class="mono">api.vixradar.com</span>, Pages <span class="mono">radar-credito</span> em <span class="mono">vixradar.com</span>, KV, 5 Durable Objects, Analytics Engine</td></tr>
+          <tr><td>Cérebro</td><td>Máquina Windows do operador</td><td>Sessões agendadas do Claude Desktop e Windows Task Scheduler disparando o Claude CLI, que faz a análise pesada e devolve por POST</td></tr>
+          <tr><td>Fontes</td><td>Externo</td><td>CVM (bulk IPE), ANBIMA, provedores de cotação, API Anthropic, Resend, Sentry</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>A inferência cara não roda na nuvem. Roda local, na assinatura do operador, e o acoplamento entre os dois lados é um POST JSON autenticado por chave compartilhada. Se a máquina local para, o painel continua servindo dado velho sem erro nenhum.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">03</span>Backend</h2>
+    <p><code>api/src/worker.js</code>, arquivo único de cerca de 19,8 mil linhas e 999 KB. Monolito deliberado, sem framework, empacotado pelo esbuild do Wrangler.</p>
+
+    <h3>Roteamento</h3>
+    <p>Misto. Três rotas por path (<code>/resend_webhook</code>, <code>/admin/promote</code>, <code>/s/{slug}</code>). O resto entra por <code>__coreFetch</code> e despacha por parâmetro. GET usa querystring <code>op=</code>, com 17 valores válidos em <code>_OPS_VALIDAS</code>. POST usa <code>body.action</code>, com cerca de 88 ramos, agrupados em auth e reset, admin de usuários, CVM, e-mail e newsletter, mercado e anomalias, telemetria de UI, contrato de rotina, calendário, share e favoritos.</p>
+
+    <h3>Autenticação, três regimes no mesmo endpoint</h3>
+    <ul>
+      <li>JWT HS256 assinado com <code>JWT_SECRET</code> via WebCrypto, TTL de 12 horas, lido só do header <code>Authorization: Bearer</code> desde que o cookie foi removido. Senha de usuário em PBKDF2, 100 mil iterações, SHA-256.</li>
+      <li>Senha de administrador comparada contra <code>env.ADMIN_PASSWORD</code> em texto claro, em cerca de 52 handlers.</li>
+      <li>Chave de rotina, <code>body.routine_key</code> conferida contra <code>ROUTINE_API_KEY</code>. Uma segunda chave, <code>REMOTE_VERIFICACAO_KEY</code>, tem escopo restrito às três actions de verificação. Ela viaja no corpo JSON, não em header, ao contrário do que a documentação interna afirmava.</li>
+    </ul>
+
+    <h3>Rate limiting</h3>
+    <p><code>RateLimiterDO</code> guarda a janela de timestamps no storage SQLite do Durable Object e aplica três camadas. Anônimo em 3 por minuto, 10 por meia hora e 30 por dia. Tenant <span class="mono">vix_core</span> em 5, 25 e 150. Tenant <span class="mono">mirabaud</span> em 10, 50 e 300. Leitura e auth falham abertas, operação crítica falha fechada. Requisição com senha admin correta pula o check inteiro, senha errada entra no throttle como crítica.</p>
+
+    <h3>Durable Objects e dados</h3>
+    <p>Cinco classes, todas SQLite. <code>RateLimiterDO</code> (migration v1), <code>EstadoSemanaDO</code> (v2), e <code>EmissorDO</code>, <code>UsuarioDO</code> e <code>ConfigDO</code> (v3, migração KV para DO em andamento). <code>EstadoSemanaDO</code> serializa gravação por encadeamento de promises, correção do incidente de race condition.</p>
+    <p>Um namespace KV, <code>RADAR_KV</code>, id <span class="mono">c6805b8d8a7b468e9f854ab4f91fb93a</span>. O estado vive em <code>radar:estado:{semanaISO}</code> com TTL de 35 dias, um blob por semana carregando os 103 emissores. Leitura por <code>carregarEstadoMultiSemana</code>, janela padrão de 5 semanas, mesclando da mais velha para a mais nova com dedup semântico de evento. Escrita sempre na semana corrente. Outros prefixos relevantes são <code>cvm:documentos</code> (30d), <code>radar:verif:{hash}</code> (30d), <code>radar:custo:{data}</code> (90d), <code>email_envio:</code> e <code>bounce:</code> (90d), <code>heartbeat:{agente}</code> (7d).</p>
+
+    <h3>Crons do Worker</h3>
+    <p>Quatro. <span class="mono">30 15 * * *</span> matinal, <span class="mono">30 21 * * *</span> noturno, <span class="mono">0 1 * * *</span> watchdog de heartbeat de 6 agentes, <span class="mono">0 4 * * *</span> build da agenda. Matinal e noturno fazem sync CVM, recálculo de anomalias, sync ANBIMA e pipeline preditivo. O noturno ainda dispara newsletter, relatório diário e health check.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">04</span>Frontend</h2>
+    <p>Uma página, <code>app/index.html</code>, com 719 KB e cerca de 7 mil linhas. Dentro dela, 173 KB de CSS inline e 474 KB de JavaScript inline. Não há bundler, não há build step, não há suíte de teste. É HTML servido direto pelo Pages.</p>
+    <p>Fora do arquivo existem 8 módulos ES em <code>app/js</code>, carregados por um único <code>&lt;script type="module"&gt;</code> apontando para <code>admin-bootstrap.js</code>. Cobrem só o painel administrativo, entre roteador por hash das abas, wrapper de fetch com retry e backoff, e as telas de engajamento e métricas. Há uma cópia legada em IIFE em <code>app/admin/</code> que ninguém carrega.</p>
+    <p>Versionamento por <code>CACHE_VERSION</code>, hoje <span class="mono">v202.33</span>. O valor aparece em 15 pontos dentro de <code>app/js</code> como querystring dos imports, e <code>app/_headers</code> força <span class="mono">no-cache</span> para <code>app/js/*</code> porque import relativo não herda o sufixo de versão.</p>
+    <p>A navegação principal alterna <code>display</code> de seções, não usa rota. Só o admin tem roteador por hash. O JWT fica em <code>localStorage</code> sob a chave <code>radar_jwt</code> e é injetado por um monkey-patch global de <code>window.fetch</code> que carimba o header em qualquer chamada para o domínio da API. A senha admin fica em <code>sessionStorage</code>.</p>
+    <p>Timer autônomo de rede foi removido do app principal por decisão explícita. Sobrou um disparo único 30 segundos após o load, checando <code>version.json</code>, e um <code>setInterval</code> de 5 minutos dentro do módulo de engajamento do admin, que ainda chama a rede sozinho.</p>
+    <p>Design system com dourado <span class="mono">#B7985D</span> sobre navy <span class="mono">#001020</span>, tipografia em DM Sans, Cormorant Garamond e Inter. Não há Content-Security-Policy, consequência do JavaScript inline. Os <code>&lt;script&gt;</code> carregam um <code>nonce</code> fixo que, sem CSP, não faz nada.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">05</span>Camada de IA</h2>
+    <p>O cascade multi-provedor não existe mais. Hoje é Anthropic puro. Gemini e OpenRouter foram removidos do código, Perplexity sobrou como caminho legado que só ativa se a chave estiver presente. O health reporta <span class="mono">providers_configurados: 2/2</span>, e os dois são Resend e Anthropic.</p>
+    <p>Análise no Worker usa <span class="mono">claude-haiku-4-5-20251001</span> com a ferramenta de busca web, teto de 4 mil tokens de saída, timeout de 55 segundos e duas tentativas. O verificador adversarial começa em Haiku e escala para <span class="mono">claude-sonnet-4-6</span> quando a confiança fica abaixo de 0,7.</p>
+    <p>A varredura pesada é local. A noturna cobre os 103 emissores em duas filas, rápida em lotes de até 15 e aprofundada em lotes de até 16, com orçamento modelado como <span class="mono">130.000 × lotes + 5.000 × emissores</span>, alvo de 500 mil tokens e teto de decisão em 700 mil. A matinal cobre o top 15 por EWS, Sonnet em grupos de 4 para EWS a partir de 38 e Haiku em grupos de 6, alvo de 120 mil e teto de 180 mil. O que não couber no orçamento é diferido e submetido depois. O Claude CLI roda com <code>--permission-mode bypassPermissions</code> e retry com backoff.</p>
+    <p>O contrato entre os dois lados são cinco actions, <code>listar_todos_emissores</code>, <code>listar_emissores_prioritarios</code>, <code>listar_plano_rotina</code>, <code>dados_para_analise</code> e <code>receber_analise</code>. Análise aceita passa por sanitização, validação do nome contra <code>EMISSORES_LISTA</code>, e pode cair numa fila de verificação assíncrona antes de virar fato publicado.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">06</span>Ingestão CVM</h2>
+    <p>O gatilho primário de evento é o ZIP bulk de comunicados IPE da CVM, baixado nos dois crons diários, validado por assinatura <span class="mono">PK</span>, descompactado dentro do Worker com <code>DecompressionStream</code> e gravado em <code>cvm:documentos</code>.</p>
+    <p>A atribuição de documento a emissor foi reescrita para usar CNPJ como chave primária. Documento com CNPJ declarado na tabela de famílias é atribuído direto. CNPJ presente mas não declarado vai para quarentena, fail-closed por decisão do operador. Só quando o CNPJ está ausente cai o árbitro por nome, que usa âncora de início de palavra e termo mais longo como desempate.</p>
+    <div class="payload">GET / · 26/08/2026 17:28 BRT · HTTP 200 em 2,48s
+<b>cvm_atribuicao_por_cnpj</b>      793
+<b>cvm_atribuicao_por_nome</b>        0
+<b>cvm_atribuicao_quarentena</b>   1333
+<b>cvm_atribuicao_cobertura_pct</b> 37,3
+<b>cvm_fonte_ok</b>                true   (last_modified 2026-08-25, cadência semanal)</div>
+  </section>
+
+  <section>
+    <h2><span class="n">07</span>Observabilidade</h2>
+    <p>Sentry embrulha o Worker inteiro com <code>Sentry.withSentry</code>, amostragem de traces em 10% e coleta de PII desligada em todos os eixos, incluindo corpo de requisição, headers, cookies e entrada e saída de LLM. Analytics Engine grava no dataset <span class="mono">radar_usage_events</span>, indexado por e-mail, com evento, empresa, rota, categoria de user agent, hash de IP, tempo de resposta e status.</p>
+    <p>O health em <code>GET /</code> agrega bindings, secrets críticos, verificador e degradação da fonte CVM. O campo <code>ok</code> mede a plataforma, o frescor da fonte externa vive em <code>fonte_externa_ok</code> e não reprova o portão, porque a CVM publica em cadência semanal.</p>
+    <p>Seis workflows no GitHub Actions fecham o cerco. Health canônico a cada 6 horas com checagem de drift entre repositório e produção, e-mail de status diário, checagem de frescor, varredura de emergência quando o estado fica stale, guarda semanal do cadastro de emissores contra o arquivo da CVM, e a suíte <code>vitest</code> em push que toque <code>api/**</code>.</p>
+  </section>
+
+  <section>
+    <h2><span class="n">08</span>Dívida técnica e risco aberto</h2>
+    <p>Isto é o que um especialista precisa saber antes de opinar.</p>
+    <div class="risks">
+      <div class="risk" data-sev="alto">
+        <h4>Senha admin em texto claro <span class="sev">alto</span></h4>
+        <p>Igualdade simples de string contra a variável de ambiente, sem hash e sem comparação de tempo constante. O bypass de rate limit depende dessa mesma comparação.</p>
+      </div>
+      <div class="risk" data-sev="alto">
+        <h4>Chave de rotina exposta e não rotacionada <span class="sev">alto</span></h4>
+        <p>Encontrada em texto puro em arquivos de skill em 07/08, redigida nos arquivos vivos, mas preservada em backups e transcripts append-only. A rotação segue pendente por decisão do operador.</p>
+      </div>
+      <div class="risk" data-sev="alto">
+        <h4>Content-Security-Policy ausente <span class="sev">alto</span></h4>
+        <p>Consequência dos 474 KB de JavaScript inline. O <code>nonce</code> presente nos scripts dá aparência de proteção sem entregar nenhuma.</p>
+      </div>
+      <div class="risk">
+        <h4>Migração KV para DO possivelmente parada <span class="sev">médio</span></h4>
+        <p>Escrita é dual e leitura cai de volta para o KV em silêncio quando o DO falha. Não existe métrica pública dizendo qual fração das leituras veio do DO. O sistema não quebra, e é exatamente por isso que a migração pode estar congelada sem sinal.</p>
+      </div>
+      <div class="risk">
+        <h4>Monolito de 19,8 mil linhas <span class="sev">médio</span></h4>
+        <p>Um arquivo, com o changelog do projeto morando em 900 linhas de comentário no <code>wrangler.toml</code>. Funciona e é testável, mas o raio de explosão de qualquer mudança é o sistema inteiro.</p>
+      </div>
+      <div class="risk">
+        <h4>Estado semanal como blob único <span class="sev">médio</span></h4>
+        <p>Os 103 emissores numa chave só. Cresce por construção e serializa gravação concorrente por fila em Durable Object.</p>
+      </div>
+      <div class="risk">
+        <h4>Cobertura de atribuição CVM em 37,3% <span class="sev">médio</span></h4>
+        <p>A quarentena fail-closed protege contra atribuir documento ao emissor errado, o que já aconteceu, mas 1.333 documentos estão parados nela.</p>
+      </div>
+      <div class="risk" data-sev="baixo">
+        <h4>Testes não rodam local <span class="sev">baixo</span></h4>
+        <p>O fluxo de deploy instala com <code>--omit=dev</code>, então <code>vitest</code> não existe na máquina. A validação real acontece no CI.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="n">09</span>Onde olhar primeiro</h2>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Pergunta</th><th>Arquivo</th></tr></thead>
+        <tbody>
+          <tr><td>Como o backend decide qualquer coisa</td><td><span class="mono">api/src/worker.js</span>, função <span class="mono">__coreFetch</span></td></tr>
+          <tr><td>Bindings, migrations, crons, changelog</td><td><span class="mono">api/wrangler.toml</span></td></tr>
+          <tr><td>Como o frontend fala com a API</td><td><span class="mono">app/index.html</span> (patch de <span class="mono">window.fetch</span>) e <span class="mono">app/js/api.js</span></td></tr>
+          <tr><td>Como a análise é gerada e o que ela custa</td><td><span class="mono">routines/claude-desktop/*/SKILL.md</span> e <span class="mono">scripts/run_vixradar_*.ps1</span></td></tr>
+          <tr><td>O que quebrou antes e como foi fechado</td><td>tabela de incidentes no <span class="mono">CLAUDE.md</span> do repositório</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="footnote">Todo número deste documento saiu de comando rodado ou de leitura direta do arquivo citado, em 26/08/2026. Dois pontos da documentação interna foram corrigidos aqui, o cascade de IA não é mais multi-provedor e a chave de rotina não viaja em header. Nenhuma credencial, segredo ou dado pessoal de usuário aparece neste documento.</p>
+
+</div>
