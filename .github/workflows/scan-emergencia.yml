@@ -26,6 +26,22 @@ jobs:
         with:
           node-version: '20'
 
+      - name: Pre-check de secrets (fallback desarmado vira falha)
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ROUTINE_API_KEY: ${{ secrets.ROUTINE_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+            echo "::error::ANTHROPIC_API_KEY ausente nos secrets do repo. Fallback de emergencia desarmado."
+            exit 1
+          fi
+          if [[ -z "${ROUTINE_API_KEY:-}" ]]; then
+            echo "::error::ROUTINE_API_KEY ausente nos secrets do repo. Fallback de emergencia desarmado."
+            exit 1
+          fi
+
       - name: Gate de staleness
         id: gate
         env:
