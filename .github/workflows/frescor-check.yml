@@ -109,3 +109,38 @@ jobs:
           fi
 
           echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"
+
+      # FRESCORNOTIFY1 (auditoria 2026-08-29): ate aqui o gate reprovava mas o
+      # aviso morria dentro do GitHub, sem canal nenhum (28/08 e 29/08 o operador
+      # so ficou sabendo por leitura manual do log). Passo de alerta pelo mesmo
+      # canal do watch-vixradar-health.ps1: action=notificar_rotina com dedup do
+      # Worker por rotina/dia (NOTIFYRL1), no maximo 1 email por dia. Roda so em
+      # falha (if: failure). Re-deriva o detalhe do admin_health_check para
+      # nomear a causa (HEALTHWATCH3: alerta que nao diz o que quebrou ensina a
+      # ignorar).
+      - name: Notificar queda de frescor
+        if: failure()
+        env:
+          ROUTINE_KEY: ${{ secrets.ROUTINE_API_KEY }}
+          SECRET_PWD: ${{ secrets.ADMIN_PASSWORD }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${ROUTINE_KEY:-}" ]]; then
+            echo "::error::ROUTINE_API_KEY ausente nos secrets; alerta de frescor nao enviado."
+            exit 0
+          fi
+          det="sem detalhe"
+          if [[ -n "${SECRET_PWD:-}" ]]; then
+            body=$(jq -n --arg pw "$SECRET_PWD" '{action:"admin_health_check",admin_senha:$pw}')
+            det=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' -H 'Content-Type: application/json' -d "$body" --max-time 60 \
+              | jq -r '.checks.evento_mais_novo | "evento_mais_novo=" + .data + " idade_du=" + (.idade_du|tostring) + " limite=" + (.limite_du|tostring)' 2>/dev/null || echo "sem campo evento_mais_novo na resposta")
+          fi
+          run_url="https://github.com/Yan69793/monitoramento-credito-vix-radar/actions/runs/${GITHUB_RUN_ID}"
+          motivo="Frescor da ingestao reprovou as $(date -u +%H:%MZ) UTC. Detalhe: ${det}. Log: ${run_url}"
+          html="<h2>VIX Radar - frescor da ingestao reprovado</h2><p>${det}</p><p>Run: <a href=\"${run_url}\">ver log completo</a></p>"
+          nbody=$(jq -n --arg rk "$ROUTINE_KEY" --arg rot "frescor-ingestao" --arg motivo "$motivo" --arg html "$html" \
+            '{action:"notificar_rotina",routine_key:$rk,rotina:$rot,motivo:$motivo,html:$html}')
+          curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' -H 'Content-Type: application/json' -d "$nbody" --max-time 30 >/dev/null \
+            && echo "Alerta de frescor enviado" \
+            || echo "Falha ao enviar alerta de frescor"
