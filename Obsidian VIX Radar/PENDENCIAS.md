@@ -11,6 +11,129 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 29/08 (tarde) — P0, ABERTO (SCANFALLBACK-MORTO1): o fallback de varredura nunca rodou uma vez, e o histórico verde dele é do caminho que não faz nada
+
+> **Status:** ABERTO. Uma ação do operador (criar secret no repo) mais uma guarda.
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08, medida em `gh run list` e `gh secret list` ao vivo
+> **Condição de Obsolescência:** cai quando `scan-emergencia.yml` completar uma execução com o gate aberto
+
+O `scan-emergencia.yml` existe para varrer quando a máquina local não varreu. Ele
+mede a idade do estado, e só passa do portão se ela passar de 24h. Em 29/08 às
+04h16 o portão abriu pela primeira vez na janela observável, `Idade do estado: 30h`,
+`prosseguir=true`, e o passo seguinte morreu na hora:
+
+```
+##[error]ANTHROPIC_API_KEY ausente nos secrets do repo.
+Fallback obrigatorio nao executado.
+##[error]Process completed with exit code 1.
+```
+
+O secret não existe. `gh secret list` devolve duas linhas, `ADMIN_PASSWORD` e
+`ROUTINE_API_KEY`, e mais nada. O `env:` do run confirma, `ROUTINE_API_KEY: ***`
+e `ANTHROPIC_API_KEY:` vazio.
+
+**O histórico verde é falso e a mecânica dele é simples.** As ~20 execuções com
+`success` em agosto são todas do ramo em que o portão fecha. Em 28/08 07h01 o log
+diz `Idade do estado: 9h`, `prosseguir=false`, o passo de scan é pulado por
+`if: steps.gate.outputs.prosseguir == 'true'` e o workflow reporta sucesso sem
+tocar em nada. Ou seja, o único dia em que o fallback foi de fato acionado é o
+único dia em que ele falhou. Taxa de sucesso real: 0 de 1.
+
+**Causa raiz.** O caminho de exceção nunca foi exercitado. O workflow tem dois
+ramos e só o ramo inerte roda no dia a dia, então o CI publica verde por 3 semanas
+enquanto o ramo que importa está quebrado desde sempre. É a mesma classe do
+`EMAILSILENT1` e do `DRIVERMORTO1`, guarda que não roda no caminho que ela existe
+para cobrir, com sinal de saúde vindo do outro caminho.
+
+**Correção.** Criar o secret `ANTHROPIC_API_KEY` no repo (ação do operador, valor
+nunca passa pelo chat nem pelo transcript).
+
+**Guarda exigida.** Passo de pré-checagem no próprio workflow, antes do portão,
+que reprove quando um secret exigido pelo ramo de exceção estiver ausente. Assim a
+falta aparece todo dia no verde, não só no dia do incidente. Sem isso, o mesmo
+defeito volta na próxima chave que o script passar a exigir.
+
+---
+
+## 29/08 (tarde) — P1, ABERTO (WATCHDOG-NAOINICIOU1): rotina que não começa não tem alerta nenhum, e o vigia reporta sucesso
+
+> **Status:** ABERTO
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08, `ls logs/routines/` e leitura de `scripts/retry-vixradar.ps1`
+> **Condição de Obsolescência:** cai quando o ramo "log inexistente" emitir alerta em vez de sair 0
+
+**Em 28/08 não houve varredura.** Nem noturna, nem matinal, nem verificação. Não
+existe `vixradar-noturno_20260828.log`, nem `vixradar-matinal_20260828.log`, nem
+`vixradar-verificacao-async_20260828.log`. Rodaram só as tasks do Task Scheduler,
+agenda-macro, coleta de volatilidade, export e sentinela. Os 103 emissores
+passaram o dia sem passada, e o painel não disse nada.
+
+O vigia local viu e desistiu de propósito (`scripts/retry-vixradar.ps1:36`):
+
+```powershell
+if (-not (Test-Path $RotLog)) {
+    Write-Log "SEM LOG: $RotLog nao existe, rotina nao iniciou. Sem retry (fora do alcance deste watchdog)."
+    exit 0
+}
+```
+
+`exit 0` faz o Task Scheduler marcar sucesso. Aconteceu em 28/08 13h30 (noturna),
+28/08 21h30 (matinal) e de novo em 29/08 13h30 (noturna). Somado às tasks nativas
+das três rotinas ficarem `Disabled` por desenho anti-duplicata, o caso "não
+iniciou" não tem sinal em lugar nenhum do lado local.
+
+**O detector que funcionou foi o `frescor-check.yml`**, que reprovou em 28/08
+13h19 e 29/08 08h16 com `INGESTAO PARADA. Evento mais novo e de 2026-08-25, 3 dias
+uteis atras (limite 2)`. Só que ele não tem passo de notificação, o workflow tem um
+único step, então o alerta existe apenas como falha de Action. E o
+`canonical-test` ficou verde o tempo todo, correto por desenho (HEALTHSPLIT1, o
+`ok` mede o serviço), o que deixa o semáforo que o operador olha verde durante um
+dia inteiro sem varredura.
+
+**Causa raiz.** O vigia foi desenhado para "começou e travou" e o modo de falha
+real virou "não começou", que apareceu junto com a migração do agendamento para as
+sessões do Claude Desktop (INVERSAO-CD1). App fechado na hora do cron não deixa
+rastro, e o vigia trata ausência de log como fora de escopo em vez de como o pior
+caso.
+
+**Correção proposta.** No ramo de log inexistente, distinguir "ainda não é hora" de
+"passou da hora e não veio". Passado o horário previsto com folga, isso é falha, e
+o script deve sair diferente de 0 e emitir alerta pelo mesmo canal do
+`watch-vixradar-health.ps1`.
+
+**Guarda exigida.** Prova de duas pontas, o vigia reprova no dia sem log depois do
+horário e aceita no dia com `FIM:` válido, com a saída crua colada.
+
+---
+
+## 27/08 (manhã) — P2, ABERTO (VERIFCACHE-ROUNDTRIP1): veredicto APROVADO_CORRIGIDO em cache volta como rejeição e retrata o evento do painel
+
+> **Status:** ABERTO. Achado medido em produção durante a rotina `verificacao-async` das 11h de 27/08. Reparo pontual do caso concreto (Simpar) já feito por reenvio na mesma execução, `resultado.aprovados:1`. O defeito de contrato continua no Worker v4.9.221.
+> **Data da Versão:** 2026-08-27
+> **Origem do Registro:** rotina `vixradar-verificacao-async-11h`, fila de 20 itens, 10 com `cache_hits`
+> **Condição de Obsolescência:** cai quando `confirmar_verificacao` aceitar `APROVADO_CORRIGIDO` como aprovação, com teste das duas pontas
+
+O Worker grava no cache de verificação um veredicto que ele próprio não consegue reler. Quando o verificador devolve `CORRIGIR`, `aplicarCorrecaoVerificador` aplica a correção e **sobrescreve o campo**, `veredicto.veredicto_original = "CORRIGIR"` e `veredicto.veredicto = "APROVADO_CORRIGIDO"` (`api/src/worker.js:12141-12142`). Logo depois, o handler grava esse objeto já mutado no cache, `setCachedVerification(it.id, it.veredicto, env)` (`api/src/worker.js:18727`).
+
+No ciclo seguinte a noturna regenera o mesmo evento, ele volta à fila, e o procedimento da rotina manda reenviar o veredicto em cache literalmente, sem gastar busca. Aí o objeto encontra duas portas fechadas em sequência (`api/src/worker.js:18714`):
+
+```js
+var _cvAprovado = it.veredicto.veredicto === "APROVADO" || aplicarCorrecaoVerificador(_cvEvento, it.veredicto);
+```
+
+A primeira compara com `"APROVADO"` exato e falha, o valor é `"APROVADO_CORRIGIDO"`. A segunda cai no guard de entrada da função (`api/src/worker.js:12112`), que exige `veredicto.veredicto !== "CORRIGIR" → return false`, condição que o próprio Worker destruiu ao renomear o campo antes de gravar. Resultado: `_cvAprovado = false`, o evento vai para `retratarEventoRejeitado` e some do estado do emissor, com `rejeitados++` e `retratados++`.
+
+**Medido em produção, 27/08.** Item `2026-08-13|simpar|...`, cache com `veredicto:"APROVADO_CORRIGIDO"`, `veredicto_original:"CORRIGIR"`, `correcoes:{"titulo":"Alavancagem cai para 2,8 vezes, menor nivel desde o IPO de 2010"}`. Lote 4 devolveu `aprovados:2, rejeitados:2, retratados:2`, quando só um item do lote (Aegea 08-14) carregava rejeição de mérito. A conta da execução fechou em 17 aprovados e 3 rejeitados, contra 18 e 2 pretendidos. O evento aprovado com correção foi apagado do painel do emissor.
+
+**Causa raiz.** O campo `veredicto` acumula dois papéis, decisão do auditor e histórico do que o Worker fez com ela. Ao gravar o resultado da mutação no mesmo campo que serve de chave de despacho na leitura, o objeto deixa de ser idempotente: escrever e reler não devolve o mesmo estado. O campo `veredicto_original` foi criado justamente para guardar o valor de entrada e nenhum leitor o consulta.
+
+**Correção proposta (não aplicada, exige deploy).** Aceitar `APROVADO_CORRIGIDO` como aprovação na linha 18714, e no guard de `aplicarCorrecaoVerificador` considerar `veredicto.veredicto_original === "CORRIGIR"` além de `veredicto.veredicto === "CORRIGIR"`. A alternativa mais limpa é parar de sobrescrever o campo de decisão e gravar o desfecho num campo próprio.
+
+**Guarda exigida.** Teste de round-trip em `api/test/` que submeta um veredicto `CORRIGIR` com `correcoes` válidas, leia de volta o que ficou no cache e reenvie esse objeto literal, assertando `aprovados:1, rejeitados:0, retratados:0`. Contra o código atual esse teste falha, é a ponta ruim. A ponta boa é o mesmo fluxo com veredicto `APROVADO` puro, que já passa hoje. Sem o teste de reenvio, qualquer evento que passe por correção continua sendo retratado um ciclo depois e ninguém vê, porque a resposta da rotina só devolve contagens agregadas.
+
+---
+
 ## 26/08 (tarde) — P2, CORRIGIDO E DEPLOYADO no v4.9.221 (CVMTTL1): TTL de cvm:documentos divergente entre os dois caminhos de sync
 
 > **Status:** CORRIGIDO E DEPLOYADO. v4.9.221 em produção em 26/08, deploy validado (`ok=true`, `kv=true`, `telemetria=true`, `sentry_ok=true`). Constante única `CVM_DOCUMENTOS_TTL_SEG` nos dois call sites.
