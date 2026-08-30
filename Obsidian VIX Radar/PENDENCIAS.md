@@ -11,6 +11,21 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 30/08 (tarde) — P2, ABERTO (PISODIFF1-ESTRUTURAL1): piso EWS pisado em 61 para todo RJ/default, escada de severidade depende de fonte estruturada
+
+> **Status:** ABERTO. Não implementar agora. O card duplo (v4.9.224, score final com piso + `Score sem piso: N` dos sinais reais) é a mitigação vigente.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** auditoria 29/08 (EWSFLOOR1), medição do piso 61 com fixture de produção (Raízen, Oncoclínicas e Oi em 66, o "53,2" da Light era estimativa de mão, valor real 50), decisão do operador 30/08 (delegada: card duplo agora, escada como pendência)
+> **Condição de Obsolescência:** cai quando houver fonte estruturada de severidade da RJ e o piso escalonado dentro do CRITICO for implementado
+
+O piso EWS garante score mínimo para emissor com RJ/default ativo, fail-closed nascido de STATELEAK1/RESEARCHDOWN1. A consequência medida: toda empresa com RJ/default ativo cai em 61 exato (ou 66 com o bônus +5 de 3+ sinais de risco), e a diferenciação real de gravidade vive só nos sinais de mercado. Três empresas em situações bem diferentes mostravam nota idêntica no card.
+
+A alternativa estrutural, escada de piso por severidade (ex. 61/70/78 dentro do CRITICO), depende de fonte estruturada de severidade da RJ. Feita à mão repete a classe RESEARCHDOWN1, a tabela `_RJ_FLOOR` já carrega essa dívida (nota 60, `as_of`/`fonte_url` null).
+
+**Ação proposta.** Sub-tags da cascade na geração do evento (`default-consumado`, `rj-homologada`, `re-ativa`) como fonte de severidade, nunca tabela manual sem proveniência. Até lá, o card duplo do v4.9.224 (score final + `Score sem piso`) e o desempate do ranking por `score_calculado` desc diferenciam a gravidade sem tocar na garantia.
+
+---
+
 ## 30/08 (manhã) — P3, CORRIGIDO (SYNCDOC-MUDO1): metade do sincronizador de versão não casava nada, e ele não avisava
 
 > **Status:** CORRIGIDO no worktree, sem deploy (mudança só de script e documentação). Validação: prova de duas pontas contra o código pré-correção, `lint-encoding.ps1` RISCO 0, runtime em `powershell.exe` 5.1 e em `pwsh` 7.
