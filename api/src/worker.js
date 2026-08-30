@@ -14853,10 +14853,11 @@ function calcularEWS(empresa, anomalias, eventos, eventosArquivo) {
   resultado.empresa = empresa;
   resultado.calculado_em = hoje;
   // EWSFLOOR1: piso explicito como metadado. `score_calculado` e o valor que os
-  // sinais dariam sem piso (capturado antes do primeiro bloco de piso); `piso_valor`
-  // e o piso que efetivamente subiu o score; `piso_aplicado` diz se algum piso agiu.
+  // sinais dariam sem piso, somado ao bonus de "Padrao de deterioracao" quando
+  // nSinaisRisco >= 3 (o +5 e componente de sinal, nao piso); `piso_valor` e o piso
+  // que efetivamente subiu o score; `piso_aplicado` diz se algum piso agiu.
   // `score` (de classificarEWS) ja carrega o resultado final com o piso somado.
-  resultado.score_calculado = Math.round(_scoreCalculado * 10) / 10;
+  resultado.score_calculado = Math.round((_scoreCalculado + (nSinaisRisco >= 3 ? 5 : 0)) * 10) / 10;
   resultado.piso_aplicado = _pisoEfetivo > 0;
   resultado.piso_valor = _pisoEfetivo || null;
   resultado.piso_causa = _pisoEfetivoCausa || null;
@@ -15322,7 +15323,9 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
       ranking.push(ews);
     }
   }
-  ranking.sort((a2, b) => b.score - a2.score);
+  // PISODIFF1 (2026-08-30): desempate por score_calculado desc dentro de scores
+  // iguais, para o ranking refletir a gravidade dos sinais dentro do grupo pisado.
+  ranking.sort((a2, b) => (b.score - a2.score) || ((b.score_calculado || 0) - (a2.score_calculado || 0)));
   return resp({ ok: true, ranking, total: ranking.length, calculado_em: obterAgoraBRT().toISOString().split("T")[0] }, 200, request);
 }
 __name(handleEWS, "handleEWS");

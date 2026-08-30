@@ -81,13 +81,16 @@ describe("PISO EWS — semântica corrigida (EWSFLOOR1)", () => {
       expect(ews.piso_valor, `${emp}: piso_valor deve ser 61`).toBe(61);
       expect(ews.piso_causa, `${emp}: causa do piso`).toMatch(/rj_ou_default_ativo/);
 
-      // score_calculado = o que os sinais dariam sem piso: abaixo do piso, senão
-      // o piso não teria subido.
-      expect(ews.score_calculado, `${emp}: score_calculado deve ser menor que 61`).toBeLessThan(61);
-
       // O componente de piso existe na decomposição e carrega peso_max 61.
       const floor61 = (ews.decomposicao || []).find((c) => c.tipo === "floor" && c.peso_max === 61);
       expect(floor61, `${emp}: deve haver componente de piso com peso_max 61`).toBeTruthy();
+
+      // score_calculado = sinais + bônus de deterioração, sem piso. A soma da
+      // decomposição = sinais + delta do piso + 5 do padrão, então score_calculado
+      // fecha com `soma - floor.pontos`. Nada de pino fixo: deriva do próprio estado.
+      expect(ews.score_calculado, `${emp}: score_calculado deve ser soma - delta do piso`).toBeCloseTo(soma - floor61.pontos, 1);
+      // Piso agiu (sinais < 61 antes do +5), logo o sem-piso fica abaixo do final.
+      expect(ews.score_calculado, `${emp}: score_calculado deve ser menor que o score final`).toBeLessThan(ews.score);
 
       // O padrão +5 é componente próprio.
       const padrao = (ews.decomposicao || []).find((c) => c.tipo_sinal === "multiplos_sinais");
@@ -114,11 +117,12 @@ describe("PISO EWS — semântica corrigida (EWSFLOOR1)", () => {
     expect(ews.piso_aplicado).toBe(true);
     expect(ews.piso_valor).toBe(50);
     expect(ews.piso_causa).toBe("rj_estrutural");
-    expect(ews.score_calculado).toBeCloseTo(14, 1);
-
     const floor = (ews.decomposicao || []).find((c) => c.tipo === "floor" && c.tipo_sinal === "rj_estrutural");
     expect(floor).toBeTruthy();
     expect(floor.pontos).toBeCloseTo(36, 1);
+    // Light não ativa o +5 (nSinaisRisco < 3): score_calculado = sinais = soma - delta.
+    expect(ews.score_calculado).toBeCloseTo(soma - floor.pontos, 1);
+    expect(ews.score_calculado).toBeCloseTo(14, 1);
 
     expect(Math.abs(ews.score - soma)).toBeLessThan(0.6);
   });
@@ -154,5 +158,31 @@ describe("PISO EWS — semântica corrigida (EWSFLOOR1)", () => {
     expect(ews.score_calculado).toBeGreaterThan(0);
     expect(ews.score).toBeGreaterThan(0);
     expect(Math.abs(ews.score - somaPontos(ews.decomposicao))).toBeLessThan(0.6);
+  });
+
+  it("ranking: desempate por score_calculado desc entre scores iguais (PISODIFF1)", async () => {
+    // O ranking (op=ews sem empresa) ordena por score desc e, dentro de scores
+    // iguais, por score_calculado desc. Os três pisados do fixture empatam em 66
+    // e devem vir ordenados por gravidade dos sinais, não pela ordem de EMISSORES_LISTA.
+    const r = await SELF.fetch("https://exemplo.invalid/?op=ews", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.ok).toBe(true);
+    const ranking = j.ranking || [];
+    expect(ranking.length).toBeGreaterThan(0);
+
+    const pisados = ranking.filter((x) => ["Raízen", "Oncoclínicas", "Oi"].indexOf(x.empresa) >= 0);
+    expect(pisados.length).toBe(3);
+    for (const p of pisados) {
+      expect(p.score).toBe(66);
+      expect(p.piso_aplicado).toBe(true);
+      expect(typeof p.score_calculado).toBe("number");
+    }
+    // Dentro do grupo empatado em 66, ordenação por score_calculado desc.
+    for (let i = 0; i < pisados.length - 1; i++) {
+      expect(pisados[i].score_calculado).toBeGreaterThanOrEqual(pisados[i + 1].score_calculado);
+    }
   });
 });
