@@ -44,7 +44,7 @@ desenvolvimento novo em fato antigo, sem criar evento datado na janela.
 - Montar payload em JSON com shape de rotina: `[{empresa, setor, provedor, resultado:{empresa, setor, sem_eventos, cobertura_nota, fontes_consultadas, eventos:[{classificacao, titulo, data_evento, fonte_primaria, tags, impacto_credito, memo_*, _confianca}], _tier:"FULL", _rotina_v2:true}}]`.
 - `data_evento` = data do fato na janela, mesmo em continuacao de saga conhecida (ex: nova decisao judicial da Braskem em 28/08 vira evento datado 28/08, nunca dobra no protocolo de 24/08).
 - `classificacao` em CRITICO/RELEVANTE/ECO. CRITICO entra na fila de verificacao assincrona (fluxo normal, verifica em 02h/14h BRT).
-- Rodar: `powershell.exe -File scripts/repor-varredura.ps1 -EnvioDireto -PayloadPath <json>`. Log em `logs/routines/repor-varredura_YYYYMMDD.log`, termina com `FIM: submit_ok=N`. Exit 0 se todas ok, 1 se alguma falhou.
+- Rodar: `powershell.exe -File scripts/repor-varredura.ps1 -EnvioDireto -PayloadPath <json>`. Log em `logs/routines/repor-varredura_YYYYMMDD.log`, termina com `FIM: submit_ok=N`. Exit 0 se todas ok, 1 se alguma falhou. `submit_ok` conta evento persistido (`n_eventos>=1`), nao POST aceito: o Worker devolve `ok:true` mesmo descartando a fonte, e isso loga `DESCARTADO` sem somar (validarDatasFontes rejeitou, trocar a fonte).
 
 ### 4. Verificar
 

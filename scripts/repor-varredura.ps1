@@ -12,8 +12,12 @@ Uso:
   powershell.exe -File repor-varredura.ps1 -EnvioDireto -PayloadPath .\payload.json
 
 Saida: log em logs/routines/repor-varredura_YYYYMMDD.log terminando com
-FIM: submit_ok=N (N = numero de submissoes com ok:true). Exit code 0 se todas
-as submissoes ok, 1 se alguma falhou (regra Task Scheduler: exit, nao return).
+FIM: submit_ok=N (N = numero de submissoes cujo evento entrou no estado,
+resp.n_eventos >= 1). O Worker responde ok:true mesmo quando descarta o
+evento (removidos_pre_verificador > 0, fonte rejeitada), entao ok de
+transporte nao conta. Submissao aceita sem evento persistido loga DESCARTADO
+e nao soma. Exit code 0 se todos os alvos entraram, 1 se algum nao
+(regra Task Scheduler: exit, nao return).
 #>
 [CmdletBinding()]
 param(
@@ -94,14 +98,20 @@ try {
     try {
       $resp = Submit-Analise -Key $key -Empresa $emp -Setor $setor -Resultado $p.resultado -Provedor $prov
       if ($resp.ok -eq $true) {
-        $okCount = $okCount + 1
         $nEv = 0
         if ($null -ne $resp.n_eventos) { $nEv = [int]$resp.n_eventos }
         $removidos = 0
         if ($null -ne $resp.verificacao -and $null -ne $resp.verificacao.removidos_pre_verificador) {
           $removidos = [int]$resp.verificacao.removidos_pre_verificador
         }
-        Write-Log ("OK|" + $emp + "|n_eventos=" + $nEv + "|removidos_pre_verificador=" + $removidos + "|pendente_async=" + $resp.pendente_verificacao_async)
+        if ($nEv -ge 1) {
+          $okCount = $okCount + 1
+          Write-Log ("OK|" + $emp + "|n_eventos=" + $nEv + "|removidos_pre_verificador=" + $removidos + "|pendente_async=" + $resp.pendente_verificacao_async)
+        } else {
+          # ok de transporte sem evento persistido: fonte rejeitada pelo Worker
+          # (validarDatasFontes) ou sem fato valido na janela. Nao conta como reposicao.
+          Write-Log ("DESCARTADO|" + $emp + "|n_eventos=" + $nEv + "|removidos_pre_verificador=" + $removidos)
+        }
       } else {
         Write-Log ("FALHA|" + $emp + "|" + $resp.erro)
       }
@@ -110,7 +120,7 @@ try {
     }
   }
 
-  Write-Log ("FIM: submit_ok=" + $okCount + " de " + $total)
+  Write-Log ("FIM: submit_ok=" + $okCount + " de " + $total + " (eventos persistidos)")
   if ($okCount -eq $total) { exit 0 }
   exit 1
 } catch {
