@@ -11,6 +11,96 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 30/08 (manhã) — P3, CORRIGIDO (SYNCDOC-MUDO1): metade do sincronizador de versão não casava nada, e ele não avisava
+
+> **Status:** CORRIGIDO no worktree, sem deploy (mudança só de script e documentação). Validação: prova de duas pontas contra o código pré-correção, `lint-encoding.ps1` RISCO 0, runtime em `powershell.exe` 5.1 e em `pwsh` 7.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** saída real do deploy de v202.34 (`Docs sincronizados: README.md (frontend)`, sem menção a CLAUDE.md) + leitura de `scripts/sync-version-docs.ps1` + `git log -S` em `CLAUDE.md`
+> **Condição de Obsolescência:** cai quando o próximo deploy imprimir o inventário completo dos alvos, cada um em um dos três estados (sincronizado, já sincronizado, ausente), sem alvo declarado fora da lista
+
+O `scripts/sync-version-docs.ps1` roda no passo 5.5 do `deploy-worker.ps1` e do `deploy-pages.ps1` e declarava
+quatro pontos de sincronia, dois no `README.md` e dois no `CLAUDE.md`. Os dois do `CLAUDE.md` não casavam nada.
+Medido: o `CLAUDE.md` não tem nenhuma linha no formato `| Worker | **v4.9.XXX** | ... |` nem
+`| Frontend | **vXXX.XX** | ... |` que as regex procuravam, e o deploy de v202.34 imprimiu exatamente
+`Docs sincronizados: README.md (frontend)`, sem uma linha sobre o que não casou.
+
+A causa do silêncio é a função `Update-File`, que devolvia `$false` quando o texto não mudava e o chamador
+tratava `$false` como "nada a fazer". Só que dois casos muito diferentes produzem texto igual: **arquivo já
+sincronizado** e **âncora que não existe mais**. Somados no mesmo `$false`, viram um `Docs sincronizados:` que
+lista só o que mudou e cala sobre o resto. É o mesmo padrão de verde silencioso já combatido em MODULE-MIG1 e
+ATRIBTEL1. Hoje não gerava dado stale, porque o `CLAUDE.md` não declara versão em lugar nenhum, mas a guarda
+estava morta e o sistema não sabia.
+
+**Correção.** Os dois blocos que miravam o `CLAUDE.md` foram aposentados: o `README.md` passa a ser a única
+tabela de versão viva do repo. Os quatro alvos restantes viraram declarações nomeadas (nome + arquivo + regex +
+substituição) num inventário no topo do script, e a pergunta de cada um deixou de ser "o texto mudou?" e passou
+a ser "a âncora existe neste arquivo?", via `[regex]::Matches().Count`. Isso separa os três estados que antes
+eram um só: `Docs sincronizados` (mudou), `Docs ja sincronizados, alvo presente e sem mudanca` (idempotente) e
+`AVISO: ALVO DE SINCRONIA AUSENTE` em amarelo, nomeando o alvo. Junto veio o encoding fixado: leitura e escrita
+por `System.IO.File` com `UTF8Encoding($false)` explícito, porque `Get-Content`/`Set-Content` sem `-Encoding`
+mudam de default entre 5.1 (ANSI) e pwsh 7 (UTF-8), e sob 5.1 a seta e os acentos do bloco Fontes Vivas seriam
+corrompidos na gravação.
+
+**Causa raiz.** O script nasceu em `b804d21` (17/07/2026) mirando dois arquivos. Oito dias depois, `49471e0`
+(25/07/2026, "hardening CLAUDE.md") removeu a tabela de versão do `CLAUDE.md` de propósito, e ninguém atualizou
+o script. Trinta e seis dias de deploy com metade do sincronizador apontando para o vazio. A raiz não é a
+remoção, que foi uma decisão boa, é o script não ter contrato entre o alvo que ele declara e o alvo que existe:
+sem esse contrato, apagar uma linha da doc não tem como avisar quem dependia dela.
+
+**Guarda (prova de duas pontas).** Sandbox isolado, mesma fixture de `README.md` com a linha da tabela
+reformatada e o `CACHE_VERSION` deixado intacto de propósito, para provar que a guarda é por alvo e não
+tudo ou nada.
+
+Ponta ruim, código **pré-correção** (`git show HEAD:scripts/sync-version-docs.ps1`), com 2 dos 3 alvos de
+frontend mortos (tabela do README reformatada + tabela do CLAUDE.md removida):
+
+```
+Docs sincronizados: README.md (frontend)
+---- EXIT: 0 ----
+```
+
+Ponta ruim, código **corrigido**, mesma fixture:
+
+```
+Docs ja sincronizados, alvo presente e sem mudanca: README.md :: CACHE_VERSION (bloco Fontes Vivas)
+
+AVISO: ALVO DE SINCRONIA AUSENTE. 1 ponto(s) da doc NAO foram atualizados:
+  - README.md :: tabela Versoes em Producao, linha Frontend
+  A regex do alvo nao casou nada. Ou a linha mudou de forma, ou saiu do arquivo.
+  Conserte a linha OU remova o alvo de scripts/sync-version-docs.ps1.
+  Alvo declarado que nunca casa e guarda morta, e guarda morta nao avisa quando a doc mente.
+---- EXIT: 0 ----
+```
+
+O mesmo caso com `-Strict` termina em `-Strict ligado, saindo com codigo 1.` e `EXIT: 1`.
+
+Ponta boa, `README.md` íntegro, `-Strict`, duas execuções seguidas provando que idempotência não vira ausência:
+
+```
+Docs sincronizados: README.md :: CACHE_VERSION (bloco Fontes Vivas), README.md :: tabela Versoes em Producao, linha Frontend
+---- EXIT: 0 ----
+Docs ja sincronizados, alvo presente e sem mudanca: README.md :: CACHE_VERSION (bloco Fontes Vivas), README.md :: tabela Versoes em Producao, linha Frontend
+---- EXIT: 0 ----
+```
+
+Arquivos reais, versões de produção, sob `powershell.exe` 5.1, os 4 alvos confirmados presentes e o
+`README.md` não foi tocado (`git status` só acusou o próprio script):
+
+```
+Docs ja sincronizados, alvo presente e sem mudanca: README.md :: comentario do bundle vivo (bloco Fontes Vivas), README.md :: tabela Versoes em Producao, linha Worker, README.md :: CACHE_VERSION (bloco Fontes Vivas), README.md :: tabela Versoes em Producao, linha Frontend
+---- EXIT: 0 ----
+```
+
+`lint-encoding.ps1` no arquivo alterado: `RISCO : 0`, `Nenhum arquivo reprovado.`, exit 0. BOM UTF-8
+(`EF BB BF`) preservado e CRLF puro, exigidos porque o script tem não-ASCII na regex do bloco Fontes Vivas.
+
+**Decisão de projeto embutida.** No fluxo normal do deploy a guarda **avisa e não aborta**, de propósito: o passo
+5.5 roda com produção já publicada e o git ainda não commitado, então abortar ali deixaria produção à frente do
+repo, que é exatamente o drift descrito no cabeçalho do `deploy-worker.ps1`. O `exit 1` fica atrás do switch
+`-Strict`, para teste e CI. Os `deploy-*.ps1` não passam `-Strict` e não foram alterados.
+
+---
+
 ## 30/08 (madrugada) — P1, DEPLOYADO (AGENDA401, v4.9.223): agenda pública de resultados morta por 401 cru
 
 > **Status:** DEPLOYADO no v4.9.223 (`26aba9c`, 30/08 02:51 BRT). Condição de obsolescência cumprida.

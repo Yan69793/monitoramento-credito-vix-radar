@@ -12,8 +12,8 @@
     4. Roda `wrangler deploy` (com --no-autoconfig, obrigatorio neste repo).
     5. Valida producao (GET /): versao viva == esperada, bindings kv/telemetria
        e sentry_ok (SENTRY1, v4.9.184 — ver o gate 0.3).
-    6. Sincroniza o git: add do bundle + wrangler.toml (+ CLAUDE.md/README.md se
-       sync-version-docs.ps1 os alterou), commit e push.
+    6. Sincroniza o git: add do bundle + wrangler.toml (+ README.md se
+       sync-version-docs.ps1 o alterou), commit e push.
 
   POR QUE O PASSO 5 EXISTE: api/v4.*.js nao e mais ignorado pelo git (a regra
   de allowlist manual saiu do .gitignore em 17/07), mas o commit do bundle
@@ -383,10 +383,15 @@ if ($SkipValidation) {
   Write-Host "  ok=$($h.ok) kv=true telemetria=true sentry_ok=true cvm_fonte_ok=$($h.cvm_fonte_ok)" -ForegroundColor Green
 }
 
-# --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
+# --- 5.5 Sincroniza a versao declarada em README.md ------------------------
 # Sem isto, o bundle e o wrangler.toml ficam corretos mas a doc continua
-# declarando a versao anterior ate alguem lembrar de editar a mao — foi
-# assim que CLAUDE.md e README.md divergiram da producao mais de uma vez.
+# declarando a versao anterior ate alguem lembrar de editar a mao, e foi
+# assim que a doc divergiu da producao mais de uma vez.
+# Alvo que parar de casar sai em AVISO amarelo e nao aborta de proposito
+# (SYNCDOC-MUDO1, 30/08): neste ponto producao ja esta publicada e o git ainda
+# nao foi commitado, entao morrer aqui deixaria producao a frente do repo, que
+# e exatamente o drift descrito no cabecalho deste arquivo. Use -Strict quando
+# precisar de exit code (teste, CI).
 & (Join-Path $PSScriptRoot "sync-version-docs.ps1") -WorkerVersion $ver
 
 # --- 6. Sync com o git -----------------------------------------------------
@@ -401,8 +406,10 @@ Write-Host "`nSincronizando o git..." -ForegroundColor Yellow
 Push-Location $root
 try {
   # Sem -f: api/v4.*.js saiu do .gitignore, o bundle e rastreado normalmente.
-  # CLAUDE.md/README.md entram so se sync-version-docs.ps1 os alterou; git add
-  # em arquivo sem mudanca nao staga nada.
+  # README.md entra so se sync-version-docs.ps1 o alterou; git add em arquivo sem
+  # mudanca nao staga nada. CLAUDE.md segue no pathspec, mas desde SYNCDOC-MUDO1
+  # (30/08) ele NAO e mais alvo do sincronizador: so entra se alguem o editou a
+  # mao. README.md e a unica tabela de versao viva do repo.
   # DRIFT-GITADD1 (v4.9.184): nao abortar por exit code do `git add`. Ele
   # devolve 1 por AVISO, nao so por erro. Aconteceu no deploy do v4.9.184: um
   # pathspec casou com regra do .gitignore (api/src via `src/` sem ancora), os
