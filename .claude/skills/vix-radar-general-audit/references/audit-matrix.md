@@ -48,6 +48,12 @@ Checklist:
   - `EMISSORES_LISTA`/setores/materialidade devem estar coerentes.
   - Agenda de Resultados (CALVAL-V2, desde v4.9.192): tier de fonte (RI/CVM/B3/corporativo/secundario) fail-closed, oficial nunca sobrescrita por secundaria divergente (vira DIVERGENTE), gate de publicacao (`confirmado` so com CONFIRMADO_*), auditoria de mudanca de data, alias de empresa, confronto diario com publicacao CVM, `status_validacao` computado no Worker e exibido no frontend.
 - XSS write-path (XSSV100-FIX1, desde v4.9.193): `sanitizarPayloadRadar` faz strip de tags HTML em `titulo`/`empresa` no caminho de gravacao. Confirmar que todo novo caminho de ingestao chama o sanitizador e que o strip nao e a unica defesa (render continua escapando).
+- **TTL de 1 dia so e valido para dedup/token de 24h (FALLBACKTTL1, 2026-08-29, generaliza VOLTTL1).**
+  Varrer `expirationTtl: 86400` no bundle ativo e casar cada put com a cadencia do escritor:
+  chave alimentada por rotina diaria precisa de TTL >= 2x o intervalo. Em 2026-08-29 a varredura
+  achou 9 sites: 8 dedups/tokens intencionais e 1 violacao real (`fallback:{empresa}`,
+  worker.js ~15845, apagada de fato pelo dia 28/08 sem varredura). O fix do VOLTTL1 (20/08)
+  tinha alcancado so `cotacoes:volatilidade:v1`.
 - Fila de verificacao com reserva atomica (CONCORVERIF1, desde v4.9.196): acao `reservar_itens_fila` faz claim via `EstadoSemanaDO` (`op:"reservar"`, `this.state.storage`, TTL 20min) antes de gastar verificacao adversarial num item, evitando que poller Local e Remote processem o mesmo evento em paralelo. Fail-open documentado: se o DO falhar, `protecao_ativa:false` e o lote inteiro e tratado como reservado sem protecao real. Confirmar que todo caller (local e remote) checa `protecao_ativa` na resposta em vez de assumir protecao silenciosamente.
 - Credencial escopada para poller remoto (CHAVEESCOPO1, desde v4.9.197): secret `REMOTE_VERIFICACAO_KEY` autentica só as 3 acoes de verificacao (`listar_fila_verificacao`, `confirmar_verificacao`, `reservar_itens_fila`); toda outra acao do contrato exige `ROUTINE_API_KEY`. Ao revisar acao nova dessas 3, replicar o aceite dual (`routine_key !== ROUTINE_API_KEY && routine_key !== REMOTE_VERIFICACAO_KEY`); qualquer acao fora do grupo que aceite `REMOTE_VERIFICACAO_KEY` e escopo vazando.
 - Heartbeat de agente remoto (HEARTBEATVERIF1, desde v4.9.196): `verificacao_async` entra no `expectedAgents` do watchdog cron (limite 16h). Todo agente/rotina remota nova precisa entrar nesta lista, senão fica invisivel ao watchdog mesmo publicando heartbeat.
@@ -107,13 +113,27 @@ O que checar:
   (INVERSAO-CD1), nao so no Task Scheduler. As tasks homonimas ficam `Disabled` de
   proposito, guarda anti-duplicata. Ao validar rotinas, conferir a entrada no CCD store e
   a linha `FIM:` no log em `logs/routines/`, nunca o `LastTaskResult`.
+- **Rotina com trigger de ancora + repeticao perde o dia inteiro em silencio (SENTINELA-DIAPERDIDO1, 2026-08-29).**
+  A `VIXRadar-Sentinela` usa ancoras 09h25/09h55 com repeticao PT1H por PT8H; se a maquina
+  dorme na janela das ancoras, a cadeia do dia morre, `StartWhenAvailable=True` NAO
+  ressuscita, e a task fica toda verde (`LastTaskResult 0` de ontem, `NumberOfMissedRuns 0`).
+  Auditar sempre: existe `vixradar-sentinela_YYYYMMDD.log` do dia util corrente? A Sentinela
+  tem vigia de entrega no `monitor-tasks.ps1`? Enquanto nao tiver, dia sem log e achado P1.
+- **Detector de ausencia exige controle positivo na mesma sessao (2026-08-29).** Query de
+  event log, grep de marcador ou busca em log que devolva zero so vira evidencia depois de
+  rodar a mesma consulta contra um alvo onde o sinal comprovadamente existe (ex.: mesmo
+  filtro no dia anterior devolveu 108 eventos). Zero sem controle pode ser filtro errado.
+- **Alerta escalado pelo monitor precisa de dono na fila (AGENDASEM-TRAVA1, 2026-08-29).**
+  `monitor-tasks.ps1` escalando o mesmo erro por 2+ dias (`idade=Nd ESCALADO`) sem entrada
+  correspondente em PENDENCIAS e achado por si so: alerta repetido sem dono vira ruido
+  (mesma familia do HEALTHWATCH3). Conferir o log do monitor do dia na auditoria.
 
 ## Frontend Pages
 
 Checklist:
 
 - `app/index.html` e `app/deploy_zip/index.html`: versions/cache alinhados.
-- `app/admin/*.js` e `app/deploy_zip/admin/*.js`: modulos sincronizados.
+- `app/js/*.js` + `app/js/admin/*.js` e `app/deploy_zip/app/js/...`: modulos sincronizados (hash). Os vivos sao esses; `app/admin/vr-admin-*.js` e `app/deploy_zip/admin/` sao legado sem referencia no index vivo (medido 2026-08-29, grep vr-admin em app/index.html = 0 hits). Divergencia dos modulos js durante bump em voo e esperada ate o `deploy-pages.ps1` sincronizar (gate 3.4 confere).
 - Auth:
   - Requests autenticados usam `Authorization: Bearer`.
   - 401 em endpoint secundario nao deve derrubar sessao sem contexto.

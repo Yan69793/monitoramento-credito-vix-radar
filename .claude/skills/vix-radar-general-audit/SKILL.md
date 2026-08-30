@@ -60,7 +60,7 @@ Auditar estas camadas:
 |---|---|
 | Repo e governanca | `git status`, ultimo commit, arquivos untracked, artefatos legados, documentacao viva |
 | Backend Worker | `api/wrangler.toml`, bundle ativo `api/v4.9.*.js`, bindings (KV, DO rate limit, DO estado semana, AE), routes, crons, auth, CORS, rate limit, telemetria |
-| Frontend | `app/index.html`, `app/admin/*.js`, `app/deploy_zip/`, versionamento, cache, auth headers, estados vazios/erro, escape XSS em admin/PDF |
+| Frontend | `app/index.html`, `app/js/admin/*.js` + `app/js/*.js` (modulos vivos; `app/admin/vr-admin-*.js` e legado sem referencia no index, medido 2026-08-29), `app/deploy_zip/`, versionamento, cache, auth headers, estados vazios/erro, escape XSS em admin/PDF |
 | **Veracidade da UI** | **Todo numero/rotulo/selo exibido: o rotulo bate com a formula? a cor acompanha o valor? a janela e a declarada? Ver `references/glossario-dominio.md` e rodar `scripts/audit-ui-metrics.mjs`** |
 | Seguranca | ASVS/WSTG: secrets, hardcoded data, JWT, fail-open/fail-closed, inputs, headers, logs, admin actions, stored XSS em campos de usuario |
 | Performance | Core Web Vitals, payload HTML/JS, bloqueio de main thread, cache headers, dependencias, assets |
@@ -72,10 +72,10 @@ Auditar estas camadas:
 
 ## Metodo
 
-1. **Checagem de drift da propria skill:** rodar `git log --oneline -20 -- api/*.js api/wrangler.toml app/index.html app/admin` antes de auditar. Se aparecer subsistema, binding, fila ou integracao nova que a matriz nao cobre, tratar isso como lacuna da skill (nao so do sistema) e propor o checklist novo no relatorio — ver `references/audit-matrix.md` secao "Manutencao da skill".
+1. **Checagem de drift da propria skill:** rodar `git log --oneline -20 -- api/src/worker.js api/wrangler.toml app/index.html app/js app/admin` antes de auditar (os modulos vivos do frontend estao em `app/js`, nao em `app/admin`; corrigido 2026-08-29). Se aparecer subsistema, binding, fila ou integracao nova que a matriz nao cobre, tratar isso como lacuna da skill (nao so do sistema) e propor o checklist novo no relatorio — ver `references/audit-matrix.md` secao "Manutencao da skill".
 2. **Inventario rapido:** listar estrutura relevante sem varrer diretorios legados em profundidade (`producao/`, `_historico/`, `archive/`, `vixradar/`).
 3. **Mapa de versoes:** comparar repo vs producao para Worker e frontend. Se houver drift, classificar antes de qualquer conclusao tecnica.
-4. **Leitura dirigida:** inspecionar os arquivos vivos, nao os bundles antigos. Worker vivo = `api/wrangler.toml main`. Frontend vivo = `app/index.html` e modulos em `app/admin/`.
+4. **Leitura dirigida:** inspecionar os arquivos vivos, nao os bundles antigos. Worker vivo = `api/wrangler.toml main`. Frontend vivo = `app/index.html` e modulos em `app/js/` (incl. `app/js/admin/`); `app/admin/vr-admin-*.js` e legado morto.
 5. **Checks automaticos baratos:** sintaxe, busca por padroes de risco (incluindo estado global entre requests e promises sem `await`/`waitUntil` — ver matriz), diff, tamanhos, headers publicos, health publico.
 6. **Veracidade da UI (obrigatorio, nao pular):**
    ```powershell
