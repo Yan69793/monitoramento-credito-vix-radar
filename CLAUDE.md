@@ -242,7 +242,7 @@ Ao ler log, vá pelo horário, não pelo nome. Motivo e evidência em
 | `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Seg-Sex **18h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
 | `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário **11h00 e 18h45** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 18h45 impede fila presa até o dia seguinte |
 | `VIXRadar-Sentinela` | Task Scheduler | Seg-Sex, :25 e :55 de 09h25 a 17h55 BRT | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho, teto 8 emissores e 120k tokens. Quase sempre sai em 0 token |
-| `VIXRadar-AgendaSemanal` | Task Scheduler | Dom 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale |
+| `VIXRadar-AgendaSemanal` | Task Scheduler | **Dom e Qua** 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale. 2x/semana é decisão deliberada de 14/08 (CALVAL-V2 regra 9, motivo `revalidar_proximo`), ver `routines/README.md` |
 | `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
 | `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |
 | `VIXRadar-Reconciliacao-CVM` | Task Scheduler | Seg 08h00 BRT | — | Reconcilia IPE CVM vs estado |
