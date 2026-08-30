@@ -285,6 +285,53 @@ $STAGED_SACFALSA
 SACFALSA_EOF
 fi
 
+# --- Gate 7: CACHE_VERSION x ?v= (CACHEBUMP1) ------------------------------
+# Em 20/08/2026 e de novo em 30/08/2026 o bump manual do CACHE_VERSION deixou os
+# ?v= dos imports para tras, e o deploy abortou no gate 3.2/3.4. A segunda vez
+# mostrou que aviso nao basta: o erro passou por commit e so o deploy pegou.
+# Este gate reprova no commit quando index.html em staging carrega ?v= diferente
+# do CACHE_VERSION declarado no proprio arquivo, ou quando modulo app/js staged
+# importa com ?v= desalinhado. Corrigir: pwsh ./scripts/bump-cache-version.ps1
+# -NewVersion <vX.Y>, que alinha os 5 pontos juntos, nunca edicao a mao.
+STAGED_IDX=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(index\.html|deploy_zip/index\.html)$' || true)
+
+if [ -n "$STAGED_IDX" ] && command -v node >/dev/null 2>&1; then
+    # Referencia = index EM STAGING se existir; senao o index do working tree
+    # (fonte canonica do CACHE_VERSION). Materializa o blob do index staged para
+    # validar o conteudo que vira commit, nunca o disco.
+    IDX_REF=""
+    for f in $STAGED_IDX; do
+        stage_blob "$f" || continue
+        if [ -z "$IDX_REF" ]; then IDX_REF="$STAGEDIR/$f"; fi
+    done
+    [ -z "$IDX_REF" ] && [ -f "app/index.html" ] && IDX_REF="app/index.html"
+
+    # Modulos app/js staged, se houver (imports internos com ?v= proprio).
+    MODS=""
+    STAGED_MODS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(js|deploy_zip/app/js)/.*\.js$' || true)
+    if [ -n "$STAGED_MODS" ]; then
+        while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            stage_blob "$f" || continue
+            MODS="$MODS $STAGEDIR/$f"
+        done <<MODS_EOF
+$STAGED_MODS
+MODS_EOF
+    fi
+
+    if [ -n "$IDX_REF" ]; then
+        if ! node "$PWD/scripts/check-cache-version.mjs" "$IDX_REF" $MODS; then
+            echo ""
+            echo "GATE 7 (CACHEBUMP1) REPROVOU: ?v= desalinhado com CACHE_VERSION."
+            echo "  Alinhe com o script, nunca a mao (a edicao manual so troca o"
+            echo "  CACHE_VERSION e deixa os imports antigos, o deploy aborta):"
+            echo "    pwsh ./scripts/bump-cache-version.ps1 -NewVersion v<N>.<N>"
+            echo "  Depois do bump, 'git add' de novo: o que vale aqui e o staging."
+            FALHOU=1
+        fi
+    fi
+fi
+
 rm -rf "$STAGEDIR"
 
 # --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------
