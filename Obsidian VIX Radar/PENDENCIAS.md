@@ -11,12 +11,78 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
-## 29/08 (noite) — P1, ABERTO (SENTINELA-DIAPERDIDO1): a Sentinela perdeu a sexta-feira inteira sem executar uma vez e sem sinal em lugar nenhum
+## 30/08 (madrugada) — P1, DEPLOYADO (AGENDA401, v4.9.223): agenda pública de resultados morta por 401 cru
 
-> **Status:** ABERTO. Achado da auditoria geral de 29/08 (noite), medido ao vivo.
-> **Data da Versão:** 2026-08-29
-> **Origem do Registro:** `Get-ScheduledTaskInfo`, `Get-WinEvent` (Operational), `ls logs/routines/`
-> **Condição de Obsolescência:** cai quando existir vigia que acuse dia útil sem log da Sentinela, com prova das duas pontas colada
+> **Status:** DEPLOYADO no v4.9.223 (`26aba9c`, 30/08 02:51 BRT). Condição de obsolescência cumprida.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** auditoria 93/95 + leitura de `api/src/worker.js:17627-17631` e `:3646-3650` + `api/test/agenda-validacao.test.mjs` + validação em produção
+> **Condição de Obsolescência:** caiu em 30/08, o Worker em produção aceita `GET /?op=calendario` sem token devolvendo `ok:true`
+
+O overlay da agenda de resultados abre e exibe "Autenticação necessária." cru para qualquer visitante, e o badge de
+próxima divulgação morre em silêncio. Causa: o frontend chama `GET /?op=calendario` sem `Authorization`
+(`app/index.html:5034` e `:5206`), o Worker exigia JWT nessa rota (`api/src/worker.js:17627`) e lê token só de header
+(`extractToken`, `:3646`), então o visitante anônimo não tem como autenticar. Não vaza PII: o handler (`:17649-17696`)
+só lê KV (`agenda:eventos:v1`, `calendario:overrides:v1`) e monta payload público. Coberto pelo rate limit global do request.
+
+**Correção.** Removido `|| op === "calendario"` do grupo que exige JWT (`api/src/worker.js:17627`). Sem mudança de frontend.
+
+**Guarda (prova de duas pontas).** `api/test/agenda-validacao.test.mjs`: caso novo `SELF.fetch(".../?op=calendario", GET)`
+sem nenhum header de auth responde 200 com `ok:true` (e o mesmo para `escopo=agenda`), e os casos com JWT seguem verdes.
+Rodado: 10/10 verdes, exit 0. Validado em produção 30/08 02:51 BRT: `curl.exe "https://radar-credito-api.prospects-intel.workers.dev/?op=calendario"`
+sem token → `ok:true`, `cobertura.total_emissores=103`, `com_calendario=81`; `?op=calendario&escopo=agenda&horizonte=90` → `ok:true`.
+
+---
+
+## 30/08 (madrugada) — P2, CORRIGIDO (RECONCILE-CVM404): reconciliação local ia falhar de novo com o ZIP 2026 fora do ar
+
+> **Status:** CORRIGIDO. Validação: parse PS 5.1, `lint-encoding.ps1` RISCO 0, dry-run exit 0.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** auditoria 93/95 + leitura de `scripts/predictive/reconciliar_ipe_cvm.ps1` + dry-run em `data/reconciliacao/dryrun/reconciliacao_cvm_2026-08-30.json`
+> **Condição de Obsolescência:** cai quando a reconciliação de segunda 31/08 completar sem `ERRO FATAL` de fonte
+
+O script baixava o ZIP do IPE 2026 direto de `dados.cvm.gov.br` sem tratar 404 (o catch global vira `ERRO FATAL` + exit 1),
+enquanto o Worker já tinha o fallback de catálogo desde o v4.9.209/210. Com o arquivo sumido (23/08, CVMDURA1), segunda
+31/08 falharia de novo.
+
+**Correção.** `$NowBrt.Year` no nome do arquivo; try/catch no download; em 404, consulta ao catálogo CKAN da CVM
+(`package_show?id=cia_aberta-doc-ipe`, mesmo espelho do `resolverUrlZipPeloCatalogo` do Worker, `worker.js:7090-7105`) e
+tentativa da URL anunciada; se o catálogo também não conhecer o ano, exit 1 com mensagem estruturada
+`fonte_ausente_no_catalogo`. Checagem de magic PK (`50 4B`) antes do extract, impedindo extrair ZIP velho em cache.
+
+**Causa raiz.** A regra CVMURL404 foi aplicada ao Worker e não alcançou o script local da reconciliação, que é o segundo
+consumidor do mesmo arquivo.
+
+**Guarda.** O dry-run roda o branch canônico; o monitor tem grace de 7 dias se o fallback falhar. Observar o log de
+segunda 31/08 08h00. Nota: o ZIP 2026 **voltou ao ar** pela CVM em 25/08 (medido: ranged GET HTTP 206, magic PK, Last-Modified
+25/08), então o caminho canônico deve bastar; o fallback fica como defesa.
+
+---
+
+## 30/08 (madrugada) — P2, ABERTO (SEXTA-SEM-ROTINA1, observação fora do plano): sexta 28/08 sem log da matinal nem da noturna
+
+> **Status:** ABERTO, observação. Causa ainda não determinada.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** `ls logs/routines/vixradar-{matinal,noturno}_*.log` + saída real do `monitor-tasks.ps1`
+> **Condição de Obsolescência:** cai quando a causa da ausência de 28/08 for determinada e houver guarda de cobertura diária
+
+Os logs da matinal e da noturna pulam de 27/08 pra 29/08: não existe `vixradar-matinal_20260828.log` nem
+`vixradar-noturno_20260828.log`. As duas rodaram só no sábado 29/08 à tarde (matinal 14:52 20/20, noturno 15:10 103/103),
+fora dos horários nominais. O monitor já sinaliza a matinal (`VIXRadar-Matinal (entrega) 9001`, alvo 28/08). A noturna não
+aparece no alvo atual porque roda diária e o monitor de domingo apontou pro sábado 29/08 (que rodou). O 28/08 sem varredura
+já estava documentado no REPOSIC1 (causa 3 do feed preso); aqui o dado novo é que nem a matinal (Seg-Sex, 18h) rodou na sexta.
+
+**Ação proposta.** Apurar nas sessões agendadas do Claude Desktop (`scheduled-tasks.json` + `main.log` do app) por que o
+disparo de sexta não aconteceu, e considerar se a régua do monitor para a noturna precisa de um alvo fixo "dia útil anterior"
+mesmo para rotina diária (para o buraco não sumir quando a rotina corre atrasada no dia seguinte).
+
+---
+
+## 29/08 (noite) — P1, REFUTADO em 30/08 (SENTINELA-DIAPERDIDO1): a Sentinela "perdeu a sexta 29/08"
+
+> **Status:** REFUTADO em 30/08 (madrugada) por medição ao vivo. O vigia defensivo foi implementado mesmo assim e já cobre a classe.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** refutação = `Get-ScheduledTaskInfo` + calendário real + `ls logs/routines/`; vigia = `scripts/test-sentinela-watchdog.ps1` (4 pontas) + saída real do `monitor-tasks.ps1`
+> **Condição de Obsolescência:** entrada mantida como registro da refutação; o vigia novo (`scripts/lib/vixradar-watchdog.ps1` + ramo `requerApenasLog` no `monitor-tasks.ps1`) cobre a classe "dia útil sem log"
 
 Nenhuma execução em 29/08 (sexta, dia útil): 0 eventos da task no log Operational do Task Scheduler, contra 108 eventos no dia 28/08 (controle positivo do detector) e 1845 eventos de outras tasks registrados hoje no mesmo log. Não existe `vixradar-sentinela_20260829.log`. A task reporta `State Ready`, `LastRunTime 28/08 17:55`, `LastTaskResult 0`, `NextRunTime 31/08 09:25` e `NumberOfMissedRuns 0`, ou seja, tudo verde enquanto o dia inteiro se perdeu.
 
@@ -29,6 +95,21 @@ Impacto do dia: a varredura completa (atrasada, 13h30 a 15h10) deferiu 60 emisso
 **Correção proposta.** Incluir a Sentinela nas rotinas por evidência de entrega do `monitor-tasks.ps1` (dia útil sem `vixradar-sentinela_YYYYMMDD.log` = erro nomeado no sumário e no email) e avaliar segunda âncora de meio-dia (13h25/13h55) para sono matinal não custar o dia inteiro.
 
 **Guarda exigida.** Prova de duas pontas do vigia novo: dia útil sem log reprova nomeando a rotina, dia com log aceita, saída crua colada.
+
+**REFUTAÇÃO (medida em 30/08).** 29/08 é **sábado**, não sexta: 28/08 = sexta, 29/08 = sábado, 30/08 = domingo. A task
+roda só Seg-Sex (`DaysOfWeek=62` = 2+4+8+16+32), `LastRun=28/08 17:55`, `NextRun=31/08 09:25`, `NumberOfMissedRuns=0`, e o
+log `vixradar-sentinela_20260828.log` existe com 18 linhas `FIM:` (cadência :25/:55 da sexta, correta). A "0 execuções na
+sexta 29/08" das auditorias 93/95 vem de chamar sábado de sexta: no sábado a Sentinela corretamente não roda. O próprio
+`NumberOfMissedRuns=0` citado como agravante na evidência original era contraprova, não agravante. O monitor das 07h que
+enquadrou o caso também errava o alvo se rodado no sábado: `Get-AlvoEntregaRotina` recua para a sexta quando o dia é fim de
+semana, então o vigia não repete o falso positivo.
+
+**Vigia defensivo (implementado, fora da necessidade original).** A classe "rotina de produção sem detector de entrega" segue
+real, então o detector entrou: `scripts/lib/vixradar-watchdog.ps1` (funções `Get-AlvoEntregaRotina` e `Test-EntregaSentinela`,
+dot-source pelo `monitor-tasks.ps1`), ramo `requerApenasLog` na lista `$RotinasVigiadas` (erro nomeado `VIXRadar-Sentinela
+(entrega)`, código 9001, entra no estado.json/backlog/email). Prova de duas pontas em `scripts/test-sentinela-watchdog.ps1`:
+dia útil sem log reprova nomeando a rotina, log+FIM aceita, log sem FIM reprova, segunda-feira recua pra sexta sem log reprova.
+Saída real do monitor: `ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 execucoes_com_fim=18`.
 
 ---
 

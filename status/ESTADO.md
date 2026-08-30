@@ -1,8 +1,27 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-29 (noite, segunda auditoria geral do dia)
+Última atualização: 2026-08-30 (madrugada, sessão de correção pós auditorias 93/95; deploy v4.9.223 no ar)
 
-> [!info] 29/08 (noite) — auditoria geral readonly com trabalho v4.9.222 em voo. 3 achados novos, todos registrados.
+> [!info] 30/08 (madrugada) — AGENDA401 DEPLOYADO no v4.9.223, RECONCILE-CVM404 corrigido no código, SENTINELA-DIAPERDIDO1 refutado por medição.
+> **Status:** vigente · **Data da Versão:** 2026-08-30 · **Origem do Registro:** deploy v4.9.223 validado em produção (portão HTTP 200, `ok/telemetria/kv/sentry_ok` true), medições ao vivo (task Sentinela via `Get-ScheduledTaskInfo`, logs das rotinas, suíte vitest local, dry-run da reconciliação) ·
+> **Condição de Obsolescência:** cai quando AGENDASEM-TRAVA1 fechar.
+>
+> AGENDA401 (P1) **DEPLOYADO no v4.9.223** (`26aba9c`): `op=calendario` liberado sem JWT (`api/src/worker.js:17627`), teste
+> anônimo de duas pontas em `api/test/agenda-validacao.test.mjs` (10/10 verdes). Prova em produção 30/08 02:51 BRT:
+> `GET /?op=calendario` sem token → `ok:true`, 103 emissores, 81 com calendário; `?op=calendario&escopo=agenda&horizonte=90` → `ok:true`.
+> RECONCILE-CVM404 (P2): `scripts/predictive/reconciliar_ipe_cvm.ps1` ganhou fallback de catálogo CKAN no 404 e checagem de
+> magic PK antes do extract, validado parse 5.1, lint (RISCO 0) e dry-run (exit 0). O ZIP 2026 já voltou ao ar pela CVM
+> (medido 25/08), então segunda 31/08 deve seguir o caminho canônico; o fallback fica como defesa e como mensagem estruturada
+> `fonte_ausente_no_catalogo` se o catálogo não conhecer o ano.
+> SENTINELA-DIAPERDIDO1 (P1 do 93): **refutado por medição.** 29/08 é sábado e a task roda só Seg-Sex (`DaysOfWeek=62`),
+> `LastRun=28/08` (sexta) 17:55, `NumberOfMissedRuns=0`, e o log de 28/08 existe com 18 linhas `FIM:` (cadência :25/:55 correta).
+> Não houve dia útil perdido; as auditorias 93/95 erraram o dia da semana ao chamar 29/08 de "sexta". Mesmo assim o vigia
+> defensivo entrou (`scripts/lib/vixradar-watchdog.ps1` + ramo no `monitor-tasks.ps1`), prova de duas pontas 4/4, e o monitor
+> real saiu `ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 execucoes_com_fim=18`.
+> **Observação nova (fora do plano):** sexta 28/08 não tem log nem da matinal nem da noturna (os logs pulam de 27/08 pra 29/08)
+> e as duas rodaram só no sábado 29/08 à tarde. O monitor já sinaliza a matinal (9001). Detalhe na PENDENCIAS.
+
+> [!info] 29/08 (noite) — segunda auditoria geral do dia com trabalho v4.9.222 em voo. 3 achados novos, todos registrados.
 > **Status:** vigente · **Data da Versão:** 2026-08-29 · **Origem do Registro:** auditoria `/vix-radar-general-audit` (noite),
 > medições ao vivo (health, Scheduler, event log, suíte local) · **Condição de Obsolescência:** cai quando
 > SENTINELA-DIAPERDIDO1, AGENDASEM-TRAVA1 e FALLBACKTTL1 fecharem na PENDENCIAS.
@@ -455,7 +474,10 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
-- **29/08 (noite), P1 ABERTO (SENTINELA-DIAPERDIDO1):** a Sentinela não executou nenhuma vez na sexta 29/08 (0 eventos no Operational contra 108 no dia anterior, sem log do dia, task toda verde com `NextRunTime` já em segunda). Âncora 09h25/09h55 perdida no sono da máquina mata a cadeia de repetição do dia e `StartWhenAvailable` não ressuscita. Nenhum vigia cobre a ausência dela. Correção proposta: entrega da Sentinela vigiada no `monitor-tasks.ps1` + segunda âncora de meio-dia. Detalhe em `PENDENCIAS.md`
+- **30/08, REFUTADO por medição (SENTINELA-DIAPERDIDO1, P1 do 93):** 29/08 é sábado e a task roda só Seg-Sex (`DaysOfWeek=62`). Medido ao vivo: `LastRun=28/08` (sexta) 17:55, `NumberOfMissedRuns=0`, log `vixradar-sentinela_20260828.log` existe com 18 linhas `FIM:`. Não houve dia útil perdido, as auditorias 93/95 chamaram sábado de "sexta". Vigia defensivo implementado mesmo assim no `monitor-tasks.ps1` (`scripts/lib/vixradar-watchdog.ps1`, dot-source), prova de duas pontas 4/4, monitor real `ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 execucoes_com_fim=18`. Detalhe em `PENDENCIAS.md`
+- **30/08, RESOLVIDO (AGENDA401, P1, v4.9.223):** agenda pública de resultados morta por 401 cru no visitante. `op=calendario` liberado sem JWT (`api/src/worker.js:17627`), teste anônimo de duas pontas em `api/test/agenda-validacao.test.mjs` (10/10 verdes), deploy v4.9.223 validado em produção: `GET /?op=calendario` sem token → `ok:true` (103 emissores, 81 com calendário), `escopo=agenda` idem. Sem mudança de frontend. Detalhe em `PENDENCIAS.md`
+- **30/08, CORRIGIDO (RECONCILE-CVM404, P2):** reconciliação local ia falhar de novo com o ZIP 2026 fora do ar. `reconciliar_ipe_cvm.ps1` agora usa `$NowBrt.Year`, consulta o catálogo CKAN da CVM no 404 (mesmo espelho do Worker v4.9.209/210) e só extrai após checagem de magic PK. Validação: parse 5.1, lint RISCO 0, dry-run exit 0. O ZIP 2026 voltou pela CVM em 25/08, então segunda 31/08 deve usar o caminho canônico; o fallback fica como defesa. Detalhe em `PENDENCIAS.md`
+- **30/08, OBSERVAÇÃO NOVA (fora do plano):** sexta 28/08 não tem log nem da matinal nem da noturna (os logs pulam de 27/08 pra 29/08) e as duas rodaram só no sábado 29/08 à tarde. O monitor já sinaliza `VIXRadar-Matinal (entrega) 9001` (alvo 28/08). Causa a apurar nas sessões agendadas do Claude Desktop. Detalhe em `PENDENCIAS.md`
 - **29/08 (noite), P2 ABERTO (AGENDASEM-TRAVA1):** AgendaSemanal morreu no lote 3 em 26/08 (exit `0x40010004`, stderr vazio, 8/20 stale atualizados), monitor escala há 3 dias sem dono. Observar a janela de domingo 30/08 22h; se repetir, investigar o lote. Detalhe em `PENDENCIAS.md`
 - **29/08 (noite), P2 ABERTO (FALLBACKTTL1):** `fallback:{empresa}` com `expirationTtl: 86400` (worker.js:15845); o dia 28/08 sem varredura apagou o cache de último recurso dos 103 emissores, violando a regra VOLTTL1 (TTL >= 2x o intervalo). Fix de 1 linha, exige deploy, candidato ao v4.9.222 junto com o VERIFCACHE-ROUNDTRIP1. Detalhe em `PENDENCIAS.md`
 - **RESOLVIDO 29/08 (REPOSIC1):** o feed preso em 25/08 tinha três causas, e a terceira era nossa e sem guarda: 28/08 não teve varredura e a passada de 29/08 re-ancorou o desenvolvimento em fato antigo em vez de criar evento datado na janela. Reposição executada (Braskem 28/08 CRÍTICO, Oncoclínicas 27/08 CRÍTICO, Multiplan 27/08 ECO, Petrobras 26/08 ECO), max `data_evento` 25/08 → 28/08 confirmado. Guarda = skill `/repor-varredura` (`.claude/skills/repor-varredura/`, registrada no router) + `scripts/repor-varredura.ps1` + `scripts/repor-varredura-prompt.md` com regra anti-ancoragem e verificação de data real na fonte. Detalhe em `PENDENCIAS.md`

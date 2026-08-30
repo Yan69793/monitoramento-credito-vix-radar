@@ -130,10 +130,80 @@ try {
     #    ZipFile (a Worker runtime usa um decoder deflate manual por limitacao do isolate;
     #    PowerShell tem .NET completo, sem essa limitacao).
     # ---------------------------------------------------------------
-    $ano = (Get-Date).Year
+    # RECONCILE-CVM404 (2026-08-30): a CVM removeu o zip do ano corrente
+    # (ipe_cia_aberta_2026.zip) do servidor direto em 23/08 e ainda nao repoe.
+    # O Worker ganhou fallback de catalogo no v4.9.209/210 e este script ficou
+    # para tras, entao segunda 31/08 08:00 falharia de novo com ERRO FATAL 404.
+    # Espelho local de resolverUrlZipPeloCatalogo (api/src/worker.js:7090-7105).
+    # Devolve a URL anunciada pelo catalogo ou $null quando ele nao responde,
+    # nao lista o ano ou o recurso nao existe. $null = "fonte ausente", nunca sucesso.
+    function Get-UrlZipCvmPeloCatalogo([int]$Ano) {
+        $sufixo = ('ipe_cia_aberta_{0}.zip' -f $Ano)
+        $urlCatalogo = 'https://dados.cvm.gov.br/api/3/action/package_show?id=cia_aberta-doc-ipe'
+        try {
+            $respCat = Invoke-WebRequest -Uri $urlCatalogo -UseBasicParsing -TimeoutSec 30
+        } catch {
+            Write-Log ('AVISO: catalogo CKAN inacessivel ao procurar {0}: {1}' -f $sufixo, $_.Exception.Message)
+            return $null
+        }
+        if ($respCat.StatusCode -ne 200) {
+            Write-Log ('AVISO: catalogo CKAN respondeu HTTP ' + [int]$respCat.StatusCode)
+            return $null
+        }
+        $jsonCat = $respCat.Content | ConvertFrom-Json
+        if (-not $jsonCat.success) {
+            Write-Log 'AVISO: catalogo CKAN sucesso=false'
+            return $null
+        }
+        $alvo = $jsonCat.result.resources | Where-Object {
+            $_.url -and ($_.url.ToLowerInvariant().EndsWith($sufixo))
+        } | Select-Object -First 1
+        if (-not $alvo) { return $null }
+        return [string]$alvo.url
+    }
+
+    $ano = $NowBrt.Year
     $zipPath = Join-Path $CacheDir ("ipe_cia_aberta_{0}.zip" -f $ano)
+    if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
+    $urlZip = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{0}.zip" -f $ano
     Write-Log ("Baixando IPE {0} (dados.cvm.gov.br)..." -f $ano)
-    Invoke-WebRequest -Uri ("https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{0}.zip" -f $ano) -OutFile $zipPath -UseBasicParsing
+    try {
+        Invoke-WebRequest -Uri $urlZip -OutFile $zipPath -UseBasicParsing -TimeoutSec 60
+    } catch {
+        $statusCvm = $null
+        try { $statusCvm = [int]$_.Exception.Response.StatusCode } catch { $statusCvm = $null }
+        if ($statusCvm -eq 404) {
+            # Caminho canonico sem o zip do ano (CVMURL404). Pergunta ao catalogo;
+            # se ele tambem nao conhecer o ano, contrato preservado: ERRO FATAL
+            # fonte_ausente_no_catalogo + exit 1 no catch global (reconciliacao e
+            # secundaria, o monitor tem grace 7d; a ingestao principal ja e coberta
+            # pelo fix do Worker v4.9.209/210).
+            Write-Log ("AVISO: {0} respondeu 404 - consultando o catalogo CKAN da CVM..." -f $urlZip)
+            $urlZip = Get-UrlZipCvmPeloCatalogo $ano
+            if (-not $urlZip) {
+                throw ('fonte_ausente_no_catalogo: catalogo CVM nao lista ipe_cia_aberta_{0}.zip e o nome canonico respondeu 404' -f $ano)
+            }
+            Write-Log ("Catalogo apontou para: {0}" -f $urlZip)
+            try {
+                Invoke-WebRequest -Uri $urlZip -OutFile $zipPath -UseBasicParsing -TimeoutSec 60
+            } catch {
+                # Catalogo stale: anuncia o ano mas o arquivo ainda nao voltou (foi o
+                # caso 25/08-30/08: catalogo listava 2026 com o zip removido do disco).
+                # Mesmo contrato: ERRO FATAL estruturado + exit 1 no catch global.
+                $stCat = $null
+                try { $stCat = [int]$_.Exception.Response.StatusCode } catch { $stCat = $null }
+                throw ('fonte_ausente_no_catalogo: URL anunciada pelo catalogo ({0}) tambem falhou (status {1}): {2}' -f $urlZip, $stCat, $_.Exception.Message)
+            }
+        } else {
+            throw ('falha ao baixar IPE {0} (status {1}): {2}' -f $ano, $statusCvm, $_.Exception.Message)
+        }
+    }
+    # Defesa em profundidade (espelha o nao_e_zip do Worker, worker.js:8012-8016):
+    # download parcial ou pagina de erro HTML nunca chega ao ExtractToDirectory.
+    $zipBytes = [System.IO.File]::ReadAllBytes($zipPath)
+    if ($zipBytes.Length -lt 2 -or $zipBytes[0] -ne 0x50 -or $zipBytes[1] -ne 0x4B) {
+        throw ('nao_e_zip: arquivo baixado de {0} nao e um zip valido' -f $urlZip)
+    }
     $extractDir = Join-Path $CacheDir ("ipe_{0}" -f $ano)
     if (Test-Path $extractDir) { Remove-Item -Recurse -Force $extractDir }
     Add-Type -AssemblyName System.IO.Compression.FileSystem

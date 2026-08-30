@@ -13,6 +13,10 @@ param(
 # engolir falha e o healthcheck FALHA-002 so pegava scripts com python|node|claude.
 $ErrorActionPreference = 'Continue'
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+# SENTINELA-DIAPERDIDO1 (2026-08-30): lib de evidencia de entrega por log, dot-source.
+# A logica mora aqui para o test-sentinela-watchdog.ps1 provar as duas pontas com a
+# MESMA funcao que a producao usa.
+. (Join-Path $ScriptDir 'lib\vixradar-watchdog.ps1')
 $VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
@@ -494,7 +498,11 @@ foreach ($task in $allTasks) {
 # ---------------------------------------------------------------------------
 $RotinasVigiadas = @(
     @{ nome = 'vixradar-noturno'; rotulo = 'VIXRadar-Noturno (entrega)'; hora = 18; diasUteis = $false; minSubmit = 90 },
-    @{ nome = 'vixradar-matinal'; rotulo = 'VIXRadar-Matinal (entrega)'; hora = 10; diasUteis = $true;  minSubmit = 12 }
+    @{ nome = 'vixradar-matinal'; rotulo = 'VIXRadar-Matinal (entrega)'; hora = 10; diasUteis = $true;  minSubmit = 12 },
+    # SENTINELA-DIAPERDIDO1: apontado 29/08, medido falso positivo (sabado, task so
+    # Seg-Sex). Ultimo slot 17:55. Evidencia = log do dia util + FIM: (0 analises no dia
+    # e legitimo). Logica na lib vixradar-watchdog.ps1.
+    @{ nome = 'vixradar-sentinela'; rotulo = 'VIXRadar-Sentinela (entrega)'; hora = 18; diasUteis = $true; requerApenasLog = $true }
 )
 $RotinasLogDir = Join-Path $VixRoot 'logs\routines'
 
@@ -537,6 +545,34 @@ foreach ($rot in $RotinasVigiadas) {
     }
     $alvoTxt = $alvo.ToString('yyyy-MM-dd')
     $logRot  = Join-Path $RotinasLogDir ($rot.nome + '_' + $alvo.ToString('yyyyMMdd') + '.log')
+
+    # SENTINELA-DIAPERDIDO1 (falso positivo medido 30/08): trigger-driven, 0 analises no dia e legitimo.
+    # Evidencia de entrega = log do dia util + linha FIM: (rodou ao menos uma vez ate o
+    # fim). Logica na lib vixradar-watchdog.ps1 para o test-sentinela-watchdog.ps1 provar
+    # as duas pontas com a MESMA funcao da producao. Entra no sumario, no estado.json,
+    # no backlog e no email exatamente como as irmas.
+    if ($rot.requerApenasLog) {
+        $stSent = Test-EntregaSentinela -Alvo $alvo -LogDir $RotinasLogDir
+        $logRot  = $stSent.logPath
+        $motivoR = $stSent.motivo
+        $submitOk = $stSent.submitOk
+        if ($motivoR) {
+            Write-Log "ROTINA SEM ENTREGA: $($rot.rotulo) | $motivoR"
+            $erros += [ordered]@{
+                task    = $rot.rotulo
+                code    = 9001
+                codeHex = '0x2329'
+                lastRun = "$alvoTxt (ciclo esperado)"
+                ageDays = [int]((Get-Date).Date - $alvo).Days
+                script  = $logRot
+                reason  = $motivoR
+            }
+        } else {
+            Write-Log "ROTINA OK: $($rot.rotulo) | $alvoTxt execucoes_com_fim=$submitOk"
+            $ok++
+        }
+        continue
+    }
 
     $motivoR   = $null
     $fallbackR = $null
