@@ -115,7 +115,7 @@ Saída real do monitor: `ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 ex
 
 ## 29/08 (noite) — P2, CAUSA MEDIDA em 30/08 (AGENDASEM-TRAVA1): AgendaSemanal morta no lote 3 desde 26/08, escalada pelo monitor há 3 dias e sem tratamento
 
-> **Status:** CAUSA MEDIDA em 30/08 (manhã). O lote 3 está inocente: a máquina reiniciou por baixo da rotina. Segue ABERTO quanto à guarda, que não existe, e quanto aos 12 emissores stale não atualizados.
+> **Status:** CAUSA MEDIDA e GUARDA ENTREGUE em 30/08 (manhã). O lote 3 está inocente, a máquina reiniciou por baixo da rotina. Segue ABERTO só quanto aos 12 emissores stale não atualizados, que a janela de 30/08 22h deve drenar.
 > **Data da Versão:** 2026-08-30
 > **Origem do Registro:** registro original = `logs/monitor-tasks/monitor_20260829.log` e `logs/routines/vixradar-agenda-semanal_20260826.log`. Causa = `Get-WinEvent` Kernel-Power na janela 26/08 21h-02h, `Get-ScheduledTask` + `Get-ScheduledTaskInfo` ao vivo, grep de timeout no wrapper
 > **Condição de Obsolescência:** cai quando o monitor julgar a AgendaSemanal pela cadência real dela (domingo e quarta) em vez de por dias corridos, e quando a rotina passar a marcar execução interrompida no meio
@@ -152,6 +152,46 @@ O conteúdo do lote também não sustenta a hipótese de payload. Santos Brasil,
 **Guarda exigida.** Prova de duas pontas: quarta ou domingo sem log com `FIM:` reprova nomeando a rotina, e segunda-feira depois de um domingo bem-sucedido aceita sem escalar. Saída crua colada, linha de resumo não conta.
 
 **Próximo passo imediato.** A janela natural é hoje 30/08 22h. Ler `logs/routines/vixradar-agenda-semanal_20260830.log` e conferir a linha `FIM:` na manhã de 31/08. Sem reboot armado no momento da medição (`RebootPending_CBS`, `RebootRequired_WU` e `PendingFileRename` os três `False`, boot de 29/08 14:35), o que matou a de 26/08 não está engatilhado, o que não impede atualização nova chegar até lá.
+
+**GUARDA ENTREGUE (30/08 manhã).** Uma correção de spec antes do código. O `ESCALADO` foi lido como sendo régua de dias corridos sobre a cadência e não é, é `ageDaysFromFirst`, tempo desde a primeira detecção, e está correto. Mexer nele quebraria o escalonamento de erro genuinamente persistente. O defeito real é mais estreito: a AgendaSemanal era julgada **só** pelo `LastTaskResult` do Scheduler, sem checagem de entrega por log, e `LastTaskResult` velho numa rotina de duas execuções semanais fica visualmente idêntico a rotina falhando todo dia, porque a linha nunca dizia qual era a janela cobrada. Foi esse o vetor da leitura errada.
+
+Três mudanças, nenhuma toca produção nem exige deploy.
+
+1. `scripts/lib/vixradar-watchdog.ps1`: `Get-AlvoEntregaRotina` ganhou `$DiasPermitidos`, um conjunto de dias, porque o eixo "dia útil" não serve para quem entrega no domingo. `$DiasUteis` segue como atalho de Seg-Sex e quem não passa nenhum dos dois não filtra dia. `Test-EntregaSentinela` virou `Test-EntregaPorLog` com `$Prefixo` e `$Rotulo`, já que a checagem "log do dia alvo tem `FIM:`" nunca teve nada de específico da Sentinela. O nome antigo ficou como atalho para não quebrar call site nem prova existente.
+2. `scripts/monitor-tasks.ps1`: a AgendaSemanal entrou em `$RotinasVigiadas` com `diasPermitidos = @('Sunday','Wednesday')` e `hora = 22`. Achado de tabela no caminho, o cálculo do alvo estava **duplicado**, uma cópia na lib que a prova exercitava e outra inline no monitor que produção rodava. Guarda que não exercita o código do pipeline não é guarda (mesma classe do `DENOM_COMERC` em `check-emissores-cadastro.mjs`). Agora é a mesma função nos dois lados, que era a intenção declarada no cabeçalho da lib desde o início.
+3. `scripts/test-sentinela-watchdog.ps1`: cinco casos novos, os quatro da Sentinela preservados como regressão.
+
+**Prova de duas pontas, saída crua.** Parse 5.1 OK nos três arquivos, `lint-encoding.ps1` com RISCO 0 em 76 `.ps1`.
+
+```
+PONTA RUIM OK: 2026-08-18 sem log de execucao - a Sentinela nao chegou a iniciar na janela agendada
+PONTA BOA OK: execucoes_com_fim=1
+PONTA SEM-FIM OK: 2026-08-18 log existe mas sem linha FIM: - a Sentinela iniciou mas nenhuma execucao chegou ao fim
+FIM-DE-SEMANA OK: 2026-08-21 sem log de execucao - a Sentinela nao chegou a iniciar na janela agendada
+CADENCIA TERCA OK: alvo=2026-08-23 (Sunday)
+CADENCIA SEXTA OK: alvo=2026-08-26 (Wednesday)
+AGENDA PONTA RUIM OK: 2026-08-26 log existe mas sem linha FIM: - a AgendaSemanal iniciou mas nenhuma execucao chegou ao fim
+AGENDA PONTA BOA OK: execucoes_com_fim=1
+AGENDA SHADOW OK: 2026-08-23 log existe mas sem linha FIM: - a AgendaSemanal iniciou mas nenhuma execucao chegou ao fim
+VIGIA SENTINELA + AGENDASEMANAL: prova de duas pontas OK
+EXIT=0
+```
+
+As duas cadências são o caso que faltava. Na terça o alvo recua para o domingo 23/08 e não cobra log da segunda, dia em que a rotina não roda. Na sexta recua para a quarta 26/08 e não cobra a quinta. O `AGENDA SHADOW` cobre o `SHADOW_FIM:` do ROTINACEGA1, que a lookbehind da lib já tratava e nenhuma prova exercitava.
+
+**Prova contra produção, com o script real.** `monitor-tasks.ps1` rodado sem `-SendEmail`, mesma execução que o Scheduler faz às 07h:
+
+```
+2026-08-30 07:46:21 ROTINA OK: VIXRadar-Noturno (entrega) | 2026-08-29 submit_ok=103
+2026-08-30 07:46:21 ROTINA SEM ENTREGA: VIXRadar-Matinal (entrega) | 2026-08-28 sem log de execucao, a rotina nao chegou a iniciar
+2026-08-30 07:46:21 ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 execucoes_com_fim=18
+2026-08-30 07:46:21 ROTINA SEM ENTREGA: VIXRadar-AgendaSemanal (entrega) | 2026-08-26 log existe mas sem linha FIM: - a AgendaSemanal iniciou mas nenhuma execucao chegou ao fim
+  VIXRadar-AgendaSemanal (entrega) | exit=9001 (0x2329) idade=4d desde 2026-08-26 ESCALADO | 2026-08-26 (ciclo esperado) | ...\logs\routines\vixradar-agenda-semanal_20260826.log
+```
+
+O que mudou na prática é a linha nomear a data da janela cobrada, `2026-08-26`, em vez de deixar o leitor inferir de um `LastTaskResult` sem contexto. A entrada limpa sozinha na segunda 31/08 se a execução de hoje escrever `FIM:`, e não limpa se não escrever. Regressão coberta na mesma saída, as três rotinas antigas saíram idênticas ao conhecido, inclusive a Sentinela com `execucoes_com_fim=18` de 28/08 e a matinal reprovando 28/08, que é o SEXTA-SEM-ROTINA1 aberto.
+
+**Nota sobre `idade=4d` num detector que nasceu hoje.** Não é defeito. `firstDetected` cai no ramo de `monitor-tasks.ps1:751` que deriva a data do campo `lastRun` quando não há estado anterior, comportamento posto de propósito e comentado no código justamente porque a AgendaSemanal já falhava antes de existir `estado.json`. A janela de 26/08 está mesmo sem entrega há 4 dias.
 
 ---
 

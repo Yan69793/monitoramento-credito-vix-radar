@@ -12,20 +12,44 @@
 # aqui o sinal de entrega e "rodou ao menos uma vez e chegou ao fim". O monitor roda 07h,
 # entao o alvo e o ultimo ciclo que ja deveria ter terminado (ontem, ou a sexta na segunda).
 
-function Get-AlvoEntregaRotina([datetime]$Agora, [int]$Hora, [bool]$DiasUteis) {
+# AGENDASEM-TRAVA1 (2026-08-30): o eixo "dia util" nao serve para toda rotina. A
+# AgendaSemanal roda domingo E quarta (DaysOfWeek=9 no Scheduler, decisao deliberada de
+# 14/08 pela regra 9 do CALVAL-V2), entao para ela domingo e dia de ENTREGA, nao dia de
+# recuar. $DiasPermitidos generaliza o laco: recua ate o dia mais recente que pertence ao
+# conjunto da rotina. $DiasUteis continua valendo como atalho de Seg-Sex (Sentinela e
+# matinal) e quem nao passa nenhum dos dois nao filtra dia nenhum (noturno, diario).
+function Get-AlvoEntregaRotina([datetime]$Agora, [int]$Hora, [bool]$DiasUteis, [string[]]$DiasPermitidos) {
     $alvo = $Agora.Date
     if ($Agora.Hour -lt ($Hora + 2)) { $alvo = $alvo.AddDays(-1) }
-    if ($DiasUteis) {
-        while ($alvo.DayOfWeek -eq 'Saturday' -or $alvo.DayOfWeek -eq 'Sunday') { $alvo = $alvo.AddDays(-1) }
+    $permitidos = $DiasPermitidos
+    if ($null -eq $permitidos -or $permitidos.Count -eq 0) {
+        $permitidos = $null
+        if ($DiasUteis) { $permitidos = @('Monday','Tuesday','Wednesday','Thursday','Friday') }
+    }
+    if ($null -ne $permitidos -and $permitidos.Count -gt 0) {
+        # Guarda de 7 voltas: conjunto invalido nao pode prender o monitor em laco.
+        $voltas = 0
+        while ($permitidos -notcontains [string]$alvo.DayOfWeek) {
+            $alvo = $alvo.AddDays(-1)
+            $voltas++
+            if ($voltas -ge 7) { break }
+        }
     }
     return $alvo
 }
 
-function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
+# AGENDASEM-TRAVA1 (2026-08-30): a checagem "log do dia alvo tem FIM:" nao tem nada de
+# especifico da Sentinela, so o prefixo do arquivo e o nome na mensagem. Generalizada para
+# servir tambem a AgendaSemanal, cuja execucao de 26/08 morreu por reboot da maquina no
+# meio do lote 3 (Kernel-Power 109 e 577 as 22:16:27 e 22:16:29) e deixou log sem FIM:.
+# O exit code do Scheduler dizia 0x40010004 e so; a evidencia boa e o log, nao o codigo.
+# Test-EntregaSentinela fica como atalho para nao quebrar call site nem prova existente.
+function Test-EntregaPorLog([datetime]$Alvo, [string]$LogDir, [string]$Prefixo, [string]$Rotulo) {
+    if ([string]::IsNullOrWhiteSpace($Rotulo)) { $Rotulo = $Prefixo }
     $alvoTxt = $Alvo.ToString('yyyy-MM-dd')
-    $logPath = Join-Path $LogDir ('vixradar-sentinela_' + $Alvo.ToString('yyyyMMdd') + '.log')
+    $logPath = Join-Path $LogDir ($Prefixo + '_' + $Alvo.ToString('yyyyMMdd') + '.log')
     if (-not (Test-Path $logPath)) {
-        return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = -1; motivo = ("$alvoTxt sem log de execucao - a Sentinela nao chegou a iniciar no dia util") }
+        return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = -1; motivo = ("$alvoTxt sem log de execucao - a $Rotulo nao chegou a iniciar na janela agendada") }
     }
     $conteudo = ''
     try { $conteudo = Get-Content $logPath -Raw -Encoding UTF8 -ErrorAction Stop } catch { $conteudo = '' }
@@ -33,7 +57,11 @@ function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
     # do task-observer (vigia que casa substring dentro de linha AVISO).
     $fims = [regex]::Matches($conteudo, '(?m)(?<!SHADOW_)FIM:')
     if ($fims.Count -eq 0) {
-        return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = -1; motivo = ("$alvoTxt log existe mas sem linha FIM: - a Sentinela iniciou mas nenhuma execucao chegou ao fim") }
+        return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = -1; motivo = ("$alvoTxt log existe mas sem linha FIM: - a $Rotulo iniciou mas nenhuma execucao chegou ao fim") }
     }
     return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = $fims.Count; motivo = $null }
+}
+
+function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
+    return Test-EntregaPorLog -Alvo $Alvo -LogDir $LogDir -Prefixo 'vixradar-sentinela' -Rotulo 'Sentinela'
 }

@@ -502,7 +502,15 @@ $RotinasVigiadas = @(
     # SENTINELA-DIAPERDIDO1: apontado 29/08, medido falso positivo (sabado, task so
     # Seg-Sex). Ultimo slot 17:55. Evidencia = log do dia util + FIM: (0 analises no dia
     # e legitimo). Logica na lib vixradar-watchdog.ps1.
-    @{ nome = 'vixradar-sentinela'; rotulo = 'VIXRadar-Sentinela (entrega)'; hora = 18; diasUteis = $true; requerApenasLog = $true }
+    @{ nome = 'vixradar-sentinela'; rotulo = 'VIXRadar-Sentinela (entrega)'; rotuloCurto = 'Sentinela'; hora = 18; diasUteis = $true; requerApenasLog = $true },
+    # AGENDASEM-TRAVA1 (30/08): ate aqui a AgendaSemanal so era julgada pelo LastTaskResult
+    # do Scheduler. LastTaskResult velho numa rotina de 2x/semana fica visualmente igual a
+    # rotina falhando todo dia, e foi assim que a falha unica da quarta 26/08 foi lida pelas
+    # auditorias como "morta ha 3 dias". A execucao morreu por reboot da maquina no meio do
+    # lote 3 (Kernel-Power 109 e 577 as 22:16:27 e 22:16:29, exit 0x40010004), deixando log
+    # sem FIM:. Agora ha evidencia de entrega por log, ancorada na janela real da rotina
+    # (domingo E quarta, DaysOfWeek=9), e a linha do erro nomeia a data da janela cobrada.
+    @{ nome = 'vixradar-agenda-semanal'; rotulo = 'VIXRadar-AgendaSemanal (entrega)'; rotuloCurto = 'AgendaSemanal'; hora = 22; diasPermitidos = @('Sunday','Wednesday'); requerApenasLog = $true }
 )
 $RotinasLogDir = Join-Path $VixRoot 'logs\routines'
 
@@ -538,11 +546,11 @@ foreach ($rot in $RotinasVigiadas) {
     $agoraR = Get-Date
     # Alvo e o ultimo ciclo que ja deveria ter terminado. Com 2h de graca sobre o
     # horario agendado. Monitor roda 07:00, entao na pratica o alvo e sempre ontem.
-    $alvo = $agoraR.Date
-    if ($agoraR.Hour -lt ($rot.hora + 2)) { $alvo = $agoraR.Date.AddDays(-1) }
-    if ($rot.diasUteis) {
-        while ($alvo.DayOfWeek -eq 'Saturday' -or $alvo.DayOfWeek -eq 'Sunday') { $alvo = $alvo.AddDays(-1) }
-    }
+    # AGENDASEM-TRAVA1 (30/08): o calculo do alvo era duplicado aqui e na lib, e o
+    # test-sentinela-watchdog.ps1 provava a versao da lib enquanto producao rodava esta
+    # copia. Guarda que nao exercita o codigo do pipeline nao e guarda. Agora e a mesma
+    # funcao nos dois lados, que era a intencao declarada no cabecalho da lib.
+    $alvo = Get-AlvoEntregaRotina -Agora $agoraR -Hora $rot.hora -DiasUteis ([bool]$rot.diasUteis) -DiasPermitidos $rot.diasPermitidos
     $alvoTxt = $alvo.ToString('yyyy-MM-dd')
     $logRot  = Join-Path $RotinasLogDir ($rot.nome + '_' + $alvo.ToString('yyyyMMdd') + '.log')
 
@@ -552,7 +560,7 @@ foreach ($rot in $RotinasVigiadas) {
     # as duas pontas com a MESMA funcao da producao. Entra no sumario, no estado.json,
     # no backlog e no email exatamente como as irmas.
     if ($rot.requerApenasLog) {
-        $stSent = Test-EntregaSentinela -Alvo $alvo -LogDir $RotinasLogDir
+        $stSent = Test-EntregaPorLog -Alvo $alvo -LogDir $RotinasLogDir -Prefixo $rot.nome -Rotulo $rot.rotuloCurto
         $logRot  = $stSent.logPath
         $motivoR = $stSent.motivo
         $submitOk = $stSent.submitOk
