@@ -203,12 +203,12 @@ Saída real do monitor: `ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 ex
 
 ---
 
-## 29/08 (noite) — P2, ABERTO (AGENDASEM-TRAVA1): AgendaSemanal morta no lote 3 desde 26/08, escalada pelo monitor há 3 dias e sem tratamento
+## 29/08 (noite) — P2, CAUSA MEDIDA em 30/08 (AGENDASEM-TRAVA1): AgendaSemanal morta no lote 3 desde 26/08, escalada pelo monitor há 3 dias e sem tratamento
 
-> **Status:** ABERTO. Falha conhecida do monitor (`ESCALADO`), sem entrada nesta fila até agora.
-> **Data da Versão:** 2026-08-29
-> **Origem do Registro:** `logs/monitor-tasks/monitor_20260829.log` e `logs/routines/vixradar-agenda-semanal_20260826.log`
-> **Condição de Obsolescência:** cai quando uma execução completar os 20 stale ou quando a causa da morte no lote 3 for determinada e corrigida
+> **Status:** CAUSA MEDIDA em 30/08 (manhã). O lote 3 está inocente: a máquina reiniciou por baixo da rotina. Segue ABERTO quanto à guarda, que não existe, e quanto aos 12 emissores stale não atualizados.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** registro original = `logs/monitor-tasks/monitor_20260829.log` e `logs/routines/vixradar-agenda-semanal_20260826.log`. Causa = `Get-WinEvent` Kernel-Power na janela 26/08 21h-02h, `Get-ScheduledTask` + `Get-ScheduledTaskInfo` ao vivo, grep de timeout no wrapper
+> **Condição de Obsolescência:** cai quando o monitor julgar a AgendaSemanal pela cadência real dela (domingo e quarta) em vez de por dias corridos, e quando a rotina passar a marcar execução interrompida no meio
 
 Em 26/08 22h (quarta, janela regular) a rotina rodou saudável até o meio: preflight ok, OAuth ok, lote 1 (Engie, Energisa, Copel, ISA) e lote 2 (Omega, Rumo, Simpar, Vamos) com 8 OK, e morreu ao iniciar o lote 3 (Santos Brasil, EcoRodovias, JSL, Embraer) às 22:14:44, sem linha `FIM:`, stderr de 0 bytes, exit `0x40010004` no Scheduler. 8 dos 20 emissores stale atualizados, 12 não. O `monitor-tasks.ps1` acusa e escala desde 27/08 (`idade=3d ESCALADO` no log de 29/08), com email diário ao operador, e ninguém fechou o item.
 
@@ -217,6 +217,31 @@ O padrão (morte no `claude -p` com stderr vazio) é o mesmo dos incidentes de 2
 **Correção proposta.** Observar a janela natural de domingo 30/08 22h. Se completar, fechar como transitório com o log colado. Se morrer de novo no lote 3, investigar o lote específico (payload/timeout) com o stderr redirecionado por lote, como a matinal já faz.
 
 **Guarda existente.** O monitor já detecta e escala. O que faltou foi o elo monitor → fila de pendências: alerta repetido sem dono vira ruído (HEALTHWATCH3). Esta entrada é o elo.
+
+**CAUSA MEDIDA (30/08 manhã). A máquina reiniciou por baixo da rotina, o lote 3 não tem defeito.** Cronologia crua, log da rotina contra o log de sistema:
+
+```
+2026-08-26 22:14:44  Lote agendasem-3: 4 empresa(s) - Santos Brasil, EcoRodovias, JSL, Embraer
+2026-08-26 22:16:27  Kernel-Power 109: o gerenciador de energia do kernel iniciou uma transicao de desligamento
+2026-08-26 22:16:29  Kernel-Power 577: o sistema esta preparado para uma reinicializacao iniciada pelo sistema Active
+2026-08-26 22:16:53  Kernel-Power 172/125: conectividade em espera Disconnected, zona termal reenumerada
+```
+
+Um minuto e quarenta e três segundos dentro do lote. `0x40010004` é `DBG_TERMINATE_PROCESS`, processo morto de fora, não exceção e não estouro de orçamento. Descartadas as duas hipóteses de timeout: `ExecutionTimeLimit` da task é `PT4H`, então o Scheduler não matou aos 14 minutos, e o `run_vixradar_agenda_semanal.ps1` não tem nenhuma guarda própria (grep por `timeout`, `TimeoutSec`, `Wait-Process`, `Stop-Process`, `taskkill` não devolve nada). O texto do evento 577 é o do mecanismo de horário ativo do Windows Update.
+
+O conteúdo do lote também não sustenta a hipótese de payload. Santos Brasil, EcoRodovias e JSL rodaram como lote 4 em 23/08 em 4min47 com `trimestres_count=1` cada, e o único item mais pesado do lote de 26/08 é a Embraer com dois trimestres pendentes. Nenhum `OK|` foi emitido porque o lote nem chegou ao fim da primeira empresa.
+
+**A segunda afirmação do título também não se sustenta: não foram 3 dias de falha, foi 1 falha.** `DaysOfWeek=9` = domingo + quarta. A execução de 26/08 foi na quarta, e a janela seguinte é 30/08 (domingo), medido como `NextRunTime=08/30/2026 22:00:00` com `NumberOfMissedRuns=0`. Entre as duas não houve nenhuma oportunidade agendada, logo não houve execução falha nova. O `idade=3d ESCALADO` do monitor é releitura diária do mesmo `LastTaskResult` congelado, não contagem de falhas. Mesmo defeito de leitura do SENTINELA-DIAPERDIDO1 logo acima, e da mesma família do que a memória do projeto já registra: exit code de task mente, a evidência boa é a linha `FIM:` no log.
+
+**Erro de documentação achado junto.** `CLAUDE.md:245` e `routines/README.md:84` declaram "Dom 22h00 BRT", e contradizem o próprio `routines/README.md:109-124`, que documenta domingo **e** quarta como decisão deliberada de 14/08/2026, amarrada à regra 9 do CALVAL-V2 e ao motivo `revalidar_proximo` (trimestre previsto em ≤7 dias sem confirmação precisa de cadência menor que semanal). As duas linhas de resumo foram corrigidas em 30/08. A nota longa já estava certa e não foi tocada.
+
+**Causa raiz, duas somadas.** Primeira, a rotina não tem noção de ter sido interrompida: morre no meio, deixa 8 de 20 emissores atualizados e não grava marca nenhuma disso, então terminação externa (reboot, sono, atualização) fica indistinguível de defeito de código para quem lê depois. Segunda, o monitor julga uma rotina de duas execuções semanais com régua de dias corridos, então uma falha única vira alerta diário que parece agravamento. As duas juntas produziram um item de fila que aponta para o lugar errado, e foi o que quase custou uma sessão de caça a defeito no lote 3.
+
+**Correção proposta.** No wrapper, gravar linha de interrupção quando o processo morre sem `FIM:` (o próprio wrapper não pode, quem detecta é a execução seguinte ao ver log anterior sem `FIM:`). No `monitor-tasks.ps1`, julgar a AgendaSemanal contra a janela agendada dela (`NextRunTime`/`LastRunTime` e `DaysOfWeek`), não contra dias corridos, reaproveitando o desenho do `Get-AlvoEntregaRotina` que já existe em `scripts/lib/vixradar-watchdog.ps1` para a Sentinela.
+
+**Guarda exigida.** Prova de duas pontas: quarta ou domingo sem log com `FIM:` reprova nomeando a rotina, e segunda-feira depois de um domingo bem-sucedido aceita sem escalar. Saída crua colada, linha de resumo não conta.
+
+**Próximo passo imediato.** A janela natural é hoje 30/08 22h. Ler `logs/routines/vixradar-agenda-semanal_20260830.log` e conferir a linha `FIM:` na manhã de 31/08. Sem reboot armado no momento da medição (`RebootPending_CBS`, `RebootRequired_WU` e `PendingFileRename` os três `False`, boot de 29/08 14:35), o que matou a de 26/08 não está engatilhado, o que não impede atualização nova chegar até lá.
 
 ---
 

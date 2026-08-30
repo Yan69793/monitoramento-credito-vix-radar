@@ -1,6 +1,27 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-30 (manhã, correção do sincronizador de docs SYNCDOC-MUDO1, sem deploy, produção segue no v4.9.223 e v202.34)
+Última atualização: 2026-08-30 (manhã, deploy do frontend v202.34, causa do AGENDASEM-TRAVA1 medida e SYNCDOC-MUDO1 corrigido no sincronizador de docs, Worker v4.9.223 e frontend v202.34 no ar)
+
+> [!info] 30/08 (manhã) — frontend v202.34 DEPLOYADO, AGENDASEM-TRAVA1 com causa medida (reboot, não o lote 3).
+> **Status:** vigente · **Data da Versão:** 2026-08-30 · **Origem do Registro:** deploy validado em produção (apex e www em `v202.34`, `deployed_at 2026-08-30T10:22:53Z`, HTML e módulo servido em `?v=202.34`), medições ao vivo (`Get-ScheduledTaskInfo`, `Get-WinEvent` Kernel-Power, health do Worker) ·
+> **Condição de Obsolescência:** cai quando o frontend passar do v202.34 e quando o monitor julgar a AgendaSemanal pela cadência real dela.
+>
+> **Frontend v202.34 no ar.** Produção estava em `v202.33` desde 25/08, cinco dias atrás do repo, e o trabalho de 29/08
+> (EWSFLOOR1, MATERIALSAT1, BRIEFDEDUP1) estava commitado e parado no disco. Nenhum documento registrava essa defasagem.
+> Deploy pelo `deploy-pages.ps1`, 7 gates verdes, commit `cc6f7ff` empurrado. Os 15 imports de `app/js` no `deploy_zip`
+> saíram de `?v=202.33` para `?v=202.34`. **TOKENCHAT1 remedido no caminho:** o `CLOUDFLARE_API_TOKEN` instalado tomou
+> `Authentication error [code: 10000]` na API de Pages, e o deploy só passou porque existe sessão OAuth do wrangler nesta
+> máquina, renovada em 30/08 01h41. Deploy de Pages hoje depende de um humano ter logado no navegador, qualquer caminho
+> não interativo falha.
+>
+> **AGENDASEM-TRAVA1: o lote 3 está inocente.** O lote 3 começou 26/08 22:14:44 e o Kernel-Power 109 (transição de
+> desligamento) mais o 577 (reinicialização iniciada pelo sistema) entraram 22:16:27 e 22:16:29. `0x40010004` é processo
+> morto de fora, e as duas hipóteses de timeout caem por medição (`ExecutionTimeLimit=PT4H`, wrapper sem guarda própria).
+> E não foram 3 dias de falha: `DaysOfWeek=9` é domingo **e** quarta, a falha foi uma só (quarta 26/08), a janela seguinte
+> é 30/08 22h e `NumberOfMissedRuns=0`. O `idade=3d ESCALADO` do monitor é releitura do mesmo `LastTaskResult` congelado.
+> Mesmo defeito de leitura do SENTINELA-DIAPERDIDO1. Corrigidas junto as duas linhas de resumo que diziam "Dom 22h00"
+> (`CLAUDE.md` e `routines/README.md`), que contradiziam a nota longa do próprio `routines/README.md`. Detalhe e guarda
+> exigida na `PENDENCIAS.md`.
 
 > [!info] 30/08 (madrugada) — AGENDA401 DEPLOYADO no v4.9.223, RECONCILE-CVM404 corrigido no código, SENTINELA-DIAPERDIDO1 refutado por medição.
 > **Status:** vigente · **Data da Versão:** 2026-08-30 · **Origem do Registro:** deploy v4.9.223 validado em produção (portão HTTP 200, `ok/telemetria/kv/sentry_ok` true), medições ao vivo (task Sentinela via `Get-ScheduledTaskInfo`, logs das rotinas, suíte vitest local, dry-run da reconciliação) ·
@@ -479,7 +500,7 @@ detalhe no CLAUDE.md).
 - **30/08, RESOLVIDO (AGENDA401, P1, v4.9.223):** agenda pública de resultados morta por 401 cru no visitante. `op=calendario` liberado sem JWT (`api/src/worker.js:17627`), teste anônimo de duas pontas em `api/test/agenda-validacao.test.mjs` (10/10 verdes), deploy v4.9.223 validado em produção: `GET /?op=calendario` sem token → `ok:true` (103 emissores, 81 com calendário), `escopo=agenda` idem. Sem mudança de frontend. Detalhe em `PENDENCIAS.md`
 - **30/08, CORRIGIDO (RECONCILE-CVM404, P2):** reconciliação local ia falhar de novo com o ZIP 2026 fora do ar. `reconciliar_ipe_cvm.ps1` agora usa `$NowBrt.Year`, consulta o catálogo CKAN da CVM no 404 (mesmo espelho do Worker v4.9.209/210) e só extrai após checagem de magic PK. Validação: parse 5.1, lint RISCO 0, dry-run exit 0. O ZIP 2026 voltou pela CVM em 25/08, então segunda 31/08 deve usar o caminho canônico; o fallback fica como defesa. Detalhe em `PENDENCIAS.md`
 - **30/08, OBSERVAÇÃO NOVA (fora do plano):** sexta 28/08 não tem log nem da matinal nem da noturna (os logs pulam de 27/08 pra 29/08) e as duas rodaram só no sábado 29/08 à tarde. O monitor já sinaliza `VIXRadar-Matinal (entrega) 9001` (alvo 28/08). Causa a apurar nas sessões agendadas do Claude Desktop. Detalhe em `PENDENCIAS.md`
-- **29/08 (noite), P2 ABERTO (AGENDASEM-TRAVA1):** AgendaSemanal morreu no lote 3 em 26/08 (exit `0x40010004`, stderr vazio, 8/20 stale atualizados), monitor escala há 3 dias sem dono. Observar a janela de domingo 30/08 22h; se repetir, investigar o lote. Detalhe em `PENDENCIAS.md`
+- **30/08, CAUSA MEDIDA, segue P2 ABERTO na guarda (AGENDASEM-TRAVA1):** a AgendaSemanal não morreu por defeito do lote 3, a máquina reiniciou por baixo dela. Lote 3 iniciado 26/08 22:14:44, Kernel-Power 109 e 577 (transição de desligamento e reinicialização iniciada pelo sistema) às 22:16:27 e 22:16:29, `0x40010004` = processo morto de fora. Timeout descartado nas duas pontas (`ExecutionTimeLimit=PT4H`, wrapper sem guarda). E não foram 3 dias de falha: `DaysOfWeek=9` = domingo e quarta, houve **uma** falha (quarta 26/08), `NextRunTime=30/08 22:00`, `NumberOfMissedRuns=0`, e o `idade=3d ESCALADO` é releitura do mesmo `LastTaskResult` congelado. **O que segue aberto é a guarda:** a rotina não marca execução interrompida e o monitor julga rotina de 2x/semana com régua de dias corridos. Próximo passo: ler a linha `FIM:` de `logs/routines/vixradar-agenda-semanal_20260830.log` na manhã de 31/08. Detalhe em `PENDENCIAS.md`
 - **29/08 (noite), P2 ABERTO (FALLBACKTTL1):** `fallback:{empresa}` com `expirationTtl: 86400` (worker.js:15845); o dia 28/08 sem varredura apagou o cache de último recurso dos 103 emissores, violando a regra VOLTTL1 (TTL >= 2x o intervalo). Fix de 1 linha, exige deploy, candidato ao v4.9.222 junto com o VERIFCACHE-ROUNDTRIP1. Detalhe em `PENDENCIAS.md`
 - **RESOLVIDO 29/08 (REPOSIC1):** o feed preso em 25/08 tinha três causas, e a terceira era nossa e sem guarda: 28/08 não teve varredura e a passada de 29/08 re-ancorou o desenvolvimento em fato antigo em vez de criar evento datado na janela. Reposição executada (Braskem 28/08 CRÍTICO, Oncoclínicas 27/08 CRÍTICO, Multiplan 27/08 ECO, Petrobras 26/08 ECO), max `data_evento` 25/08 → 28/08 confirmado. Guarda = skill `/repor-varredura` (`.claude/skills/repor-varredura/`, registrada no router) + `scripts/repor-varredura.ps1` + `scripts/repor-varredura-prompt.md` com regra anti-ancoragem e verificação de data real na fonte. Detalhe em `PENDENCIAS.md`
 - **29/08 (tarde), P0/P1/P2/P3 da auditoria geral fechados na branch `fix/silent-green-2026-08-27`** (merge em `main` confirmado na noite de 29/08, guardas já valem no cron)**:** `SCANFALLBACK-MORTO1` (secret `ANTHROPIC_API_KEY` criado pelo operador + pré-check de secrets, `ab2622f`), `WATCHDOG-NAOINICIOU1` (`retry-vixradar.ps1` alerta e sai 1 no dia sem log, `5acbca2`, efetivo local), `FRESCORNOTIFY1` (`frescor-check.yml` com passo `if: failure()` de notificação, `a1c5283`), P3 docs. Feed diagnosticado como verdadeiro: sem evento >= 26/08 em produção (MAX 25/08, TOTAL 496). **Pendente:** merge em `main` para P0 e P2 valerem no cron. `VERIFCACHE-ROUNDTRIP1` segue ABERTO (exige deploy). Detalhe em `PENDENCIAS.md`

@@ -81,7 +81,7 @@ raiz diferente) compartilham a mesma máquina e ficam fora de escopo deste docum
 
 | Task | Gatilho real | Script | Função |
 |------|---------|--------|--------|
-| `VIXRadar-AgendaSemanal` | Dom 22:00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário de divulgação trimestral, top 20 stale por execução. Ver nota abaixo |
+| `VIXRadar-AgendaSemanal` | **Dom e Qua** 22:00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário de divulgação trimestral, top 20 stale por execução. Ver nota abaixo |
 | `VIXRadar-Coleta-Volatilidade` | Diário 17:00 BRT | `run_coleta_volatilidade.ps1` | Coleta cotações + volatilidade e publica no KV. Sem LLM |
 | `VIXRadar-Export-Historico` | Diário 20:45 BRT | `run_vixradar_export_historico.ps1` | Exporta estado preditivo do KV para `data/historico/`. Sem LLM |
 | `VIXRadar-Reconciliacao-CVM` | Seg 08:00 BRT | `scripts/predictive/reconciliar_ipe_cvm.ps1` | Reconcilia IPE CVM (RJ/RE/default) vs estado semanal do Radar; publica KV `radar:reconciliacao_cvm:latest` + nota Obsidian. Sem LLM |
