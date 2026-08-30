@@ -4,6 +4,19 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.224.js = v4.9.223 + PISODIFF1.
+#   PISODIFF1 (2026-08-30): o score_calculado virou o contrafactual honesto do
+#   "sem piso", somando o bonus de deterioracao (+5 quando nSinaisRisco >= 3)
+#   aos sinais reais (antes ficava so nos sinais, subestimando em 5 o grupo
+#   pisado). O ranking (op=ews) desempata scores iguais por score_calculado
+#   desc, entao Raizen/Oncoclincas/Oi, os tres em 66 pelo piso critico 61 + o
+#   padrao +5, ordenam por gravidade dos sinais em vez de ordem de lista. O
+#   frontend mostra "Score sem piso: N" sob o score no painel. Score final,
+#   piso e classificacao intocados.
+#   Guardas: ews-piso.test.mjs ganhou teste de desempate do ranking e a
+#   assertiva de score_calculado derivada da propria decomposicao
+#   (soma - delta do piso), sem pino fixo. 143/143 no vitest.
+#   Rollback: main = "v4.9.223.js".
 # v4.9.223.js = v4.9.221 + EWSFLOOR1 + MATERIALSAT1 + BRIEFDEDUP1 + AGENDA401.
 #   Os tres primeiros sao a Fase 1 do plano da auditoria 29/08, em voo no mesmo
 #   arquivo do v4.9.222 e entrelacados no working tree; subiram juntos aqui.
