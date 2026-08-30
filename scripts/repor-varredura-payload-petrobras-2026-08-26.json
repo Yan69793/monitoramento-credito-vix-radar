@@ -1,0 +1,32 @@
+[
+  {
+    "empresa": "Petrobras",
+    "setor": "Petróleo, Gás e Combustíveis",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Petrobras",
+      "setor": "Petróleo, Gás e Combustíveis",
+      "sem_eventos": false,
+      "cobertura_nota": "Reposicao da varredura perdida 26-28/08 (REPOSIC1). Fato de 26/08: Petrobras amplia limite de credito a Braskem para R$ 2,35 bi durante a RE. Fonte Portal Democrata (data no path).",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "reposicao 26-28/08", "resultado": "fato de 26/08 validado em Portal Democrata (2026-08-28) e Reuters/Investing (2026-08-27)" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "ECO",
+          "titulo": "Petrobras amplia limite de crédito à Braskem para R$ 2,35 bilhões durante a recuperação extrajudicial",
+          "data_evento": "2026-08-26",
+          "fonte_primaria": "https://portaldemocrata.com.br/2026/08/28/petrobras-aumenta-financiamento-da-braskem-em-r-235-bilhoes-e-potencializa-investimentos-na-industria-quimica/",
+          "tags": ["credito", "liquidez", "braskem", "recuperacao extrajudicial"],
+          "impacto_credito": "A Petrobras elevou o limite de credito concedido a Braskem de R$ 350 milhoes para R$ 2,35 bilhoes, para compra de materias-primas com pagamento em ate 30 dias, vigente ate o fim de 2026. As garantias incluem cessao fiduciaria de recebiveis de clientes da Braskem (cerca de R$ 1 bilhao por mes) em conta vinculada, com retencao minima de R$ 300 milhoes, e o limite so fica efetivo apos constituicao das contas com saldo minimo de R$ 150 milhoes. Movimento que sustenta a liquidez da Braskem durante a recuperacao extrajudicial de cerca de US$ 10,9 bi.",
+          "memo_acontecimento": "Petrobras eleva limite de credito a Braskem de R$ 350 mi para R$ 2,35 bi, com garantia de recebiveis.",
+          "memo_importancia_credito": "Sustenta a liquidez da Braskem durante a RE; reforca o apoio do acionista controlador em reestruturacao.",
+          "memo_monitorar": "Efetivacao das contas vinculadas; evolucao do fluxo de recebiveis; desfecho da RE da Braskem.",
+          "_confianca": 0.95
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  }
+]

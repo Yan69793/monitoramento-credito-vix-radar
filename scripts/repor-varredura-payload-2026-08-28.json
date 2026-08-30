@@ -1,0 +1,122 @@
+[
+  {
+    "empresa": "Braskem",
+    "setor": "Petróleo, Gás e Combustíveis",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Braskem",
+      "setor": "Petróleo, Gás e Combustíveis",
+      "sem_eventos": false,
+      "cobertura_nota": "Reposicao da varredura perdida 26-28/08 (REPOSIC1). Fato de 28/08: Justica de SP defere processamento da recuperacao extrajudicial. Fonte Exame (acessivel).",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "reposicao 26-28/08", "resultado": "fato de 28/08 validado em Exame, 200" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "CRITICO",
+          "titulo": "Justiça de São Paulo defere processamento da recuperação extrajudicial da Braskem e suspende cobranças por 120 dias",
+          "data_evento": "2026-08-28",
+          "fonte_primaria": "https://exame.com/invest/mercados/braskem-recebe-aval-da-justica-para-recuperacao-extrajudicial-de-divida-de-us-109-bi/",
+          "tags": ["recuperacao extrajudicial", "justica", "default", "reestruturacao"],
+          "impacto_credito": "A 2a Vara de Falencias de Sao Paulo deferiu o processamento da recuperacao extrajudicial da Braskem, suspendendo execucoes e cobrancas por 120 dias e dando 90 dias para a companhia demonstrar o quorum. O plano cobre cerca de R$ 56 bilhoes (US$ 10,9 bi) em dividas quirografarias, com aporte potencial de Petrobras e IG4. O default restrito comunicado em 24/08 agora tem protecao judicial formal.",
+          "memo_acontecimento": "TJ/SP defere processamento da RE da Braskem, com stay de 120 dias e 90 dias para quorum.",
+          "memo_importancia_credito": "Converte o default restrito em processo formal sob protecao judicial, com suspensao de execucoes e cobrancas.",
+          "memo_monitorar": "Aprovacao do quorum em 90 dias; aporte Petrobras/IG4; desfecho do plano de R$ 56 bi.",
+          "_confianca": 0.97
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  },
+  {
+    "empresa": "Oncoclínicas",
+    "setor": "Saúde",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Oncoclínicas",
+      "setor": "Saúde",
+      "sem_eventos": false,
+      "cobertura_nota": "Reposicao da varredura perdida 26-28/08 (REPOSIC1). Fato de 27/08: plano de recuperacao extrajudicial com desconto de ate 80%. Fonte Valor (data na URL).",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "reposicao 26-28/08", "resultado": "fato de 27/08 validado no Valor, 200" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "CRITICO",
+          "titulo": "Oncoclínicas apresenta plano de recuperação extrajudicial com desconto de até 80% da dívida",
+          "data_evento": "2026-08-27",
+          "fonte_primaria": "https://valor.globo.com/empresas/noticia/2026/08/27/agenda-de-empresas-oncoclinicas-preve-desconto-de-ate-80percent-na-divida-petrobras-amplia-credito-para-braskem.ghtml",
+          "tags": ["recuperacao extrajudicial", "haircut", "reestruturacao"],
+          "impacto_credito": "O plano de recuperacao extrajudicial preve desconto de ate 80% do valor da divida, com desconto medio a valor presente em torno de 60%, sem conversao em participacao acionaria. A CVM concedeu 60 dias para a OPA. A reestruturacao envolve cerca de R$ 5,1 bilhoes.",
+          "memo_acontecimento": "Oncoclinicas apresenta plano de RE com haircut de ate 80% da divida.",
+          "memo_importancia_credito": "Detalhamento do desconto em recuperacao extrajudicial em curso, com haircut profundo para credores.",
+          "memo_monitorar": "Prazo da OPA de 60 dias; desfecho do plano; tratamento dos credores quirografarios.",
+          "_confianca": 0.95
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  },
+  {
+    "empresa": "Petrobras",
+    "setor": "Petróleo, Gás e Combustíveis",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Petrobras",
+      "setor": "Petróleo, Gás e Combustíveis",
+      "sem_eventos": false,
+      "cobertura_nota": "Reposicao da varredura perdida 26-28/08 (REPOSIC1). Fato de 27/08: Moody's reafirma ratings e perspectiva estavel. Fonte pt.org.br (acessivel).",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "reposicao 26-28/08", "resultado": "fato de 27/08 validado em pt.org.br, 200" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "ECO",
+          "titulo": "Moody's reafirma ratings da Petrobras e muda perspectiva de 'sob revisão' para estável",
+          "data_evento": "2026-08-27",
+          "fonte_primaria": "https://pt.org.br/moodys-elimina-risco-de-rebaixamento-da-petrobras/",
+          "tags": ["rating", "reafirmacao", "perspectiva estavel", "moodys"],
+          "impacto_credito": "A Moody's reafirmou os ratings da Petrobras e encerrou a revisao para possivel rebaixamento, fixando perspectiva estavel, apos a entrega do balanco auditado. Elimina o risco de rebaixamento de curto prazo; a Fitch tambem reafirmou os ratings. Sinal positivo de credito.",
+          "memo_acontecimento": "Moody's reafirma ratings da Petrobras e move perspectiva para estavel.",
+          "memo_importancia_credito": "Fim da revisao para possivel rebaixamento, reducao do risco de curto prazo.",
+          "memo_monitorar": "Proximas acoes de rating das agencias; evolucao da politica de dividendos.",
+          "_confianca": 0.95
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  },
+  {
+    "empresa": "Multiplan",
+    "setor": "Real Estate e Construção",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Multiplan",
+      "setor": "Real Estate e Construção",
+      "sem_eventos": false,
+      "cobertura_nota": "Reposicao da varredura perdida 26-28/08 (REPOSIC1). Fato de 27/08: captacao de R$ 300 mi via CRI. Fonte ADVFN (acessivel).",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "reposicao 26-28/08", "resultado": "fato de 27/08 validado em ADVFN, 200" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "ECO",
+          "titulo": "Multiplan capta R$ 300 milhões via CRI com rating brAAA(sf) para financiar expansão",
+          "data_evento": "2026-08-27",
+          "fonte_primaria": "https://br.advfn.com/jornal/2026/08/multiplan-capta-r-300-milhoes-com-cris-para-financiar-expansao-e-novos-empreendimentos",
+          "tags": ["captacao", "cri", "rating", "acesso ao mercado"],
+          "impacto_credito": "Captacao de R$ 300 milhoes via CRI lastreado em debentures da 17a emissao, com rating brAAA(sf) atribuido pela S&P, destinada a expansao e novos empreendimentos. Acesso ao mercado de capitais em condicoes favoraveis, sinal positivo de liquidez.",
+          "memo_acontecimento": "Multiplan capta R$ 300 mi via CRI com rating brAAA(sf).",
+          "memo_importancia_credito": "Acesso ao mercado de capitais em condicoes favoraveis, sinal positivo de liquidez.",
+          "memo_monitorar": "Uso dos recursos; alavancagem apos investimentos.",
+          "_confianca": 0.95
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  }
+]

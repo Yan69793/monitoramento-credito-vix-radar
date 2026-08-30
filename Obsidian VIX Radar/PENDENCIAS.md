@@ -11,9 +11,66 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 29/08 (noite) — P1, ABERTO (SENTINELA-DIAPERDIDO1): a Sentinela perdeu a sexta-feira inteira sem executar uma vez e sem sinal em lugar nenhum
+
+> **Status:** ABERTO. Achado da auditoria geral de 29/08 (noite), medido ao vivo.
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** `Get-ScheduledTaskInfo`, `Get-WinEvent` (Operational), `ls logs/routines/`
+> **Condição de Obsolescência:** cai quando existir vigia que acuse dia útil sem log da Sentinela, com prova das duas pontas colada
+
+Nenhuma execução em 29/08 (sexta, dia útil): 0 eventos da task no log Operational do Task Scheduler, contra 108 eventos no dia 28/08 (controle positivo do detector) e 1845 eventos de outras tasks registrados hoje no mesmo log. Não existe `vixradar-sentinela_20260829.log`. A task reporta `State Ready`, `LastRunTime 28/08 17:55`, `LastTaskResult 0`, `NextRunTime 31/08 09:25` e `NumberOfMissedRuns 0`, ou seja, tudo verde enquanto o dia inteiro se perdeu.
+
+Mecânica. As duas triggers são semanais Seg-Sex com âncora às 09h25/09h55 e repetição `PT1H por PT8H` com `StopAtDurationEnd`, e `StartWhenAvailable=True`. A máquina dormiu depois das 07h (monitor rodou 07:00:03; o sinal local seguinte é o retry às 13:30:01) e as duas âncoras caíram no sono. A cadeia de repetição pertence à instância da âncora: âncora perdida, cadeia morta. A máquina estava comprovadamente acordada às 13:30 e das 14:35 em diante (reboot às 14:34), com os slots 13:55, 14:25, 15:25 a 17:55 pela frente, e nada disparou. O catch-up do `StartWhenAvailable` não ressuscitou a âncora e o scheduler nem contabilizou miss.
+
+Impacto do dia: a varredura completa (atrasada, 13h30 a 15h10) deferiu 60 emissores da cauda por orçamento, e os slots da tarde que drenariam até 48 desses gatilhos de dívida (teto 8 por execução) não existiram. Não houve fato novo da CVM perdido (próxima publicação prevista 30/08), o que reduz o dano de hoje, não a classe.
+
+**Causa raiz.** Trigger de âncora com repetição é frágil a sono e boot por desenho do Windows, e a Sentinela é a única rotina de produção sem vigia de entrega: o `retry-vixradar.ps1` cobre só noturno/matinal e o `monitor-tasks.ps1` das 07h avalia a entrega de ontem dessas duas. O caso "não rodou nenhuma vez no dia" não tem detector para ela, mesma família do WATCHDOG-NAOINICIOU1 fechado ontem para as irmãs.
+
+**Correção proposta.** Incluir a Sentinela nas rotinas por evidência de entrega do `monitor-tasks.ps1` (dia útil sem `vixradar-sentinela_YYYYMMDD.log` = erro nomeado no sumário e no email) e avaliar segunda âncora de meio-dia (13h25/13h55) para sono matinal não custar o dia inteiro.
+
+**Guarda exigida.** Prova de duas pontas do vigia novo: dia útil sem log reprova nomeando a rotina, dia com log aceita, saída crua colada.
+
+---
+
+## 29/08 (noite) — P2, ABERTO (AGENDASEM-TRAVA1): AgendaSemanal morta no lote 3 desde 26/08, escalada pelo monitor há 3 dias e sem tratamento
+
+> **Status:** ABERTO. Falha conhecida do monitor (`ESCALADO`), sem entrada nesta fila até agora.
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** `logs/monitor-tasks/monitor_20260829.log` e `logs/routines/vixradar-agenda-semanal_20260826.log`
+> **Condição de Obsolescência:** cai quando uma execução completar os 20 stale ou quando a causa da morte no lote 3 for determinada e corrigida
+
+Em 26/08 22h (quarta, janela regular) a rotina rodou saudável até o meio: preflight ok, OAuth ok, lote 1 (Engie, Energisa, Copel, ISA) e lote 2 (Omega, Rumo, Simpar, Vamos) com 8 OK, e morreu ao iniciar o lote 3 (Santos Brasil, EcoRodovias, JSL, Embraer) às 22:14:44, sem linha `FIM:`, stderr de 0 bytes, exit `0x40010004` no Scheduler. 8 dos 20 emissores stale atualizados, 12 não. O `monitor-tasks.ps1` acusa e escala desde 27/08 (`idade=3d ESCALADO` no log de 29/08), com email diário ao operador, e ninguém fechou o item.
+
+O padrão (morte no `claude -p` com stderr vazio) é o mesmo dos incidentes de 27 a 30/07, cujas causas variaram (settings contaminado, OAuth). A causa desta ocorrência não foi determinada.
+
+**Correção proposta.** Observar a janela natural de domingo 30/08 22h. Se completar, fechar como transitório com o log colado. Se morrer de novo no lote 3, investigar o lote específico (payload/timeout) com o stderr redirecionado por lote, como a matinal já faz.
+
+**Guarda existente.** O monitor já detecta e escala. O que faltou foi o elo monitor → fila de pendências: alerta repetido sem dono vira ruído (HEALTHWATCH3). Esta entrada é o elo.
+
+---
+
+## 29/08 (noite) — P2, ABERTO (FALLBACKTTL1): o cache de último recurso expira em 24h e o dia 28/08 sem varredura provou o apagamento
+
+> **Status:** ABERTO. Exige deploy de Worker (candidato a entrar no v4.9.222 junto com o VERIFCACHE-ROUNDTRIP1).
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** auditoria geral 29/08 (noite), leitura de `api/src/worker.js:15817-15862` e varredura dos `expirationTtl: 86400`
+> **Condição de Obsolescência:** cai quando o put de `fallback:` tiver TTL >= 2x o intervalo de gravação, com a regra VOLTTL1 citada no código
+
+`salvarCacheUltimoResorte` grava `fallback:{empresa}` com `expirationTtl: 86400` (`api/src/worker.js:15845`) e existe leitura de recuperação (`:15862`). O escritor é a varredura diária. Em 28/08 não houve varredura nenhuma (gap já documentado no WATCHDOG-NAOINICIOU1), então as cópias de 27/08 expiraram ~24h depois e o fallback dos 103 emissores ficou vazio até a varredura de 29/08 ~15h. Agravante: o próprio bloco preserva eventos Tier1/Fato Relevante por 30 dias entre escritas (ADR-040, `:15822-15842`), lógica que depende da chave sobreviver entre escritas; com TTL igual ao intervalo, um único dia sem rotina apaga também os preservados.
+
+A regra já existe: VOLTTL1 (20/08), TTL >= 2x o intervalo de gravação. O fix da época alcançou só `cotacoes:volatilidade:v1` (86400 → 259200). Os demais `expirationTtl: 86400` do Worker foram varridos nesta auditoria e são dedups e tokens de 24h intencionais (reenvio de email admin, `reset:`, `notificar_rotina`, relatório diário), sem violação.
+
+**Correção proposta.** `expirationTtl: 86400 * 3` no put de `fallback:` (1 linha).
+
+**Causa raiz.** A regra VOLTTL1 nasceu de um incidente e foi aplicada só ao caso do incidente, sem varredura dos outros puts alimentados por rotina diária.
+
+**Guarda sistêmica.** Item permanente novo na matriz da skill de auditoria geral: varrer `expirationTtl` de 1 dia e casar cada um com a cadência do escritor (feito nesta sessão, ver `references/audit-matrix.md`).
+
+---
+
 ## 29/08 (tarde) — P0, ABERTO (SCANFALLBACK-MORTO1): o fallback de varredura nunca rodou uma vez, e o histórico verde dele é do caminho que não faz nada
 
-> **Status:** CORRIGIDO NA BRANCH, aguarda merge em main para valer no cron. Secret `ANTHROPIC_API_KEY` criado pelo operador em 29/08 e pré-check de secrets adicionado ao workflow (`ab2622f`).
+> **Status:** CORRIGIDO E NO AR EM MAIN desde 29/08 (auditoria da noite mediu: `git branch -r --contains ab2622f` devolve `origin/main`), pré-check ativo no cron. Falta só a primeira execução real com o gate aberto para fechar. Secret `ANTHROPIC_API_KEY` criado pelo operador em 29/08 e pré-check de secrets adicionado ao workflow (`ab2622f`).
 > **Data da Versão:** 2026-08-29
 > **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08, medida em `gh run list` e `gh secret list` ao vivo
 > **Condição de Obsolescência:** cai quando `scan-emergencia.yml` completar uma execução com o gate aberto
@@ -105,11 +162,13 @@ o script deve sair diferente de 0 e emitir alerta pelo mesmo canal do
 **Guarda exigida.** Prova de duas pontas, o vigia reprova no dia sem log depois do
 horário e aceita no dia com `FIM:` válido, com a saída crua colada.
 
+**Adendo 29/08 (noite), auditoria geral.** A única tentativa real de envio do alerta novo falhou. O log `retry-vixradar-noturno_20260829.log` registra às 15:19:06 `AVISO: falha ao alertar rotina faltante: Impossível conectar-se ao servidor remoto`, ou seja, o `exit 1` funcionou mas o email não saiu. O transporte em si está bom: `Invoke-WebRequest` GET em `https://api.vixradar.com/` sob `powershell.exe` 5.1 devolveu 200 nesta auditoria, então a falha foi transitória (provável janela pós-boot, reboot às 14:34). O bloco de alerta é uma tentativa única dentro de `try/catch`. Recomendação: 2 tentativas com pausa curta no bloco de alerta, e considerar entregue só quando um alerta real chegar (prova de entrega, não de tentativa).
+
 ---
 
 ## 29/08 (noite) — P2, CORRIGIDO (FRESCORNOTIFY1): o frescor-check reprovava e o aviso morria dentro do GitHub
 
-> **Status:** CORRIGIDO em 29/08 (`a1c5283`), aguarda merge em main para valer no cron. Passo `Notificar queda de frescor` com `if: failure()`, mesma `action=notificar_rotina` do watch de health, dedup do Worker por rotina/dia (NOTIFYRL1), no máximo 1 email por dia.
+> **Status:** CORRIGIDO E NO AR EM MAIN desde 29/08 (auditoria da noite mediu: `git branch -r --contains a1c5283` devolve `origin/main`), passo ativo no cron. Passo `Notificar queda de frescor` com `if: failure()`, mesma `action=notificar_rotina` do watch de health, dedup do Worker por rotina/dia (NOTIFYRL1), no máximo 1 email por dia. Prova de duas pontas em execução real segue pendente do primeiro gate que abrir.
 > **Data da Versão:** 2026-08-29
 > **Origem do Registro:** auditoria `/vix-radar-general-audit` em 29/08; o `frescor-check.yml` reprovou em 28/08 e 29/08 (evento mais novo de 25/08) e o passo único do workflow morreu sem canal de aviso
 > **Condição de Obsolescência:** cai quando o passo de notificação enviar alerta numa falha real de frescor, com a saída do GitHub colada
@@ -121,6 +180,27 @@ O workflow reprovava com `INGESTAO PARADA` e ninguém ficava sabendo, o alerta e
 **Correção aplicada.** Passo que roda só em falha (`if: failure()`), re-deriva o detalhe do `admin_health_check` para nomear o campo (EVENTOFRESCOR1/HEALTHWATCH3) e chama `notificar_rotina` com `rotina=frescor-ingestao`. Verificado na sessão: YAML válido e contrato do Worker conferido (POST com chave errada → 403 `Acesso negado.`, a action existe e rejeita chave inválida, nenhum email enviado).
 
 **Guarda exigida.** O `if: failure()` cobre a regressão: se o gate voltar a reprovar, o alerta sai. Prova de duas pontas em execução real fica pendente do primeiro gate que abrir depois do merge em main.
+
+---
+
+## 29/08 — P1, CORRIGIDO (REPOSIC1): dia perdido de varredura re-ancorou o desenvolvimento em fato antigo; nasce a skill de reposição
+
+> **Status:** CORRIGIDO em 29/08. Reposição executada e verificada em produção (Braskem 28/08 CRÍTICO, Oncoclínicas 27/08 CRÍTICO, Multiplan 27/08 ECO, Petrobras 26/08 ECO). Guarda = skill nova `repor-varredura` + script + prompt anti-ancoragem, todos commitados.
+> **Data da Versão:** 2026-08-29
+> **Origem do Registro:** sessão de investigação do feed preso em 25/08, medição ao vivo via `dados_para_analise`
+> **Condição de Obsolescência:** cai quando existir vigia que acuse dia útil sem varredura e a skill de reposição fizer parte do procedimento padrão pós-gap, com prova das duas pontas colada
+
+O feed ficou preso em 25/08. Três causas somadas, medidas: (a) a CVM parou de publicar em 25/08 (ZIP 404, já tratado no CVMURL404); (b) as varreduras de 26 e 27/08 rodaram 103/103 mas ancoram evento pela data do **fato**, e os fatos novos encontrados (Oncoclínicas, Braskem) eram continuação de saga datada em 20 e 24/08, então nenhuma data nova entrou; (c) **28/08 não teve varredura nenhuma** (app do Claude Desktop fechado, WATCHDOG-NAOINICIOU1 nascido do mesmo gap).
+
+A passada de 29/08 re-ancorou o desenvolvimento novo em fato antigo: em vez de caçar fatos datados na janela perdida, reapresentou a narrativa conhecida com a data velha. Esse é o defeito REPOSIC1, a **re-ancoragem**: a varredura voltou a rodar, o enredo avançou, e o feed não andou porque nenhum evento novo com data na janela foi criado.
+
+A reposição foi feita como caçada dirigida com verificação de fonte real. Dois achados da busca mostraram por que a data tem que sair da fonte, nunca do resumo: "Moody's reafirma Petrobras 27/08" (pt.org.br) era artigo de 2015, e "Fitch eleva Petrobras 26/08" era de 2025. O Worker rejeitou a primeira corretamente. O fato real da Petrobras na janela (linha de crédito R$ 2,35 bi à Braskem, 26/08) entrou.
+
+**Causa raiz.** O sistema tinha detector de "rotina não rodou" (nascendo, WATCHDOG-NAOINICIOU1) mas nenhum procedimento de "rotina não rodou, e agora?" A passada seguinte simplesmente continua de onde está, e o gap de dias fica sem fatos datados nele. A detecção sem reposição deixa o buraco permanentemente aberto.
+
+**Correção aplicada.** Skill `repor-varredura` (`.claude/skills/repor-varredura/`): detecta o gap (logs sem `FIM:` + max `data_evento`), monta alvos de crédito datados na janela perdida com verificação de data real na fonte (regra de ouro anti-hallucination, `article:published_time`/`datePublished`/`<time datetime>` no HTML), submete via `receber_analise` pelo script `scripts/repor-varredura.ps1` e confirma que o max `data_evento` avançou. O prompt `scripts/repor-varredura-prompt.md` carrega a regra anti-ancoragem: evento vira do fato, não do enredo, nova decisão na saga vira evento datado na janela, nunca dobra no fato antigo.
+
+**Guarda sistêmica.** A skill é o procedimento padrão pós-gap. Prova das duas pontas na própria reposição: antes, max `data_evento` 25/08; depois, 28/08, com os 4 eventos confirmados em `eventos_historicos`.
 
 ---
 

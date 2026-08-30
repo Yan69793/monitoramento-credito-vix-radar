@@ -1,6 +1,38 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-29 (sessão P1/P2/P3)
+Última atualização: 2026-08-29 (noite, segunda auditoria geral do dia)
+
+> [!info] 29/08 (noite) — auditoria geral readonly com trabalho v4.9.222 em voo. 3 achados novos, todos registrados.
+> **Status:** vigente · **Data da Versão:** 2026-08-29 · **Origem do Registro:** auditoria `/vix-radar-general-audit` (noite),
+> medições ao vivo (health, Scheduler, event log, suíte local) · **Condição de Obsolescência:** cai quando
+> SENTINELA-DIAPERDIDO1, AGENDASEM-TRAVA1 e FALLBACKTTL1 fecharem na PENDENCIAS.
+>
+> Correção de estado: o merge da `fix/silent-green-2026-08-27` **já chegou em `main`/`origin/main`**
+> (`ab2622f` e `a1c5283` contidos em `origin/main`, medido), então o pré-check do scan-emergencia e a
+> notificação do frescor-check já valem no cron. O que este arquivo dizia de manhã ("merge pendente") caducou.
+>
+> Achados novos, detalhe na PENDENCIAS: **P1 SENTINELA-DIAPERDIDO1** (Sentinela não executou nenhuma vez na
+> sexta 29/08, âncora 09h25/09h55 perdida no sono da máquina mata a cadeia de repetição do dia, task toda verde,
+> nenhum vigia cobre); **P2 AGENDASEM-TRAVA1** (AgendaSemanal morta no lote 3 desde 26/08, exit 0x40010004,
+> monitor escalando há 3 dias sem dono); **P2 FALLBACKTTL1** (`fallback:{empresa}` com TTL de 24h, o gap de
+> 28/08 apagou o cache de último recurso dos 103, viola a regra VOLTTL1). Adendo no WATCHDOG-NAOINICIOU1: a
+> única tentativa real do alerta novo falhou por conexão (transporte testado ok depois, recomendada retentativa).
+>
+> **P1 REPOSIC1 CORRIGIDO — feed preso em 25/08 tinha uma terceira causa além da CVM: 28/08 não teve varredura
+> e a passada de 29/08 re-ancorou o desenvolvimento em fato antigo.** Reposição executada e verificada em
+> produção (Braskem 28/08 CRÍTICO, Oncoclínicas 27/08 CRÍTICO, Multiplan 27/08 ECO, Petrobras 26/08 ECO, max
+> `data_evento` 25/08 → 28/08). Guarda = skill nova `/repor-varredura` + `scripts/repor-varredura.ps1` +
+> prompt anti-ancoragem. Dois achados de busca mostraram por que data sai da fonte, nunca do resumo: "Moody's
+> reafirma Petrobras 27/08" era artigo de 2015 e "Fitch eleva Petrobras 26/08" era de 2025, o Worker rejeitou
+> a primeira corretamente. Detalhe na PENDENCIAS.
+>
+> Trabalho em voo de outra sessão (plano v4.9.222, Fases 1.1 a 1.3) revisado sem tocar: EWSFLOOR1 (piso como
+> metadado), MATERIALSAT1 (boost de tag amortecido no CRITICO) e BRIEFDEDUP1 (dedup do top 10 do briefing),
+> com bump v202.34 já sincronizado no deploy_zip do index. Suíte local com o código em voo: **141/141 em 17
+> arquivos** (inclui os 3 testes novos untracked). Nota de revisão registrada: `score_calculado` não inclui o
+> bônus de +5 do "Padrão de deterioração", então o contrafactual "sem piso" subestima em 5 pontos quando
+> nSinaisRisco>=3; e os 4 módulos de `app/js` ainda divergem do `deploy_zip` (o `deploy-pages.ps1` sincroniza
+> no deploy, conferir o gate 3.4).
 
 > [!info] 29/08 (tarde) — auditoria geral fechada, P0, P1, P2 e P3 corrigidos na branch `fix/silent-green-2026-08-27`.
 > **Status:** vigente · **Data da Versão:** 2026-08-29 · **Origem do Registro:** sessão de correção
@@ -18,7 +50,8 @@
 > `FRESCORNOTIFY1`: `frescor-check.yml` ganhou passo `if: failure()` de notificação (`a1c5283`).
 > P3: docs commitados (CLAUDE.md, ARQUITETURA-TECNICA, recado `92 - Vistoria Feed Noticias`).
 > Portão: HTTP 200, `ok:true`, v4.9.221.
-> **Ação pendente do operador:** merge da branch em `main` para P0 e P2 valerem no cron.
+> ~~**Ação pendente do operador:** merge da branch em `main` para P0 e P2 valerem no cron.~~
+> **Feito: o merge chegou em `main`/`origin/main` (medido na auditoria da noite de 29/08), guardas ativas no cron.**
 > `VERIFCACHE-ROUNDTRIP1` segue ABERTO (exige deploy).
 
 > [!info] 26/08 (tarde) — deploy v4.9.221: TTL de `cvm:documentos` unificado e telemetria de atribuição CVM ligada.
@@ -422,7 +455,11 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
-- **29/08 (tarde), P0/P1/P2/P3 da auditoria geral fechados na branch `fix/silent-green-2026-08-27`:** `SCANFALLBACK-MORTO1` (secret `ANTHROPIC_API_KEY` criado pelo operador + pré-check de secrets, `ab2622f`), `WATCHDOG-NAOINICIOU1` (`retry-vixradar.ps1` alerta e sai 1 no dia sem log, `5acbca2`, efetivo local), `FRESCORNOTIFY1` (`frescor-check.yml` com passo `if: failure()` de notificação, `a1c5283`), P3 docs. Feed diagnosticado como verdadeiro: sem evento >= 26/08 em produção (MAX 25/08, TOTAL 496). **Pendente:** merge em `main` para P0 e P2 valerem no cron. `VERIFCACHE-ROUNDTRIP1` segue ABERTO (exige deploy). Detalhe em `PENDENCIAS.md`
+- **29/08 (noite), P1 ABERTO (SENTINELA-DIAPERDIDO1):** a Sentinela não executou nenhuma vez na sexta 29/08 (0 eventos no Operational contra 108 no dia anterior, sem log do dia, task toda verde com `NextRunTime` já em segunda). Âncora 09h25/09h55 perdida no sono da máquina mata a cadeia de repetição do dia e `StartWhenAvailable` não ressuscita. Nenhum vigia cobre a ausência dela. Correção proposta: entrega da Sentinela vigiada no `monitor-tasks.ps1` + segunda âncora de meio-dia. Detalhe em `PENDENCIAS.md`
+- **29/08 (noite), P2 ABERTO (AGENDASEM-TRAVA1):** AgendaSemanal morreu no lote 3 em 26/08 (exit `0x40010004`, stderr vazio, 8/20 stale atualizados), monitor escala há 3 dias sem dono. Observar a janela de domingo 30/08 22h; se repetir, investigar o lote. Detalhe em `PENDENCIAS.md`
+- **29/08 (noite), P2 ABERTO (FALLBACKTTL1):** `fallback:{empresa}` com `expirationTtl: 86400` (worker.js:15845); o dia 28/08 sem varredura apagou o cache de último recurso dos 103 emissores, violando a regra VOLTTL1 (TTL >= 2x o intervalo). Fix de 1 linha, exige deploy, candidato ao v4.9.222 junto com o VERIFCACHE-ROUNDTRIP1. Detalhe em `PENDENCIAS.md`
+- **RESOLVIDO 29/08 (REPOSIC1):** o feed preso em 25/08 tinha três causas, e a terceira era nossa e sem guarda: 28/08 não teve varredura e a passada de 29/08 re-ancorou o desenvolvimento em fato antigo em vez de criar evento datado na janela. Reposição executada (Braskem 28/08 CRÍTICO, Oncoclínicas 27/08 CRÍTICO, Multiplan 27/08 ECO, Petrobras 26/08 ECO), max `data_evento` 25/08 → 28/08 confirmado. Guarda = skill `/repor-varredura` (`.claude/skills/repor-varredura/`, registrada no router) + `scripts/repor-varredura.ps1` + `scripts/repor-varredura-prompt.md` com regra anti-ancoragem e verificação de data real na fonte. Detalhe em `PENDENCIAS.md`
+- **29/08 (tarde), P0/P1/P2/P3 da auditoria geral fechados na branch `fix/silent-green-2026-08-27`** (merge em `main` confirmado na noite de 29/08, guardas já valem no cron)**:** `SCANFALLBACK-MORTO1` (secret `ANTHROPIC_API_KEY` criado pelo operador + pré-check de secrets, `ab2622f`), `WATCHDOG-NAOINICIOU1` (`retry-vixradar.ps1` alerta e sai 1 no dia sem log, `5acbca2`, efetivo local), `FRESCORNOTIFY1` (`frescor-check.yml` com passo `if: failure()` de notificação, `a1c5283`), P3 docs. Feed diagnosticado como verdadeiro: sem evento >= 26/08 em produção (MAX 25/08, TOTAL 496). **Pendente:** merge em `main` para P0 e P2 valerem no cron. `VERIFCACHE-ROUNDTRIP1` segue ABERTO (exige deploy). Detalhe em `PENDENCIAS.md`
 - **ATUALIZADO 26/08 (INVERSAO-CD1, P1), scheduler real achado e alterado, ativação é BLOQUEIO EXTERNO.** O fechamento de 25/08 dizia "sem superfície programável" e estava errado: o agendamento dos três vive no CCD store `%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`, lido pelo app só no initialize, não no Cowork nem no Task Scheduler. Quatro provas: (1) `cronExpression` bate com os horários observados; (2) `lastRunAt` casa com o `INICIO:` dos logs (matinal 15:08Z→12:09 BRT, noturno 21:56Z→18:57 BRT, verif 21:56Z); (3) `main.log` do app mostra o CCD disparando a sessão com o cron e `missed` (catch-up que explica os atrasos de 12:08/18:56); (4) o Cowork responde "not initialized" e as tasks nativas estão `Disabled` de propósito. **Alteração aplicada 26/08, backup `scheduled-tasks.json.bak-20260826`:** `vixradar-matinal` `0 18 * * 1-5` (18h Seg-Sex), `vixradar-noturno` `0 10 * * *` (10h diário), a verificação passou de um cron cartesiano para **duas tasks independentes**: `vixradar-verificacao-async-11h` `0 11 * * *` (11h00) e `vixradar-verificacao-async-1845` `45 18 * * *` (18h45), clonadas do original (SKILL.md + ROUTINES-CLOUD.md em pasta própria, hash idêntico). Sai o disparo espúrio das 11h45 e das 18h00 que o cartesiano introduzia. Estado final: `vixradar-matinal` `0 18 * * 1-5`, `vixradar-noturno` `0 10 * * *`, verificação 11h00 e 18h45. JSON validado, 6 tasks, IDs únicos, as 4 sessões VIX `enabled:true`. **Ação manual mínima, urgente:** o processo do app (`claude.exe` PID 10756) está vivo desde **25/08 18:56**, só lê o arquivo na ativação, e o próximo dispatch em memória (matinal às 10h de hoje) grava o snapshot velho por cima do arquivo. Reiniciar o Claude Desktop **antes das 10h BRT de hoje** para carregar as 4 sessões novas; a sessão que editou roda hospedada por ele e não pode reiniciá-lo. Depois do restart, conferir o próximo `INICIO:` no log. Preservados: `VIXRadar-Matinal/Noturno/Verificacao-Async` `Disabled`, Sentinela habilitada, `Szuchmacher-RetryVixNoturno` 13h30 e `Szuchmacher-RetryVixMatinal` 21h30. Detalhe em `Obsidian VIX Radar/PENDENCIAS.md`
 - **RESOLVIDO 25/08 (SENTINELA-SYNC1, Worker v4.9.220 + script):** o SLA passa a contar **da publicação na CVM** até a análise sair. O bloqueio era de credencial, não de arquitetura, e a solução já existia na máquina: cofre DPAPI `CurrentUser` em `api/.admin_credencial.dat`, lido por `api/Get-VixAdminCredential.ps1`, já usado por seis scripts vivos. Reusar não cria segredo novo. Quando o `HEAD` acusa `Last-Modified` novo, a Sentinela manda o Worker reingerir na hora via `admin_sync_cvm_auto`. `zip_last_modified` só avança no estado quando o sync volta `ok`, então falha não consome o gatilho. Sem cofre a rotina **não aborta**, registra o atraso medido e segue com o acervo atual. Prova ao vivo: detectou publicação de 961 min atrás, sincronizou em 5 segundos (`documentos=2126 empresas=506`) e planejou, contra as até 4h32 de espera pelo cron
 - **RESOLVIDO 25/08 (STATUSGRUDA1, Worker v4.9.220):** `_status` sofria o mesmo descarte do DEFERGRUDA2 no ramo "semana nova sem evento, semana velha com evento". Ele descreve a última varredura, não o acervo de eventos, então o registro mais recente manda. Dano concreto: o `inconclusivo_stale_breakout` do noturno, que existe para quebrar loop de cobertura incompleta, ficava cego. `_motivo` viaja junto por só fazer sentido ao lado do `_status` que o gerou. Conteúdo continua vindo da semana velha, com teste travando isso. Guarda: 3 testes novos, os 3 falham contra o código anterior
