@@ -503,9 +503,12 @@ foreach ($ref in $srcRefs) {
 
 if (-not $ok) { Write-Host "`nDEPLOY publicado mas validacao divergiu, investigar propagacao/cache. NADA commitado." -ForegroundColor Red; exit 2 }
 
-# --- 5.5 Sincroniza a versao declarada em CLAUDE.md/README.md --------------
+# --- 5.5 Sincroniza a versao declarada em README.md ------------------------
 # Mesmo racional do deploy-worker.ps1: sem isto a doc so atualiza se alguem
-# lembrar depois do deploy.
+# lembrar depois do deploy. Alvo que parar de casar sai em AVISO amarelo e nao
+# aborta o deploy de proposito (SYNCDOC-MUDO1, 30/08): aqui producao ja esta
+# publicada e o git ainda nao foi commitado, entao morrer neste ponto deixaria
+# producao a frente do repo. Quem precisa de exit code usa -Strict.
 & (Join-Path $PSScriptRoot "sync-version-docs.ps1") -FrontendVersion $ver
 
 # --- 6. Sync com o git -----------------------------------------------------
