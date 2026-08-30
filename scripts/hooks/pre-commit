@@ -49,7 +49,11 @@
 # a outra metade, do lado do git.
 
 FALHOU=0
-STAGEDIR=".git/lint-staged"
+# git-dir em worktree NAO e ".git" (e arquivo apontando pro gitdir comum), entao
+# path fixo ".git/lint-staged" nunca materializava blob em worktree e os gates
+# pulavam em silencio. Resolve o git-dir real: ".git" na main, ".git/worktrees/x"
+# num worktree, ambos relativos ao cwd (raiz do repo, garantido pelo git).
+STAGEDIR="$(git rev-parse --git-dir 2>/dev/null || echo .git)/lint-staged"
 rm -rf "$STAGEDIR"
 
 # Materializa o blob do indice dentro do repo, nunca em /tmp: caminho MSYS (/c/...)
@@ -289,38 +293,43 @@ fi
 # Em 20/08/2026 e de novo em 30/08/2026 o bump manual do CACHE_VERSION deixou os
 # ?v= dos imports para tras, e o deploy abortou no gate 3.2/3.4. A segunda vez
 # mostrou que aviso nao basta: o erro passou por commit e so o deploy pegou.
-# Este gate reprova no commit quando index.html em staging carrega ?v= diferente
-# do CACHE_VERSION declarado no proprio arquivo, ou quando modulo app/js staged
-# importa com ?v= desalinhado. Corrigir: pwsh ./scripts/bump-cache-version.ps1
-# -NewVersion <vX.Y>, que alinha os 5 pontos juntos, nunca edicao a mao.
-STAGED_IDX=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(index\.html|deploy_zip/index\.html)$' || true)
+# Este gate reprova no commit quando index.html OU modulo app/js em staging
+# carrega ?v= diferente do CACHE_VERSION declarado no index do proximo commit.
+# A referencia do CACHE_VERSION e SEMPRE o blob do git index em :app/index.html
+# (git show), nunca o working tree: o blob do index e exatamente o conteudo que
+# o proximo commit vai carregar, esteja app/index.html em staging ou nao (se nao
+# estiver, o blob do index e o do HEAD). Gate dispara se index OU modulo entrou
+# no staging, nao so se o index veio junto.
+# Corrigir: pwsh ./scripts/bump-cache-version.ps1 -NewVersion <vX.Y>, que alinha
+# os 5 pontos juntos, nunca edicao a mao.
+STAGED_CACHE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(index\.html|deploy_zip/index\.html)$' || true)
+STAGED_MODS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(js|deploy_zip/app/js)/.*\.js$' || true)
 
-if [ -n "$STAGED_IDX" ] && command -v node >/dev/null 2>&1; then
-    # Referencia = index EM STAGING se existir; senao o index do working tree
-    # (fonte canonica do CACHE_VERSION). Materializa o blob do index staged para
-    # validar o conteudo que vira commit, nunca o disco.
-    IDX_REF=""
-    for f in $STAGED_IDX; do
-        stage_blob "$f" || continue
-        if [ -z "$IDX_REF" ]; then IDX_REF="$STAGEDIR/$f"; fi
-    done
-    [ -z "$IDX_REF" ] && [ -f "app/index.html" ] && IDX_REF="app/index.html"
-
-    # Modulos app/js staged, se houver (imports internos com ?v= proprio).
-    MODS=""
-    STAGED_MODS=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(js|deploy_zip/app/js)/.*\.js$' || true)
-    if [ -n "$STAGED_MODS" ]; then
-        while IFS= read -r f; do
-            [ -z "$f" ] && continue
-            stage_blob "$f" || continue
-            MODS="$MODS $STAGEDIR/$f"
-        done <<MODS_EOF
+if { [ -n "$STAGED_CACHE" ] || [ -n "$STAGED_MODS" ]; } && command -v node >/dev/null 2>&1; then
+    IDX_REF="$STAGEDIR/app/index.html"
+    if mkdir -p "$STAGEDIR/app" 2>/dev/null && git show :app/index.html > "$IDX_REF" 2>/dev/null; then
+        GATE7_FALHOU=0
+        # O index em si: CACHE_VERSION do proprio arquivo contra os ?v= internos.
+        if ! node "$PWD/scripts/check-cache-version.mjs" "$IDX_REF"; then
+            GATE7_FALHOU=1
+        fi
+        # Cada modulo staged contra o CACHE_VERSION do index. Path sempre entre
+        # aspas: montar lista com espaco a esquerda e expandir sem aspas faz o
+        # MSYS bash quebrar o path e o node nao enxergar o modulo (medido 30/08,
+        # o gate deixava modulo divergente passar). Chamada por arquivo evita.
+        if [ -n "$STAGED_MODS" ]; then
+            while IFS= read -r f; do
+                [ -z "$f" ] && continue
+                stage_blob "$f" || continue
+                if ! node "$PWD/scripts/check-cache-version.mjs" "$IDX_REF" "$STAGEDIR/$f"; then
+                    GATE7_FALHOU=1
+                fi
+            done <<MODS_EOF
 $STAGED_MODS
 MODS_EOF
-    fi
+        fi
 
-    if [ -n "$IDX_REF" ]; then
-        if ! node "$PWD/scripts/check-cache-version.mjs" "$IDX_REF" $MODS; then
+        if [ "$GATE7_FALHOU" -eq 1 ]; then
             echo ""
             echo "GATE 7 (CACHEBUMP1) REPROVOU: ?v= desalinhado com CACHE_VERSION."
             echo "  Alinhe com o script, nunca a mao (a edicao manual so troca o"
