@@ -263,4 +263,29 @@ describe("CALVAL-V2: validacao de fonte da agenda de resultados", () => {
     expect(petro.motivo).toBe("confirmar_divulgacao");
     expect(petro.trimestres_alvo.length).toBeGreaterThan(0);
   });
+
+  it("AGENDA401: op=calendario e publico, 200 sem token (2 pontas)", async () => {
+    // Ponta 1 (reprova antes): GET sem auth. Antes da correcao o gate JWT
+    // (worker.js:17627) devolvia 401 "Autenticacao necessaria." para o visitor
+    // anonimo, e o frontend chama ?op=calendario sem header de auth
+    // (app/index.html:5034 e :5206), matando o badge e o overlay da agenda.
+    const anon = await SELF.fetch("https://example.com/?op=calendario", { method: "GET" });
+    expect(anon.status).toBe(200);
+    const bodyAnon = await anon.json();
+    expect(bodyAnon.ok).toBe(true);
+    expect(bodyAnon.emissores).toBeTruthy();
+
+    // escopo=agenda tambem publico. Rebuild garante a chave KV no teste,
+    // sem depender da ordem dos testes.
+    const reb = await rebuild();
+    expect(reb.status).toBe(200);
+    const anonAg = await SELF.fetch("https://example.com/?op=calendario&escopo=agenda&horizonte=90", { method: "GET" });
+    expect(anonAg.status).toBe(200);
+    expect((await anonAg.json()).ok).toBe(true);
+
+    // Ponta 2 (aceita): com JWT continua respondendo 200, painel logado intacto.
+    const aut = await getCalendario();
+    expect(aut.status).toBe(200);
+    expect((await aut.json()).ok).toBe(true);
+  });
 });

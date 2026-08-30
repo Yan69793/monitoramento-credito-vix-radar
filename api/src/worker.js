@@ -14601,6 +14601,19 @@ function calcularEWS(empresa, anomalias, eventos, eventosArquivo) {
       justificativa_curta: _trunc(_evR.memo_importancia_credito || _evR.memo_acontecimento || "", 300)
     });
   }
+  // EWSFLOOR1 (auditoria 2026-08-29, plano Fase 1.1): o piso sobe o score para
+  // um minimo. A decomposicao ja somava igual ao score final (medido no repro com
+  // estado real: soma dos `pontos` fecha dentro de 0,3 para os 4 emissores de
+  // producao), entao nao ha soma quebrada. O que o cliente via de errado era o
+  // componente de piso carregar `peso_max: piso` ao lado de `pontos: delta`, o que
+  // le a leitura como se o piso fosse um ponto somado ("+50" para a Light quando o
+  // score calculado e 14,5). A partir daqui a resposta carrega o piso como metadado
+  // explicito: piso_aplicado, piso_valor, piso_causa e score_calculado (o valor
+  // que os sinais dariam sem piso). O frontend passa a renderizar o piso como
+  // minimo aplicado, nao como contribuicao de ponto.
+  var _scoreCalculado = score;
+  var _pisoEfetivo = 0;
+  var _pisoEfetivoCausa = "";
   var _piso = 0;
   var _pisoCausa = "";
   var _pisoTrigTitulo = "";
@@ -14653,6 +14666,8 @@ function calcularEWS(empresa, anomalias, eventos, eventosArquivo) {
       materialidade_credito: "Evento oficial de fonte prim\xE1ria (Tier 1) com piso m\xEDnimo de score EWS",
       justificativa_curta: "Piso aplicado por tratar-se de evento cr\xEDtico de fonte oficial sem sinal de mercado proporcional"
     });
+    _pisoEfetivo = _piso;
+    _pisoEfetivoCausa = _pisoCausa;
     score = _piso;
   }
   if (nSinaisRisco >= 3) {
@@ -14828,6 +14843,8 @@ function calcularEWS(empresa, anomalias, eventos, eventosArquivo) {
         : "Piso aplicado por julgamento interno sem fonte datada \u2014 pontua, mas nao e fato verificado",
       justificativa_curta: _rjDetalhe
     });
+    _pisoEfetivo = _rjCfg.piso;
+    _pisoEfetivoCausa = _rjCfg.causa;
     score = _rjCfg.piso;
   }
   const resultado = classificarEWS(score);
@@ -14835,6 +14852,14 @@ function calcularEWS(empresa, anomalias, eventos, eventosArquivo) {
   resultado.total_fatores = decomposicao.length;
   resultado.empresa = empresa;
   resultado.calculado_em = hoje;
+  // EWSFLOOR1: piso explicito como metadado. `score_calculado` e o valor que os
+  // sinais dariam sem piso (capturado antes do primeiro bloco de piso); `piso_valor`
+  // e o piso que efetivamente subiu o score; `piso_aplicado` diz se algum piso agiu.
+  // `score` (de classificarEWS) ja carrega o resultado final com o piso somado.
+  resultado.score_calculado = Math.round(_scoreCalculado * 10) / 10;
+  resultado.piso_aplicado = _pisoEfetivo > 0;
+  resultado.piso_valor = _pisoEfetivo || null;
+  resultado.piso_causa = _pisoEfetivoCausa || null;
   return resultado;
 }
 __name(calcularEWS, "calcularEWS");
@@ -16106,7 +16131,21 @@ function enriquecerEvento(evento, setor) {
     for (var i = 0; i < evento.tags.length; i++) {
       var tLow = (evento.tags[i] || "").toLowerCase();
       if (MATERIALIDADE_POR_TAG[tLow] !== void 0) {
-        tagBoost = Math.max(tagBoost, MATERIALIDADE_POR_TAG[tLow] - 50);
+        var boost = MATERIALIDADE_POR_TAG[tLow] - 50;
+        // MATERIALSAT1 (auditoria 2026-08-29, Fase 1.2). O boost da tag
+        // empilhava inteiro sobre a base CRITICO (80) e (80+40)*setor deu
+        // ate 108, cortado em 100 pelo Math.min. Medido no fixture de
+        // producao: 8 eventos de rating travados em 100 no topo do ranking
+        // (Raizen 2, Cosan 3, Rumo 1, Braskem 2), todos do mesmo valor e sem
+        // hierarquia, e o top 10 inteiro virava empate por ordem de insercao.
+        // A base CRITICO ja carrega severidade propria; o boost da tag e o
+        // mesmo de um evento RELEVANTE. Dampiar pela metade so no CRITICO
+        // (boost > 0, o negativo de mercado continua como esta) mantem
+        // RELEVANTE/ECO intactos e diferencia o topo: na Energia Elétrica,
+        // rating 90, liquidez/juridico 88, alavancagem 86, governanca 83,
+        // m&a 81; nada mais passa de 95 (Financeiro/rating).
+        if (evento.classificacao === "CRITICO" && boost > 0) boost = boost / 2;
+        tagBoost = Math.max(tagBoost, boost);
       }
       if (!playbook && PLAYBOOKS[tLow]) {
         playbook = PLAYBOOKS[tLow];
@@ -17004,6 +17043,36 @@ __name2(handleCoberturaStatus, "handleCoberturaStatus");
 __name22(handleCoberturaStatus, "handleCoberturaStatus");
 __name222(handleCoberturaStatus, "handleCoberturaStatus");
 __name2222(handleCoberturaStatus, "handleCoberturaStatus");
+// BRIEFDEDUP1 (auditoria 2026-08-29, Fase 1.3). Medido no top 10 do briefing de
+// producao: 6 historias em 10 vagas. Cosan 16/07 (3 eventos, todos tag rating),
+// Braskem 17/08 (2, o segundo com titulo byte identico) e CSN 31/07 (2) ocupavam
+// 4 vagas com o mesmo fato de credito. A normalizacao de titulo existente nao
+// colapsa esses casos (medido 29/08: 7 titulos Cosan de 16/07 normalizam todos
+// diferentes), entao a identidade aqui e (empresa, data_evento, tag de
+// materialidade), com titulo normalizado como fallback para evento sem tag de
+// materialidade. So atua no top_eventos do briefing; a lista completa do emissor
+// continua intacta no detalhe.
+var _TAGS_MAT_POR_PESO = Object.keys(MATERIALIDADE_POR_TAG).sort(function(a, b) {
+  return MATERIALIDADE_POR_TAG[b] - MATERIALIDADE_POR_TAG[a];
+});
+function _tagMaterialidadeDoEvento(ev) {
+  var tags = Array.isArray(ev && ev.tags) ? ev.tags : [];
+  for (var ti = 0; ti < _TAGS_MAT_POR_PESO.length; ti++) {
+    var t = _TAGS_MAT_POR_PESO[ti];
+    for (var gi = 0; gi < tags.length; gi++) {
+      if (String(tags[gi]).toLowerCase().trim() === t) return t;
+    }
+  }
+  return "";
+}
+__name(_tagMaterialidadeDoEvento, "_tagMaterialidadeDoEvento");
+function _chaveDedupBriefing(ev) {
+  var d = (ev && ev.data_evento ? String(ev.data_evento) : "").slice(0, 10);
+  var e = (ev && ev.empresa ? String(ev.empresa) : "").toLowerCase().trim();
+  var t = _tagMaterialidadeDoEvento(ev) || normalizarTituloParaDedup(ev && ev.titulo);
+  return d + "|" + e + "|" + t;
+}
+__name(_chaveDedupBriefing, "_chaveDedupBriefing");
 async function montarBriefingInterno(env2222, _estado) {
   var agora = obterAgoraBRT();
   var semana = semanaISO(agora);
@@ -17043,7 +17112,19 @@ async function montarBriefingInterno(env2222, _estado) {
     var mb = b._enriquecimento ? b._enriquecimento.materialidade : 0;
     return mb - ma;
   });
-  var topEventos = todosEventos.slice(0, 10).map(function(ev2) {
+  // BRIEFDEDUP1: dedup semantico do top_eventos antes do slice. O sort e
+  // estavel, entao o primeiro evento de cada (empresa, data, tag de
+  // materialidade) e o de maior materialidade.
+  var vistosBriefing = /* @__PURE__ */ new Set();
+  var dedupTop = [];
+  for (var evi = 0; evi < todosEventos.length; evi++) {
+    var evd = todosEventos[evi];
+    var kd = _chaveDedupBriefing(evd);
+    if (vistosBriefing.has(kd)) continue;
+    vistosBriefing.add(kd);
+    dedupTop.push(evd);
+  }
+  var topEventos = dedupTop.slice(0, 10).map(function(ev2) {
     return {
       empresa: ev2.empresa,
       titulo: ev2.titulo,
@@ -17543,7 +17624,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (op === "briefing_executivo") return await _sanitizarResponseBody(await handleBriefingExecutivo(env2222, request));
       if (op === "historico_emissor") return await _sanitizarResponseBody(await handleHistoricoEmissor(url, env2222, request));
       if (op === "comparar") return await _sanitizarResponseBody(await handleCompararEmissores(url, env2222, request));
-      if (op === "state" || op === "anomalias" || op === "ews" || op === "serie" || op === "minha_analise" || op === "calendario") {
+      if (op === "state" || op === "anomalias" || op === "ews" || op === "serie" || op === "minha_analise") {
         const _tk = extractToken(request);
         const _usr = _tk ? await verificarJWT(env2222, _tk) : null;
         if (!_usr) return resp({ ok: false, erro: "Autentica\xE7\xE3o necess\xE1ria." }, 401, request);
@@ -19839,6 +19920,13 @@ var worker_com_sentry = Sentry.withSentry(
   worker_default
 );
 export {
+  carregarEstadoMultiSemana,
+  SETOR_DE_EMPRESA,
+  normalizarMojibake,
+  enriquecerEvento,
+  MATERIALIDADE_POR_TAG,
+  CRITICIDADE_SETOR,
+  _chaveDedupBriefing,
   EmissorDO,
   UsuarioDO,
   ConfigDO,

@@ -1,0 +1,6817 @@
+[
+ {
+  "empresa": "Raízen",
+  "titulo": "Justica de Sao Paulo homologa o plano de recuperacao extraju",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "homologacao_judicial",
+   "rating"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Recuperacao Extrajudicial de R$ 65 bilhoes - maior da histor",
+  "data_evento": "2026-07-28",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao-extrajudicial",
+   "reestruturacao",
+   "rating",
+   "alavancagem"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Moody's rebaixa rating corporativo da Cosan para B1",
+  "data_evento": "2026-07-16",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "rebaixamento",
+   "moodys",
+   "divida"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Moody's rebaixa o rating da Cosan e aponta dificuldade de de",
+  "data_evento": "2026-07-16",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "rebaixamento",
+   "holding",
+   "alavancagem"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Duplo Downgrade Moody's e S&P - Cosan Julho 2026",
+  "data_evento": "2026-07-16",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "downgrade",
+   "raizen",
+   "holding"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Moody's rebaixa a Rumo de Ba2 para Ba3 com perspectiva negat",
+  "data_evento": "2026-07-17",
+  "classificacao": "CRITICO",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rebaixamento",
+   "rating",
+   "Moody's",
+   "Ba3"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Braskem",
+  "titulo": "Fitch rebaixa a Braskem para default restrito apos calote em",
+  "data_evento": "2026-08-17",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "default",
+   "rebaixamento",
+   "cross_default"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "Braskem",
+  "titulo": "Fitch rebaixa a Braskem para default restrito apos calote em",
+  "data_evento": "2026-08-17",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "default",
+   "rebaixamento",
+   "cross_default"
+  ],
+  "materialidade": 85
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa a CSN de B para CCC+ e aponta alavancagem insu",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rating",
+   "rebaixamento",
+   "alavancagem",
+   "refinanciamento"
+  ],
+  "materialidade": 80
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa a CSN de B para CCC+ e mantem observacao negat",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rating",
+   "rebaixamento",
+   "alavancagem",
+   "refinanciamento"
+  ],
+  "materialidade": 80
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa CSN de B para CCC+ com observação negativa e p",
+  "data_evento": "2026-08-07",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento",
+   "rating",
+   "alavancagem",
+   "refinanciamento"
+  ],
+  "materialidade": 80
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Fitch tira a Light do default e eleva o rating nacional de D",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "upgrade",
+   "saida_de_default",
+   "reestruturacao_divida"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Fitch eleva rating da Light de D para B- após conclusão da r",
+  "data_evento": "2026-08-19",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "upgrade",
+   "reestruturacao_divida",
+   "recuperacao_judicial"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Fitch retira a Light do default e eleva rating de D para B- ",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "upgrade",
+   "saida_default",
+   "reestruturacao_divida"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Auren Energia",
+  "titulo": "Fitch revisa perspectiva de rating para negativa",
+  "data_evento": "2026-07-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "perspectiva_negativa",
+   "alavancagem"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "CEMIG",
+  "titulo": "S&P eleva a Cemig e subsidiarias para brAAA, nota maxima na ",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "elevacao",
+   "alavancagem",
+   "custo_captacao"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "CEMIG",
+  "titulo": "Fitch atribui AAA(bra) as propostas de novas emissoes de deb",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "emissao_debentures",
+   "captacao",
+   "investimento"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "CEMIG",
+  "titulo": "S&P eleva rating da CEMIG e controladas para brAAA",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "upgrade",
+   "S&P"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "CEMIG",
+  "titulo": "S&P corta a perspectiva do rating global BB- da Cemig de pos",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "perspectiva",
+   "S&P",
+   "alavancagem"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Eneva capta até R$ 3 bilhões via FIDC com rating brAAA para ",
+  "data_evento": "2026-08-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "captacao_estruturada",
+   "rating",
+   "fidc",
+   "capex"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "S&P Global Ratings mantem o rating brAAA com perspectiva est",
+  "data_evento": "2026-08-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "S&P",
+   "brAAA",
+   "perspectiva_estavel"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Fitch reafirma AAA(bra) da Eneva com alerta sobre alavancage",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "alavancagem",
+   "investimento",
+   "Fitch"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Fitch confirma o rating AAA(bra) da Eneva com perspectiva es",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "fitch",
+   "alavancagem",
+   "energia"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Rating brAAA reafirmado em meio a alavancagem em alta e rece",
+  "data_evento": "2026-07-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating",
+   "alavancagem",
+   "acordo_judicial"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "AES Brasil",
+  "titulo": "Fitch revisa outlook da controladora Auren para negativo",
+  "data_evento": "2026-07-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Outros",
+  "tags": [
+   "rating",
+   "revisao_outlook",
+   "alavancagem"
+  ],
+  "materialidade": 77
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa CSN de B para CCC+ e projeta divida acima de R",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento",
+   "fitch",
+   "moodys",
+   "alavancagem"
+  ],
+  "materialidade": 76
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN troca 77% dos bonds 2028 por papel 2030 a 11% após rebai",
+  "data_evento": "2026-08-11",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento",
+   "liability_management",
+   "refinanciamento",
+   "alavancagem"
+  ],
+  "materialidade": 76
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa rating da CSN para CCC+ com perspectiva negati",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento_rating",
+   "alavancagem",
+   "siderurgia",
+   "Fitch"
+  ],
+  "materialidade": 76
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa rating da CSN de B para CCC+ com alerta sobre ",
+  "data_evento": "2026-08-03",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento_rating",
+   "fitch",
+   "alavancagem",
+   "siderurgia"
+  ],
+  "materialidade": 76
+ },
+ {
+  "empresa": "BTG Pactual",
+  "titulo": "BTG Pactual lança a 2ª emissão de debêntures e encerra ofert",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "funding",
+   "debentures",
+   "oferta_publica",
+   "banco"
+  ],
+  "materialidade": 76
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida: 2T26 piora forte, margem EBITDA em 6,3% encosta no ",
+  "data_evento": "2026-08-12",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "resultado",
+   "sinistralidade",
+   "alavancagem",
+   "rating"
+  ],
+  "materialidade": 75
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raizen acelera venda de ativos e controladora Cosan e rebaix",
+  "data_evento": "2026-07-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao extrajudicial",
+   "venda de ativos",
+   "rating"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Conversão de Debêntures — Light em Recuperação Judicial",
+  "data_evento": "2026-07-24",
+  "classificacao": "CRITICO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "RJ",
+   "debentures",
+   "conversão",
+   "reestruturação"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar reporta 2T26 com alavancagem de 2,8x, menor nível des",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "rating",
+   "2T26"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar protocola na CVM o relatório de rating nacional da S&",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rating",
+   "cvm",
+   "alavancagem",
+   "custo_divida"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Fitch retira a observacao negativa e reafirma BB-, mas mante",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "Fitch",
+   "cobertura_de_juros",
+   "desalavancagem"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Fitch retira a Cosan da observacao negativa e reafirma BB- e",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rating",
+   "perspectiva_negativa",
+   "desalavancagem",
+   "holding"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Fitch reitera ratings da Cosan e retira da observação negati",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "Fitch",
+   "rating",
+   "observacao_negativa",
+   "alavancagem"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "S&P rebaixa rating da Cosan para B+ com outlook negativo",
+  "data_evento": "2026-07-08",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rebaixamento",
+   "rating"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Moody's rebaixa Rumo de Ba2 para Ba3 com perspectiva negativ",
+  "data_evento": "2026-07-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rebaixamento",
+   "rating",
+   "logística",
+   "contágio Cosan"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "S&P e Moody's rebaixam rating da Rumo por contágio da crise ",
+  "data_evento": "2026-07-09",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rating",
+   "rebaixamento",
+   "contagio_controladora",
+   "cosan"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Moody's rebaixa rating da Rumo para Ba3 com perspectiva nega",
+  "data_evento": "2026-07-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rating",
+   "rebaixamento",
+   "cosan"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Conselho da Eneva aprova alienação de até 240 mil debêntures",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "debentures",
+   "tesouraria",
+   "captacao",
+   "liquidez"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Eneva recebe R$ 340 milhões de acordo consensual no Off-Grid",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "liquidez",
+   "acordo_consensual",
+   "off_grid"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "JSL",
+  "titulo": "JSL reduz alavancagem pelo quinto trimestre seguido, de 3,2 ",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "desalavancagem",
+   "resultado_trimestral",
+   "custo_da_divida",
+   "rating"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "JSL",
+  "titulo": "JSL protocola relatorio de rating da S&P em escala nacional ",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rating",
+   "alavancagem",
+   "resultado_trimestral",
+   "logistica"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "JSL",
+  "titulo": "JSL antecipa por fato relevante a prévia do segundo trimestr",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "previa_resultado",
+   "desalavancagem",
+   "rating",
+   "transportes_logistica"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Arteris",
+  "titulo": "Arteris perde a Regis Bittencourt no processo competitivo da",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "concessao",
+   "perda_de_ativo",
+   "rating",
+   "creditwatch"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol conclui aquisição de 51% da Brava Energia",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "Ecopetrol",
+   "mudanca de controle",
+   "M&A",
+   "rating"
+  ],
+  "materialidade": 72
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça defere recuperação extrajudicial da Oncoclínicas par",
+  "data_evento": "2026-08-05",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "stay_period",
+   "saude"
+  ],
+  "materialidade": 71
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Oncoclinicas amplia prejuizo para R$ 475,7 milhoes no 2T26 c",
+  "data_evento": "2026-08-14",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "prejuizo",
+   "geracao_de_caixa"
+  ],
+  "materialidade": 71
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça defere recuperação extrajudicial da Oncoclínicas par",
+  "data_evento": "2026-08-04",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "stay_period",
+   "alavancagem",
+   "rebaixamento"
+  ],
+  "materialidade": 71
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Pedido de Recuperação Extrajudicial de R$5,1 bilhões",
+  "data_evento": "2026-07-13",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao extrajudicial",
+   "reestruturacao de divida",
+   "saude",
+   "default"
+  ],
+  "materialidade": 69
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Justica de SP homologa a maior recuperacao extrajudicial do ",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "default",
+   "reestruturacao",
+   "homologacao"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Justica de Sao Paulo homologa o plano de recuperacao extraju",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "homologacao",
+   "conversao_divida_acoes",
+   "reestruturacao"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Justica homologa o plano de recuperacao extrajudicial da Rai",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "homologacao",
+   "desagio",
+   "conversao_em_capital"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raízen tem plano de recuperação extrajudicial homologado e r",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "homologacao_plano",
+   "alavancagem_elevada",
+   "rebaixamento_rating"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Justiça de São Paulo homologa a maior recuperação extrajudic",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "homologacao",
+   "conversao_divida_acoes",
+   "aumento_capital"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Justiça homologa recuperação extrajudicial de R$ 61,4 bilhõe",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "mudanca_controle",
+   "Shell",
+   "homologacao"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Justiça homologa plano que renegocia R$ 61,4 bilhões em dívi",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "homologacao",
+   "debentures"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raízen comunica venda da Usina Caarapó, no Mato Grosso do Su",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "venda_ativos",
+   "desinvestimento",
+   "liquidez",
+   "sucroenergetico"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Plano de RE homologado em 30/07/2026 - R$65B, cisão em duas ",
+  "data_evento": "2026-07-30",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "homologacao_plano",
+   "reestruturacao_divida",
+   "cisao_societaria"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "S&P rebaixa Cosan controladora para B+ por exposição à Raíze",
+  "data_evento": "2026-07-08",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rebaixamento rating",
+   "cosan",
+   "s&p",
+   "impairment"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa CSN para CCC+, citando deterioração da flexibi",
+  "data_evento": "2026-07-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rating",
+   "Fitch",
+   "CCC+",
+   "rebaixamento"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Moody's mantém B2 da Aegea mas muda perspectiva para negativ",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "rating",
+   "perspectiva negativa",
+   "saneamento",
+   "alavancagem"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Acionistas aprovam aumento de capital de até R$ 2,1 bi para ",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_capital",
+   "desalavancagem",
+   "rating"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aumento de capital de ate R$ 2,1 bi para evitar violacao de ",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento-de-capital",
+   "covenant",
+   "rating",
+   "alavancagem"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Moody's Rebaixa Cosan de Ba3 para B1 em 16/07/2026",
+  "data_evento": "2026-07-16",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rebaixamento_moody",
+   "raizen"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "S&P rebaixa rating da Cosan de BB- para B+ por efeito da ree",
+  "data_evento": "2026-07-08",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rebaixamento_rating",
+   "raizen",
+   "petroleo_gas"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Triple downgrade (Moody's B1, S&P B+, Fitch) com perspectiva",
+  "data_evento": "2026-07-16",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "downgrade",
+   "moodys",
+   "sp-global",
+   "fitch"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Melhor resultado operacional da história da mineradora contr",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado",
+   "controladora",
+   "dividendos",
+   "risco_de_grupo"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Fitch rebaixa rating da controladora CSN para CCC+ e amplia ",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rating",
+   "controladora",
+   "downgrade",
+   "risco_contagio"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Fitch rebaixa a controladora CSN para CCC+ e projeta dívida ",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento",
+   "rating",
+   "Fitch",
+   "controladora"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Auren Energia",
+  "titulo": "Auren fecha o segundo trimestre de 2026 com prejuízo de R$ 3",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "alavancagem",
+   "prejuizo",
+   "curtailment",
+   "energia_renovavel"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Auren Energia",
+  "titulo": "Alavancagem da Auren sobe para 5,3 vezes no segundo trimestr",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "alavancagem",
+   "resultado_trimestral",
+   "energia_eletrica",
+   "debentures"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Auren Energia",
+  "titulo": "Alavancagem da Auren sobe para 5,3 vezes no 2T26 com EBITDA ",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "curtailment",
+   "eolica"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "EcoRodovias",
+  "titulo": "Alavancagem da EcoRodovias sobe para 4,1 vezes e lucro recor",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "alavancagem",
+   "resultado trimestral",
+   "capex",
+   "debêntures"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Equatorial Energia",
+  "titulo": "Alavancagem da Equatorial sobe de 2,7 para 3,1 vezes no segu",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "alavancagem",
+   "aquisicao",
+   "saneamento",
+   "resultado_trimestral"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Equatorial Energia",
+  "titulo": "Resultado 2T26 com forte aumento da alavancagem",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "2T26"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Dívida líquida sobe 28 por cento para R$ 19,8 bilhões e desp",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "despesa_financeira",
+   "energia_eletrica"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Lucro da Eneva cai 91,4% no 2T26 e alavancagem sobe de 2,8 p",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "fim_contrato_regulado",
+   "regulatorio"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Eneva vê lucro cair 91,4% no segundo trimestre e alavancagem",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "aquisicao",
+   "rating_reafirmado"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Eneva inicia operação comercial da UTE Azulão I em meio a al",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "nova_capacidade",
+   "alavancagem",
+   "resultado_trimestral",
+   "energia_eletrica"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Eneva vê alavancagem subir para 3,18x e lucro do 2T26 despen",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "divida",
+   "2T26"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Eneva tem queda de 91% no lucro do 2T26 e alta da alavancage",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "lucro"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Copel",
+  "titulo": "Copel eleva a meta de alavancagem e dobra o prazo de converg",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "alavancagem",
+   "política financeira",
+   "dividendos",
+   "estrutura de capital"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "ISA Energia",
+  "titulo": "ISA Energia eleva dívida líquida a R$ 16,3 bilhões e alavanc",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "divida",
+   "ipca"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Taesa",
+  "titulo": "Taesa mantem distribuicao de proventos com alavancagem em 4,",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "alavancagem",
+   "dividendos",
+   "resultado_trimestral",
+   "transmissao"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Taesa",
+  "titulo": "Taesa conclui compra de cinco transmissoras da Energisa por ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "m_and_a",
+   "aquisicao",
+   "transmissao",
+   "alavancagem"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Taesa",
+  "titulo": "Taesa conclui aquisição de cinco ativos de transmissão da En",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "fusao_aquisicao",
+   "transmissao",
+   "alavancagem",
+   "energia_eletrica"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Taesa",
+  "titulo": "Taesa conclui a compra de cinco transmissoras da Energisa po",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "aquisicao",
+   "alavancagem",
+   "emprestimo_ponte",
+   "transmissao"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Taesa",
+  "titulo": "Acionistas aprovam a compra de ativos de transmissão da Ener",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "M&A",
+   "alavancagem",
+   "transmissao",
+   "assembleia"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Omega Energia",
+  "titulo": "Serena Geração convoca debenturistas para flexibilizar cláus",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "covenant",
+   "debêntures",
+   "assembleia de debenturistas",
+   "alavancagem"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "BRK Ambiental",
+  "titulo": "Fitch afirma rating A+(bra) da BRK Ambiental",
+  "data_evento": "2026-07-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "rating",
+   "afirmacao",
+   "Fitch",
+   "debenture"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Nexa Resources",
+  "titulo": "S&P coloca rating BBB- da Nexa em CreditWatch Negativo",
+  "data_evento": "2026-07-03",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "CreditWatch",
+   "rating",
+   "mudanca de controle"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Braskem",
+  "titulo": "Conselho aprova pedido de recuperacao extrajudicial para ree",
+  "data_evento": "2026-08-24",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "default",
+   "credor"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Braskem",
+  "titulo": "Fitch rebaixa a Braskem de C para RD por nao pagamento de ju",
+  "data_evento": "2026-08-17",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rebaixamento",
+   "default",
+   "fitch",
+   "nao_pagamento_juros"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Braskem",
+  "titulo": "Braskem protocola pedido de recuperacao extrajudicial para r",
+  "data_evento": "2026-08-24",
+  "classificacao": "CRITICO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "bondholders",
+   "default"
+  ],
+  "materialidade": 68
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "ANS aplica medida cautelar que barra reajustes e rescisões d",
+  "data_evento": "2026-08-20",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "ANS",
+   "regulatorio",
+   "saude_suplementar",
+   "medida_cautelar"
+  ],
+  "materialidade": 66
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Assembleia de debenturistas da 2ª emissão em meio à recupera",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "debenturistas",
+   "alavancagem",
+   "rating"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raizen reduz prejuizo no 1T da safra 2026/27 mas mantem divi",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "alavancagem",
+   "rating_historico",
+   "resultado_trimestral",
+   "agronegocio_combustiveis"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN recebe propostas vinculantes pela totalidade da CSN Cime",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "desinvestimento",
+   "desalavancagem",
+   "M&A",
+   "liquidez"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN confirma ter recebido propostas vinculantes pela CSN Cim",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "venda_de_ativo",
+   "desalavancagem",
+   "liquidez",
+   "emprestimo_ponte"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN conclui troca de bonds de até US$ 1,3 bilhão e contrata ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "bond_swap",
+   "refinanciamento",
+   "liquidez"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN conclui troca de US$ 1 bilhão em bonds com adesão de 77,",
+  "data_evento": "2026-08-12",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "liability_management",
+   "bonds",
+   "alongamento",
+   "distressed_exchange"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa CSN de B para CCC+ com observacao negativa por",
+  "data_evento": "2026-08-03",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento_rating",
+   "fitch",
+   "observacao_negativa",
+   "venda_ativos"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa CSN de 'B' para 'CCC+' e mantem observacao neg",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rebaixamento_rating",
+   "fitch",
+   "troca_de_divida",
+   "alavancagem_insustentavel"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Fitch rebaixa CSN para CCC+; acao cai -49% no ano; prejuizo ",
+  "data_evento": "2026-08-03",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "Fitch",
+   "CCC+",
+   "prejuizo"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Segundo trimestre traz a menor alavancagem desde a abertura ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "holding",
+   "alavancagem"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar vende CS Porto Aratu por R$ 1,8 bi para ICTSI em desi",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "venda-ativo",
+   "desinvestimento",
+   "alavancagem",
+   "porto"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa capta R$ 700 milhões na 23ª emissão de debêntures e res",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "emissao_debentures",
+   "gestao_passivo",
+   "resgate_antecipado",
+   "rating"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa melhora operação no 2T26, mas alavancagem sobe para 3,5",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "covenant",
+   "rating"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa precifica 23ª emissão de debêntures de R$ 700 milhões c",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "debentures",
+   "refinanciamento",
+   "resgate_antecipado",
+   "rating"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan aliena 12% do portfolio da Radar por R$1,85 bi (Fato R",
+  "data_evento": "2026-07-09",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "venda de ativos",
+   "Radar",
+   "desinvestimento",
+   "alavancagem"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Rumo entrega lucro acima do esperado no 2T26 mas eleva a ala",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "divida_liquida",
+   "capex"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Dívida líquida da Rumo sobe 22% para R$ 17,3 bilhões e alava",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "endividamento",
+   "alavancagem",
+   "resultado",
+   "debentures"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Rumo fecha o 2T26 com dívida líquida 22% maior e alavancagem",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "divida_liquida",
+   "alavancagem",
+   "capex"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Rumo entrega segundo trimestre acima do consenso, mas alavan",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "volume",
+   "capex"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Rebaixamento Fitch de B para CCC+ com perspectiva negativa",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "rating_downgrade_junk",
+   "alavancagem_critica",
+   "asset_sales"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "EcoRodovias",
+  "titulo": "Alavancagem sobe para 4,1 vezes e lucro recorrente cai 74% n",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "alavancagem",
+   "resultado_trimestral",
+   "capex",
+   "concessao_rodoviaria"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "EcoRodovias",
+  "titulo": "EcoRodovias vê alavancagem subir para 4,1x no 2T26 com lucro",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "rodovias"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Azul",
+  "titulo": "Azul reporta prejuizo ajustado de 1,07 bilhao de reais no se",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "prejuizo",
+   "alavancagem",
+   "pos_reestruturacao"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Azul",
+  "titulo": "Azul reporta prejuizo ajustado de R$ 1,07 bilhao no 2T26 com",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "prejuizo",
+   "pos_chapter_11",
+   "alavancagem"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Azul",
+  "titulo": "Azul reporta prejuízo ajustado de R$ 1,07 bilhão no segundo ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "aviacao",
+   "pos_recuperacao_judicial"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy contrata R$600 milhoes em financiamento com BNDES sob P",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "financiamento",
+   "liquidez",
+   "rebaixamento_rating",
+   "siderurgia"
+  ],
+  "materialidade": 64
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "TJRJ mantém arresto de US$ 1,45 bilhão dos fundos credores e",
+  "data_evento": "2026-08-19",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "arresto",
+   "credores",
+   "TJRJ"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "TJ-RJ marca para 25 de agosto o julgamento que pode restabel",
+  "data_evento": "2026-08-13",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "recuperacao_judicial",
+   "judicial",
+   "liquidez"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Administração judicial alerta que a Oi pode ficar sem recurs",
+  "data_evento": "2026-08-13",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "liquidez",
+   "continuidade_operacional",
+   "falencia",
+   "venda_ativos"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Caixa cai para R$ 19,6 milhões e companhia alerta risco de n",
+  "data_evento": "2026-08-01",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "liquidez",
+   "venda_ativos",
+   "recuperacao_judicial",
+   "risco_continuidade"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Gestor judicial alerta que caixa de R$ 19,6 milhões pode tor",
+  "data_evento": "2026-07-31",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "liquidez",
+   "telecomunicacoes"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Fornecedor corta serviço por inadimplência e derruba operaçã",
+  "data_evento": "2026-08-06",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "default",
+   "inadimplencia",
+   "liquidez",
+   "recuperacao_judicial"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi alerta que a continuidade operacional pode ficar insusten",
+  "data_evento": "2026-08-01",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "liquidez",
+   "recuperacao_judicial",
+   "risco_falencia",
+   "continuidade_operacional"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi pede autorização judicial para adiar verbas rescisórias e",
+  "data_evento": "2026-07-23",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "liquidez",
+   "trabalhista",
+   "recuperacao_judicial",
+   "telecom"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi declara que o caixa se esgota em 10 de agosto e pede à Ju",
+  "data_evento": "2026-07-23",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "liquidez",
+   "risco_continuidade",
+   "recuperacao_judicial",
+   "telecom"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Justica barra venda emergencial de ativos e escancara colaps",
+  "data_evento": "2026-07-28",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "recuperacao judicial",
+   "venda de ativos",
+   "liquidez"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Colapso de caixa iminente com pedido de demissao em massa se",
+  "data_evento": "2026-07-28",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "caixa",
+   "liquidez",
+   "trabalhista",
+   "recuperacao_judicial"
+  ],
+  "materialidade": 63
+ },
+ {
+  "empresa": "BTG Pactual",
+  "titulo": "BTG Pactual conclui a aquisição do HSBC Uruguai e inicia ope",
+  "data_evento": "2026-07-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "M&A",
+   "aquisicao",
+   "capital regulatorio",
+   "financeiro"
+  ],
+  "materialidade": 62
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Prejuizo da Oncoclinicas triplica no 2T26 e alavancagem sobe",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "queda_receita",
+   "liquidez"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça de São Paulo defere a recuperação extrajudicial da O",
+  "data_evento": "2026-08-10",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "protecao_judicial",
+   "reestruturacao_divida",
+   "saude"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça defere recuperação extrajudicial de R$ 5,1 bilhões e",
+  "data_evento": "2026-08-04",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "stay_period",
+   "default",
+   "covenant"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça defere a recuperação extrajudicial da Oncoclínicas e",
+  "data_evento": "2026-08-04",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "deferimento_judicial",
+   "suspensao_cobrancas",
+   "cri"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Oncoclinicas comunica a finalizacao da venda da participacao",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "desinvestimento",
+   "venda_de_ativo",
+   "liquidez",
+   "joint_venture"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Prejuízo de R$ 475,7 milhões no 2T26 e dívida líquida 15% ma",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado",
+   "endividamento",
+   "liquidez",
+   "prejuizo"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Companhia formaliza venda de participacao a investidor da Ar",
+  "data_evento": "2026-08-03",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "venda_de_ativos",
+   "liquidez",
+   "capital",
+   "m_e_a"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Oncoclínicas conclui venda da participação na joint venture ",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "venda_ativo",
+   "saude",
+   "liquidez"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça defere o processamento da recuperação extrajudicial ",
+  "data_evento": "2026-08-04",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "default",
+   "reestruturacao_divida",
+   "stay_period"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Oncoclínicas pede recuperação extrajudicial de R$ 5,1 bilhõe",
+  "data_evento": "2026-07-14",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "saude",
+   "default"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Justiça defere RE e concede stay de 180 dias (04/08/2026)",
+  "data_evento": "2026-08-04",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "deferimento_judicial",
+   "stay_period",
+   "homologacao_risco"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Stay de 180 dias deferido",
+  "data_evento": "2026-08-04",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "RE",
+   "stay"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Oncoclínicas vende participação na Specialized Medical Treat",
+  "data_evento": "2026-07-22",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "desinvestimento",
+   "liquidacao_ativo",
+   "recuperacao_extrajudicial",
+   "arabia_saudita"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Pedido de Recuperação Extrajudicial para reestruturar R$5,1B",
+  "data_evento": "2026-07-13",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "pre_default",
+   "cri_impacto"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Recuperação Extrajudicial protocolada em 13/07/2026 - R$5,1B",
+  "data_evento": "2026-07-13",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao_divida",
+   "liquidez_critica",
+   "caixa_minimo"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Pedido de recuperação extrajudicial para reestruturar R$ 5,1",
+  "data_evento": "2026-07-14",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "default",
+   "covenant"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Venda de participacao na joint venture na Arabia Saudita por",
+  "data_evento": "2026-07-22",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "alienacao",
+   "joint_venture",
+   "liquidez",
+   "desinvestimento"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Debenturistas da Kora Saude rejeitam suspensao de vencimento",
+  "data_evento": "2026-07-23",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "vencimento_antecipado",
+   "recuperacao_extrajudicial",
+   "debentures",
+   "saude"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Kora Saúde em recuperação extrajudicial com exchange de debê",
+  "data_evento": "2026-07-27",
+  "classificacao": "CRITICO",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "distressed_exchange",
+   "debentures",
+   "saude"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN reporta prejuízo de R$ 773 milhões no segundo trimestre ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "prejuizo",
+   "siderurgia"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN registra prejuizo de R$ 773 milhoes no 2T26 com divida l",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "prejuizo",
+   "divida_liquida",
+   "alavancagem"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN conclui troca de US$ 1 bilhão em bonds da CSN Inova com ",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "exchange de dívida",
+   "bonds",
+   "siderurgia",
+   "alavancagem"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Acionistas aprovam aumento de capital de ate R$2,1 bi para c",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento de capital",
+   "alavancagem",
+   "covenant"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar faz descruzamento societario, leva a CS Infra a 100% ",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "reestruturacao_societaria",
+   "concessao",
+   "venda_de_ativo",
+   "governanca"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan aprova delistagem das ADSs na NYSE e venda do terminal",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "venda_de_ativos",
+   "delistagem",
+   "nyse",
+   "reorganizacao_societaria"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Cosan confirma propostas vinculantes por sua fatia de 20,33 ",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "mudanca_de_controle",
+   "estrutura_societaria",
+   "venda_participacao",
+   "governanca"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Venda da fatia da Cosan na Rumo chega a fase de propostas vi",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "estrutura_societaria",
+   "M&A",
+   "concessao",
+   "governanca"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Cosan confirma propostas vinculantes por parte de sua partic",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "composicao_acionaria",
+   "M&A",
+   "Cosan",
+   "desinvestimento"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Troca simultânea no Conselho de Administração e na Diretoria",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "governanca",
+   "troca_de_gestao",
+   "conselho",
+   "diretoria"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Alteração Conselho de Administração",
+  "data_evento": "2026-07-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "governanca",
+   "conselho",
+   "risco_estrategico"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Gerdau",
+  "titulo": "Gerdau reporta 2T26 com lucro de R$ 1,46 bilhão e alavancage",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "desalavancagem",
+   "siderurgia"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Sabesp",
+  "titulo": "Sabesp encadeia a 39ª e a 40ª emissões de debêntures com dív",
+  "data_evento": "2026-08-19",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "debentures",
+   "captacao",
+   "alavancagem",
+   "capex"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Copasa",
+  "titulo": "Divida liquida da Copasa sobe 40 por cento em um ano e alava",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "alavancagem",
+   "resultado trimestral",
+   "capex",
+   "saneamento"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol assume o controle da Brava Energia com 51% do capi",
+  "data_evento": "2026-08-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "mudanca_de_controle",
+   "opa",
+   "controlador_estrangeiro",
+   "desalavancagem"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "OPA Ecopetrol Aprovada CVM - Brava Energia Julho 2026",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "opa",
+   "m&a",
+   "ecopetrol",
+   "consolidacao"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy reverte lucro e vai a prejuizo no 2T26 com alavancagem ",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "prejuizo",
+   "perspectiva_negativa"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy tem prejuízo no segundo trimestre de 2026 e alavancagem",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "covenant",
+   "waiver",
+   "alavancagem"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy troca CFO e DRI com alavancagem subindo para 4,14x",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "governanca",
+   "cfo",
+   "alavancagem",
+   "desalavancagem"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy tem prejuízo de R$ 11 milhões no 2T26 e alavancagem sob",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "reversao_lucro",
+   "pressao_operacional"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy fica abaixo das estimativas no segundo trimestre e vê a",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "cambio",
+   "industria_ciclica"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy reporta 2T26 com alavancagem no pico de 4,0x e projeta ",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "2T26",
+   "desalavancagem"
+  ],
+  "materialidade": 60
+ },
+ {
+  "empresa": "SLC Agrícola",
+  "titulo": "SLC Agrícola: alavancagem salta para 3,09x no 2T26 e vira po",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "divida",
+   "rating"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Energisa",
+  "titulo": "Energisa conclui venda de cinco ativos de transmissão à Taes",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "M&A",
+   "desalavancagem",
+   "transmissao",
+   "fitch"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Unidas",
+  "titulo": "Moody's Local Brasil eleva o rating de emissor da Unidas de ",
+  "data_evento": "2026-08-01",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "rating",
+   "upgrade",
+   "desalavancagem",
+   "refinanciamento"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Unidas",
+  "titulo": "Moody's Local eleva rating da Unidas de AA.br para AA+.br ci",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "rating",
+   "elevacao",
+   "desalavancagem",
+   "debentures"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Grupo Mateus",
+  "titulo": "Fitch reafirma o rating AAA na escala nacional do Grupo Mate",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "Fitch",
+   "AAA escala nacional",
+   "perspectiva estavel"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Grupo Mateus",
+  "titulo": "Fitch reafirma rating AAA(bra) do Grupo Mateus com perspecti",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "Fitch",
+   "AAA(bra)"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Equatorial Energia",
+  "titulo": "CADE aprova sem restrições a aquisição de 30% da Copasa pelo",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "M&A",
+   "saneamento",
+   "Copasa"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Movida",
+  "titulo": "S&P atribui brAA+ à 28ª emissão de debêntures de R$ 1,14 bil",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "debentures",
+   "rating",
+   "gestao_de_passivo",
+   "covenant"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Marfrig",
+  "titulo": "S&P revisa outlook da Marfrig para Negativo",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "rating",
+   "outlook",
+   "alavancagem",
+   "S&P"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Iguatemi",
+  "titulo": "Fitch reitera rating nacional AAA(bra) da Iguatemi com persp",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "rating",
+   "fitch",
+   "afirmacao",
+   "shoppings"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Natura &Co",
+  "titulo": "S&P revisa outlook da Natura Cosméticos de estável para nega",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "outlook negativo",
+   "S&P Global Ratings",
+   "alavancagem"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Natura &Co",
+  "titulo": "S&P revisa perspectiva de rating da Natura &Co para negativa",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "outlook",
+   "S&P",
+   "perspectiva_negativa"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Natura &Co",
+  "titulo": "S&P Global revisa para negativa a perspectiva dos ratings de",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "sp_global",
+   "perspectiva_negativa",
+   "pressao_de_caixa"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Natura &Co",
+  "titulo": "S&P revisa outlook para negativo — risco de downgrade",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "outlook"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Natura &Co",
+  "titulo": "Revisão de perspectiva de crédito S&P para negativa",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating",
+   "perspectiva_negativa",
+   "credito",
+   "sp_global"
+  ],
+  "materialidade": 59
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Recuperacao Extrajudicial protocolada para R$5,1 bilhoes em ",
+  "data_evento": "2026-07-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "reestruturacao",
+   "divida",
+   "alavancagem"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Credores aprovam termos das novas debentures da recuperacao ",
+  "data_evento": "2026-08-13",
+  "classificacao": "CRITICO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "debentures",
+   "going_concern",
+   "reestruturacao"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA aprova Term Sheet com mais de 50% dos credores; plano de",
+  "data_evento": "2026-08-12",
+  "classificacao": "CRITICO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "term_sheet",
+   "reestruturacao_divida",
+   "debentures"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA encerra prazo de adesao ao plano de recuperacao extrajud",
+  "data_evento": "2026-07-13",
+  "classificacao": "CRITICO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "varejo",
+   "desalavancagem",
+   "impugnacao_credores"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Resultado das eleições de opções de pagamento protocolado; p",
+  "data_evento": "2026-07-20",
+  "classificacao": "CRITICO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "credores_dissidentes",
+   "reestruturacao_divida",
+   "rating_CCC"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Plano de RE fecha com 57,49% de credores aderidos em 13/07; ",
+  "data_evento": "2026-07-13",
+  "classificacao": "CRITICO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "adesao_credores",
+   "RE"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aumento de capital de R$ 2,1 bilhoes subscrito por GIC e Ita",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_capital",
+   "estrutura_societaria",
+   "desalavancagem",
+   "governanca"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aegea capitaliza até R$ 2,1 bilhões para desalavancar com ra",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_de_capital",
+   "desalavancagem",
+   "rating_em_revisao",
+   "governanca"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa reduz prejuízo no 2T26 mas alavancagem sobe para 3,52 v",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "covenant",
+   "perimetro_operacional"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS eleva credito rotativo a US$ 4,2 bilhoes e vende 25% da ",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "liquidez",
+   "linha_de_credito",
+   "joint_venture",
+   "fundo_soberano"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS amplia linha de crédito rotativo para US$ 2,65 bilhões a",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "liquidez",
+   "linha_de_credito",
+   "alavancagem",
+   "resultado_trimestral"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Copasa",
+  "titulo": "Cade aprova a venda de 30% da Copasa ao grupo Equatorial e a",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "mudanca_de_controle",
+   "privatizacao",
+   "saneamento",
+   "governanca"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Resultado do segundo trimestre derruba a ação e leva a alava",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "covenant",
+   "margem"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida reporta 2T26 com margem EBITDA quase pela metade e a",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "margem",
+   "alavancagem",
+   "judicializacao"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida tem lucro ajustado em queda de 95,8% no 2T26 e acao ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "deterioracao_resultado",
+   "alavancagem",
+   "saude",
+   "judicializacao"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Fleury",
+  "titulo": "Fleury esclarece à CVM que alavancagem projetada está dentro",
+  "data_evento": "2026-07-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "cvm",
+   "esclarecimento",
+   "alavancagem",
+   "oficio"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Log Commercial Properties",
+  "titulo": "LOG CP vende o Log Recife II por cerca de R$ 210 milhões e c",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_de_ativos",
+   "reciclagem_portfolio",
+   "debentures",
+   "real_estate"
+  ],
+  "materialidade": 56
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Venda de parte da fatia na Rumo chega a fase de propostas vi",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "desinvestimento",
+   "desalavancagem",
+   "M&A",
+   "holding"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Cosan recebe propostas vinculantes pela venda de cerca de 15",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "estrutura_societaria",
+   "mudanca_de_controle",
+   "M&A",
+   "cosan"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Cosan adia para setembro a entrega de propostas pela partici",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "M&A",
+   "controle acionario",
+   "Cosan",
+   "incerteza societaria"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "Santos Brasil",
+  "titulo": "Controladora CMA CGM coloca o terminal da Santos Brasil em j",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "controle_acionario",
+   "M&A",
+   "portos",
+   "estrutura_societaria"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "Tegma",
+  "titulo": "Tegma celebra contrato para aquisição de 70% da Transcopa",
+  "data_evento": "2026-08-08",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "M&A",
+   "Transcopa",
+   "Cade",
+   "financiamento"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Conselho da Brava Energia recomenda aceitacao da OPA da Ecop",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "OPA",
+   "mudanca_de_controle",
+   "M&A",
+   "Ecopetrol"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "Totvs",
+  "titulo": "Totvs levanta R$ 1,5 bilhão na sétima emissão de debêntures ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "emissao_divida",
+   "rating",
+   "gestao_passivo",
+   "debentures"
+  ],
+  "materialidade": 55
+ },
+ {
+  "empresa": "CEMIG",
+  "titulo": "Moody's Local eleva Rating a AAA com Perspectiva Estável",
+  "data_evento": "2026-08-01",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "moody",
+   "rating",
+   "aaa"
+  ],
+  "materialidade": 54
+ },
+ {
+  "empresa": "CPFL Energia",
+  "titulo": "Métricas creditícias saudáveis com acesso estável ao mercado",
+  "data_evento": "2026-07-15",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rating"
+  ],
+  "materialidade": 54
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA amplia prejuizo no 2T26 mas simula forte reducao de alav",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "alavancagem",
+   "varejo",
+   "resultado_trimestral"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA divulga o 2T26 com prejuízo de R$ 252 milhões, receita e",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado_trimestral",
+   "prejuizo",
+   "alavancagem",
+   "divida_liquida"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Perdas ampliadas no 2T26 sob impacto da recuperação extrajud",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado_trimestral",
+   "recuperacao_extrajudicial",
+   "alavancagem",
+   "varejo"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "Prejuizo de R$ 626,3 milhoes no 2T26 com baixa contabil de R",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado",
+   "impairment",
+   "desinvestimento",
+   "alavancagem"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "SLC Agrícola",
+  "titulo": "Alavancagem da SLC Agrícola sobe para cerca de 4,2 vezes no ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "divida",
+   "resultado_trimestral",
+   "agronegocio"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "SLC Agrícola",
+  "titulo": "Alavancagem da SLC Agricola salta de 1,97 para 3,09 vezes em",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "resultado_trimestral",
+   "agronegocio",
+   "arrendamento"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "SLC Agrícola",
+  "titulo": "Alavancagem da SLC Agricola supera o proprio guidance e vai ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "queima_de_caixa",
+   "guidance",
+   "aquisicao"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Vamos elege CFO interino no mesmo mes em que atinge a meta d",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "governanca",
+   "cfo",
+   "alavancagem",
+   "locacao"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Convocação de Assembleia Extraordinária para Ampliação de Ca",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "capital",
+   "governance",
+   "alavancagem"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS propoe fechar o capital da Pilgrim's Pride por troca de ",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "m_e_a",
+   "reorganizacao_societaria",
+   "troca_de_acoes",
+   "alavancagem"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS registra prejuizo de US$ 102 milhoes e alavancagem rompe",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "prejuizo",
+   "dividendos",
+   "politica_financeira"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "Alavancagem sobe para 3,1 vezes e ultrapassa a faixa alvo da",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "faixa_alvo",
+   "dividendos"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS tem prejuízo de US$ 102 milhões no 2T26 e alavancagem so",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "dividendos",
+   "ciclo_gado"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS reporta prejuízo no 2T26 e alavancagem sobe para 3,10x",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultado",
+   "alavancagem",
+   "divida"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Camil Alimentos",
+  "titulo": "Camil reporta salto de alavancagem para 4,7 vezes no primeir",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "divida_liquida",
+   "resultado_trimestral",
+   "queima_de_caixa"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Camil Alimentos",
+  "titulo": "Resultados 1T26 mostram alavancagem em 4,7x e queda de 57,6%",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultados",
+   "alavancagem",
+   "covenant"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Movida",
+  "titulo": "Movida alonga R$ 1,6 bilhão em dívidas e derruba a alavancag",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "gestao_de_passivo",
+   "debentures",
+   "alavancagem",
+   "alongamento_divida"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Marfrig",
+  "titulo": "Marfrig fecha o 2T26 com alavancagem de 3,41 vezes e divida ",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "divida_liquida",
+   "proteina_animal"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Marfrig",
+  "titulo": "Divida liquida da MBRF sobe quase 20% em doze meses e alavan",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "resultado_trimestral",
+   "proteina_animal",
+   "divida_liquida"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Minerva Foods",
+  "titulo": "Queima de R$ 1,1 bilhao em capital de giro no segundo trimes",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "resultado_trimestral",
+   "capital_de_giro",
+   "caixa",
+   "alavancagem"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "São Martinho",
+  "titulo": "Alavancagem da Sao Martinho sobe para 1,59 vez com EBITDA 27",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "alavancagem",
+   "resultado_trimestral",
+   "sucroenergetico",
+   "capital_de_giro"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Even Construtora",
+  "titulo": "Even divulga 2T26 com receita 64,7% menor e alavancagem subi",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem",
+   "divida_liquida",
+   "incorporadora"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Even Construtora",
+  "titulo": "Even tem queda de 64,7 por cento na receita do segundo trime",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado trimestral",
+   "queda de receita",
+   "alavancagem",
+   "divida liquida"
+  ],
+  "materialidade": 53
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Tribunal de Justica do Rio decreta a falencia do Grupo Oi e ",
+  "data_evento": "2026-08-25",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "recuperacao_judicial",
+   "default",
+   "suspensao_negociacao"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Tribunal de Justiça do Rio decreta a falência da Oi e encerr",
+  "data_evento": "2026-08-25",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "recuperacao_judicial_encerrada",
+   "default",
+   "massa_falida"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Tribunal de Justiça do Rio confirma a falência da Oi e encer",
+  "data_evento": "2026-08-25",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "default",
+   "liquidacao",
+   "recuperacao_judicial_encerrada"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Justica do Rio decreta a falencia do Grupo Oi",
+  "data_evento": "2026-08-25",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "default",
+   "recuperacao_judicial",
+   "liquidacao"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "TJ-RJ retoma em 25/08 o julgamento que pode tornar definitiv",
+  "data_evento": "2026-08-13",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "recuperacao_judicial",
+   "judicial",
+   "risco_de_continuidade"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "TJRJ marca para 25/08/2026 o julgamento da falência definiti",
+  "data_evento": "2026-08-12",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "recuperacao_judicial",
+   "liquidacao_ativos",
+   "telecom"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Quatro balanços adiados e ação a R$ 0,13 elevam alerta sobre",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "governanca",
+   "atraso_balanco",
+   "cvm",
+   "liquidez"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi adia pela quarta vez a divulgação de balanços e acumula q",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "balanço atrasado",
+   "recuperação judicial",
+   "liquidez",
+   "telecom"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Fornecedores cortam serviço da Oi por falta de pagamento e d",
+  "data_evento": "2026-08-06",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "inadimplencia",
+   "fornecedores",
+   "risco_operacional",
+   "telecom"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Fornecedor corta servico e gera apagao em lotericas da Caixa",
+  "data_evento": "2026-08-01",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "apagao",
+   "fornecedor",
+   "caixa_critico"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Colapso financeiro iminente com risco de paralisação em 01/0",
+  "data_evento": "2026-07-29",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "colapso financeiro",
+   "recuperacao judicial",
+   "caixa critico"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Risco de encerramento operacional em agosto - caixa em colap",
+  "data_evento": "2026-07-08",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "falencia",
+   "continuidade_operacional",
+   "caixa",
+   "telecom"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi pede autorizacao judicial para demitir funcionarios sem p",
+  "data_evento": "2026-07-23",
+  "classificacao": "CRITICO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "demissao",
+   "caixa",
+   "trabalhista"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN recebe ofertas vinculantes pela CSN Cimentos em negocio ",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "venda_de_ativo",
+   "desalavancagem",
+   "M&A",
+   "cimentos"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Klabin",
+  "titulo": "Klabin reduz alavancagem para 3,2 vezes mesmo com lucro 34% ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "liquidez",
+   "celulose"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Klabin",
+  "titulo": "Klabin reporta 2T26 com lucro 34% menor e alavancagem caindo",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "2T26",
+   "celulose"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Sabesp",
+  "titulo": "Sabesp mantém assembleia da incorporação das ações da EMAE m",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "reorganizacao societaria",
+   "M&A",
+   "litigio",
+   "saneamento"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "Copasa",
+  "titulo": "Cade aprova a entrada do Grupo Equatorial no capital da Copa",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "mudanca de controle",
+   "M&A",
+   "antitruste",
+   "privatizacao"
+  ],
+  "materialidade": 52
+ },
+ {
+  "empresa": "VLI",
+  "titulo": "TCU alerta sobre prazo crítico para renovação da concessão d",
+  "data_evento": "2026-08-19",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "concessao",
+   "FCA",
+   "TCU",
+   "regulatorio"
+  ],
+  "materialidade": 51
+ },
+ {
+  "empresa": "Klabin",
+  "titulo": "Desalavancagem da Klabin trava com geracao de caixa livre pr",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "alavancagem",
+   "resultado_trimestral",
+   "papel_celulose",
+   "geracao_de_caixa"
+  ],
+  "materialidade": 49
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS anuncia Wesley Batista Filho como novo CEO global a part",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "governanca",
+   "sucessao_ceo",
+   "familia_controladora"
+  ],
+  "materialidade": 49
+ },
+ {
+  "empresa": "Suzano",
+  "titulo": "Entra em vigor o acordo de acionistas da Suzano que redesenh",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "acordo_de_acionistas",
+   "estrutura_de_controle",
+   "governanca",
+   "alavancagem"
+  ],
+  "materialidade": 49
+ },
+ {
+  "empresa": "Irani",
+  "titulo": "Captação R$750mi e liquidação antecipada de dívidas",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "captacao",
+   "refi",
+   "alavancagem"
+  ],
+  "materialidade": 49
+ },
+ {
+  "empresa": "Minerva Foods",
+  "titulo": "Grupo IZVQ, acionista indireto da Minerva, pede suspensão de",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "acionista_controlador",
+   "recuperacao_extrajudicial",
+   "governanca",
+   "bloco_de_controle"
+  ],
+  "materialidade": 49
+ },
+ {
+  "empresa": "Rede D'Or",
+  "titulo": "Rede D'Or fecha acordo da Atlântica D'Or São Conrado por R$ ",
+  "data_evento": "2026-07-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "m&a",
+   "joint_venture",
+   "hospital",
+   "monetizacao_de_ativo"
+  ],
+  "materialidade": 49
+ },
+ {
+  "empresa": "Sanepar",
+  "titulo": "Sanepar tem prejuízo de R$ 505,2 milhões no 2T26 por decisão",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "regulatorio",
+   "resultado",
+   "precatorio",
+   "saneamento"
+  ],
+  "materialidade": 48
+ },
+ {
+  "empresa": "Sanepar",
+  "titulo": "Decisão da Agepar sobre o precatório de IRPJ leva a Sanepar ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "regulatorio",
+   "resultado_trimestral",
+   "passivo_regulatorio",
+   "saneamento"
+  ],
+  "materialidade": 48
+ },
+ {
+  "empresa": "Sanepar",
+  "titulo": "Conselho de Administração da Sanepar recebe atualização do c",
+  "data_evento": "2026-07-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "regulatorio",
+   "tarifa",
+   "saneamento",
+   "precatorio"
+  ],
+  "materialidade": 48
+ },
+ {
+  "empresa": "Itaú Unibanco",
+  "titulo": "Itaú Unibanco reporta lucro recorrente de R$ 12,4 bilhões no",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "resultado",
+   "banco",
+   "inadimplencia",
+   "carteira_credito"
+  ],
+  "materialidade": 48
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Fato Relevante comunica o adiamento da divulgação das inform",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "atraso_demonstracoes",
+   "governanca",
+   "recuperacao_judicial",
+   "sinal_antecedente"
+  ],
+  "materialidade": 46
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi cancela a 191ª Assembleia Geral Extraordinária",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "assembleia",
+   "governanca",
+   "recuperacao_judicial"
+  ],
+  "materialidade": 46
+ },
+ {
+  "empresa": "Klabin",
+  "titulo": "Renúncia de Diretor Estatutário",
+  "data_evento": "2026-07-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "governanca",
+   "executivo",
+   "direcao",
+   "continuidade"
+  ],
+  "materialidade": 46
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS propõe comprar fatia restante da Pilgrim's Pride e corta",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "M&A",
+   "Pilgrim's Pride",
+   "capex",
+   "investment_grade"
+  ],
+  "materialidade": 46
+ },
+ {
+  "empresa": "TIM Brasil",
+  "titulo": "CEO da TIM Brasil afirma que eventual troca de controlador n",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "mudanca_de_controle",
+   "governanca",
+   "rating_estavel",
+   "grupo_controlador"
+  ],
+  "materialidade": 46
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Companhia responde a CVM e a B3 sobre revisão de contratos c",
+  "data_evento": "2026-08-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "regulatorio",
+   "cvm",
+   "b3",
+   "reajuste"
+  ],
+  "materialidade": 45
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "ANS impõe e suspende cautelar sobre 947 mil vidas enquanto H",
+  "data_evento": "2026-08-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "regulatorio",
+   "ans",
+   "recompra_debentures",
+   "margem"
+  ],
+  "materialidade": 45
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Resultados 2T26: EBITDA estável e alavancagem controlada, ma",
+  "data_evento": "2026-08-13",
+  "classificacao": "ECO",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultados",
+   "alavancagem",
+   "transportes"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Itaúsa",
+  "titulo": "Itausa aporta R$ 732 milhoes na Aegea e sobe para 14,01% do ",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "holding",
+   "aporte",
+   "aegea",
+   "participacao_societaria"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Itaúsa",
+  "titulo": "Itaúsa aporta R$ 732 milhões na Aegea e eleva participação p",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "aporte_capital",
+   "holding",
+   "participacao_societaria",
+   "saneamento"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Itaúsa",
+  "titulo": "Itaúsa acompanha aumento de capital da Aegea e pode aportar ",
+  "data_evento": "2026-07-29",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "alocacao de capital",
+   "holding",
+   "aumento de capital",
+   "saneamento"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Hidrovias do Brasil",
+  "titulo": "2T26 com queda da alavancagem para 2,4x",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "2T26"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "BTG Pactual",
+  "titulo": "Downgrade S&P para BB-/B - 4 de agosto de 2026",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "downgrade-sp",
+   "bb-minus"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "BTG Pactual",
+  "titulo": "Downgrade S&P para BB-/B - Early August 2026",
+  "data_evento": "2026-08-01",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "downgrade-sp",
+   "bb-minus"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Banco Daycoval",
+  "titulo": "Daycoval capta R$ 2,5 bilhões em emissão pública de Letras F",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "emissao_divida",
+   "funding",
+   "letras_financeiras",
+   "banco"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Bradesco",
+  "titulo": "Bradesco aprova aumento de capital de ate R$ 10 bilhoes com ",
+  "data_evento": "2026-07-29",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "aumento_de_capital",
+   "capital_regulatorio",
+   "fato_relevante",
+   "banco"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Bradesco",
+  "titulo": "Recuperação judicial da Casas Bahia expõe Bradesco a R$ 4,78",
+  "data_evento": "2026-08-16",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "recuperacao_judicial",
+   "credor",
+   "exposicao_credito",
+   "varejo"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Bradesco",
+  "titulo": "Aumento de capital de R$10 bilhoes",
+  "data_evento": "2026-07-29",
+  "classificacao": "RELEVANTE",
+  "setor": "Financeiro",
+  "tags": [
+   "aumento_capital"
+  ],
+  "materialidade": 43
+ },
+ {
+  "empresa": "Suzano",
+  "titulo": "Conclusao da JV com Kimberly-Clark (Arbex)",
+  "data_evento": "2026-07-01",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "M&A",
+   "joint venture",
+   "tissue",
+   "internacionalizacao"
+  ],
+  "materialidade": 42
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Fitch tira a Light do default e eleva rating de D(bra) para ",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "elevacao_rating",
+   "fitch",
+   "saida_de_default",
+   "reestruturacao"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Light homologa o aumento de capital privado com bonus de sub",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "aumento_de_capital",
+   "bonus_de_subscricao",
+   "recuperacao_judicial",
+   "capitalizacao"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "CVM registra homologacao do aumento de capital com conversao",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "aumento_de_capital",
+   "conversao_debentures",
+   "desalavancagem",
+   "recuperacao_judicial"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Fitch tira a Light do default e eleva os ratings para BB(bra",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "upgrade_rating",
+   "saida_de_default",
+   "fitch",
+   "energia_eletrica"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Light inicia conversão obrigatória de debêntures em ações e ",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "conversao_debentures",
+   "aumento_capital",
+   "saida_recuperacao_judicial",
+   "concessao"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Light homologa aumento de capital de R$ 1,5 bilhão e protoco",
+  "data_evento": "2026-07-16",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "aumento_capital",
+   "recuperacao_judicial",
+   "encerramento_rj",
+   "capitalizacao"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Aumento de capital de R$ 1,5 bilhão homologado e pedido de s",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "aumento_capital",
+   "saida_recuperacao_judicial",
+   "desalavancagem",
+   "energia"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Light protocola pedido de encerramento da recuperacao judici",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "saida_recuperacao_judicial",
+   "aumento_de_capital",
+   "conversao_divida",
+   "energia_eletrica"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Conversão obrigatória de debêntures LIGT11 em ações e homolo",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "recuperacao_judicial",
+   "conversao_debentures",
+   "aumento_capital",
+   "encerramento_rj_pendente"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Light homologa aumento de capital de R$ 1,5 bilhao e pede fi",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "recuperacao_judicial",
+   "aumento_capital",
+   "encerramento_rj",
+   "energia_eletrica"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Conversão obrigatória das debêntures da 1ª emissão em ações ",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "recuperacao_judicial",
+   "conversao_debentures",
+   "evento_cvm",
+   "encerramento_rj"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Homologação do aumento de capital de R$1,5B e pedido formal ",
+  "data_evento": "2026-07-16",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "recuperacao_judicial",
+   "encerramento_rj",
+   "aumento_capital",
+   "marco_plano"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Light",
+  "titulo": "Aumento de capital de R$1,5bi homologado e pedido de encerra",
+  "data_evento": "2026-07-16",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "rj-encerramento",
+   "capital",
+   "debentures-conversao",
+   "energia"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Energisa",
+  "titulo": "Energisa conclui a venda de cinco transmissoras à Taesa por ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "desinvestimento",
+   "desalavancagem",
+   "transmissao",
+   "mudanca_de_controle"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Energisa",
+  "titulo": "Renovação de Concessões por 30 Anos - Investimento R$ 18 Bil",
+  "data_evento": "2026-07-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "concessão",
+   "renovação",
+   "investimento"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "CEMIG",
+  "titulo": "S&P eleva a Cemig e subsidiárias para brAAA e a companhia pa",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "elevacao_de_rating",
+   "rating_aaa",
+   "energia_eletrica",
+   "emissao_de_debentures"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Eletrobras",
+  "titulo": "Acordo homologado no Supremo encerra a disputa da Cepisa e c",
+  "data_evento": "2026-08-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "contingencia_judicial",
+   "acordo_judicial",
+   "stf",
+   "desembolso_caixa"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "TRF1 mantém suspensão de novas licenças para o Complexo Azul",
+  "data_evento": "2026-07-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "licenciamento",
+   "judicial",
+   "expansao",
+   "Azulao"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Engie Brasil Energia",
+  "titulo": "Fitch eleva o rating global em moeda local da Engie Brasil d",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "elevacao_rating",
+   "fitch",
+   "suporte_controladora",
+   "energia_eletrica"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Engie Brasil Energia",
+  "titulo": "Engie Brasil conclui oferta primária de R$ 8,36 bilhões para",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "MA",
+   "oferta_acoes",
+   "incorporacao_societaria"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Taesa",
+  "titulo": "Taesa ratifica em assembleia a aquisição de cinco ativos de ",
+  "data_evento": "2026-07-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "aquisicao",
+   "transmissao",
+   "energia_eletrica",
+   "capex"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "Omega Energia",
+  "titulo": "Debenturistas aprovam alteração de cláusulas da escritura da",
+  "data_evento": "2026-08-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "covenant",
+   "escritura_de_debenture",
+   "vencimento_antecipado",
+   "mudanca_de_controle"
+  ],
+  "materialidade": 41
+ },
+ {
+  "empresa": "CBA",
+  "titulo": "CBA reverte prejuízo no 2T26 e derruba a alavancagem de 2,71",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "aluminio",
+   "commodity"
+  ],
+  "materialidade": 40
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Anatel rejeita recursos da Oi e exige plano de contingencia ",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "regulatorio",
+   "anatel",
+   "concessao",
+   "passivo_contingente"
+  ],
+  "materialidade": 39
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raizen protocola na CVM novas assembleias de debenturistas d",
+  "data_evento": "2026-08-25",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "debenturistas",
+   "assembleia",
+   "recuperacao_extrajudicial",
+   "escritura"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raízen pede conversão do registro de categoria B para A na C",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "conversao_divida_acoes",
+   "registro_cvm",
+   "reestruturacao"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raízen vende a usina Caarapó por R$ 760 milhões",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "venda_de_ativo",
+   "desalavancagem",
+   "sucroenergetico"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Raízen",
+  "titulo": "Raízen protocola editais de reabertura em segunda convocação",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "assembleia_debenturistas",
+   "debentures",
+   "recuperacao_extrajudicial"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar reverte prejuizo no 2T26, corta a divida liquida para",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "divida_liquida",
+   "holding"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar reduz alavancagem para 2,8 vezes no 2T26, menor nível",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "divida_holding",
+   "venda_ativos"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar vende operacao portuaria por R$1,8 bilhao e atinge me",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "desalavancagem",
+   "venda_de_ativos",
+   "logistica",
+   "transporte"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "S&P reafirma rating brAA+ da Simpar com perspectiva estavel ",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rating_reafirmado",
+   "desalavancagem",
+   "venda_ativos",
+   "perspectiva_estavel"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar vende a operação portuária CS Porto Aratu por R$ 1,8 ",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "venda_de_ativo",
+   "desalavancagem",
+   "holding",
+   "logistica"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Simpar divulga previa operacional do 2T26 com continuidade d",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "desalavancagem",
+   "previa_resultados",
+   "transportes"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Venda CS Porto Aratu para ICTSI Americas R,8bi (EV); alavanc",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "venda_ativo",
+   "desalavancagem",
+   "ICTSI"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Simpar",
+  "titulo": "Alienacao da CS Porto Aratu a ICTSI por R$1,8bi (EV) e S&P r",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "desinvestimento",
+   "desalavancagem",
+   "portuario",
+   "rating-reafirmacao"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan recebe propostas vinculantes pela fatia na Rumo, opera",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "venda_ativos",
+   "desalavancagem",
+   "holding",
+   "rebaixamento_rating"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan formaliza a deslistagem voluntaria das ADSs na NYSE e ",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "deslistagem",
+   "nyse",
+   "reestruturacao_societaria",
+   "cobertura_de_juros"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan aprova cisão da Radar II de R$ 2,57 bilhões, saída da ",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "reorganizacao_societaria",
+   "cisao",
+   "deslistagem_nyse",
+   "cobertura_de_juros"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan recebe propostas vinculantes de Grupo México e Cofco+B",
+  "data_evento": "2026-08-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "desinvestimento",
+   "desalavancagem",
+   "venda_participacao",
+   "m_a"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Moody's rebaixa Cosan de AA para A+ com perspectiva negativa",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "rebaixamento_rating",
+   "moodys",
+   "holding",
+   "contagio_controlada"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Cosan",
+  "titulo": "Cosan contrata BTG Pactual para avaliar venda de participaca",
+  "data_evento": "2026-06-29",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "Rumo",
+   "venda de ativos",
+   "BTG Pactual",
+   "desinvestimento"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Moodys rebaixa Rumo de Ba2 para Ba3 com perspectiva negativa",
+  "data_evento": "2026-07-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rebaixamento_rating",
+   "moodys",
+   "contagio_controladora",
+   "perspectiva_negativa"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "BNDES concede waiver para contratação de fiança bancária",
+  "data_evento": "2026-08-03",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "waiver",
+   "covenant",
+   "bndes",
+   "debentures"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Moody's rebaixa rating da Rumo para Ba3 por contagio da cris",
+  "data_evento": "2026-07-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rebaixamento_rating",
+   "contagio_raizen",
+   "logistica"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Rumo",
+  "titulo": "Moody's rebaixa Rumo para Ba3 por contagio da crise Cosan",
+  "data_evento": "2026-07-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "rebaixamento_rating",
+   "contagio_cosan"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Hidrovias do Brasil",
+  "titulo": "Hidrovias do Brasil corta alavancagem de 4,0 para 2,4 vezes ",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "desalavancagem",
+   "resultado_trimestral",
+   "geracao_de_caixa",
+   "logistica"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "EcoRodovias",
+  "titulo": "EcoRodovias faz oferta de recompra da 13ª emissão e capta R$",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "gestao_de_passivo",
+   "debentures",
+   "alongamento_de_divida",
+   "concessao_rodoviaria"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "EcoRodovias",
+  "titulo": "Lucro do 2T26 cai 95% com pressão de investimentos e inflaçã",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "queda_lucro",
+   "capex",
+   "concessao"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "EcoRodovias",
+  "titulo": "Aumento de leverage para 4.1x + queda lucro 74% + downgrade ",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "leverage",
+   "downgrade"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Azul",
+  "titulo": "Abra recorre ao Cade contra aprovação do investimento da Ame",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "Cade",
+   "American Airlines",
+   "governança",
+   "acionistas"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "CCR",
+  "titulo": "Grupo Mover, em recuperação judicial, vende 14,86% da Motiva",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "estrutura societária",
+   "recuperação judicial",
+   "acordo de acionistas",
+   "governança"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "MRS Logística",
+  "titulo": "Vale renova com a MRS contrato ferroviário estimado em R$ 51",
+  "data_evento": "2026-07-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "contrato",
+   "receita contratada",
+   "Vale",
+   "concessao ferroviaria"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "JSL",
+  "titulo": "JSL reduz alavancagem no 2T26 e mantém folga sobre covenant",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "covenant"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Embraer",
+  "titulo": "Embraer reduz a dívida líquida para US$ 843 milhões, leva a ",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "guidance",
+   "tarifas"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "VLI",
+  "titulo": "Assembleia da VLI aprova avaliação de imóveis e aumento de c",
+  "data_evento": "2026-08-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "aumento_de_capital",
+   "concessao_ferroviaria",
+   "risco_regulatorio",
+   "renovacao_antecipada"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Tegma",
+  "titulo": "Aquisição de 70% da Transcopa por R$ 99,4 milhões",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "m_a",
+   "aquisicao"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Arteris",
+  "titulo": "Perda de Concessão BR-116/SP/PR em Processo Competitivo",
+  "data_evento": "2026-07-23",
+  "classificacao": "RELEVANTE",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "licitacao",
+   "perda-concessao",
+   "infraestrutura"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol assume o controle da Brava com 51 por cento apos l",
+  "data_evento": "2026-08-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "mudanca_de_controle",
+   "opa",
+   "ecopetrol",
+   "estrutura_societaria"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol assume o controle da Brava Energia com 51% do capi",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "mudanca_de_controle",
+   "opa",
+   "petroleo_e_gas",
+   "estrutura_societaria"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol assume o controle da Brava Energia e a Fitch eleva",
+  "data_evento": "2026-08-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "mudanca_de_controle",
+   "elevacao_de_rating",
+   "m_e_a",
+   "petroleo_e_gas"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol conclui leilão e assume controle da Brava Energia",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "mudanca_controle",
+   "fusao_aquisicao",
+   "rating_watch"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Ecopetrol assume o controle da Brava e o acordo de acionista",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "mudanca_de_controle",
+   "opa",
+   "acordo_de_acionistas",
+   "waiver_debenturistas"
+  ],
+  "materialidade": 38
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN recebe propostas vinculantes pela CSN Cimentos",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "venda_de_ativos",
+   "desalavancagem",
+   "exchange_notes",
+   "siderurgia"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN conclui troca de títulos da CSN Inova e alonga venciment",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "gestao_de_passivo",
+   "troca_de_divida",
+   "refinanciamento",
+   "custo_da_divida"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN obtém apoio de credores para troca de dívida",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "troca_divida",
+   "liability_management",
+   "rolagem",
+   "siderurgia"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN aprova emissão de Exchange Notes para trocar cerca de US",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "gestao_passivos",
+   "troca_divida",
+   "bonds",
+   "siderurgia"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Aditamento Programa Recompra",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "recompra-acoes",
+   "capital-management",
+   "positivo"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "Renegociação de US$ 1,3 bilhão em bonds externos e prévia de",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "refinanciamento_externo",
+   "divida",
+   "creditwatch",
+   "prejuizo"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN",
+  "titulo": "CSN prepara emissão de US$1 bi e venda da CSN Cimentos para ",
+  "data_evento": "2026-07-29",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "venda cimentos",
+   "desalavancagem",
+   "emissao bonds",
+   "refinanciamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "2T26 com alavancagem de 3,87x; spread de debêntures quase tr",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_capital",
+   "desalavancagem",
+   "rating_downgrade",
+   "custo_divida"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aumento de capital de R$ 2,1 bilhoes com GIC e Itausa reforc",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_de_capital",
+   "desalavancagem",
+   "estrutura_societaria",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aegea aprova aumento de capital de R$ 2,1 bilhões para acele",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_de_capital",
+   "desalavancagem",
+   "rebaixamento_rating",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Acionistas da Aegea aprovam aumento de capital de até R$ 2,1",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_capital",
+   "desalavancagem",
+   "revisao_rating",
+   "atraso_balanco"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aegea capta R$ 2,1 bilhoes em aumento de capital com aporte ",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_capital",
+   "reforco_caixa",
+   "reestruturacao_financeira",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aumento de capital de R,1bi homologado; Itausa aporta R32M (",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento_capital",
+   "Itausa",
+   "GIC"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Aegea Saneamento",
+  "titulo": "Aegea aprova aumento de capital de R$1,5-2,1 bi após duplo r",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "aumento de capital",
+   "rebaixamento rating",
+   "desalavancagem",
+   "itausa"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Bond swap de USD 1 bilhão por CSN (CSNA3) / CSN Inova Ventur",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "bond_exchange",
+   "debt_restructuring",
+   "juros_elevados"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "CSN Mineracao reporta lucro de R$ 219,4 milhoes no 2T26 com ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "caixa",
+   "baixa_alavancagem",
+   "dividendos"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Bond swap de USD 1 bilhão fechado em 12 de agosto de 2026",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "bond_exchange",
+   "debt_restructuring",
+   "juros_elevados"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "CSN Mineracao adita programa de recompra de acoes com a cont",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "recompra_de_acoes",
+   "risco_de_grupo",
+   "partes_relacionadas",
+   "minerio_de_ferro"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "CSN Mineração lucra R$ 219,4 milhões no 2T26 com EBITDA 20% ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "dividendos",
+   "controladora",
+   "risco_de_grupo"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "CSN Mineração lucra R$ 219,4 milhões no segundo trimestre co",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "caixa_liquido",
+   "dividendos",
+   "risco_controladora"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Fitch rebaixa rating da controladora CSN para CCC+",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "Fitch",
+   "rebaixamento",
+   "controladora",
+   "refinanciamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CSN Mineração",
+  "titulo": "Grupo CSN conclui troca de dívida de US$ 1 bilhão com juros ",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "divida",
+   "troca_de_divida",
+   "grupo_csn",
+   "contagio"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Gerdau",
+  "titulo": "Gerdau conclui aquisição de participação acionária",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "ma",
+   "aquisicao",
+   "perimetro",
+   "siderurgia"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Sabesp",
+  "titulo": "EBITDA da Sabesp recua no segundo trimestre com compressao d",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "resultado trimestral",
+   "margem",
+   "capex",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Sabesp",
+  "titulo": "Sabesp tem EBITDA e resultado financeiro pressionados no seg",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "resultado_trimestral",
+   "despesa_financeira",
+   "inadimplencia",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Sabesp",
+  "titulo": "Dívida líquida da Sabesp salta de R$ 23 bilhões para R$ 34 b",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "resultado_trimestral",
+   "endividamento",
+   "despesa_financeira",
+   "pos_privatizacao"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Copasa",
+  "titulo": "CADE aprova sem restrições a aquisição de 30% da Copasa pela",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "saneamento",
+   "desestatizacao",
+   "cade",
+   "mudanca_controle"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Sanepar",
+  "titulo": "AGEPAR nega recurso da Sanepar e destina todo o precatório a",
+  "data_evento": "2026-08-19",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "risco_regulatorio",
+   "tarifa",
+   "precatorio",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Sanepar",
+  "titulo": "Prejuízo reportado no 2T26 com passivo regulatório de R$ 843",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "saneamento",
+   "precatorios",
+   "agepar",
+   "disputa_regulatoria"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "BRK Ambiental",
+  "titulo": "Vencimento de debentura e pressao de leverage",
+  "data_evento": "2026-07-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Saneamento",
+  "tags": [
+   "vencimento",
+   "refinanciamento",
+   "leverage",
+   "saneamento"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Usiminas",
+  "titulo": "Usiminas eleva a projeção de investimentos para 2026 para a ",
+  "data_evento": "2026-07-30",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "capex",
+   "guidance",
+   "investimentos",
+   "fluxo_de_caixa"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy reverte lucro e fecha o 2T26 no prejuizo com margem EBI",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "prejuizo",
+   "margem_ebitda",
+   "perspectiva_negativa"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Tupy",
+  "titulo": "Tupy reverte lucro e registra prejuízo de R$ 11 milhões no 2",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "prejuizo",
+   "resultado_trimestral",
+   "margem",
+   "EBITDA"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "CBA",
+  "titulo": "CBA reverte prejuizo, marca EBITDA recorde e derruba a alava",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "ebitda_recorde",
+   "aluminio"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Nexa Resources",
+  "titulo": "Nexa reduz alavancagem de 2,28 para 1,40 vezes o EBITDA no 2",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "ebitda",
+   "mineracao"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Nexa Resources",
+  "titulo": "Nexa reduz alavancagem para 1,40 vez no 2T26 com a venda do ",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "mudanca_de_controle",
+   "creditwatch"
+  ],
+  "materialidade": 36
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Vamos reporta 2T26 com desalavancagem ao menor nível desde 2",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "2T26",
+   "leasing"
+  ],
+  "materialidade": 35
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Divulgação de Prévia Operacional 2T26",
+  "data_evento": "2026-07-16",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "operacional",
+   "resultado",
+   "fato-relevante"
+  ],
+  "materialidade": 35
+ },
+ {
+  "empresa": "Assaí Atacadista",
+  "titulo": "Assaí reporta forte alta de lucro no 2T26 com redução de ala",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado",
+   "desalavancagem",
+   "lucro"
+  ],
+  "materialidade": 35
+ },
+ {
+  "empresa": "Oncoclínicas",
+  "titulo": "Oncoclínicas vende participação na SMTC (Arábia Saudita) por",
+  "data_evento": "2026-07-22",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "desinvestimento",
+   "liquidacao_ativo",
+   "recuperacao_extrajudicial",
+   "saude"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Nova assembleia de debenturistas da 2a emissao e exchange de",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "debentures",
+   "exchange",
+   "recuperacao_extrajudicial",
+   "distressed_exchange"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Kora Saúde tem Ebitda ajustado 21,4% menor e prejuízo quase ",
+  "data_evento": "2026-08-17",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "margem_ebitda",
+   "recuperacao_extrajudicial",
+   "rating_c"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "AGDs da 2ª emissão de debêntures reestruturam escritura com ",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "debentures",
+   "saude"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Assembleias de debenturistas executam troca de debêntures do",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "reestruturacao_divida",
+   "debentures",
+   "recuperacao_extrajudicial",
+   "saude"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Kora Saúde",
+  "titulo": "Assembleia de debenturistas aprova prorrogação de suspensão ",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "debenturistas",
+   "saude",
+   "kora_saude"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa conclui 23a emissao de R$ 700 milhoes, resgata a 16a e ",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "debentures",
+   "desalavancagem",
+   "refinanciamento",
+   "geracao_de_caixa"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa reduz dívida líquida em 23,4% e leva a alavancagem para",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "desalavancagem",
+   "geracao_de_caixa",
+   "resultado_2t26",
+   "margem_bruta"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa reduz prejuízo a R$ 35 milhões e corta dívida líquida e",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "covenant",
+   "desalavancagem",
+   "desinvestimento"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa reduz prejuízo para R$ 34,9 milhões no 2T26 e derruba a",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "geracao_caixa",
+   "turnaround"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Rede D'Or",
+  "titulo": "Rede D'Or convoca resgate antecipado facultativo total da 29",
+  "data_evento": "2026-07-21",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resgate_antecipado",
+   "debentures",
+   "gestao_de_passivo",
+   "saude"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "ANS assina medida cautelar e barra o reajuste ou a rescisao ",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "risco_regulatorio",
+   "ans",
+   "reajuste",
+   "carteira"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida coloca 947 mil beneficiários sob revisão comercial e",
+  "data_evento": "2026-08-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "questionamento_cvm",
+   "carteira_deficitaria",
+   "margem_pressionada",
+   "judicializacao"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida divulga 2T26 com margens comprimidas, judicializacao",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "resultado_trimestral",
+   "sinistralidade",
+   "judicializacao",
+   "consumo_de_caixa"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida perde 114 mil beneficiários em doze meses e novo pre",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "perda_de_beneficiarios",
+   "deterioracao_operacional",
+   "fluxo_de_caixa_negativo",
+   "troca_de_gestao"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Hapvida",
+  "titulo": "Hapvida perde 91 mil beneficiarios em cinco meses e adia rec",
+  "data_evento": "2026-07-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "perda_beneficiarios",
+   "deterioracao_operacional",
+   "regulatorio_ans",
+   "saude_suplementar"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Fleury",
+  "titulo": "Fleury capta R$ 1,83 bilhao em debentures para pre-pagar qua",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "debentures",
+   "refinanciamento",
+   "alongamento_divida",
+   "gestao_de_passivo"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Fleury",
+  "titulo": "Fleury encerra 11ª emissão de debêntures de R$ 1,83 bilhão e",
+  "data_evento": "2026-08-24",
+  "classificacao": "RELEVANTE",
+  "setor": "Saúde",
+  "tags": [
+   "gestao_de_passivo",
+   "debentures",
+   "resgate_antecipado",
+   "alongamento_de_divida"
+  ],
+  "materialidade": 34
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA aprova o term sheet das debentures do plano de recuperac",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "debentures",
+   "term_sheet",
+   "reestruturacao_divida"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Plano de recuperação extrajudicial do GPA avança com adesão ",
+  "data_evento": "2026-08-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "varejo",
+   "reestruturacao_divida",
+   "homologacao"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Credores aprovam o Term Sheet das novas debêntures do plano ",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "term_sheet",
+   "nova_emissao_debentures",
+   "varejo"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA reporta prejuízo de R$ 252 milhões no segundo trimestre ",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado_trimestral",
+   "recuperacao_extrajudicial",
+   "alongamento_divida",
+   "ruptura_abastecimento"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Plano de recuperação extrajudicial avança rumo à homologação",
+  "data_evento": "2026-07-22",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "varejo",
+   "reestruturacao_divida"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Credores do GPA aprovam os termos das novas debêntures da re",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "debentures",
+   "term_sheet",
+   "reestruturacao_divida"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Credores do GPA aprovam termos das novas debêntures do plano",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperação extrajudicial",
+   "debêntures",
+   "varejo",
+   "reestruturação"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA reporta novo prejuízo no 2T26 em meio a recuperação extr",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "resultado_trimestral",
+   "varejo",
+   "gpa"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Maioria dos credores do Pão de Açúcar escolhe a opção de din",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "novo_dinheiro",
+   "varejo",
+   "reestruturacao_divida"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA nega favorecimento a credores após questionamento da B3 ",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao_extrajudicial",
+   "contestacao",
+   "credores"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "Plano de REJ do GPA atinge 57,5% de adesao e supera barreira",
+  "data_evento": "2026-07-20",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "recuperacao extrajudicial",
+   "reestruturacao"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Pão de Açúcar (GPA)",
+  "titulo": "GPA enfrenta objecoes judiciais ao plano de recuperacao extr",
+  "data_evento": "2026-07-16",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "REX",
+   "contencioso",
+   "homologacao"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "Impairment de R$ 569 milhões na Resia derruba o resultado, m",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado_trimestral",
+   "impairment",
+   "venda_ativos",
+   "desalavancagem"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV registra prejuizo de R$ 626,3 milhoes no 2T26 com impair",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado_trimestral",
+   "impairment",
+   "prejuizo",
+   "desalavancagem"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV vende último ativo legado da Resia por US$ 170 milhões e",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_de_ativos",
+   "desalavancagem",
+   "impairment",
+   "desinvestimento"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV tem prejuízo de R$ 626,3 milhões no 2T26 por impairment ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado_trimestral",
+   "impairment",
+   "desalavancagem",
+   "venda_ativos"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV vende ativos da Resia por US$ 170 milhões e projeta dívi",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resultado_trimestral",
+   "venda_ativos",
+   "impairment",
+   "desalavancagem"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV/Resia vende ultimo projeto legado nos EUA por US$170 mil",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "desalavancagem",
+   "venda_de_ativos",
+   "covenant_risk",
+   "construcao_civil"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV&Co reporta prejuízo de R$ 626,6 mi no 2T26 com impairmen",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "resia",
+   "impairment",
+   "resultado 2T26",
+   "prejuízo"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV vende ativos da Resia por US$ 170 milhoes para reduzir e",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_ativos",
+   "reducao_divida",
+   "reciclagem_capital",
+   "incorporacao"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV executa venda de Resia e Luggo em julho 2026 para deleve",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "asset_sale_reestruturacao",
+   "deleveraging_imperativo"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "Vendas de ativos imobiliários para desalavancagem",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "desinvestimento",
+   "real estate",
+   "desalavancagem",
+   "vendas de ativos"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV fecha acordo para vender prédios da Luggo por até R$ 166",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_de_ativo",
+   "reciclagem_de_capital",
+   "real_estate"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "Venda de Ativos Luggo",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_ativos",
+   "desalavancagem",
+   "luggo",
+   "fii"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "MRV conclui venda de ativos nos EUA por US$139mi e reduz div",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda ativos",
+   "desalavancagem",
+   "EUA",
+   "Resia"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "MRV Engenharia",
+  "titulo": "Venda de ativos Luggo para FII",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "luggo",
+   "desinvestimento",
+   "fii"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "SLC Agrícola",
+  "titulo": "S&P rebaixa SLC Agrícola de brAA para brAA-",
+  "data_evento": "2026-07-22",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "downgrade_rating",
+   "leverage_elevada",
+   "maturidades_concentradas"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Alavancagem cai de 3,2 para 3,0 vezes no 2T26 com EBITDA rec",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "resultado_financeiro",
+   "juros"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Vamos reduz alavancagem para 3,0 vezes, menor nível desde 20",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "desalavancagem",
+   "resultado_trimestral",
+   "aumento_de_capital",
+   "locacao"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Vamos",
+  "titulo": "Vamos reduz alavancagem no 2T26 com alta de lucro e EBITDA a",
+  "data_evento": "2026-08-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "frota"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "JBS conclui oferta de R$ 400 milhões em debêntures para biod",
+  "data_evento": "2026-07-29",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "emissao_divida",
+   "debentures",
+   "biodiesel",
+   "capex"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Cogna Educação",
+  "titulo": "Cogna chega a menor alavancagem da historia, 1,10 vez o EBIT",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "geracao_de_caixa",
+   "educacao"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Cogna Educação",
+  "titulo": "Cogna comunica incorporacao da Vasta Platform pela Somos com",
+  "data_evento": "2026-08-03",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "reorganizacao_societaria",
+   "incorporacao",
+   "squeeze_out",
+   "estrutura_de_grupo"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Grupo Mateus",
+  "titulo": "Grupo Mateus tem lucro 39,3 por cento menor no segundo trime",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado trimestral",
+   "margem operacional",
+   "vendas mesmas lojas",
+   "alavancagem baixa"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Localiza",
+  "titulo": "Localiza Fleet registra 21ª emissão de debêntures na CVM",
+  "data_evento": "2026-07-27",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "debentures",
+   "emissao",
+   "refinanciamento",
+   "frota"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Movida",
+  "titulo": "Movida eleva projecao de lucro do terceiro trimestre e along",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "guidance",
+   "refinanciamento",
+   "debentures",
+   "alongamento_divida"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Movida",
+  "titulo": "Movida inicia distribuição da 28ª emissão de debêntures com ",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Locação de Veículos e Mobilidade",
+  "tags": [
+   "debentures",
+   "emissao",
+   "rating_de_emissao",
+   "locacao_veiculos"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Terra Santa Agro",
+  "titulo": "Decisão judicial torna remota a chance de a Terra Santa mant",
+  "data_evento": "2026-07-15",
+  "classificacao": "RELEVANTE",
+  "setor": "Agronegócio",
+  "tags": [
+   "disputa_judicial",
+   "baixa_contabil",
+   "perda_de_ativo",
+   "prejuizo"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Even Construtora",
+  "titulo": "Deterioração de vendas no 2T26",
+  "data_evento": "2026-07-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "deterioracao_vendas",
+   "crédito_risco",
+   "real_estate"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Iguatemi",
+  "titulo": "Iguatemi assina memorando vinculante e vende participação em",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_de_ativos",
+   "reciclagem_portfolio",
+   "desalavancagem",
+   "real_estate"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Iguatemi",
+  "titulo": "Iguatemi assina memorando vinculante para vender participaçõ",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda_de_ativo",
+   "shoppings",
+   "desalavancagem"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Log Commercial Properties",
+  "titulo": "Log Commercial Properties emite debentures em agosto 2026",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "emissao-debentures",
+   "refinanciamento"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Log Commercial Properties",
+  "titulo": "LOG comunica venda de ativo de cerca de R$ 1 bilhão, a maior",
+  "data_evento": "2026-08-05",
+  "classificacao": "RELEVANTE",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "venda de ativos",
+   "reciclagem de portfólio",
+   "FII"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Assaí Atacadista",
+  "titulo": "Fitch reafirma AAA(bra) do Assai com perspectiva estavel apo",
+  "data_evento": "2026-08-18",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating_reafirmado",
+   "fitch",
+   "desalavancagem",
+   "refinanciamento"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Assaí Atacadista",
+  "titulo": "Assaí reporta 2T26 com lucro 94% maior e alavancagem na míni",
+  "data_evento": "2026-08-07",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado 2T26",
+   "desalavancagem",
+   "covenant"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Assaí Atacadista",
+  "titulo": "Assaí reduz alavancagem para 2,37 vezes o EBITDA no 2T26 e c",
+  "data_evento": "2026-08-06",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado_trimestral",
+   "desalavancagem",
+   "divida_liquida",
+   "varejo_alimentar"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Natura &Co",
+  "titulo": "Revisão de perspectiva de S&P para negativa",
+  "data_evento": "2026-07-28",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "rating_action",
+   "perspectiva_negativa",
+   "downgrade_risco"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Ultrapar",
+  "titulo": "Ultrapar leva a alavancagem ao menor nível desde 2008 com dí",
+  "data_evento": "2026-08-12",
+  "classificacao": "RELEVANTE",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "resultado trimestral",
+   "desalavancagem",
+   "divida liquida",
+   "dividendos"
+  ],
+  "materialidade": 31
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Justica da recuperacao judicial da Oi autoriza adiamento da ",
+  "data_evento": "2026-07-14",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "recuperacao_judicial",
+   "auditoria",
+   "atraso_divulgacao",
+   "telecom"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Oi assina a venda da unidade de serviços telefônicos para a ",
+  "data_evento": "2026-07-11",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "venda_de_ativo",
+   "desinvestimento",
+   "telecom",
+   "reestruturacao"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Oi",
+  "titulo": "Aumento de Capital Social aprovado em assembleia no contexto",
+  "data_evento": "2026-08-04",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "recuperacao_judicial",
+   "capital_social",
+   "assembleia"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Suzano",
+  "titulo": "Alavancagem da Suzano sobe para 3,3 vezes no 2T26 mesmo com ",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "resultado_trimestral",
+   "alavancagem_em_alta",
+   "celulose",
+   "divida_liquida"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Irani",
+  "titulo": "Irani capta R$ 750 milhões a CDI mais 1,16 por cento e liqui",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "gestao_de_passivo",
+   "captacao",
+   "liquidacao_antecipada",
+   "custo_da_divida"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Irani",
+  "titulo": "Irani capta R$ 750 milhões e antecipa liquidação de R$ 158,6",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "liability_management",
+   "refinanciamento",
+   "rating_afirmado"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Irani",
+  "titulo": "Irani capta R$ 750 milhões e liquida dívidas antecipadamente",
+  "data_evento": "2026-07-31",
+  "classificacao": "RELEVANTE",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "gestao_de_passivo",
+   "captacao",
+   "reducao_custo_divida",
+   "papel_e_celulose"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Totvs",
+  "titulo": "Totvs capta R$ 1,5 bilhão na 7ª emissão de debêntures para p",
+  "data_evento": "2026-08-13",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "gestao_de_passivo",
+   "debentures",
+   "alongamento_de_divida",
+   "rating_aaa"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Algar Telecom",
+  "titulo": "Algar Telecom vende a operação de internet das coisas à Arqi",
+  "data_evento": "2026-08-10",
+  "classificacao": "RELEVANTE",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "venda_de_ativo",
+   "desalavancagem",
+   "m_e_a",
+   "telecom"
+  ],
+  "materialidade": 29
+ },
+ {
+  "empresa": "Vale",
+  "titulo": "Desempenho positivo 2T26 - produção no pico desde 2018",
+  "data_evento": "2026-07-31",
+  "classificacao": "ECO",
+  "setor": "Mineração e Siderurgia",
+  "tags": [
+   "resultado",
+   "operacional",
+   "positivo"
+  ],
+  "materialidade": 20
+ },
+ {
+  "empresa": "Itaúsa",
+  "titulo": "Participação no aumento de capital da Aegea",
+  "data_evento": "2026-07-29",
+  "classificacao": "ECO",
+  "setor": "Financeiro",
+  "tags": [
+   "alocacao-de-capital",
+   "aegea",
+   "aumento-de-capital",
+   "holding"
+  ],
+  "materialidade": 19
+ },
+ {
+  "empresa": "BTG Pactual",
+  "titulo": "2ª emissão de debentures em julho 2026",
+  "data_evento": "2026-07-27",
+  "classificacao": "ECO",
+  "setor": "Financeiro",
+  "tags": [
+   "emissao",
+   "debentures",
+   "refinanciamento"
+  ],
+  "materialidade": 19
+ },
+ {
+  "empresa": "Eletrobras",
+  "titulo": "Subscrição de Debêntures da Eletronuclear",
+  "data_evento": "2026-08-13",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "eletronuclear",
+   "debentures",
+   "investimento"
+  ],
+  "materialidade": 18
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Fitch Reafirma Rating AA+(bra) com Perspectiva Estável",
+  "data_evento": "2026-08-01",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "fitch",
+   "reafirmacao",
+   "estavel"
+  ],
+  "materialidade": 18
+ },
+ {
+  "empresa": "Eneva",
+  "titulo": "Recebimento R$ 340 milhões da Vale em acordo consensual off-",
+  "data_evento": "2026-07-23",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "caixa",
+   "acordo"
+  ],
+  "materialidade": 18
+ },
+ {
+  "empresa": "Copel",
+  "titulo": "Conclusão de Alienação de Participação em Dona Fran",
+  "data_evento": "2026-08-06",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "alienacao",
+   "ativo",
+   "hidreletrica"
+  ],
+  "materialidade": 18
+ },
+ {
+  "empresa": "Copel",
+  "titulo": "12ª emissão de debentures certificada AAA(bra)",
+  "data_evento": "2026-07-23",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "emissao",
+   "debentures"
+  ],
+  "materialidade": 18
+ },
+ {
+  "empresa": "ISA Energia",
+  "titulo": "Conclusão do descruzamento de participações",
+  "data_evento": "2026-07-31",
+  "classificacao": "ECO",
+  "setor": "Energia Elétrica",
+  "tags": [
+   "descontinuacao",
+   "simplificacao"
+  ],
+  "materialidade": 18
+ },
+ {
+  "empresa": "Azul",
+  "titulo": "Divulgacao de Metas Estrategicas Pos-Recuperacao Judicial",
+  "data_evento": "2026-07-09",
+  "classificacao": "ECO",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "recuperacao_judicial",
+   "desalavancagem",
+   "metas"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "Embraer",
+  "titulo": "Carteira de Pedidos Recorde US$ 34,5 Bilhoes",
+  "data_evento": "2026-07-24",
+  "classificacao": "ECO",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "carteira_pedidos",
+   "crescimento"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "Tegma",
+  "titulo": "Crescimento Robusto de Receita e EBITDA",
+  "data_evento": "2026-07-30",
+  "classificacao": "ECO",
+  "setor": "Transportes e Logística",
+  "tags": [
+   "crescimento",
+   "dividendos"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "Petrobras",
+  "titulo": "Resultado Recorde 2T26 com Lucro de R$ 52,4 Bilhoes",
+  "data_evento": "2026-07-28",
+  "classificacao": "ECO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "resultado_recorde",
+   "dividendos"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "PRIO",
+  "titulo": "Ratings PRIO Elevados para brAAA",
+  "data_evento": "2026-07-30",
+  "classificacao": "ECO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "upgrade",
+   "aquisicao"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "Vibra Energia",
+  "titulo": "Vibra Energia Elevada para Investment Grade pela S&P",
+  "data_evento": "2026-07-30",
+  "classificacao": "ECO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "upgrade_rating"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "Brava Energia",
+  "titulo": "Aquisição de controle pela Ecopetrol - sinal positivo para c",
+  "data_evento": "2026-08-05",
+  "classificacao": "ECO",
+  "setor": "Petróleo, Gás e Combustíveis",
+  "tags": [
+   "aquisicao",
+   "positivo",
+   "refinanciamento"
+  ],
+  "materialidade": 17
+ },
+ {
+  "empresa": "Sabesp",
+  "titulo": "Emissão de R$ 6,3 bi em debentures; rating BB+ Fitch AAA(bra",
+  "data_evento": "2026-08-14",
+  "classificacao": "ECO",
+  "setor": "Saneamento",
+  "tags": [
+   "emissao",
+   "infraestrutura"
+  ],
+  "materialidade": 16
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Resultados 2T26: EBITDA cresce 53%, fluxo de caixa livre pos",
+  "data_evento": "2026-08-13",
+  "classificacao": "ECO",
+  "setor": "Saúde",
+  "tags": [
+   "resultados",
+   "desalavancagem",
+   "saude"
+  ],
+  "materialidade": 15
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Dasa reduz net debt 40.8% e recebe assign AA(bra) de Fitch e",
+  "data_evento": "2026-07-20",
+  "classificacao": "ECO",
+  "setor": "Saúde",
+  "tags": [
+   "deleveraging_sucesso",
+   "assignment_rating_positivo"
+  ],
+  "materialidade": 15
+ },
+ {
+  "empresa": "Dasa",
+  "titulo": "Emissão de Debentures AA(bra) de R$ 700 Milhões",
+  "data_evento": "2026-07-20",
+  "classificacao": "ECO",
+  "setor": "Saúde",
+  "tags": [
+   "emissao_debentures",
+   "rating_favoravel"
+  ],
+  "materialidade": 15
+ },
+ {
+  "empresa": "JBS",
+  "titulo": "Emissão de Debêntures para Biodiesel e Logística",
+  "data_evento": "2026-07-27",
+  "classificacao": "ECO",
+  "setor": "Agronegócio",
+  "tags": [
+   "debêntures",
+   "funding",
+   "biodiesel",
+   "logística"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Grupo Mateus",
+  "titulo": "Fitch reafirma rating AAA(bra) Grupo Mateus com perspectiva ",
+  "data_evento": "2026-07-27",
+  "classificacao": "ECO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "reafirmacao",
+   "aaabra",
+   "deleveraging"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "BRF",
+  "titulo": "Distribuição de Dividendos com Rating AAA",
+  "data_evento": "2026-07-21",
+  "classificacao": "ECO",
+  "setor": "Agronegócio",
+  "tags": [
+   "distribuicao_dividendos",
+   "rating_aaa"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Cyrela",
+  "titulo": "Cyrela vende portfolio de R$2.14 bi para deleveraging e dist",
+  "data_evento": "2026-07-15",
+  "classificacao": "ECO",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "asset_sale_deleveraging",
+   "dividend_extra"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Cury Construtora",
+  "titulo": "Atribuição de rating AAA(sf) a CRI por Moody's",
+  "data_evento": "2026-07-22",
+  "classificacao": "ECO",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "rating_atribuido",
+   "acesso_mercado_capitais",
+   "cri"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Multiplan",
+  "titulo": "Melhora estrutural de alavancagem e crescimento de lucro",
+  "data_evento": "2026-07-30",
+  "classificacao": "ECO",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "deleverage",
+   "lucro"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Log Commercial Properties",
+  "titulo": "Terceira distribuição de dividendos intermediários aprovada",
+  "data_evento": "2026-08-06",
+  "classificacao": "ECO",
+  "setor": "Real Estate e Construção",
+  "tags": [
+   "dividendos"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Ultrapar",
+  "titulo": "Ultrapar reduz alavancagem para 0.9x, menor desde 2008",
+  "data_evento": "2026-08-13",
+  "classificacao": "ECO",
+  "setor": "Varejo e Consumo",
+  "tags": [
+   "deleveraging",
+   "record-leverage",
+   "margins"
+  ],
+  "materialidade": 14
+ },
+ {
+  "empresa": "Klabin",
+  "titulo": "Guepardo eleva participação para 5,06% das ações preferencia",
+  "data_evento": "2026-07-21",
+  "classificacao": "ECO",
+  "setor": "Papel e Celulose",
+  "tags": [
+   "participacao-acionaria",
+   "investidor"
+  ],
+  "materialidade": 13
+ },
+ {
+  "empresa": "Totvs",
+  "titulo": "Totvs reduz net debt 12.8% e emite debentures em condições f",
+  "data_evento": "2026-07-15",
+  "classificacao": "ECO",
+  "setor": "Telecom e Tecnologia",
+  "tags": [
+   "net_debt_reducao",
+   "acesso_mercado_favoravel"
+  ],
+  "materialidade": 13
+ }
+]

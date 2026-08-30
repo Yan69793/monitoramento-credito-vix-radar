@@ -1,9 +1,39 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.221)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.223)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.223.js = v4.9.221 + EWSFLOOR1 + MATERIALSAT1 + BRIEFDEDUP1 + AGENDA401.
+#   Os tres primeiros sao a Fase 1 do plano da auditoria 29/08, em voo no mesmo
+#   arquivo do v4.9.222 e entrelacados no working tree; subiram juntos aqui.
+#   FALLBACKTTL1/VERIFCACHE-ROUNDTRIP1 ficam para o v4.9.224.
+#   EWSFLOOR1: o piso saiu da decomposicao como contribuicao de ponto e virou
+#   metadado explicito (score_calculado, piso_aplicado, piso_valor, piso_causa).
+#   O cliente lia "peso_max: piso" ao lado de "pontos: delta" como piso somado
+#   ("+50" para a Light com score calculado 14,0). A decomposicao ja somava igual
+#   ao score final, nao ha soma quebrada; mudou so a semantica de leitura.
+#   MATERIALSAT1: o boost de tag materialidade empilhava inteiro sobre a base
+#   CRITICO (80) e (80+40)*setor deu ate 108, cortado em 100 pelo Math.min.
+#   Medido em fixture de producao: 8 eventos de rating travados em 100 no topo do
+#   ranking (Raizen 2, Cosan 3, Rumo 1, Braskem 2), top 10 virado empate por
+#   ordem de insercao. Dampiar o boost pela metade so no CRITICO (o negativo de
+#   mercado segue como esta) mantem RELEVANTE/ECO intactos e diferencia o topo
+#   (90 a 83, nada passa de 95).
+#   BRIEFDEDUP1: dedup semantico do top_eventos do briefing. Medido no top 10 de
+#   producao: 6 historias em 10 vagas (Cosan 16/07 3 eventos, Braskem 17/08 2
+#   com titulo byte identico, CSN 31/07 2). A normalizacao de titulo nao colapsa
+#   esses casos (medido 29/08: 7 titulos Cosan normalizam diferentes), entao a
+#   identidade e (empresa, data_evento, tag de materialidade) com titulo
+#   normalizado de fallback. So atua no top_eventos, a lista completa do emissor
+#   fica intacta no detalhe.
+#   AGENDA401: agenda publica morta com 401 cru. O frontend chama GET
+#   ?op=calendario sem Authorization e o Worker exigia JWT lendo token so de
+#   header. Removido op=calendario do grupo que exige JWT; o handler so le KV e
+#   monta payload sem PII. Teste anonimo novo em agenda-validacao.test.mjs (GET
+#   sem auth -> 200 ok:true), casos JWT seguem verdes.
+#   Guardas: 23 testes nos 4 arquivos (agenda-validacao 10, materialidade,
+#   ews-piso, briefing-dedup). Rollback: main = "v4.9.221.js".
 # v4.9.221.js = v4.9.220 + CVMTTL1 + ATRIBTEL1 (auditoria 26/08, general-audit).
 #   CVMTTL1: o TTL de cvm:documentos vivia em duas literais. O fix v4.9.210 (14
 #   para 30 dias, VOLTTL1) alcancou so o caminho automatico (syncCVMAutomatico);
