@@ -11,6 +11,58 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 30/08 (noite) — P1, ABERTO, AÇÃO SÓ DO OPERADOR (CCDOFFLINE1): causa raiz do buraco de 28/08 medida, Claude Desktop não reabre sozinho depois de reboot
+
+> **Status:** ABERTO. Correção é 1 toggle do Windows, fora do alcance de qualquer agente (mexe em configuração de sistema). Ação do operador.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** investigação pedida em sessão (`/resolver-pendencias` → "ataca os dois"), a partir do item "OBSERVAÇÃO NOVA (fora do plano)" de 30/08 cedo que só constatava o buraco sem causa
+> **Condição de Obsolescência:** cai quando o toggle "Iniciar automaticamente" estiver `On` para o Claude em Configurações → Aplicativos → Inicialização, e sobreviver a um reboot real sem intervenção manual
+
+**A máquina nunca dormiu nem desligou em 28/08.** Refuta de saída a hipótese óbvia (sono, como em SENTINELA-DIAPERDIDO1). `Get-WinEvent` no log System mostra uptime contínuo de 28/08 03:02:39 até 29/08 14:34:47 (dois marcos `EventLog 6013` batem exato: 32241s às 12h00 de 28/08 e 118641s às 12h00 de 29/08, ambos derivam do mesmo boot). A máquina ficou ligada o tempo todo em que `noturno` (10h) e `matinal` (18h) deveriam ter disparado em 28/08. Não é causa de hardware nem de energia.
+
+**O gatilho foi Windows Update, medido por correlação direta instalação→reboot.** `Microsoft-Windows-WindowsUpdateClient` no log System: `KB5120998` (Atualização Prévia 26200.9278) e `KB5122385` (.NET Framework Atualização Prévia) instalados com sucesso às 28/08 03:04:09, precedidos por dois ciclos de `Kernel-Power 109/577` (Action: Reboot, Motivo: Kernel API) às 03:01:19 e 03:02:18, cerca de 90s um do outro. Padrão clássico de update que pede dois reboots em sequência.
+
+**A causa estrutural: o app Claude Desktop (pacote MSIX `Claude_1.40609.0.0_x64__pzs8sxrjxfjjc`) não reabre sozinho depois de reboot, e o CCD (o agendador que dispara noturno/matinal/verificação, achado em INVERSAO-CD1) só avalia cron enquanto esse app está de pé.** Evidência de quatro pontas, todas negativas:
+1. `AppxManifest.xml` do pacote **declara** a capacidade: `<desktop:StartupTask TaskId="ClaudeStartup" Enabled="false" DisplayName="Claude" />`. O recurso existe, vem desligado.
+2. `HKCU`/`HKLM` → `...\CurrentVersion\Run` e `RunOnce`: sem entrada para Claude (tem OneDrive, Notion, Docker Desktop, todos os apps de fundo do operador, exceto este).
+3. Pasta Startup (`%APPDATA%\...\Startup` e a de todos os usuários): sem atalho do Claude.
+4. `Get-ScheduledTask` varrida inteira por ação: nenhuma task do Windows lança `Claude.exe`.
+
+Resultado: entre 28/08 03:03 e 29/08 ~14:50 BRT (**quase 36 horas**), o CCD não existiu como processo vivo para avaliar cron nenhum. Não é "viu e pulou", é "não estava lá para ver". Isso explica por que `recordedSkips` no `scheduled-tasks.json` não tem **nenhum** registro para `vixradar-noturno` nem `vixradar-matinal` nessa janela, só passou a existir (`reason: global_limit`, 3x) quando o app finalmente reabriu e tentou recuperar tudo de uma vez, 29/08 14:50-14:52 BRT. `matinal` conseguiu rodar nesse catch-up (`lastRunAt` 29/08 14:50:49Z), num sábado às 14h, horário e dia que o cron normal (`0 18 * * 1-5`) nunca produziria sozinho, prova de que foi recuperação atrasada e não disparo normal.
+
+**Os watchdogs de Task Scheduler (`Szuchmacher-RetryVixNoturno`/`Matinal`) funcionaram exatamente como projetados e documentaram a própria impotência.** `retry-vixradar-noturno_20260828.log`: `SEM LOG: ...vixradar-noturno_20260828.log nao existe, rotina nao iniciou. Sem retry (fora do alcance deste watchdog).` Idêntico no de matinal. Eles cobrem "a rotina começou e falhou", não "o app que dispara a rotina nunca abriu". Não é bug neles, é um buraco de cobertura entre camadas que ninguém tinha nomeado até agora.
+
+**Um segundo reboot em 29/08 14:34:52 precede o catch-up em ~15 min, gatilho exato não confirmado com a mesma certeza do primeiro** (a única instalação de update próxima, KB2267602 do Defender, terminou às 14:45:48, **depois** do reboot, então não é a causa direta medida deste; fica registrado como não resolvido, não como suposição).
+
+**Correção.** Configurações do Windows → Aplicativos → Aplicativos instalados → Claude → Opções avançadas → "Iniciar automaticamente" → ligar. Alternativa equivalente: Configurações → Aplicativos → Inicialização → achar "Claude" → `On`. É o mesmo `StartupTask` do manifesto, hoje `Enabled="false"`; o toggle do Windows é o único jeito suportado de ligá-lo (é um app MSIX, não aceita ativação segura por edição direta de registro). Ação de configuração de sistema, fora do alcance de qualquer agente por regra permanente, só o operador liga.
+
+**Causa raiz.** O app que hospeda o agendador das 4 sessões VIX (INVERSAO-CD1) nunca teve plano de sobrevivência a reboot. `Claude VM Service` (serviço Windows separado, Cowork) tem recuperação via SCM e reabriu sozinho nos três boots da janela (`CoworkVMService` "starting" nos Application logs às 03:02:01, 03:02:50 e 14:35:27). O app principal não tem equivalente, e ninguém tinha comparado os dois até esta sessão.
+
+**Guarda sistêmica, proposta e não construída ainda (decisão do operador se quer agora).** Mesmo com o toggle ligado, nenhum vigia atual verifica "o Claude Desktop está de pé" como sinal isolado, só verifica "a rotina de hoje tem log". Um watchdog de Task Scheduler barato, no mesmo padrão de `retry-vixradar.ps1` (`scripts/lib/vixradar-watchdog.ps1`), rodando a cada poucas horas, checando `Get-Process -Name Claude` (WindowsApps) e alertando por email se ausente por mais que uma janela curta, fecharia o buraco de cobertura acima sem depender do toggle nunca falhar. Não implementado nesta sessão porque criar task nova no Scheduler é configuração persistente e pede autorização explícita à parte.
+
+---
+
+## 30/08 (noite) — P2, CORRIGIDO NO CÓDIGO, AGUARDANDO DEPLOY (FALLBACKTTL1): o fix de 1 linha proposto em 29/08 não resolvia o sintoma descrito, faltava a metade que importa
+
+> **Status:** CORRIGIDO em `api/src/worker.js` (2 linhas, não 1), suíte local 143/143 verde, **não deployado**. Candidato a entrar no próximo bump de versão do Worker.
+> **Data da Versão:** 2026-08-30
+> **Origem do Registro:** execução do item FALLBACKTTL1 registrado em 29/08 (noite), leitura completa dos dois lados (escrita E leitura) de `salvarCacheUltimoResorte`/`buscarCacheUltimoResorte` em `api/src/worker.js:15820-15880`
+> **Condição de Obsolescência:** cai quando o Worker com este fix estiver deployado em produção e validado
+
+**Correção da correção anterior.** O registro de 29/08 propôs `expirationTtl: 86400 * 3` (1 linha) e chamou de resolvido o padrão. Não é: `buscarCacheUltimoResorte` (`:15862-15871`) tem seu **próprio** corte de idade, `if (idadeHoras > 24) return null;`, calculado a partir de `_fallback_ts` e **independente** do TTL do KV. Alongar só o TTL de armazenamento não muda nada no que é servido ao usuário: o dado continuaria fisicamente vivo no KV por mais tempo, mas a função de leitura recusaria servir qualquer coisa com mais de 24h de qualquer forma, TTL maior ou não. O sintoma que a auditoria de 29/08 queria resolver (fallback inteiro sumindo depois de 1 dia sem varredura) **continuaria acontecendo** com o fix de 1 linha sozinho.
+
+**Fix real, 2 linhas coordenadas:**
+- `expirationTtl: 86400` → `86400 * 3` (72h) na escrita (`:15848` antes do comentário, hoje mais abaixo por causa do breadcrumb inserido)
+- `idadeHoras > 24` → `idadeHoras > 48` na leitura (mesmo bloco, `buscarCacheUltimoResorte`)
+
+TTL de armazenamento maior que o corte de serviço, de propósito, para sobrar margem física no KV acima do que a lógica aceita servir. Sobrevive a exatamente 1 dia inteiro sem varredura (o que 28/08 provou acontecer, ver CCDOFFLINE1 acima). O piso de confiança (`Math.max(0.3, 1 - idadeHoras * 0.04)`) já saturava em 0,3 a partir de 24h, então nada piora para quem recebe o fallback aos 30h ou 47h, só passa a existir fallback em vez de erro 503 puro quando o único problema foi 1 dia de rotina perdida. Efeito colateral bom: a preservação de eventos Tier1/Fato Relevante por 30 dias entre escritas (ADR-040, `:15822-15842`) também dependia da mesma chave sobreviver entre gravações, e também estava exposta ao mesmo apagão de 1 dia.
+
+**Causa raiz.** A auditoria de 29/08 leu o lado da escrita e a regra geral VOLTTL1 (nascida de um incidente em chave diferente, `cotacoes:volatilidade:v1`, que não tem corte de idade no consumo) e generalizou o padrão sem ler o corpo da função de leitura deste caso específico. Contradiz a própria regra 3 do protocolo de auditoria deste projeto (julgar por comportamento, não por forma) ao propor a correção sem rastrear o consumo até o fim.
+
+**Guarda sistêmica.** Nenhuma automática nova; a suíte de testes deste projeto não tem cobertura de `salvarCacheUltimoResorte`/`buscarCacheUltimoResorte` (confirmado, `grep -rl fallback test/` só acha `briefing-dedup` e `cvm-frescor`, nenhum dos dois testa este par de funções). Lacuna de teste registrada aqui como item futuro, não fechada nesta sessão.
+
+---
+
 ## 30/08 (tarde) — P2, ABERTO (PISODIFF1-ESTRUTURAL1): piso EWS pisado em 61 para todo RJ/default, escada de severidade depende de fonte estruturada
 
 > **Status:** ABERTO. Não implementar agora. O card duplo (v4.9.224, score final com piso + `Score sem piso: N` dos sinais reais) é a mitigação vigente.
@@ -457,7 +509,7 @@ A reposição foi feita como caçada dirigida com verificação de fonte real. D
 
 ## 27/08 (manhã) — P2, ABERTO (VERIFCACHE-ROUNDTRIP1): veredicto APROVADO_CORRIGIDO em cache volta como rejeição e retrata o evento do painel
 
-> **Status:** ABERTO. Achado medido em produção durante a rotina `verificacao-async` das 11h de 27/08. Reparo pontual do caso concreto (Simpar) já feito por reenvio na mesma execução, `resultado.aprovados:1`. O defeito de contrato continua no Worker v4.9.221.
+> **Status:** CORRIGIDO NO CÓDIGO EM 31/08, AGUARDANDO DEPLOY. O guard de entrada de `aplicarCorrecaoVerificador` agora aceita o round-trip (`veredicto_original === "CORRIGIR"` além de `veredicto === "CORRIGIR"`), teste de duas pontas novo em `api/test/verif-cache-roundtrip.test.mjs`. Suíte local 145/145 verde. Achado original medido em produção durante a rotina `verificacao-async` das 11h de 27/08. Reparo pontual do caso concreto (Simpar) já feito por reenvio na mesma execução, `resultado.aprovados:1`.
 > **Data da Versão:** 2026-08-27
 > **Origem do Registro:** rotina `vixradar-verificacao-async-11h`, fila de 20 itens, 10 com `cache_hits`
 > **Condição de Obsolescência:** cai quando `confirmar_verificacao` aceitar `APROVADO_CORRIGIDO` como aprovação, com teste das duas pontas

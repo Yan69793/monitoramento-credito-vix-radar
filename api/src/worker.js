@@ -12109,7 +12109,15 @@ __name22222(quarentenarBatch, "quarentenarBatch");
 __name222222(quarentenarBatch, "quarentenarBatch");
 __name2222222(quarentenarBatch, "quarentenarBatch");
 function aplicarCorrecaoVerificador(ev, veredicto) {
-  if (!ev || !veredicto || veredicto.veredicto !== "CORRIGIR") return false;
+  // VERIFCACHE-ROUNDTRIP1 (2026-08-31): o guard de entrada exigia veredicto "CORRIGIR"
+  // cru, mas a propria funcao renomeia o campo para "APROVADO_CORRIGIDO" antes de a
+  // rotina gravar o objeto no cache (confirmar_verificacao grava DEPOIS da mutacao).
+  // No ciclo seguinte a rotina reenvia o objeto literal do cache, o guard fechava a
+  // porta e o evento aprovado-com-correcao era retratado do painel. Aceitar o valor
+  // de round-trip: veredicto_original === "CORRIGIR" identifica exatamente o objeto
+  // que esta funcao mesma gravou. As correcoes sao re-aplicadas ao evento fresco e a
+  // funcao devolve true, tratando o reenvio como aprovacao (idempotente).
+  if (!ev || !veredicto || (veredicto.veredicto !== "CORRIGIR" && veredicto.veredicto_original !== "CORRIGIR")) return false;
   if (Number(veredicto.confianca) < 0.8) return false;
   const correcoes = veredicto.correcoes;
   if (!correcoes || typeof correcoes !== "object" || Array.isArray(correcoes)) return false;
@@ -15845,7 +15853,15 @@ async function salvarCacheUltimoResorte(empresa, payload, env2222) {
       }
     }
     copia._fallback_ts = (/* @__PURE__ */ new Date()).toLocaleString("sv-SE", { timeZone: "America/Sao_Paulo" }).replace(" ", "T") + "-03:00";
-    await env2222.RADAR_KV.put(`fallback:${empresa}`, JSON.stringify(copia), { expirationTtl: 86400 });
+    // FALLBACKTTL1 (30/08/2026): TTL era 86400 (24h), igual ao intervalo diario da
+    // varredura. Um unico dia sem rotina (28/08) apagava fallback dos 103 emissores
+    // e os eventos Tier1/FR preservados por ADR-040 acima, que dependem desta chave
+    // sobreviver entre escritas. VOLTTL1: TTL >= 2x o intervalo de escrita. Aqui 3x
+    // (72h) para sobrar margem sobre o gate de 48h de buscarCacheUltimoResorte, que
+    // precisou subir junto (linha abaixo): so alongar o TTL de armazenamento nao
+    // adianta nada se a leitura recusa servir o mesmo dado com seu proprio corte de
+    // idade fixo em 24h, decoplado deste TTL.
+    await env2222.RADAR_KV.put(`fallback:${empresa}`, JSON.stringify(copia), { expirationTtl: 86400 * 3 });
   } catch (e) {
     console.error(`[CACHE] Erro ao salvar fallback de ${empresa}:`, e.message);
   }
@@ -15867,7 +15883,11 @@ async function buscarCacheUltimoResorte(empresa, env2222) {
     const cached = JSON.parse(raw);
     const idadeMs = Date.now() - Date.parse(cached._fallback_ts);
     const idadeHoras = idadeMs / 36e5;
-    if (idadeHoras > 24) return null;
+    // FALLBACKTTL1 (30/08/2026): 24h->48h. Sobrevive a 1 dia inteiro sem varredura
+    // (o que 28/08 provou acontecer). Score de confianca ja tinha piso 0.3 a partir
+    // de 24h (formula abaixo), entao nada piora para o usuario, so passa a existir
+    // fallback em vez de 503 quando o unico problema foi 1 dia de rotina perdido.
+    if (idadeHoras > 48) return null;
     cached._de_cache = true;
     cached._cache_idade_horas = Math.round(idadeHoras * 10) / 10;
     cached._score_confianca = Math.max(0.3, 1 - idadeHoras * 0.04);

@@ -1,6 +1,61 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-30 (tarde, PISODIFF1 no ar no Worker v4.9.224 e no frontend v202.35: card mostra `Score sem piso`, ranking desempata por gravidade; escada de piso registrada como P2)
+Última atualização: 2026-08-31 (fix de VERIFCACHE-ROUNDTRIP1 completado no código, aguardando deploy)
+
+> [!info] 31/08 — VERIFCACHE-ROUNDTRIP1 CORRIGIDO NO CÓDIGO, AGUARDANDO DEPLOY: veredicto APROVADO_CORRIGIDO em cache já não vira rejeição no reenvio.
+> **Status:** CORRIGIDO em `api/src/worker.js`, teste novo de duas pontas em `api/test/verif-cache-roundtrip.test.mjs`, suíte local 145/145 verde, **não deployado**.
+> **Data da Versão:** 2026-08-31 · **Origem do Registro:** item ABERTO de 27/08, que apontava o guard de `aplicarCorrecaoVerificador` como porta fechada no round-trip.
+>
+> O bug estava no guard de entrada de `aplicarCorrecaoVerificador` (`worker.js:12112`): exigia
+> `veredicto.veredicto === "CORRIGIR"` cru, mas a própria função renomeia o campo para
+> `"APROVADO_CORRIGIDO"` antes de a rotina gravar o objeto em cache (`confirmar_verificacao` grava
+> DEPOIS da mutação). No ciclo seguinte a rotina reenvia o objeto literal do cache, o guard fechava a
+> porta e o evento aprovado-com-correção era retratado do painel (medido em produção 27/08, Simpar).
+> Fix: o guard aceita o round-trip (`veredicto_original === "CORRIGIR"` além de `veredicto === "CORRIGIR"`),
+> o que identifica exatamente o objeto que a própria função gravou; as correções são re-aplicadas ao
+> evento fresco e o reenvio aprova de forma idempotente. Teste de duas pontas: contra o código
+> pré-fix a ponta ruim falha (reenvio retrata, `rejeitados:1`/`retratados:1`) e a ponta boa (APROVADO
+> puro) continua passando; com o fix as duas passam. Detalhe em `PENDENCIAS.md` (entrada de 27/08).
+
+> [!info] 30/08 (noite) — CCDOFFLINE1: causa raiz do buraco de 28/08 medida, o Claude Desktop não reabre sozinho depois de reboot do Windows.
+> **Status:** ABERTO, ação só do operador (1 toggle do Windows). · **Data da Versão:** 2026-08-30 · **Origem do Registro:** investigação pedida em sessão a partir da observação nova de mais cedo hoje ("sexta 28/08 sem log, causa a apurar"), medição via `Get-WinEvent` (System/Application), `AppxManifest.xml` do pacote MSIX, registro de `Run`/Startup/Scheduled Tasks · **Condição de Obsolescência:** cai quando o toggle "Iniciar automaticamente" estiver ligado para o Claude e sobreviver a um reboot real sem intervenção manual.
+>
+> A máquina ficou ligada o tempo todo em 28/08 (uptime contínuo medido, refuta sono/desligamento). Windows Update
+> forçou um reboot duplo às 03:01-03:03 BRT (KB5120998 + KB5122385, instalação e reboot correlacionados no log).
+> O Claude Desktop (MSIX) tem `StartupTask` declarado no manifesto mas `Enabled="false"`, e nada mais no Windows
+> reabre o app depois de reboot (sem entrada em `Run`, `RunOnce`, pasta Startup ou Scheduled Tasks). O CCD que
+> dispara noturno/matinal/verificação (achado em INVERSAO-CD1) só avalia cron com o app de pé, então ~36h sem
+> nenhum agendamento sendo sequer avaliado, não só pulado. Os watchdogs `Szuchmacher-RetryVixNoturno/Matinal`
+> detectaram e documentaram corretamente que o caso está fora do alcance deles. Correção: Configurações →
+> Aplicativos → Inicialização → Claude → `On`, fora do alcance de qualquer agente (config de sistema). Detalhe
+> completo, evidência linha a linha e proposta de guarda adicional em `PENDENCIAS.md` (CCDOFFLINE1).
+
+> [!info] 30/08 (noite) — FALLBACKTTL1 corrigido no código (2 linhas, não 1), aguardando deploy.
+> **Status:** vigente, não deployado · **Data da Versão:** 2026-08-30 · **Origem do Registro:** execução do item aberto em 29/08 (noite), leitura completa dos dois lados de `salvarCacheUltimoResorte`/`buscarCacheUltimoResorte` · **Condição de Obsolescência:** cai quando deployado em produção e validado.
+>
+> O fix de 1 linha proposto em 29/08 (só o `expirationTtl`) não resolvia o sintoma: a leitura
+> (`buscarCacheUltimoResorte`) tem corte de idade próprio, independente do TTL do KV, que continuaria recusando
+> servir qualquer coisa com mais de 24h. Fix real: `expirationTtl: 86400 → 86400*3` na escrita **e**
+> `idadeHoras > 24 → > 48` na leitura, coordenados. Sobrevive a 1 dia inteiro sem varredura sem piorar nada para
+> quem recebe o fallback (piso de confiança já saturava em 0,3 antes disso). Suíte local `143/143` verde. Detalhe
+> em `PENDENCIAS.md` (FALLBACKTTL1).
+
+> [!info] 30/08 (noite) — CLAUDE.md corrigido: o fato da Fitch/CSN citado em SUBSTRINGDONO1 estava errado, sem relação com código ou deploy.
+> **Status:** vigente · **Data da Versão:** 2026-08-30 · **Origem do Registro:** sessão de avaliação da Exa (exa.ai) como segunda fonte de ingestão para o Radar, três buscas de backtest rodadas no playground, uma delas trouxe o relatório completo da Fitch (espelhado em `api.mziq.com`, já que `fitchratings.com` bloqueia crawler) e confirmação por busca web independente ·
+> **Condição de Obsolescência:** não expira, é correção factual permanente.
+>
+> A linha de SUBSTRINGDONO1 no `CLAUDE.md` dizia "a CSN foi rebaixada pela Fitch de B para CCC+ em 31/07". Os três dados
+> estavam errados. Não houve rebaixamento, a Fitch **afirmou** o rating em BB e só revisou o outlook de estável para
+> negativo, a mudança nunca chegou perto de B ou CCC+, e a data da ação foi 04/08, não 31/07 (o relatório foi datado
+> "Fitch Ratings - New York - 04 Aug 2025" no corpo do texto). Corrigido no `CLAUDE.md`. A narrativa do incidente em si
+> (documento de grupo econômico indo para o emissor errado) continua válida e não foi tocada, só o fato usado para
+> ilustrá-la.
+>
+> **Achado paralelo, ainda não decidido:** o mesmo relatório cobre CSN, CSN Mineração, CSN Inova Ventures, CSN Resources
+> e CEEE-G num documento só. Se a Exa for integrada como fonte, o `_donoDocumentoCVM` (que responde "de quem é este
+> documento") vai precisar aceitar múltiplos donos para um documento, coisa que ele não faz hoje. Isso é decisão de
+> modelo de dado, não ajuste pontual, e não deve ser feito por baixo antes de discutir. Nenhum código foi alterado
+> nesta sessão, é achado de teste manual no playground da Exa fora do sistema de produção.
 
 > [!info] 30/08 (tarde) — PISODIFF1 DEPLOYADO (Worker v4.9.224 + frontend v202.35): o card mostra a gravidade real dentro do grupo pisado.
 > **Status:** vigente · **Data da Versão:** 2026-08-30 · **Origem do Registro:** deploy v4.9.224 validado em produção (portão HTTP 200, `ok/telemetria/kv/sentry_ok` true, `versao:v4.9.224`), deploy v202.35 validado (version.json apex `v202.35`, `CACHE_VERSION` no HTML, card `Score sem piso` servido no apex), suíte vitest 143/143 · **Condição de Obsolescência:** cai quando o Worker passar do v4.9.224 e o frontend do v202.35.
@@ -502,6 +557,9 @@ detalhe no CLAUDE.md).
 
 ## Itens abertos
 
+- **30/08 (noite), P1 ABERTO, AÇÃO SÓ DO OPERADOR (CCDOFFLINE1):** causa raiz do buraco de 28/08 medida. A máquina nunca dormiu nem desligou naquele dia (uptime contínuo 28/08 03:02:39 → 29/08 14:34:47, dois marcos `EventLog 6013` batem exato). O gatilho foi Windows Update (KB5120998 + KB5122385, duplo reboot 03:01-03:03 medido por correlação instalação→reboot). A causa estrutural é que o Claude Desktop (MSIX) não reabre sozinho depois de reboot, e o CCD (INVERSAO-CD1) só avalia cron com o app de pé: `AppxManifest.xml` declara `StartupTask Enabled="false"`, sem entrada em `Run`/`RunOnce`/Startup folder/Scheduled Tasks. ~36h sem CCD vivo, por isso `recordedSkips` não tem nada registrado (não é "viu e pulou", é "não estava lá"). Os watchdogs `Szuchmacher-RetryVixNoturno/Matinal` viram o buraco e documentaram a própria impotência (`SEM LOG... fora do alcance deste watchdog`), não é bug neles. **Correção é 1 toggle do Windows** (Configurações → Aplicativos → Inicialização → Claude → On), fora do alcance de qualquer agente por regra permanente (configuração de sistema), só o operador liga. Guarda de vigia adicional (checar `Get-Process Claude` como sinal isolado) proposta e não construída, pede autorização à parte. Detalhe em `PENDENCIAS.md`
+- **30/08 (noite), P2 CORRIGIDO NO CÓDIGO, AGUARDANDO DEPLOY (FALLBACKTTL1):** o fix de 1 linha registrado em 29/08 não resolvia o sintoma descrito. `buscarCacheUltimoResorte` (`worker.js:15862+`) tem corte de idade próprio (`idadeHoras > 24`) independente do TTL do KV; só alongar o `expirationTtl` não mudava nada servido ao usuário. Fix real, 2 linhas coordenadas: `expirationTtl: 86400 → 86400*3` (72h) na escrita e `idadeHoras > 24 → > 48` na leitura, TTL de armazenamento com margem acima do corte de serviço. Sobrevive a 1 dia inteiro sem varredura (exatamente o caso de 28/08, ver CCDOFFLINE1 acima), sem piorar nada para quem recebe fallback velho (piso de confiança já saturava em 0,3 a partir de 24h). Suíte local `143/143` verde após o fix. Não deployado ainda. Sem cobertura de teste para este par de funções, lacuna registrada, não fechada. Detalhe em `PENDENCIAS.md`
+- **31/08, CORRIGIDO NO CÓDIGO, não deployado (VERIFCACHE-ROUNDTRIP1):** veredicto `APROVADO_CORRIGIDO` gravado em cache voltava como rejeição no reenvio e retratava o evento do painel. O guard de `aplicarCorrecaoVerificador` exigia `veredicto === "CORRIGIR"` cru, mas a própria função renomeia o campo para `APROVADO_CORRIGIDO` antes de a rotina gravar o objeto no cache. Fix: guard aceita o round-trip (`veredicto_original === "CORRIGIR"`), correções são re-aplicadas ao evento fresco de forma idempotente. Teste novo `api/test/verif-cache-roundtrip.test.mjs` (duas pontas: contra o código pré-fix a ponta ruim falha, a boa passa; com o fix as duas passam). Suíte local 145/145. Não deployado. Detalhe em `PENDENCIAS.md`
 - **30/08, ABERTO P2 (PISODIFF1-ESTRUTURAL1):** piso EWS pisado em 61 para todo RJ/default ativo, sem diferenciar gravidade. Mitigado no v4.9.224/v202.35 pelo card duplo (`Score sem piso: N` sob o score final) e pelo desempate do ranking por `score_calculado` desc. A solução estrutural, escada de piso por severidade dentro do CRITICO (ex. 61/70/78), fica registrada sem implementar: exige fonte estruturada de severidade da RJ (sub-tags da cascade: `default-consumado`, `rj-homologada`, `re-ativa`), nunca tabela manual sem proveniência (classe RESEARCHDOWN1, a `_RJ_FLOOR` já carrega a dívida). Detalhe em `PENDENCIAS.md`
 - **30/08, CORRIGIDO (SYNCDOC-MUDO1, P3, sem deploy):** metade do `scripts/sync-version-docs.ps1` não casava nada e ele não avisava. Os 2 blocos que miravam o `CLAUDE.md` estavam mortos desde `49471e0` (25/07), que removeu a tabela de versão de lá 8 dias depois do script nascer, e o `Update-File` confundia "já sincronizado" com "âncora inexistente" num `$false` só, imprimindo `Docs sincronizados: <só o que mudou>` sem reclamar do resto. Blocos do `CLAUDE.md` aposentados (`README.md` vira a única tabela de versão viva), os 4 alvos restantes viraram declarações nomeadas e a pergunta passou a ser `[regex]::Matches().Count`, com estado `AVISO: ALVO DE SINCRONIA AUSENTE` em amarelo. Avisa e não aborta no deploy de propósito (passo 5.5 roda com produção publicada e git não commitado), `exit 1` só sob `-Strict`. Prova de duas pontas medida contra o código pré-correção, lint RISCO 0, runtime 5.1 e pwsh 7. Detalhe em `PENDENCIAS.md`
 - **30/08, REFUTADO por medição (SENTINELA-DIAPERDIDO1, P1 do 93):** 29/08 é sábado e a task roda só Seg-Sex (`DaysOfWeek=62`). Medido ao vivo: `LastRun=28/08` (sexta) 17:55, `NumberOfMissedRuns=0`, log `vixradar-sentinela_20260828.log` existe com 18 linhas `FIM:`. Não houve dia útil perdido, as auditorias 93/95 chamaram sábado de "sexta". Vigia defensivo implementado mesmo assim no `monitor-tasks.ps1` (`scripts/lib/vixradar-watchdog.ps1`, dot-source), prova de duas pontas 4/4, monitor real `ROTINA OK: VIXRadar-Sentinela (entrega) | 2026-08-28 execucoes_com_fim=18`. Detalhe em `PENDENCIAS.md`
