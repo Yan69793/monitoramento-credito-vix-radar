@@ -1,9 +1,20 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.226)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.227)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.227.js = v4.9.226 + BRASKEMDETECT1.
+#   BRASKEMDETECT1 (31/08): a Braskem protocolou recuperacao extrajudicial em
+#   24/08 (US$ 10,9 bi) e a busca de imprensa nao alcancou. Causa: a query R5
+#   (e a R3 da newsletter) nao incluia "extrajudicial", e a camada
+#   deterministica (aplicarRegrasNegocio -> PALAVRAS_CRITICAS) so reconhecia
+#   "recuperacao judicial", substring que nao existe dentro de "extrajudicial",
+#   entao o evento RELEVANTE passava intacto sem promocao a CRITICO. Fix: R5/R3
+#   agora incluem "extrajudicial"; PALAVRAS_CRITICAS ganhou o termo nas duas
+#   formas (com e sem acento); emitirAlertaTier1 promove o evento extrajudicial
+#   a tag "recuperacao-judicial". Guarda: api/test/gatilho-recuperacao.test.mjs
+#   (5 testes, prova reversa medida). Rollback: main = "v4.9.226.js".
 # v4.9.226.js = v4.9.225 + CVMNOVOSDEAD1 + CNPJVALIDA1.
 #   CVMNOVOSDEAD1 (31/08): cvm_novos ficava 0 para os 103 emissores todo dia
 #   desde a introducao de SENTINELA1 (25/08), dois defeitos independentes.

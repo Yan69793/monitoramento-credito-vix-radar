@@ -8206,7 +8206,7 @@ R2: "{empresa} rating rebaixamento downgrade Moody's Fitch S&P Austin after:${tr
 R3: "{empresa} resultado trimestral EBITDA alavancagem after:${trintaDiasAtras}"
 R4: "{empresa} emiss\xE3o deb\xEAnture CRI CRA FIDC capta\xE7\xE3o mercado de capitais after:${trintaDiasAtras}"
 R4b: "{empresa} letra financeira LF letras financeiras emiss\xE3o banco capta\xE7\xE3o site:bcb.gov.br OR site:anbima.com.br OR site:b3.com.br after:${trintaDiasAtras}"
-R5: "{empresa} recupera\xE7\xE3o judicial default covenant waiver after:${trintaDiasAtras}"
+R5: "{empresa} recupera\xE7\xE3o judicial extrajudicial default covenant waiver after:${trintaDiasAtras}"
 R6: "{empresa} ${regulador} regulat\xF3rio tarifa after:${trintaDiasAtras}"
 R7: "{empresa} RI rela\xE7\xF5es investidores comunicado dividendos JCP b\xF4nus subscri\xE7\xE3o assembleia conselho guidance M&A aquisi\xE7\xE3o after:${trintaDiasAtras}"
 R8: "{empresa} an\xE1lise sell-side research relat\xF3rio analista site:infomoney.com.br OR site:valor.globo.com OR site:btgpactual.com OR site:conteudos.xpi.com.br OR site:suno.com.br OR site:moneytimes.com.br OR site:seudinheiro.com after:${trintaDiasAtras}"
@@ -8332,7 +8332,7 @@ REGRA DE DATA: Se a data real for anterior a ${ontem}, DESCARTE o evento.
 5 RODADAS:
 R1: "fato relevante CVM cr\xE9dito privado after:${ontem}"
 R2: "downgrade upgrade rating Brasil after:${ontem}"
-R3: "recupera\xE7\xE3o judicial default covenant after:${ontem}"
+R3: "recupera\xE7\xE3o judicial extrajudicial default covenant after:${ontem}"
 R4: "resultado trimestral emiss\xE3o CRI CRA after:${ontem}"
 R5: "regulat\xF3rio tarif\xE1rio impacto cr\xE9dito after:${ontem}"
 FORMATO JSON: {"data_analise":"${hoje}","sem_eventos":false,"eventos":[{"empresa":"","classificacao":"CRITICO","titulo":"","evento":"","impacto_credito":"","fonte_primaria":"","fonte_tipo":"IMPRENSA","data_evento":"YYYY-MM-DD","data_aproximada":false,"tags":[]}]}`;
@@ -15949,7 +15949,7 @@ __name222222(buscarCacheUltimoResorte, "buscarCacheUltimoResorte");
 __name2222222(buscarCacheUltimoResorte, "buscarCacheUltimoResorte");
 __name22222222(buscarCacheUltimoResorte, "buscarCacheUltimoResorte");
 var SCORE_BASE_PROVIDER = { openrouter: 0.7, perplexity: 0.65 };
-var PALAVRAS_CRITICAS = ["rebaixamento", "downgrade", "default", "recuperacao judicial", "recupera\xE7\xE3o judicial", "covenant", "inadimplencia", "inadimpl\xEAncia", "fraude"];
+var PALAVRAS_CRITICAS = ["rebaixamento", "downgrade", "default", "recuperacao judicial", "recupera\xE7\xE3o judicial", "recuperacao extrajudicial", "recupera\xE7\xE3o extrajudicial", "covenant", "inadimplencia", "inadimpl\xEAncia", "fraude"];
 var PALAVRAS_RESULTADO = ["resultado trimestral", "balanco", "balan\xE7o", "demonstracoes financeiras", "demonstra\xE7\xF5es financeiras", "dfp", "itr"];
 function validarSchemaEvento(evento) {
   if (!evento || typeof evento !== "object") return { valido: false, campo: "evento", motivo: "Evento nao e objeto" };
@@ -16390,7 +16390,7 @@ function emitirAlertaTier1(doc, empresa, dataResolv) {
       if (tagTipo === "fato_relevante") t.push("regulatorio");
       var catLow2 = String(doc.categoria || "").toLowerCase();
       if (catLow2.indexOf("assembleia de debenturistas") >= 0) t.push("assembleia-debenturistas");
-      if (catLow2.indexOf("recuperacao judicial") >= 0 || catLow2.indexOf("recupera\xE7\xE3o judicial") >= 0) t.push("recuperacao-judicial");
+      if (catLow2.indexOf("recuperacao judicial") >= 0 || catLow2.indexOf("recupera\xE7\xE3o judicial") >= 0 || catLow2.indexOf("recuperacao extrajudicial") >= 0 || catLow2.indexOf("recupera\xE7\xE3o extrajudicial") >= 0) t.push("recuperacao-judicial");
       return t;
     })(),
     descricao: _cvmDescrever(doc, empresa, dataResolv),
@@ -20005,6 +20005,8 @@ export {
   enriquecerEvento,
   MATERIALIDADE_POR_TAG,
   CRITICIDADE_SETOR,
+  aplicarRegrasNegocio,
+  PALAVRAS_CRITICAS,
   _chaveDedupBriefing,
   EmissorDO,
   UsuarioDO,
