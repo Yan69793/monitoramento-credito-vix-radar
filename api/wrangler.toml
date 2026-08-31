@@ -1,9 +1,27 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.223)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.224)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.225.js = v4.9.224 + FALLBACKTTL1 + VERIFCACHE-ROUNDTRIP1.
+#   FALLBACKTTL1 (30/08): fallback:{empresa} com TTL 24h igual ao intervalo
+#   diario da varredura. Um dia sem rotina (28/08) apagava o fallback dos 103
+#   emissores e os eventos Tier1/FR preservados por ADR-040 (mesma chave, 30d
+#   entre escritas). Fix em 2 linhas coordenadas: expirationTtl 86400->86400*3
+#   (72h) na escrita e corte de idade 24h->48h na leitura
+#   (buscarCacheUltimoResorte), TTL de armazenamento com margem acima do corte
+#   de servico. Sem piora para quem recebe fallback velho (piso de confianca
+#   ja satura em 0,3 com 24h). VOLTTL1: TTL >= 2x o intervalo de escrita.
+#   VERIFCACHE-ROUNDTRIP1 (31/08): veredicto APROVADO_CORRIGIDO em cache
+#   voltava como rejeicao no reenvio e retratava o evento do painel. O guard
+#   de aplicarCorrecaoVerificador exigia veredicto===CORRIGIR cru, mas a
+#   propria funcao renomeia o campo antes de a rotina gravar o objeto no
+#   cache. Fix: guard aceita round-trip (veredicto_original===CORRIGIR), as
+#   correcoes sao re-aplicadas ao evento fresco de forma idempotente. Teste
+#   duas pontas em test/verif-cache-roundtrip.test.mjs.
+#   Guardas: 145/145 no vitest.
+#   Rollback: main = "v4.9.224.js".
 # v4.9.224.js = v4.9.223 + PISODIFF1.
 #   PISODIFF1 (2026-08-30): o score_calculado virou o contrafactual honesto do
 #   "sem piso", somando o bonus de deterioracao (+5 quando nSinaisRisco >= 3)
