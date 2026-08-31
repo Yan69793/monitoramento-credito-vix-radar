@@ -7,16 +7,16 @@ status: ativo
 
 # VIX Radar — Indice (MOC)
 
-Mapa do vault. Atualizado 2026-08-22 BRT.
+Mapa do vault. Atualizado 2026-08-31 BRT.
 
 ## Estado atual
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.208 |
-| Frontend | v202.30 |
-| Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (22/08, HTTP 200) |
-| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. O frontend v202.30 passou a separar a data do último evento da data de atualização da base, para deixar explícito que a rotina pode concluir sem fato novo. Worker segue em v4.9.208. Sessão 24/08: SACFALSA-RESIDUO e CACHEBUMP1 fechados e commitados (3 commits, nota 90). Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]], [[89 - Auditoria Geral 2026-08-22]] e [[90 - Auditoria Geral 2026-08-24]]. |
+| Worker | v4.9.227 |
+| Frontend | v202.35 |
+| Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (31/08, HTTP 200, TEMPO 0.23s) |
+| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. O frontend v202.35 separa a data do último evento da data de atualização da base, para deixar explícito que a rotina pode concluir sem fato novo. **Worker em v4.9.227 desde 31/08** (BRASKEMDETECT1 fechado, nota 97). Sessão 24/08: SACFALSA-RESIDUO e CACHEBUMP1 fechados e commitados (3 commits, nota 90). Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]], [[89 - Auditoria Geral 2026-08-22]], [[90 - Auditoria Geral 2026-08-24]] e [[97 - Fechamento BRASKEMDETECT1 e Deploy v4.9.227 2026-08-31]]. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 
@@ -42,6 +42,7 @@ Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]
 | [[92 - Vistoria Feed Noticias 2026-08-29]] | 29/08 | Recado readonly do relato "noticias paradas desde 25/08": feed correto (MAX data_evento 25/08 via op=state), causa externa esperada (CVM quiet desde 25/08, proxima publicacao 30/08) + gap interno 28/08 (app do Claude Desktop fechado, WATCHDOG-NAOINICIOU1). Catch-up rodando. Follow-up: re-probe op=state apos noturna de hoje |
 | [[95 - Auditoria Geral 2026-08-30 (madrugada)]] | 30/08 | Segunda auditoria do dia (madrugada): nucleo saudavel, achados novos AGENDA401 (agenda publica morta, 401 cru) e RECONCILE-CVM404 (reconciliacao ia falhar de novo com ZIP 2026 fora), mais confirmacoes de SENTINELA-DIAPERDIDO1 e AGENDASEM-TRAVA1 do 93. FALLBACKTTL1 e VERIFCACHE-ROUNDTRIP1 ficam para o v4.9.222 |
 | [[94 - Reposicao de Varredura e Skill REPOSIC1 2026-08-30]] | 30/08 | Sessao de fechamento da skill `/repor-varredura` (REPOSIC1): skill + script + prompt anti-ancoragem + payloads commitados (`a2e011d`, `985e3e5`, sem push). Reposicao verificada em producao (Braskem max data_evento 28/08). Fix no caminho: `submit_ok` passou a medir evento persistido, nao POST aceito |
+| [[97 - Fechamento BRASKEMDETECT1 e Deploy v4.9.227 2026-08-31]] | 31/08 | Fechamento da pendencia BRASKEMDETECT1 (protocolo extrajudicial da Braskem 24/08 nao alcancado pela imprensa): query R5/R3 com "extrajudicial", PALAVRAS_CRITICAS nas duas formas, emitirAlertaTier1 promove a tag. Guarda gatilho-recuperacao.test.mjs (5 testes), suite 158/158. Deploy v4.9.227, portao verde, commits dddb009/bb1ec65/af2abb1/ea5dfdb |
 | [[96 - Backlog task-observer 2026-08-30]] | 30/08 | Revisao do backlog do task-observer (12 observacoes OPEN de 17 a 24/08): consolidacao por skill (auditoria, ysz-superpowers, relatorio-diario-szuchmacher, frontend-design), 8 regras de coleta/correcao no Windows para a auditoria, propostas de atualizacao de skill aguardando aprovacao. Nenhuma skill alterada |
 | [[87 - Fechamento Rotinas 2026-08-21]] | 21/08 | Execucao manual das 3 rotinas do dia (Claude Desktop sem creditos): verificacao 23/23, matinal 19/19, noturna 103/103, health ok:true |
 | [[88 - Sessao Frontend Mobile 2026-08-21]] | 21/08 | Frontend: refresh de dados ao voltar para a aba, rodada mobile auditada com Lighthouse (A11y 100, BP 100, SEO 100), deploys v202.24-v202.28, SyntaxError v202.24 corrigido em v202.25 |
