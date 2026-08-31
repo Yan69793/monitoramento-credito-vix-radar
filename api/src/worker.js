@@ -7532,6 +7532,11 @@ var CNPJ_FAMILIA_CVM = (function () {
     "00.194.724/0001-13": "Auren Energia", // AUREN OPERAÇÕES S.A.
     "60.933.603/0001-78": "Auren Energia", // CESP - COMPANHIA ENERGÉTICA DE SÃO PAULO
     "37.663.076/0001-07": "Auren Energia", // AUREN PARTICIPAÇÕES S.A.
+    // CNPJVALIDA1 (2026-08-31): CNPJ correto, mas a Cia Aberta foi CANCELADA em
+    // 30/03/2026 por cancelamento voluntario (medido no cad_cia_aberta.csv vivo
+    // da CVM). O Banco Pan nao vai gerar documento IPE novo por este canal desde
+    // entao, motivo real do zero documentos em 30 dias, nao falha de atribuicao.
+    // Mapeamento fica declarado por precisao historica, nao ha nada a corrigir.
     "59.285.411/0001-13": "Banco Pan", // BANCO PAN SA
     "47.509.120/0001-82": "Bradesco", // BRADESCO LEASING S.A. - ARRENDAMENTO MERCANTIL
     "39.580.673/0001-01": "BRK Ambiental", // BRK AMBIENTAL - REGIÃO METROPOLITANA DE MACEIÓ S.A.
@@ -7563,6 +7568,16 @@ var CNPJ_FAMILIA_CVM = (function () {
     "60.444.437/0001-46": "Light", // LIGHT SERVIÇOS DE ELETRICIDADE SA
     "01.917.818/0001-36": "Light", // LIGHT ENERGIA S.A.
     "02.286.479/0001-08": "Localiza", // LOCALIZA  FLEET S.A.
+    // CNPJVALIDA1 (2026-08-31): as 5 subsidiarias abaixo saem do cad_cia_aberta.csv
+    // vivo da CVM, confirmadas ATIVO e com o mesmo dominio de email de RI da
+    // holding (ri@neoenergia.com, ri@neonergia.com na Elektro Redes por erro de
+    // digitacao do proprio cadastro da CVM, mesmo grupo). Igual padrao CEMIG/
+    // Energisa/Equatorial: a distribuidora regulada protocola no CNPJ dela.
+    "15.139.629/0001-94": "Neoenergia", // CIA DE ELETRICIDADE DO ESTADO DA BAHIA - COELBA
+    "10.835.932/0001-08": "Neoenergia", // CIA ENERGÉTICA DE PERNAMBUCO - CELPE
+    "08.324.196/0001-81": "Neoenergia", // CIA ENERGÉTICA DO RIO GRANDE DO NORTE - COSERN
+    "02.328.280/0001-97": "Neoenergia", // ELEKTRO REDES S.A.
+    "10.338.320/0001-00": "Neoenergia", // AFLUENTE TRANSMISSÃO DE ENERGIA ELETRICA S/A
     "76.535.764/0001-43": "Oi", // OI S.A. - EM RECUPERAÇÃO JUDICIAL
     "09.149.503/0001-06": "Omega Energia", // SERENA GERAÇÃO S.A.
     "08.926.302/0001-05": "PRIO", // PRIO FORTE S.A.
@@ -10133,12 +10148,35 @@ async function marcarCvmVistos(env2222, empresa, ids) {
 __name(marcarCvmVistos, "marcarCvmVistos");
 __name2(marcarCvmVistos, "marcarCvmVistos");
 // Documento conta como novo quando NAO foi entregue a analise (id ausente de
-// cvm_vistos) e nao e anterior a ultima varredura. O corte por data continua,
-// so que ESTRITO (dt < since em vez de dt <= since): documento do proprio dia da
-// ultima varredura passa a depender da identidade, que e exatamente o furo que
-// esta funcao fecha. Sem historico gravado, o delta em relacao ao comportamento
-// atual e apenas "documentos entregues no dia da ultima varredura", tipicamente
-// zero ou um por emissor, entao nao ha pico de custo no primeiro plano.
+// cvm_vistos). Com historico gravado (vistosIds nao vazio), identidade de
+// protocolo E A UNICA fonte de idempotencia — sem corte por data. O corte por
+// data so existe no BOOTSTRAP (vistosIds vazio, primeira vez que este emissor
+// e marcado), e serve so para nao inundar "novo" com o acervo de 30 dias
+// inteiro na primeira marcacao. Fora do bootstrap, data nunca exclui.
+//
+// CVMNOVOSDEAD1 (2026-08-31): antes desta correcao, o corte por data era
+// aplicado SEMPRE, nao so no bootstrap, comparando contra o dia civil da
+// ULTIMA VARREDURA (que roda diariamente). A fonte CVM (ipe_cia_aberta) e
+// semanal, publica aos domingos com Data_Entrega no maximo ate a sexta-feira
+// anterior. Como a varredura e diaria, "since" (dia da varredura anterior)
+// ultrapassa a sexta-feira do lote ja no proprio domingo em que o lote chega,
+// e nunca mais e alcancado ate o lote seguinte, que nasce igualmente atrasado.
+// Medido em producao em 31/08/2026: since=2026-08-30 (dia civil do ultimo scan,
+// FIM do log de 30/08), max data_entrega/data_referencia do lote inteiro para
+// os 103 emissores = 2026-08-28 (medido no plano do dia, duas colunas
+// independentes). 28 < 30 para todo mundo, cvm_novos=0 estrutural, nao
+// especifico de hoje. Some a isso um segundo defeito, independente: o
+// contrato de submissao (receber_analise) so chama marcarCvmVistos quando o
+// corpo do POST traz `cvm_ids_analisados`, e nenhuma rotina jamais enviou esse
+// campo (o plano expoe `cvm_novos_ids`, nome diferente) — entao radar:cvm_vistos
+// nunca foi escrito desde que SENTINELA1 existe (25/08), e o ramo de
+// idempotencia por identidade nunca chegou a ser exercitado. Os dois defeitos
+// juntos mantiveram cvm_delta_*/cvm_overnight_* como caminho morto desde a
+// introducao. Fix: receber_analise agora deriva `cvm_ids_analisados` no
+// servidor quando o cliente nao manda (auto-cura, nao depende de nenhuma
+// rotina lembrar do campo), e esta funcao para de aplicar o corte de data
+// fora do bootstrap.
+//
 // RELOGIO3H1, segunda ocorrencia (medida 2026-08-25 as 22h12 BRT). _last_scanned_at
 // e INSTANTE UTC; data_entrega da CVM e DIA CIVIL BRT. Cortar os 10 primeiros
 // caracteres do instante compara uma data UTC contra uma data BRT, e entre 21h e
@@ -10154,13 +10192,16 @@ __name(_diaCivilBRT, "_diaCivilBRT");
 __name2(_diaCivilBRT, "_diaCivilBRT");
 function _cvmNovosEfetivo(docs, vistosIds, lastTs) {
   if (!docs || !docs.length) return [];
-  var since = _diaCivilBRT(lastTs) || "1970-01-01";
   var set = new Set(vistosIds || []);
+  var bootstrap = set.size === 0;
+  var since = bootstrap ? (_diaCivilBRT(lastTs) || "1970-01-01") : null;
   return docs.filter(function(d) {
     var id = _cvmIdDoc(d);
     if (id && set.has(id)) return false;
-    var dt = String(d.data_entrega || d.data || "").slice(0, 10);
-    if (dt && dt < since) return false;
+    if (bootstrap) {
+      var dt = String(d.data_entrega || d.data || "").slice(0, 10);
+      if (dt && dt < since) return false;
+    }
     return true;
   });
 }
@@ -18760,9 +18801,24 @@ async function __coreFetch(request, env2222, ctx) {
         // documentos entram em cvm_vistos. Qualquer falha acima cai no catch e
         // devolve 500 sem marcar nada, entao o gatilho sobrevive e o emissor volta
         // na execucao seguinte. Marcar na leitura do plano perderia o evento calado.
+        //
+        // CVMNOVOSDEAD1 (2026-08-31): antes desta correcao, so marcava se o CLIENTE
+        // mandasse `cvm_ids_analisados` no corpo, e nenhuma rotina jamais mandou (o
+        // plano expoe `cvm_novos_ids`, nome diferente) — entao esta chave nunca foi
+        // escrita para nenhum dos 103 emissores desde que SENTINELA1 existe. Agora o
+        // servidor deriva sozinho, sem depender do cliente lembrar do campo:
+        // `_cvmNovosEfetivo` com vistos atuais e lastTs nulo (o corte por data so
+        // importa no bootstrap, e null vira epoch, entao a 1a marcacao real de cada
+        // emissor captura o acervo de 30 dias inteiro como baseline, de uma vez).
+        // Explicito no corpo ainda tem prioridade, para rotina que queira marcar
+        // so um subconjunto (ex.: reprocessamento parcial) continuar funcionando.
+        var _raVistosAntes = await lerCvmVistos(env2222, _raEmp);
+        var _raCvmIds = Array.isArray(body.cvm_ids_analisados) && body.cvm_ids_analisados.length > 0
+          ? body.cvm_ids_analisados.slice(0, 200).map(String)
+          : _cvmNovosEfetivo(_dpaCvmDocs, _raVistosAntes, null).map(_cvmIdDoc).filter(Boolean).slice(0, 200);
         var _raCvmMarcados = 0;
-        if (Array.isArray(body.cvm_ids_analisados) && body.cvm_ids_analisados.length > 0) {
-          _raCvmMarcados = await marcarCvmVistos(env2222, _raEmp, body.cvm_ids_analisados.slice(0, 200).map(String));
+        if (_raCvmIds.length > 0) {
+          _raCvmMarcados = await marcarCvmVistos(env2222, _raEmp, _raCvmIds);
         }
         await tel(env2222, request, { evento: "routine_analise_recebida", empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length, provedor: _raProv, pendente_async: _raVerificacao.pendente_verificacao_async || 0 });
         return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0, cvm_marcados: _raCvmMarcados }, 200, request);

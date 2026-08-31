@@ -1,9 +1,47 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.224)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.226)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.226.js = v4.9.225 + CVMNOVOSDEAD1 + CNPJVALIDA1.
+#   CVMNOVOSDEAD1 (31/08): cvm_novos ficava 0 para os 103 emissores todo dia
+#   desde a introducao de SENTINELA1 (25/08), dois defeitos independentes.
+#   (1) _cvmNovosEfetivo aplicava o corte por data SEMPRE, nao so no bootstrap,
+#   contra o dia civil da ULTIMA VARREDURA (diaria). A fonte CVM e semanal,
+#   publica domingo com Data_Entrega no maximo ate sexta. "since" (dia da
+#   varredura anterior) ultrapassa a sexta do lote no proprio domingo em que
+#   ele chega e nunca mais e alcancado. Medido em producao 31/08: since=30/08,
+#   max data_entrega/data_referencia do lote inteiro (103 emissores, duas
+#   colunas independentes) = 28/08. Fix: corte por data so no bootstrap
+#   (vistosIds vazio), pos-bootstrap identidade de protocolo basta.
+#   (2) receber_analise so chamava marcarCvmVistos se o corpo trouxesse
+#   `cvm_ids_analisados`; nenhuma rotina jamais mandou (o plano expoe
+#   `cvm_novos_ids`, nome diferente), entao radar:cvm_vistos nunca foi escrito
+#   para nenhum dos 103. Fix: servidor deriva sozinho via _cvmNovosEfetivo
+#   quando o cliente nao manda (auto-cura, nao depende de SKILL.md de rotina
+#   nenhuma). SKILL.md do noturno e matinal (fora do repo, scheduled-tasks
+#   locais) atualizados para mandar o campo explicito tambem.
+#   CNPJVALIDA1 (31/08): 5 subsidiarias reguladas da Neoenergia (Coelba, Celpe,
+#   Cosern, Elektro Redes, Afluente Transmissao) confirmadas ATIVO no
+#   cad_cia_aberta.csv vivo da CVM e adicionadas a CNPJ_FAMILIA_CVM, mesmo
+#   padrao CEMIG/Energisa. Banco Pan comentado como CANCELADA (30/03/2026,
+#   cancelamento voluntario) — CNPJ ja correto, motivo real do zero documento
+#   e a empresa ter saido do regime, nao falha de atribuicao. Nexa Resources e
+#   Banco Votorantim confirmados sem registro Cia Aberta em nenhuma forma
+#   (ativa ou cancelada) no cadastro vivo — ja tinham excecao declarada em
+#   scripts/check-emissores-cadastro.mjs desde 24/08, nada a corrigir.
+#   Guardas: 153/153 no vitest (32 em sentinela-pontual.test.mjs, 8 novos:
+#   prova reversa medida, 3/8 falham sem o fix). check-alias-coerencia,
+#   check-metricas-curadas, check-emissores-cnpj e check-cnpj-familia verdes
+#   apos a edicao de CNPJ_FAMILIA_CVM.
+#   Fonte intradiaria oficial da CVM avaliada e BLOQUEADA: RAD exige token
+#   reCAPTCHA v3/v2 (bot-detection explicita, nunca contornar); agregador
+#   terceiro dadosdemercado.com.br exige Bearer token pago, ausente do
+#   ambiente (conferido via wrangler secret list, so nomes). Arquitetura fica
+#   em duas camadas, semanal (agora funcional) + imprensa (enriquecimento),
+#   nao ha canal oficial mais granular disponivel sem credencial que nao existe.
+#   Rollback: main = "v4.9.225.js".
 # v4.9.225.js = v4.9.224 + FALLBACKTTL1 + VERIFCACHE-ROUNDTRIP1.
 #   FALLBACKTTL1 (30/08): fallback:{empresa} com TTL 24h igual ao intervalo
 #   diario da varredura. Um dia sem rotina (28/08) apagava o fallback dos 103

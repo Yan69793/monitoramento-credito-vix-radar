@@ -666,3 +666,167 @@ describe("STATUSGRUDA1: _status vem do registro mais recente", () => {
     expect(dasa.contexto_historico).toContain("memo historico que deve sobreviver");
   });
 });
+
+// CVMNOVOSDEAD1 (2026-08-31, auditoria pos-rotina noturna).
+//
+// A suite SENTINELA1 acima ja cobria identidade de protocolo e marcacao pos-entrega,
+// mas todo teste carimbava o documento na MESMA data civil da ultima varredura
+// (hojeBRT()), o unico caso em que dt < since ja dava false mesmo no codigo antigo
+// (dt === since nao e "menor que"). Nenhum teste exercitava o caso real de producao:
+// vistos JA POPULADO (nao e bootstrap) e um protocolo NUNCA visto cuja data e
+// anterior ao dia da ultima varredura. E exatamente esse caso que a fonte CVM
+// (semanal, publica aos domingos com Data_Entrega no maximo ate sexta) produz todo
+// santo dia contra uma varredura diaria: o "since" de uma varredura diaria sempre
+// ultrapassa a sexta-feira do lote semanal.
+//
+// Medido em producao em 31/08/2026: since=2026-08-30 (dia civil do ultimo scan),
+// max data_entrega do lote inteiro (103 emissores, duas colunas independentes) =
+// 2026-08-28. cvm_novos=0 para todos os 103, nao especifico de nenhum emissor.
+//
+// Segundo defeito, independente: receber_analise so chamava marcarCvmVistos quando
+// o CLIENTE mandava `cvm_ids_analisados` no corpo. O plano expoe `cvm_novos_ids`,
+// nome diferente, e nenhuma rotina (noturno nem matinal) jamais mandou o campo
+// certo. radar:cvm_vistos nunca foi escrito para nenhum dos 103 desde que
+// SENTINELA1 existe (25/08). Os dois defeitos juntos mantiveram cvm_delta_*/
+// cvm_overnight_* como caminho morto: a analise nunca aconteceu por documento CVM,
+// so pelo bypass de imprensa (FONTELATENCIA1).
+//
+// Prova reversa: os testes de "conta mesmo sendo anterior" e "servidor deriva
+// sozinho" abaixo falham contra o codigo anterior a esta correcao.
+describe("CVMNOVOSDEAD1 parte 1: pos-bootstrap, identidade manda, data nao exclui mais", () => {
+  it("PONTA BOA: vistos ja populado (outro protocolo) + documento novo mais velho que since CONTA", async () => {
+    await estadoDasaVarridaHoje();
+    // vistos NAO vazio: ja passou do bootstrap.
+    await env.RADAR_KV.put("radar:cvm_vistos:dasa", JSON.stringify({ ids: ["p:8888888"], ts: diasAtras(7) }));
+    // Documento com protocolo NUNCA visto, datado ANTES da ultima varredura — o
+    // padrao real do lote semanal contra o scan diario.
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000060", diasAtras(3))]));
+
+    const p = await plano("noturno");
+    const dasa = p.emissores.find((e) => e.empresa === DASA);
+    expect(dasa).toBeDefined();
+    // Contra o codigo anterior isto era 0 (dt < since excluia incondicionalmente).
+    expect(dasa.cvm_novos).toBe(1);
+    expect(dasa.cvm_novos_ids).toEqual(["p:9000060"]);
+    expect(dasa.motivos.some((m) => m.startsWith("cvm_delta_"))).toBe(true);
+  });
+
+  it("PONTA RUIM: pos-bootstrap, protocolo JA em vistos continua excluido mesmo com since novo", async () => {
+    await estadoDasaVarridaHoje();
+    await env.RADAR_KV.put("radar:cvm_vistos:dasa", JSON.stringify({ ids: ["p:9000061"], ts: diasAtras(7) }));
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000061", diasAtras(3))]));
+
+    const p = await plano("noturno");
+    const dasa = p.emissores.find((e) => e.empresa === DASA);
+    expect(dasa.cvm_novos).toBe(0);
+    expect(dasa.motivos.some((m) => m.startsWith("cvm_delta_"))).toBe(false);
+  });
+
+  it("PONTA BOA: bootstrap (vistos vazio) preserva o corte por data, sem enxurrada", async () => {
+    await estadoDasaVarridaHoje();
+    // vistos vazio de proposito (nao gravado) = bootstrap.
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000062", diasAtras(3))]));
+
+    const p = await plano("noturno");
+    const dasa = p.emissores.find((e) => e.empresa === DASA);
+    // Mesma asserção do teste original "PONTA RUIM: documento anterior..." (parte 1),
+    // repetida aqui para deixar explicito que o bootstrap nao mudou de comportamento.
+    expect(dasa.cvm_novos).toBe(0);
+  });
+});
+
+describe("CVMNOVOSDEAD1 parte 2: receber_analise deriva cvm_ids_analisados sozinho", () => {
+  it("PONTA BOA: submit SEM cvm_ids_analisados marca vistos mesmo assim (auto-cura)", async () => {
+    await estadoDasaVarridaHoje();
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000070", diasAtras(2))]));
+
+    // Contrato antigo, exatamente como o SKILL.md das rotinas mandava antes da
+    // correcao: sem cvm_ids_analisados nenhum.
+    const res = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true }
+    });
+    expect(res.status).toBe(200);
+    const corpo = await res.json();
+    expect(corpo.ok).toBe(true);
+    // Contra o codigo anterior isto era 0, porque o guard so entrava com o campo
+    // explicito no corpo.
+    expect(corpo.cvm_marcados).toBe(1);
+
+    const guardado = JSON.parse(await env.RADAR_KV.get("radar:cvm_vistos:dasa"));
+    expect(guardado.ids).toEqual(["p:9000070"]);
+  });
+
+  it("PONTA BOA: repetir o mesmo submit sem cvm_ids_analisados e idempotente", async () => {
+    await estadoDasaVarridaHoje();
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000071", diasAtras(2))]));
+
+    const um = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true }
+    });
+    expect((await um.json()).cvm_marcados).toBe(1);
+
+    const dois = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true }
+    });
+    expect((await dois.json()).cvm_marcados).toBe(0);
+
+    const guardado = JSON.parse(await env.RADAR_KV.get("radar:cvm_vistos:dasa"));
+    expect(guardado.ids).toEqual(["p:9000071"]);
+  });
+
+  it("PONTA RUIM: cvm_ids_analisados explicito no corpo continua tendo prioridade", async () => {
+    await estadoDasaVarridaHoje();
+    // Dois documentos reais disponiveis, mas o corpo so declara UM como analisado.
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([
+      doc(DASA_RAZAO, "9000072", diasAtras(2)),
+      doc(DASA_RAZAO, "9000073", diasAtras(2))
+    ]));
+
+    const res = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true },
+      cvm_ids_analisados: ["p:9000072"]
+    });
+    expect((await res.json()).cvm_marcados).toBe(1);
+
+    const guardado = JSON.parse(await env.RADAR_KV.get("radar:cvm_vistos:dasa"));
+    // So o protocolo explicito entrou, o auto-derive nao completou por cima.
+    expect(guardado.ids).toEqual(["p:9000072"]);
+  });
+
+  it("PONTA RUIM: sem documento nenhum, submit sem cvm_ids_analisados nao grava chave", async () => {
+    await estadoDasaVarridaHoje();
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([]));
+
+    const res = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true }
+    });
+    expect((await res.json()).cvm_marcados).toBe(0);
+
+    const guardado = await env.RADAR_KV.get("radar:cvm_vistos:dasa");
+    expect(guardado).toBeNull();
+  });
+
+  it("PONTA RUIM: bootstrap com mais de 200 documentos no dia, auto-derive corta em 200", async () => {
+    await estadoDasaVarridaHoje();
+    const muitos = Array.from({ length: 210 }, (_, i) => doc(DASA_RAZAO, `9001${String(i).padStart(3, "0")}`, hojeBRT()));
+    await env.RADAR_KV.put(KEY_DOCS, JSON.stringify(muitos));
+
+    const res = await post({
+      action: "receber_analise", empresa: DASA, setor: "Saúde",
+      resultado: { eventos: [], sem_eventos: true }
+    });
+    const corpo = await res.json();
+    // Mesmo teto do path explicito (body.cvm_ids_analisados.slice(0,200)), agora
+    // tambem no auto-derive. Sem o corte, um bootstrap incomum de dia com muito
+    // documento gravaria uma lista sem limite em radar:cvm_vistos.
+    expect(corpo.cvm_marcados).toBe(200);
+
+    const guardado = JSON.parse(await env.RADAR_KV.get("radar:cvm_vistos:dasa"));
+    expect(guardado.ids.length).toBe(200);
+  });
+});
