@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
 import estadoW31 from "./fixtures/estado-2026-W31.json" with { type: "json" };
 import estadoW32 from "./fixtures/estado-2026-W32.json" with { type: "json" };
 import estadoW33 from "./fixtures/estado-2026-W33.json" with { type: "json" };
@@ -62,11 +63,19 @@ describe("PISO EWS — semântica corrigida (EWSFLOOR1)", () => {
   let token;
 
   beforeEach(async () => {
+    // RELOGIOTESTE1: os valores abaixo saem do decaimento de recencia do EWS
+    // (exp(-0.046*dias)), que derrete cerca de 4,5% por dia de calendario. Sem
+    // congelar, a suite so passa nas horas seguintes a medicao.
+    fixarRelogioDoFixture();
     for (let i = 0; i < ESTADOS.length; i++) {
       await env.RADAR_KV.put(`radar:estado:${WEEKS[i]}`, JSON.stringify(ESTADOS[i]));
     }
     await env.RADAR_KV.put("mercado:anomalias:ativas", JSON.stringify(anomalias));
     token = await mintJWT(env.JWT_SECRET);
+  });
+
+  afterEach(() => {
+    soltarRelogio();
   });
 
   it("reproduz o 66 (piso crítico 61 + padrão +5) e expõe o piso como metadado", async () => {

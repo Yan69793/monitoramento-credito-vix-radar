@@ -51,3 +51,49 @@ jobs:
 
       - name: Rodar testes (vitest-pool-workers)
         run: npm test
+
+  # RELOGIOTESTE1 (2026-08-31). Guarda contra teste que depende do relogio de parede.
+  #
+  # O incidente: este mesmo workflow aprovou d88c293 as 02:36:55Z de 31/08 (run
+  # 33351230334) e as suites de materialidade, briefing-dedup e ews-piso, no MESMO
+  # commit e sem alteracao de codigo, falharam horas depois. Snapshot datado
+  # comparado contra Date.now() real so passa numa janela curta depois de capturado,
+  # e o verde do CI ficou sendo funcao da hora em que rodou.
+  #
+  # Corrigir os tres arquivos nao impede o quarto de nascer com o mesmo defeito.
+  # Esta guarda mede comportamento em vez de vigiar forma: a suite inteira roda de
+  # novo com o relogio do isolate adiantado e tem que dar exatamente o mesmo
+  # resultado. Teste que congela o proprio relogio ou monta fixture em data relativa
+  # passa; quem compara valor datado fixo contra o relogio real quebra aqui.
+  #
+  # Prova de duas pontas medida em 31/08, com a suite completa:
+  #   pre-fix  + shift 196:  3 arquivos falharam, 8 testes falharam, 137 passaram
+  #   corrigido + shift 196: 18 arquivos passaram, 145 testes passaram
+  #
+  # 196 = 28 semanas. O deslocamento e multiplo de 7 de proposito: dia util,
+  # cadencia semanal da CVM e semana ISO sao sensiveis a dia da semana, e um
+  # deslocamento quebrado acusaria diferenca de calendario em vez de fragilidade de
+  # relogio. O setup em api/test/_setup-relogio-adiantado.mjs recusa multiplo errado.
+  worker-tests-relogio-adiantado:
+    name: Worker Tests (relogio adiantado)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Instalar dependencias
+        run: npm ci --no-audit --no-fund
+
+      - name: Rodar testes com o relogio 196 dias a frente
+        run: npm test
+        env:
+          VIX_TEST_CLOCK_SHIFT_DAYS: '196'

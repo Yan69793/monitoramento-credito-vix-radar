@@ -10,6 +10,13 @@ export default defineConfig({
     cloudflareTest({
       wrangler: { configPath: "./wrangler.test.jsonc" },
       miniflare: {
+        // RELOGIOTESTE1 (2026-08-31): canal do deslocamento de relogio para o
+        // setup em test/_setup-relogio-adiantado.mjs. Vem do ambiente do runner
+        // porque o setup roda dentro do workerd e nao enxerga process.env.
+        // Ausente ou "0" e o caminho normal, sem deslocamento nenhum.
+        bindings: {
+          VIX_TEST_CLOCK_SHIFT_DAYS: process.env.VIX_TEST_CLOCK_SHIFT_DAYS ?? "0"
+        },
         // EMAILSILENT1 (2026-08-24): a Resend e a UNICA saida de rede interceptada
         // aqui. Duas razoes. Primeira, o teste de envio precisa escolher entre
         // caminho feliz e caminho de falha de forma deterministica, e este pacote
@@ -57,4 +64,7 @@ export default defineConfig({
       }
     }),
   ],
+  test: {
+    setupFiles: ["./test/_setup-relogio-adiantado.mjs"]
+  }
 });
