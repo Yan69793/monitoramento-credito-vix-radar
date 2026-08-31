@@ -34,11 +34,13 @@ status: saudavel-com-achado
 > outros dois nunca foram Cia Aberta, nenhuma forma, ativa ou cancelada, em nenhum nome testado) — já tinham
 > exceção declarada em `scripts/check-emissores-cadastro.mjs` desde 24/08, nada pra corrigir de fato.
 >
-> **Fonte intradiária oficial: avaliada e bloqueada, documentado, não é lacuna silenciosa.** RAD exige token
-> reCAPTCHA (bot-detection explícita, não se contorna). `dadosdemercado.com.br` tem API viva independente do
-> lote semanal mas exige Bearer pago, ausente do ambiente (`wrangler secret list` conferido, zero candidato).
-> Arquitetura segue em duas camadas, semanal (agora funcional) + imprensa (enriquecimento), sem canal oficial
-> mais granular disponível sem credencial que não existe.
+> **Fonte intradiária oficial: bloqueada só por credencial, não por impossibilidade técnica.** Correção sobre o
+> registro original desta sessão: o **Download Múltiplo de Companhias** da CVM suporta automação e janela de
+> até 24h, mas exige credencial própria da CVM ausente neste ambiente — bloqueio diferente do de RAD
+> (reCAPTCHA v3/v2, bot-detection que não se contorna) e do de `dadosdemercado.com.br` (Bearer pago, ausente,
+> `wrangler secret list` conferido, zero candidato). Fica como oportunidade real, não fechada, sem solicitar
+> ou gerar credencial agora. Arquitetura segue em duas camadas por ora, semanal (agora funcional) + imprensa
+> (enriquecimento).
 >
 > **Horário: mudado no config, ainda não ativo.** `cronExpression` de `vixradar-noturno` foi de `0 10 * * *`
 > para `0 8 * * *` no `scheduled-tasks.json` (backup feito antes). Por INVERSAO-CD1 só vale depois de reiniciar

@@ -29,12 +29,15 @@
 > Votorantim confirmados sem registro Cia Aberta em nenhuma forma (ativa ou cancelada) no cadastro vivo —
 > já tinham exceção declarada em `scripts/check-emissores-cadastro.mjs` desde 24/08, nada a corrigir.
 >
-> **Fonte intradiária oficial da CVM: avaliada e bloqueada.** RAD (`rad.cvm.gov.br`) exige token reCAPTCHA
-> v3/v2 explícito, bot-detection que não se contorna. Agregador terceiro `dadosdemercado.com.br` tem API viva
-> e independente do lote semanal, mas exige Bearer token pago, ausente do ambiente (conferido via
-> `wrangler secret list`, só nomes, nenhum candidato). Arquitetura de detecção fica em duas camadas: semanal
-> (agora funcional de verdade) + imprensa (enriquecimento, não mais gatilho único). Não há canal oficial mais
-> granular disponível sem uma credencial que não existe hoje.
+> **Fonte intradiária oficial da CVM: avaliada e bloqueada só por credencial, não por impossibilidade técnica.**
+> Correção sobre o registro original desta sessão: o **Download Múltiplo de Companhias** da CVM suporta
+> automação e janela de até 24h, mas exige credencial própria da CVM que não existe neste ambiente — não é o
+> mesmo bloqueio de RAD (`rad.cvm.gov.br`, reCAPTCHA v3/v2, bot-detection que não se contorna sob nenhuma
+> instrução) nem o de `dadosdemercado.com.br` (Bearer token pago, ausente, conferido via `wrangler secret
+> list`). Fica registrado como oportunidade futura de verdade, bloqueada só pela credencial ausente — sem
+> solicitar ou gerar credencial nesta sessão. Arquitetura de detecção segue em duas camadas por ora: semanal
+> (agora funcional) + imprensa (enriquecimento). Item aberto: avaliar o Download Múltiplo com credencial
+> própria da CVM quando o operador decidir obtê-la.
 >
 > **Horário da rotina noturna: alterado no config, ainda não ativo.** `cronExpression` do scheduled task
 > `vixradar-noturno` mudou de `0 10 * * *` para `0 8 * * *` em
