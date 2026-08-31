@@ -7,7 +7,11 @@ status: saudavel-com-achado
 
 # Estado Atual — VIX Radar
 
-> [!warning] 31/08 BRT — **Produção v4.9.226. CVMNOVOSDEAD1: `cvm_novos` estava zerado para os 103 emissores todo dia desde 25/08.** CVM volta a poder promover emissor pra fila aprofundada sozinha, sem depender de imprensa.
+> [!warning] 31/08 BRT — **Produção v4.9.227. BRASKEMDETECT1: gatilho de imprensa endurecido para recuperação extrajudicial.** R5 (e R3 da newsletter) agora incluem "extrajudicial", `PALAVRAS_CRITICAS` reconhece o termo nas duas formas e `emitirAlertaTier1` promove o evento à tag `recuperacao-judicial`. Deploy `deploy-worker.ps1 -Version v4.9.227`, commit `af2abb1`, push OK.
+> **Status:** vigente · **Data da Versão:** 2026-08-31 · **Origem do Registro:** fechamento da pendência BRASKEMDETECT1 (protocolo da Braskem de 24/08, US$ 10,9 bi, que a imprensa não alcançou). Guarda `api/test/gatilho-recuperacao.test.mjs`, 5 testes, prova reversa medida, suíte 158/158.
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.227.
+>
+> [!warning] 31/08 BRT — **Produção v4.9.226 (histórico). CVMNOVOSDEAD1: `cvm_novos` estava zerado para os 103 emissores todo dia desde 25/08.** CVM volta a poder promover emissor pra fila aprofundada sozinha, sem depender de imprensa.
 > **Status:** vigente · **Data da Versão:** 2026-08-31 · **Origem do Registro:** auditoria pedida pelo operador depois da rotina noturna do dia, ao investigar por que nenhuma promoção veio de documento CVM (os 3 CRÍTICO do dia, Braskem/Oncoclínicas/Oi, vieram todos do bypass de imprensa FONTELATENCIA1). Deploy `deploy-worker.ps1 -Version v4.9.226`, commit `9acd814`, push OK.
 > **Condição de Obsolescência:** cai quando o Worker passar do v4.9.226.
 >
