@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
 import estadoW31 from "./fixtures/materialidade-estado-2026-W31.json" with { type: "json" };
 import estadoW32 from "./fixtures/materialidade-estado-2026-W32.json" with { type: "json" };
 import estadoW33 from "./fixtures/materialidade-estado-2026-W33.json" with { type: "json" };
@@ -51,25 +52,6 @@ function chaveEvento(e) {
   return `${e.empresa}|${e.data_evento}|${(e.titulo || "").slice(0, 40)}`;
 }
 
-// Replica obterAgoraBRT() (dia civil BRT = Date.now() - 3h) + semanaISO do
-// worker, na mesma ordem que carregarEstadoMultiSemana deriva as 5 chaves.
-function semanaISO(d) {
-  const data = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dia = data.getUTCDay() || 7;
-  data.setUTCDate(data.getUTCDate() + 4 - dia);
-  const pj = new Date(Date.UTC(data.getUTCFullYear(), 0, 1));
-  return `${data.getUTCFullYear()}-W${String(Math.ceil(((data - pj) / 864e5 + 1) / 7)).padStart(2, "0")}`;
-}
-
-function semanasCorrentesBRT(n) {
-  const agora = new Date(Date.now() - 3 * 60 * 60 * 1e3);
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    out.push(semanaISO(new Date(agora.getTime() - i * 7 * 864e5)));
-  }
-  return out;
-}
-
 async function mintJWT(secret) {
   const b64url = (buf) => Buffer.from(buf).toString("base64url");
   const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
@@ -84,10 +66,19 @@ describe("MATERIALIDADE — sem saturacao (MATERIALSAT1)", () => {
   let token;
 
   beforeEach(async () => {
+    // RELOGIOTESTE1: os fixtures vivem em W31..W35 e a janela de 5 semanas do
+    // Worker nasce do relogio. Congelado em 30/08 (dentro da W35), a janela
+    // fecha exatamente sobre eles; solto, a semana corrente anda e o merge
+    // perde a ponta velha em silencio (497 -> 447 eventos).
+    fixarRelogioDoFixture();
     const map = kvMapDosFixtures();
     for (const [k, v] of Object.entries(map)) await env.RADAR_KV.put(k, v);
     await env.RADAR_KV.put("mercado:anomalias:ativas", JSON.stringify(anomalias));
     token = await mintJWT(env.JWT_SECRET);
+  });
+
+  afterEach(() => {
+    soltarRelogio();
   });
 
   it("o ranking completo do harness reproduz o snapshot after byte a byte", async () => {
@@ -162,18 +153,10 @@ describe("MATERIALIDADE — sem saturacao (MATERIALSAT1)", () => {
   });
 
   it("cross-check: top 10 do briefing real (endpoint) bate com o ranking do harness", async () => {
-    // O endpoint deriva as semanas do relogio (obterAgoraBRT). Para o teste nao
-    // ser datado, injeta os fixtures sob as semanas CORRENTES (replicando a
-    // conta do worker) e roda o harness com a mesma mapa. O conteudo e o mesmo
-    // (W31-W35 reais), so o nome da chave muda com a data.
-    const semanas = semanasCorrentesBRT(5);
-    const kvCorrente = {};
-    for (let i = 0; i < 5; i++) {
-      const chave = `${FIX_KEY}${semanas[i]}`;
-      kvCorrente[chave] = JSON.stringify(ESTADOS[i]);
-      await env.RADAR_KV.put(chave, kvCorrente[chave]);
-    }
-
+    // Com o relogio preso em 30/08 o endpoint pede exatamente W35..W31, entao o
+    // fixture entra sob a propria semana. Antes do RELOGIOTESTE1 este teste
+    // remapeava os fixtures para as semanas correntes, o que mantinha as duas
+    // pontas de acordo mas embaralhava a ordem cronologica do merge.
     const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -186,7 +169,7 @@ describe("MATERIALIDADE — sem saturacao (MATERIALSAT1)", () => {
 
     // O endpoint dedup o top_eventos (BRIEFDEDUP1), entao o harness compara com
     // a variante dedup, mesma chave real.
-    const meu = await rankingTopComDedup(kvCorrente);
+    const meu = await rankingTopComDedup(kvMapDosFixtures());
     expect(meu.length).toBeGreaterThanOrEqual(10);
     for (let i = 0; i < 10; i++) {
       expect({ empresa: top[i].empresa, data: top[i].data_evento, m: top[i].materialidade }).toEqual(meu[i]);
