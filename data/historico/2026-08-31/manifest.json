@@ -1,0 +1,15 @@
+{
+    "data":  "2026-08-31",
+    "gerado_em_brt":  "2026-08-31 20:45:02",
+    "model_version":  "rule_v1+logistic_v2 (schema_v 2)",
+    "run_date_pipeline":  "2026-08-31",
+    "modo":  "delta",
+    "emissores":  103,
+    "com_serie":  71,
+    "sem_serie":  32,
+    "erros":  [
+
+              ],
+    "dry_run":  false,
+    "duracao_s":  181
+}
