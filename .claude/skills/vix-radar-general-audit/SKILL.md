@@ -12,19 +12,19 @@ description: >
   rotulo, card, percentual ou selo errado no dashboard, quando pedir para achar
   a causa raiz de um defeito recorrente, ou quando quiser garantir que um erro
   encontrado nao volte no futuro.
-date: 2026-08-26
+date: 2026-08-31
 ---
 
 # VIX Radar General Audit
 
-> **Governanca (2026-08-26).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.221 e Frontend v202.33, medidos ao vivo em 26/08 no health publico
+> **Governanca (2026-08-31).** Status: vigente. Data da versao alinhada a producao:
+> Worker v4.9.226 e Frontend v202.35, medidos ao vivo em 31/08 no health publico
 > (os dois dominios) e no version.json de vixradar.com, coincidindo com o repo
-> (main = v4.9.221.js e CACHE_VERSION v202.33). Origem do registro: producao
-> (health + version.json), depois Obsidian (03 - Estado Atual ainda registra
-> v4.9.216 de 25/08, defasado), depois codigo (api/wrangler.toml main + changelog).
+> (main = v4.9.226.js e CACHE_VERSION v202.35). Origem do registro: producao
+> (health + version.json), depois Obsidian (03 - Estado Atual em v4.9.226 de
+> 31/08, corrente), depois codigo (api/wrangler.toml main + changelog).
 > Condicao de obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar
-> v4.9.221, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
+> v4.9.226, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
 > nenhuma secao desta skill alcance.
 
 Auditoria ampla de engenharia para o VIX Radar. Esta skill complementa
@@ -35,7 +35,7 @@ skill para revisao de backend + frontend + qualidade do projeto.
 
 0. Seguir as 5 regras permanentes de auditoria do `CLAUDE.md` raiz (medir antes de planejar, numero sai de comando com saida citada, julgar por comportamento, separar artefato vivo de registro, prova de guarda de duas pontas). O projeto tem hook graphify antes de grep/read: orientar-se por `graphify query "<pergunta>"` antes de ler arquivo (CLAUDE.md raiz, secao "Grafo do codigo"). O grafo orienta pouco o Worker: simbolo de `api/src/worker.js`, ler o fonte direto apos a orientacao.
 1. Ler `CLAUDE.md`, `.claude/SKILLS-ROUTER.md`, `Obsidian VIX Radar/00 - Índice (MOC).md` e `Obsidian VIX Radar/03 - Estado Atual.md` (antes se chamava `03 - Estado de Producao.md`; nao recriar o nome antigo).
-2. Ler a matriz em `references/audit-matrix.md` (snapshot revisado em 2026-08-26).
+2. Ler a matriz em `references/audit-matrix.md` (snapshot revisado em 2026-08-31).
 3. Ler `references/glossario-dominio.md`. Sem o glossario carregado nao da para auditar a camada de veracidade da UI: e ele que define o que "cobertura", "critico" e "relevante" tem obrigacao de significar.
 4. Cruzar com `Obsidian VIX Radar/PENDENCIAS.md` (canonico desde 2026-07-27; o `PENDENCIAS.md` da raiz foi arquivado) para nao reabrir achado ja classificado.
 5. Carregar skills auxiliares conforme escopo:
@@ -163,6 +163,13 @@ e o detalhe no vault (`Obsidian VIX Radar/PENDENCIAS.md`).
 - **EMAILSILENT1 (v4.9.214):** todo envio ao usuario final passa por `enviarEmailRastreado`, que nunca lanca (a acao primaria continua valendo). Quatro canais: `console.error`, Sentry, Analytics Engine e KV `email_envio:{email}:{ts}` (TTL 90d, igual bounce). Respostas de aprovar/rejeitar carregam `email_enviado`/`email_erro`/`resend_id` (tri-estado). Conferir que todo caminho novo de envio ao usuario usa o helper e que nenhuma resposta de admin mente sobre envio.
 - **SPREADSERIE1 (v4.9.205):** o nome canonico da serie da ANBIMA no KV passou a ser `taxa_indicativa_pct`; `spread_bps` ficou como alias com o mesmo valor, so para nao quebrar consumidor antigo. Conferir que leitores novos usam `taxa_indicativa_pct` e que nenhum card carimba " bps" sobre percentual ao ano.
 - **Scheduler real (INVERSAO-CD1):** as rotinas Claude Desktop (matinal, noturno, verificacao async) agendam no CCD store `%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`, lido pelo app so na ativacao. As tasks homonimas no Windows Task Scheduler ficam `Disabled` de proposito, guarda anti-duplicata. Ao validar rotinas, conferir o CCD store e a linha `FIM:` no log em `logs/routines/`, nunca o `LastTaskResult`.
+- **CVMNOVOSDEAD1 (v4.9.226):** `cvm_novos` ficou 0 para os 103 emissores todo dia desde SENTINELA1 (25/08), dois defeitos independentes. (1) `_cvmNovosEfetivo` aplicava corte por data SEMPRE contra o dia civil da ultima varredura diaria, mas a fonte CVM e semanal (publica domingo, `Data_Entrega` ate sexta), entao `since` (dia anterior) nunca e alcancado e documento nenhum promove emissor. (2) `receber_analise` so marcava `radar:cvm_vistos` se o corpo trouxesse `cvm_ids_analisados`, campo que nenhuma rotina mandava (o plano expoe `cvm_novos_ids`). Fix: corte por data so no bootstrap (`vistosIds` vazio) + servidor deriva `cvm_ids_analisados` sozinho (auto-cura). Conferir `cvm_novos>0` e que `radar:cvm_vistos` e escrita de fato.
+- **CNPJVALIDA1 (v4.9.226):** 5 subsidiarias reguladas da Neoenergia (Coelba, Celpe, Cosern, Elektro Redes, Afluente Transmissao) entram em `CNPJ_FAMILIA_CVM`. Banco Pan e CANCELADA (30/03/2026, cancelamento voluntario); Nexa e Votorantim nunca foram Cia Aberta (excecao ja declarada). Conferir que emissor renomeado ou fora do regime nao fica cego por atribuicao.
+- **FALLBACKTTL1 (v4.9.225):** `fallback:{empresa}` com TTL 24h igual ao intervalo diario; um dia sem rotina apagava o fallback dos 103. Fix expirationTtl 86400→86400*3 (72h) + corte de idade 24h→48h. Generaliza VOLTTL1 (ja na matriz).
+- **VERIFCACHE-ROUNDTRIP1 (v4.9.225):** veredicto `APROVADO_CORRIGIDO` em cache voltava como rejeicao no reenvio e retratava o evento. O guard exigia `veredicto===CORRIGIR` cru, mas a funcao renomeia o campo antes de gravar. Fix: guard aceita round-trip (`veredicto_original===CORRIGIR`), correcoes re-aplicadas idempotentes.
+- **PISODIFF1 (v4.9.224):** `score_calculado` virou o contrafactual honesto do "sem piso", somando o bonus de deterioracao (+5 quando `nSinaisRisco>=3`) aos sinais reais. O ranking (`op=ews`) desempata scores iguais por `score_calculado` desc. Frontend mostra "Score sem piso: N". Score final, piso e classificacao intocados.
+- **EWSFLOOR1 / MATERIALSAT1 / BRIEFDEDUP1 / AGENDA401 (v4.9.223):** EWSFLOOR1 tira o piso da decomposicao como contribuicao de ponto e vira metadado explicito (`score_calculado`, `piso_aplicado`, `piso_valor`, `piso_causa`); MATERIALSAT1 dampia o boost de materialidade pela metade so no CRITICO (8 eventos de rating travados em 100 no topo); BRIEFDEDUP1 dedup semantico no `top_eventos` do briefing por (empresa, data_evento, tag de materialidade), lista completa do emissor intacta; AGENDA401 tira `op=calendario` do grupo que exige JWT (agenda publica, so KV, sem PII). Nota: v4.9.222 existiu em voo e subiu entrelacado com a v4.9.223, sem commit de deploy proprio.
+- **CACHEBUMP1 (v202.35):** alinhamento do cache version do frontend.
 
 ## Severidade
 

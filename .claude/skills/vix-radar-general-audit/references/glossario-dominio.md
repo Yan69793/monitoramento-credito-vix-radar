@@ -1,9 +1,9 @@
 # Glossario de dominio — VIX Radar
 
-> **Governanca (2026-08-26).** Status: vigente. Data da versao alinhada a producao:
-> Frontend v202.33 (version.json ao vivo em 26/08, deploy 2026-08-25). Origem do
+> **Governanca (2026-08-31).** Status: vigente. Data da versao alinhada a producao:
+> Frontend v202.35 (version.json ao vivo em 31/08, deploy 2026-08-30). Origem do
 > registro: producao, depois Obsidian, depois codigo. Condicao de obsolescencia:
-> revisar quando o frontend avancar de v202.33 ou surgir termo reservado novo.
+> revisar quando o frontend avancar de v202.35 ou surgir termo reservado novo.
 
 Fonte canonica dos termos que aparecem em rotulo de UI, campo de KV, nome de
 variavel, prompt de LLM e texto de e-mail. Existe por uma razao concreta: em

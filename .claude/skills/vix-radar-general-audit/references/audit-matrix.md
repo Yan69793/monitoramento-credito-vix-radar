@@ -1,10 +1,10 @@
 # Audit Matrix
 
-> **Governanca (2026-08-26).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.221 e Frontend v202.33, medidos ao vivo em 26/08 no health publico e
+> **Governanca (2026-08-31).** Status: vigente. Data da versao alinhada a producao:
+> Worker v4.9.226 e Frontend v202.35, medidos ao vivo em 31/08 no health publico e
 > no version.json, coincidindo com o repo. Origem do registro: producao, depois
 > Obsidian, depois codigo (api/wrangler.toml main + changelog). Condicao de
-> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.221 ou
+> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.226 ou
 > surgir binding, fila, endpoint, rotina ou incidente novo que nenhuma secao alcance.
 
 Referencia rapida para auditoria geral backend/frontend do VIX Radar.
@@ -20,12 +20,14 @@ Referencia rapida para auditoria geral backend/frontend do VIX Radar.
 
 ## Backend Worker
 
-> Producao em 2026-08-26: Worker v4.9.221 e Frontend v202.33, medidos ao vivo no
-> health publico e no version.json, coincidindo com o repo (main = v4.9.221.js).
+> Producao em 2026-08-31: Worker v4.9.226 e Frontend v202.35, medidos ao vivo no
+> health publico e no version.json, coincidindo com o repo (main = v4.9.226.js).
 > Marcos pos v4.9.197 no changelog do wrangler.toml: v4.9.205 SPREADSERIE1,
 > v4.9.209-210 CVMURL404/CVMDURA1, v4.9.214 EMAILSILENT1, v4.9.215 SUBSTRINGDONO1,
 > v4.9.216 SENTINELA1, v4.9.217-219 DEFERGRUDA1/2/3, v4.9.220 STATUSGRUDA1,
-> v4.9.221 CVMTTL1/ATRIBTEL1.
+> v4.9.221 CVMTTL1/ATRIBTEL1, v4.9.223 EWSFLOOR1/MATERIALSAT1/BRIEFDEDUP1/AGENDA401,
+> v4.9.224 PISODIFF1, v4.9.225 FALLBACKTTL1/VERIFCACHE-ROUNDTRIP1,
+> v4.9.226 CVMNOVOSDEAD1/CNPJVALIDA1.
 
 Checklist:
 
@@ -61,6 +63,10 @@ Checklist:
 - Email rastreado (EMAILSILENT1, desde v4.9.214): todo envio ao usuario final passa por `enviarEmailRastreado`, que nunca lanca (a acao primaria continua valendo). Respostas de aprovar/rejeitar carregam `email_enviado`/`email_erro`/`resend_id` (tri-estado). Rastro em KV `email_envio:{email}:{ts}` (TTL 90d, igual bounce). Conferir que call site novo le o retorno.
 - Fonte CVM (CVMURL404/CVMDURA1, desde v4.9.209-210): 404 do ZIP `ipe_cia_aberta_*.zip` repergunta o catalogo CKAN; falha DURA derruba `fonte_externa_ok` na hora (nao usa a tolerancia semanal de `CVM_FONTE_MAX_CICLOS`). Campos novos no health: `cvm_fonte_falha_dura`, `cvm_fonte_degrada_servico`, `cvm_fonte_ultimo_sync_ok_em`, `cvm_fonte_falhas_consecutivas`. TTL de `cvm:documentos` e 30 dias desde o v4.9.210, unificado numa constante unica no v4.9.221 (CVMTTL1). Conferir que alerta nenhum le so o agregado `ok`.
 - Sentinela pontual (SENTINELA1 v4.9.216, DEFERGRUDA1/2/3 v4.9.217-219, STATUSGRUDA1 v4.9.220): modo "pontual" em `montarPlanoRotina`/`listar_plano_rotina` com teto `ROTINA_PONTUAL_TETO=8` e excedente declarado em `pontual_candidatos`/`pontual_excedente`; gatilho so por fato novo (protocolo ausente de `radar:cvm_vistos:{empresa}`) ou divida (`_token_cap_deferred`), nunca por inconclusivo (v4.9.219). `_status` descreve a ULTIMA VARREDURA, nao o acervo. Conferir que a pontual converge, que a bandeira `_token_cap_deferred` e gravada E apagada nos 5 ramos, e que a leitura multi-semana nao ressuscita bandeira apagada.
+- `cvm_novos` nunca pode ficar 0 para os 103 ao mesmo tempo (CVMNOVOSDEAD1, v4.9.226): `_cvmNovosEfetivo` aplicava corte por data SEMPRE contra o dia civil da ultima varredura diaria, mas a fonte CVM e semanal, entao `since` nunca era alcancado e documento nenhum virava gatilho de promocao desde 25/08. Segundo defeito: `receber_analise` so marcava `radar:cvm_vistos` se o corpo trouxesse `cvm_ids_analisados`, campo que nenhuma rotina mandava. Fix: corte por data so no bootstrap + servidor deriva o campo sozinho. Conferir `cvm_novos>0` e `radar:cvm_vistos` escrito.
+- Cache de veredicto do verificador faz round-trip (VERIFCACHE-ROUNDTRIP1, v4.9.225): `APROVADO_CORRIGIDO` em cache voltava como rejeicao no reenvio. Guard aceita `veredicto_original===CORRIGIR`. Conferir que reenvio de evento corrigido nao retrata.
+- `op=calendario` e publico (AGENDA401, v4.9.223): removido do grupo que exige JWT, handler so le KV sem PII. Endpoint publico novo precisa ser declarado sem PII.
+- Piso de score e metadado, nao ponto (EWSFLOOR1/PISODIFF1/MATERIALSAT1, v4.9.223-224): `score_calculado` e o contrafactual "sem piso" (soma +5 de deterioracao quando `nSinaisRisco>=3`), exibido como "Score sem piso: N". Boost de materialidade dampiado pela metade so no CRITICO. Ranking desempata por `score_calculado` desc.
 
 Comandos uteis:
 
