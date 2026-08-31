@@ -7,6 +7,48 @@ status: saudavel-com-achado
 
 # Estado Atual — VIX Radar
 
+> [!warning] 31/08 BRT — **Produção v4.9.226. CVMNOVOSDEAD1: `cvm_novos` estava zerado para os 103 emissores todo dia desde 25/08.** CVM volta a poder promover emissor pra fila aprofundada sozinha, sem depender de imprensa.
+> **Status:** vigente · **Data da Versão:** 2026-08-31 · **Origem do Registro:** auditoria pedida pelo operador depois da rotina noturna do dia, ao investigar por que nenhuma promoção veio de documento CVM (os 3 CRÍTICO do dia, Braskem/Oncoclínicas/Oi, vieram todos do bypass de imprensa FONTELATENCIA1). Deploy `deploy-worker.ps1 -Version v4.9.226`, commit `9acd814`, push OK.
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.226.
+>
+> **Dois defeitos independentes, medidos, não hipóteses.** `_cvmNovosEfetivo` aplicava corte por data SEMPRE
+> (não só no bootstrap), contra o dia civil da última varredura, que roda diariamente. A CVM (`ipe_cia_aberta`)
+> publica semanalmente aos domingos, `Data_Entrega` no máximo até a sexta anterior. Medido em produção 31/08:
+> `since`=30/08, máximo `data_entrega`/`data_referencia` do lote inteiro (103 emissores) = 28/08. Estrutural,
+> não específico daquele dia — sob operação diária estável, essa comparação nunca teria como dar `cvm_novos>0`.
+> Segundo defeito: `receber_analise` só marcava `radar:cvm_vistos` se o corpo trouxesse `cvm_ids_analisados`,
+> e nenhuma rotina jamais mandou (o plano expõe `cvm_novos_ids`, nome diferente) — a chave nunca foi escrita
+> para nenhum dos 103 desde que SENTINELA1 existe (25/08).
+>
+> **Fix:** corte por data só no bootstrap (`vistosIds` vazio); pós-bootstrap, identidade de protocolo basta,
+> sem competir com o calendário da fonte. `receber_analise` deriva `cvm_ids_analisados` sozinho quando o
+> cliente não manda (auto-cura, servidor não depende de nenhum `SKILL.md` de rotina lembrar do campo certo).
+> `SKILL.md` do noturno e da matinal (scheduled tasks locais, fora do repo git) também atualizados.
+> 153/153 no vitest, 8 testes novos com prova reversa (3/8 falham contra o código anterior).
+>
+> **CNPJVALIDA1, mesma sessão.** Neoenergia ganhou 5 subsidiárias reguladas em `CNPJ_FAMILIA_CVM` (Coelba,
+> Celpe, Cosern, Elektro Redes, Afluente Transmissão), confirmadas ATIVO no `cad_cia_aberta.csv` vivo da CVM,
+> mesmo domínio de e-mail de RI da holding, mesmo padrão já validado pra CEMIG/Energisa. Prova em produção:
+> Neoenergia foi de 0 pra 1 documento no plano logo após o deploy. Banco Pan, Nexa Resources e Banco
+> Votorantim confirmados como exceção real (Banco Pan cancelou registro de Cia Aberta em 30/03/2026; os
+> outros dois nunca foram Cia Aberta, nenhuma forma, ativa ou cancelada, em nenhum nome testado) — já tinham
+> exceção declarada em `scripts/check-emissores-cadastro.mjs` desde 24/08, nada pra corrigir de fato.
+>
+> **Fonte intradiária oficial: avaliada e bloqueada, documentado, não é lacuna silenciosa.** RAD exige token
+> reCAPTCHA (bot-detection explícita, não se contorna). `dadosdemercado.com.br` tem API viva independente do
+> lote semanal mas exige Bearer pago, ausente do ambiente (`wrangler secret list` conferido, zero candidato).
+> Arquitetura segue em duas camadas, semanal (agora funcional) + imprensa (enriquecimento), sem canal oficial
+> mais granular disponível sem credencial que não existe.
+>
+> **Horário: mudado no config, ainda não ativo.** `cronExpression` de `vixradar-noturno` foi de `0 10 * * *`
+> para `0 8 * * *` no `scheduled-tasks.json` (backup feito antes). Por INVERSAO-CD1 só vale depois de reiniciar
+> o Claude Desktop, ação do operador — não feita nesta sessão porque derrubaria a própria sessão em andamento.
+> Até lá a rotina continua em 10h00 BRT.
+>
+> Portão de duas pontas: health produção `ok:true versao:v4.9.226 kv:true telemetria:true sentry_ok:true
+> cvm_fonte_ok:true`, 4 guardas locais de CNPJ/cadastro verdes pós-edição, git local=remoto em `9acd814`,
+> working tree limpo.
+
 > [!success] 25/08 noite BRT — **Produção v4.9.216.** Horários das varreduras invertidos e nasce a varredura pontual.
 > **Status:** vigente · **Data da Versão:** 2026-08-25 · **Origem do Registro:** medido contra produção v4.9.216, `Get-ScheduledTask` ao vivo, `HEAD` no zip da CVM, suíte 117/117 · **Condição de Obsolescência:** cai quando o mecanismo de agendamento do Claude Desktop mudar, quando existir ação de sync da CVM com escopo de rotina, ou quando qualquer linha das tabelas de `routines/README.md` divergir do que o Task Scheduler responde.
 >

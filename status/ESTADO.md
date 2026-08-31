@@ -1,6 +1,55 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-08-31 (deploy v4.9.225 em produção: FALLBACKTTL1 + VERIFCACHE-ROUNDTRIP1, portão validado)
+Última atualização: 2026-08-31 (deploy v4.9.226 em produção: CVMNOVOSDEAD1 + CNPJVALIDA1, portão validado)
+
+> [!warning] 31/08 — CVMNOVOSDEAD1 DEPLOYADO no v4.9.226: `cvm_novos` estava zerado para os 103 emissores todo dia, desde 25/08. CVM volta a promover emissor sozinha, sem depender de imprensa.
+> **Status:** vigente · **Data da Versão:** 2026-08-31 · **Origem do Registro:** auditoria pedida pelo operador depois da rotina noturna, achado ao investigar por que nenhuma promoção para APROFUNDADA veio de documento CVM. Deploy via `deploy-worker.ps1 -Version v4.9.226`, commit `9acd814`, push OK; commit anterior `3c88bb4` (código + testes + changelog WRCGL1).
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.226.
+>
+> **CVMNOVOSDEAD1 (bug estrutural, dois defeitos independentes).** `_cvmNovosEfetivo` aplicava o corte por
+> data SEMPRE (não só no bootstrap), contra o dia civil da ÚLTIMA VARREDURA, que roda diariamente. A fonte
+> CVM (`ipe_cia_aberta`) é semanal, publica aos domingos com `Data_Entrega` no máximo até a sexta-feira
+> anterior. Medido em produção 31/08: `since` (dia da varredura anterior) = 30/08, máximo `data_entrega`/
+> `data_referencia` do lote inteiro (103 emissores, duas colunas independentes) = 28/08. 28 < 30 para todo
+> mundo, `cvm_novos=0` estrutural, não específico daquele dia. Segundo defeito, independente: `receber_analise`
+> só chamava `marcarCvmVistos` se o corpo trouxesse `cvm_ids_analisados`, e nenhuma rotina jamais mandou (o
+> plano expõe `cvm_novos_ids`, nome diferente) — `radar:cvm_vistos` nunca foi escrito para nenhum dos 103
+> desde que SENTINELA1 existe (25/08). Os dois juntos mantiveram `cvm_delta_*`/`cvm_overnight_*` como caminho
+> morto: toda promoção de hoje veio do bypass de imprensa (FONTELATENCIA1), nunca de documento CVM.
+> **Fix:** corte por data só no bootstrap (`vistosIds` vazio); pós-bootstrap, identidade de protocolo basta.
+> `receber_analise` deriva `cvm_ids_analisados` sozinho quando o cliente não manda (auto-cura, não depende de
+> nenhum `SKILL.md` de rotina lembrar do campo). `SKILL.md` do noturno e da matinal (fora do repo, scheduled
+> tasks locais) atualizados para mandar o campo explícito também.
+>
+> **CNPJVALIDA1, mesma sessão.** 5 subsidiárias reguladas da Neoenergia (Coelba, Celpe, Cosern, Elektro Redes,
+> Afluente Transmissão) confirmadas ATIVO no `cad_cia_aberta.csv` vivo da CVM, adicionadas a
+> `CNPJ_FAMILIA_CVM`, mesmo padrão CEMIG/Energisa. Prova em produção: Neoenergia foi de 0 para 1 documento no
+> plano logo após o deploy. Banco Pan comentado como CANCELADA (30/03/2026, cancelamento voluntário) — CNPJ já
+> correto, zero documento é a empresa saindo do regime, não falha de atribuição. Nexa Resources e Banco
+> Votorantim confirmados sem registro Cia Aberta em nenhuma forma (ativa ou cancelada) no cadastro vivo —
+> já tinham exceção declarada em `scripts/check-emissores-cadastro.mjs` desde 24/08, nada a corrigir.
+>
+> **Fonte intradiária oficial da CVM: avaliada e bloqueada.** RAD (`rad.cvm.gov.br`) exige token reCAPTCHA
+> v3/v2 explícito, bot-detection que não se contorna. Agregador terceiro `dadosdemercado.com.br` tem API viva
+> e independente do lote semanal, mas exige Bearer token pago, ausente do ambiente (conferido via
+> `wrangler secret list`, só nomes, nenhum candidato). Arquitetura de detecção fica em duas camadas: semanal
+> (agora funcional de verdade) + imprensa (enriquecimento, não mais gatilho único). Não há canal oficial mais
+> granular disponível sem uma credencial que não existe hoje.
+>
+> **Horário da rotina noturna: alterado no config, ainda não ativo.** `cronExpression` do scheduled task
+> `vixradar-noturno` mudou de `0 10 * * *` para `0 8 * * *` em
+> `%APPDATA%\Claude\claude-code-sessions\...\scheduled-tasks.json` (backup feito antes,
+> `scheduled-tasks.backup-20260831-122707.json`). Por INVERSAO-CD1, a edição só passa a valer depois de
+> reiniciar o Claude Desktop — ação do operador, fora do alcance de qualquer agente, e não feita nesta sessão
+> porque derrubaria a própria sessão em andamento. Até o restart, a rotina continua disparando às 10h00 BRT.
+>
+> **Prova do deploy (regra 5, duas pontas):** health em produção `ok=true, versao=v4.9.226, kv=true,
+> rate_limiter=true, telemetria=true, sentry_ok=true, verificador_ok=true, admin_email_ok=true,
+> cvm_fonte_ok=true, providers_configurados="2/2"`, HTTP 200 em `api.vixradar.com` e
+> `radar-credito-api.prospects-intel.workers.dev`. Suíte local 153/153 verde (18 arquivos, 8 testes novos com
+> prova reversa: 3/8 falham contra o código anterior). 4 guardas locais de CNPJ/cadastro verdes após a edição
+> (`check-alias-coerencia`, `check-metricas-curadas`, `check-emissores-cnpj`, `check-cnpj-familia`). git: local
+> e remoto em `9acd814`, working tree limpo, bundle `api/v4.9.226.js` com `WORKER_VERSAO = "v4.9.226"`.
 
 > [!info] 31/08 — VERIFCACHE-ROUNDTRIP1 + FALLBACKTTL1 DEPLOYADOS no v4.9.225: veredicto APROVADO_CORRIGIDO em cache já não vira rejeição no reenvio, e o cache de último recurso sobrevive a 1 dia sem varredura.
 > **Status:** vigente · **Data da Versão:** 2026-08-31 · **Origem do Registro:** deploy via `deploy-worker.ps1 -Version v4.9.225`, commit `d88c293`, push OK; commits anteriores `78a0807` (código + teste + docs) e `774874f` (changelog WRCGL1).
