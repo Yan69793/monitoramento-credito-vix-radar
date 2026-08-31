@@ -11,6 +11,27 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 31/08 (madrugada) — P2, RESOLVIDO E DEPLOYADO (FALLBACKTTL1 + VERIFCACHE-ROUNDTRIP1): worker v4.9.225 em produção, portão validado
+
+> **Status:** RESOLVIDO DE FATO. Deploy v4.9.225 validado em produção na madrugada de 31/08, suíte local 145/145 verde. As entradas de 29/08 e 30/08 (FALLBACKTTL1) e 27/08 (VERIFCACHE-ROUNDTRIP1) abaixo registram as causas e correções; este é o fechamento do ciclo.
+> **Data da Versão:** 2026-08-31
+> **Origem do Registro:** deploy via `deploy-worker.ps1 -Version v4.9.225`, commit `d88c293`, push OK. Antes do deploy, commits `78a0807` (código + teste round-trip + docs) e `774874f` (changelog WRCGL1).
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.225 e o frontend não tiver pré-requisito por este deploy (este deploy tocou só o Worker, nenhum frontend).
+
+**O que subiu no v4.9.225.**
+- **FALLBACKTTL1:** `fallback:{empresa}` com `expirationTtl: 86400` → `86400*3` (72h) na escrita e corte de idade `idadeHoras > 24` → `> 48` na leitura (`buscarCacheUltimoResorte`), coordenados. O dia 28/08 sem varredura não apaga mais o fallback dos 103 emissores nem os eventos Tier1/FR preservados por ADR-040 (que dependem da mesma chave sobreviver entre escritas). Sem piora para quem recebe fallback velho (piso de confiança já saturava em 0,3 a partir de 24h). VOLTTL1: TTL ≥ 2× o intervalo de escrita.
+- **VERIFCACHE-ROUNDTRIP1:** o guard de `aplicarCorrecaoVerificador` aceita o round-trip (`veredicto_original === "CORRIGIR"` além de `veredicto === "CORRIGIR"`). Veredicto `APROVADO_CORRIGIDO` em cache não volta mais como rejeição no reenvio e não retrata o evento do painel; correções são re-aplicadas ao evento fresco de forma idempotente. Teste de duas pontas novo em `api/test/verif-cache-roundtrip.test.mjs` (contra o código pré-fix a ponta ruim falha e a boa passa; com o fix as duas passam).
+
+**Guarda e prova do deploy (duas pontas, regra 5).**
+- Health em produção após o deploy: `ok=true, versao=v4.9.225, kv=true, rate_limiter=true, telemetria=true, sentry_ok=true, verificador_ok=true, admin_email_ok=true, cvm_fonte_ok=true, providers_configurados="2/2"`, HTTP 200 nos dois domínios (`api.vixradar.com` e `radar-credito-api.prospects-intel.workers.dev`).
+- Validação do próprio script: `versao viva v4.9.225 OK, ok=True kv=true telemetria=true sentry_ok=true cvm_fonte_ok=True`, `DEPLOY OK - producao em v4.9.225, repo e GitHub sincronizados.`
+- Suíte local 145/145 verde (18 arquivos) após o deploy, incluindo o teste round-trip.
+- git: local e remoto sincronizados em `d88c293`, working tree limpo, bundle `api/v4.9.225.js` com `WORKER_VERSAO = "v4.9.225"`.
+
+**Observação (lacuna registrada, não fechada):** FALLBACKTTL1 não tem teste automatizado para o par `salvarCacheUltimoResorte`/`buscarCacheUltimoResorte` (ver entrada de 30/08). Fica como item futuro; o teste round-trip novo só cobre VERIFCACHE-ROUNDTRIP1.
+
+---
+
 ## 30/08 (noite) — P1, ABERTO, AÇÃO SÓ DO OPERADOR (CCDOFFLINE1): causa raiz do buraco de 28/08 medida, Claude Desktop não reabre sozinho depois de reboot
 
 > **Status:** ABERTO. Correção é 1 toggle do Windows, fora do alcance de qualquer agente (mexe em configuração de sistema). Ação do operador.
