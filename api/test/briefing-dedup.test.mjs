@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
 import estadoW31 from "./fixtures/materialidade-estado-2026-W31.json" with { type: "json" };
 import estadoW32 from "./fixtures/materialidade-estado-2026-W32.json" with { type: "json" };
 import estadoW33 from "./fixtures/materialidade-estado-2026-W33.json" with { type: "json" };
@@ -44,25 +45,6 @@ function kvMapDosFixtures() {
   return map;
 }
 
-// Replica obterAgoraBRT() (dia civil BRT = Date.now() - 3h) + semanaISO do
-// worker, na mesma ordem que carregarEstadoMultiSemana deriva as 5 chaves.
-function semanaISO(d) {
-  const data = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dia = data.getUTCDay() || 7;
-  data.setUTCDate(data.getUTCDate() + 4 - dia);
-  const pj = new Date(Date.UTC(data.getUTCFullYear(), 0, 1));
-  return `${data.getUTCFullYear()}-W${String(Math.ceil(((data - pj) / 864e5 + 1) / 7)).padStart(2, "0")}`;
-}
-
-function semanasCorrentesBRT(n) {
-  const agora = new Date(Date.now() - 3 * 60 * 60 * 1e3);
-  const out = [];
-  for (let i = 0; i < n; i++) {
-    out.push(semanaISO(new Date(agora.getTime() - i * 7 * 864e5)));
-  }
-  return out;
-}
-
 async function estadoMesclado() {
   const map = kvMapDosFixtures();
   return carregarEstadoMultiSemana({ RADAR_KV: { get: async (k) => (map[k] !== undefined ? map[k] : null) } }, 5);
@@ -77,10 +59,18 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
   let estado;
 
   beforeEach(async () => {
+    // RELOGIOTESTE1: `estadoMesclado` e o endpoint derivam a janela de 5 semanas
+    // do relogio, e os fixtures estao em W31..W35. Congelado em 30/08 a janela
+    // cobre os cinco; solto, a ponta velha cai fora e o top-10 muda sozinho.
+    fixarRelogioDoFixture();
     const map = kvMapDosFixtures();
     for (const [k, v] of Object.entries(map)) await env.RADAR_KV.put(k, v);
     await env.RADAR_KV.put("mercado:anomalias:ativas", JSON.stringify(anomalias));
     estado = await estadoMesclado();
+  });
+
+  afterEach(() => {
+    soltarRelogio();
   });
 
   it("mecanismo: os 3 eventos Cosan 16/07 com tag rating colapsam na mesma chave", () => {
@@ -145,22 +135,15 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
 
   it("cross-check: top-10 do endpoint bate com o harness dedupado, byte a byte", async () => {
     const token = await mintJWT(env.JWT_SECRET);
-    // Endpoint deriva semanas do relogio (obterAgoraBRT); injeta fixtures sob as
-    // semanas correntes para o teste nao ser datado.
-    const semanas = semanasCorrentesBRT(5);
-    const kvCorrente = {};
-    for (let i = 0; i < 5; i++) {
-      const chave = `${FIX_KEY}${semanas[i]}`;
-      kvCorrente[chave] = JSON.stringify(ESTADOS[i]);
-      await env.RADAR_KV.put(chave, kvCorrente[chave]);
-    }
+    // Com o relogio preso em 30/08 o endpoint pede W35..W31, as chaves onde o
+    // beforeEach ja gravou os fixtures. Nao ha mais remapeamento de semana.
     const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
       headers: { Authorization: `Bearer ${token}` }
     });
     expect(r.status).toBe(200);
     const j = await r.json();
     const top = j.briefing.top_eventos;
-    const meu = await rankingTopComDedup(kvCorrente);
+    const meu = await rankingTopComDedup(kvMapDosFixtures());
     expect(meu.length).toBeGreaterThanOrEqual(10);
     for (let i = 0; i < 10; i++) {
       expect({ empresa: top[i].empresa, data: top[i].data_evento, m: top[i].materialidade }).toEqual(meu[i]);
