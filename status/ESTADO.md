@@ -39,12 +39,18 @@
 > (agora funcional) + imprensa (enriquecimento). Item aberto: avaliar o Download Múltiplo com credencial
 > própria da CVM quando o operador decidir obtê-la.
 >
-> **Horário da rotina noturna: alterado no config, ainda não ativo.** `cronExpression` do scheduled task
+> **Horário da rotina noturna: alterado no config, CONFIRMADO ATIVO pós-restart (31/08 tarde).** `cronExpression` do scheduled task
 > `vixradar-noturno` mudou de `0 10 * * *` para `0 8 * * *` em
 > `%APPDATA%\Claude\claude-code-sessions\...\scheduled-tasks.json` (backup feito antes,
 > `scheduled-tasks.backup-20260831-122707.json`). Por INVERSAO-CD1, a edição só passa a valer depois de
 > reiniciar o Claude Desktop — ação do operador, fora do alcance de qualquer agente, e não feita nesta sessão
 > porque derrubaria a própria sessão em andamento. Até o restart, a rotina continua disparando às 10h00 BRT.
+>
+> **RESOLVIDO 31/08 (tarde), pós-restart.** Restart do Claude Desktop feito pelo operador. Confirmado via
+> `list_scheduled_tasks`: `vixradar-noturno` carregado com `cronExpression:"0 8 * * *"`, `enabled:true`,
+> próximo disparo `2026-09-01T11:05:24Z` (08h05 BRT). `lastRunAt` ainda reflete a execução de hoje às 10h05
+> BRT, sob o cron anterior ao restart. Primeiro disparo real no novo horário só ocorre amanhã, fora do escopo
+> desta checagem; watchdogs existentes cobrem eventual atraso.
 >
 > **Prova do deploy (regra 5, duas pontas):** health em produção `ok=true, versao=v4.9.226, kv=true,
 > rate_limiter=true, telemetria=true, sentry_ok=true, verificador_ok=true, admin_email_ok=true,
