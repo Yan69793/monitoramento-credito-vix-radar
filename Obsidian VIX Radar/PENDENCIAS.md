@@ -1153,9 +1153,9 @@ O operador viu os cards de Alavancagem, Rating, Cobertura e EBITDA da Braskem co
 
 ---
 
-## 24/08 (quarta rodada) — ABERTO P1: Braskem protocolou recuperação extrajudicial e o sistema não pegou (BRASKEMDETECT1)
+## 24/08 (quarta rodada) — CORRIGIDO NO CÓDIGO, DEPLOY PENDENTE: Braskem protocolou recuperação extrajudicial e o sistema não pegou (BRASKEMDETECT1)
 
-> **Status:** ABERTO, mas ver adendo de 24/08 ao final da entrada
+> **Status:** CORRIGIDO NO CÓDIGO, DEPLOY PENDENTE. Ver fechamento de 31/08 ao final da entrada
 > **Data da Versão:** 2026-08-24
 > **Origem do Registro:** auditoria operacional de 24/08 ([[91 - Auditoria Operacional 2026-08-24]]), comparando o protocolo do dia contra o que a noturna das 16h trouxe
 > **Condição de Obsolescência:** perde validade quando existir fonte de Fato Relevante independente do ZIP `ipe_cia_aberta_2026.zip`, ou quando a CVM repuser o arquivo e a ingestão voltar a disparar por protocolo
@@ -1170,9 +1170,21 @@ A Braskem protocolou recuperação extrajudicial em 24/08, US$ 10,9 bi reestrutu
 
 **Guarda sistêmica.** Não existe ainda. Proposta: gatilho de detecção para eventos de recuperação judicial/extrajudicial a partir de fonte que não dependa do ZIP da CVM; teste com contraexemplo fixo (protocolo da Braskem de 24/08).
 
-**Status:** ABERTO. Depende da decisão de fonte alternativa.
+**Status:** CORRIGIDO NO CÓDIGO, DEPLOY PENDENTE. Ver fechamento de 31/08 ao final da entrada.
 
 **Adendo 24/08 19h48, sem apagar o diagnóstico acima.** O print do operador, tirado às 19h48 na sessão do CURADORIA1, mostra o protocolo na timeline da Braskem: card CRÍTICO, "Conselho aprova pedido de recuperacao extrajudicial para reestruturar US$ 10,9 bilhoes", `IMPRENSA`, data 2026-08-24, fonte `braziljournal.com`, com o cabeçalho "Analisado às 15:09" e 2 eventos identificados. Ou seja, o evento entrou por imprensa em alguma rodada posterior à noturna das 16h que originou este registro, e o painel deixou de estar cego para ele. Isso **não fecha** a pendência: a causa raiz continua de pé, a detecção segue dependendo do ramo de imprensa porque o ZIP da CVM está em 404 (CVMURL404), e não há guarda que garanta a captura na próxima vez. O que muda é o enunciado "o sistema não pegou", que era verdade na hora da auditoria e não é mais. Não foi possível confirmar pelo servidor nesta sessão, `op=state` exige autenticação e devolveu HTTP 401. Confirmar com o operador antes de reclassificar.
+
+**Fechamento 31/08, sem apagar o diagnóstico acima.** Decisão do operador: caminho gratuito, endurecer o gatilho de imprensa em vez de pagar fonte alternativa. O ZIP da CVM voltou (medido 30/08), então o gatilho primário está de pé de novo, e a lacuna que restava era o fallback.
+
+**Correção.** Três pontos em `api/src/worker.js`:
+
+- Query R5 da análise (e R3 da newsletter) passou a incluir `extrajudicial`, o termo que faltava para a busca alcançar protocolo de recuperação extrajudicial.
+- `PALAVRAS_CRITICAS` ganhou `recuperacao extrajudicial` e `recuperação extrajudicial`. Era o buraco determinístico: a substring `recuperacao judicial` não existe dentro de `recuperacao extrajudicial`, então a promoção automática de `aplicarRegrasNegocio` não disparava mesmo que o evento chegasse classificado abaixo de CRITICO.
+- `emitirAlertaTier1` passou a taguear `recuperacao-judicial` também para `extrajudicial`, então o EWS pontua os dois com o mesmo peso (25 pts).
+
+**Guarda sistêmica.** `api/test/gatilho-recuperacao.test.mjs`, contraexemplo fixo (protocolo da Braskem de 24/08). Prova de duas pontas medida com a função real exportada (`aplicarRegrasNegocio`): extrajudicial RELEVANTE vira CRITICO com `_promovido_automaticamente:true`, a variante acentuada idem, `recuperacao judicial` segue funcionando (sem regressão), e fora da janela de 30 dias continua descartado. Prova reversa embutida: contra o código antigo os dois primeiros casos falham porque o evento fica RELEVANTE.
+
+**Estado.** Correção pronta em `api/src/worker.js` e teste criado, ainda **não deployado**. Deploy fica no `pwsh ./scripts/deploy-worker.ps1 -Version v4.9.XXX`, que exige autorização explícita e valida em produção antes de commitar. Enquanto não deployar, o comportamento em produção não mudou.
 
 ---
 
