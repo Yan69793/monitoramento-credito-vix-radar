@@ -1439,7 +1439,7 @@ inteira, o ponteiro do `AGENTS.md` apontava para arquivo não versionado, e a re
 de `.gitignore` para `setup-deploy-credential.ps1` era ilusória porque o arquivo é
 trackeado desde `201ebda`.
 
-### Abertos desta janela
+### Resolvidos em 22/08
 
 **MANIFESTOFRAGIL1 (P3).** **RESOLVIDO 31/08.** O `status/allclear-manifesto.json`
 indexava cada frase de ausência junto com o HTML e o estilo inline. Trocar
@@ -1480,6 +1480,8 @@ entraram na extração/prelúdio, e 3 casos novos cobrem `falha_dura`/
 `degrada_servico` (1ª falha não degrada, 4ª falha dura consecutiva degrada,
 motivo de cadência nunca degrada mesmo com muitas falhas). Prova:
 `node scripts/test-frescor-cvm.mjs` → `TUDO VERDE em 43 casos.`
+
+### Abertos desta janela
 
 **DEDUPON2 e FEEDRERENDER1 (P2, diagnosticados, fora de escopo de propósito).** O
 `_isDupSemantico` deduplica O(n²) sobre todos os eventos, no boot e em todo

@@ -52,6 +52,9 @@ const fonte = [
 ].join("\n\n");
 
 // Constantes e dependencia que as funcoes esperam encontrar no escopo do Worker.
+// CVMCADENCIA1 (2026-08-20): a decisao de frescor trocou de dias uteis para
+// ciclo semanal (a CVM publica aos domingos). idade_du continua no payload so
+// por compatibilidade com quem ja le esse campo, mas nao decide mais nada.
 const preludio = `
 var CVM_FONTE_META_KEY = "cvm:fonte_meta";
 var CVM_FONTE_CICLO_DIAS = 7;
@@ -127,6 +130,11 @@ checa("de quarta 19 -> domingo 23", mod._cvmProximaPublicacaoPrevista("2026-08-1
 checa("sem ref devolve null", mod._cvmProximaPublicacaoPrevista(null), null);
 
 console.log("\n=== decisao de frescor (hoje fixado em 2026-08-19, quarta) ===");
+// CVMCADENCIA1 (2026-08-20): a fonte publica so aos domingos, entao o limiar
+// deixou de ser dias uteis e virou ciclo semanal perdido. So conta como parada
+// quando DOIS ciclos de 7 dias se passam sem publicacao nova (>=14 dias
+// corridos), nao mais 2/3 dias uteis. Motivo mudou de "fonte_parada_ha_N_dias_uteis"
+// para "fonte_sem_publicar_ha_N_ciclos_semanais_M_dias".
 mod.setHoje("2026-08-19T12:00:00Z");
 
 const envSemMeta = envFake(undefined, undefined);
@@ -135,11 +143,16 @@ checa("meta ausente e fail-closed", { ok: rSemMeta.ok, motivo: rSemMeta.motivo }
 
 const casos = [
   ["fonte de ontem passa", { ok: true, last_modified_iso: "2026-08-18" }, { ok: true, motivo: "ok" }],
+  // Regressao do bug que motivou o CVMCADENCIA1: domingo 16 (3 dias corridos,
+  // 0 ciclos perdidos) tinha que passar. Com a regra antiga de dias uteis isso
+  // reprovava TODA quarta-feira, alarme falso semanal.
   ["domingo 16 (ciclo normal de publicacao) passa, nao e mais falso-positivo", { ok: true, last_modified_iso: "2026-08-16" }, { ok: true, motivo: "ok" }],
   ["13 dias corridos (1 ciclo perdido) ainda passa, no limite", { ok: true, last_modified_iso: "2026-08-06" }, { ok: true, motivo: "ok" }],
   ["14 dias corridos (2 ciclos perdidos) reprova, no limite exato", { ok: true, last_modified_iso: "2026-08-05" }, { ok: false, motivo: "fonte_sem_publicar_ha_2_ciclos_semanais_14_dias" }],
   ["21 dias corridos (3 ciclos perdidos) reprova", { ok: true, last_modified_iso: "2026-07-29" }, { ok: false, motivo: "fonte_sem_publicar_ha_3_ciclos_semanais_21_dias" }],
   ["data de referencia invalida reprova com motivo proprio", { ok: true, last_modified_iso: "lixo" }, { ok: false, motivo: "data_invalida" }],
+  ["sem data nenhuma no meta ok reprova (ref ausente)", { ok: true }, { ok: false, motivo: "sem_data_de_referencia" }],
+  ["fallback para max_data_entrega quando falta o header Last-Modified", { ok: true, max_data_entrega: "2026-08-18" }, { ok: true, motivo: "ok" }],
 ];
 for (const [titulo, meta, esperado] of casos) {
   const env = envFake(meta, undefined);
