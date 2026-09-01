@@ -1,9 +1,37 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.227)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.228)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.228.js = v4.9.227 + DISJUNTORHOUSEKEEP1 + LOGINTIMING1.
+#   Os dois vieram da auditoria geral de 01/09/2026 (achados P3-2 e P4-1),
+#   nota "98 - Auditoria Geral 2026-09-01" no vault.
+#   DISJUNTORHOUSEKEEP1 (01/09): o disjuntor de custo diario rodava antes do
+#   despacho do cron e dava return no handler inteiro para matinal e noturno,
+#   sob a premissa de que os dois gastam LLM. A premissa morreu quando a
+#   varredura foi delegada ao Claude Desktop (VARREDURA_CRON_AI_ENABLED=false,
+#   heartbeat "pulado/delegado_claude_tiered_v2"): hoje esses crons so fazem
+#   housekeeping (sync CVM, anomalias, ANBIMA, pipeline preditivo, newsletter,
+#   relatorio, healthcheck diario). Como o teto e alimentado pelo gasto das
+#   rotinas LOCAIS, um dia caro na maquina do operador abortava aqui o sync_cvm
+#   e o healthcheck_diario, que sao os dois sinais que o watchdog e o frescor
+#   leem. O alarme emudecia no dia ruim, mesmo modo de falha do FIX(N1) da
+#   v4.9.163 um nivel acima. Fix: gate movido para dentro do ramo de varredura
+#   (_cronDisjuntorBloqueia + lista fechada _RAMOS_CRON_COM_LLM), housekeeping
+#   nunca mais e barrado, fail-open de leitura preservado (CUSTOBRAKE1).
+#   Guarda: api/test/disjuntor-cron.test.mjs (6 testes, prova reversa medida:
+#   contra a politica antiga o caso de housekeeping falha com sync_cvm true).
+#   LOGINTIMING1 (01/09): handleLogin tinha tres tempos distintos para a mesma
+#   mensagem "Credenciais invalidas" — usuario inexistente pagava atraso de
+#   80-200ms sem hash, senha errada pagava PBKDF2 sem atraso, e conta pendente
+#   ou rejeitada voltava na hora, sem nenhum dos dois. Medido contra o codigo
+#   antigo: inexistente 124ms, senha_errada 45ms, pendente 10ms, rejeitado
+#   11ms. O texto era generico, o relogio nao. Fix: todo caminho de falha roda
+#   um PBKDF2 (hash real ou HASH_DUMMY_LOGIN) e sai pelo mesmo ponto com o
+#   mesmo jitter; medido depois: 155/140/170/140ms. Mensagem generica e rate
+#   limit de auth intactos. Guarda: api/test/login-timing.test.mjs (3 testes,
+#   prova reversa medida). Rollback: main = "v4.9.227.js".
 # v4.9.227.js = v4.9.226 + BRASKEMDETECT1.
 #   BRASKEMDETECT1 (31/08): a Braskem protocolou recuperacao extrajudicial em
 #   24/08 (US$ 10,9 bi) e a busca de imprensa nao alcancou. Causa: a query R5

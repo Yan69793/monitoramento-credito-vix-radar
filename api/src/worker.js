@@ -4635,6 +4635,17 @@ __name22222(verificarSenha, "verificarSenha");
 __name222222(verificarSenha, "verificarSenha");
 __name2222222(verificarSenha, "verificarSenha");
 __name22222222(verificarSenha, "verificarSenha");
+// LOGINTIMING1 (v4.9.228): hash descartavel no formato de hashSenha (b64(salt 16B) +
+// ":" + b64(derivado 32B)), gerado de bytes aleatorios e sem senha correspondente
+// conhecida. Serve so para que o caminho "usuario nao existe" pague o mesmo PBKDF2 de
+// 100k iteracoes que o caminho "senha errada" paga, sem o qual o tempo de resposta
+// denuncia a existencia da conta. Nao e segredo e nao autentica nada.
+var HASH_DUMMY_LOGIN = "/L98CMCGp9/F/QD5981uBw==:e4BxLj9GiaSJQpHKbFWEXLm3lNbllz5t7rRUlhHtkw0=";
+function _atrasoAntiTimingLogin() {
+  return new Promise((r) => setTimeout(r, 80 + Math.random() * 120));
+}
+__name(_atrasoAntiTimingLogin, "_atrasoAntiTimingLogin");
+__name2(_atrasoAntiTimingLogin, "_atrasoAntiTimingLogin");
 function b64url(buf) {
   return btoa(String.fromCharCode(...new Uint8Array(buf instanceof ArrayBuffer ? buf : buf.buffer))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
@@ -6316,14 +6327,23 @@ async function handleLogin(body, env2222, request) {
   const { email, senha } = body;
   if (!email || !senha) return resp({ ok: false, erro: "E-mail e senha obrigat\xF3rios." }, 400);
   const user = await getUser(env2222, email);
-  if (!user) {
-    await new Promise(r => setTimeout(r, 80 + Math.random() * 120));
+  // LOGINTIMING1 (v4.9.228, auditoria geral de 01/09/2026, achado P4-1): o texto do erro
+  // ja era generico, mas o TEMPO nao era, e vazava o que o texto escondia. Usuario
+  // inexistente pagava um atraso de 80-200ms e voltava; usuario existente com senha errada
+  // pagava PBKDF2 de 100k iteracoes e voltava sem atraso; conta pendente ou rejeitada
+  // voltava na hora, sem hash e sem atraso. Tres tempos distintos para a mesma mensagem, e
+  // um atacante lia a existencia da conta pelo relogio. Somar atraso ao ramo lento so
+  // inverteria o oraculo, entao a correcao iguala o TRABALHO antes de igualar o atraso:
+  // todo caminho de falha roda um PBKDF2 (contra o hash real, ou contra HASH_DUMMY_LOGIN
+  // quando nao ha usuario) e cai no mesmo ponto de saida, com o mesmo jitter.
+  // Nao substitui o rate limit de auth, que continua sendo a defesa contra volume.
+  const hashAlvo = user && typeof user.senha_hash === "string" && user.senha_hash.includes(":") ? user.senha_hash : HASH_DUMMY_LOGIN;
+  const senhaConfere = await verificarSenha(senha, hashAlvo).catch(() => false);
+  const contaUsavel = !!user && user.status !== "pendente" && user.status !== "rejeitado";
+  if (!contaUsavel || !senhaConfere) {
+    await _atrasoAntiTimingLogin();
     return resp({ ok: false, erro: "Credenciais inv\xE1lidas." }, 401);
   }
-  if (user.status === "pendente") return resp({ ok: false, erro: "Credenciais inv\xE1lidas." }, 401);
-  if (user.status === "rejeitado") return resp({ ok: false, erro: "Credenciais inv\xE1lidas." }, 401);
-  const ok = await verificarSenha(senha, user.senha_hash);
-  if (!ok) return resp({ ok: false, erro: "Credenciais inv\xE1lidas." }, 401);
   const forc = politicaForcadaParaEmail(user.email);
   let healed = false;
   if (forc) {
@@ -19161,18 +19181,20 @@ var worker_default = {
     // analisa mais nada. Este era o unico call site de checkOpenRouterBalance: a funcao fica sem
     // uso a partir daqui. Nao removida neste bump de proposito — manter o diff cirurgico no
     // caminho do cron; remocao do corpo morto fica para limpeza separada.
-    var _ehCronComLLM = ehMatinal || ehNoturno;
-    if (_ehCronComLLM) {
-      try {
-        const _djOk = await verificarDisjuntorDiario(env2222);
-        if (_djOk) {
-          console.error("[DISJUNTOR] custo diario excedido - cron com LLM abortado. cron=" + (cronExpr || "?"));
-          return;
-        }
-      } catch (_djErr) {
-        console.error("[DISJUNTOR]", String(_djErr));
-      }
-    }
+    //
+    // DISJUNTORHOUSEKEEP1 (v4.9.228, auditoria geral de 01/09/2026, achado P3-2): o gate
+    // acima ainda era grosso demais. Ele abortava o cron matinal/noturno INTEIRO, e desde a
+    // delegacao da varredura ao Claude Desktop (VARREDURA_CRON_AI_ENABLED=false, heartbeat
+    // "pulado/delegado_claude_tiered_v2") esses dois crons nao gastam LLM nenhum no Worker:
+    // sao so housekeeping (sync CVM, anomalias, ANBIMA, pipeline preditivo, newsletter,
+    // relatorio, healthcheck diario). O teto de custo diario e alimentado pelas rotinas
+    // LOCAIS, entao um dia de gasto alto la fora abortava aqui o sync_cvm e o
+    // healthcheck_diario, que sao justamente os sinais que o watchdog e o frescor leem.
+    // Mesmo modo de falha do FIX(N1) acima, um nivel abaixo: o alarme emudecia no dia ruim.
+    // O gate agora vive DENTRO do ramo de varredura, unico consumidor de LLM do cron
+    // (medido: os call sites de chamarClaudeAnalise/validarEVerificar no caminho do cron
+    // estao todos em executarVarreduraMatinal e executarVarreduraBatchComFila), via
+    // _cronDisjuntorBloqueia. Housekeeping nunca mais cai no disjuntor.
     if (ehAgenda) {
       ctx.waitUntil(agendaBuildPersistir(env2222).catch(function(e) {
         console.error("[agenda]", String(e && e.message || e));
@@ -19301,8 +19323,14 @@ var worker_default = {
         }
         try {
           if (varreduraCronAiHabilitada(env2222)) {
-            var _matRes = await executarVarreduraMatinal(env2222);
-            await baterHeartbeat(env2222, "varredura_matinal", _matRes && _matRes.pulado ? "pulado" : "ok", { resumo: _matRes, modo: "worker_automatico" });
+            // DISJUNTORHOUSEKEEP1: o teto de custo barra AQUI, no unico ramo do cron que
+            // gasta LLM, e nao mais no despacho. O housekeeping acima e abaixo ja rodou.
+            if (await _cronDisjuntorBloqueia(env2222, "varredura_matinal")) {
+              await baterHeartbeat(env2222, "varredura_matinal", "pulado", { motivo: "disjuntor_custo_diario", varredura_cron_ai: true });
+            } else {
+              var _matRes = await executarVarreduraMatinal(env2222);
+              await baterHeartbeat(env2222, "varredura_matinal", _matRes && _matRes.pulado ? "pulado" : "ok", { resumo: _matRes, modo: "worker_automatico" });
+            }
           } else {
             await baterHeartbeat(env2222, "varredura_matinal", "pulado", { motivo: "delegado_claude_tiered_v2", varredura_cron_ai: false });
           }
@@ -19352,8 +19380,14 @@ var worker_default = {
         }
         try {
           if (varreduraCronAiHabilitada(env2222)) {
-            var _batchRes = await executarVarreduraBatchComFila(env2222);
-            await baterHeartbeat(env2222, "varredura_batch", "ok", { resumo: _batchRes, modo: "worker_automatico" });
+            // DISJUNTORHOUSEKEEP1: idem matinal. Barrar a varredura nao pode levar junto o
+            // newsletter, o relatorio e o healthcheck_diario que vem depois deste bloco.
+            if (await _cronDisjuntorBloqueia(env2222, "varredura_batch")) {
+              await baterHeartbeat(env2222, "varredura_batch", "pulado", { motivo: "disjuntor_custo_diario", varredura_cron_ai: true });
+            } else {
+              var _batchRes = await executarVarreduraBatchComFila(env2222);
+              await baterHeartbeat(env2222, "varredura_batch", "ok", { resumo: _batchRes, modo: "worker_automatico" });
+            }
           } else {
             await baterHeartbeat(env2222, "varredura_batch", "pulado", { motivo: "delegado_claude_tiered_v2", varredura_cron_ai: false });
           }
@@ -19939,6 +19973,35 @@ async function verificarDisjuntorDiario(env3) {
 }
 __name(verificarDisjuntorDiario, "verificarDisjuntorDiario");
 __name2(verificarDisjuntorDiario, "verificarDisjuntorDiario");
+// DISJUNTORHOUSEKEEP1 (v4.9.228, achado P3-2 da auditoria de 01/09/2026).
+// Lista fechada dos ramos do cron que podem consumir LLM. Tudo que nao esta aqui e
+// housekeeping e NUNCA pode ser barrado pelo teto de custo: o teto e alimentado pelo
+// gasto das rotinas locais, e cortar sync_cvm/healthcheck_diario por causa dele apaga
+// justamente os sinais que o watchdog e o frescor usam para avisar que o pipeline parou.
+// Se algum dia um ramo novo do cron passar a chamar LLM, ele entra nesta lista, e o
+// teste api/test/disjuntor-cron.test.mjs cobra a outra ponta (housekeeping fora dela).
+var _RAMOS_CRON_COM_LLM = ["varredura_matinal", "varredura_batch"];
+async function _cronDisjuntorBloqueia(env3, ramo) {
+  if (!_RAMOS_CRON_COM_LLM.includes(ramo)) return false;
+  // Varredura delegada ao Claude Desktop: o Worker nao chama provider nenhum neste ramo,
+  // entao nao ha custo para o disjuntor proteger.
+  if (!varreduraCronAiHabilitada(env3)) return false;
+  try {
+    const excedeu = await verificarDisjuntorDiario(env3);
+    if (excedeu) {
+      console.error("[DISJUNTOR] custo diario excedido - ramo com LLM abortado. ramo=" + ramo);
+      return true;
+    }
+    return false;
+  } catch (e) {
+    // Fail-open igual ao do verificarDisjuntorDiario (CUSTOBRAKE1): falha de leitura nao
+    // pode virar corte silencioso, mas tem que deixar rastro no log.
+    console.error("[DISJUNTOR] gate do cron falhou, seguindo sem corte:", String(e && e.message || e).slice(0, 120));
+    return false;
+  }
+}
+__name(_cronDisjuntorBloqueia, "_cronDisjuntorBloqueia");
+__name2(_cronDisjuntorBloqueia, "_cronDisjuntorBloqueia");
 async function consultarSaldoOpenRouter(env3) {
   try {
     const resp2 = await fetch("https://openrouter.ai/api/v1/auth/key", {
@@ -19999,6 +20062,10 @@ var worker_com_sentry = Sentry.withSentry(
   worker_default
 );
 export {
+  _cronDisjuntorBloqueia,
+  _RAMOS_CRON_COM_LLM,
+  CUSTO_DISJUNTOR_USD_DIA,
+  dataCustoBRT,
   carregarEstadoMultiSemana,
   SETOR_DE_EMPRESA,
   normalizarMojibake,

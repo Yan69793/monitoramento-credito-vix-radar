@@ -317,12 +317,19 @@ atomicidade de gravação sem conferir.
 |---|---|---|
 | 15:30 | 12:30 | Matinal |
 | 21:30 | 18:30 | Noturno |
-| 01:00 | 22:00 | Watchdog (heartbeats de 6 agentes) |
+| 01:00 | 22:00 | Watchdog (heartbeats de 7 agentes) |
 | 04:00 | 01:00 | Agenda build |
 
-Watchdog monitora staleness de 6 heartbeats: `sync_cvm`, `varredura_batch`,
-`varredura_matinal`, `newsletter`, `healthcheck_diario`, `cascade_analise`.
-Roda mesmo com disjuntor de custo ativo.
+Watchdog monitora staleness de 7 heartbeats: `sync_cvm`, `varredura_batch`,
+`varredura_matinal`, `newsletter`, `healthcheck_diario`, `cascade_analise` e
+`verificacao_async`. Esta linha dizia 6 até 01/09/2026 e estava errada: o
+`verificacao_async` entrou na lista `expectedAgents` do Worker em 18/08
+(HEARTBEATVERIF1) e a doc não acompanhou. Os limites de staleness não são
+iguais entre eles: 16h para `verificacao_async` (check-in 4x/dia, local mais
+Remote), 48h para `cascade_analise`, 26h para o resto.
+Roda mesmo com disjuntor de custo ativo. Desde a v4.9.228 (DISJUNTORHOUSEKEEP1)
+o disjuntor também não barra mais o housekeeping do matinal e do noturno, só o
+ramo de varredura, que é o único que gasta LLM no Worker.
 
 ## GitHub Actions
 
