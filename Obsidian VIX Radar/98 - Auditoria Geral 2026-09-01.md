@@ -109,3 +109,36 @@ pelo rate limit (`criticidade "auth"` no gate L18090).
 3. Corrigir CLAUDE.md watchdog 6→7 heartbeats (P3-3).
 4. Delay uniforme no login (P4-1).
 5. Abertos pré-existentes: CCDOFFLINE1 (toggle do operador), SENTINELA-SYNC1 (decisão do operador), PISODIFF1-ESTRUTURAL1 (escada de piso), TOKENCHAT1 (operador), FALLBACKTTL1 sem teste automatizado.
+
+---
+
+## Apêndice de fechamento (01/09, tarde) — fechamento dos 5 resíduos da sessão
+
+Apêndice porque este corpo é o registro da auditoria readonly de 01/09 (regra 4
+do CLAUDE.md: registro datado não se reescreve). Segue o fechamento, que mudou
+produção para v4.9.232.
+
+1. **PREVERIFSEC1 (Braskem/sec.gov, deploy v4.9.232).** O pré-verificador
+   descartava o 6-K da SEC (evento CRÍTICO Braskem 31/08) com `ok:true` mas
+   `n_eventos:0` — a SEC devolve 403 a User-Agent genérico e `sec.gov` não era
+   fonte confiável. Fix distinto: `DOMINIOS_FONTE_OFICIAL_DOCUMENTOS` +
+   `_ehFonteConfitavelBloqueada`; aceite só na janela de 30d e sempre com
+   `_verif_forcar`. Guarda `api/test/pre-verificador-sec-gov.test.mjs` (8
+   testes). O teste usa `_fetchOverride` (fetch injetável, só teste) para
+   reproduzir fielmente o 403 do 6-K real.
+2. **Cron da noturna:** frontmatter do SKILL.md corrigido de "18h" para "10h
+   BRT"; `cronExpression="0 10 * * *"` intocado; scheduler vivo confirmado.
+3. **SUBMITOK-ENGANOSO1:** ledger `OK|` ganhou 6º campo
+   `SKIP|ANALISADO|DEFERIDO`; Passo 11 exige analisados/skip/deferidos/
+   submits_aceitos. Guarda `scripts/check-ledger-noturno.ps1`.
+4. **Cruzamento dos 1.439 sem dono = COMPORTAMENTO ESPERADO.** 383 entidades,
+   cobertura 36,1%; nenhuma de maior volume pertence aos 103; 99/99 CNPJs
+   primários dos 103 no cadastro CVM. Nenhuma correção de atribuição. Guarda
+   `scripts/check-quarentena-emissores.mjs`.
+5. **Fonte intradiária = LIMITAÇÃO ACEITA COM CONDIÇÃO DE REABERTURA.**
+   Reabre com fonte confiável aprovada + credencial. Fora dos bugs.
+
+Deploy `deploy-worker.ps1 -Version v4.9.232`; portão pós-deploy `ok:true
+versao:v4.9.232 kv:true telemetria:true sentry_ok:true`. Suíte 23 arquivos /
+196 testes. Commits `46f809c`, `d25d6c5`, `66b8b74`. Repo=produção, local=origin,
+working tree limpa.

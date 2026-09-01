@@ -1,6 +1,20 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-09-01 (deploy v4.9.231 em produção: AVANCOFEED1, guarda de avanço do feed; cron da noturna revertido para 10h)
+Última atualização: 2026-09-01 (deploy v4.9.232 em produção: PREVERIFSEC1 — sec.gov aceita como fonte oficial de documento no pré-verificador)
+
+> [!info] 01/09 (desta sessão) — PREVERIFSEC1 fechado no v4.9.232, sessão de fechamento dos 5 resíduos.
+> **Status:** vigente · **Data da Versão:** 2026-09-01 · **Origem do Registro:** fechamento da sessão anterior (Braskem/sec.gov, submit_ok enganoso, cruzamento da quarentena, cron, fonte intradiária). Todos os 5 pontos fechados abaixo.
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.232.
+>
+> **PREVERIFSEC1 (Braskem/sec.gov, v4.9.232).** O pré-verificador descartava o evento CRÍTICO da Braskem de 31/08 (recuperação extrajudicial, Form 6-K da SEC) com `ok:true` mas `n_eventos:0`, porque a SEC retorna 403 a User-Agent genérico e o acervo não reconhecia `sec.gov` como fonte confiável. Caído no ramo "fonte inacessível", o 6-K era descartado em silêncio. Fix mínimo e distinto: novo conjunto `DOMINIOS_FONTE_OFICIAL_DOCUMENTOS` (SEC, CVM, B3, BCB, IN, Anbima) separado de agência de rating, e helper `_ehFonteConfitavelBloqueada` que cobre ambos. O evento só é aceito dentro da janela de 30 dias e SEMPRE com `_verif_forcar=true` (verificação adversarial obrigatória). NÃO é bypass genérico: fonte não confiável, SEC fora da janela e evento sem data_evento continuam descartados. `validarDatasFontes` ganhou `_fetchOverride` (só teste) para reproduzir o 403 real. Guarda `api/test/pre-verificador-sec-gov.test.mjs`, 8 testes, prova de 3 pontas. Deploy `deploy-worker.ps1 -Version v4.9.232`, commits `46f809c`/`d25d6c5`/`66b8b74`, push OK. Portão `ok:true versao:v4.9.232 kv:true telemetria:true sentry_ok:true`.
+>
+> **SUBMITOK-ENGANOSO1.** O resumo da noturna misturava submit aceito com emissor analisado. O ledger `OK|` do SKILL.md ganhou o 6º campo `SKIP|ANALISADO|DEFERIDO`, e o Passo 11 exige `analisados=/skip=/deferidos=/submits_aceitos=` mantendo `Total do dia N/103`. Regra explícita: submit aceito ≠ emissor analisado; o número honesto de análise é o total de `ANALISADO`. Guarda `scripts/check-ledger-noturno.ps1`: formato antigo reprova (exit 1), caso real de 31/08 (50/22/31/103) passa (exit 0). Orçamento/cap/rotação intocados.
+>
+> **Cruzamento dos 1.439 documentos sem dono = COMPORTAMENTO ESPERADO.** O acervo CVM tem 2252 docs, 1439 sem dono em 383 entidades, cobertura 36,1%. Cruzado contra os 103: NENHUMA entidade de maior volume pertence ao universo por CNPJ; todos os 99 CNPJs primários dos 103 estão no cadastro CVM (a régua de atribuição captura os 103); único CNPJ de família fora é JBS N.V. (estrangeira). Os 4 sem CNPJ primário (Oi, Nexa, Pan, Votorantim) são cobertos por família ou aliases de nome. Nenhuma correção de atribuição necessária — sem falha real. Guarda `scripts/check-quarentena-emissores.mjs`. Métrica 36,1% preservada no health (é diagnóstico, não ponto de correção).
+>
+> **Cron da noturna (descrição).** Frontmatter do SKILL.md corrigido de `(diario 18h BRT)` para `(diario 10h BRT)`. `cronExpression="0 10 * * *"` não foi tocado; scheduler vivo confirmado (arquivo `scheduled-tasks.json`): `enabled:true`, `lastRunAt 2026-08-31T13:05:31Z` (10:05 BRT).
+>
+> **Fonte intradiária = LIMITAÇÃO ACEITA COM CONDIÇÃO DE REABERTURA.** Não implementada. Condição de reabertura: fonte intradiária confiável APROVADA + credencial disponível (Download Múltiplo CVM exige credencial ausente; RAD por reCAPTCHA a não contornar; dadosdemercado exige Bearer pago). Movida para decisão/roadmap, fora dos bugs desta tarefa.
 
 > [!info] 01/09 (madrugada) — AVANCOFEED1 no v4.9.231 e cron da noturna de volta às 10h. Duas frentes, nenhuma terceira.
 > **Status:** vigente · **Data da Versão:** 2026-09-01 · **Origem do Registro:** pedido do operador depois do diagnóstico do feed parado em 28/08. Escopo travado em duas correções: reverter o horário da noturna e criar a guarda de avanço. Deploys `v4.9.229` → `v4.9.230` → `v4.9.231`, commits `6e0dda8`/`90e8612`, `70d3dbc`/`df85c52`, `cc22e20`/`caffe43`, push OK.
