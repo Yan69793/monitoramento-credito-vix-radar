@@ -1,9 +1,37 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.228)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.229)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.229.js = v4.9.228 + AVANCOFEED1.
+#   AVANCOFEED1 (01/09): guarda de AVANCO do feed. Entre 28/08 e 01/09 o painel
+#   ficou parado em 28/08 com as tres rotinas rodando, submit_ok=103 e todo
+#   semaforo verde. Medido em 01/09: o teto do acervo da CVM era exatamente
+#   2026-08-28, igual ao evento mais novo do feed. O lote semanal publicado no
+#   domingo 30/08 so carrega documento ate a sexta 28/08 e o proximo sai em
+#   06/09, ou seja nao havia fato para persistir. O unico gate que media isso,
+#   checks.evento_mais_novo, dispara por "N dias uteis sem evento" (limite 2) e
+#   nunca pergunta se a FONTE tinha algo novo para dar: em 02/09 ele reprovaria
+#   esse estado saudavel. Alarme que toca sozinho e como alarme que nao toca,
+#   foi assim que o CVMURL404 passou quatro dias invisivel.
+#   Fix: checks.avanco_feed compara o teto do feed (MAX data_evento) com o teto
+#   da fonte e com a cadencia esperada dela, e separa seis estados em vez de um
+#   contador de dias: saudavel_sem_fato_novo, fonte_parada, aguardando_varredura,
+#   pipeline_nao_persistiu, sem_evento_datado e fonte_indeterminada. Alertam
+#   apenas pipeline_nao_persistiu e sem_evento_datado.
+#   Comparacao entre datas do MESMO tipo: o evento herda a data de REFERENCIA do
+#   documento (_resolverDataDocCvm prefere doc.data), entao o teto comparavel e
+#   max(Data_Referencia) e nao max(Data_Entrega), que responde outra pergunta
+#   (quando a fonte publicou) e fica como sinal de cadencia e de chegada do lote.
+#   A distincao "fonte parada" x "pipeline nao persistiu" sai no payload, com
+#   referencia_lote e pipeline_escreveu_apos_lote.
+#   frescor-check.yml passa a decidir por checks.avanco_feed; a idade de evento
+#   continua medida e vira ::warning::, porque imprensa e rating publicam todo
+#   dia util e feed longo sem andar segue merecendo olhada, so nao reprova mais
+#   sozinha. Guarda: api/test/avanco-feed.test.mjs (16 testes, prova de 2 pontas
+#   com o caso real de 01/09 e a regua antiga reprovando o mesmo estado em
+#   02/09). Rollback: main = "v4.9.228.js".
 # v4.9.228.js = v4.9.227 + DISJUNTORHOUSEKEEP1 + LOGINTIMING1.
 #   Os dois vieram da auditoria geral de 01/09/2026 (achados P3-2 e P4-1),
 #   nota "98 - Auditoria Geral 2026-09-01" no vault.

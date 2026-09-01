@@ -8002,6 +8002,148 @@ function _cvmMaxDataEntrega(docs) {
   return m;
 }
 
+// ---------------------------------------------------------------------------
+// AVANCOFEED1 (2026-09-01). Guarda de AVANCO do feed.
+//
+// Nasceu do episodio de 28/08 a 01/09/2026: as tres rotinas rodaram, a noturna
+// fechou com submit_ok=103, todo semaforo ficou verde, e o painel passou quatro
+// dias na mesma data. O unico gate que mediria isso e `checks.evento_mais_novo`,
+// que dispara por "N dias uteis sem evento" e nunca pergunta se a FONTE tinha
+// algo novo para dar. Naquele episodio a fonte tambem estava em 28/08, dentro da
+// cadencia semanal declarada, entao o alarme que dispararia em 02/09 seria falso
+// positivo: nao havia fato para persistir. Alarme que toca sozinho treina o
+// operador a ignorar, que e como o CVMURL404 passou quatro dias invisivel.
+//
+// A pergunta certa nao e "ha quantos dias o feed nao anda", e "a fonte andou e o
+// feed ficou para tras?". Tres estados que a regua de dias confunde num so:
+//   - feed no teto da fonte, fonte dentro da cadencia -> saudavel, sem fato novo
+//   - feed no teto da fonte, fonte fora da cadencia   -> fonte parada
+//   - fonte a frente do feed, com escrita de estado ja
+//     depois do lote ter chegado                      -> pipeline nao persistiu
+//
+// Comparacao entre datas do MESMO tipo. O evento herda a data de REFERENCIA do
+// documento (_resolverDataDocCvm prefere doc.data sobre data_entrega), entao o
+// teto comparavel e max(Data_Referencia). Data_Entrega responde outra pergunta,
+// "quando a fonte publicou", e fica como sinal de cadencia e como referencia de
+// chegada do lote.
+// ---------------------------------------------------------------------------
+var AVANCO_FEED_ESTADOS = {
+  SEM_EVENTO: "sem_evento_datado",
+  FONTE_INDETERMINADA: "fonte_indeterminada",
+  SAUDAVEL: "saudavel_sem_fato_novo",
+  FONTE_PARADA: "fonte_parada",
+  AGUARDANDO: "aguardando_varredura",
+  NAO_PERSISTIU: "pipeline_nao_persistiu"
+};
+
+function _dataIsoOuNull(v) {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null;
+}
+
+// Compara instantes por epoch, nunca por string. `updated_at` e ISO com
+// milissegundos e o Last-Modified da CVM chega normalizado por toISOString, mas
+// depender do formato para ordenar e como depender de sorte.
+function _epochOuNull(s) {
+  if (typeof s !== "string" || !s) return null;
+  var t = Date.parse(s);
+  return isNaN(t) ? null : t;
+}
+
+// Os dois tetos da fonte, lidos do mesmo acervo numa passada. Tolera a forma
+// compacta gravada em cvm:documentos ({d, de}) e a forma expandida que o leitor
+// entrega ({data, data_entrega}), porque as duas circulam no Worker.
+function _tetosFonteCVM(docs) {
+  var out = { max_data_entrega: null, max_data_referencia: null, total: 0 };
+  if (!Array.isArray(docs)) return out;
+  out.total = docs.length;
+  for (var i = 0; i < docs.length; i++) {
+    var d = docs[i];
+    if (!d) continue;
+    var ent = _dataIsoOuNull(d.de) || _dataIsoOuNull(d.data_entrega);
+    var ref = _dataIsoOuNull(d.d) || _dataIsoOuNull(d.data);
+    if (ent && (out.max_data_entrega === null || ent > out.max_data_entrega)) out.max_data_entrega = ent;
+    if (ref && (out.max_data_referencia === null || ref > out.max_data_referencia)) out.max_data_referencia = ref;
+  }
+  return out;
+}
+
+// Pura de proposito: recebe as medidas ja lidas e devolve o veredicto. Toda a
+// I/O fica no chamador, entao a regra e testavel nos dois sentidos sem subir KV.
+function avaliarAvancoFeed(e) {
+  var ent = e || {};
+  var feedMax = _dataIsoOuNull(ent.feed_max);
+  var tetoRef = _dataIsoOuNull(ent.fonte_max_referencia);
+  var tetoEnt = _dataIsoOuNull(ent.fonte_max_entrega);
+  var teto = tetoRef || tetoEnt;
+  var out = {
+    feed_max_data_evento: feedMax,
+    fonte_max_data_referencia: tetoRef,
+    fonte_max_data_entrega: tetoEnt,
+    teto_comparavel: teto,
+    teto_origem: tetoRef ? "data_referencia" : tetoEnt ? "data_entrega" : null,
+    fonte_dentro_da_cadencia: ent.fonte_dentro_cadencia === true,
+    fonte_cadencia: ent.fonte_cadencia || "semanal",
+    fonte_proxima_prevista: ent.fonte_proxima_prevista || null,
+    fonte_last_modified: ent.fonte_last_modified || null,
+    estado_updated_at: ent.estado_updated_at || null,
+    referencia_lote: null,
+    pipeline_escreveu_apos_lote: null,
+    atraso_dias: null,
+    estado: null,
+    alerta: false,
+    diagnostico: ""
+  };
+
+  // Sem UM evento datado no estado inteiro nao existe medida de avanco. Isto nao
+  // e "sem fato novo", e ausencia de dado, e continua sendo alerta duro.
+  if (!feedMax) {
+    out.estado = AVANCO_FEED_ESTADOS.SEM_EVENTO;
+    out.alerta = true;
+    out.diagnostico = "Nao existe UM evento datado no estado inteiro. Isto nao e ausencia de fato novo, e ausencia de dado: ou a leitura do estado quebrou, ou nada foi persistido.";
+    return out;
+  }
+  // Sem teto de fonte legivel nao da para dizer se o feed esta atrasado. Quem
+  // cobre acervo vazio ou meta destruida e cvm_fonte_motivo, nao esta guarda.
+  if (!teto) {
+    out.estado = AVANCO_FEED_ESTADOS.FONTE_INDETERMINADA;
+    out.diagnostico = "Sem teto de fonte legivel (cvm:documentos vazio ou meta sem data). Impossivel dizer se o feed esta atrasado; este caso e coberto por cvm_fonte_motivo e cvm_fonte_falha_dura.";
+    return out;
+  }
+
+  // Chegada do lote. Last-Modified do servidor e o sinal direto; sem ele, o fim
+  // do dia da maior Data_Entrega e o limite superior seguro (nunca cedo demais,
+  // entao nunca acusa o pipeline por uma janela que ele ainda nao teve).
+  out.referencia_lote = out.fonte_last_modified || (tetoEnt ? tetoEnt + "T23:59:59.000Z" : null);
+  var tsLote = _epochOuNull(out.referencia_lote);
+  var tsEstado = _epochOuNull(out.estado_updated_at);
+  if (tsLote !== null && tsEstado !== null) out.pipeline_escreveu_apos_lote = tsEstado > tsLote;
+
+  // Feed igual ou a frente do teto. Imprensa e rating publicam todo dia util e
+  // legitimamente colocam o feed a frente da CVM, entao ">" tambem e saude.
+  if (feedMax >= teto) {
+    out.atraso_dias = 0;
+    if (out.fonte_dentro_da_cadencia) {
+      out.estado = AVANCO_FEED_ESTADOS.SAUDAVEL;
+      out.diagnostico = "Feed no teto da fonte (evento mais novo " + feedMax + ", teto " + teto + ") e fonte dentro da cadencia " + out.fonte_cadencia + ". Ausencia de fato novo aqui e a fonte nao ter publicado nada mais recente, nao falha de pipeline." + (out.fonte_proxima_prevista ? " Proxima publicacao prevista: " + out.fonte_proxima_prevista + "." : "");
+    } else {
+      out.estado = AVANCO_FEED_ESTADOS.FONTE_PARADA;
+      out.diagnostico = "Feed no teto da fonte (" + feedMax + "), mas a FONTE esta fora da cadencia " + out.fonte_cadencia + ". O pipeline nao tem o que persistir, o problema esta na origem. Canal proprio: cvm_fonte_motivo, cvm_fonte_falha_dura, cvm_fonte_degrada_servico, fonte_externa_ok.";
+    }
+    return out;
+  }
+
+  out.atraso_dias = _cvmDiasCorridosApos(feedMax, teto);
+  if (out.pipeline_escreveu_apos_lote === true) {
+    out.estado = AVANCO_FEED_ESTADOS.NAO_PERSISTIU;
+    out.alerta = true;
+    out.diagnostico = "FONTE ANDOU E O FEED NAO. A fonte tem documento ate " + teto + ", o evento mais novo do feed e de " + feedMax + " (" + out.atraso_dias + " dias atras), e o estado ja foi escrito em " + out.estado_updated_at + ", depois do lote de " + out.referencia_lote + ". Rotina rodou e gravou sem transformar documento em evento. Confira nesta ordem: removidos_pre_verificador nas submissoes do dia, DEFERIDOS por cap de sessao no log da noturna em logs/routines, e atribuicao do documento via admin_documentos_cvm.";
+  } else {
+    out.estado = AVANCO_FEED_ESTADOS.AGUARDANDO;
+    out.diagnostico = "Fonte a frente do feed (teto " + teto + " contra evento mais novo " + feedMax + "), mas ainda sem escrita de estado depois do lote de " + String(out.referencia_lote) + ". Janela normal entre o lote chegar e a varredura rodar. Vira alerta se continuar assim depois da proxima varredura.";
+  }
+  return out;
+}
+
 async function syncCVMAutomatico(env2222) {
   if (!env2222.RADAR_KV) return { ok: false, erro: "KV indispon\xEDvel" };
   const log = { etapas: [] };
@@ -17518,10 +17660,14 @@ async function executarHealthCheckDiario(env2222) {
   } catch (e) {
     resultado.checks.circuit_breakers = "erro";
   }
+  // AVANCOFEED1: declarados fora do try porque a guarda de avanco abaixo roda em
+  // bloco proprio e precisa das medidas mesmo se algo depois delas falhar.
+  var _evMax = null, _evTotal = 0, _estadoUpdatedAt = null;
   try {
     var semana = semanaISO(obterAgoraBRT());
     var estado = await carregarEstadoMultiSemana(env2222, 2);
     var numEmpresas = estado.results ? Object.keys(estado.results).length : 0;
+    _estadoUpdatedAt = estado.updated_at || null;
     resultado.checks.estado_semanal = { empresas_com_dados: numEmpresas, updated_at: estado.updated_at, weeks_loaded: estado.weeks_loaded };
     // EVENTOFRESCOR1 (auditoria 2026-08-19): `updated_at` acima diz quando o
     // estado foi ESCRITO, nao quando o dado e de. A rotina escreve todos os
@@ -17532,7 +17678,6 @@ async function executarHealthCheckDiario(env2222) {
     // Aqui vai a idade do EVENTO mais novo, que e o que o usuario ve na tela.
     // Reusa `_cvmDiasUteisApos`, que apesar do nome e contador de dias uteis
     // generico, para nao ter duas implementacoes do mesmo calendario.
-    var _evMax = null, _evTotal = 0;
     if (estado.results) {
       for (var _ek in estado.results) {
         var _er = estado.results[_ek];
@@ -17561,6 +17706,41 @@ async function executarHealthCheckDiario(env2222) {
   } catch (e2) {
     resultado.checks.estado_semanal = "erro";
     resultado.checks.evento_mais_novo = "erro";
+  }
+  // AVANCOFEED1: bloco proprio, nunca dentro do try acima. Se a guarda de avanco
+  // quebrar, `evento_mais_novo` e `estado_semanal` tem que sobreviver, senao o
+  // gate novo derrubaria junto o gate antigo e o frescor-check ficaria cego dos
+  // dois lados de uma vez.
+  try {
+    var _avFrescor = await avaliarFrescorCVM(env2222).catch(function() {
+      return null;
+    });
+    var _avDocs = await env2222.RADAR_KV.get("cvm:documentos", "json").catch(function() {
+      return null;
+    });
+    var _avTetos = _tetosFonteCVM(_avDocs);
+    var _avOut = avaliarAvancoFeed({
+      feed_max: _evMax,
+      fonte_max_referencia: _avTetos.max_data_referencia,
+      fonte_max_entrega: _avTetos.max_data_entrega || (_avFrescor && _avFrescor.max_data_entrega) || null,
+      fonte_dentro_cadencia: !!(_avFrescor && _avFrescor.ok),
+      fonte_cadencia: (_avFrescor && _avFrescor.cadencia) || "semanal",
+      fonte_proxima_prevista: (_avFrescor && _avFrescor.proxima_prevista) || null,
+      fonte_last_modified: (_avFrescor && _avFrescor.last_modified) || null,
+      estado_updated_at: _estadoUpdatedAt
+    });
+    _avOut.fonte_documentos_total = _avTetos.total;
+    _avOut.fonte_motivo = (_avFrescor && _avFrescor.motivo) || null;
+    resultado.checks.avanco_feed = _avOut;
+    if (_avOut.alerta) resultado.alertas = (resultado.alertas || []).concat("AVANCO_FEED: " + _avOut.estado);
+  } catch (e9) {
+    // Fail-closed: guarda que nao consegue medir nao pode devolver silencio, ou
+    // vira o mesmo verde silencioso que ela existe para matar.
+    resultado.checks.avanco_feed = {
+      estado: "erro_na_avaliacao",
+      alerta: true,
+      diagnostico: "Guarda de avanco do feed nao pode ser avaliada: " + String(e9 && e9.message || e9).slice(0, 160)
+    };
   }
   try {
     var provStatus = await env2222.RADAR_KV.get("providers:status", "json").catch(function() {
@@ -20062,6 +20242,9 @@ var worker_com_sentry = Sentry.withSentry(
   worker_default
 );
 export {
+  avaliarAvancoFeed,
+  _tetosFonteCVM,
+  AVANCO_FEED_ESTADOS,
   _cronDisjuntorBloqueia,
   _RAMOS_CRON_COM_LLM,
   CUSTO_DISJUNTOR_USD_DIA,

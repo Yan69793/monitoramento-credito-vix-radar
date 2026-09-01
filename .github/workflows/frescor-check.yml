@@ -78,9 +78,55 @@ jobs:
             exit 1
           fi
 
+          # AVANCOFEED1 (2026-09-01). A decisao passou de "N dias uteis sem
+          # evento" para "a fonte andou e o feed nao?".
+          #
+          # O gate de idade abaixo era ERRO ate aqui e reprovaria o estado de
+          # 02/09/2026, que e saudavel: medido em 01/09, o teto do acervo da CVM
+          # era 2026-08-28, exatamente igual ao evento mais novo do feed. O lote
+          # semanal publicado no domingo 30/08 so carrega documento ate a sexta
+          # 28/08 e o proximo sai em 06/09, entao nao havia fato para persistir.
+          # Reprovar ali seria ensinar o operador a ignorar o alarme, que e como
+          # o CVMURL404 passou quatro dias invisivel.
+          #
+          # A idade continua sendo medida e continua aparecendo, agora como
+          # WARNING: a maior parte dos eventos vem de imprensa e rating, que
+          # publicam todo dia util, entao feed longo sem andar segue merecendo
+          # olhada mesmo com a CVM no teto. O que ela deixou de fazer e reprovar
+          # sozinha.
           if (( ev_idade > ev_limite )); then
-            echo "::error::INGESTAO PARADA. Evento mais novo e de ${ev_data}, ${ev_idade} dias uteis atras (limite ${ev_limite}), com ${ev_total} eventos no estado. As rotinas podem estar rodando e gravando normalmente, o que este gate mede e se entrou fato NOVO, nao se alguem escreveu. CVMCADENCIA1 (2026-08-20): NAO culpe a CVM por reflexo. O ramo CIA_ABERTA/DOC tem cadencia SEMANAL declarada e publica aos domingos, entao fonte com 4 dias uteis e normal e nao explica evento parado, ja que a maior parte dos eventos vem de imprensa e rating, que publicam todo dia util. Confira nesta ordem: 1) logs em logs/routines do dia, linha FIM com submit_ok; 2) fonte_externa_ok no health publico, que so vai a false apos DOIS ciclos semanais perdidos, e ai sim a fonte parou de verdade; 3) fila de verificacao radar:verif_fila."
+            echo "::warning::Feed sem evento novo ha ${ev_idade} dias uteis (limite ${ev_limite}), mais novo em ${ev_data}, ${ev_total} eventos no estado. Isoladamente isto NAO reprova: quem decide e checks.avanco_feed abaixo. Se ele disser saudavel_sem_fato_novo, a fonte tambem esta parada no mesmo teto e nao ha fato para persistir."
+          fi
+
+          # Guarda de AVANCO. Compara o teto do feed com o teto da fonte e com a
+          # cadencia esperada dela, e so reprova quando a fonte andou e o feed
+          # ficou para tras com o pipeline ja tendo escrito depois do lote.
+          # Servida por checks.avanco_feed desde o Worker v4.9.229.
+          av_estado=$(echo "$hc" | jq -r '.checks.avanco_feed.estado // "ausente"')
+          av_alerta=$(echo "$hc" | jq -r '.checks.avanco_feed.alerta // "null"')
+          av_diag=$(echo "$hc" | jq -r '.checks.avanco_feed.diagnostico // ""')
+          av_feed=$(echo "$hc" | jq -r '.checks.avanco_feed.feed_max_data_evento // "null"')
+          av_teto=$(echo "$hc" | jq -r '.checks.avanco_feed.teto_comparavel // "null"')
+          av_ent=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_max_data_entrega // "null"')
+          av_cad=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_dentro_da_cadencia // "null"')
+          av_esc=$(echo "$hc" | jq -r '.checks.avanco_feed.pipeline_escreveu_apos_lote // "null"')
+          av_lote=$(echo "$hc" | jq -r '.checks.avanco_feed.referencia_lote // "null"')
+          av_prox=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_proxima_prevista // "null"')
+
+          if [[ "$av_estado" == "ausente" ]]; then
+            echo "::error::checks.avanco_feed ausente na resposta. O Worker regrediu para antes do v4.9.229, e a guarda de avanco do feed nao esta sendo avaliada."
             exit 1
+          fi
+
+          echo "AVANCO_FEED estado=${av_estado} feed_max=${av_feed} teto_fonte=${av_teto} max_data_entrega=${av_ent} dentro_da_cadencia=${av_cad} escreveu_apos_lote=${av_esc} referencia_lote=${av_lote} proxima_prevista=${av_prox}"
+
+          if [[ "$av_alerta" == "true" ]]; then
+            echo "::error::AVANCO DO FEED REPROVADO (${av_estado}). feed_max=${av_feed} teto_fonte=${av_teto} max_data_entrega=${av_ent} fonte_dentro_da_cadencia=${av_cad} pipeline_escreveu_apos_lote=${av_esc} referencia_lote=${av_lote}. ${av_diag}"
+            exit 1
+          fi
+
+          if [[ "$av_estado" == "fonte_parada" ]]; then
+            echo "::warning::Feed no teto da fonte, mas a FONTE esta fora da cadencia esperada. Isto nao e falha de pipeline e por isso nao reprova aqui: quem decide e cvm_fonte_degrada_servico, no bloco CVMDURA1 abaixo. ${av_diag}"
           fi
 
           # CVMDURA1 / HEALTHWATCH3 (2026-08-24). Ate aqui nada neste workflow
@@ -108,7 +154,7 @@ jobs:
             echo "::warning::Fonte CVM com falha dura recente. cvm_fonte_motivo=${cvm_motivo} falhas_consecutivas=${cvm_falhas} idade_dias=${cvm_idade}. Ainda abaixo do limite de escalada, mas se repetir a ingestao de fato relevante para."
           fi
 
-          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"
+          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_fonte=$av_teto cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"
 
       # FRESCORNOTIFY1 (auditoria 2026-08-29): ate aqui o gate reprovava mas o
       # aviso morria dentro do GitHub, sem canal nenhum (28/08 e 29/08 o operador
@@ -133,8 +179,11 @@ jobs:
           det="sem detalhe"
           if [[ -n "${SECRET_PWD:-}" ]]; then
             body=$(jq -n --arg pw "$SECRET_PWD" '{action:"admin_health_check",admin_senha:$pw}')
+            # AVANCOFEED1: o detalhe agora nomeia o estado da guarda de avanco e
+            # os dois tetos comparados. "evento mais novo e de X" sozinho nao
+            # diz se a fonte tinha algo para dar, que e a metade acionavel.
             det=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' -H 'Content-Type: application/json' -d "$body" --max-time 60 \
-              | jq -r '.checks.evento_mais_novo | "evento_mais_novo=" + .data + " idade_du=" + (.idade_du|tostring) + " limite=" + (.limite_du|tostring)' 2>/dev/null || echo "sem campo evento_mais_novo na resposta")
+              | jq -r '"avanco_feed=" + (.checks.avanco_feed.estado // "ausente") + " feed_max=" + (.checks.avanco_feed.feed_max_data_evento // "null") + " teto_fonte=" + (.checks.avanco_feed.teto_comparavel // "null") + " dentro_da_cadencia=" + (.checks.avanco_feed.fonte_dentro_da_cadencia|tostring) + " escreveu_apos_lote=" + (.checks.avanco_feed.pipeline_escreveu_apos_lote|tostring) + " | evento_mais_novo=" + (.checks.evento_mais_novo.data // "null") + " idade_du=" + (.checks.evento_mais_novo.idade_du|tostring) + " | " + (.checks.avanco_feed.diagnostico // "")' 2>/dev/null || echo "sem campo avanco_feed na resposta")
           fi
           run_url="https://github.com/Yan69793/monitoramento-credito-vix-radar/actions/runs/${GITHUB_RUN_ID}"
           motivo="Frescor da ingestao reprovou as $(date -u +%H:%MZ) UTC. Detalhe: ${det}. Log: ${run_url}"
