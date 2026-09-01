@@ -127,7 +127,7 @@ produção para v4.9.232.
    testes). O teste usa `_fetchOverride` (fetch injetável, só teste) para
    reproduzir fielmente o 403 do 6-K real.
 2. **Cron da noturna:** frontmatter do SKILL.md corrigido de "18h" para "10h
-   BRT"; `cronExpression="0 10 * * *"` intocado; scheduler vivo confirmado.
+   BRT"; `cronExpression="0 10 * * *"` intocado. Estado persistido confirmado no `scheduled-tasks.json` (não o scheduler vivo — ver nota no ESTADO).
 3. **SUBMITOK-ENGANOSO1:** ledger `OK|` ganhou 6º campo
    `SKIP|ANALISADO|DEFERIDO`; Passo 11 exige analisados/skip/deferidos/
    submits_aceitos. Guarda `scripts/check-ledger-noturno.ps1`.
