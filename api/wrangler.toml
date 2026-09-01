@@ -1,9 +1,28 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.231)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.232)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.232.js = v4.9.231 + PREVERIFSEC1 (sec.gov fonte oficial de documento) 
+#   + exports de diagnostico/guarda (EMISSORES_LISTA, CNPJ_PRIMARIO_EMISSOR,
+#   _soDigito). Feitos desta tarefa: pre-verificador descartava o evento CRITICO
+#   da Braskem de 31/08 (recuperacao extrajudicial, Form 6-K da SEC) com ok:true
+#   e n_eventos:0 porque a SEC retorna 403 a User-Agent generico e o acervo nao
+#   reconhecia sec.gov como fonte confiavel. O 6-K e fonte primaria tao forte
+#   quanto CVM/B3 para emissor BR com ADR.
+#   Fix: novo conjunto DOMINIOS_FONTE_OFICIAL_DOCUMENTOS (SEC, CVM, B3, BCB, IN,
+#   Anbima) separado de agencia de rating, e helper _ehFonteConfitavelBloqueada
+#   que cobre os dois. O ramo "fonte inacessivel" do validarDatasFontes passa a
+#   usar o helper; evento so e aceito dentro da janela de 30d e SEMPRE com
+#   _verif_forcar=true (verificacao adversarial obrigatoria re-confirma
+#   identidade/data/materialidade). NAO e bypass generico: fonte nao confiavel,
+#   SEC fora da janela e evento sem data_evento continuam descartados.
+#   validarDatasFontes ganhou parametro _fetchOverride (so teste; producao usa
+#   o fetch global) para reproduzir fielmente o 403 do 6-K real.
+#   Guarda: api/test/pre-verificador-sec-gov.test.mjs (8 testes), prova de 3
+#   pontas (incidente pre-fix falha; 6-K valido passa com _verif_forcar; controles
+#   negativos descartados). Rollback: main = "v4.9.231.js".
 # v4.9.231.js = v4.9.230 + teto ELEGIVEL no AVANCOFEED1.
 #   Achado pela propria guarda, na primeira execucao real em producao (run
 #   33472230172, 01/09 05:05Z): ela reprovou com teto_fonte=2026-08-31 contra
