@@ -11,6 +11,34 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 01/09 (madrugada) — P3/P4, RESOLVIDOS E DEPLOYADOS: os 4 achados da auditoria geral de 01/09 fechados no v4.9.228
+
+> **Status:** RESOLVIDO E DEPLOYADO. Produção em `v4.9.228`, health `ok:true` medido em 01/09 04:18 UTC. Nenhuma quinta frente aberta.
+> **Origem do Registro:** auditoria geral `/vix-radar-general-audit` de 01/09, nota 98 no vault, quatro achados P3/P4.
+> **Condição de Obsolescência:** cai quando `VARREDURA_CRON_AI_ENABLED` voltar a `true` (o disjuntor volta a agir de verdade e a lista `_RAMOS_CRON_COM_LLM` passa a ser o único filtro), ou quando o esquema de hash de senha mudar e `HASH_DUMMY_LOGIN` deixar de custar o mesmo que um hash real.
+
+**P3-2 DISJUNTORHOUSEKEEP1 (era DISJUNTOR1) — corrigido.** Gate do disjuntor movido do despacho do cron para dentro do ramo de varredura, via `_cronDisjuntorBloqueia` com lista fechada `_RAMOS_CRON_COM_LLM = ["varredura_matinal","varredura_batch"]`. Housekeeping não cai mais no teto de custo. Fail-open de leitura preservado (CUSTOBRAKE1). Guarda: `api/test/disjuntor-cron.test.mjs`, 6 testes. Prova reversa medida contra a política antiga: `AssertionError: sync_cvm: expected true to be false`.
+
+**P4-1 LOGINTIMING1 — corrigido.** Todo caminho de falha do `handleLogin` passa a pagar um PBKDF2 (hash real ou `HASH_DUMMY_LOGIN`) e sai pelo mesmo ponto com o mesmo jitter de 80-200ms. Latências mínimas medidas antes: inexistente 124ms, senha_errada 45ms, pendente 10ms, rejeitado 11ms. Depois: 155/140/170/140ms. Mensagem genérica e rate limit de auth intactos. Ramos `pendente` e `rejeitado` entraram na correção porque eram o vazamento mais forte dos quatro, respondendo sem hash e sem atraso. Guarda: `api/test/login-timing.test.mjs`, 3 testes com controle positivo de login válido.
+
+**P3-1 governança da skill — corrigido.** `.claude/skills/vix-radar-general-audit/SKILL.md` e `references/audit-matrix.md` em `v4.9.228` / `v202.35`, data 01/09, medidos ao vivo. Os dois blocos ganharam a nota de que checar a condição de obsolescência é parte do passo 3 da própria auditoria, que foi exatamente o que não aconteceu em 01/09.
+
+**P3-3 CLAUDE.md heartbeats — corrigido.** Watchdog monitora 7, não 6. `verificacao_async` entrou em `expectedAgents` em 18/08 (HEARTBEATVERIF1) e a doc não acompanhou. Os limites de staleness também ficaram registrados, porque não são iguais entre os agentes.
+
+**Causa raiz comum aos quatro.** Nenhum deles nasceu de código errado no dia em que foi escrito. Os quatro são premissas que envelheceram sem que nada comparasse a premissa com o estado atual: o disjuntor herdou "o cron gasta LLM" da era pré-delegação, a skill herdou um número de versão de um deploy que aconteceu depois do snapshot, a doc herdou uma contagem de heartbeats anterior a HEARTBEATVERIF1, e o login herdou um atraso aplicado em um ramo só. Guarda contra a família: teste que trava a política (não só o valor) nos dois primeiros, e condição de obsolescência escrita dentro do artefato nos outros dois.
+
+**Registro histórico do achado original, como escrito em 01/09 antes da correção:**
+
+**Achado (P3-2 da auditoria de 01/09).** `_ehCronComLLM` (`api/src/worker.js:19164`) = `ehMatinal || ehNoturno`, e o disjuntor de custo diário (`verificarDisjuntorDiario`, L19167) aborta os dois. Desde a delegação ao Claude Desktop (`varredura_cron_ai=false`), esses crons não gastam LLM no Worker: a varredura é marcada `pulado/delegado_claude_tiered_v2` e o cron vira housekeeping puro (sync CVM, anomalias, ANBIMA, pipeline preditivo, newsletter, healthcheck diário). Se o teto de custo diário estourar por consumo das rotinas locais, o disjuntor aborta o `sync_cvm` e o `healthcheck_diario`, os dois sinais que watchdog e frescor usam. Risco plausível de silenciar a operação num dia de gasto alto, exatamente quando o operador está longe.
+
+**Causa raiz.** A delegação da varredura ao Claude Desktop não revisou o gate de disjuntor, que herdou a premissa de que matinal/noturno gastam LLM.
+
+**Correção proposta.** Estreitar o gate para os ramos que gastam LLM de verdade (hoje nenhum no Worker, ou só se `varredura_cron_ai=true`). Housekeeping nunca deve cair no disjuntor.
+
+**Guarda sistêmica.** Checagem de auditoria "todo cron sob disjuntor gasta LLM de fato"; ou mover o gate para dentro do ramo de varredura.
+
+---
+
 ## 31/08 (tarde) — P1, RESOLVIDO E DEPLOYADO (CVMNOVOSDEAD1 + CNPJVALIDA1): worker v4.9.226 em produção, CVM volta a ser sensor primário
 
 > **Status:** RESOLVIDO DE FATO para o código. `cvm_novos` estava zerado para os 103 emissores todo dia desde 25/08 (SENTINELA1), dois defeitos independentes, os dois corrigidos e deployados. Horário da rotina mudado no config e CONFIRMADO ATIVO pós-restart do Claude Desktop: `vixradar-noturno` carregado com `cronExpression:"0 8 * * *"`, `enabled:true`, próximo disparo 2026-09-01 08h05 BRT (confirmado via `list_scheduled_tasks`). Fonte intradiária oficial: RAD segue tecnicamente bloqueada (reCAPTCHA); o **Download Múltiplo de Companhias** da CVM suporta automação e janela de até 24h mas exige credencial própria da CVM ausente no ambiente — fica como oportunidade futura, não impossibilidade técnica, nada solicitado nem gerado nesta sessão.

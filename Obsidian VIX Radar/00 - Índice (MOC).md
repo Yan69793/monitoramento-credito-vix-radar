@@ -13,10 +13,10 @@ Mapa do vault. Atualizado 2026-08-31 BRT.
 
 | Componente | Versao |
 |---|---|
-| Worker | v4.9.227 |
+| Worker | v4.9.228 |
 | Frontend | v202.35 |
 | Health | `ok:true`, kv/rate_limiter/telemetria true, verificador_ok:true, providers 2/2, admin_email_ok:true, sentry_ok:true (31/08, HTTP 200, TEMPO 0.23s) |
-| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. O frontend v202.35 separa a data do último evento da data de atualização da base, para deixar explícito que a rotina pode concluir sem fato novo. **Worker em v4.9.227 desde 31/08** (BRASKEMDETECT1 fechado, nota 97). Sessão 24/08: SACFALSA-RESIDUO e CACHEBUMP1 fechados e commitados (3 commits, nota 90). Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]], [[89 - Auditoria Geral 2026-08-22]], [[90 - Auditoria Geral 2026-08-24]] e [[97 - Fechamento BRASKEMDETECT1 e Deploy v4.9.227 2026-08-31]]. |
+| Cobertura | Rotinas de 21/08 executadas por sessão multi-provedor: verificação 23/23, matinal 19/19 e noturna 103/103. O frontend v202.35 separa a data do último evento da data de atualização da base, para deixar explícito que a rotina pode concluir sem fato novo. **Worker em v4.9.228 desde 01/09** (os 4 achados P3/P4 da auditoria geral de 01/09 fechados: DISJUNTORHOUSEKEEP1, LOGINTIMING1, governança da skill e contagem de heartbeats no CLAUDE.md; nota 98). Antes, v4.9.227 desde 31/08 (BRASKEMDETECT1 fechado, nota 97). Sessão 24/08: SACFALSA-RESIDUO e CACHEBUMP1 fechados e commitados (3 commits, nota 90). Ver [[87 - Fechamento Rotinas 2026-08-21]], [[88 - Sessao Frontend Mobile 2026-08-21]], [[89 - Auditoria Geral 2026-08-22]], [[90 - Auditoria Geral 2026-08-24]] e [[97 - Fechamento BRASKEMDETECT1 e Deploy v4.9.227 2026-08-31]]. |
 
 Ver [[03 - Estado Atual]] para snapshot completo. Pendencias em [[PENDENCIAS.md]].
 

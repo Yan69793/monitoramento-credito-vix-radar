@@ -1,11 +1,14 @@
 # Audit Matrix
 
-> **Governanca (2026-08-31).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.226 e Frontend v202.35, medidos ao vivo em 31/08 no health publico e
+> **Governanca (2026-09-01).** Status: vigente. Data da versao alinhada a producao:
+> Worker v4.9.228 e Frontend v202.35, medidos ao vivo em 01/09 no health publico e
 > no version.json, coincidindo com o repo. Origem do registro: producao, depois
 > Obsidian, depois codigo (api/wrangler.toml main + changelog). Condicao de
-> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.226 ou
+> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.228 ou
 > surgir binding, fila, endpoint, rotina ou incidente novo que nenhuma secao alcance.
+> Esta linha ficou uma versao atras na auditoria de 01/09 (achado P3-1): checar a
+> condicao acima e parte do passo 3 da skill, e atualizar os dois blocos de
+> governanca fecha a auditoria, nao fica para depois.
 
 Referencia rapida para auditoria geral backend/frontend do VIX Radar.
 
@@ -20,14 +23,15 @@ Referencia rapida para auditoria geral backend/frontend do VIX Radar.
 
 ## Backend Worker
 
-> Producao em 2026-08-31: Worker v4.9.226 e Frontend v202.35, medidos ao vivo no
-> health publico e no version.json, coincidindo com o repo (main = v4.9.226.js).
+> Producao em 2026-09-01: Worker v4.9.228 e Frontend v202.35, medidos ao vivo no
+> health publico e no version.json, coincidindo com o repo (main = v4.9.228.js).
 > Marcos pos v4.9.197 no changelog do wrangler.toml: v4.9.205 SPREADSERIE1,
 > v4.9.209-210 CVMURL404/CVMDURA1, v4.9.214 EMAILSILENT1, v4.9.215 SUBSTRINGDONO1,
 > v4.9.216 SENTINELA1, v4.9.217-219 DEFERGRUDA1/2/3, v4.9.220 STATUSGRUDA1,
 > v4.9.221 CVMTTL1/ATRIBTEL1, v4.9.223 EWSFLOOR1/MATERIALSAT1/BRIEFDEDUP1/AGENDA401,
 > v4.9.224 PISODIFF1, v4.9.225 FALLBACKTTL1/VERIFCACHE-ROUNDTRIP1,
-> v4.9.226 CVMNOVOSDEAD1/CNPJVALIDA1.
+> v4.9.226 CVMNOVOSDEAD1/CNPJVALIDA1, v4.9.227 BRASKEMDETECT1,
+> v4.9.228 DISJUNTORHOUSEKEEP1/LOGINTIMING1.
 
 Checklist:
 
@@ -67,6 +71,8 @@ Checklist:
 - Cache de veredicto do verificador faz round-trip (VERIFCACHE-ROUNDTRIP1, v4.9.225): `APROVADO_CORRIGIDO` em cache voltava como rejeicao no reenvio. Guard aceita `veredicto_original===CORRIGIR`. Conferir que reenvio de evento corrigido nao retrata.
 - `op=calendario` e publico (AGENDA401, v4.9.223): removido do grupo que exige JWT, handler so le KV sem PII. Endpoint publico novo precisa ser declarado sem PII.
 - Piso de score e metadado, nao ponto (EWSFLOOR1/PISODIFF1/MATERIALSAT1, v4.9.223-224): `score_calculado` e o contrafactual "sem piso" (soma +5 de deterioracao quando `nSinaisRisco>=3`), exibido como "Score sem piso: N". Boost de materialidade dampiado pela metade so no CRITICO. Ranking desempata por `score_calculado` desc.
+- Disjuntor de custo so barra ramo que gasta LLM (DISJUNTORHOUSEKEEP1, v4.9.228): ate a v4.9.227 o teto diario abortava o cron matinal e o noturno INTEIROS, premissa herdada de quando eles gastavam LLM. Com a varredura delegada ao Claude Desktop (`VARREDURA_CRON_AI_ENABLED=false`) o cron virou housekeeping puro, e como o teto e alimentado pelo gasto das rotinas LOCAIS, um dia caro fora do Worker matava aqui o `sync_cvm` e o `healthcheck_diario`, que sao os sinais que o watchdog e o frescor leem. O gate mora agora dentro do ramo de varredura (`_cronDisjuntorBloqueia`, lista fechada `_RAMOS_CRON_COM_LLM`). **Regra de auditoria generalizada: todo corte automatico (disjuntor, kill switch, degradacao) tem que barrar exatamente o que consome o recurso protegido, e nada alem.** Um corte que leva junto o canal de alarme apaga o aviso no unico dia em que ele importa, mesmo modo de falha do FIX(N1) da v4.9.163. Conferir tambem: ramo novo do cron que passe a chamar LLM precisa entrar na lista, e `api/test/disjuntor-cron.test.mjs` cobra a outra ponta.
+- Login nao vaza existencia de conta pelo tempo (LOGINTIMING1, v4.9.228): `handleLogin` tinha tres tempos para a mesma mensagem generica (inexistente com atraso e sem hash, senha errada com hash e sem atraso, pendente/rejeitado sem nenhum dos dois). Todo caminho de falha agora roda um PBKDF2 (hash real ou `HASH_DUMMY_LOGIN`) e sai pelo mesmo ponto com o mesmo jitter. **Regra de auditoria: resposta generica so esconde o que o relogio tambem esconde.** Auditar todo ramo de erro de auth pelo TRABALHO que executa, nao pelo texto que devolve; somar atraso ao ramo lento inverte o oraculo em vez de fechar. Rate limit de auth continua sendo a defesa contra volume, nao substituto disto.
 
 Comandos uteis:
 

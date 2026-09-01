@@ -12,20 +12,29 @@ description: >
   rotulo, card, percentual ou selo errado no dashboard, quando pedir para achar
   a causa raiz de um defeito recorrente, ou quando quiser garantir que um erro
   encontrado nao volte no futuro.
-date: 2026-08-31
+date: 2026-09-01
 ---
 
 # VIX Radar General Audit
 
-> **Governanca (2026-08-31).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.226 e Frontend v202.35, medidos ao vivo em 31/08 no health publico
-> (os dois dominios) e no version.json de vixradar.com, coincidindo com o repo
-> (main = v4.9.226.js e CACHE_VERSION v202.35). Origem do registro: producao
-> (health + version.json), depois Obsidian (03 - Estado Atual em v4.9.226 de
-> 31/08, corrente), depois codigo (api/wrangler.toml main + changelog).
+> **Governanca (2026-09-01).** Status: vigente. Data da versao alinhada a producao:
+> Worker v4.9.228 e Frontend v202.35, medidos ao vivo em 01/09 no health publico
+> e no version.json de vixradar.com, coincidindo com o repo (main = v4.9.228.js e
+> CACHE_VERSION v202.35). Origem do registro: producao (health + version.json),
+> depois Obsidian (nota 98, auditoria geral de 01/09), depois codigo
+> (api/wrangler.toml main + changelog).
 > Condicao de obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar
-> v4.9.226, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
+> v4.9.228, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
 > nenhuma secao desta skill alcance.
+>
+> **Ler a condicao acima ANTES de auditar, nao depois (achado P3-1 de 01/09).** Na
+> auditoria daquele dia este bloco dizia v4.9.226 e a producao ja estava em
+> v4.9.227 desde a vespera: a condicao de obsolescencia tinha disparado de fato e
+> ninguem rodou a revisao antes de usar a skill. O deploy que a disparou aconteceu
+> no mesmo dia do snapshot, depois dele, e nada compara a data do snapshot com a do
+> changelog. O passo 3 de "Antes de auditar" (mapa de versoes) detecta a divergencia;
+> quando ele detectar, atualizar este bloco e o de `references/audit-matrix.md` faz
+> parte da auditoria, nao e trabalho para depois.
 
 Auditoria ampla de engenharia para o VIX Radar. Esta skill complementa
 `vix-radar-audit`: use `vix-radar-audit` para health operacional/producao e esta
@@ -35,7 +44,7 @@ skill para revisao de backend + frontend + qualidade do projeto.
 
 0. Seguir as 5 regras permanentes de auditoria do `CLAUDE.md` raiz (medir antes de planejar, numero sai de comando com saida citada, julgar por comportamento, separar artefato vivo de registro, prova de guarda de duas pontas). O projeto tem hook graphify antes de grep/read: orientar-se por `graphify query "<pergunta>"` antes de ler arquivo (CLAUDE.md raiz, secao "Grafo do codigo"). O grafo orienta pouco o Worker: simbolo de `api/src/worker.js`, ler o fonte direto apos a orientacao.
 1. Ler `CLAUDE.md`, `.claude/SKILLS-ROUTER.md`, `Obsidian VIX Radar/00 - Índice (MOC).md` e `Obsidian VIX Radar/03 - Estado Atual.md` (antes se chamava `03 - Estado de Producao.md`; nao recriar o nome antigo).
-2. Ler a matriz em `references/audit-matrix.md` (snapshot revisado em 2026-08-31).
+2. Ler a matriz em `references/audit-matrix.md` (snapshot revisado em 2026-09-01).
 3. Ler `references/glossario-dominio.md`. Sem o glossario carregado nao da para auditar a camada de veracidade da UI: e ele que define o que "cobertura", "critico" e "relevante" tem obrigacao de significar.
 4. Cruzar com `Obsidian VIX Radar/PENDENCIAS.md` (canonico desde 2026-07-27; o `PENDENCIAS.md` da raiz foi arquivado) para nao reabrir achado ja classificado.
 5. Carregar skills auxiliares conforme escopo:

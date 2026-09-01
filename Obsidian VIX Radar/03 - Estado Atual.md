@@ -7,7 +7,11 @@ status: saudavel-com-achado
 
 # Estado Atual — VIX Radar
 
-> [!warning] 31/08 BRT — **Produção v4.9.227. BRASKEMDETECT1: gatilho de imprensa endurecido para recuperação extrajudicial.** R5 (e R3 da newsletter) agora incluem "extrajudicial", `PALAVRAS_CRITICAS` reconhece o termo nas duas formas e `emitirAlertaTier1` promove o evento à tag `recuperacao-judicial`. Deploy `deploy-worker.ps1 -Version v4.9.227`, commit `af2abb1`, push OK.
+> [!info] 01/09 BRT — **Produção v4.9.228. Os 4 achados da auditoria geral de 01/09 fechados, escopo travado.** `DISJUNTORHOUSEKEEP1`: o teto de custo diário abortava o cron matinal e o noturno inteiros, e desde a delegação da varredura ao Claude Desktop eles só fazem housekeeping, então um dia caro nas rotinas locais matava aqui o `sync_cvm` e o `healthcheck_diario`, os dois sinais que o watchdog e o frescor leem. O gate passou para dentro do ramo de varredura. `LOGINTIMING1`: o login tinha três tempos para a mesma mensagem genérica (medido antes: inexistente 124ms, senha errada 45ms, pendente 10ms, rejeitado 11ms; depois: 155/140/170/140ms). Deploy `deploy-worker.ps1 -Version v4.9.228`, commits `e44cd7c` e `8ac3e0e`, push OK.
+> **Status:** vigente · **Data da Versão:** 2026-09-01 · **Origem do Registro:** correção pedida pelo operador sobre a nota [[98 - Auditoria Geral 2026-09-01]], limitada aos 4 achados P3/P4. Guardas `api/test/disjuntor-cron.test.mjs` (6 testes) e `api/test/login-timing.test.mjs` (3 testes), as duas com prova reversa medida, suíte 167/167. Portão pós-deploy `ok:true versao:v4.9.228 kv:true telemetria:true sentry_ok:true verificador_ok:true`, HTTP 200. Frontend intocado e sem drift, `v202.35` nas três pontas.
+> **Condição de Obsolescência:** cai quando o Worker passar do v4.9.228.
+>
+> [!warning] 31/08 BRT — **Produção v4.9.227 (histórico). BRASKEMDETECT1: gatilho de imprensa endurecido para recuperação extrajudicial.** R5 (e R3 da newsletter) agora incluem "extrajudicial", `PALAVRAS_CRITICAS` reconhece o termo nas duas formas e `emitirAlertaTier1` promove o evento à tag `recuperacao-judicial`. Deploy `deploy-worker.ps1 -Version v4.9.227`, commit `af2abb1`, push OK.
 > **Status:** vigente · **Data da Versão:** 2026-08-31 · **Origem do Registro:** fechamento da pendência BRASKEMDETECT1 (protocolo da Braskem de 24/08, US$ 10,9 bi, que a imprensa não alcançou). Guarda `api/test/gatilho-recuperacao.test.mjs`, 5 testes, prova reversa medida, suíte 158/158.
 > **Condição de Obsolescência:** cai quando o Worker passar do v4.9.227.
 >
