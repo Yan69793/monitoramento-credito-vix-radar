@@ -85,12 +85,60 @@ describe("_tetosFonteCVM", () => {
   });
 
   it("ignora lixo sem quebrar e devolve nulos para acervo vazio ou invalido", () => {
-    expect(_tetosFonteCVM(null)).toEqual({ max_data_entrega: null, max_data_referencia: null, total: 0 });
-    expect(_tetosFonteCVM([])).toEqual({ max_data_entrega: null, max_data_referencia: null, total: 0 });
+    for (const vazio of [_tetosFonteCVM(null), _tetosFonteCVM([])]) {
+      expect(vazio.max_data_entrega).toBe(null);
+      expect(vazio.max_data_referencia).toBe(null);
+      expect(vazio.max_data_referencia_elegivel).toBe(null);
+      expect(vazio.total).toBe(0);
+      expect(vazio.elegiveis).toBe(0);
+    }
     const t = _tetosFonteCVM([null, { d: "" }, { d: "28/08/2026" }, { de: "nao_identificada" }, { d: "2026-08-25" }]);
     expect(t.max_data_referencia).toBe("2026-08-25");
     expect(t.max_data_entrega).toBe(null);
     expect(t.total).toBe(5);
+  });
+
+  // Medido em producao em 01/09/2026, na primeira execucao da guarda: acervo com
+  // 2252 documentos, 813 atribuidos por CNPJ e 1439 em quarentena, e o maior
+  // Data_Referencia do acervo inteiro era 2026-08-31, tres dias a frente do
+  // feed. Sem este filtro a guarda reprovaria o pipeline por documento que ele
+  // nunca teve como publicar. Foi a propria execucao em producao que achou isto.
+  it("teto elegivel ignora documento sem dono entre os 103", () => {
+    const docs = [
+      { e: "VALE S.A.", j: "33592510000154", d: "2026-08-27", de: "2026-08-28" },
+      { e: "EMPRESA QUALQUER LTDA", j: "99999999999999", d: "2026-08-31", de: "2026-08-29" },
+    ];
+    const semFiltro = _tetosFonteCVM(docs);
+    expect(semFiltro.max_data_referencia).toBe("2026-08-31");
+
+    const comFiltro = _tetosFonteCVM(docs, { temDono: (d) => d.e === "VALE S.A." });
+    expect(comFiltro.max_data_referencia).toBe("2026-08-31"); // acervo, diagnostico
+    expect(comFiltro.max_data_referencia_elegivel).toBe("2026-08-27"); // decide
+    expect(comFiltro.elegiveis).toBe(1);
+    expect(comFiltro.sem_dono).toBe(1);
+  });
+
+  it("teto elegivel ignora data de referencia no futuro", () => {
+    // Convocacao de assembleia protocolada em 29/08 para reuniao em 05/09. O
+    // costurarCvmEmEventos filtra `dt <= hoje`, entao ela nao pode virar evento
+    // hoje e nao pode entrar na conta que cobra o pipeline.
+    const docs = [
+      { e: "VALE S.A.", d: "2026-08-27", de: "2026-08-28" },
+      { e: "VALE S.A.", d: "2026-09-05", de: "2026-08-29" },
+    ];
+    const t = _tetosFonteCVM(docs, { temDono: () => true, ate: "2026-09-01" });
+    expect(t.max_data_referencia).toBe("2026-09-05");
+    expect(t.max_data_referencia_elegivel).toBe("2026-08-27");
+    expect(t.futuros).toBe(1);
+    expect(t.elegiveis).toBe(1);
+  });
+
+  it("sem opts, elegivel iguala o acervo: nenhum filtro implicito", () => {
+    const t = _tetosFonteCVM([{ e: "X", d: "2026-08-31", de: "2026-08-29" }]);
+    expect(t.max_data_referencia_elegivel).toBe(t.max_data_referencia);
+    expect(t.max_data_entrega_elegivel).toBe(t.max_data_entrega);
+    expect(t.sem_dono).toBe(0);
+    expect(t.futuros).toBe(0);
   });
 });
 

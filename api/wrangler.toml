@@ -1,9 +1,30 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.230)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.231)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.231.js = v4.9.230 + teto ELEGIVEL no AVANCOFEED1.
+#   Achado pela propria guarda, na primeira execucao real em producao (run
+#   33472230172, 01/09 05:05Z): ela reprovou com teto_fonte=2026-08-31 contra
+#   feed_max=2026-08-28. O numero estava certo e a conclusao errada. O acervo
+#   tinha 2252 documentos, 813 atribuidos por CNPJ e 1439 em quarentena
+#   (cobertura 36,1%), e o maior Data_Referencia do acervo INTEIRO era 31/08.
+#   Dois tipos de documento inflavam esse teto sem que o pipeline pudesse
+#   publica-los: os que nao tem dono entre os 103 emissores, e os com data de
+#   referencia no futuro (convocacao de assembleia marcada para depois). Os dois
+#   ja sao filtrados por costurarCvmEmEventos ("dt >= trintaDiasAtras && dt <=
+#   hoje", e o leitor so entrega documento com dono), entao a guarda estava
+#   usando regua diferente da do pipeline que ela vigia, e cobrando o impossivel.
+#   Fix: _tetosFonteCVM ganha filtro opcional (temDono, ate) e passa a devolver
+#   max_*_elegivel ao lado do teto do acervo. A DECISAO usa o elegivel; o teto do
+#   acervo, elegiveis, sem_dono e data_futura saem no payload como diagnostico,
+#   porque quarentena alta aparece ali antes de virar card vazio.
+#   frescor-check.yml imprime os dois tetos e as contagens na linha AVANCO_FEED
+#   e na mensagem de erro.
+#   Guarda: 3 testes novos em api/test/avanco-feed.test.mjs (21 no arquivo, 188
+#   na suite), com o caso medido: sem filtro o teto vai a 31/08, com filtro fica
+#   em 27/08. Rollback: main = "v4.9.230.js".
 # v4.9.230.js = v4.9.229 + correcao da referencia de lote do AVANCOFEED1.
 #   Achado ao validar a v4.9.229 contra producao: o health devolve
 #   cvm_fonte_last_modified:"2026-08-30", data pura, sem hora. A v4.9.229 usava

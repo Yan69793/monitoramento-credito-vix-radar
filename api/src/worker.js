@@ -8049,11 +8049,38 @@ function _epochOuNull(s) {
   return isNaN(t) ? null : t;
 }
 
-// Os dois tetos da fonte, lidos do mesmo acervo numa passada. Tolera a forma
-// compacta gravada em cvm:documentos ({d, de}) e a forma expandida que o leitor
-// entrega ({data, data_entrega}), porque as duas circulam no Worker.
-function _tetosFonteCVM(docs) {
-  var out = { max_data_entrega: null, max_data_referencia: null, total: 0 };
+// Os tetos da fonte, lidos do mesmo acervo numa passada. Tolera a forma compacta
+// gravada em cvm:documentos ({e, j, d, de}) e a forma expandida que o leitor
+// entrega ({empresa_cvm, cnpj_cvm, data, data_entrega}), porque as duas circulam
+// no Worker.
+//
+// TETO ELEGIVEL vs TETO DO ACERVO (medido em producao em 01/09/2026, na primeira
+// execucao da guarda). O acervo tinha 2252 documentos, 813 atribuidos por CNPJ e
+// 1439 em quarentena, e o maior Data_Referencia do acervo inteiro era 31/08,
+// tres dias a frente do feed. Comparar contra ESSE numero faria a guarda cobrar
+// do pipeline duas coisas que ele nunca teve como publicar: documento sem dono
+// entre os 103 emissores, e documento com data de referencia no futuro, tipo
+// convocacao de assembleia marcada para a semana seguinte. Os dois sao filtrados
+// pelo proprio costurarCvmEmEventos (`dt >= trintaDiasAtras && dt <= hoje`, e o
+// leitor so entrega o que tem dono), entao a guarda tem que usar a mesma regua
+// do pipeline que ela vigia. Guarda que cobra o impossivel vira ruido.
+//
+// O teto do acervo continua saindo no payload, como diagnostico: quarentena alta
+// aparece ali antes de virar card vazio.
+function _tetosFonteCVM(docs, opts) {
+  var o = opts || {};
+  var temDono = typeof o.temDono === "function" ? o.temDono : null;
+  var ate = _dataIsoOuNull(o.ate);
+  var out = {
+    max_data_entrega: null,
+    max_data_referencia: null,
+    total: 0,
+    max_data_entrega_elegivel: null,
+    max_data_referencia_elegivel: null,
+    elegiveis: 0,
+    sem_dono: 0,
+    futuros: 0
+  };
   if (!Array.isArray(docs)) return out;
   out.total = docs.length;
   for (var i = 0; i < docs.length; i++) {
@@ -8063,6 +8090,17 @@ function _tetosFonteCVM(docs) {
     var ref = _dataIsoOuNull(d.d) || _dataIsoOuNull(d.data);
     if (ent && (out.max_data_entrega === null || ent > out.max_data_entrega)) out.max_data_entrega = ent;
     if (ref && (out.max_data_referencia === null || ref > out.max_data_referencia)) out.max_data_referencia = ref;
+    if (temDono && !temDono(d)) {
+      out.sem_dono++;
+      continue;
+    }
+    if (ate && ref && ref > ate) {
+      out.futuros++;
+      continue;
+    }
+    out.elegiveis++;
+    if (ent && (out.max_data_entrega_elegivel === null || ent > out.max_data_entrega_elegivel)) out.max_data_entrega_elegivel = ent;
+    if (ref && (out.max_data_referencia_elegivel === null || ref > out.max_data_referencia_elegivel)) out.max_data_referencia_elegivel = ref;
   }
   return out;
 }
@@ -17726,18 +17764,37 @@ async function executarHealthCheckDiario(env2222) {
     var _avDocs = await env2222.RADAR_KV.get("cvm:documentos", "json").catch(function() {
       return null;
     });
-    var _avTetos = _tetosFonteCVM(_avDocs);
+    // Mesma regua do pipeline: so conta documento que tem dono entre os 103 e
+    // cuja data de referencia ja passou. Ver comentario de _tetosFonteCVM.
+    var _avHoje = obterAgoraBRT().toISOString().slice(0, 10);
+    var _avTetos = _tetosFonteCVM(_avDocs, {
+      ate: _avHoje,
+      temDono: function(d) {
+        try {
+          return !!_atribuirDocumentoCVM(d.j != null ? d.j : d.cnpj_cvm, d.e != null ? d.e : d.empresa_cvm).emissor;
+        } catch (_e) {
+          return false;
+        }
+      }
+    });
     var _avOut = avaliarAvancoFeed({
       feed_max: _evMax,
-      fonte_max_referencia: _avTetos.max_data_referencia,
-      fonte_max_entrega: _avTetos.max_data_entrega || (_avFrescor && _avFrescor.max_data_entrega) || null,
+      fonte_max_referencia: _avTetos.max_data_referencia_elegivel,
+      fonte_max_entrega: _avTetos.max_data_entrega_elegivel || (_avFrescor && _avFrescor.max_data_entrega) || null,
       fonte_dentro_cadencia: !!(_avFrescor && _avFrescor.ok),
       fonte_cadencia: (_avFrescor && _avFrescor.cadencia) || "semanal",
       fonte_proxima_prevista: (_avFrescor && _avFrescor.proxima_prevista) || null,
       fonte_last_modified: (_avFrescor && _avFrescor.last_modified) || null,
       estado_updated_at: _estadoUpdatedAt
     });
+    // Diagnostico do acervo. O teto elegivel decide; estes numeros explicam a
+    // diferenca entre ele e o acervo bruto, que e onde a quarentena aparece.
     _avOut.fonte_documentos_total = _avTetos.total;
+    _avOut.fonte_documentos_elegiveis = _avTetos.elegiveis;
+    _avOut.fonte_documentos_sem_dono = _avTetos.sem_dono;
+    _avOut.fonte_documentos_data_futura = _avTetos.futuros;
+    _avOut.fonte_max_data_referencia_acervo = _avTetos.max_data_referencia;
+    _avOut.fonte_max_data_entrega_acervo = _avTetos.max_data_entrega;
     _avOut.fonte_motivo = (_avFrescor && _avFrescor.motivo) || null;
     resultado.checks.avanco_feed = _avOut;
     if (_avOut.alerta) resultado.alertas = (resultado.alertas || []).concat("AVANCO_FEED: " + _avOut.estado);

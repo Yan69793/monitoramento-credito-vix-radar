@@ -112,16 +112,25 @@ jobs:
           av_esc=$(echo "$hc" | jq -r '.checks.avanco_feed.pipeline_escreveu_apos_lote // "null"')
           av_lote=$(echo "$hc" | jq -r '.checks.avanco_feed.referencia_lote // "null"')
           av_prox=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_proxima_prevista // "null"')
+          # Acervo x elegivel. O teto que decide e o ELEGIVEL (documento com dono
+          # entre os 103 e com data de referencia ja passada), porque e a mesma
+          # regua que costurarCvmEmEventos usa. Os numeros do acervo bruto saem
+          # junto porque quarentena alta aparece aqui antes de virar card vazio.
+          av_docs=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_documentos_total // "null"')
+          av_eleg=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_documentos_elegiveis // "null"')
+          av_sdono=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_documentos_sem_dono // "null"')
+          av_fut=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_documentos_data_futura // "null"')
+          av_acervo=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_max_data_referencia_acervo // "null"')
 
           if [[ "$av_estado" == "ausente" ]]; then
             echo "::error::checks.avanco_feed ausente na resposta. O Worker regrediu para antes do v4.9.229, e a guarda de avanco do feed nao esta sendo avaliada."
             exit 1
           fi
 
-          echo "AVANCO_FEED estado=${av_estado} feed_max=${av_feed} teto_fonte=${av_teto} max_data_entrega=${av_ent} dentro_da_cadencia=${av_cad} escreveu_apos_lote=${av_esc} referencia_lote=${av_lote} proxima_prevista=${av_prox}"
+          echo "AVANCO_FEED estado=${av_estado} feed_max=${av_feed} teto_elegivel=${av_teto} teto_acervo=${av_acervo} max_data_entrega=${av_ent} dentro_da_cadencia=${av_cad} escreveu_apos_lote=${av_esc} referencia_lote=${av_lote} proxima_prevista=${av_prox} docs=${av_docs} elegiveis=${av_eleg} sem_dono=${av_sdono} data_futura=${av_fut}"
 
           if [[ "$av_alerta" == "true" ]]; then
-            echo "::error::AVANCO DO FEED REPROVADO (${av_estado}). feed_max=${av_feed} teto_fonte=${av_teto} max_data_entrega=${av_ent} fonte_dentro_da_cadencia=${av_cad} pipeline_escreveu_apos_lote=${av_esc} referencia_lote=${av_lote}. ${av_diag}"
+            echo "::error::AVANCO DO FEED REPROVADO (${av_estado}). feed_max=${av_feed} teto_elegivel=${av_teto} teto_acervo=${av_acervo} max_data_entrega=${av_ent} fonte_dentro_da_cadencia=${av_cad} pipeline_escreveu_apos_lote=${av_esc} referencia_lote=${av_lote} docs=${av_docs} elegiveis=${av_eleg} sem_dono=${av_sdono}. ${av_diag}"
             exit 1
           fi
 
@@ -154,7 +163,7 @@ jobs:
             echo "::warning::Fonte CVM com falha dura recente. cvm_fonte_motivo=${cvm_motivo} falhas_consecutivas=${cvm_falhas} idade_dias=${cvm_idade}. Ainda abaixo do limite de escalada, mas se repetir a ingestao de fato relevante para."
           fi
 
-          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_fonte=$av_teto cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"
+          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_elegivel=$av_teto teto_acervo=$av_acervo elegiveis=$av_eleg sem_dono=$av_sdono cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"
 
       # FRESCORNOTIFY1 (auditoria 2026-08-29): ate aqui o gate reprovava mas o
       # aviso morria dentro do GitHub, sem canal nenhum (28/08 e 29/08 o operador
