@@ -8810,20 +8810,35 @@ var DOMINIOS_RATING_AGENCY_SET = /* @__PURE__ */ new Set([
   "moodyslocal.com.br",
   "moodys.com",
   "austinrating.com.br",
-  "bcb.gov.br",
-  "b3.com.br",
-  "cvm.gov.br",
-  "rad.cvm.gov.br",
-  "dados.cvm.gov.br",
-  "anbima.com.br",
-  "data.anbima.com.br",
-  "in.gov.br",
   // v4.9.157: imprensa financeira BR que bloqueia bots — mesma logica de aceite com verificacao
   "valor.globo.com", "valor.com.br", "braziljournal.com",
   "infomoney.com.br", "broadcast.com.br", "estadao.com.br",
   "moneytimes.com.br", "seudinheiro.com", "exame.com",
   "investnews.com.br", "neofeed.com.br", "poder360.com.br"
 ]);
+// PREVERIFSEC1 (2026-09-01): distincao entre fonte OFICIAL de documentos regulatorios primarios
+// (SEC EDGAR, CVM, B3, BCB, IN, Anbima) e agencia de rating. Ambas bloqueiam bot/leitura generica
+// e, quando inacessiveis, o pre-verificador deve ACEITAR o evento somente dentro da janela de data
+// e SEMPRE com _verif_forcar=true (verificacao adversarial obrigatoria re-confirma identidade da
+// fonte, data e materialidade de forma independente). A SEC nao e uma agencia de rating: e a fonte
+// primaria de um emissor BR com ADR que arquiva Form 6-K ali — tao forte quanto CVM/B3. Nao e
+// aceite cego: o evento precisa de data_evento valida na janela e e rejeitado se o verificador nao
+// confirmar. Fonte nao confiavel, documento sem data valida ou sem evidencia suficiente continuam
+// sendo descartados (ramo RATING_BLOQUEADO require host em um dos sets abaixo).
+var DOMINIOS_FONTE_OFICIAL_DOCUMENTOS = /* @__PURE__ */ new Set([
+  "cvm.gov.br",
+  "rad.cvm.gov.br",
+  "dados.cvm.gov.br",
+  "b3.com.br",
+  "bcb.gov.br",
+  "in.gov.br",
+  "anbima.com.br",
+  "data.anbima.com.br",
+  "sec.gov"
+]);
+function _ehFonteConfitavelBloqueada(host) {
+  return !!(host && (_matchDominio(host, DOMINIOS_RATING_AGENCY_SET) || _matchDominio(host, DOMINIOS_FONTE_OFICIAL_DOCUMENTOS)));
+}
 var DOMINIOS_RESEARCH_SET = new Set(EXA_ALLOWED_DOMAINS_RESEARCH);
 function _hostnameFromUrl(u) {
   if (!u || typeof u !== "string") return "";
@@ -12608,7 +12623,7 @@ async function rodarSweepRevalidacao(env2222) {
   return await rodarSweepRevalidacaoInterno(env2222);
 }
 __name(rodarSweepRevalidacao, "rodarSweepRevalidacao");
-async function validarDatasFontes(eventos, trintaDiasAtras) {
+async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride) {
   if (!eventos || !eventos.length) return eventos;
   const validados = [];
   const hoje = obterAgoraBRT().toISOString().split("T")[0];
@@ -12631,7 +12646,7 @@ async function validarDatasFontes(eventos, trintaDiasAtras) {
     try {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), 8e3);
-      const r = await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 (compatible; VixRadar/2.0)" }, redirect: "follow" });
+      const r = await (_fetchOverride || fetch)(url, { signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 (compatible; VixRadar/2.0)" }, redirect: "follow" });
       clearTimeout(timer);
       if (r.ok) {
         fetchOk = true;
@@ -12655,7 +12670,7 @@ async function validarDatasFontes(eventos, trintaDiasAtras) {
       // descartar — enviar para verificacao adversarial obrigatoria (_verif_forcar).
       const _dtEv2 = ev.data_evento;
       const _hostBloq2 = _hostnameFromUrl(url);
-      const _ehConfiavel2 = _hostBloq2 && _matchDominio(_hostBloq2, DOMINIOS_RATING_AGENCY_SET);
+      const _ehConfiavel2 = _ehFonteConfitavelBloqueada(_hostBloq2);
       const _dtValida2 = _dtEv2 && _dtEv2 !== "nao_identificada" && _dtEv2 >= trintaDiasAtras && _dtEv2 <= hoje;
       if (dataFonte < trintaDiasAtras) {
         if (_ehConfiavel2 && _dtValida2) {
@@ -12697,7 +12712,7 @@ async function validarDatasFontes(eventos, trintaDiasAtras) {
       // data digitada - se o verificador nao confirmar, o evento e rejeitado. Demais fontes
       // inacessiveis mantem o comportamento anterior (descarte).
       const _hostBloq = _hostnameFromUrl(url);
-      const _ehRating = _hostBloq && _matchDominio(_hostBloq, DOMINIOS_RATING_AGENCY_SET);
+      const _ehRating = _ehFonteConfitavelBloqueada(_hostBloq);
       const _dtEv = ev.data_evento;
       if (_ehRating && _dtEv && _dtEv !== "nao_identificada" && _dtEv >= trintaDiasAtras && _dtEv <= hoje) {
         console.log(`[validarDatas][RATING_BLOQUEADO] emp=${(ev.empresa || "").slice(0, 25)} fonte=${(url || "").slice(0, 60)} dt=${_dtEv} -> aceito para verificacao obrigatoria`);
@@ -20310,6 +20325,15 @@ export {
   avaliarAvancoFeed,
   _tetosFonteCVM,
   AVANCO_FEED_ESTADOS,
+  validarDatasFontes,
+  DOMINIOS_RATING_AGENCY_SET,
+  DOMINIOS_FONTE_OFICIAL_DOCUMENTOS,
+  _ehFonteConfitavelBloqueada,
+  _atribuirDocumentoCVM,
+  CNPJ_FAMILIA_CVM,
+  EMISSORES_LISTA,
+  CNPJ_PRIMARIO_EMISSOR,
+  _soDigito,
   _cronDisjuntorBloqueia,
   _RAMOS_CRON_COM_LLM,
   CUSTO_DISJUNTOR_USD_DIA,

@@ -1,6 +1,6 @@
 ---
 name: vixradar-noturno
-description: VIX Radar noturno: varre os 103 emissores e submete ao Worker (diario 18h BRT)
+description: VIX Radar noturno: varre os 103 emissores e submete ao Worker (diario 10h BRT)
 ---
 
 Rotina VIX Radar NOTURNO. Varre os 103 emissores e submete ao Worker.
@@ -322,10 +322,14 @@ Atencao: `_matinal` e `false` aqui. Enviar true contamina o estado da matinal.
 
 Corpo em UTF-8, acentuacao do nome da empresa preservada exatamente como veio no plano.
 
-Apos cada submit bem-sucedido:
-`OK|<empresa>|<tier>|<classificacao>|<n_eventos>|<true|false do submit>`
+Apos cada submit bem-sucedido (aceito pelo Worker):
+`OK|<empresa>|<tier>|<classificacao>|<n_eventos>|<true|false do submit>|<SKIP|ANALISADO|DEFERIDO>`
 
-Essa linha e o ledger de idempotencia.
+O 6o campo `<SKIP|ANALISADO|DEFERIDO>` descreve o QUE aquele emissor realmente rendeu nesta rodada, e e o ledger de idempotencia. Use:
+- `SKIP` — emissor ja analisado/atualizado hoje (idempotencia), nada novo a processar.
+- `ANALISADO` — emissor com analise REAL submetida e aceita nesta execucao (eventos processados, nao vazio).
+- `DEFERIDO` — emissor deixado para amanha por cap de tokens/degradacao de sessao (payload `_token_cap_deferred`), submetido apenas o marcador.
+NUNCA trate o 6o campo como sinonimo de analise. `submit_ok`/valor `true` de submit significa que a gravacao foi aceita — pode esconder um DEFERIDO ou um SKIP. O numero de emissores REALMENTE analisados nesta sessao e o total de linhas com `ANALISADO`, nao o total de `OK|`.
 
 ### Deferimento
 
@@ -345,7 +349,14 @@ com `"provedor":"claude-cap-deferred"`. Registre no log quantos foram deferidos 
 
 Antes de qualquer outra coisa, apague o lock do Passo 0 (`Remove-Item $LockFile -Force -ErrorAction SilentlyContinue`). Vale tambem se a rotina abortou em qualquer passo anterior por motivo diferente de mutex/lock ocupado (ex.: health check, plano).
 
-Escreva no log a linha `FIM: noturno concluido. Total do dia <N>/103.`, onde `<N>` = total de linhas `OK|` no log de hoje (SKIP + analisados + deferidos). Formato exigido pelo watchdog `scripts/retry-vixradar.ps1`, que le o log as 21h30 e relanca a rotina inteira se nao achar um numero >=90 casando `Total do dia (\d+)/\d+`, `submit_ok=(\d+)`, `(\d+)/\d+ processados` ou `processados=(\d+)` numa linha `FIM:`. Incidente 17/08/2026: a primeira versao deste passo so mandava reportar em prosa livre ("103 no ledger, 3 SKIP..."), nenhum numero batia com os quatro formatos aceitos, e o watchdog teria relancado a rotina inteira as 21h30 mesmo com entrega completa (103/103, 0 falha). Escreva essa linha SEMPRE, com esse formato exato, mesmo que o resto do relatorio va em caveman.
+Escreva no log a linha `FIM: noturno concluido. Total do dia <N>/103. analisados=<A> skip=<S> deferidos=<D> submits_aceitos=<X>.`, onde:
+- `<N>` = total de linhas `OK|` no log de hoje = `A + S + D` (SKIP + analisados + deferidos). Esse `<N>` ainda é o que o watchdog `scripts/retry-vixradar.ps1` lê para decidir se relança a rotina (>=90), então mantenha `Total do dia N/103` SEMPRE com `<N>` = soma das três categorias.
+- `<A>` = total de linhas `OK|` cujo 6o campo é `ANALISADO` (emissor REALMENTE analisado nesta sessão — o número honesto de análise).
+- `<S>` = total de linhas com `SKIP` (idempotência, já atualizado hoje).
+- `<D>` = total de linhas com `DEFERIDO` (cap de sessão/degradado, deixado para amanhã).
+- `<X>` = total de submits aceitos pelo Worker = `<A> + <S> + <D>` = `<N>` (pois SKIP/DEFERIDO também são submetidos e gravados).
+Exemplo real do dia em que o reportar confundia: 50 analisados, 22 SKIP, 31 DEFERIDOS, os três sumavam 103 — e o resumo errado dizia apenas `submit_ok=103`, dando a entender 103 análises. O correto é `Total do dia 103/103. analisados=50 skip=22 deferidos=31 submits_aceitos=103.`.
+Formato exigido pelo watchdog `scripts/retry-vixradar.ps1`, que relança a rotina inteira as 21h30 se nao achar um numero >=90 casando `Total do dia (\d+)/\d+`, `submit_ok=(\d+)`, `(\d+)/\d+ processados` ou `processados=(\d+)` numa linha `FIM:`. Incidente 17/08/2026: a primeira versao deste passo so mandava reportar em prosa livre ("103 no ledger, 3 SKIP..."), nenhum numero batia com os quatro formatos aceitos, e o watchdog teria relancado a rotina inteira as 21h30 mesmo com entrega completa (103/103, 0 falha). Escreva essa linha SEMPRE, com esse formato exato, mesmo que o resto do relatorio va em caveman.
 
 Depois da linha FIM, o relatorio para o usuario e em caveman. Reporte: processados, SKIP, deferidos, distribuicao por classificacao, degradados para INCONCLUSIVO, lotes com silent_fail, emissores que falharam submit. Liste os CRITICO com nome e uma linha do que aconteceu.
 
