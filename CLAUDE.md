@@ -224,9 +224,16 @@ não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
 
 O agendamento real das três sessões vive no CCD store
 `%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`,
-lido pelo app só na ativação (INVERSAO-CD1, 26/08). Editar o arquivo não vale até
-reiniciar o Claude Desktop, e a task nativa `Disabled` é guarda anti-duplicata,
-não sinal de saúde.
+lido pelo app só na ativação (INVERSAO-CD1, 26/08). **Editar o arquivo à mão não
+vale até reiniciar o Claude Desktop. Mexer pelo MCP `scheduled-tasks` vale na
+hora.** A distinção é de 01/09/2026 e importa: `update_scheduled_task` grava no
+store e reprograma o scheduler vivo no mesmo passo, então não precisa de restart.
+Medido ao reverter o cron da noturna, sem tocar em processo nenhum: `nextRunAt`
+saiu de `2026-09-01T11:05:24Z` para `2026-09-01T13:05:24Z` na resposta de
+`list_scheduled_tasks`, e esse campo não existe no arquivo em disco, é computado
+pelo processo que está rodando. Prefira sempre o MCP, editar o JSON à mão é o
+caminho que exige restart. A task nativa `Disabled` é guarda anti-duplicata, não
+sinal de saúde.
 
 **Os nomes estão invertidos em relação aos horários desde 25/08/2026, e é de
 propósito.** `vixradar-noturno` é a varredura completa e roda **de manhã**;
@@ -335,7 +342,7 @@ ramo de varredura, que é o único que gasta LLM no Worker.
 
 - `canonical-test.yml`: health check GET / a cada 6h (valida ok, kv, rate_limiter, telemetria, providers). Gate usa o campo `ok` agregado, então cai se `verificador_ok`, `sentry_ok` ou `admin_email_ok` ficarem `false`, mesmo com `kv`/`telemetria` saudáveis
 - `daily-status-email.yml`: status diário via Issue + email Resend (não depende de MCP/OAuth)
-- `frescor-check.yml`: diário 01:37 UTC, staleness da ingestão
+- `frescor-check.yml`: diário 01:37 UTC, avanço da ingestão. Desde AVANCOFEED1 (v4.9.229 a v4.9.231, 01/09) quem decide é `checks.avanco_feed`, que compara o teto do feed (`MAX(data_evento)`) com o teto ELEGÍVEL da fonte (documento com dono entre os 103 e com data de referência já passada, mesma régua do `costurarCvmEmEventos`) e com a cadência esperada dela. Feed no teto da fonte com a fonte em dia é `saudavel_sem_fato_novo` e passa, por mais dias que fique parado. Só reprovam `pipeline_nao_persistiu` (a fonte andou, o feed não, e o estado já foi escrito depois do lote chegar) e `sem_evento_datado`. A régua antiga, idade do evento mais novo em dias úteis, continua medida e virou `::warning::`, porque imprensa e rating publicam todo dia útil
 - `scan-emergencia.yml`: fallback 23:30 UTC quando estado principal stale
 - `worker-tests.yml`: suíte `vitest` em push/PR que toque `api/**`, ver `## Testes`
 

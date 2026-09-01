@@ -11,6 +11,41 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 01/09 (madrugada, 2ª sessão) — P2, RESOLVIDO E DEPLOYADO (AVANCOFEED1, v4.9.231) + cron da noturna revertido para 10h
+
+> **Status:** RESOLVIDO E DEPLOYADO. Produção em `v4.9.231`, health `ok:true` medido em 01/09 05:00 UTC. Duas frentes, nenhuma terceira: fonte intradiária e semântica de `submit_ok` ficaram registradas abaixo SEM correção, de propósito.
+> **Data da Versão:** 2026-09-01
+> **Origem do Registro:** pedido do operador depois do diagnóstico do feed parado em 28/08. Deploys `v4.9.229` → `v4.9.230` → `v4.9.231`. Commits `6e0dda8`/`90e8612`, `70d3dbc`/`df85c52`, `cc22e20`/`caffe43`. Push OK.
+> **Condição de Obsolescência:** cai quando o Worker passar do `v4.9.231`, quando o cron da noturna mudar de novo, ou quando entrar uma fonte intradiária que quebre a premissa de cadência semanal da CVM.
+
+**Item 1, cron da noturna: `0 8 * * *` → `0 10 * * *`.** Revertido antes de disparar uma vez sequer. A mudança para 08h entrou no config em 31/08 18:50 e passou a valer no restart de 31/08 23:07, mas o primeiro disparo seria 01/09 08:05 BRT e a reversão foi às 01:44. Medido: `lastRunAt 2026-08-31T13:05:31Z` = 10:05 BRT, cron velho. Motivo: 08h BRT é antes da B3 abrir e antes de CVM e imprensa publicarem o dia, e a noturna é a única passada que cobre os 103 (a matinal cobre top 20 por EWS). Rodar mais cedo não perde fato do dia anterior, mas joga fora as poucas horas de fato do próprio dia. Não tinha relação com o feed parado, e isso foi medido antes de reverter.
+
+**Descoberta operacional que corrige a leitura do INVERSAO-CD1.** A trava "editar o `scheduled-tasks.json` só vale depois de reiniciar o Claude Desktop" continua verdadeira para EDIÇÃO MANUAL do arquivo. Ela não vale para o caminho suportado, `update_scheduled_task` do MCP `scheduled-tasks`, que grava no store e reprograma o scheduler vivo. Prova de duas pontas, sem tocar em processo nenhum: antes `cronExpression:"0 8 * * *"` / `nextRunAt:"2026-09-01T11:05:24Z"`, depois `cronExpression:"0 10 * * *"` / `nextRunAt:"2026-09-01T13:05:24Z"`, arquivo em disco reescrito às 01:44:41 com `0 10 * * *`. `nextRunAt` não existe no arquivo, é computado pelo processo vivo, então o valor ter mudado prova que o app rodando aplicou. Restart não foi feito porque não era necessário e derrubaria a sessão.
+
+**Item 2, AVANCOFEED1.** `checks.avanco_feed` no health diário compara o teto do feed (`MAX(data_evento)`) com o teto da fonte e com a cadência esperada dela, em vez de contar dias sem evento. Seis estados: `saudavel_sem_fato_novo`, `fonte_parada`, `aguardando_varredura`, `pipeline_nao_persistiu`, `sem_evento_datado`, `fonte_indeterminada`. Alertam apenas `pipeline_nao_persistiu` e `sem_evento_datado`.
+
+**Achado que originou.** Entre 28/08 e 01/09 o painel ficou parado em 28/08 com as três rotinas rodando, `submit_ok=103` e todo semáforo verde. O único gate que media isso, `checks.evento_mais_novo`, dispara por "N dias úteis sem evento" (limite 2) e nunca pergunta se a FONTE tinha algo novo para dar. Em 02/09 ele reprovaria esse mesmo estado, que é saudável: o lote semanal publicado no domingo 30/08 só carrega documento até a sexta 28/08 e o próximo sai em 06/09. Alarme que toca sozinho é como alarme que não toca, foi assim que o CVMURL404 passou quatro dias invisível.
+
+**Causa raiz.** A guarda de frescor media o SINTOMA (feed sem andar) sem medir a única coisa que decide se o sintoma é doença (a fonte ter andado). Família conhecida neste repo: EVENTOFRESCOR1 já tinha trocado `updated_at` por idade de evento pelo mesmo motivo, e parou um passo antes.
+
+**Duas correções vieram da medição, não de revisão de código.** A `v4.9.230` nasceu ao validar a `v4.9.229` contra produção: o health devolve `cvm_fonte_last_modified:"2026-08-30"`, data pura, e usar isso cru como instante de chegada do lote vira 00:00Z, o que faria a varredura de domingo 13:05Z contar como "rodou depois do lote" e acusar o pipeline por uma janela que ele não teve. Referência só com data passou a valer fim do dia. A `v4.9.231` nasceu da PRIMEIRA EXECUÇÃO REAL da guarda (run `33472230172`), que reprovou com `teto_fonte=2026-08-31` contra `feed_max=2026-08-28`: número certo, conclusão errada. O acervo inteiro tem 2252 documentos, dos quais 1439 sem dono entre os 103 e alguns com data de referência no futuro, e os dois tipos já são filtrados por `costurarCvmEmEventos`. A guarda estava usando régua diferente da do pipeline que vigia, cobrando o impossível. Passou a decidir pelo teto ELEGÍVEL (com dono e com data já passada), mantendo o teto do acervo no payload como diagnóstico.
+
+**Guarda sistêmica.** `api/test/avanco-feed.test.mjs`, 21 testes, prova de duas pontas: aceita o caso real de 01/09 e o de 02/09 que a régua antiga reprova (a régua antiga está reproduzida dentro do teste e é afirmada como reprovando), e reprova fonte à frente do feed com escrita de estado posterior ao lote. Suíte 22 arquivos / 188 testes. Regra generalizável para auditoria futura: **guarda de pipeline tem que usar exatamente a régua do pipeline que ela vigia, senão cobra o impossível e vira ruído.**
+
+**Prova em produção, duas pontas, saída crua.** Reprova, run `33472230172` (código pré-`v4.9.231`): `##[error]AVANCO DO FEED REPROVADO (pipeline_nao_persistiu)`, exit 1. Aceita, run `33472592026` (`v4.9.231`): `AVANCO_FEED estado=saudavel_sem_fato_novo feed_max=2026-08-28 teto_elegivel=2026-08-28 teto_acervo=2026-08-31 max_data_entrega=2026-08-28 dentro_da_cadencia=true escreveu_apos_lote=true referencia_lote=2026-08-30T23:59:59.000Z proxima_prevista=2026-09-06 docs=2252 elegiveis=813 sem_dono=1439 data_futura=0`, `FRESCOR_OK`, conclusão success.
+
+**Confirmação do diagnóstico do feed.** `teto_elegivel = 2026-08-28 = feed_max`. O feed está no teto do que o pipeline pode publicar hoje.
+
+### Registrado nesta sessão SEM correção, de propósito
+
+**FRENTE ESTRUTURAL, fonte intradiária de Fato Relevante — NÃO implementada.** O lote IPE da CVM é semanal e publica aos domingos com `Data_Entrega` até a sexta anterior, então existe janela cega de até 7 dias por construção da fonte. Medido em 01/09: `cvm_fonte_proxima_prevista=2026-09-06`. Depende de credencial e de validação de cobertura, não de código: `dadosdemercado.com.br` exige Bearer token pago ausente, o Download Múltiplo de Companhias da CVM suporta automação e janela de 24h mas exige credencial própria da CVM que não existe neste ambiente, e o RAD está fora por reCAPTCHA. Decisão do operador. Nada foi solicitado nem gerado nesta sessão. Não foi misturado com o AVANCOFEED1: a guarda mede a distância entre feed e fonte, ela não encurta a cadência da fonte.
+
+**SEMÂNTICA DE `submit_ok` — registrada, não corrigida.** `submit_ok=103` na linha `FIM:` da noturna conta SUBMISSÃO, não análise, e mascara a cobertura real quando há DEFERIDOS. Medido em 31/08: 50 analisados de verdade, 22 SKIP e 31 DEFERIDOS por cap de sessão (`ORCAMENTO: realizado=681137 ... restante=18863`, `DEFERIDOS: ok=31 falha=0 total=31 motivo=cap de sessao (681137/700000 realizados)`), e mesmo assim a linha final disse `submit_ok=103`. Quem lê o log conclui cobertura total. Mesma família do "verde silencioso", e por isso mesmo merece frente própria em vez de virar apêndice desta. Não tocada aqui.
+
+**OBSERVAÇÃO, não investigada.** 1439 dos 2252 documentos do acervo CVM estão sem dono entre os 103 emissores, cobertura de atribuição 36,1% (bate com `cvm_atribuicao_cobertura_pct` do health público). Apareceu ao construir o teto elegível. Agora fica visível em `checks.avanco_feed.fonte_documentos_sem_dono` e no log do frescor-check, então deixou de ser invisível, mas não foi apurada.
+
+---
+
 ## 01/09 (madrugada) — P3/P4, RESOLVIDOS E DEPLOYADOS: os 4 achados da auditoria geral de 01/09 fechados no v4.9.228
 
 > **Status:** RESOLVIDO E DEPLOYADO. Produção em `v4.9.228`, health `ok:true` medido em 01/09 04:18 UTC. Nenhuma quinta frente aberta.
