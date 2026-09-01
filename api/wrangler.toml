@@ -1,9 +1,25 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.229)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.230)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.230.js = v4.9.229 + correcao da referencia de lote do AVANCOFEED1.
+#   Achado ao validar a v4.9.229 contra producao: o health devolve
+#   cvm_fonte_last_modified:"2026-08-30", data pura, sem hora. A v4.9.229 usava
+#   esse valor cru como instante de chegada do lote, o que o Date.parse resolve
+#   para 00:00Z. Efeito: a varredura de domingo as 13:05Z contaria como "rodou
+#   depois do lote" mesmo quando a CVM publicasse a noite, e o gate acusaria o
+#   pipeline por uma janela que ele ainda nao teve. Falso positivo semanal, que
+#   e exatamente o defeito que o AVANCOFEED1 existe para matar.
+#   Fix: referencia so com data vira FIM do dia (T23:59:59.000Z), mesma regra ja
+#   usada no fallback por Data_Entrega; referencia com hora segue como veio.
+#   Errar para o lado tardio atrasa um alerta verdadeiro em ate um ciclo, errar
+#   para o lado cedo inventa alerta falso toda semana.
+#   Guarda: 2 testes novos em api/test/avanco-feed.test.mjs (18 no arquivo, 185
+#   na suite), com as duas pontas do domingo: varredura antes do fim do dia da
+#   publicacao nao alerta, varredura da segunda alerta.
+#   Rollback: main = "v4.9.229.js".
 # v4.9.229.js = v4.9.228 + AVANCOFEED1.
 #   AVANCOFEED1 (01/09): guarda de AVANCO do feed. Entre 28/08 e 01/09 o painel
 #   ficou parado em 28/08 com as tres rotinas rodando, submit_ok=103 e todo

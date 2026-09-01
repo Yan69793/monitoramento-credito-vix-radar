@@ -8110,10 +8110,18 @@ function avaliarAvancoFeed(e) {
     return out;
   }
 
-  // Chegada do lote. Last-Modified do servidor e o sinal direto; sem ele, o fim
-  // do dia da maior Data_Entrega e o limite superior seguro (nunca cedo demais,
-  // entao nunca acusa o pipeline por uma janela que ele ainda nao teve).
-  out.referencia_lote = out.fonte_last_modified || (tetoEnt ? tetoEnt + "T23:59:59.000Z" : null);
+  // Chegada do lote. Last-Modified do servidor e o sinal direto; sem ele, a
+  // maior Data_Entrega serve de proxy. Nos dois casos a referencia e o FIM do
+  // dia quando so ha data, nunca a meia-noite: medido em producao em 01/09, o
+  // health devolve cvm_fonte_last_modified:"2026-08-30", sem hora. Tomar isso
+  // como 00:00Z faria a varredura de domingo 13:05Z contar como "rodou depois
+  // do lote" mesmo quando a CVM publicou a noite, e o gate acusaria o pipeline
+  // por uma janela que ele ainda nao teve. Errar para o lado tardio so atrasa
+  // um alerta verdadeiro em ate um ciclo; errar para o lado cedo inventa
+  // alerta falso toda semana, que e o defeito que esta guarda existe para matar.
+  var _lm = out.fonte_last_modified;
+  var _lmSoData = _dataIsoOuNull(_lm);
+  out.referencia_lote = _lm ? (_lmSoData ? _lmSoData + "T23:59:59.000Z" : _lm) : tetoEnt ? tetoEnt + "T23:59:59.000Z" : null;
   var tsLote = _epochOuNull(out.referencia_lote);
   var tsEstado = _epochOuNull(out.estado_updated_at);
   if (tsLote !== null && tsEstado !== null) out.pipeline_escreveu_apos_lote = tsEstado > tsLote;

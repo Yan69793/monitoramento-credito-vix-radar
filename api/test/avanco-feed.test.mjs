@@ -48,8 +48,10 @@ function reguaAntigaReprova(feedMax, hojeISO) {
 // Medida real de producao em 2026-09-01, das duas pontas:
 //   MAX data_evento no estado (amostra 15 emissores) = 2026-08-28
 //   MAX Data_Entrega no acervo cvm:documentos        = 2026-08-28
-//   cvm_fonte_last_modified                          = 2026-08-30
+//   cvm_fonte_last_modified                          = 2026-08-30 (data pura,
+//                                                       o health nao devolve hora)
 //   cvm_fonte_proxima_prevista                       = 2026-09-06
+//   cvm_fonte_ciclos_perdidos                        = 0
 const CASO_REAL_0109 = {
   feed_max: "2026-08-28",
   fonte_max_referencia: "2026-08-28",
@@ -57,7 +59,7 @@ const CASO_REAL_0109 = {
   fonte_dentro_cadencia: true,
   fonte_cadencia: "semanal",
   fonte_proxima_prevista: "2026-09-06",
-  fonte_last_modified: "2026-08-30T06:12:00.000Z",
+  fonte_last_modified: "2026-08-30",
   estado_updated_at: "2026-08-31T13:31:00.000Z",
 };
 
@@ -179,6 +181,53 @@ describe("avaliarAvancoFeed - REPROVA (alerta) quando a fonte andou e o feed nao
     expect(r.pipeline_escreveu_apos_lote).toBe(true);
     expect(r.atraso_dias).toBe(2);
     expect(r.diagnostico).toContain("removidos_pre_verificador");
+  });
+
+  it("Last-Modified sem hora vale o FIM do dia, nao a meia-noite", () => {
+    // Medido em producao em 01/09/2026: o health devolve
+    // cvm_fonte_last_modified:"2026-08-30", data pura. Tomar isso como 00:00Z
+    // faria a varredura de domingo 13:05Z contar como "rodou depois do lote"
+    // mesmo com a CVM publicando a noite, e o gate acusaria o pipeline por uma
+    // janela que ele ainda nao teve.
+    const domingoAntesDoLote = avaliarAvancoFeed({
+      feed_max: "2026-08-28",
+      fonte_max_referencia: "2026-08-30",
+      fonte_max_entrega: "2026-08-30",
+      fonte_dentro_cadencia: true,
+      fonte_last_modified: "2026-08-30",
+      estado_updated_at: "2026-08-30T13:05:00.000Z",
+    });
+    expect(domingoAntesDoLote.referencia_lote).toBe("2026-08-30T23:59:59.000Z");
+    expect(domingoAntesDoLote.pipeline_escreveu_apos_lote).toBe(false);
+    expect(domingoAntesDoLote.estado).toBe(AVANCO_FEED_ESTADOS.AGUARDANDO);
+    expect(domingoAntesDoLote.alerta).toBe(false);
+
+    // Mesma data pura, mas a varredura da segunda ja rodou: agora alerta.
+    const segundaDepoisDoLote = avaliarAvancoFeed({
+      feed_max: "2026-08-28",
+      fonte_max_referencia: "2026-08-30",
+      fonte_max_entrega: "2026-08-30",
+      fonte_dentro_cadencia: true,
+      fonte_last_modified: "2026-08-30",
+      estado_updated_at: "2026-08-31T13:05:00.000Z",
+    });
+    expect(segundaDepoisDoLote.pipeline_escreveu_apos_lote).toBe(true);
+    expect(segundaDepoisDoLote.estado).toBe(AVANCO_FEED_ESTADOS.NAO_PERSISTIU);
+    expect(segundaDepoisDoLote.alerta).toBe(true);
+  });
+
+  it("Last-Modified com hora e usado como veio, sem arredondar para o fim do dia", () => {
+    const r = avaliarAvancoFeed({
+      feed_max: "2026-08-28",
+      fonte_max_referencia: "2026-08-30",
+      fonte_max_entrega: "2026-08-30",
+      fonte_dentro_cadencia: true,
+      fonte_last_modified: "2026-08-30T06:12:00.000Z",
+      estado_updated_at: "2026-08-30T13:05:00.000Z",
+    });
+    expect(r.referencia_lote).toBe("2026-08-30T06:12:00.000Z");
+    expect(r.pipeline_escreveu_apos_lote).toBe(true);
+    expect(r.estado).toBe(AVANCO_FEED_ESTADOS.NAO_PERSISTIU);
   });
 
   it("sem Last-Modified, a chegada do lote cai para o fim do dia da maior Data_Entrega", () => {
