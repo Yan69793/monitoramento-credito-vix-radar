@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
 import {
   _grupoAnbima,
   _formatarTaxaDisplay,
@@ -220,7 +221,12 @@ describe("PAPEIS1: persistencia por papel (merge idempotente)", () => {
 
 describe("PAPEIS1: op=serie autenticado", () => {
   beforeEach(async () => {
+    fixarRelogioDoFixture();
     await env.RADAR_KV.delete(kvSerieKey(EMPRESA));
+  });
+
+  afterEach(() => {
+    soltarRelogio();
   });
 
   it("entrega destaque/papeis/familias/data_referencia a partir do KV (caminho de producao)", async () => {
