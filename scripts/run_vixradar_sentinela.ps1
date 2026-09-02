@@ -195,22 +195,30 @@ try {
 # --- Guarda 2: nao concorrer com as rotinas principais ---------------------
 # Horario deslocado (:25 e :55) e a primeira defesa. Esta e a que vale quando uma
 # rotina principal atrasa e invade a janela.
-$__noturnoMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-noturno-v2')
-$__noturnoLivre = $__noturnoMutex.WaitOne(0)
-if ($__noturnoLivre) { $__noturnoMutex.ReleaseMutex() }
-if (-not $__noturnoLivre) {
-    Write-Log 'ABORT_COLISAO: noturna em execucao (mutex global ocupado) - saindo em 0 token. Proxima tentativa em 30 min.'
-    Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=colisao_noturna'
-    exit 0
+foreach ($par in @(@('Global\vixradar-noturno-v2', 'noturna'), @('Global\vixradar-matinal-v2', 'matinal'))) {
+    $__rotMutex = New-Object System.Threading.Mutex($false, $par[0])
+    $__rotLivre = $__rotMutex.WaitOne(0)
+    if ($__rotLivre) { $__rotMutex.ReleaseMutex() }
+    if (-not $__rotLivre) {
+        Write-Log ('ABORT_COLISAO: ' + $par[1] + ' em execucao (mutex global ocupado) - saindo em 0 token. Proxima tentativa em 30 min.')
+        Write-Log ('FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=colisao_' + $par[1])
+        exit 0
+    }
 }
+# MOTOR1 (2026-09-02): o lock de arquivo passou a ser TOCADO a cada lote pelo motor
+# (run_vixradar_varredura.ps1), entao vivo = tocado ha menos de 30 min; alem disso e
+# abandono (crash, reboot no meio da rotina). Antes o limite era 180 min sem toque, o que
+# deixava a sentinela cega por 3h depois de um crash da noturna.
 foreach ($rot in @('vixradar-noturno', 'vixradar-matinal')) {
     $lockFile = Join-Path $LogDir ($rot + '_' + $DateTag + '.lock')
     if (Test-Path $lockFile) {
         $idadeMin = ((Get-Date) - (Get-Item $lockFile).LastWriteTime).TotalMinutes
-        if ($idadeMin -lt 180) {
+        if ($idadeMin -lt 30) {
             Write-Log ('ABORT_COLISAO: lock de sessao ' + $rot + ' ativo ha ' + [math]::Round($idadeMin, 1) + ' min - saindo em 0 token.')
             Write-Log ('FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=colisao_' + $rot)
             exit 0
+        } else {
+            Write-Log ('LOCK_ABANDONADO: ' + $rot + ' sem toque ha ' + [math]::Round($idadeMin, 1) + ' min - ignorando o lock e seguindo')
         }
     }
 }

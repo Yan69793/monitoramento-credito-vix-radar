@@ -18,12 +18,12 @@
 # o proprio Worker chama), entao este circuito e local e por arquivo.
 
 function Get-VixCustoConfig([string]$LogDir) {
-    $cfg = @{ TETO_DIA = 1300000; RESERVA_VERIFICACAO = 150000; MARGEM_MINIMA = 100000 }
+    $cfg = @{ TETO_DIA = 1300000; RESERVA_VERIFICACAO = 150000; RESERVA_NOTURNO = 700000; MARGEM_MINIMA = 100000 }
     $p = Join-Path $LogDir 'custo-config.json'
     if (Test-Path $p) {
         try {
             $j = Get-Content $p -Raw -Encoding UTF8 | ConvertFrom-Json
-            foreach ($k in @('TETO_DIA', 'RESERVA_VERIFICACAO', 'MARGEM_MINIMA')) {
+            foreach ($k in @('TETO_DIA', 'RESERVA_VERIFICACAO', 'RESERVA_NOTURNO', 'MARGEM_MINIMA')) {
                 if ($j.PSObject.Properties[$k]) { $cfg[$k] = [int64]$j.$k }
             }
         } catch {
@@ -85,6 +85,14 @@ function Get-VixCustoDia([string]$LogDir, [string]$DateTag, $Config) {
     foreach ($r in $rotinas) {
         $m = Read-VixMetrics (Join-Path $LogDir $r.arquivo)
         $p = Get-VixParcelas $m
+        # Dry-run gasta token de verdade (assinatura) e conta no dia, em arquivo separado
+        # (<prefixo>_metrics_<data>_dryrun.json) para nao ser confundido com a execucao real.
+        $md = Read-VixMetrics (Join-Path $LogDir ([regex]::Replace($r.arquivo, '\.json$', '_dryrun.json')))
+        if ($md) {
+            $pd = Get-VixParcelas $md
+            foreach ($k in @('input', 'output', 'cache_creation', 'cache_read', 'trabalho')) { $p[$k] = [int64]$p[$k] + [int64]$pd[$k] }
+            if ($p.regua -eq 'ausente') { $p.regua = $pd.regua + '+dryrun' } else { $p.regua = $p.regua + '+dryrun' }
+        }
         $por[$r.nome] = $p
         $total += $p.trabalho
         $cacheRead += $p.cache_read
@@ -98,7 +106,8 @@ function Get-VixCustoDia([string]$LogDir, [string]$DateTag, $Config) {
     foreach ($k in @('matinal', 'noturno', 'verificacao', 'sentinela', 'agenda')) {
         $partes += ($k + '=' + $por[$k].trabalho + '+cache_read=' + $por[$k].cache_read)
     }
-    $linha = 'CUSTO_DIA: ' + ($partes -join ' ') + ' TOTAL_DIA=' + $total + ' TETO=' + $Config.TETO_DIA + ' MARGEM=' + $margem
+    # Data na linha: o monitor imprime ontem e hoje em sequencia e sem ela as duas eram iguais.
+    $linha = 'CUSTO_DIA ' + $DateTag + ': ' + ($partes -join ' ') + ' TOTAL_DIA=' + $total + ' TETO=' + $Config.TETO_DIA + ' MARGEM=' + $margem
     if ($aberto) { $linha += ' CIRCUITO_ABERTO' }
     return @{
         data = $DateTag; por_rotina = $por; total_trabalho = $total; total_cache_read = $cacheRead

@@ -10,6 +10,11 @@
 # A sessao das 18h45 nao e opcional: sem ela a fila enfileirada as 18h fica presa ate o dia
 # seguinte. Os nomes das rotinas estao invertidos em relacao aos horarios de proposito, ver
 # routines/README.md.
+# MOTOR1 (2026-09-02): reserva atomica antes de verificar (CONCORVERIF1, origem "local"),
+# claimante padrao, 4 parcelas de usage na regua unica, ALERTA_AUTH na escalada e -DryRun
+# (lista e reserva com origem "local-dryrun", nunca confirma). Drenos: local 11h03 e 19h15,
+# remoto 02h07 (RemoteTrigger), mais o dreno inline no fim de cada varredura.
+param([switch]$DryRun)
 # 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
 # aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
 $ErrorActionPreference = 'Continue'
@@ -127,6 +132,7 @@ function Get-RoutineKey {
 # Haiku e Sonnet colapsavam no mesmo modelo, virando o modelo se auditando. O helper fixa a
 # API oficial em toda invocacao. Politica: assinatura primeiro, chave paga se o OAuth falhar.
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
+. (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 
 # Assert-VixLibFunctions garante que funcoes removidas/renomeadas nas libs sem
@@ -179,7 +185,12 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             # inteira quando o OAuth vence no meio da drenagem.
             $saidaFalha = ('' + $raw)
             if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
-            Invoke-VixClaudeAuthEscalate $saidaFalha | Out-Null
+            if (Invoke-VixClaudeAuthEscalate $saidaFalha) {
+                # MOTOR1: escalada nunca e silenciosa. Log, alerta ao admin e carimbo na FIM.
+                $script:AuthEscalou = 'api'
+                Write-Log 'ALERTA_AUTH: verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.'
+                $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey
+            }
         }
     } catch {
         Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
@@ -188,6 +199,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     }
     $textOut = @($raw)
     $tokens = -1
+    $parcelas = @{ input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0; trabalho = [int64]0 }
     $refusal = $false
     $refusalCategory = $null
     $refusalExplanation = $null
@@ -197,8 +209,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             $json = $jsonLine | ConvertFrom-Json
             if ($null -ne $json.result) { $textOut = @(('' + $json.result) -split "`n") }
             if ($json.usage) {
-                $tokens = [int]$json.usage.input_tokens + [int]$json.usage.output_tokens `
-                    + [int]$json.usage.cache_creation_input_tokens + [int]$json.usage.cache_read_input_tokens
+                # REGUA-UNICA1 (2026-09-02): trabalho = input + output + cache_creation; cache_read
+                # fica em coluna propria (antes entrava na soma e inflava contra o cap).
+                $parcelas = Get-VixUsageParcelas $json
+                $tokens = [int64]$parcelas.trabalho
             }
             # Classificador de seguranca do Fable 5/Mythos 5 pode recusar com stop_reason=refusal
             # (resposta HTTP 200 normal, nao excecao). stop_details.category/.explanation nao
@@ -218,7 +232,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     }
     $authFail = Test-ClaudeAuthFailure $textOut
     return @{
-        Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; AuthFailure = $authFail
+        Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; AuthFailure = $authFail
         Refusal = $refusal; RefusalCategory = $refusalCategory; RefusalExplanation = $refusalExplanation
     }
 }
@@ -377,8 +391,12 @@ if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
     exit 2
 }
 
-$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0; tokens_desconhecidos = 0; deferred = 0; token_hard_hit = $false }
+$stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0; tokens_desconhecidos = 0; deferred = 0; token_hard_hit = $false
+    input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0; reservados = 0; ja_reservados = 0; protecao_ativa = $false; confirmados = 0 }
+$script:AuthEscalou = 'nenhum'
 $exitCode = 0
+$origemLocal = if ($DryRun) { 'local-dryrun' } else { 'local' }
+if ($DryRun) { Write-Log 'DRYRUN: lista e reserva a fila, roda o verificador, mas NUNCA chama confirmar_verificacao (itens continuam na fila; a reserva expira em 20 min).' }
 
 try {
     $fila = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_fila_verificacao'; routine_key = $routineKey; dias = 3 } -TimeoutSec 60
@@ -396,6 +414,42 @@ try {
     }
 
     $itens = @($fila.itens)
+
+    # CONCORVERIF1 (2026-08-18) / MOTOR1 (2026-09-02): reserva atomica ANTES de gastar token.
+    # A rotina remota (02h07, origem "remote") e qualquer outra mao na fila reservam pelo mesmo
+    # Durable Object com janela de 20 min; quem chegou depois recebe ja_reservados e nao paga
+    # verificacao repetida. O claimante local e sempre "local" (ou "local-dryrun" em dry-run):
+    # em 01/09 um dreno manual com claimante inventado deixou a rotina das 18h45 sem trabalho.
+    try {
+        $itensReserva = @($itens | ForEach-Object { @{ id = $_.id; data_fila = $_.data_fila } })
+        $resReserva = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'reservar_itens_fila'; routine_key = $routineKey; origem = $origemLocal; itens = $itensReserva } -Depth 6 -TimeoutSec 60
+        if ($resReserva.ok -eq $true) {
+            $reservados = @($resReserva.reservados)
+            $jaRes = @($resReserva.ja_reservados)
+            $stats.reservados = $reservados.Count
+            $stats.ja_reservados = $jaRes.Count
+            $stats.protecao_ativa = ($resReserva.protecao_ativa -eq $true)
+            Write-Log ('RESERVA|origem=' + $origemLocal + '|reservados=' + $reservados.Count + '|ja_reservados=' + $jaRes.Count + '|protecao_ativa=' + $stats.protecao_ativa)
+            if ($jaRes.Count -gt 0) {
+                $claimantes = @($jaRes | ForEach-Object { '' + $_.claimante } | Sort-Object -Unique) -join ','
+                Write-Log ('RESERVA_BLOQUEADA: ' + $jaRes.Count + '/' + $itens.Count + ' itens ja_reservados por claimante ' + $claimantes + ' - pulando esses, sem verificacao duplicada')
+            }
+            $setRes = @{}
+            foreach ($r in $reservados) { $setRes[('' + $r)] = $true }
+            $itens = @($itens | Where-Object { $setRes.ContainsKey('' + $_.id) })
+        } else {
+            Write-Log ('AVISO: reservar_itens_fila respondeu ok:false (' + $resReserva.erro + ') - seguindo sem reserva, com recheck antes de cada confirmacao')
+        }
+    } catch {
+        Write-Log ('AVISO: reservar_itens_fila falhou (' + $_.Exception.Message + ') - seguindo sem reserva, com recheck antes de cada confirmacao')
+    }
+    if ($itens.Count -eq 0) {
+        Write-Log ('FIM: submit_ok=0 fila=' + $stats.total_fila + ' reservados=0 ja_reservados=' + $stats.ja_reservados + ' (tudo reservado por outro claimante, nada a fazer nesta execucao)')
+        $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        Write-Log ('ROTINA_RESUMO|vixradar-verificacao-async|local|' + $inicioIso + '|' + $fimIso + '|OK|0|0|0|' + $versaoWorker)
+        exit 0
+    }
+
     for ($i = 0; $i -lt $itens.Count; $i += $ChunkSize) {
         $fim = [Math]::Min($i + $ChunkSize - 1, $itens.Count - 1)
         $chunk = @($itens[$i..$fim])
@@ -478,6 +532,9 @@ try {
             $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
             if ($result.Tokens -gt 0) {
                 $stats.tokens_total += $result.Tokens
+                $stats.input += $result.Parcelas.input; $stats.output += $result.Parcelas.output
+                $stats.cache_creation += $result.Parcelas.cache_creation; $stats.cache_read += $result.Parcelas.cache_read
+                Write-Log ('Tokens lote=' + $result.Tokens + ' (input=' + $result.Parcelas.input + ' output=' + $result.Parcelas.output + ' cache_creation=' + $result.Parcelas.cache_creation + ' cache_read=' + $result.Parcelas.cache_read + ') acum=' + $stats.tokens_total)
             } else {
                 $stats.tokens_total += $estLote
                 $stats.tokens_desconhecidos++
@@ -530,30 +587,53 @@ try {
             Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) TODOS do cache - sem chamada LLM')
         }
 
-        try {
-            $confirmResp = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'confirmar_verificacao'; routine_key = $routineKey; itens = $confirmarItens } -Depth 12 -TimeoutSec 60
-            if ($confirmResp.ok -eq $true) {
-                $stats.aprovados += [int]$confirmResp.resultado.aprovados
-                $stats.rejeitados += [int]$confirmResp.resultado.rejeitados
-                Write-Log ('LOTE_FECHADO|' + $label + '|aprovados=' + $confirmResp.resultado.aprovados + '|rejeitados=' + $confirmResp.resultado.rejeitados + '|erros=' + $confirmResp.resultado.erros + '|cache=' + $cacheHitCount)
-            } else {
-                Write-Log ('ERRO: confirmar_verificacao falhou no lote ' + $label + ' - ' + $confirmResp.erro)
+        if ($DryRun) {
+            Write-Log ('DRYRUN_CONFIRM|' + $label + '|itens=' + $confirmarItens.Count + '|veredictos=' + (($confirmarItens | ForEach-Object { '' + $_.empresa + ':' + $_.veredicto.veredicto }) -join ', ') + ' (nao confirmado, itens seguem na fila)')
+        } else {
+            # Sem protecao atomica (DO indisponivel) o recheck e obrigatorio: so confirma o que
+            # ainda esta na fila, para nao retratar item que outra mao ja fechou.
+            if (-not $stats.protecao_ativa -and $confirmarItens.Count -gt 0) {
+                try {
+                    $recheck = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'listar_fila_verificacao'; routine_key = $routineKey; ids = @($confirmarItens | ForEach-Object { $_.id }) } -TimeoutSec 60
+                    $aindaNaFila = @{}
+                    foreach ($it in @($recheck.itens)) { $aindaNaFila[('' + $it.id)] = $true }
+                    $antes = $confirmarItens.Count
+                    $confirmarItens = @($confirmarItens | Where-Object { $aindaNaFila.ContainsKey('' + $_.id) })
+                    if ($confirmarItens.Count -lt $antes) { Write-Log ('RECHECK: ' + ($antes - $confirmarItens.Count) + ' item(ns) ja fechados por outra mao, nao confirmados') }
+                } catch { Write-Log ('AVISO: recheck antes da confirmacao falhou (' + $_.Exception.Message + ') - confirmando mesmo assim') }
             }
-        } catch {
-            Write-Log ('EXCECAO: confirmar_verificacao ' + $label + ' - ' + $_.Exception.Message)
+            try {
+                $confirmResp = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'confirmar_verificacao'; routine_key = $routineKey; origem = 'local'; itens = $confirmarItens } -Depth 12 -TimeoutSec 60
+                if ($confirmResp.ok -eq $true) {
+                    $stats.aprovados += [int]$confirmResp.resultado.aprovados
+                    $stats.rejeitados += [int]$confirmResp.resultado.rejeitados
+                    $stats.confirmados += $confirmarItens.Count
+                    Write-Log ('LOTE_FECHADO|' + $label + '|aprovados=' + $confirmResp.resultado.aprovados + '|rejeitados=' + $confirmResp.resultado.rejeitados + '|erros=' + $confirmResp.resultado.erros + '|cache=' + $cacheHitCount)
+                } else {
+                    Write-Log ('ERRO: confirmar_verificacao falhou no lote ' + $label + ' - ' + $confirmResp.erro)
+                }
+            } catch {
+                Write-Log ('EXCECAO: confirmar_verificacao ' + $label + ' - ' + $_.Exception.Message)
+            }
         }
 
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
         Start-Sleep -Seconds $PauseSec
     }
 
-    @{
-        data = $DateTag; total_fila = $stats.total_fila; lotes = $stats.lotes
-        aprovados = $stats.aprovados; rejeitados = $stats.rejeitados
-        erros_parse = $stats.erros_parse; refusals = $stats.refusals; tokens_total_est = $stats.tokens_total
-    } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
+    $metricsOut = if ($DryRun) { [regex]::Replace($MetricsFile, '\.json$', '_dryrun.json') } else { $MetricsFile }
+    [ordered]@{
+        data = $DateTag; rotina = 'verificacao-async'; dryrun = [bool]$DryRun; total_fila = $stats.total_fila; lotes = $stats.lotes
+        reservados = $stats.reservados; ja_reservados = $stats.ja_reservados; protecao_ativa = $stats.protecao_ativa
+        aprovados = $stats.aprovados; rejeitados = $stats.rejeitados; confirmados = $stats.confirmados
+        erros_parse = $stats.erros_parse; refusals = $stats.refusals
+        tokens_total_est = $stats.tokens_total; tokens_trabalho = $stats.tokens_total
+        tokens_input = $stats.input; tokens_output = $stats.output; tokens_cache_creation = $stats.cache_creation; tokens_cache_read = $stats.cache_read
+        auth_escalou = $script:AuthEscalou
+    } | ConvertTo-Json | Set-Content $metricsOut -Encoding UTF8
 
-    Write-Log ('FIM: fila=' + $stats.total_fila + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos)
+    $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
+    Write-Log ($fimTag + 'fila=' + $stats.total_fila + ' reservados=' + $stats.reservados + ' ja_reservados=' + $stats.ja_reservados + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' submit_ok=' + $stats.confirmados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos + ' auth_escalou=' + $script:AuthEscalou)
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $errosTotal = $stats.erros_parse + $stats.refusals
