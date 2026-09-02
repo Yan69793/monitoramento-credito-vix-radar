@@ -44,8 +44,12 @@ function Get-AlvoEntregaRotina([datetime]$Agora, [int]$Hora, [bool]$DiasUteis, [
 # meio do lote 3 (Kernel-Power 109 e 577 as 22:16:27 e 22:16:29) e deixou log sem FIM:.
 # O exit code do Scheduler dizia 0x40010004 e so; a evidencia boa e o log, nao o codigo.
 # Test-EntregaSentinela fica como atalho para nao quebrar call site nem prova existente.
-function Test-EntregaPorLog([datetime]$Alvo, [string]$LogDir, [string]$Prefixo, [string]$Rotulo) {
+# MONITOR-PROJETOMISTO1 (2026-09-02): $MinFim generaliza para rotina com mais de uma janela
+# no dia (verificacao-async: drenos locais 11h03 e 19h15). Uma execucao so com FIM: em dia
+# util e janela pulada, nao entrega. FIM_DRYRUN: nao conta (nao tem 'FIM:' como substring).
+function Test-EntregaPorLog([datetime]$Alvo, [string]$LogDir, [string]$Prefixo, [string]$Rotulo, [int]$MinFim = 1) {
     if ([string]::IsNullOrWhiteSpace($Rotulo)) { $Rotulo = $Prefixo }
+    if ($MinFim -lt 1) { $MinFim = 1 }
     $alvoTxt = $Alvo.ToString('yyyy-MM-dd')
     $logPath = Join-Path $LogDir ($Prefixo + '_' + $Alvo.ToString('yyyyMMdd') + '.log')
     if (-not (Test-Path $logPath)) {
@@ -59,9 +63,67 @@ function Test-EntregaPorLog([datetime]$Alvo, [string]$LogDir, [string]$Prefixo, 
     if ($fims.Count -eq 0) {
         return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = -1; motivo = ("$alvoTxt log existe mas sem linha FIM: - a $Rotulo iniciou mas nenhuma execucao chegou ao fim") }
     }
+    if ($fims.Count -lt $MinFim) {
+        return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = $fims.Count; motivo = ("$alvoTxt log tem $($fims.Count) execucao(oes) com FIM:, esperado >= $MinFim - a $Rotulo pulou uma janela") }
+    }
     return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = $fims.Count; motivo = $null }
 }
 
 function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
     return Test-EntregaPorLog -Alvo $Alvo -LogDir $LogDir -Prefixo 'vixradar-sentinela' -Rotulo 'Sentinela'
+}
+
+# MONITOR-PROJETOMISTO1 (2026-09-02): o e-mail "VIX Radar - N task(s) com falha" carregava
+# tasks de outros projetos (01/09: AgendaAgent e FechamentoDiario, nenhum do VIX). Escopo
+# decide os prefixos; o retry do VIX tem prefixo Szuchmacher- e por isso e listado a parte.
+function Get-PrefixosEscopo([string]$Escopo) {
+    switch ($Escopo) {
+        'VIX'   { return @{ prefixos = @('VIXRadar-', 'Monitor-', 'Szuchmacher-RetryVix'); excluir = @() } }
+        'Site'  { return @{ prefixos = @('Szuchmacher-', 'MorningCall-', 'RadarQuant-', 'PME-', 'YanOS_'); excluir = @('Szuchmacher-RetryVix') } }
+        default { return @{ prefixos = @('Szuchmacher-', 'VIXRadar-', 'Monitor-', 'PME-', 'YanOS_', 'MorningCall-', 'RadarQuant-'); excluir = @() } }
+    }
+}
+
+# Dedup do e-mail: erro com o MESMO (task, code, lastRun) ja reportado num dia anterior e
+# "persistente" (LastTaskResult congelado de task que nao rodou de novo). So erro novo, erro
+# que mudou de codigo ou de ultima execucao, e escalada (>48h) justificam e-mail. Codigos
+# 9004 (ALERTA_AUTH) e 9005 (circuito de custo) nunca deduplicam: sao urgentes todo dia.
+function Select-ErrosParaEmail([object[]]$Erros, [hashtable]$EstadoAnterior, [string]$HojeIso) {
+    $novos = @(); $escalados = @(); $persistentes = @()
+    foreach ($e in @($Erros)) {
+        if ($null -eq $e) { continue }
+        $key = [string]$e.task
+        $prev = $null
+        if ($EstadoAnterior -and $EstadoAnterior.ContainsKey($key)) { $prev = $EstadoAnterior[$key] }
+        $semDedup = ([long]$e.code -eq 9004 -or [long]$e.code -eq 9005)
+        $mesmo = $false
+        if ($prev -and $prev.reportedAt -and ([string]$prev.lastCode -eq [string]$e.code) -and ([string]$prev.lastRun -eq [string]$e.lastRun)) { $mesmo = $true }
+        if ($semDedup -or -not $mesmo) { $novos += $e; continue }
+        $jaEscalado = ($prev -and $prev.escalated)
+        if ($e.escalated -and -not $jaEscalado) { $escalados += $e; continue }
+        $persistentes += $e
+    }
+    return @{ novos = $novos; escalados = $escalados; persistentes = $persistentes }
+}
+
+# ALERTA_AUTH nos logs das rotinas (motor MOTOR1): escalada para chave paga ou credencial
+# nenhuma. Varre os logs dos dias pedidos e devolve uma entrada por linha encontrada.
+function Get-VixAlertasAuth([string]$RotinasLogDir, [datetime[]]$Dias) {
+    $achados = @()
+    foreach ($d in @($Dias)) {
+        $tag = $d.ToString('yyyyMMdd')
+        foreach ($rot in @('vixradar-noturno', 'vixradar-matinal', 'vixradar-verificacao-async', 'vixradar-sentinela', 'vixradar-agenda-semanal')) {
+            $p = Join-Path $RotinasLogDir ($rot + '_' + $tag + '.log')
+            if (-not (Test-Path $p)) { continue }
+            foreach ($l in (Get-Content $p -Encoding UTF8)) {
+                # DRYRUN_ALERTA_AUTH e teste, nao incidente (lookbehind).
+                if ($l -match '(?<!DRYRUN_)ALERTA_AUTH') {
+                    $txt = $l
+                    if ($txt.Length -gt 220) { $txt = $txt.Substring(0, 220) }
+                    $achados += @{ rotina = $rot; dia = $d.ToString('yyyy-MM-dd'); linha = $txt; log = $p }
+                }
+            }
+        }
+    }
+    return $achados
 }

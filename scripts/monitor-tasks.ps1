@@ -6,7 +6,12 @@ param(
     [switch]$SendEmail,      # envia e-mail se houver erros (via action=email_enviar do Worker)
     [string]$WhitelistFile,  # JSON externo de whitelist (opcional)
     [string]$To = 'szuchmacheryan@gmail.com',        # destinatario do alerta
-    [string]$WorkerUrl = 'https://api.vixradar.com/' # endpoint do action=email_enviar
+    [string]$WorkerUrl = 'https://api.vixradar.com/', # endpoint do action=email_enviar
+    # MONITOR-PROJETOMISTO1 (2026-09-02): escopo por projeto. VIX = so tasks do VIX Radar
+    # (VIXRadar-, Monitor-, Szuchmacher-RetryVix*). Site = os projetos irmaos. Todos = legado.
+    [ValidateSet('VIX', 'Site', 'Todos')][string]$Escopo = 'VIX',
+    [switch]$DryRun,         # nao grava estado.json, nao toca o backlog, nao envia e-mail; loga o que faria
+    [switch]$ForcarEmail     # envia e-mail mesmo sem erro novo (teste do canal)
 )
 
 # Continue (nao Stop): regra global e CLAUDE.md do VIX. Stop faz o Task Scheduler
@@ -17,12 +22,16 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # A logica mora aqui para o test-sentinela-watchdog.ps1 provar as duas pontas com a
 # MESMA funcao que a producao usa.
 . (Join-Path $ScriptDir 'lib\vixradar-watchdog.ps1')
+. (Join-Path $ScriptDir 'lib\vixradar-custo.ps1')
 $VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
-$LogFile   = Join-Path $LogDir "monitor_$DateTag.log"
-$ErrFile   = Join-Path $LogDir "erros_$DateTag.json"
-$EstadoFile = Join-Path $LogDir 'estado.json'
+# Escopo VIX mantem os nomes legados (monitor_, erros_, estado.json); os outros ganham sufixo.
+$SufixoEscopo = if ($Escopo -eq 'VIX') { '' } else { '_' + $Escopo }
+$LogFile   = Join-Path $LogDir ('monitor' + $SufixoEscopo + "_$DateTag.log")
+$ErrFile   = Join-Path $LogDir ('erros' + $SufixoEscopo + "_$DateTag.json")
+$EstadoFile = Join-Path $LogDir ('estado' + $SufixoEscopo + '.json')
+$MotorFile = Join-Path $LogDir 'motor.json'
 # AIOSEXTRACT1 (2026-08-20): o AI_OPERATING_SYSTEM saiu de dentro do repo do
 # Jarvis (01_PROJETOS\Jarvis\) e virou repo proprio na raiz do workspace. Era
 # infra compartilhada morando dentro de um projeto especifico, o que impedia
@@ -68,8 +77,10 @@ if ($WhitelistFile -and (Test-Path $WhitelistFile)) {
     }
 }
 
-# Prefixos de tasks do workspace (B4: MorningCall- e RadarQuant- entraram 2026-08-07)
-$Prefixes = @('Szuchmacher-', 'VIXRadar-', 'Monitor-', 'PME-', 'YanOS_', 'MorningCall-', 'RadarQuant-')
+# Prefixos de tasks por escopo (MONITOR-PROJETOMISTO1; lista legada = escopo Todos).
+$EscopoCfg = Get-PrefixosEscopo $Escopo
+$Prefixes = @($EscopoCfg.prefixos)
+$PrefixesExcluir = @($EscopoCfg.excluir)
 
 # Prefixos de projetos pessoais/externos (reportar como warning, nao erro)
 $ExternalPrefixes = @('Monitor-Panerai-', 'PME-Codex-')
@@ -137,7 +148,26 @@ $GuardedDisabled = @{
     }
 }
 
+# MOTOR1 (2026-09-02): quando o cutover para o Task Scheduler estiver feito, motor.json diz
+# {motor:"task-scheduler"} e as tres tasks passam a ser o motor real: Disabled vira erro
+# 9002 (o Passo 0 de uma sessao Claude Desktop reativada as desabilita em silencio).
+$MotorAtual = 'claude-desktop'
+if (Test-Path $MotorFile) {
+    try {
+        $mj = Get-Content $MotorFile -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($mj.motor) { $MotorAtual = [string]$mj.motor }
+    } catch { Write-Log "AVISO: motor.json ilegivel - $($_.Exception.Message)" }
+}
+$MustBeEnabled = @{}
+if ($MotorAtual -eq 'task-scheduler') {
+    foreach ($t in @('VIXRadar-Matinal', 'VIXRadar-Noturno', 'VIXRadar-Verificacao-Async')) {
+        $GuardedDisabled.Remove($t)
+        $MustBeEnabled[$t] = 'MOTOR1: motor Task Scheduler ativo (logs\monitor-tasks\motor.json). Esta task e o motor real da rotina e precisa estar Enabled.'
+    }
+}
+
 Write-Log '=== MONITOR TASK SCHEDULER ==='
+Write-Log "Escopo: $Escopo | motor: $MotorAtual | dryrun: $DryRun"
 Write-Log "Whitelist benigna: $($BenignCodes -join ', ')"
 
 $erros = @()
@@ -154,10 +184,13 @@ $SelfTask = 'Monitor-Tasks'
 
 $allTasks = Get-ScheduledTask | Where-Object {
     $name = $_.TaskName
-    if ($name -eq $SelfTask) { return $false }
+    if ($name -like ($SelfTask + '*')) { return $false }
     $hit = $false
     foreach ($p in $Prefixes) {
         if ($name -like "$p*") { $hit = $true; break }
+    }
+    if ($hit) {
+        foreach ($x in $PrefixesExcluir) { if ($name -like "$x*") { $hit = $false; break } }
     }
     $hit
 }
@@ -186,6 +219,21 @@ foreach ($task in $allTasks) {
     $scriptPath = if ($action.Arguments -match '-File\s+"([^"]+)"') { $Matches[1] }
                   elseif ($action.Arguments -match '-File\s+([^\s]+\.ps1)') { $Matches[1] }
                   else { 'desconhecido' }
+
+    # MOTOR1: com o motor Task Scheduler ativo, a task nativa desabilitada e a rotina morta.
+    if ($MustBeEnabled.ContainsKey($name) -and $state -eq 'Disabled') {
+        $erros += [ordered]@{
+            task    = $name
+            code    = 9002
+            codeHex = '0x232A'
+            lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm')
+            ageDays = 0
+            script  = $scriptPath
+            reason  = "MOTOR DESLIGADO: task esta Disabled e o motor ativo e o Task Scheduler. Sem ela a rotina nao roda. Reabilitar (cutover-motor.ps1 -Acao Ativar) ou conferir se uma sessao Claude Desktop antiga a desligou. " + $MustBeEnabled[$name]
+        }
+        Write-Log "ERRO MOTOR: $name esta Disabled com motor task-scheduler ativo."
+        continue
+    }
 
     # B1: rotina migrada. Disabled aqui e guard esperado, nao falha.
     # Habilitada e o alarme, porque significa execucao dupla com o Claude Desktop.
@@ -258,12 +306,16 @@ foreach ($task in $allTasks) {
     # saida da ultima execucao bem-sucedida (31/07) era 0.
     $staleHours = $null
     $staleMsg = ''
+    # MOTOR1: as tres rotinas so chegam aqui com o motor Task Scheduler ativo (antes disso
+    # o bloco GuardedDisabled faz continue e estas entradas eram codigo morto). Horarios do
+    # regime revertido de 01/09: noturna seg-sex 18h05, matinal diaria 10h06, verificacao
+    # 11h03 e 19h15 (o ultimo disparo do dia decide a staleness).
     $dailyTasks = @{
-        'VIXRadar-Noturno'            = @{ hours = 18; weekdays = $false }
-        'VIXRadar-Matinal'            = @{ hours = 10; weekdays = $true  }
+        'VIXRadar-Noturno'            = @{ hours = 18; weekdays = $true  }
+        'VIXRadar-Matinal'            = @{ hours = 10; weekdays = $false }
         'VIXRadar-Coleta-Volatilidade' = @{ hours = 17; weekdays = $false }
         'VIXRadar-Export-Historico'   = @{ hours = 20; weekdays = $false }
-        'VIXRadar-Verificacao-Async'  = @{ hours = 10; weekdays = $false }
+        'VIXRadar-Verificacao-Async'  = @{ hours = 19; weekdays = $false }
     }
     if ($dailyTasks.ContainsKey($name)) {
         $cfg = $dailyTasks[$name]
@@ -496,9 +548,13 @@ foreach ($task in $allTasks) {
 # chega ao fim. Funciona igual se a rotina rodar pelo Windows, pelo Claude
 # Desktop ou na mao.
 # ---------------------------------------------------------------------------
+# MOTOR1 (2026-09-02, regime revertido em 01/09): noturna seg-sex 18h05 (a matinal e diaria,
+# 10h06). A verificacao entrou como rotina vigiada: dois drenos locais por dia (11h03 e
+# 19h15), entao dia util com menos de 2 FIM: e janela pulada.
 $RotinasVigiadas = @(
-    @{ nome = 'vixradar-noturno'; rotulo = 'VIXRadar-Noturno (entrega)'; hora = 18; diasUteis = $false; minSubmit = 90 },
-    @{ nome = 'vixradar-matinal'; rotulo = 'VIXRadar-Matinal (entrega)'; hora = 10; diasUteis = $true;  minSubmit = 12 },
+    @{ nome = 'vixradar-noturno'; rotulo = 'VIXRadar-Noturno (entrega)'; hora = 18; diasUteis = $true;  minSubmit = 90 },
+    @{ nome = 'vixradar-matinal'; rotulo = 'VIXRadar-Matinal (entrega)'; hora = 10; diasUteis = $false; minSubmit = 12 },
+    @{ nome = 'vixradar-verificacao-async'; rotulo = 'VIXRadar-Verificacao-Async (entrega)'; rotuloCurto = 'Verificacao-Async'; hora = 19; diasUteis = $true; requerApenasLog = $true; minFim = 2 },
     # SENTINELA-DIAPERDIDO1: apontado 29/08, medido falso positivo (sabado, task so
     # Seg-Sex). Ultimo slot 17:55. Evidencia = log do dia util + FIM: (0 analises no dia
     # e legitimo). Logica na lib vixradar-watchdog.ps1.
@@ -560,7 +616,9 @@ foreach ($rot in $RotinasVigiadas) {
     # as duas pontas com a MESMA funcao da producao. Entra no sumario, no estado.json,
     # no backlog e no email exatamente como as irmas.
     if ($rot.requerApenasLog) {
-        $stSent = Test-EntregaPorLog -Alvo $alvo -LogDir $RotinasLogDir -Prefixo $rot.nome -Rotulo $rot.rotuloCurto
+        $minFimRot = 1
+        if ($rot.minFim) { $minFimRot = [int]$rot.minFim }
+        $stSent = Test-EntregaPorLog -Alvo $alvo -LogDir $RotinasLogDir -Prefixo $rot.nome -Rotulo $rot.rotuloCurto -MinFim $minFimRot
         $logRot  = $stSent.logPath
         $motivoR = $stSent.motivo
         $submitOk = $stSent.submitOk
@@ -718,6 +776,49 @@ foreach ($rot in $RotinasVigiadas) {
 }
 
 # ---------------------------------------------------------------------------
+# MOTOR1 (2026-09-02): dois sinais que so existem nos logs das rotinas.
+# 9004 ALERTA_AUTH: uma rotina escalou para a chave paga ou ficou sem credencial. Urgente,
+#      nunca deduplicado, entra no topo da tabela.
+# 9005 CIRCUITO_ABERTO: o circuito de custo do dia (lib vixradar-custo.ps1) fechou a margem.
+# A linha CUSTO_DIA entra no log e no rodape do e-mail como informacao.
+# ---------------------------------------------------------------------------
+$custoLinhas = @()
+if ($Escopo -ne 'Site') {
+    $diasAuth = @((Get-Date).Date.AddDays(-1), (Get-Date).Date)
+    foreach ($a in @(Get-VixAlertasAuth -RotinasLogDir $RotinasLogDir -Dias $diasAuth)) {
+        Write-Log ("ALERTA_AUTH em " + $a.rotina + " " + $a.dia + ": " + $a.linha)
+        $erros += [ordered]@{
+            task    = ($a.rotina + ' (auth)')
+            code    = 9004
+            codeHex = '0x232C'
+            lastRun = $a.dia
+            ageDays = 0
+            script  = $a.log
+            reason  = ('ALERTA_AUTH: ' + $a.linha)
+        }
+    }
+    try {
+        $custoCfgM = Get-VixCustoConfig $RotinasLogDir
+        foreach ($d in $diasAuth) {
+            $c = Get-VixCustoDia $RotinasLogDir $d.ToString('yyyyMMdd') $custoCfgM
+            $custoLinhas += $c.linha
+            Write-Log $c.linha
+            if ($c.circuito_aberto) {
+                $erros += [ordered]@{
+                    task    = 'CUSTO_DIA (circuito)'
+                    code    = 9005
+                    codeHex = '0x232D'
+                    lastRun = $d.ToString('yyyy-MM-dd')
+                    ageDays = 0
+                    script  = (Join-Path $RotinasLogDir 'custo-config.json')
+                    reason  = ('CIRCUITO_ABERTO: ' + $c.linha)
+                }
+            }
+        }
+    } catch { Write-Log ("AVISO: custo do dia nao calculado - " + $_.Exception.Message) }
+}
+
+# ---------------------------------------------------------------------------
 # B2: idade do erro (primeira deteccao persistida em estado.json)
 # ---------------------------------------------------------------------------
 $estado = @{ firstSeen = @{} }
@@ -731,6 +832,9 @@ if (Test-Path $EstadoFile) {
                     firstDetected = [string]$p.Value.firstDetected
                     lastCode      = [long]$p.Value.lastCode
                     lastSeen      = [string]$p.Value.lastSeen
+                    lastRun       = [string]$p.Value.lastRun
+                    reportedAt    = [string]$p.Value.reportedAt
+                    escalated     = [bool]$p.Value.escalated
                 }
             }
         }
@@ -738,6 +842,9 @@ if (Test-Path $EstadoFile) {
         Write-Log "AVISO: estado.json ilegivel, reiniciando - $($_.Exception.Message)"
     }
 }
+# Copia do estado ANTES desta rodada: e contra ela que o dedup decide o que e novo.
+$estadoAnterior = @{}
+foreach ($k in @($estado.firstSeen.Keys)) { $estadoAnterior[$k] = $estado.firstSeen[$k] }
 
 $hojeIso = (Get-Date).ToString('yyyy-MM-dd')
 $tasksComErroHoje = @{}
@@ -759,12 +866,6 @@ foreach ($e in $erros) {
     $ageFromFirst = [int]((Get-Date).Date - $firstDate.Date).TotalDays
     if ($ageFromFirst -lt 0) { $ageFromFirst = 0 }
 
-    $estado.firstSeen[$tname] = @{
-        firstDetected = $first
-        lastCode      = [long]$e.code
-        lastSeen      = $hojeIso
-    }
-
     $e2 = [ordered]@{}
     foreach ($k in $e.Keys) { $e2[$k] = $e[$k] }
     $e2['firstDetected'] = $first
@@ -775,8 +876,26 @@ foreach ($e in $erros) {
         $e2['reason'] = "ESCALADO (>48h, desde $first): $motivoBase"
     }
     $errosComIdade += $e2
+
+    # MONITOR-PROJETOMISTO1: reportedAt fica do primeiro dia em que este (code, lastRun) foi
+    # visto; mudou code ou lastRun, e erro novo e o carimbo reinicia.
+    $reportedAt = $hojeIso
+    if ($estadoAnterior.ContainsKey($tname)) {
+        $pa = $estadoAnterior[$tname]
+        if ($pa.reportedAt -and ([string]$pa.lastCode -eq [string]$e.code) -and ([string]$pa.lastRun -eq [string]$e.lastRun)) { $reportedAt = [string]$pa.reportedAt }
+    }
+    $estado.firstSeen[$tname] = @{
+        firstDetected = $first
+        lastCode      = [long]$e.code
+        lastSeen      = $hojeIso
+        lastRun       = [string]$e.lastRun
+        reportedAt    = $reportedAt
+        escalated     = [bool]$e2['escalated']
+    }
 }
 $erros = $errosComIdade
+$sel = Select-ErrosParaEmail -Erros $erros -EstadoAnterior $estadoAnterior -HojeIso $hojeIso
+Write-Log ("Dedup do e-mail: novos=" + @($sel.novos).Count + " escalados=" + @($sel.escalados).Count + " persistentes=" + @($sel.persistentes).Count)
 
 # Remove do estado erros que sumiram (limpeza)
 $chavesRemover = @()
@@ -785,14 +904,18 @@ foreach ($k in @($estado.firstSeen.Keys)) {
 }
 foreach ($k in $chavesRemover) { $estado.firstSeen.Remove($k) }
 
-try {
-    $estadoOut = [ordered]@{
-        updated   = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
-        firstSeen = $estado.firstSeen
+if ($DryRun) {
+    Write-Log 'DRYRUN: estado.json NAO gravado'
+} else {
+    try {
+        $estadoOut = [ordered]@{
+            updated   = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
+            firstSeen = $estado.firstSeen
+        }
+        $estadoOut | ConvertTo-Json -Depth 5 | Set-Content -Path $EstadoFile -Encoding UTF8
+    } catch {
+        Write-Log "AVISO: falha ao gravar estado.json - $($_.Exception.Message)"
     }
-    $estadoOut | ConvertTo-Json -Depth 5 | Set-Content -Path $EstadoFile -Encoding UTF8
-} catch {
-    Write-Log "AVISO: falha ao gravar estado.json - $($_.Exception.Message)"
 }
 
 # ---------------------------------------------------------------------------
@@ -814,11 +937,12 @@ try {
 #
 # Nota de defasagem, nao e bug: o monitor roda 07h e varias tasks rodam de
 # tarde. Falha noturna sempre aparece na manha seguinte e so limpa na outra.
-if (Test-Path $BacklogFile) {
+if ((Test-Path $BacklogFile) -and -not $DryRun) {
     try {
         $bl = Get-Content $BacklogFile -Raw -Encoding UTF8 -ErrorAction Stop
-        $markerStart = '<!-- AUTO-MONITOR-START -->'
-        $markerEnd   = '<!-- AUTO-MONITOR-END -->'
+        # Escopo VIX mantem o marcador legado; os outros escopos escrevem bloco proprio.
+        $markerStart = if ($Escopo -eq 'VIX') { '<!-- AUTO-MONITOR-START -->' } else { '<!-- AUTO-MONITOR-START:' + $Escopo + ' -->' }
+        $markerEnd   = if ($Escopo -eq 'VIX') { '<!-- AUTO-MONITOR-END -->' } else { '<!-- AUTO-MONITOR-END:' + $Escopo + ' -->' }
         $linhasAuto = @()
         $linhasAuto += ''
         $linhasAuto += '## Auto-monitor (gerado por monitor-tasks.ps1)'
@@ -926,28 +1050,45 @@ if ($warnings.Count -gt 0) {
 #
 # Todo o bloco vive dentro de try/catch: falha de e-mail nunca pode derrubar o
 # monitor nem mascarar o exit code com a contagem de erros reais.
-if ($SendEmail -and $erros.Count -gt 0) {
+# MONITOR-PROJETOMISTO1: e-mail so com erro NOVO ou ESCALADO (ou -ForcarEmail). Erro com o
+# mesmo (task, code, lastRun) de um dia anterior e persistente: vai na secao propria, nao
+# dispara envio. Medido: 27 a 30/08 o mesmo 0x40010004 de um unico reboot gerou 4 e-mails.
+$nNovos = @($sel.novos).Count; $nEsc = @($sel.escalados).Count; $nPers = @($sel.persistentes).Count
+$assuntoEmail = 'VIX Radar [' + $Escopo + '] - ' + $nNovos + ' nova(s), ' + $nEsc + ' escalada(s), ' + $nPers + ' persistente(s)'
+$deveEnviar = ($nNovos -gt 0 -or $nEsc -gt 0 -or $ForcarEmail)
+if ($DryRun) {
+    Write-Log ('DRYRUN: e-mail ' + $(if ($SendEmail -and $deveEnviar) { 'SERIA enviado' } else { 'NAO seria enviado' }) + ' | assunto=' + $assuntoEmail)
+}
+if ($SendEmail -and $deveEnviar -and -not $DryRun) {
     try {
         $credScript = Join-Path $VixRoot 'api\Get-VixAdminCredential.ps1'
         if (-not (Test-Path $credScript)) { throw "credencial ausente: $credScript" }
         $adminSenha = & $credScript -AsPlainText
         if (-not $adminSenha) { throw 'Get-VixAdminCredential.ps1 devolveu vazio' }
 
-        $linhas = ''
-        foreach ($e in $erros) {
-            $linhas += '<tr><td>' + $e.task + '</td><td>' + $e.code + ' (' + $e.codeHex + ')</td><td>' + $e.lastRun + '</td><td>' + $e.reason + '</td><td>' + $e.script + '</td></tr>'
+        $linhaTr = {
+            param($e)
+            $idade = if ($null -ne $e.ageDaysFromFirst) { ('' + $e.ageDaysFromFirst + 'd desde ' + $e.firstDetected) } else { '-' }
+            return ('<tr><td>' + $e.task + '</td><td>' + $e.code + ' (' + $e.codeHex + ')</td><td>' + $e.lastRun + '</td><td>' + $idade + '</td><td>' + $e.reason + '</td><td>' + $e.script + '</td></tr>')
         }
-        $html = '<h2>VIX Radar - falha em task agendada</h2>' +
-                '<p>' + $erros.Count + ' task(s) com LastTaskResult nao-benigno na maquina ' + $env:COMPUTERNAME + '.</p>' +
-                '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">' +
-                '<tr><th>Task</th><th>Exit</th><th>Ultima execucao</th><th>Motivo</th><th>Script</th></tr>' +
-                $linhas + '</table>' +
+        $cab = '<tr><th>Task</th><th>Exit</th><th>Ultima execucao</th><th>Idade</th><th>Motivo</th><th>Script</th></tr>'
+        $tabAtiva = ''
+        foreach ($e in @($sel.novos)) { $tabAtiva += (& $linhaTr $e) }
+        foreach ($e in @($sel.escalados)) { $tabAtiva += (& $linhaTr $e) }
+        $tabPers = ''
+        foreach ($e in @($sel.persistentes)) { $tabPers += (& $linhaTr $e) }
+        $estiloTab = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">'
+        $html = '<h2>VIX Radar [' + $Escopo + '] - falha em task agendada</h2>' +
+                '<p>' + $nNovos + ' nova(s) e ' + $nEsc + ' escalada(s) na maquina ' + $env:COMPUTERNAME + ' (motor: ' + $MotorAtual + '). ' + $nPers + ' persistente(s) ja reportada(s) antes.</p>' +
+                $(if ($tabAtiva) { '<h3>Novos e escalados</h3>' + $estiloTab + $cab + $tabAtiva + '</table>' } else { '<p>Sem erro novo nesta rodada (envio forcado).</p>' }) +
+                $(if ($tabPers) { '<h3>Persistentes (ja reportados, sem mudanca)</h3>' + $estiloTab + $cab + $tabPers + '</table>' } else { '' }) +
+                $(if ($custoLinhas.Count -gt 0) { '<p style="font-family:monospace;font-size:12px">' + ($custoLinhas -join '<br>') + '</p>' } else { '' }) +
                 '<p>Warnings nesta rodada: ' + $warnings.Count + '. Relatorio completo em ' + $ErrFile + '</p>'
 
         $payload = @{
             action       = 'email_enviar'
             admin_senha  = $adminSenha
-            assunto      = 'VIX Radar - ' + $erros.Count + ' task(s) com falha'
+            assunto      = $assuntoEmail
             html         = $html
             destinatario = $To
         }
