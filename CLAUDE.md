@@ -235,18 +235,22 @@ pelo processo que está rodando. Prefira sempre o MCP, editar o JSON à mão é 
 caminho que exige restart. A task nativa `Disabled` é guarda anti-duplicata, não
 sinal de saúde.
 
-**Os nomes estão invertidos em relação aos horários desde 25/08/2026, e é de
-propósito.** `vixradar-noturno` é a varredura completa e roda **de manhã**;
-`vixradar-matinal` é a passada curta e roda **à noite**. Os identificadores não
-foram renomeados porque aparecem em nome de log, no `-RoutineId` dos vigias, no
-`monitor-tasks.ps1`, nos heartbeats do Worker e na lista `expectedAgents`.
-Ao ler log, vá pelo horário, não pelo nome. Motivo e evidência em
-`routines/README.md`.
+**Inversão de nomes x horários revertida em 01/09/2026, a pedido do operador.**
+Entre 25/08 e 01/09/2026 os nomes ficaram invertidos em relação aos horários
+("vixradar-noturno" rodando de manhã, "vixradar-matinal" rodando à noite),
+deliberado na época. O operador pediu a reversão mais de uma vez e ela não
+tinha se sustentado; nesta sessão foi refeita pelo MCP `scheduled-tasks`
+(`update_scheduled_task`, efeito imediato, sem restart) e confirmada via
+`list_scheduled_tasks`: `vixradar-matinal` passou a `nextRunAt` diário às 10h
+BRT, `vixradar-noturno` passou a `nextRunAt` seg-sex às 18h BRT. Nome e
+horário voltam a bater. Ao ler log de sessão anterior a 01/09/2026, ainda vale
+ir pelo horário registrado no log, não pelo nome da task, porque os logs
+antigos foram gravados sob o regime invertido.
 
 | Tarefa | Mecanismo | Frequência | Script | Escopo |
 |---|---|---|---|---|
-| `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Diário **10h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
-| `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Seg-Sex **18h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
+| `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Seg-Sex **18h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
+| `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Diário **10h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
 | `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário **11h00 e 18h45** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 18h45 impede fila presa até o dia seguinte |
 | `VIXRadar-Sentinela` | Task Scheduler | Seg-Sex, :25 e :55 de 09h25 a 17h55 BRT | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho, teto 8 emissores e 120k tokens. Quase sempre sai em 0 token |
 | `VIXRadar-AgendaSemanal` | Task Scheduler | **Dom e Qua** 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale. 2x/semana é decisão deliberada de 14/08 (CALVAL-V2 regra 9, motivo `revalidar_proximo`), ver `routines/README.md` |
