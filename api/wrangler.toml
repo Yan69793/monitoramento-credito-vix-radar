@@ -4,7 +4,20 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
-# v4.9.232.js = v4.9.231 + PREVERIFSEC1 (sec.gov fonte oficial de documento) 
+# v4.9.233.js = v4.9.232 + WATCHDOG-AGENTEMORTO1 (watchdog honesto).
+#   O e-mail Health das 22h veio ALERTA 8 dias em 8 (24 a 31/08) pelo mesmo
+#   motivo, "cascade_analise nunca_bateu". Esse heartbeat so e batido na rota
+#   paga consulta_empresa (botao do app), e a varredura vive nas rotinas locais
+#   desde VARREDURA_CRON_AI_ENABLED=false. Agente morto em expectedAgents e
+#   alarme falso todo dia, e alarme real chega com a mesma cara. Agora
+#   receber_analise bate varredura_local (origem matinal/noturno/pontual) so
+#   DEPOIS da persistencia e da marcacao cvm_vistos, entao mede entrega;
+#   expectedAgents troca cascade_analise, varredura_batch e varredura_matinal
+#   (os dois so carimbam "pulado" desde a delegacao) por varredura_local, com
+#   limite 26h (matinal diaria 10h06, watchdog 22h; um dia sem submissao alarma).
+#   Guarda api/test/watchdog-varredura-local.test.mjs, prova reversa medida.
+#   Rollback: main = "v4.9.232.js".
+# v4.9.232.js = v4.9.231 + PREVERIFSEC1 (sec.gov fonte oficial de documento)
 #   + exports de diagnostico/guarda (EMISSORES_LISTA, CNPJ_PRIMARIO_EMISSOR,
 #   _soDigito). Feitos desta tarefa: pre-verificador descartava o evento CRITICO
 #   da Braskem de 31/08 (recuperacao extrajudicial, Form 6-K da SEC) com ok:true

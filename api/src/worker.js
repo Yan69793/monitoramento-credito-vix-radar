@@ -19039,6 +19039,12 @@ async function __coreFetch(request, env2222, ctx) {
         _raSaneado._provedor = _raProv;
         _raSaneado._batch = false; _raSaneado._matinal = body._matinal === true;
         _raSaneado._tier = body._tier || body._matinal_tier || null;
+        // WATCHDOG-AGENTEMORTO1 (2026-09-02): origem da rotina que entregou. Vem do corpo
+        // quando a rotina manda (`origem`), senao e derivada da bandeira _matinal ou do
+        // provedor da sentinela (`claude-sentinela-*`). Viaja no payload para a
+        // persistencia (CREDITODIA1 usa) e vai nos extras do heartbeat abaixo.
+        var _raOrigem = body.origem ? String(body.origem).slice(0, 24) : (body._matinal === true ? "matinal" : (/^claude-sentinela/.test(String(_raProv)) ? "pontual" : "noturno"));
+        _raSaneado._origem_rotina = _raOrigem;
         var _raVerificacao = { total: 0, verificados: 0, cache_hits: 0, aprovados: 0, rejeitados: 0, quarentenados: 0, pendente_verificacao_async: 0 };
         var _raRejeicoes = [];
         if (Array.isArray(_raSaneado.eventos) && _raSaneado.eventos.length > 0) {
@@ -19100,6 +19106,14 @@ async function __coreFetch(request, env2222, ctx) {
         if (_raCvmIds.length > 0) {
           _raCvmMarcados = await marcarCvmVistos(env2222, _raEmp, _raCvmIds);
         }
+        // WATCHDOG-AGENTEMORTO1 (2026-09-02, auditoria de rotinas de 01/09): a varredura vive
+        // nas rotinas locais desde VARREDURA_CRON_AI_ENABLED=false, mas o unico heartbeat de
+        // analise que o watchdog esperava era cascade_analise, batido apenas na rota paga do
+        // botao (consulta_empresa). Medido: e-mail Health ALERTA 8 dias em 8 com o mesmo
+        // "cascade_analise nunca_bateu", e nenhum sinal de que as rotinas locais entregaram.
+        // Este heartbeat so existe se a persistencia e a marcacao acima deram certo, entao
+        // mede ENTREGA, nao inicio de rotina. baterHeartbeat nunca lanca (HEARTBEATLOG1).
+        await baterHeartbeat(env2222, "varredura_local", "ok", { origem: _raOrigem, provedor: String(_raProv).slice(0, 48), tier: _raSaneado._tier || null, empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length });
         await tel(env2222, request, { evento: "routine_analise_recebida", empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length, provedor: _raProv, pendente_async: _raVerificacao.pendente_verificacao_async || 0 });
         return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0, cvm_marcados: _raCvmMarcados }, 200, request);
       } catch (_raErr) {
@@ -19468,7 +19482,14 @@ var worker_default = {
           var hb = await lerTodosHeartbeats(env2222);
           var agoraEpoch = Date.now();
           var staleAgents = [];
-          var expectedAgents = ["sync_cvm", "varredura_batch", "varredura_matinal", "newsletter", "healthcheck_diario", "cascade_analise", "verificacao_async"];
+          // WATCHDOG-AGENTEMORTO1 (2026-09-02): cascade_analise saiu (so era batido na rota
+          // paga consulta_empresa, morta para a automacao desde a delegacao ao Claude
+          // Desktop, e deixou o e-mail Health em ALERTA 8 dias em 8). varredura_batch e
+          // varredura_matinal sairam porque o cron so os carimba "pulado/delegado" desde
+          // entao, o que nao distingue "delegado e entregue" de "delegado e nunca rodou".
+          // Quem responde pela varredura agora e varredura_local, batido por
+          // receber_analise depois da persistencia (mede entrega das rotinas locais).
+          var expectedAgents = ["sync_cvm", "newsletter", "healthcheck_diario", "varredura_local", "verificacao_async"];
           for (var ag of expectedAgents) {
             var h = hb[ag];
             if (!h) {
@@ -19480,7 +19501,11 @@ var worker_default = {
             // que os demais (local 2x/dia + Remote 2x/dia, deslocados). 16h tolera 1 falha de uma
             // das duas origens sem falso-positivo, e ainda acusa bem antes do SLA de 48h do sweep
             // de orfaos da fila (sweepFilaVerificacaoOrfaos).
-            var limite = ag === "varredura_matinal" ? 26 : ag === "cascade_analise" ? 48 : ag === "verificacao_async" ? 16 : 26;
+            // varredura_local 26h: matinal diaria 10h06 e noturna seg-sex 18h05 contra o
+            // watchdog das 22h; idade normal 3h (dia util) ou 12h (fim de semana); um dia
+            // inteiro sem submissao passa de 27h e alarma; nenhum falso positivo com uma
+            // submissao por dia. 30h deixaria passar uma matinal de sabado perdida.
+            var limite = ag === "verificacao_async" ? 16 : 26;
             if (idadeH > limite) staleAgents.push({ agente: ag, motivo: "stale_" + Math.round(idadeH) + "h", ultimo_ts: h.ts });
           }
           var _wdFila = await env2222.RADAR_KV.get("cron:fila_noturna:v1", "json").catch(() => null);
