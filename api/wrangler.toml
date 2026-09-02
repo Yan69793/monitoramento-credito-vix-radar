@@ -4,6 +4,21 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.234.js = v4.9.233 + CREDITODIA1 + TIERNULO1 + PONTUALFATO1 (cobertura sem
+#   analise em dobro). Medido em 01/09: 12 emissores analisados 2x no mesmo dia
+#   (matinal + fila aprofundada da noturna) com 69 deferidos por orcamento.
+#   TIERNULO1: receber_analise lia body._tier e as rotinas mandam resultado._tier,
+#   entao _tier chegava nulo em persistir e toda analise com <7 fontes virava
+#   INCONCLUSIVO, negando o SKIP por frescor. CREDITODIA1: persistir grava
+#   _ultimo_tier/_ultima_origem/_ultima_analise_at so em analise real (tier
+#   LIGHT/FULL/AUDIT, nao deferido), a mescla multi-semana carrega os tres, e
+#   montarPlanoRotina credita analise valida das ultimas 14h de qualquer rotina
+#   (SKIP analisado_hoje_por_<origem>), salvo documento novo da CVM ou divida por
+#   teto. PONTUALFATO1: modo pontual so entra por cvm_novos (deferido saiu,
+#   decisao do operador: sentinela somente fato novo). excluir_top_n opcional e
+#   desligado; top_n expoe top_n_solicitado/top_n_efetivo/extras_setor e aceita
+#   top_n_estrito. Guarda api/test/plano-credito-dia.test.mjs, prova reversa
+#   medida contra v4.9.233. Rollback: main = "v4.9.233.js".
 # v4.9.233.js = v4.9.232 + WATCHDOG-AGENTEMORTO1 (watchdog honesto).
 #   O e-mail Health das 22h veio ALERTA 8 dias em 8 (24 a 31/08) pelo mesmo
 #   motivo, "cascade_analise nunca_bateu". Esse heartbeat so e batido na rota

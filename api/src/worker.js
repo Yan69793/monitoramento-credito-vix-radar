@@ -9292,6 +9292,11 @@ async function carregarEstadoMultiSemana(env2222, numSemanas) {
         else { delete merged[emp]._status; }
         if (res._motivo) { merged[emp]._motivo = res._motivo; }
         else { delete merged[emp]._motivo; }
+        // CREDITODIA1 (2026-09-02): os tres campos da ultima analise real sao estado de
+        // agendamento, como _token_cap_deferred, e vem do registro mais recente que os
+        // tiver. Sem isto a mescla devolvia o objeto da semana velha sem eles e o credito
+        // do dia morria na virada de semana (mesma familia do DEFERGRUDA2).
+        ["_ultimo_tier", "_ultima_origem", "_ultima_analise_at"].forEach(function(k) { if (res[k]) merged[emp][k] = res[k]; });
         continue;
       }
       if (newEvs.length > 0 && prevEvs.length === 0) {
@@ -9312,6 +9317,9 @@ async function carregarEstadoMultiSemana(env2222, numSemanas) {
       if (prev.memo_acontecimento && !res.memo_acontecimento) merged[emp].memo_acontecimento = prev.memo_acontecimento;
       if (prev.memo_relevancia && !res.memo_relevancia) merged[emp].memo_relevancia = prev.memo_relevancia;
       if (prev.memo_acao && !res.memo_acao) merged[emp].memo_acao = prev.memo_acao;
+      // CREDITODIA1: idem ao ramo sem evento, o registro mais novo manda; se ele nao tem o
+      // carimbo, o da semana anterior sobrevive.
+      ["_ultimo_tier", "_ultima_origem", "_ultima_analise_at"].forEach(function(k) { if (prev[k] && !merged[emp][k]) merged[emp][k] = prev[k]; });
     }
   }
   return { week: semanas[0], weeks_loaded: semanas, results: merged, updated_at: latestUpdate };
@@ -9345,6 +9353,22 @@ __name(normalizarMojibake, "normalizarMojibake");
 __name2(normalizarMojibake, "normalizarMojibake");
 __name22(normalizarMojibake, "normalizarMojibake");
 __name222(normalizarMojibake, "normalizarMojibake");
+// CREDITODIA1 (2026-09-02): tres campos operacionais que descrevem a ULTIMA ANALISE REAL do
+// emissor, independentes de _last_scanned_at (que SKIP e deferido tambem refrescam, porque
+// "varrido" nao e "analisado"). So grava quando o payload veio de analise de verdade: tier
+// LIGHT/FULL/AUDIT e nao deferido por teto. E o que montarPlanoRotina usa para creditar a
+// analise do dia feita por outra rotina e nao analisar o mesmo emissor duas vezes.
+function _carimbarAnaliseReal(alvo, payload, agora) {
+  if (!alvo || !payload) return false;
+  if (payload._token_cap_deferred === true) return false;
+  var t = payload._tier || payload._matinal_tier || null;
+  if (t !== "LIGHT" && t !== "FULL" && t !== "AUDIT") return false;
+  alvo._ultimo_tier = t;
+  alvo._ultima_origem = payload._origem_rotina || (payload._matinal === true ? "matinal" : "noturno");
+  alvo._ultima_analise_at = agora;
+  return true;
+}
+__name(_carimbarAnaliseReal, "_carimbarAnaliseReal");
 async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, payload) {
   if (!env2222.RADAR_KV || !empresa) return;
   const estado = await carregarEstadoCompartilhado(env2222, semana);
@@ -9398,6 +9422,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         // primeira. Sem isto, a varredura pontual entra em laco.
         if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
         else delete anterior._token_cap_deferred;
+        _carimbarAnaliseReal(anterior, payload, agora);
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -9420,6 +9445,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         // primeira. Sem isto, a varredura pontual entra em laco.
         if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
         else delete anterior._token_cap_deferred;
+        _carimbarAnaliseReal(anterior, payload, agora);
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -9436,6 +9462,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       // e ja tem gatilho proprio pelo status. Manter as duas bandeiras seria dupla contagem.
       if (payload._token_cap_deferred === true) estadoInc._token_cap_deferred = true;
       else delete estadoInc._token_cap_deferred;
+      _carimbarAnaliseReal(estadoInc, payload, agora);
       estadoInc.sem_eventos = true;
       estadoInc._status = "INCONCLUSIVO";
       estadoInc._motivo = "cobertura_incompleta: " + _cobertura + "/" + _coberturaMin + "+ (tier=" + (_tierPayload || "?") + ")";
@@ -9453,6 +9480,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       // DEFERGRUDA1: mesmo motivo dos ramos acima.
       if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
       else delete anterior._token_cap_deferred;
+      _carimbarAnaliseReal(anterior, payload, agora);
       estado.results[empresa] = anterior;
       estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
       await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -9466,6 +9494,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     // DEFERGRUDA1: mesmo motivo dos ramos acima.
     if (payload._token_cap_deferred === true) estadoAtual._token_cap_deferred = true;
     else delete estadoAtual._token_cap_deferred;
+    _carimbarAnaliseReal(estadoAtual, payload, agora);
     estadoAtual.sem_eventos = true;
     estadoAtual._status = "OK";
     delete estadoAtual._motivo;
@@ -9514,6 +9543,13 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     payload._historico = hist;
   }
   var _agoraPersist = (/* @__PURE__ */ new Date()).toISOString();
+  // CREDITODIA1: aqui o payload substitui o registro anterior por inteiro. Se a submissao
+  // de agora nao for analise real (SKIP, deferido), os campos da ultima analise real vem
+  // do registro anterior; se for, o carimbo novo prevalece.
+  if (anterior) {
+    ["_ultimo_tier", "_ultima_origem", "_ultima_analise_at"].forEach(function(k) { if (anterior[k] && !payload[k]) payload[k] = anterior[k]; });
+  }
+  _carimbarAnaliseReal(payload, payload, _agoraPersist);
   payload._persistido_em = payload._persistido_em || _agoraPersist;
   if (!payload.timestamp) payload.timestamp = _agoraPersist;
   // RELOGIO3H1: o fallback herdava payload.timestamp, que chega em BRT deslocado por
@@ -10226,7 +10262,8 @@ __name222(executarVarreduraBatchComFila, "executarVarreduraBatchComFila");
 __name2222(executarVarreduraBatchComFila, "executarVarreduraBatchComFila");
 var MATINAL_TOP_N = 30;
 var MATINAL_EWS_MINIMO = 0;
-async function selecionarEmissoresPrioritarios(env2222, topN) {
+async function selecionarEmissoresPrioritarios(env2222, topN, opts) {
+  opts = opts || {};
   var anomalias = await carregarAnomalias(env2222);
   var estado = await carregarEstadoMultiSemana(env2222, 5);
   var ranking = [];
@@ -10273,6 +10310,7 @@ async function selecionarEmissoresPrioritarios(env2222, topN) {
     var _sSetor = SETOR_DE_EMPRESA[selecionados[_si].empresa] || "Outros";
     _setoresCobertos[_sSetor] = (_setoresCobertos[_sSetor] || 0) + 1;
   }
+  var _base = selecionados.slice();
   for (var _si2 = 0; _si2 < EMISSORES_LISTA.length; _si2++) {
     var _empCheck = EMISSORES_LISTA[_si2];
     var _setorCheck = SETOR_DE_EMPRESA[_empCheck] || "Outros";
@@ -10285,6 +10323,46 @@ async function selecionarEmissoresPrioritarios(env2222, topN) {
       }
     }
   }
+  // TOPN-EXTRAS1 (2026-09-02): o minimo por setor acrescenta sem reaplicar o teto, entao
+  // top_n=15 devolve 20 (medido em 01/09, WARN diario da matinal). Isso e decisao da
+  // v4.9.157 e fica, mas passa a ser DECLARADO: quem entrou por setor sai em extras_setor.
+  // Com opts.estrito, o teto e respeitado tirando do fim do ranking quem tem setor ja
+  // representado por outro, ate caber; nunca tira o unico representante de um setor.
+  var _extras = selecionados.slice(_base.length).map(function(x) {
+    return { empresa: x.empresa, setor: SETOR_DE_EMPRESA[x.empresa] || "Outros", score_combinado: x.score_combinado };
+  });
+  if (opts.estrito) {
+    // Exatamente topN: cada representante de setor so entra no lugar do PIOR colocado do
+    // topo cujo setor ja tem outro representante. Sem duplicata para ceder lugar, o setor
+    // fica de fora e isso e declarado em extras_setor com substituiu=null. Assim o teto
+    // vale sempre, e a cobertura de setor e a maior que cabe nele.
+    var _topo = _base.slice(0, topN);
+    var _cont = {};
+    for (var _ci = 0; _ci < _topo.length; _ci++) {
+      var _cSet = SETOR_DE_EMPRESA[_topo[_ci].empresa] || "Outros";
+      _cont[_cSet] = (_cont[_cSet] || 0) + 1;
+    }
+    var _decl = [];
+    for (var _ei = 0; _ei < _extras.length; _ei++) {
+      var _rep = _extras[_ei];
+      var _vitima = -1;
+      for (var _ti = _topo.length - 1; _ti >= 0; _ti--) {
+        var _ts = SETOR_DE_EMPRESA[_topo[_ti].empresa] || "Outros";
+        if ((_cont[_ts] || 0) >= 2) { _vitima = _ti; break; }
+      }
+      if (_vitima < 0) { _decl.push({ empresa: _rep.empresa, setor: _rep.setor, substituiu: null }); continue; }
+      var _vs = SETOR_DE_EMPRESA[_topo[_vitima].empresa] || "Outros";
+      _decl.push({ empresa: _rep.empresa, setor: _rep.setor, substituiu: _topo[_vitima].empresa });
+      _cont[_vs] = _cont[_vs] - 1;
+      var _repFull = null;
+      for (var _rk = 0; _rk < ranking.length; _rk++) { if (ranking[_rk].empresa === _rep.empresa) { _repFull = ranking[_rk]; break; } }
+      _topo.splice(_vitima, 1);
+      if (_repFull) { _topo.push(_repFull); _cont[_rep.setor] = (_cont[_rep.setor] || 0) + 1; }
+    }
+    selecionados = _topo;
+    _extras = _decl;
+  }
+  selecionados._extras_setor = _extras;
   return selecionados;
 }
 var ROTINA_EWS_FULL = 50;
@@ -10302,6 +10380,31 @@ function _parseHorasStale(lastTs) {
   if (!lastTs) return 9999;
   return (Date.now() - new Date(lastTs).getTime()) / 36e5;
 }
+// CREDITODIA1 (2026-09-02): credito de analise do dia, por qualquer rotina.
+// JANELA_CREDITO_H = 14: matinal 10h06 -> noturna 18h05 sao 8h; retry das 21h30 sao 11h30;
+// noturna 18h -> matinal 10h do dia seguinte sao 16h e ficam FORA de proposito (a matinal
+// nao credita a noturna da vespera). Zero desliga a regra sem apagar dado nenhum.
+// CREDITO_INCONCLUSIVO_LIGHT_H = 6: LIGHT que nao concluiu so vale como credito por pouco
+// tempo; FULL/AUDIT inconclusivo vale a janela inteira (foi analise profunda, faltou fonte).
+var JANELA_CREDITO_H = 14;
+var CREDITO_INCONCLUSIVO_LIGHT_H = 6;
+function _rankTier(t) {
+  return t === "FULL" || t === "AUDIT" ? 2 : t === "LIGHT" ? 1 : 0;
+}
+__name(_rankTier, "_rankTier");
+function _creditoAnaliseDia(res, tierAtual, foiDeferido, nCvmNovos, horasAnalise) {
+  if (!res || !JANELA_CREDITO_H) return null;
+  if (tierAtual === "SKIP" || foiDeferido || nCvmNovos > 0) return null;
+  if (!(horasAnalise < JANELA_CREDITO_H)) return null;
+  var rUlt = _rankTier(res._ultimo_tier);
+  if (rUlt === 0 || rUlt < _rankTier(tierAtual)) return null;
+  if (res._status === "INCONCLUSIVO" && rUlt < 2 && !(horasAnalise < CREDITO_INCONCLUSIVO_LIGHT_H)) return null;
+  return {
+    motivo: "analisado_hoje_por_" + (res._ultima_origem || "desconhecida"),
+    detalhe: "credito_" + res._ultimo_tier + "_" + Math.round(horasAnalise) + "h"
+  };
+}
+__name(_creditoAnaliseDia, "_creditoAnaliseDia");
 __name(_parseHorasStale, "_parseHorasStale");
 __name2(_parseHorasStale, "_parseHorasStale");
 function _cvmNovosDesde(docs, sinceIso) {
@@ -10500,9 +10603,12 @@ async function montarPlanoRotina(env2222, opts) {
   var anomalias = await carregarAnomalias(env2222);
   var estado = await carregarEstadoMultiSemana(env2222, 3);
   var emissoresAlvo = [];
+  var topN = null;
+  var _extrasSetor = null;
   if (modo === "matinal") {
-    var topN = opts.top_n ? Number(opts.top_n) : ROTINA_MATINAL_TOP;
-    var pri = await selecionarEmissoresPrioritarios(env2222, topN);
+    topN = opts.top_n ? Number(opts.top_n) : ROTINA_MATINAL_TOP;
+    var pri = await selecionarEmissoresPrioritarios(env2222, topN, { estrito: opts.top_n_estrito === true });
+    _extrasSetor = pri._extras_setor || [];
     emissoresAlvo = pri.map(function(p) {
       return { nome: p.empresa, setor: SETOR_DE_EMPRESA[p.empresa] || "Outros", ews_score: p.ews_score, score_combinado: p.score_combinado };
     });
@@ -10609,6 +10715,20 @@ async function montarPlanoRotina(env2222, opts) {
       motivos = ["inconclusivo_stale_breakout"].concat(motivos.filter(function(m) { return m !== "inconclusivo_stale_breakout"; }));
       console.log("[montarPlanoRotina][INCONCLUSIVO_BREAKOUT] emp=" + emp.slice(0, 25) + " horasStale=" + Math.round(horasStale) + " promovido para FULL");
     }
+    // CREDITODIA1 (2026-09-02): depois de toda a escada de tier, um ponto so para matinal,
+    // noturno e pontual (a pontual herda porque filtra tier SKIP). Medido em 01/09: 12
+    // emissores analisados 2x no dia porque o ramo FULL vinha antes do SKIP por frescor e
+    // o SKIP exigia _status !== INCONCLUSIVO, que TIERNULO1 tornava impossivel. Agora quem
+    // recebeu analise real nas ultimas JANELA_CREDITO_H horas, de qualquer rotina, com tier
+    // igual ou mais profundo que o pedido agora, sai como SKIP com o nome de quem analisou.
+    // Fato novo (cvmNovos) e divida por teto (deferido) vencem o credito sempre. Nao entra
+    // em skipPool de proposito: credito nao e candidato a audit_amostral.
+    var horasAnalise = _parseHorasStale(res && res._ultima_analise_at ? res._ultima_analise_at : null);
+    var _cred = _creditoAnaliseDia(res, tier, _foiDeferido, cvmNovos.length, horasAnalise);
+    if (_cred) {
+      motivos = [_cred.motivo, _cred.detalhe].concat(motivos);
+      tier = "SKIP";
+    }
     var ctxHist = "";
     if (res) {
       var partes = [];
@@ -10638,8 +10758,29 @@ async function montarPlanoRotina(env2222, opts) {
       // v4.9.159 (STALE-GATE1): expõe _status para o gate de staleness distinguir
       // INCONCLUSIVO (clock pausado de propósito, FIN1) de staleness real.
       status: res && res._status ? res._status : null,
-      inconclusivo: !!(res && res._status === "INCONCLUSIVO")
+      inconclusivo: !!(res && res._status === "INCONCLUSIVO"),
+      // CREDITODIA1: quem analisou por ultimo, com que profundidade e ha quanto tempo.
+      ultimo_tier: res && res._ultimo_tier ? res._ultimo_tier : null,
+      ultima_origem: res && res._ultima_origem ? res._ultima_origem : null,
+      horas_desde_analise: horasAnalise >= 9999 ? null : Math.round(horasAnalise * 10) / 10
     });
+  }
+  // COBERTURA-DESENHO1 (2026-09-02): exclusao cega do topo, OPCIONAL e desligada por padrao.
+  // O caminho recomendado e o credito acima (que so pula o topo se alguem o analisou hoje).
+  // Esta opcao existe para o operador que preferir a noturna nunca tocar no top N, mesmo
+  // num dia em que a matinal falhou; fica declarada no motivo para o log nao mentir.
+  if (modo === "noturno" && opts.excluir_top_n && Number(opts.excluir_top_n) > 0) {
+    var _exN = Math.max(1, Math.floor(Number(opts.excluir_top_n)));
+    var _exPri = await selecionarEmissoresPrioritarios(env2222, _exN, { estrito: true });
+    var _exSet = {};
+    for (var _xi0 = 0; _xi0 < _exPri.length; _xi0++) _exSet[_exPri[_xi0].empresa] = true;
+    for (var _xi = 0; _xi < plano.length; _xi++) {
+      if (_exSet[plano[_xi].empresa] && plano[_xi].tier !== "SKIP") {
+        plano[_xi].tier = "SKIP";
+        plano[_xi].rodadas = [];
+        plano[_xi].motivos = ["coberto_matinal_top_" + _exN].concat(plano[_xi].motivos);
+      }
+    }
   }
   if (modo === "noturno" && skipPool.length > 0) {
     var auditNomes = _selecionarAuditSkip(skipPool, hoje, ROTINA_AUDIT_POR_DIA);
@@ -10671,9 +10812,14 @@ async function montarPlanoRotina(env2222, opts) {
     // FATO NOVO ("a CVM publicou algo que ninguem olhou") ou DIVIDA ("devemos uma analise
     // que o teto impediu"). "Rodou e nao concluiu" e qualidade de cobertura, e ja tem dono:
     // o ramo inconclusivo_stale_breakout do plano noturno promove a FULL depois de 48h.
+    // PONTUALFATO1 (2026-09-02, decisao do operador: "sentinela somente para fato novo").
+    // "deferido" saiu do gatilho. Medido em 31/08: a sentinela reanalisou 16 emissores sem
+    // fato novo (deferred_prioritario) porque a noturna deferia a cauda por cap e a pontual
+    // a pegava de volta, duas vezes no mesmo dia (CPFL 09h59 e 11h58). A cauda deferida
+    // passa a ser trabalho exclusivo da noturna, que gasta o cap inteiro em LIGHT.
     var _gatilhados = plano.filter(function(p) {
       if (p.tier === "SKIP") return false;
-      return p.cvm_novos > 0 || p.deferido === true;
+      return p.cvm_novos > 0;
     });
     _pontualCandidatos = _gatilhados.length;
     _gatilhados.sort(function(a, b) {
@@ -10708,6 +10854,10 @@ async function montarPlanoRotina(env2222, opts) {
     pontual_candidatos: modo === "pontual" ? _pontualCandidatos : null,
     pontual_excedente: modo === "pontual" ? _pontualExcedente : null,
     pontual_teto: modo === "pontual" ? (opts.teto ? Math.max(1, Number(opts.teto)) : ROTINA_PONTUAL_TETO) : null,
+    // TOPN-EXTRAS1: matinal declara o que pediu, o que entregou e quem entrou por setor.
+    top_n_solicitado: modo === "matinal" ? topN : null,
+    top_n_efetivo: modo === "matinal" ? plano.length : null,
+    extras_setor: modo === "matinal" ? _extrasSetor : null,
     emissores: plano
   };
 }
@@ -18983,8 +19133,8 @@ async function __coreFetch(request, env2222, ctx) {
     if (body.action === "listar_emissores_prioritarios") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _topN = body.top_n ? Number(body.top_n) : 30;
-      var _prioritarios = await selecionarEmissoresPrioritarios(env2222, _topN);
-      return resp({ ok: true, total: _prioritarios.length, emissores: _prioritarios }, 200, request);
+      var _prioritarios = await selecionarEmissoresPrioritarios(env2222, _topN, { estrito: body.top_n_estrito === true });
+      return resp({ ok: true, total: _prioritarios.length, top_n_solicitado: _topN, extras_setor: _prioritarios._extras_setor || [], emissores: _prioritarios }, 200, request);
     }
     if (body.action === "listar_plano_rotina") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
@@ -18992,6 +19142,8 @@ async function __coreFetch(request, env2222, ctx) {
       var _lprOpts = { modo: _lprModo };
       if (body.top_n) _lprOpts.top_n = Number(body.top_n);
       if (body.teto) _lprOpts.teto = Number(body.teto);
+      if (body.top_n_estrito === true) _lprOpts.top_n_estrito = true;
+      if (body.excluir_top_n && Number(body.excluir_top_n) > 0) _lprOpts.excluir_top_n = Number(body.excluir_top_n);
       var _plano = await montarPlanoRotina(env2222, _lprOpts);
       _plano.varredura_cron_ai = varreduraCronAiHabilitada(env2222);
       return resp(_plano, 200, request);
@@ -19038,7 +19190,14 @@ async function __coreFetch(request, env2222, ctx) {
         var _raProv = body.provedor || body._provedor || (body._matinal === true ? "claude-opus-routine" : "claude-sonnet-routine");
         _raSaneado._provedor = _raProv;
         _raSaneado._batch = false; _raSaneado._matinal = body._matinal === true;
-        _raSaneado._tier = body._tier || body._matinal_tier || null;
+        // TIERNULO1 (2026-09-02): as rotinas mandam _tier DENTRO de resultado (SKILL.md do
+        // noturno e da matinal, run_vixradar_sentinela.ps1), e este handler so lia body._tier.
+        // Chegava sempre nulo em persistirResultadoCompartilhadoInterno, o gate de cobertura
+        // caia no else de 7 fontes e TODA analise com menos de 7 fontes virava INCONCLUSIVO,
+        // inclusive LIGHT com 3 (que o proprio gate declara completa, FIN2). Isso negava o
+        // SKIP por frescor do plano e reanalisava o mesmo emissor no mesmo dia (12 em 01/09).
+        var _raTierIn = body._tier || body._matinal_tier || (_raRes && (_raRes._tier || _raRes._matinal_tier)) || null;
+        _raSaneado._tier = _raTierIn;
         // WATCHDOG-AGENTEMORTO1 (2026-09-02): origem da rotina que entregou. Vem do corpo
         // quando a rotina manda (`origem`), senao e derivada da bandeira _matinal ou do
         // provedor da sentinela (`claude-sentinela-*`). Viaja no payload para a

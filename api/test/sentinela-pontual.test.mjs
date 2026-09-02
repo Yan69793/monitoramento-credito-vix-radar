@@ -329,6 +329,11 @@ describe("SENTINELA1 parte 4: gatilho da matinal nao depende mais do horario", (
 //
 // Prova reversa: contra o codigo anterior o primeiro teste falha, porque
 // deferido continua true depois da analise real.
+//
+// PONTUALFATO1 (2026-09-02): o ciclo da bandeira continua igual, mas quem paga a divida
+// deixou de ser a pontual (decisao do operador: sentinela somente fato novo). Os testes
+// abaixo passaram a observar a bandeira pelo plano NOTURNO, que e onde deferido vira
+// FULL deferred_prioritario; a pontual e provada em plano-credito-dia.test.mjs.
 describe("DEFERGRUDA1: analise real limpa o flag de deferido", () => {
   it("PONTA BOA: emissor deferido que recebe analise real deixa de sair como deferido", async () => {
     const semana = chaveEstadoSemanaCorrente();
@@ -344,9 +349,10 @@ describe("DEFERGRUDA1: analise real limpa o flag de deferido", () => {
       }
     }));
 
-    const antes = await plano("pontual");
-    expect(antes.emissores.map((e) => e.empresa)).toContain(DASA);
-    expect(antes.emissores.find((e) => e.empresa === DASA).deferido).toBe(true);
+    const antes = await plano("noturno");
+    const dasaAntes = antes.emissores.find((e) => e.empresa === DASA);
+    expect(dasaAntes.deferido).toBe(true);
+    expect(dasaAntes.motivos).toContain("deferred_prioritario");
 
     const res = await post({
       action: "receber_analise", empresa: DASA, setor: "Saúde",
@@ -354,8 +360,10 @@ describe("DEFERGRUDA1: analise real limpa o flag de deferido", () => {
     });
     expect(res.status).toBe(200);
 
-    const depois = await plano("pontual");
-    expect(depois.emissores.map((e) => e.empresa)).not.toContain(DASA);
+    const depois = await plano("noturno");
+    const dasaDepois = depois.emissores.find((e) => e.empresa === DASA);
+    expect(dasaDepois.deferido).toBe(false);
+    expect(dasaDepois.motivos).not.toContain("deferred_prioritario");
   });
 
   it("PONTA RUIM: submit de cap-deferred CONTINUA marcando o emissor", async () => {
@@ -372,7 +380,7 @@ describe("DEFERGRUDA1: analise real limpa o flag de deferido", () => {
     });
     expect(res.status).toBe(200);
 
-    const depois = await plano("pontual");
+    const depois = await plano("noturno");
     const dasa = depois.emissores.find((e) => e.empresa === DASA);
     expect(dasa).toBeDefined();
     expect(dasa.deferido).toBe(true);
@@ -454,10 +462,12 @@ describe("DEFERGRUDA2: bandeira de semana anterior nao ressuscita o deferido", (
       }
     }));
 
-    const p = await plano("pontual");
+    // PONTUALFATO1: a bandeira e observada pelo plano noturno (a pontual nao paga divida).
+    const p = await plano("noturno");
     const dasa = p.emissores.find((e) => e.empresa === DASA);
     expect(dasa).toBeDefined();
     expect(dasa.deferido).toBe(true);
+    expect(dasa.motivos).toContain("deferred_prioritario");
   });
 
   it("evento da semana velha NAO e perdido pela correcao", async () => {
@@ -540,7 +550,7 @@ describe("DEFERGRUDA3: inconclusivo nao e gatilho da pontual", () => {
     expect(dasa.motivos).toContain("inconclusivo_stale_breakout");
   });
 
-  it("PONTA RUIM: documento novo ou deferido continuam entrando", async () => {
+  it("PONTA RUIM: documento novo continua entrando na pontual; deferido e divida da noturna (PONTUALFATO1)", async () => {
     await estadoDasaVarridaHoje();
     await env.RADAR_KV.put(KEY_DOCS, JSON.stringify([doc(DASA_RAZAO, "9000050", hojeBRT())]));
     const p1 = await plano("pontual");
@@ -553,8 +563,15 @@ describe("DEFERGRUDA3: inconclusivo nao e gatilho da pontual", () => {
         [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true, _token_cap_deferred: true }
       }
     }));
+    // PONTUALFATO1 (2026-09-02, decisao do operador): deferido NAO entra mais na pontual.
+    // Medido em 31/08: a sentinela reanalisou 16 emissores sem fato novo pagando a divida
+    // que a noturna deferia, duas vezes no mesmo dia. A divida passa a ser da noturna.
     const p2 = await plano("pontual");
-    expect(p2.emissores.map((e) => e.empresa)).toContain(DASA);
+    expect(p2.emissores.map((e) => e.empresa)).not.toContain(DASA);
+    const n = await plano("noturno");
+    const dasa = n.emissores.find((e) => e.empresa === DASA);
+    expect(dasa.tier).toBe("FULL");
+    expect(dasa.motivos).toContain("deferred_prioritario");
   });
 });
 
