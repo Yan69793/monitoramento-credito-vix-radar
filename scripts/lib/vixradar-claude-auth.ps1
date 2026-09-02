@@ -2,14 +2,24 @@
 # ASCII puro por design: e dot-sourced por scripts que rodam sob powershell.exe 5.1.
 #
 # Politica, nesta ordem:
-#   1. VIXRADAR_ANTHROPIC_AUTH_TOKEN  token longevo de `claude setup-token`. Nao expira em
-#      24h, entao e o unico modo de assinatura que sobrevive ao Task Scheduler.
+#   1. VIXRADAR_ANTHROPIC_AUTH_TOKEN  token longevo de `claude setup-token` (OAuth de um ano
+#      pela doc oficial). Nao vence em 24h, entao e o unico modo de assinatura que
+#      sobrevive ao Task Scheduler. Vencimento: registrar SOMENTE a data que o operador
+#      informar (campo TOKEN_LONGEVO_VENCE, yyyy-MM-dd, em logs\routines\custo-config.json);
+#      nunca inferir da data de emissao.
 #   2. OAuth do credential store do CLI (`claude login`). Expira em ~24h.
 #   3. VIXRADAR_ANTHROPIC_API_KEY     chave paga, pay-per-token. Ultimo recurso.
 #
-# Configurar o token longevo:
+# TOKENVAR1 (2026-09-02): o token longevo entra no processo como CLAUDE_CODE_OAUTH_TOKEN,
+# a variavel que o CLI documenta para o token de `setup-token` (precedencia 5, acima do
+# OAuth de /login). ANTHROPIC_AUTH_TOKEN e Bearer cru para gateway (precedencia 2) e
+# recusava o token de assinatura: o modo assinatura-token nunca tinha sido aceito em
+# log nenhum ate esta data. --bare nao le CLAUDE_CODE_OAUTH_TOKEN; as rotinas nao usam --bare.
+#
+# Configurar o token longevo (valor nunca em argumento de linha de comando nem no chat):
 #   claude setup-token
-#   [Environment]::SetEnvironmentVariable('VIXRADAR_ANTHROPIC_AUTH_TOKEN','<token>','User')
+#   $t = Read-Host -AsSecureString 'Token do claude setup-token'
+#   [Environment]::SetEnvironmentVariable('VIXRADAR_ANTHROPIC_AUTH_TOKEN', [System.Net.NetworkCredential]::new('', $t).Password, 'User')
 #
 # Por que variavel propria e nao ANTHROPIC_AUTH_TOKEN: o incidente 73 nasceu justamente de
 # um ANTHROPIC_AUTH_TOKEN herdado do registry apontando para agregador. A guarda continua
@@ -97,6 +107,8 @@ function Set-VixClaudeAuthEnv {
     # (OpenRouter/DeepSeek) contamina a autenticacao e trava a sonda (ago/2026).
     Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
     Remove-Item Env:\ANTHROPIC_API_KEY -ErrorAction SilentlyContinue
+    # TOKENVAR1: sai do processo e so volta no modo assinatura-token, mais abaixo.
+    Remove-Item Env:\CLAUDE_CODE_OAUTH_TOKEN -ErrorAction SilentlyContinue
     # Limpar variaveis de modelo que o Claude Code pode injetar no ambiente do
     # processo. Elas contaminam o Test-VixClaudeAmbienteLimpo (incidente 04/08)
     # mas nao afetam o `claude -p` com --model explicito.
@@ -111,6 +123,7 @@ function Set-VixClaudeAuthEnv {
     # removido permanentemente do registro User, nao da para coexistir com as rotinas.
     [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
     [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', '', 'Process')
+    [Environment]::SetEnvironmentVariable('CLAUDE_CODE_OAUTH_TOKEN', '', 'Process')
     [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
     [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
     # Vars de alias de modelo saem do bloco de ambiente DESTE processo, para que o
@@ -130,11 +143,12 @@ function Set-VixClaudeAuthEnv {
         Remove-Item -Path "Env:\$__vixModeloVar" -ErrorAction SilentlyContinue
     }
     if ($script:VixAuthModo -eq 'assinatura-token') {
-        $env:ANTHROPIC_AUTH_TOKEN = $script:VixAuthToken
+        # TOKENVAR1: variavel documentada para o token de `claude setup-token`.
+        $env:CLAUDE_CODE_OAUTH_TOKEN = $script:VixAuthToken
     } elseif ($script:VixAuthModo -eq 'api') {
         $env:ANTHROPIC_API_KEY = $script:VixAuthChave
     }
-    # Modo 'assinatura' fica sem as duas: o CLI usa o proprio credential store do OAuth.
+    # Modo 'assinatura' fica sem as tres: o CLI usa o proprio credential store do OAuth.
 }
 
 function Test-VixClaudeSonda([string]$ModeloSonda, [string]$McpConfigFile) {
