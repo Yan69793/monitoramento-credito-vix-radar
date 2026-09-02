@@ -13757,6 +13757,14 @@ async function handleSerie(url, env2222) {
   if (ewsSerie.length >= 2 && ewsSerie[0].score != null && ewsAtual != null) {
     ewsDelta = Math.round((ewsAtual - ewsSerie[0].score) * 10) / 10;
   }
+  // PAPEIS1: por papel. O card deixa de consumir spread_atual (media do emissor,
+  // semanticamente invalida). data_referencia = data do ultimo registro vigente.
+  const dataReferencia = registrosAsc.length ? registrosAsc[registrosAsc.length - 1].data : null;
+  const papeis = dataReferencia ? _papeisNaDataReferencia(serie, dataReferencia, cutDate) : [];
+  const familias = _familiasDosPapeis(papeis);
+  const _sel = _selecionarDestaquePapeis(papeis);
+  const destaque = _sel.destaque;
+  const destaqueMotivo = _sel.motivo;
   return resp({
     ok: true,
     empresa,
@@ -13777,7 +13785,16 @@ async function handleSerie(url, env2222) {
     anomalias: anomalias[empresa] || [],
     tem_dados: registrosAsc.length > 0,
     tem_ews: ewsSerie.length > 0,
-    updated_at: serie.updated_at
+    updated_at: serie.updated_at,
+    // PAPEIS1: campos por papel (fonte de verdade do card). Os campos legados
+    // acima seguem presentes por compatibilidade e estao listados em
+    // _legado_deprecado; o frontend nao deve consumi-los (fail-closed).
+    data_referencia: dataReferencia,
+    papeis: papeis,
+    familias: familias,
+    destaque: destaque,
+    destaque_motivo: destaqueMotivo,
+    _legado_deprecado: ["taxa_indicativa_atual_pct", "taxa_indicativa_delta_pp", "spread_atual", "spread_delta", "unidade", "provedor"]
   });
 }
 __name(handleSerie, "handleSerie");
@@ -14002,31 +14019,265 @@ __name(_matchEmissorANBIMA, "_matchEmissorANBIMA");
 __name2(_matchEmissorANBIMA, "_matchEmissorANBIMA");
 __name22(_matchEmissorANBIMA, "_matchEmissorANBIMA");
 __name222(_matchEmissorANBIMA, "_matchEmissorANBIMA");
-async function salvarSerieDoArquivoANBIMA(env2222, registros, dataReal) {
-  const porEmpresa = {};
-  let tickersTotais = 0;
-  let tickersIgnorados = 0;
-  const ignoradosAmostra = [];
-  const ignoradosFull = [];
-  for (const r of registros) {
+// ── PAPEIS1 (2026-09-02): taxa indicativa ANBIMA por papel ──────────────────
+// O card "Taxa indicativa ANBIMA" exibia a media aritmetica diaria de
+// `taxa_indicativa` de TODOS os papeis do emissor, rotulada "% a.a.". Para a
+// ENEVA dava ~5,91, media de 5 papeis DI+spread (~0,74) com 14 IPCA+ (~7,76):
+// dois grupos incomparaveis somados num numero que nao pertence a ativo nenhum.
+// Aqui a taxa passa a ser persistida e servida por `codigo_ativo`, com a
+// natureza (grupo) derivada do `indice_correcao`. A media legada (registro
+// diario por emissor) fica INTOCADA para z-score/anomalia; so o card muda.
+// pct_reune (col 13) e indicador POR PAPEL, nao aditivo (medido: soma 150 num
+// grupo de 19 na ENEVA, com vazios). Nunca somar; usar como escalar por papel.
+
+// Classifica o texto da coluna indice_correcao na natureza da taxa.
+function _grupoAnbima(indiceTxt) {
+  var s = String(indiceTxt || "").toUpperCase();
+  if (!s) return "OUTRO";
+  if (s.indexOf("IPCA") >= 0) return "IPCA";
+  if (s.indexOf("DI") >= 0) {
+    // "% do DI" nao tem sinal de soma; "DI + X%" tem.
+    return s.indexOf("+") >= 0 ? "DI_SPREAD" : "PCT_DI";
+  }
+  if (s.indexOf("PREFIX") >= 0) return "PRE_FIXADO";
+  return "OUTRO";
+}
+__name(_grupoAnbima, "_grupoAnbima");
+__name2(_grupoAnbima, "_grupoAnbima");
+__name22(_grupoAnbima, "_grupoAnbima");
+__name222(_grupoAnbima, "_grupoAnbima");
+
+// Formata a taxa no formato semanticamente correto para o grupo (pt-BR, 2 casas).
+function _formatarTaxaDisplay(grupo, valor) {
+  if (valor == null || !isFinite(valor)) return null;
+  var v = String(valor.toFixed(2)).replace(".", ",");
+  switch (grupo) {
+    case "DI_SPREAD": return "DI + " + v + "%";
+    case "PCT_DI": return v + "% do DI";
+    case "IPCA": return "IPCA + " + v + "%";
+    case "PRE_FIXADO": return v + "% a.a.";
+    default: return null;
+  }
+}
+__name(_formatarTaxaDisplay, "_formatarTaxaDisplay");
+__name2(_formatarTaxaDisplay, "_formatarTaxaDisplay");
+__name22(_formatarTaxaDisplay, "_formatarTaxaDisplay");
+__name222(_formatarTaxaDisplay, "_formatarTaxaDisplay");
+
+// Destaque por papel individual, nunca por soma de pct_reune entre papeis.
+// Candidatos: papel com percentual_taxa != null e pct_reune > 0. Vence o maior
+// pct_reune; empate por data_vencimento desc e depois codigo_ativo asc. Sem
+// candidato, devolve destaque null + motivo (a fonte nao da liquidez robusta).
+function _selecionarDestaquePapeis(papeis) {
+  var candidatos = (Array.isArray(papeis) ? papeis : []).filter(function(p) {
+    return p && p.percentual_taxa != null && typeof p.pct_reune === "number" && p.pct_reune > 0;
+  });
+  if (!candidatos.length) return { destaque: null, motivo: "sem_liquidez_reune" };
+  candidatos.sort(function(a, b) {
+    if (b.pct_reune !== a.pct_reune) return b.pct_reune - a.pct_reune;
+    var vd = String(b.data_vencimento || "").localeCompare(String(a.data_vencimento || ""));
+    if (vd !== 0) return vd;
+    return String(a.codigo_ativo).localeCompare(String(b.codigo_ativo));
+  });
+  return { destaque: candidatos[0], motivo: null };
+}
+__name(_selecionarDestaquePapeis, "_selecionarDestaquePapeis");
+__name2(_selecionarDestaquePapeis, "_selecionarDestaquePapeis");
+__name22(_selecionarDestaquePapeis, "_selecionarDestaquePapeis");
+__name222(_selecionarDestaquePapeis, "_selecionarDestaquePapeis");
+
+// Caminhante de fronteira do backfill: retrocede dia a dia. 200 processa e zera
+// o contador; 404 registra e continua (nao conta fim de semana/feriado, so dia
+// util). Encerra apos `minAusenciasUteis` dias uteis consecutivos sem nenhum
+// 200. probeFn e assincrona e injetavel (mock no teste, sem rede).
+async function _probeJanelaAnbima(opts) {
+  var probeFn = opts.probeFn;
+  var desde = opts.desde;
+  var minAusenciasUteis = opts.minAusenciasUteis || 15;
+  var ehUtil = opts.ehUtil || function(d) { var dt = new Date(d + "T00:00:00Z"); var dow = dt.getUTCDay(); return dow !== 0 && dow !== 6; };
+  var datasEncontradas = [];
+  var paradas = [];
+  var ausenciasUteis = 0;
+  var dataAtual = desde;
+  var primeiro = null;
+  var ultimo = null;
+  var guard = 0;
+  var MAX_ITER = 1000;
+  while (guard++ < MAX_ITER) {
+    var status = await probeFn(dataAtual);
+    if (status === 200) {
+      datasEncontradas.push(dataAtual);
+      if (!ultimo) ultimo = dataAtual;
+      primeiro = dataAtual;
+      ausenciasUteis = 0;
+    } else {
+      paradas.push({ data: dataAtual, status: status });
+      if (ehUtil(dataAtual)) {
+        ausenciasUteis++;
+        if (ausenciasUteis >= minAusenciasUteis) break;
+      }
+    }
+    dataAtual = _anbimaSubtrairDias(dataAtual, 1);
+  }
+  return {
+    datasEncontradas: datasEncontradas,
+    primeiro: primeiro,
+    ultimo: ultimo,
+    paradas: paradas,
+    terminou_por: ausenciasUteis >= minAusenciasUteis ? "ausencias_consecutivas" : "limite_iteracoes"
+  };
+}
+__name(_probeJanelaAnbima, "_probeJanelaAnbima");
+__name2(_probeJanelaAnbima, "_probeJanelaAnbima");
+__name22(_probeJanelaAnbima, "_probeJanelaAnbima");
+__name222(_probeJanelaAnbima, "_probeJanelaAnbima");
+
+// Extrai, dos registros do arquivo, os papeis agrupados por emissor. E o
+// trabalho de casamento (nome -> emissor) compartilhado entre o sync diario e o
+// backfill. Para cada papel grava codigo_ativo, data_vencimento (ISO),
+// indice_original, grupo, percentual_taxa/taxa_indicativa (ambos = col6) e
+// pct_reune. So papeis com taxa_indicativa != null entram.
+function _agruparRegistrosAnbima(registros) {
+  var porEmpresa = {};
+  var tickersTotais = 0;
+  var tickersIgnorados = 0;
+  var ignoradosAmostra = [];
+  var ignoradosFull = [];
+  for (var i = 0; i < registros.length; i++) {
+    var r = registros[i];
     tickersTotais++;
-    const nomeNorm = _normalizarNomeAnbima(r.nome);
-    const empresa = _matchEmissorANBIMA(nomeNorm);
+    var nomeNorm = _normalizarNomeAnbima(r.nome);
+    var empresa = _matchEmissorANBIMA(nomeNorm);
     if (!empresa) {
       tickersIgnorados++;
       if (ignoradosAmostra.length < 5) ignoradosAmostra.push(nomeNorm);
       if (ignoradosFull.length < 50) ignoradosFull.push({ ticker: r.ticker, nome: nomeNorm });
       continue;
     }
-    if (!porEmpresa[empresa]) porEmpresa[empresa] = { spreads: [], pus: [], durations: [], desvios: [], pct_par: [], vencimentos: [] };
-    const e = porEmpresa[empresa];
+    if (!porEmpresa[empresa]) porEmpresa[empresa] = { spreads: [], pus: [], durations: [], desvios: [], pct_par: [], vencimentos: [], papeis: [] };
+    var e = porEmpresa[empresa];
     if (r.taxa_indicativa != null) e.spreads.push(r.taxa_indicativa);
     if (r.pu != null) e.pus.push(r.pu);
     if (r.duration != null) e.durations.push(r.duration);
     if (r.desvio_padrao != null) e.desvios.push(r.desvio_padrao);
     if (r.pct_pu_par != null) e.pct_par.push(r.pct_pu_par);
     if (r.vencimento) e.vencimentos.push({ data: r.vencimento, ticker: r.ticker, nome: r.nome });
+    if (r.taxa_indicativa != null) {
+      e.papeis.push({
+        codigo_ativo: r.ticker,
+        data_vencimento: normalData(r.vencimento),
+        indice_original: r.indice_correcao,
+        grupo: _grupoAnbima(r.indice_correcao),
+        percentual_taxa: r.taxa_indicativa,
+        taxa_indicativa: r.taxa_indicativa,
+        pct_reune: r.pct_reune
+      });
+    }
   }
+  return { porEmpresa: porEmpresa, tickersTotais: tickersTotais, tickersIgnorados: tickersIgnorados, ignoradosAmostra: ignoradosAmostra, ignoradosFull: ignoradosFull };
+}
+__name(_agruparRegistrosAnbima, "_agruparRegistrosAnbima");
+__name2(_agruparRegistrosAnbima, "_agruparRegistrosAnbima");
+__name22(_agruparRegistrosAnbima, "_agruparRegistrosAnbima");
+__name222(_agruparRegistrosAnbima, "_agruparRegistrosAnbima");
+
+// Merge idempotente de pontos por papel dentro de `serie.papeis`. Append por
+// `data` (sem duplicar), cap 200/papel. Nao mexe em serie.registros.
+function _mergePapeisSerie(serie, empresa, listaPapeis, dataReal) {
+  if (!Array.isArray(listaPapeis) || !listaPapeis.length) return serie;
+  if (!serie.papeis) serie.papeis = {};
+  for (var i = 0; i < listaPapeis.length; i++) {
+    var p = listaPapeis[i];
+    if (!p || !p.codigo_ativo || p.percentual_taxa == null) continue;
+    var cod = p.codigo_ativo;
+    var existente = serie.papeis[cod] || { codigo_ativo: cod, emissor: empresa, indice_original: p.indice_original, grupo: p.grupo, data_vencimento: p.data_vencimento, historico: [] };
+    var histMap = {};
+    for (var j = 0; j < (existente.historico || []).length; j++) {
+      var h = existente.historico[j];
+      if (h && h.data) histMap[h.data] = h;
+    }
+    histMap[dataReal] = { data: dataReal, taxa_indicativa: p.taxa_indicativa, percentual_taxa: p.percentual_taxa, pct_reune: p.pct_reune };
+    var historico = Object.values(histMap).sort(function(a, b) { return a.data.localeCompare(b.data); }).slice(-200);
+    serie.papeis[cod] = { codigo_ativo: cod, emissor: empresa, indice_original: p.indice_original, grupo: p.grupo, data_vencimento: p.data_vencimento, historico: historico };
+  }
+  return serie;
+}
+__name(_mergePapeisSerie, "_mergePapeisSerie");
+__name2(_mergePapeisSerie, "_mergePapeisSerie");
+__name22(_mergePapeisSerie, "_mergePapeisSerie");
+__name222(_mergePapeisSerie, "_mergePapeisSerie");
+
+// Papéis presentes na data de referencia (data do ultimo registro vigente),
+// cada um com taxa_display e historico cortado ao horizonte. Sem serie.papeis,
+// devolve lista vazia (o frontend falha fechado).
+function _papeisNaDataReferencia(serie, dataRef, cutDate) {
+  var out = [];
+  if (!serie || !serie.papeis) return out;
+  for (var cod in serie.papeis) {
+    var p = serie.papeis[cod];
+    if (!p || !Array.isArray(p.historico)) continue;
+    var histAsc = p.historico.filter(function(h) { return h && h.data && h.data <= dataRef; }).sort(function(a, b) { return a.data.localeCompare(b.data); });
+    var ultimo = histAsc[histAsc.length - 1];
+    if (!ultimo || ultimo.data !== dataRef) continue;
+    var pct = ultimo.percentual_taxa != null ? ultimo.percentual_taxa : ultimo.taxa_indicativa;
+    out.push({
+      codigo_ativo: p.codigo_ativo,
+      emissor: p.emissor,
+      indice_original: p.indice_original,
+      grupo: p.grupo,
+      data_vencimento: p.data_vencimento,
+      percentual_taxa: pct,
+      taxa_indicativa: ultimo.taxa_indicativa != null ? ultimo.taxa_indicativa : pct,
+      pct_reune: ultimo.pct_reune,
+      taxa_display: _formatarTaxaDisplay(p.grupo, pct),
+      historico: p.historico.filter(function(h) { return h && h.data && h.data >= cutDate; }).sort(function(a, b) { return a.data.localeCompare(b.data); })
+    });
+  }
+  return out;
+}
+__name(_papeisNaDataReferencia, "_papeisNaDataReferencia");
+__name2(_papeisNaDataReferencia, "_papeisNaDataReferencia");
+__name22(_papeisNaDataReferencia, "_papeisNaDataReferencia");
+__name222(_papeisNaDataReferencia, "_papeisNaDataReferencia");
+
+// Agrupa papeis por grupo para navegacao. pct_reune e escalar por papel, nunca
+// somado; nao ha campo de liquidez de familia (decisao do operador).
+function _familiasDosPapeis(papeis) {
+  var map = {};
+  for (var i = 0; i < papeis.length; i++) {
+    var p = papeis[i];
+    var g = p.grupo || "OUTRO";
+    if (!map[g]) map[g] = [];
+    map[g].push(p);
+  }
+  var out = [];
+  for (var g in map) {
+    map[g].sort(function(a, b) {
+      var ra = typeof a.pct_reune === "number" ? a.pct_reune : -1;
+      var rb = typeof b.pct_reune === "number" ? b.pct_reune : -1;
+      if (rb !== ra) return rb - ra;
+      var vd = String(b.data_vencimento || "").localeCompare(String(a.data_vencimento || ""));
+      if (vd !== 0) return vd;
+      return String(a.codigo_ativo).localeCompare(String(b.codigo_ativo));
+    });
+    out.push({ grupo: g, papeis: map[g] });
+  }
+  var ordem = { IPCA: 0, DI_SPREAD: 1, PCT_DI: 2, PRE_FIXADO: 3 };
+  out.sort(function(a, b) { return (ordem[a.grupo] !== undefined ? ordem[a.grupo] : 99) - (ordem[b.grupo] !== undefined ? ordem[b.grupo] : 99) || a.grupo.localeCompare(b.grupo); });
+  return out;
+}
+__name(_familiasDosPapeis, "_familiasDosPapeis");
+__name2(_familiasDosPapeis, "_familiasDosPapeis");
+__name22(_familiasDosPapeis, "_familiasDosPapeis");
+__name222(_familiasDosPapeis, "_familiasDosPapeis");
+
+async function salvarSerieDoArquivoANBIMA(env2222, registros, dataReal) {
+  const _ag = _agruparRegistrosAnbima(registros);
+  const porEmpresa = _ag.porEmpresa;
+  const tickersTotais = _ag.tickersTotais;
+  const tickersIgnorados = _ag.tickersIgnorados;
+  const ignoradosAmostra = _ag.ignoradosAmostra;
+  const ignoradosFull = _ag.ignoradosFull;
   let empresasSalvas = 0;
   for (const [empresa, d] of Object.entries(porEmpresa)) {
     const avg = /* @__PURE__ */ __name22((arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null, "avg");
@@ -14065,6 +14316,8 @@ async function salvarSerieDoArquivoANBIMA(env2222, registros, dataReal) {
       }
       serie.vencimentos = Object.values(vencMap);
     }
+    // PAPEIS1: merge por papel (nao mexe em serie.registros).
+    _mergePapeisSerie(serie, empresa, d.papeis, dataReal);
     await salvarSerie(env2222, empresa, serie);
     empresasSalvas++;
   }
@@ -14098,6 +14351,96 @@ __name(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
 __name2(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
 __name22(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
 __name222(salvarSerieDoArquivoANBIMA, "salvarSerieDoArquivoANBIMA");
+
+// PAPEIS1: backfill so de papeis, sem criar registro legado em data passada.
+// Usado pela rotina de backfill para preencher serie.papeis[].historico sem
+// esticar serie.registros (z-score/anomalia ficam intactos).
+async function mergeApenasPapeis(env2222, registros, dataReal) {
+  const _ag = _agruparRegistrosAnbima(registros);
+  let empresas = 0;
+  for (const empresa in _ag.porEmpresa) {
+    const d = _ag.porEmpresa[empresa];
+    if (!d.papeis || !d.papeis.length) continue;
+    const serie = await carregarSerie(env2222, empresa);
+    _mergePapeisSerie(serie, empresa, d.papeis, dataReal);
+    await salvarSerie(env2222, empresa, serie);
+    empresas++;
+  }
+  return { empresas: empresas, dataReal: dataReal };
+}
+__name(mergeApenasPapeis, "mergeApenasPapeis");
+__name2(mergeApenasPapeis, "mergeApenasPapeis");
+__name22(mergeApenasPapeis, "mergeApenasPapeis");
+__name222(mergeApenasPapeis, "mergeApenasPapeis");
+
+// Orquestra o backfill da janela retida. Caminha para tras com _probeJanelaAnbima
+// (200 processa, 404 registra e continua, encerra apos 15 dias uteis sem 200),
+// grava progresso em mercado:anbima_backfill_estado e e retomavel/idempotente.
+async function backfillAnbimaPapeis(env2222, opts) {
+  if (!env2222.RADAR_KV) return { ok: false, erro: "KV indisponivel" };
+  var desde = (opts && opts.desde) || obterAgoraBRT().toISOString().slice(0, 10);
+  var MIN_AUSENCIAS_UTEIS = 15;
+  var estado = { concluido: false, ultimo_processado: null };
+  try {
+    var rawEstado = await env2222.RADAR_KV.get("mercado:anbima_backfill_estado");
+    if (rawEstado) {
+      var parsed = JSON.parse(rawEstado);
+      if (parsed && !parsed.concluido) estado = parsed;
+    }
+  } catch (_) { /* sem estado: começa do zero */ }
+  var inicio = estado.ultimo_processado || desde;
+  var probeFn = async function(dataISO) {
+    if (!ehDiaPregaoB3(dataISO)) return 404;
+    var yymmdd = _anbimaFormatarYYMMDD(dataISO);
+    var url = `https://www.anbima.com.br/informacoes/merc-sec-debentures/arqs/db${yymmdd}.txt`;
+    var ctrl = new AbortController();
+    var t = setTimeout(function() { ctrl.abort(); }, 25e3);
+    try {
+      var r = await fetch(url, { signal: ctrl.signal, headers: { "User-Agent": "Mozilla/5.0 (compatible; VixRadar/1.0)", "Accept": "text/plain,*/*" } });
+      return r.status;
+    } catch (_) {
+      return 0;
+    } finally {
+      clearTimeout(t);
+    }
+  };
+  var janela = await _probeJanelaAnbima({ probeFn: probeFn, desde: inicio, minAusenciasUteis: MIN_AUSENCIAS_UTEIS, ehUtil: ehDiaPregaoB3 });
+  var processados = 0;
+  var primeiro = null;
+  var ultimo = null;
+  var falhas = [];
+  for (var i = 0; i < janela.datasEncontradas.length; i++) {
+    var dataISO = janela.datasEncontradas[i];
+    try {
+      var dl = await baixarArquivoANBIMAPublico(env2222, dataISO);
+      if (!dl.ok) { falhas.push({ data: dataISO, motivo: "download" }); continue; }
+      var regs = parseANBIMATxt(dl.conteudo);
+      if (regs.length < 100) { falhas.push({ data: dataISO, motivo: "parse_curto" }); continue; }
+      await mergeApenasPapeis(env2222, regs, dl.dataReal);
+      processados++;
+      if (!primeiro) primeiro = dl.dataReal;
+      ultimo = dl.dataReal;
+    } catch (e) {
+      falhas.push({ data: dataISO, motivo: String(e && e.message || e).slice(0, 80) });
+    }
+  }
+  var concluido = janela.terminou_por === "ausencias_consecutivas";
+  await env2222.RADAR_KV.put("mercado:anbima_backfill_estado", JSON.stringify({
+    ts: (/* @__PURE__ */ new Date()).toISOString(),
+    concluido: concluido,
+    ultimo_processado: ultimo || primeiro || desde,
+    primeiro: primeiro,
+    ultimo: ultimo,
+    processados: processados,
+    falhas: falhas.slice(0, 20),
+    terminou_por: janela.terminou_por
+  }));
+  return { ok: true, concluido: concluido, processados: processados, primeiro: primeiro, ultimo: ultimo, terminou_por: janela.terminou_por, falhas: falhas.length };
+}
+__name(backfillAnbimaPapeis, "backfillAnbimaPapeis");
+__name2(backfillAnbimaPapeis, "backfillAnbimaPapeis");
+__name22(backfillAnbimaPapeis, "backfillAnbimaPapeis");
+__name222(backfillAnbimaPapeis, "backfillAnbimaPapeis");
 // ── SPREADSERIE1 (auditoria 2026-08-20) ─────────────────────────────────────
 // A serie de mercado atravessa uma troca de provedor e ninguem tratou a emenda.
 // Medido em producao hoje, identico nos 6 emissores amostrados:
@@ -18828,6 +19171,11 @@ async function __coreFetch(request, env2222, ctx) {
         return resp({ ok: false, erro: String(e && e.message || e).slice(0, 300) }, 200, request);
       }
     }
+    if (body.action === "backfill_anbima_papeis") {
+      const { admin_senha, desde } = body;
+      if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      return resp(await backfillAnbimaPapeis(env2222, { desde }), 200, request);
+    }
     if (body.action === "reset_anbima_token") {
       const { admin_senha } = body;
       if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
@@ -20546,5 +20894,14 @@ export {
   _kvPutDualConfig,
   _kvGetDualConfig,
   _faseMigracao,
+  _grupoAnbima,
+  _formatarTaxaDisplay,
+  _selecionarDestaquePapeis,
+  _probeJanelaAnbima,
+  _mergePapeisSerie,
+  _papeisNaDataReferencia,
+  _familiasDosPapeis,
+  _agruparRegistrosAnbima,
+  parseANBIMATxt,
   worker_com_sentry as default
 };

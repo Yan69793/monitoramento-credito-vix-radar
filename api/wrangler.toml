@@ -4,6 +4,21 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.235.js = v4.9.234 + PAPEIS1 (taxa indicativa ANBIMA por papel).
+#   O card "Taxa indicativa ANBIMA" exibia a media aritmetica diaria de
+#   taxa_indicativa de TODOS os papeis do emissor, rotulada "% a.a.". Na ENEVA
+#   dava 5,91: media de 5 papeis DI+spread (~0,74) com 14 IPCA+ (~7,76), dois
+#   grupos que nao se somam. Agora a taxa e persistida e servida por codigo_ativo
+#   (serie.papeis[].historico), com grupo derivado do indice_correcao, taxa_display
+#   formatada por grupo (DI_SPREAD "DI + X%", PCT_DI "X% do DI", IPCA "IPCA + X%",
+#   PRE_FIXADO "X% a.a."), destaque por papel individual via pct_reune escalar
+#   (nunca soma; medido 150 num grupo de 19 com vazios), familias so para navegacao
+#   sem ranking de liquidez, fail-closed para serie legada sem metadados, e
+#   backfill da janela retida via admin action backfill_anbima_papeis (caminhante
+#   dia a dia, 200 processa / 404 registra e continua, encerra apos 15 dias uteis
+#   sem 200, retomavel por mercado:anbima_backfill_estado). A media legada por
+#   emissor fica INTOCADA (z-score/anomalia/EWS inalterados). Guarda
+#   api/test/anbima-papeis.test.mjs. Rollback: main = "v4.9.234.js".
 # v4.9.234.js = v4.9.233 + CREDITODIA1 + TIERNULO1 + PONTUALFATO1 (cobertura sem
 #   analise em dobro). Medido em 01/09: 12 emissores analisados 2x no mesmo dia
 #   (matinal + fila aprofundada da noturna) com 69 deferidos por orcamento.
