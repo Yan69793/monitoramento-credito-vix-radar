@@ -6333,7 +6333,17 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
 @media(max-width:640px){.p14-grid{grid-template-columns:1fr}}
 .p14-card{background:#001528;border:1px solid #0D2438;border-radius:6px;padding:8px 10px;min-height:88px}
 .p14-label{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin-bottom:2px}
-.p14-val{font-size:13px;font-weight:700;color:#E8E4DC;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.p14-val{font-size:16px;font-weight:700;color:#E8E4DC;font-family:'JetBrains Mono',monospace;margin-bottom:4px}
+.p14-code{font-size:9px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:#B7985D;margin-bottom:3px}
+.p14-paperlist{margin:10px 0 0;border-top:1px solid #0D2438;padding-top:8px;max-height:220px;overflow-y:auto}
+.p14-fam-head{font-size:9px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#94A3B8;margin:7px 0 3px}
+.p14-paper-row{display:flex;align-items:center;gap:8px;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;color:#C9C0B0}
+.p14-paper-row:hover{background:#001528}
+.p14-paper-row.active{background:#001830;color:#E8E4DC}
+.p14-paper-code{font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;color:#B7985D;min-width:78px}
+.p14-paper-taxa{font-family:'JetBrains Mono',monospace;font-size:11px;margin-left:auto}
+.p14-paper-venc{font-size:9px;color:#8899AA}
+.p14-paper-reune{font-size:9px;color:#94A3B8}
 .p14-val small{font-size:10px;font-weight:500;margin-left:6px}
 .p14-delta-up{color:#F87171}.p14-delta-down{color:#34D399}.p14-delta-flat{color:#94A3B8}
 .p14-chart{height:52px;width:100%}
@@ -6388,32 +6398,77 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     return'<div class="p14-card"><div class="p14-label">'+esc(label)+'</div><div class="p14-val">'+valHtml+'</div><div class="p14-chart">'+chartHtml+'</div></div>';
   }
 
-  function renderPanel(data,loading,horizonte){
+  var FAM_NOMES={IPCA:"IPCA +",DI_SPREAD:"DI + spread",PCT_DI:"% do DI",PRE_FIXADO:"Pré-fixado"};
+
+  function renderTaxaCard(p,dataRef){
+    if(!p||!p.taxa_display)return renderCard("Taxa indicativa ANBIMA","—",'<div class="p14-empty">Sem papel na data de referência</div>');
+    var pts=[],hist=p.historico||[];
+    for(var i=0;i<hist.length;i++){var v=hist[i].percentual_taxa!=null?hist[i].percentual_taxa:hist[i].taxa_indicativa;if(v!=null)pts.push({data:hist[i].data,v:v});}
+    var delta=null;
+    if(pts.length>=2)delta=Math.round((pts[pts.length-1].v-pts[0].v)*10)/10;
+    var chartHtml=pts.length>=5?buildSpark(pts,"#F59E0B","#F59E0B"):'<div class="p14-empty">Histórico insuficiente</div>';
+    var tooltip="Taxa indicativa ANBIMA do mercado secundário · ref "+(dataRef||"—")+" · ativo "+p.codigo_ativo;
+    var sub='<div class="p14-code">'+esc(p.codigo_ativo)+' · '+esc(p.indice_original||p.grupo||"—")+'</div>';
+    return'<div class="p14-card" title="'+esc(tooltip)+'"><div class="p14-label">Taxa indicativa ANBIMA</div>'+sub+'<div class="p14-val">'+esc(p.taxa_display)+fmtDelta(delta," p.p.")+'</div><div class="p14-chart">'+chartHtml+'</div></div>';
+  }
+
+  function renderPaperList(data,selectedCode){
+    var familias=Array.isArray(data&&data.familias)?data.familias:[];
+    var papeis=Array.isArray(data&&data.papeis)?data.papeis:[];
+    if(!papeis.length)return'<div class="p14-paperlist"><div class="p14-empty">Sem papéis na data de referência</div></div>';
+    if(!familias.length)familias=[{grupo:"OUTRO",papeis:papeis}];
+    var html='<div class="p14-paperlist">';
+    for(var i=0;i<familias.length;i++){
+      var f=familias[i];
+      html+='<div class="p14-fam-head">'+(FAM_NOMES[f.grupo]||f.grupo||"OUTRO")+'</div>';
+      for(var j=0;j<f.papeis.length;j++){
+        var p=f.papeis[j],active=p.codigo_ativo===selectedCode;
+        var venc=p.data_vencimento?String(p.data_vencimento).slice(0,10):"—";
+        html+='<div class="p14-paper-row'+(active?" active":"")+'" data-cod="'+esc(p.codigo_ativo)+'">'+
+          '<span class="p14-paper-code">'+esc(p.codigo_ativo)+'</span>'+
+          '<span class="p14-paper-taxa">'+esc(p.taxa_display||"—")+'</span>'+
+          '<span class="p14-paper-venc" title="Vencimento">'+esc(venc)+'</span>'+
+          (typeof p.pct_reune==="number"?'<span class="p14-paper-reune" title="Participação REUNE (indicador por papel)">REUNE '+esc(p.pct_reune)+'</span>':'')+
+          '</div>';
+      }
+    }
+    return html+'</div>';
+  }
+
+  function renderPanel(data,loading,horizonte,empresa){
     if(loading)return'<div class="p14-sparklines" id="p14-sparklines"><div class="p14-head-row"><div class="p14-head">Evolução · '+horizonte+' dias</div></div><div class="p14-grid"><div class="p14-card"><div class="p14-empty">Carregando…</div></div><div class="p14-card"><div class="p14-empty">Carregando…</div></div></div></div>';
-    var spreadPts=(data&&data.serie||[]).filter(function(r){return r.spread_bps!=null;}).map(function(r){return{data:r.data,v:r.spread_bps};});
+    var papeis=Array.isArray(data&&data.papeis)?data.papeis:[];
+    var sel=window.__p14PaperSel&&window.__p14PaperSel[empresa];
+    var p=null;
+    if(sel){for(var i=0;i<papeis.length;i++){if(papeis[i].codigo_ativo===sel&&papeis[i].taxa_display){p=papeis[i];break;}}}
+    if(!p&&data&&data.destaque&&data.destaque.taxa_display)p=data.destaque;
+    /* PAPEIS1 (2026-09-02): o card "Taxa indicativa ANBIMA" deixou de consumir
+       spread_atual (media do emissor, semanticamente invalida) e passou a ler
+       data.papeis/data.destaque por papel, com taxa_display por grupo. O campo
+       legado data.serie/spread_bps segue na resposta para consumidores internos,
+       mas o card nao o usa mais (fail-closed: sem papeis, mostra "—"). */
+    var taxaCard;
+    if(p){taxaCard=renderTaxaCard(p,data&&data.data_referencia);}
+    else if(papeis.length){taxaCard=renderCard("Taxa indicativa ANBIMA","—",'<div class="p14-empty">Sem liquidez REUNE — selecione um papel</div>');}
+    else{taxaCard=renderCard("Taxa indicativa ANBIMA","—",'<div class="p14-empty">Sem papéis na data de referência</div>');}
     var ewsPts=(data&&data.ews_serie||[]).map(function(r){return{data:r.data,v:r.score};});
-    /* SPREADUNIDADE1 (auditoria 2026-08-20), P0 corrigido. Este card dizia
-       "Spread ANBIMA" e carimbava " bps" no numero. As duas coisas estavam
-       erradas, e o resultado chegava na tela do cliente pago.
-       O campo `spread_bps` do KV e alimentado em worker.js:12584 por
-       `r.taxa_indicativa`, que e a coluna 6 do arquivo publico de debentures da
-       ANBIMA (ao lado de taxa_compra e taxa_venda), publicada em PERCENTUAL AO
-       ANO. Nao e spread e nao e ponto-base.
-       Consequencia do rotulo antigo, medida em producao em 20/08: Petrobras
-       aparecia como "6,98 bps" quando o valor real e 6,98% a.a., CSN como
-       "20,08 bps" no lugar de 20,08% a.a. e Aegea como "4,53 bps". Erro de
-       fator 100 na unidade, sob um nome que nem era o da grandeza certa. Um
-       leitor de credito veria CSN com spread de 20 pontos-base, ou seja quase
-       risco zero, exatamente ao contrario do que o numero significa.
-       O numero em si sempre esteve certo, quem mentia era o rotulo e o sufixo.
-       Nome do campo no KV segue `spread_bps` por ora, renomear e migracao de
-       chave e sai fora do escopo do P0, mas esta registrado em PENDENCIAS. */
-    var spreadVal=data&&data.spread_atual!=null?esc(data.spread_atual)+"% a.a.":"—";
     var ewsVal=data&&data.ews_atual!=null?esc(data.ews_atual):"—";
-    var spreadCard=renderCard("Taxa indicativa ANBIMA",spreadVal+fmtDelta(data&&data.spread_delta," p.p."),buildSpark(spreadPts,"#F59E0B","#F59E0B"));
     var ewsCard=renderCard("EWS Score",ewsVal+fmtDelta(data&&data.ews_delta," pts"),buildSpark(ewsPts,"#B7985D","#B7985D"));
     var periods=[30,60,90].map(function(d){return'<button type="button" class="p14-period'+(d===horizonte?" active":"")+'" data-h="'+d+'">'+d+'d</button>';}).join("");
-    return'<div class="p14-sparklines" id="p14-sparklines"><div class="p14-head-row"><div class="p14-head">Evolução · '+horizonte+' dias</div><div class="p14-periods">'+periods+'</div></div><div class="p14-grid">'+spreadCard+ewsCard+'</div></div>';
+    var lista=renderPaperList(data,p&&p.codigo_ativo);
+    return'<div class="p14-sparklines" id="p14-sparklines"><div class="p14-head-row"><div class="p14-head">Evolução · '+horizonte+' dias</div><div class="p14-periods">'+periods+'</div></div><div class="p14-grid">'+taxaCard+ewsCard+'</div>'+lista+'</div>';
+  }
+
+  function bindPaperRows(empresa){
+    var host=document.getElementById("p14-sparklines-host");
+    if(!host)return;
+    host.querySelectorAll(".p14-paper-row").forEach(function(row){
+      row.addEventListener("click",function(){
+        window.__p14PaperSel=window.__p14PaperSel||{};
+        window.__p14PaperSel[empresa]=row.getAttribute("data-cod");
+        injetarSparklines();
+      });
+    });
   }
 
   function bindPeriodButtons(empresa){
@@ -6445,8 +6500,9 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
       var cached=window.__p14SerieCache[key];
       var data=cached&&cached.data?cached.data:null;
       host.style.display="block";
-      host.innerHTML=renderPanel(data,loading,horizonte);
+      host.innerHTML=renderPanel(data,loading,horizonte,emp);
       bindPeriodButtons(emp);
+      bindPaperRows(emp);
     }catch(e){console.warn("[P14]",e.message);}
   }
 
@@ -6471,7 +6527,7 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     };
   }
 
-  window._VIX_P14_VERSAO="v201.60";
+  window._VIX_P14_VERSAO="v202.36";
 }();
 </script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="emp-layout-priority">!function(){"use strict";
