@@ -280,18 +280,6 @@ if (-not (Test-Path $cfg.Skill)) {
 }
 
 $prompt = Get-Content $cfg.Skill -Raw -Encoding UTF8
-if ($RoutineId -eq 'vixradar-agenda-semanal') {
-    $routineKey = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
-    if (-not $routineKey) { $routineKey = $env:ROUTINE_API_KEY }
-    if (-not $routineKey) { Write-Log 'ERRO: ROUTINE_API_KEY ausente'; exit 3 }
-    $env:ROUTINE_API_KEY = $routineKey
-    # Nunca enviar ao Claude uma chave literal que tenha ficado em uma definicao antiga.
-    $keyPattern = '(?i)(\\?"routine_key\\?"\s*:\s*\\?")[^"\\]+(\\?")'
-    $prompt = [regex]::Replace($prompt, $keyPattern, {
-        param($m)
-        $m.Groups[1].Value + '$env:ROUTINE_API_KEY' + $m.Groups[2].Value
-    })
-}
 if ($prompt -match '(?s)^---\r?\n.*?\r?\n---\r?\n(.*)$') {
     $prompt = $Matches[1].Trim()
 }
