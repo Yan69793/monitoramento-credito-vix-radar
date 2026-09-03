@@ -71,6 +71,19 @@ function Test-VixWebSearchProbe([string]$McpConfigFile) {
         Set-VixClaudeAuthEnv
         $probePrompt = 'Qual a cotacao de fechamento do IBOVESPA hoje? Responda so com o valor numerico.'
         $stderrFile = Join-Path $env:TEMP ('wsprobe_' + $PID + '.txt')
+        # RUN429DGN1: enquanto nao houver amostra real do erro 429 (session limit) da
+        # sonda WebSearch, preservar a evidencia para destravar o wait-and-continue.
+        # Sanitiza linhas de saida para nao gravar secret (chave de API, Bearer etc).
+        $funcaoSanitizar = {
+            param([string]$Texto)
+            if (-not $Texto) { return '' }
+            # Remove valores que parecem segredo: sk-ant-* / sk-*, Bearer <token>,
+            # e qualquer bloco env=<valor> que o CLI possa ecoar.
+            $Texto = [regex]::Replace($Texto, '(?i)(sk-[A-Za-z0-9\-_]{8,})', '<REDIGIDO>')
+            $Texto = [regex]::Replace($Texto, '(?i)(Bearer\s+)[A-Za-z0-9\._\-]+', '$1<REDIGIDO>')
+            $Texto = [regex]::Replace($Texto, '(?i)((?:ANTHROPIC_(?:API_KEY|AUTH_TOKEN)|CLAUDE_CODE_OAUTH_TOKEN|ROUTINE_KEY)\s*=\s*).+', '$1<REDIGIDO>')
+            return $Texto
+        }
         $claudeArgs = @('-p', '--model', 'claude-haiku-4-5-20251001', '--output-format', 'json',
             '--tools', 'WebSearch,WebFetch', '--no-session-persistence')
         if ($McpConfigFile -and (Test-Path -LiteralPath $McpConfigFile)) {
@@ -89,9 +102,23 @@ function Test-VixWebSearchProbe([string]$McpConfigFile) {
             }
         }
         if (-not $ok) {
-            # Guardar saida para diagnostico
-            $probeErrFile = Join-Path $env:TEMP ('wsprobe_err_' + $PID + '.txt')
-            $saida | Out-File -FilePath $probeErrFile -Encoding UTF8
+            # Guardar saida para diagnostico. RUN429DGN1: alem do stdout, gravar o
+            # exit code e o stderr (hoje descartados) para registrar qualquer 429 de
+            # session limit com seu reset, sem redigir secret. Nome com data para
+            # preservar amostras de varias execucoes no mesmo dia (guarda-nao-perde).
+            $stderrTxt = ''
+            if (Test-Path -LiteralPath $stderrFile) {
+                try { $stderrTxt = (Get-Content -LiteralPath $stderrFile -Raw -Encoding UTF8 -ErrorAction Stop) } catch { $stderrTxt = '' }
+            }
+            $probeErrFile = Join-Path $env:TEMP ('wsprobe_diag_' + $(Get-Date -Format 'yyyyMMdd_HHmmss') + '_' + $PID + '.log')
+            $diagnostico = @(
+                ('code=' + $code)
+                '--- stdout ---'
+                (& $funcaoSanitizar $saida)
+                '--- stderr ---'
+                (& $funcaoSanitizar $stderrTxt)
+            ) -join "`n"
+            $diagnostico | Out-File -FilePath $probeErrFile -Encoding UTF8
         }
     } catch {
         $ok = $false
