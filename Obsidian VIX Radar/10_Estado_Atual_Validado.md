@@ -8,6 +8,9 @@ tags: [vix-radar, rotinas, governanca, fase-2, auditoria]
 
 # Estado Atual Validado — Governança de Rotinas (FASE 2)
 
+> [!info] Atualização de versão, 2026-09-03 (não reabre a auditoria de rotinas abaixo, datada de 18/08 e ainda válida na sua própria matéria)
+> Produção do Worker avançou de v4.9.198 (data desta auditoria) para **v4.9.236**, via INCIDENTE-FRESHNESS2 (detalhe em `PENDENCIAS.md` e `status/ESTADO.md`). Repositório local e `origin/main` sincronizados, ambos no commit `b5460c1745b117d1534d4ad5ea8d729fc9355824`, confirmado por comparação direta de SHA depois do push e de um `git fetch` novo. Nenhuma rotina desta matriz mudou de classificação por causa desse deploy, ele só adicionou campos de observabilidade ao health.
+
 Matriz canônica do universo real de rotinas do VIX Radar, produzida por auditoria direta
 (Task Scheduler ao vivo, `RemoteTrigger list`, logs de produção, `git log`, código-fonte do
 Worker), não por leitura de documentação anterior. Hierarquia de verdade aplicada: produção
