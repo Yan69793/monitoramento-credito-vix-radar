@@ -4,6 +4,27 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.236.js = v4.9.235 + PAINELFRESCOR1 (health enxerga a idade do PAINEL).
+#   Em 02/09 a tela ficou 12h41 mostrando "Painel atualizado em 02 de setembro
+#   as 11:09 BRT" com ok:true o tempo todo. O carimbo estava CERTO: a ultima
+#   escrita do estado foi a verificacao das 11h (confirmar_verificacao, 14:09Z),
+#   a noturna das 18h05 morreu as 18:12 com a sessao do Desktop interrompida, e
+#   o retry das 21:30 abortou por 429 de limite de sessao sem esperar o reset
+#   (22:40) e sem alertar. Nenhum campo do health media a idade do ESTADO: `ok`
+#   mede o servico (HEALTHSPLIT1), `evento_mais_novo` e `avanco_feed` medem a
+#   FONTE CVM, e o heartbeat varredura_local do watchdog tolera 26h e ja tinha
+#   sido renovado pela matinal daquela manha. Agora GET / (publico e admin) e
+#   checks.painel_fresco (admin_health_check, lido pelo frescor-check.yml)
+#   expoem painel_atualizado_em, painel_idade_min, painel_fresco, painel_regra
+#   e painel_exigido_desde. O SLA sai da AGENDA REAL das rotinas, nunca de
+#   constante arbitraria nem de last_event_at: matinal diaria 10h06 -> prazo
+#   10:36, exige updated_at >= 10:00 do dia; noturna seg-sex 18h05 (+retry
+#   21:30 + espera de 429 ate 2h + execucao) -> prazo 01:30 do dia seguinte,
+#   exige >= 18:00 do dia util anterior. Vale o checkpoint mais recente ja
+#   vencido. FORA de _okHealth de proposito (HEALTHSPLIT1): quem reprova e o
+#   canonical-test.yml a cada 6h; o alerta da mesma noite e o do retry local.
+#   Guarda api/test/health.test.mjs (6 casos, duas pontas por regra, inclusive
+#   o instante exato do incidente). Rollback: main = "v4.9.235.js".
 # v4.9.235.js = v4.9.234 + PAPEIS1 (taxa indicativa ANBIMA por papel).
 #   O card "Taxa indicativa ANBIMA" exibia a media aritmetica diaria de
 #   taxa_indicativa de TODOS os papeis do emissor, rotulada "% a.a.". Na ENEVA

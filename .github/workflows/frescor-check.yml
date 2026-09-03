@@ -40,7 +40,16 @@ jobs:
           hc=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' \
             -H 'Content-Type: application/json' -d "$body_health" --max-time 60)
           echo "$hc" | jq -e '.ok == true' >/dev/null
-          echo "$hc" | jq '{ok,versao,empresas_com_dados:.checks.estado_semanal.empresas_com_dados,updated_at:.checks.estado_semanal.updated_at,weeks_loaded:.checks.estado_semanal.weeks_loaded,evento_mais_novo:.checks.evento_mais_novo}'
+          echo "$hc" | jq '{ok,versao,empresas_com_dados:.checks.estado_semanal.empresas_com_dados,updated_at:.checks.estado_semanal.updated_at,weeks_loaded:.checks.estado_semanal.weeks_loaded,evento_mais_novo:.checks.evento_mais_novo,painel_fresco:.checks.painel_fresco}'
+          # PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): so informativo aqui
+          # (o gate que reprova o run e o canonical-test.yml, a cada 6h). evento_mais_novo
+          # acima e sobre FATO de credito; painel_fresco e sobre a ROTINA ter escrito -
+          # e o que teria acusado o painel preso em 11:09 BRT por 12h41 em 02/09.
+          pf_fresco=$(echo "$hc" | jq -r '.checks.painel_fresco.fresco | tostring')
+          pf_regra=$(echo "$hc" | jq -r '.checks.painel_fresco.regra // "?"')
+          if [[ "$pf_fresco" == "false" ]]; then
+            echo "::warning::Painel fora do SLA da regra '${pf_regra}' (idade=$(echo "$hc" | jq -r '.checks.painel_fresco.idade_min')min). Gate que reprova esta em canonical-test.yml."
+          fi
 
           body_cost=$(jq -n --arg pw "$admin_pwd" '{action:"admin_custo",admin_senha:$pw}')
           cost=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' \

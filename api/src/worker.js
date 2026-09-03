@@ -9063,6 +9063,27 @@ async function carregarEstadoCompartilhado(env2222, semana) {
     return { week: semana, results: {}, updated_at: null };
   }
 }
+// PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): versao leve de
+// carregarEstadoCompartilhado para o health, que so precisa de `updated_at`.
+// Nao chama normalizarMojibake nem devolve `results` (evita processar os 103
+// registros a cada checagem de saude). Confere a semana corrente e a anterior
+// (mesmo par que carregarEstadoMultiSemana usa para compor `latestUpdate`,
+// L9252), porque a virada de semana ISO pode deixar o blob novo vazio por
+// horas ate a proxima rotina escrever.
+async function _lerUpdatedAtEstado(env2222, agoraBRT) {
+  if (!env2222.RADAR_KV) return null;
+  const semanas = [semanaISO(agoraBRT), semanaISO(new Date(agoraBRT.getTime() - 7 * 864e5))];
+  let maisRecente = null;
+  for (const semana of semanas) {
+    try {
+      const raw = await env2222.RADAR_KV.get(chaveEstadoCompartilhado(semana), "text");
+      if (!raw) continue;
+      const p = JSON.parse(raw);
+      if (p?.updated_at && (!maisRecente || p.updated_at > maisRecente)) maisRecente = p.updated_at;
+    } catch { }
+  }
+  return maisRecente;
+}
 __name(carregarEstadoCompartilhado, "carregarEstadoCompartilhado");
 __name2(carregarEstadoCompartilhado, "carregarEstadoCompartilhado");
 __name22(carregarEstadoCompartilhado, "carregarEstadoCompartilhado");
@@ -11924,6 +11945,47 @@ __name22222(semanaISO, "semanaISO");
 __name222222(semanaISO, "semanaISO");
 __name2222222(semanaISO, "semanaISO");
 __name22222222(semanaISO, "semanaISO");
+// PAINEL_SLA (INCIDENTE-FRESHNESS2, 03/09/2026): duas regras de agenda REAL,
+// nunca numero arbitrario. matinal roda todo dia 10h06 BRT (+jitter, CCD
+// scheduled-tasks), prazo 10:36, exige updated_at >= aquele dia 10:00.
+// noturna roda seg-sex 18h05 BRT (+jitter, retry 21:30, espera de 429 ate
+// 2h - Invoke-VixWebSearchPreflight - mais ate ~2h de execucao, historico
+// 18min a 1h48), prazo 01:30 do dia seguinte, exige updated_at >= dia util
+// anterior 18:00. O floor ativo agora e o do checkpoint mais recente cujo
+// prazo ja passou (a regra mais exigente vence quando as duas valem nesse
+// instante); antes do primeiro prazo do dia, ainda vale o checkpoint de
+// ontem. `_construirDataBRT` opera no MESMO espaco deslocado de
+// obterAgoraBRT (Date rotulado UTC = hora de parede BRT); o floor devolvido
+// e reconvertido para epoch REAL (+3h) para comparar com `updated_at`
+// (gravado por `new Date().toISOString()`, instante real).
+function _construirDataBRT(agoraBRT, deltaDias, hora, minuto) {
+  const base = new Date(Date.UTC(agoraBRT.getUTCFullYear(), agoraBRT.getUTCMonth(), agoraBRT.getUTCDate()));
+  base.setUTCDate(base.getUTCDate() + deltaDias);
+  base.setUTCHours(hora, minuto, 0, 0);
+  return base;
+}
+function _painelSlaAtivo(agoraBRT) {
+  const candidatos = [];
+  for (let voltaDias = 0; voltaDias <= 2; voltaDias++) {
+    const diaBase = _construirDataBRT(agoraBRT, -voltaDias, 0, 0);
+    const dow = diaBase.getUTCDay();
+    const deadlineMatinal = _construirDataBRT(agoraBRT, -voltaDias, 10, 36);
+    if (agoraBRT >= deadlineMatinal) {
+      candidatos.push({ deadline: deadlineMatinal.getTime(), floor: _construirDataBRT(agoraBRT, -voltaDias, 10, 0), regra: "matinal (diaria, prazo 10:36 BRT, exige >= 10:00 do mesmo dia)" });
+    }
+    if (dow >= 1 && dow <= 5) {
+      const deadlineNoturna = _construirDataBRT(agoraBRT, -voltaDias + 1, 1, 30);
+      if (agoraBRT >= deadlineNoturna) {
+        candidatos.push({ deadline: deadlineNoturna.getTime(), floor: _construirDataBRT(agoraBRT, -voltaDias, 18, 0), regra: "noturna (seg-sex, prazo 01:30 BRT do dia seguinte, exige >= 18:00 do dia util anterior)" });
+      }
+    }
+  }
+  if (candidatos.length === 0) return null;
+  candidatos.sort((a, b) => b.deadline - a.deadline);
+  const vencedor = candidatos[0];
+  const floorRealMs = vencedor.floor.getTime() + 3 * 60 * 60 * 1e3;
+  return { floorMs: floorRealMs, regra: vencedor.regra, exigidoDesde: new Date(floorRealMs).toISOString() };
+}
 function extrairJSON(text) {
   if (!text) return null;
   try {
@@ -18223,6 +18285,23 @@ async function executarHealthCheckDiario(env2222) {
     var numEmpresas = estado.results ? Object.keys(estado.results).length : 0;
     _estadoUpdatedAt = estado.updated_at || null;
     resultado.checks.estado_semanal = { empresas_com_dados: numEmpresas, updated_at: estado.updated_at, weeks_loaded: estado.weeks_loaded };
+    // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): mesmo campo exposto no
+    // GET / publico (painel_fresco), aqui tambem para o frescor-check.yml e o
+    // e-mail diario, que ja leem `estado_semanal.updated_at` desta MESMA
+    // chamada - nao gasta leitura de KV extra, so reusa `_estadoUpdatedAt`.
+    try {
+      var _painelSla = _painelSlaAtivo(obterAgoraBRT());
+      var _painelEp = _epochOuNull(_estadoUpdatedAt);
+      resultado.checks.painel_fresco = {
+        atualizado_em: _estadoUpdatedAt,
+        idade_min: _painelEp !== null ? Math.round((Date.now() - _painelEp) / 6e4) : null,
+        fresco: _painelSla ? (_painelEp !== null ? _painelEp >= _painelSla.floorMs : null) : null,
+        regra: _painelSla ? _painelSla.regra : null,
+        exigido_desde: _painelSla ? _painelSla.exigidoDesde : null
+      };
+    } catch (ePainelDiario) {
+      resultado.checks.painel_fresco = "erro";
+    }
     // EVENTOFRESCOR1 (auditoria 2026-08-19): `updated_at` acima diz quando o
     // estado foi ESCRITO, nao quando o dado e de. A rotina escreve todos os
     // dias, entao esse campo fica verde mesmo com o modelo re-narrando o mesmo
@@ -18769,11 +18848,37 @@ async function __coreFetch(request, env2222, ctx) {
         : { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
       var _cvmCobTotal = (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0);
       var _cvmCobPct = _cvmCobTotal > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotal * 1e3) / 10 : null;
+      // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): ate aqui NENHUM campo
+      // do health media a idade do PAINEL (o que o usuario ve na tela). `ok`
+      // mede o servico (HEALTHSPLIT1) e `evento_mais_novo`/`avanco_feed` medem a
+      // FONTE CVM, nao a ultima escrita do estado. Isso deixou o painel travado
+      // em 11:09 BRT por 12h41 em 02/09 com `ok:true` o tempo todo: a noturna
+      // morreu as 18:12 (sessao Desktop interrompida) e o retry das 21:30
+      // abortou por 429 sem alertar, e nada no health acusou. `painel_fresco`
+      // fecha esse ponto cego, com um SLA derivado da AGENDA REAL das rotinas
+      // (nunca last_event_at, que e sobre fato de credito, nao sobre a rotina).
+      // Deliberadamente FORA de `_okHealth`, mesma licao do HEALTHSPLIT1: ok
+      // mede o servico, isto mede pontualidade operacional, canal proprio.
+      var _painelAtualizadoEm = null, _painelIdadeMin = null, _painelFresco = null, _painelRegra = null, _painelExigidoDesde = null;
+      try {
+        var _agoraBRTPainel = obterAgoraBRT();
+        _painelAtualizadoEm = await _lerUpdatedAtEstado(env2222, _agoraBRTPainel);
+        var _painelEpoch = _epochOuNull(_painelAtualizadoEm);
+        if (_painelEpoch !== null) _painelIdadeMin = Math.round((Date.now() - _painelEpoch) / 6e4);
+        var _slaAtivo = _painelSlaAtivo(_agoraBRTPainel);
+        if (_slaAtivo) {
+          _painelRegra = _slaAtivo.regra;
+          _painelExigidoDesde = _slaAtivo.exigidoDesde;
+          _painelFresco = _painelEpoch !== null ? _painelEpoch >= _slaAtivo.floorMs : null;
+        }
+      } catch (ePainel) {
+        console.error("[health] painel_fresco:", ePainel && ePainel.message ? ePainel.message : String(ePainel));
+      }
       const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk && !_cvmDegrada;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0 }, 200, request);
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde }, 200, request);
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
@@ -18783,6 +18888,11 @@ async function __coreFetch(request, env2222, ctx) {
         versao: WORKER_VERSAO,
         cvm_fonte_ok: _cvmFonteOk,
         cvm_fonte: _cvmFrescor,
+        painel_atualizado_em: _painelAtualizadoEm,
+        painel_idade_min: _painelIdadeMin,
+        painel_fresco: _painelFresco,
+        painel_regra: _painelRegra,
+        painel_exigido_desde: _painelExigidoDesde,
         openrouter_saldo_usd: null,
         versao_nota: WORKER_DEPLOY_NOTE,
         openrouter: !!env2222.OPENROUTER_API_KEY,

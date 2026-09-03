@@ -73,6 +73,63 @@ function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
     return Test-EntregaPorLog -Alvo $Alvo -LogDir $LogDir -Prefixo 'vixradar-sentinela' -Rotulo 'Sentinela'
 }
 
+# INCIDENTE-FRESHNESS2 (A4/H, 03/09/2026): FIM:/RUNNER_FIM: e o ledger OK| so contam
+# como entrega dentro da JANELA REAL da rotina do dia (noturno >= 18:00, matinal >=
+# 10:00 BRT). Sem isto, uma linha remanescente de um dry-run de madrugada, ou de uma
+# execucao de recuperacao manual, podia mascarar a falta de entrega da execucao
+# agendada seguinte - o proprio incidente que gerou esta guarda comecou com a
+# noturna de 02/09 morrendo as 18:12 sem nenhum OK| e o retry das 21:30 abortando
+# sem alertar. Compartilhada entre retry-vixradar.ps1 e monitor-tasks.ps1 (mesmo
+# ledger, mesma regra), para os dois julgarem entrega da mesma forma.
+function Test-VixLedgerEntregueNaJanela {
+    # Entregue exige, dentro da janela: ledger OK| com >= MinimoLedger emissores
+    # distintos (sinal AUTORITATIVO, ROTINACEGA2), OU uma linha FIM:/RUNNER_FIM:
+    # cujo PROPRIO texto reporte contagem >= MinimoLedger (FIMREAL, os 4 formatos
+    # historicos: submit_ok=N, Total do dia N/D, N processados, processados=N).
+    # Uma linha FIM: SEM contagem parseavel NAO basta sozinha - "RUNNER_FIM:"
+    # (INCIDENTE-FRESHNESS2) existe justamente para marcar "exit 0, mas isso nao
+    # prova entrega", entao tratar a mera presenca de FIM: como prova contradiria
+    # a razao de o rotulo ter sido criado.
+    param(
+        [Parameter(Mandatory)][string]$Conteudo,
+        [Parameter(Mandatory)][datetime]$DataLog,
+        [Parameter(Mandatory)][int]$JanelaHora,
+        [int]$MinimoLedger = 90
+    )
+    $limite = Get-Date -Year $DataLog.Year -Month $DataLog.Month -Day $DataLog.Day -Hour $JanelaHora -Minute 0 -Second 0
+    $vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $fimComContagemSuficiente = $false
+    $linhaRegex = [regex]'^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) (.*)$'
+    foreach ($linhaRaw in ($Conteudo -split "`r?`n")) {
+        $lm = $linhaRegex.Match($linhaRaw)
+        if (-not $lm.Success) { continue }
+        # TryParseExact, nao TryParse: no PowerShell 5.1 o overload generico de 2
+        # argumentos falha com "Cannot find an overload" (ambiguidade contra o
+        # overload de ReadOnlySpan<Char>, que o binder do PS 5.1 nao resolve).
+        $ts = [datetime]::MinValue
+        if (-not [datetime]::TryParseExact($lm.Groups[1].Value + ' ' + $lm.Groups[2].Value, 'yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$ts)) { continue }
+        if ($ts -lt $limite) { continue }
+        $resto = $lm.Groups[3].Value
+        $okM = [regex]::Match($resto, '^OK\|([^|]+)\|')
+        if ($okM.Success) { [void]$vistos.Add($okM.Groups[1].Value.Trim()); continue }
+        if ($resto -match '(?<!SHADOW_)(?:RUNNER_)?FIM:') {
+            $n = -1
+            if ($resto -match 'submit_ok=(\d+)') { $n = [int]$Matches[1] }
+            elseif ($resto -match 'Total do dia (\d+)/\d+') { $n = [int]$Matches[1] }
+            elseif ($resto -match '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') { $n = [int]$Matches[1] }
+            elseif ($resto -match 'processados=(\d+)') { $n = [int]$Matches[1] }
+            if ($n -ge $MinimoLedger) { $fimComContagemSuficiente = $true }
+        }
+    }
+    $entregue = ($vistos.Count -ge $MinimoLedger) -or $fimComContagemSuficiente
+    return [PSCustomObject]@{
+        Entregue                 = $entregue
+        LedgerNaJanela            = $vistos.Count
+        FimComContagemSuficiente = $fimComContagemSuficiente
+        LimiteUsado               = $limite
+    }
+}
+
 # MONITOR-PROJETOMISTO1 (2026-09-02): o e-mail "VIX Radar - N task(s) com falha" carregava
 # tasks de outros projetos (01/09: AgendaAgent e FechamentoDiario, nenhum do VIX). Escopo
 # decide os prefixos; o retry do VIX tem prefixo Szuchmacher- e por isso e listado a parte.

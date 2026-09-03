@@ -69,6 +69,15 @@ jobs:
           CVM_FONTE_OK=$(echo "$BODY" | jq -r '.cvm_fonte_ok | tostring')
           CVM_FONTE_IDADE=$(echo "$BODY" | jq -r '.cvm_fonte_idade_du | tostring')
           CVM_FONTE_MOTIVO=$(echo "$BODY" | jq -r '.cvm_fonte_motivo | tostring')
+          # PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): idade do ESTADO
+          # (o que a tela mostra), nao da fonte CVM. tostring pelo mesmo motivo
+          # de CVM_FONTE_OK acima: "false" = conferido e stale, "null" = sem
+          # dado para conferir (nao e o mesmo caso, so "false" reprova o gate).
+          PAINEL_FRESCO=$(echo "$BODY" | jq -r '.painel_fresco | tostring')
+          PAINEL_IDADE_MIN=$(echo "$BODY" | jq -r '.painel_idade_min | tostring')
+          PAINEL_REGRA=$(echo "$BODY" | jq -r '.painel_regra // "?"')
+          PAINEL_ATUALIZADO_EM=$(echo "$BODY" | jq -r '.painel_atualizado_em // "?"')
+          PAINEL_EXIGIDO_DESDE=$(echo "$BODY" | jq -r '.painel_exigido_desde // "?"')
 
           echo "http=$HTTP" >> $GITHUB_OUTPUT
           echo "time=$TIME" >> $GITHUB_OUTPUT
@@ -84,6 +93,11 @@ jobs:
           echo "cvm_fonte_ok=$CVM_FONTE_OK" >> $GITHUB_OUTPUT
           echo "cvm_fonte_idade=$CVM_FONTE_IDADE" >> $GITHUB_OUTPUT
           echo "cvm_fonte_motivo=$CVM_FONTE_MOTIVO" >> $GITHUB_OUTPUT
+          echo "painel_fresco=$PAINEL_FRESCO" >> $GITHUB_OUTPUT
+          echo "painel_idade_min=$PAINEL_IDADE_MIN" >> $GITHUB_OUTPUT
+          echo "painel_regra=$PAINEL_REGRA" >> $GITHUB_OUTPUT
+          echo "painel_atualizado_em=$PAINEL_ATUALIZADO_EM" >> $GITHUB_OUTPUT
+          echo "painel_exigido_desde=$PAINEL_EXIGIDO_DESDE" >> $GITHUB_OUTPUT
 
           echo "### Resultado"
           echo "HTTP: $HTTP (${TIME}s)"
@@ -93,6 +107,7 @@ jobs:
           echo "fatores: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK"
           echo "fonte CVM: ok=$CVM_FONTE_OK idade_du=$CVM_FONTE_IDADE motivo=$CVM_FONTE_MOTIVO"
           echo "fatores de ok: admin_email_ok=$ADMIN_EMAIL_OK sentry_ok=$SENTRY_OK verificador_ok=$VERIFICADOR_OK"
+          echo "painel (o que a tela mostra): fresco=$PAINEL_FRESCO idade_min=$PAINEL_IDADE_MIN regra=$PAINEL_REGRA atualizado_em=$PAINEL_ATUALIZADO_EM exigido_desde=$PAINEL_EXIGIDO_DESDE"
 
       - name: Validate health
         run: |
@@ -108,6 +123,10 @@ jobs:
           CVM_FONTE_OK="${{ steps.test.outputs.cvm_fonte_ok }}"
           CVM_FONTE_IDADE="${{ steps.test.outputs.cvm_fonte_idade }}"
           CVM_FONTE_MOTIVO="${{ steps.test.outputs.cvm_fonte_motivo }}"
+          PAINEL_FRESCO="${{ steps.test.outputs.painel_fresco }}"
+          PAINEL_IDADE_MIN="${{ steps.test.outputs.painel_idade_min }}"
+          PAINEL_REGRA="${{ steps.test.outputs.painel_regra }}"
+          PAINEL_EXIGIDO_DESDE="${{ steps.test.outputs.painel_exigido_desde }}"
 
           # Fonte de verdade do repo: api/wrangler.toml (main = "vX.Y.Z.js").
           # Deriva a versão esperada em vez de hardcode — o guard passa a comparar
@@ -145,6 +164,20 @@ jobs:
           fi
           if [ "$CVM_FONTE_OK" = "null" ]; then
             echo "::error::Campo cvm_fonte_ok sumiu do health. O gate de frescor da fonte CVM foi removido ou o deploy regrediu para antes do v4.9.201."
+            FAIL=1
+          fi
+
+          # PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): reprova quando o
+          # ESTADO (o que a tela mostra) esta fora do SLA da propria agenda das
+          # rotinas - nao confundir com CVM_FONTE_OK acima (frescor da FONTE,
+          # nao do painel). Este e o gate que teria pego o incidente de 02/09
+          # (painel preso em 11:09 BRT por 12h41 com ok:true o tempo todo): so
+          # nao reprova quando "null" (sem dado nenhum para conferir, diferente
+          # de "conferido e stale"). O alerta da MESMA noite continua sendo o
+          # do retry local (Send-VixRoutineAlert em run_claude_routine.ps1); este
+          # gate e o primeiro sinal do lado servidor, ate 6h depois do prazo.
+          if [ "$PAINEL_FRESCO" = "false" ]; then
+            echo "::error::Painel desatualizado: idade=${PAINEL_IDADE_MIN}min, exigido pela regra '${PAINEL_REGRA}' desde ${PAINEL_EXIGIDO_DESDE}. A rotina que deveria ter escrito nao entregou (confira logs/routines/vixradar-noturno_*.log e retry-vixradar-noturno_*.log) - nao e frescor de fonte externa (isso e cvm_fonte_ok, canal separado)."
             FAIL=1
           fi
 

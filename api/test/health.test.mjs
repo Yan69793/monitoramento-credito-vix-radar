@@ -1,5 +1,18 @@
 import { SELF, env } from "cloudflare:test";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+function semanaISO(d) {
+  const data = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dia = data.getUTCDay() || 7;
+  data.setUTCDate(data.getUTCDate() + 4 - dia);
+  const pj = new Date(Date.UTC(data.getUTCFullYear(), 0, 1));
+  return `${data.getUTCFullYear()}-W${String(Math.ceil(((data - pj) / 864e5 + 1) / 7)).padStart(2, "0")}`;
+}
+function agoraBRT() { return new Date(Date.now() - 3 * 60 * 60 * 1e3); }
+function chaveEstadoParaInstante(isoRealUtc) {
+  const semanaAtual = semanaISO(new Date(new Date(isoRealUtc).getTime() - 3 * 60 * 60 * 1e3));
+  return `radar:estado:${semanaAtual}`;
+}
 
 // Automatiza o portao de verificacao que o CLAUDE.md do projeto pede para
 // colar na mao apos deploy: GET / com ok:true, kv:true, telemetria:true.
@@ -43,5 +56,86 @@ describe("GET / (health check)", () => {
     expect(body.fonte_externa_ok).toBe(true);
     expect(body.cvm_fonte_ok).toBe(true);
     expect(body.cvm_fonte_cadencia).toBe("semanal");
+    // PAINELFRESCOR1: sem nenhum radar:estado: semeado neste teste, os campos
+    // ficam null (indeterminado), nunca false - false significa "conferido e
+    // stale", null significa "sem dado para conferir". ok continua true: isto
+    // e canal proprio, fora de _okHealth (HEALTHSPLIT1).
+    expect(body.painel_atualizado_em).toBeNull();
+    expect(body.painel_idade_min).toBeNull();
+    expect(body.painel_fresco).toBeNull();
+  });
+});
+
+// PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): o painel travou em
+// 11:09 BRT por 12h41 em 02/09 com ok:true o tempo todo, porque nenhum campo
+// do health media a idade do ESTADO (o que a tela mostra). Estes testes
+// travam o relogio (mesma tecnica de _relogio-fixo.mjs) e semeiam
+// radar:estado:{semana} com um updated_at controlado, provando o SLA nas
+// duas regras (matinal diaria, noturna seg-sex) com as duas pontas de cada.
+describe("GET / painel_fresco (SLA de agenda real)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function medirComRelogioEEstado(isoAgoraReal, isoUpdatedAt) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(isoAgoraReal));
+    // Isolamento explicito: o KV do pool de teste PERSISTE entre os it() do
+    // mesmo arquivo, e varios instantes deste bloco caem na MESMA semana ISO
+    // (03/09 quinta, 05/09 sabado e 06/09 domingo sao todos da semana de
+    // 31/08 a 06/09). Sem apagar antes, o valor semeado por um teste vazava
+    // para o seguinte - foi o que fez o caso "sem nenhum estado semeado" ler
+    // 2026-09-05T13:20:00Z na primeira execucao desta suite. Apaga as DUAS
+    // chaves que _lerUpdatedAtEstado consulta (semana corrente e anterior).
+    const chaveAtual = chaveEstadoParaInstante(isoAgoraReal);
+    const chaveAnterior = chaveEstadoParaInstante(new Date(new Date(isoAgoraReal).getTime() - 7 * 864e5).toISOString());
+    await env.RADAR_KV.delete(chaveAtual);
+    await env.RADAR_KV.delete(chaveAnterior);
+    if (isoUpdatedAt) {
+      await env.RADAR_KV.put(chaveAtual, JSON.stringify({ week: chaveAtual.replace("radar:estado:", ""), updated_at: isoUpdatedAt, results: {} }));
+    }
+    const res = await SELF.fetch("https://example.com/");
+    return res.json();
+  }
+
+  // 2026-09-03 e quinta (dia util). 04/09 sexta, 05/09 sabado, 06/09 domingo, 07/09 segunda.
+  it("dia util 01:40 BRT, updated_at de ontem 19:00 -> fresco true (regra noturna)", async () => {
+    const body = await medirComRelogioEEstado("2026-09-03T04:40:00Z", "2026-09-02T22:00:00.000Z");
+    expect(body.painel_regra).toMatch(/noturna/);
+    expect(body.painel_exigido_desde).toBe("2026-09-02T21:00:00.000Z");
+    expect(body.painel_fresco).toBe(true);
+    expect(body.painel_idade_min).toBeGreaterThan(0);
+    expect(body.ok).toBe(true);
+  });
+
+  it("mesmo instante, updated_at de ontem 11:09 -> fresco false (reproduz o incidente de 02/09)", async () => {
+    const body = await medirComRelogioEEstado("2026-09-03T04:40:00Z", "2026-09-02T14:09:28.138Z");
+    expect(body.painel_fresco).toBe(false);
+    // ok segue true: painel_fresco e canal proprio (HEALTHSPLIT1), nao derruba o portao.
+    expect(body.ok).toBe(true);
+  });
+
+  it("sabado 12:00 BRT, updated_at do mesmo sabado 10:20 -> fresco true (regra matinal)", async () => {
+    const body = await medirComRelogioEEstado("2026-09-05T15:00:00Z", "2026-09-05T13:20:00.000Z");
+    expect(body.painel_regra).toMatch(/matinal/);
+    expect(body.painel_fresco).toBe(true);
+  });
+
+  it("domingo 09:00 BRT, updated_at de SABADO 10:20 -> fresco true (regra noturna nao vale fim de semana)", async () => {
+    const body = await medirComRelogioEEstado("2026-09-06T12:00:00Z", "2026-09-05T13:20:00.000Z");
+    expect(body.painel_fresco).toBe(true);
+  });
+
+  it("segunda 10:50 BRT, updated_at de DOMINGO 10:20 -> fresco false (matinal de hoje ja venceu)", async () => {
+    const body = await medirComRelogioEEstado("2026-09-07T13:50:00Z", "2026-09-06T13:20:00.000Z");
+    expect(body.painel_fresco).toBe(false);
+  });
+
+  it("sem nenhum estado semeado -> campos null, nunca false", async () => {
+    const body = await medirComRelogioEEstado("2026-09-03T04:40:00Z", null);
+    expect(body.painel_atualizado_em).toBeNull();
+    expect(body.painel_idade_min).toBeNull();
+    expect(body.painel_fresco).toBeNull();
+    expect(body.ok).toBe(true);
   });
 });
