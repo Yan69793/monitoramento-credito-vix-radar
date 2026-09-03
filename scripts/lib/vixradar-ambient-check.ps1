@@ -103,7 +103,13 @@ function Get-VixWsProbeClassificacao {
     } catch { }
     if (-not $resultTexto) { $resultTexto = $textoCompleto }
 
-    $is429 = ($textoCompleto -match '"api_error_status"\s*:\s*429' -or $textoCompleto -match '(?<![0-9])429(?![0-9])')
+    # 429 so conta quando vem como STATUS, nao como numero solto no texto: o
+    # payload do CLI carrega contadores (duration_ms, tokens) que podem conter
+    # "429" por acaso e rotulariam um erro desconhecido como rate limit.
+    $is429 = ($textoCompleto -match '"api_error_status"\s*:\s*429' `
+        -or $textoCompleto -match '(?i)\b(status|code|http)\D{0,3}429\b' `
+        -or $textoCompleto -match '(?i)429\s*(too many requests|rate.?limit)' `
+        -or $textoCompleto -match '(?i)rate.?limit')
     $ehLimiteAssinatura = ($resultTexto -match '(?i)hit your (session|usage|weekly) limit')
 
     $iAgudo = [char]0x00ED

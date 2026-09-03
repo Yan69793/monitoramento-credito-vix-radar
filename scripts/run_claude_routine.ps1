@@ -300,6 +300,21 @@ $header = "Execute AGORA a rotina $RoutineId. Sem pedir confirmacao.`n`n"
 $footer = "`n`nRegras: Lei Zero; nao gravar artefatos em testing/; resuma resultado ao final."
 $fullPrompt = $header + $prompt + $footer
 
+# INCIDENTE-FRESHNESS2 (A3, endurecido depois do gate adversarial de 03/09): a
+# guarda de margem la em cima roda ANTES do pre-flight e por isso mede ~0 min,
+# era decorativa. A que vale e esta, DEPOIS do pre-flight: se houve espera de
+# 429 (ate 120 min), o tempo ja gasto entra na conta. Com ~2h de execucao
+# tipica da noturna, passar de 220 min aqui significa estourar o PT4H da task
+# no meio de um lote, sem linha de fecho. Melhor nao comecar.
+$decorridoAgoraMin = ((Get-Date) - $TaskInicio).TotalMinutes
+if ($decorridoAgoraMin -gt $MargemTaskMin) {
+    Write-Log ('ERRO PRE-FLIGHT: apos o pre-flight ja se passaram ' + [Math]::Round($decorridoAgoraMin, 1) + ' min (teto ' + $MargemTaskMin + '). Abortando antes do primeiro lote para nao ser morto no meio pelo PT4H da task.')
+    if ($routineKeyAlerta -and $temClaudeAuth -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
+        $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: ' + [Math]::Round($decorridoAgoraMin, 1) + ' min gastos antes do primeiro lote (espera de 429 + sondas), sem margem para o PT4H da task') -RoutineKey $routineKeyAlerta
+    }
+    exit 8
+}
+
 Write-Log ('INICIO: ' + $RoutineId)
 
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {

@@ -11,6 +11,53 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 03/09 — P1 RESOLVIDO NO CÓDIGO, DEPLOY PENDENTE (INCIDENTE-FRESHNESS2, v4.9.236): painel parado 12h41 com `ok:true`
+
+> **Status:** fechado no código e nos testes, com 3 resíduos declarados abaixo. Deploy do Worker v4.9.236 ainda NÃO confirmado em produção (portão de verificação medido às 13:57Z de 03/09 respondeu `versao:"v4.9.235"`, sem os campos `painel_*`) · **Data da Versão:** 2026-09-03 · **Origem do Registro:** evidência visual do operador (02/09 ~23:50 BRT, aba anônima: "Painel atualizado em 02 de setembro de 2026 às 11:09 BRT" com o relógio da própria tela em 23:50) · **Condição de Obsolescência:** cai quando o portão de verificação confirmar `versao:"v4.9.236"` em produção, e cai de novo quando a agenda das rotinas mudar (o SLA de `painel_fresco` é derivado dela).
+
+**O carimbo estava certo, o pipeline é que parou.** `updated_at` do estado semanal ficou em `2026-09-02T14:09:28.138Z` (11:09 BRT), gravado pela verificação assíncrona das 11h (`confirmar_verificacao`, `mesclarEventoVerificadoInterno`). Medido no Observability: 49 POSTs ao `estado-semana.internal` entre 12:30Z e 14:09:31Z, e **zero** de 14:09:31Z até 03:25Z do dia seguinte. Nada escreveu depois. Não era cache (sem `[cache]` no wrangler, sem Cache API em `op=state`, sem `cf-cache-status` na resposta), não era KV stale (doc: propagação de até ~60s, não 12h), não era frontend (HTML de produção byte-idêntico ao repo, `fetch` com `cache:"no-store"`).
+
+**Três elos, todos medidos.** (1) A noturna das 18h05 (sessão agendada do Desktop) montou os 21 lotes e foi interrompida às 18:12:14 (`[Request interrupted by user]` no transcript `83e188b1`), antes de qualquer submit; run que executou e morreu não conta como "missed run", então o Desktop não recupera. (2) O retry das 21:30 abortou no pré-flight com o rótulo genérico "WebSearch indisponivel" — a causa real está preservada em `%TEMP%\wsprobe_err_3956.txt`: `api_error_status:429`, `"You've hit your session limit · resets 10:40pm"`, ou seja 70 min antes do reset. Não esperou, não retentou, não alertou. (3) Mesmo sem o 429 não teria entregue: o runner passava `--tools WebSearch,WebFetch`, que é ALLOWLIST no CLI e tirava PowerShell, Bash, Read, Write e Agent da skill (mesmo defeito do AGENDASEM-CAUSA1, que o próprio arquivo já documentava para a agenda semanal). Prova de comportamento: relançamento da matinal em 19/08 saiu exit 0 em 1m54s sem nenhum submit.
+
+**Quarto elo, de observabilidade.** Nenhuma camada media a idade do painel: `ok` mede o serviço (HEALTHSPLIT1), `evento_mais_novo`/`avanco_feed` medem a FONTE CVM, e o heartbeat `varredura_local` do watchdog tolera 26h e tinha sido renovado pela matinal daquela manhã. Por isso 12h41 de painel parado conviveram com `ok:true`.
+
+**Correções (commit `43f99f6`; Worker v4.9.236 preparado, ver estado do deploy em `status/ESTADO.md`).** Política de 429 decidida pelo operador: assinatura primeiro, espera pelo reset real até 120 min, chave paga só como contingência com `ALERTA_AUTH` + e-mail antes, nunca para falha que não seja limite da própria assinatura, e nunca persistida em escopo User. A sonda passou a classificar (`session_limit` / `rate_limit_transitorio` / `websearch_indisponivel` / `erro_desconhecido`) e a extrair o horário de reset do texto real do erro. A linha headless virou `--tools default` + `--permission-mode dontAsk` + `--allowedTools` explícito, com `CLAUDE_CODE_USE_POWERSHELL_TOOL=1` e uma sonda nova (`Test-VixHeadlessTools`) que roda o CLI de verdade e exige shell, leitura, escrita, subagente e busca antes de deixar a rotina começar. Entrega passou a ser julgada pelo ledger `OK|` dentro da janela da rotina, nunca pelo exit code, e o relançamento é reconferido depois de rodar (não entregou, alerta). No Worker, `painel_atualizado_em`/`painel_idade_min`/`painel_fresco`/`painel_regra`/`painel_exigido_desde` no `GET /` e em `checks.painel_fresco`, com SLA derivado da agenda real, fora do `ok` agregado; `canonical-test.yml` reprova o run quando `painel_fresco=false`.
+
+**Prova de duas pontas com o CLI real (03/09):** a linha nova passa a sonda headless (shell, leitura, escrita, subagente e busca confirmados, zero `permission_denials`); a linha antiga reprova por falta de `PowerShell/Bash, Read, Write, Edit, Agent(Task)`. Testes: 241 vitest em 26 arquivos (+8 casos de `painel_fresco`, incluindo o instante exato do incidente e os dois cenários de feriado B3 do FERIADOB3-PAINEL1 abaixo) e 95 asserts em 4 suítes PowerShell.
+
+**FERIADOB3-PAINEL1, achado do gate adversarial antes do deploy.** A primeira versão de `_painelSlaAtivo` não sabia distinguir feriado B3 de dia útil: a matinal pula feriado por instrução da própria skill, a noturna não pula, e sem essa distinção o `canonical-test` reprovaria com falso positivo já na segunda 07/09/2026 (Independência), data real e próxima. Corrigido com `_ehFeriadoB3` reusando os sets `FERIADOS_B3_2026/2027` que já existiam no arquivo, e a janela de busca de checkpoint foi ampliada de 2 para 3 dias (cobre até 3 feriados seguidos sem ficar sem checkpoint). Efeito colateral achado ao rodar a suíte: um teste PRÉ-EXISTENTE (não escrito nesta entrega) usava 2026-09-07 10:50 BRT presumindo dia útil comum — coincidia com o próprio feriado que a correção passou a tratar, e a suíte quebrou (`expected true to be false`) até a data do teste antigo ser trocada para 2026-09-14 (mesmo padrão de horário, segunda-feira sem feriado no calendário até 12/10). O código não mudou nessa correção, só a data do cenário de teste.
+
+### Resíduos declarados (não fechados nesta sessão)
+
+1. **P2 — O laço de retry da invocação PRINCIPAL não é 429-aware.** A correção cobre o PRÉ-FLIGHT. O laço que roda a skill de verdade (`run_claude_routine.ps1`, `$retryDelays = @(0,30,60)`) só faz backoff curto e desiste. Medido na própria recuperação de 03/09 01:44: 3 tentativas em 2 min, todas com `You've hit your session limit · resets 3:50am`, e `ERRO: claude exit 1`. O reset era 2h05 depois, além do teto de 120 min de qualquer forma, mas o log deveria dizer "429 de limite de sessão, reset HH:MM" em vez de "esgotadas 3 tentativas", e deveria alertar.
+2. **P2 — Virada de meia-noite no ledger (achado do COO).** A SKILL calcula `yyyyMMdd` em tempo de execução a cada bloco PowerShell, enquanto o wrapper fixa `$DateTag` no início. Execução que atravessa 00:00 grava parte do ledger no arquivo do dia seguinte. A guarda de janela nova (`Test-VixLedgerEntregueNaJanela`) protege o julgamento dentro de um arquivo, mas não resolve o ledger partido entre dois arquivos. Corrigir exige tocar a SKILL.md (fora do repo, no CCD store).
+3. **P3 — `monitor-tasks.ps1` ainda não usa `Test-VixLedgerEntregueNaJanela`.** A função já está na lib compartilhada e o retry já a usa; o monitor continua com o parser antigo, então os dois julgam entrega por réguas ligeiramente diferentes.
+4. **P3 — O bootstrap do health no frontend apaga o prefixo do carimbo.** Achado ao validar a tela em 03/09: `app/index.html` (trecho CVMCADENCIA1) sobrescreve `#dash-data` com `_vixCarimboDeDados(...)`, que **não** tem o "Painel atualizado em ...". Dependendo da ordem em que as chamadas assíncronas terminam, o usuário vê só "Evento mais recente ... · Janela: 30 dias". Pré-existente, não tocado nesta entrega (exigiria deploy de Pages). O valor em si está correto: `_vixCarimboDoPainel(new Date())` devolve o carimbo completo e fresco.
+5. **P3 — `ultimoEstadoCompartilhado = a?.updated_at || (new Date).toISOString()`** (`app/index.html:3745`) continua transformando ausência de dado em "frescor máximo" na tela. Não foi a causa deste incidente (a API respondeu o valor real), mas é o mesmo modo de falha do CARIMBOFAKE1 esperando para acontecer. Trocar por manter só o carimbo de dados exige deploy de Pages.
+6. **P2 — Cegueira de janela do próprio SLA.** `painel_fresco` só vira `false` a partir do prazo do checkpoint: no incidente de 02/09 a tela travou às 18:12 e o campo só acusaria a partir de 01:30 do dia seguinte, cerca de 7h20 depois. Quem cobre a mesma noite é o alerta do retry (local); o health é a segunda linha, não a primeira.
+
+---
+
+## 01/09 (noite) — AUDITORIA DE ROTINAS E SOBREPOSIÇÕES (ROTINAS-SOBREPOSICAO1), decisão do operador pendente
+
+> **Status:** ABERTO, aguardando estratégia do operador. Nenhum agendamento alterado nesta sessão.
+> **Data da Versão:** 2026-09-01
+> **Origem do Registro:** pedido do operador (auditoria e monitoramento, uma a uma, de tudo que está cadastrado no Claude Desktop e no Task Scheduler, atrás de sobreposição e dos erros de todo dia). Medição ao vivo: `Get-ScheduledTask` (26 tasks), `list_scheduled_tasks`, `RemoteTrigger list/list_runs/get_run_log`, `wrangler.toml` `[triggers]`, handler `scheduled` do Worker, `gh run list` desde 25/08, logs de 24/08 a 01/09, e-mails de alerta de 8 dias, `wrangler whoami`, variáveis de ambiente por escopo.
+> **Condição de Obsolescência:** cai quando os itens abaixo forem decididos ou quando a nota 99 for superada por inventário novo.
+
+Nota completa, com inventário, linha do tempo, prova crua e recomendação: `99 - Auditoria de Rotinas e Sobreposicoes 2026-09-01.md`. Itens que entram na fila:
+
+1. **WATCHDOG-AGENTEMORTO1, P2.** O e-mail `[VixRadar] Health ALERTA` das 22h veio vermelho em 8 de 8 dias (24 a 31/08) pelo mesmo motivo, `cascade_analise (nunca_bateu)`. Causa: o heartbeat só é batido em `api/src/worker.js:19400`, dentro da cascata do Worker, que não roda desde `VARREDURA_CRON_AI_ENABLED=false`, e o agente continua em `expectedAgents` (`worker.js:19471`). `watchdog:ultimo` no KV confirma `stale_agents=[{cascade_analise, nunca_bateu}]`. Correção: tirar da lista ou bater o heartbeat em `receber_analise`. Guarda: teste que reprova agente em `expectedAgents` sem call site de `baterHeartbeat` no caminho vivo.
+2. **MONITOR-PROJETOMISTO1, P3.** `Monitor-Tasks` (07h) varre 27 tasks da máquina e manda `VIX Radar - N task(s) com falha` mesmo quando nenhuma é do VIX (01/09: `Szuchmacher-AgendaAgent` e `Szuchmacher-FechamentoDiario`), e repete `LastTaskResult` congelado por dias (27 a 30/08, `VIXRadar-AgendaSemanal 0x40010004` de um único reboot). Correção: assunto por projeto e não reportar task cuja entrega já é julgada por log.
+3. **COBERTURA-DESENHO1, P2, decisão de orçamento.** Noturna analisou 33/103 em 01/09 (`deferidos=69` com `198351/700000`), 72 em 31/08, 76 em 30/08, 54 em 27/08, 43 em 26 e 29/08. A regra de reserva (`SKILL.md` L201-212) está certa para o desenho, o desenho não cabe: 103 emissores a 130k por lote pedem ~1,7M contra cap de 700k. Ao mesmo tempo 12 emissores foram analisados 2x em 01/09 (matinal 18h13 + aprofundada 10h49) e 31 ficaram deferidos em 31/08 e 01/09 (todos cobertos pela sentinela ou pela noturna entre 29/08 e 01/09, rodízio de 2 a 3 dias). Opções na nota 99, seção 6, item 3.
+4. **VERIF-CINCOMAOS1, P3.** Quatro drenos agendados (local 11h03, remoto 14h08, local 18h47, remoto 02h07) mais o dreno inline da noturna e da matinal para uma fila que a remota das 14h achou `total:0` em 28, 29, 31/08 e 01/09. Em 01/09 18h51 a das 18h45 encontrou `9/9 itens ja_reservados por claimante 'local-manual-forcado'`, string que não existe em script, SKILL.md ou rotina cadastrada, e saiu com `submit_ok=0`. Correção: reduzir a 2 ou 3 drenos, claimante padrão obrigatório.
+5. **TOKEN-AUSENTE1, P2.** `CLOUDFLARE_API_TOKEN` medido em 01/09 19h3x: `User_len=0 Machine_len=0 Process_len=0`. `npx wrangler whoami` responde OAuth Token (szuchmacheryan@gmail.com, `workers_kv (write)`, `pages (write)`). Deploy, export e reconciliação vivem de login humano no navegador. Os 25 `Failed to fetch` diários do export são `404` de `mercado:serie:*` inexistentes (reproduzido), não credencial. Em 31/08 foram 32 e o `kv put` da reconciliação falhou, consistente com janela sem credencial válida. Outra sessão está editando `api/tools/unificar-cf-token.ps1` no mesmo momento. Correção: instalar o token unificado no escopo User pelo caminho `Read-Host -AsSecureString`, nunca pelo chat.
+6. **FRESCOR-DUPLO1, P4.** Rotina remota "frescor diário" (23h08) dispara `frescor-check.yml` e `canonical-test.yml` que já rodam por cron. Medido em `gh run list`: frescor 2x/dia, canonical 5x/dia.
+7. **EXPORT-404-RUIDO1, P4.** `run_vixradar_export_historico.ps1` loga 25 erros por dia para chave ausente e rotula `credencial recusada (401/403)` sem ler o status. Tratar 404 como "sem série".
+8. **Reforço CCDOFFLINE1, P1.** Segue aberto. Foi o que apagou 28/08 e o que fez o catch-up de 29/08 14h52 disparar noturna, matinal e verificação ao mesmo tempo (3 pulos por `global_limit` no `recordedSkips`). Um toggle do Windows.
+
+---
+
 ## 01/09 (tarde) — FECHAMENTO DOS 5 RESÍDUOS DA SESSÃO (PREVERIFSEC1 deploy v4.9.232)
 
 > Resumo da sessão de fechamento. Um deploy (`v4.9.232`), suíte 23 arquivos/196 testes, commits `46f809c`/`d25d6c5`/`66b8b74`, portão `ok:true versao:v4.9.232 kv:true telemetria:true sentry_ok:true`. Nenhum dos 5 itens abaixo ficou aberto. Os itens 2, 3 e 4 atualizam as entradas da sessão AVANCOFEED1 (madrugada) abaixo.
@@ -341,9 +388,9 @@ segunda 31/08 08h00. Nota: o ZIP 2026 **voltou ao ar** pela CVM em 25/08 (medido
 
 ---
 
-## 30/08 (madrugada) — P2, ABERTO (SEXTA-SEM-ROTINA1, observação fora do plano): sexta 28/08 sem log da matinal nem da noturna
+## 30/08 (madrugada) — P2, RESOLVIDO (SEXTA-SEM-ROTINA1, observação fora do plano): sexta 28/08 sem log da matinal nem da noturna
 
-> **Status:** ABERTO, observação. Causa ainda não determinada.
+> **Status:** RESOLVIDO em 30/08 (noite). Causa determinada = CCDOFFLINE1 (entrada própria mais acima nesta data).
 > **Data da Versão:** 2026-08-30
 > **Origem do Registro:** `ls logs/routines/vixradar-{matinal,noturno}_*.log` + saída real do `monitor-tasks.ps1`
 > **Condição de Obsolescência:** cai quando a causa da ausência de 28/08 for determinada e houver guarda de cobertura diária
@@ -357,6 +404,15 @@ já estava documentado no REPOSIC1 (causa 3 do feed preso); aqui o dado novo é 
 **Ação proposta.** Apurar nas sessões agendadas do Claude Desktop (`scheduled-tasks.json` + `main.log` do app) por que o
 disparo de sexta não aconteceu, e considerar se a régua do monitor para a noturna precisa de um alvo fixo "dia útil anterior"
 mesmo para rotina diária (para o buraco não sumir quando a rotina corre atrasada no dia seguinte).
+
+**RESOLUÇÃO (30/08 noite, CCDOFFLINE1).** A causa foi determinada por medição e vive na entrada CCDOFFLINE1 desta data:
+Windows Update reiniciou a máquina às 28/08 03:01-03:04 (KB5120998 + KB5122385), o Claude Desktop (MSIX) não reabre
+sozinho depois de reboot, e o CCD só avalia cron com o app de pé. Resultado: noturno (10h), matinal (18h) e verificação
+ficaram ~36h sem agendamento sequer avaliado. As duas metades da condição de obsolescência fecham assim: "causa
+determinada" fechou; "guarda de cobertura diária" já existe para o caso "dia útil sem log" (retry-vixradar.ps1 +
+`requerApenasLog` do monitor-tasks.ps1, que sinalizou a matinal 9001), e a guarda que falta é a do "app de pé", proposta
+na própria CCDOFFLINE1 (watchdog `Get-Process -Name Claude`), pendente de autorização do operador. O disparo de 29/08
+no sábado à tarde foi catch-up de recuperação, não agendamento normal (ver CCDOFFLINE1).
 
 ---
 

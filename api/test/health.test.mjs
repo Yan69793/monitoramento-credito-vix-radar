@@ -127,7 +127,29 @@ describe("GET / painel_fresco (SLA de agenda real)", () => {
   });
 
   it("segunda 10:50 BRT, updated_at de DOMINGO 10:20 -> fresco false (matinal de hoje ja venceu)", async () => {
-    const body = await medirComRelogioEEstado("2026-09-07T13:50:00Z", "2026-09-06T13:20:00.000Z");
+    // 2026-09-14 (nao 09-07): 07/09 e feriado B3 (Independencia), caso ja
+    // coberto pelos dois testes FERIADOB3-PAINEL1 abaixo. Esta segunda-feira
+    // precisa ser dia util comum para nao colidir com o cenario de feriado.
+    const body = await medirComRelogioEEstado("2026-09-14T13:50:00Z", "2026-09-13T13:20:00.000Z");
+    expect(body.painel_fresco).toBe(false);
+  });
+
+  // FERIADOB3-PAINEL1: a matinal pula feriado B3 por instrucao da skill, a
+  // noturna nao pula. Sem esta distincao o gate do canonical-test reprovaria a
+  // CI em 07/09/2026 (segunda, Independencia), com a matinal legitimamente sem
+  // escrever. Duas pontas: no feriado o checkpoint da matinal nao vale; no dia
+  // util seguinte ele volta a valer.
+  it("feriado B3 (segunda 07/09) 15:00 BRT, updated_at de domingo 10:20 -> fresco true (matinal nao roda em feriado)", async () => {
+    const body = await medirComRelogioEEstado("2026-09-07T18:00:00Z", "2026-09-06T13:20:00.000Z");
+    expect(body.painel_fresco).toBe(true);
+    // O checkpoint vencedor no feriado e a matinal de DOMINGO (piso 06/09
+    // 10:00 BRT = 13:00Z), nunca a de segunda: cobrar 07/09 10:00 seria exigir
+    // escrita de uma rotina que a propria skill manda pular no feriado.
+    expect(body.painel_exigido_desde).toBe("2026-09-06T13:00:00.000Z");
+  });
+
+  it("dia util seguinte ao feriado (terca 08/09) 15:00 BRT, updated_at de domingo 10:20 -> fresco false", async () => {
+    const body = await medirComRelogioEEstado("2026-09-08T18:00:00Z", "2026-09-06T13:20:00.000Z");
     expect(body.painel_fresco).toBe(false);
   });
 

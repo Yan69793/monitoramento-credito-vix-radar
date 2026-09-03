@@ -11964,19 +11964,33 @@ function _construirDataBRT(agoraBRT, deltaDias, hora, minuto) {
   base.setUTCHours(hora, minuto, 0, 0);
   return base;
 }
+// FERIADOB3-PAINEL1 (03/09/2026, achado do gate adversarial antes do deploy do
+// v4.9.236): a matinal PULA feriado B3 por instrucao da propria skill ("Se hoje
+// for feriado B3, registre SKIP no log e encerre"), mas a noturna NAO pula
+// ("Nao ha skip de fim de semana nem feriado nesta rotina"). Sem esta
+// distincao, o checkpoint da matinal cobraria escrita num dia em que ela
+// deliberadamente nao roda, e o canonical-test reprovaria a CI por feriado -
+// falso positivo com data marcada, segunda 07/09/2026. Reusa as listas B3 que
+// ja existem no arquivo (FERIADOS_B3_2026/2027, ver ehDiaPregaoB3).
+function _ehFeriadoB3(dataStr) {
+  return FERIADOS_B3_2026.has(dataStr) || FERIADOS_B3_2027.has(dataStr);
+}
 function _painelSlaAtivo(agoraBRT) {
   const candidatos = [];
-  for (let voltaDias = 0; voltaDias <= 2; voltaDias++) {
+  // 3 dias de janela cobre ate 3 feriados seguidos sem ficar sem checkpoint;
+  // sem nenhum candidato o campo sai null (indeterminado), nunca false.
+  for (let voltaDias = 0; voltaDias <= 3; voltaDias++) {
     const diaBase = _construirDataBRT(agoraBRT, -voltaDias, 0, 0);
     const dow = diaBase.getUTCDay();
+    const diaStr = diaBase.toISOString().slice(0, 10);
     const deadlineMatinal = _construirDataBRT(agoraBRT, -voltaDias, 10, 36);
-    if (agoraBRT >= deadlineMatinal) {
-      candidatos.push({ deadline: deadlineMatinal.getTime(), floor: _construirDataBRT(agoraBRT, -voltaDias, 10, 0), regra: "matinal (diaria, prazo 10:36 BRT, exige >= 10:00 do mesmo dia)" });
+    if (agoraBRT >= deadlineMatinal && !_ehFeriadoB3(diaStr)) {
+      candidatos.push({ deadline: deadlineMatinal.getTime(), floor: _construirDataBRT(agoraBRT, -voltaDias, 10, 0), regra: "matinal (diaria exceto feriado B3, prazo 10:36 BRT, exige >= 10:00 do mesmo dia)" });
     }
     if (dow >= 1 && dow <= 5) {
       const deadlineNoturna = _construirDataBRT(agoraBRT, -voltaDias + 1, 1, 30);
       if (agoraBRT >= deadlineNoturna) {
-        candidatos.push({ deadline: deadlineNoturna.getTime(), floor: _construirDataBRT(agoraBRT, -voltaDias, 18, 0), regra: "noturna (seg-sex, prazo 01:30 BRT do dia seguinte, exige >= 18:00 do dia util anterior)" });
+        candidatos.push({ deadline: deadlineNoturna.getTime(), floor: _construirDataBRT(agoraBRT, -voltaDias, 18, 0), regra: "noturna (seg-sex inclusive feriado, prazo 01:30 BRT do dia seguinte, exige >= 18:00 do dia anterior)" });
       }
     }
   }
@@ -18878,7 +18892,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde }, 200, request);
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
