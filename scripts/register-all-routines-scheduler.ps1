@@ -44,8 +44,12 @@ $Tasks = @(
     @{
         Name        = 'VIXRadar-AgendaSemanal'
         Description = 'VIX Radar calendario resultados stale top 20'
-        Script      = Join-Path $Scripts 'run_claude_routine.ps1'
-        ArgList     = @('-RoutineId', 'vixradar-agenda-semanal')
+        # AGENDASEM-CAUSA1 (2026-08-18): 'vixradar-agenda-semanal' foi removida do
+        # catalogo generico de run_claude_routine.ps1 e tem wrapper dedicado. Apontar
+        # para run_claude_routine.ps1 com -RoutineId vixradar-agenda-semanal cai no
+        # ContainsKey($RoutineId) = false e sai com exit 2 sem rodar nada.
+        Script      = Join-Path $Scripts 'run_vixradar_agenda_semanal.ps1'
+        ArgList     = @()
         # CALVAL-V2 regra 9 (2026-08-14): revalidacao 2x/semana (Dom+Qua).
         DaysOfWeek  = 'Sunday,Wednesday'
         At          = '22:00'
