@@ -4868,9 +4868,21 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
       var d = await r.json();
       /* Indicador agregado: verde = ok, amarelo = degradado, vermelho = fora */
       if (d && d.ok) {
-        dot.style.background = "#10B981";
-        label.style.color = "#94A3B8";
-        label.textContent = "Sistema operacional";
+        /* FEEDRETRO1 (2026-09-04): ok:true so mede o SERVICO. feed_fresco (novo
+           campo no GET publico) mede se o FATO na tela e recente, mesma regra
+           do checks.evento_mais_novo do admin_health_check. Servico no ar com
+           feed parado (medido 28/08 a 03/09/2026, 5 dias uteis) tinha ok:true
+           e "Sistema operacional" o tempo todo, sem sinal nenhum pro usuario. */
+        if (d.feed_fresco === false) {
+          dot.style.background = "#F59E0B";
+          label.style.color = "#F59E0B";
+          var _fdu = (typeof d.feed_idade_du === "number") ? d.feed_idade_du : null;
+          label.textContent = _fdu !== null ? ("Sem fato novo há " + _fdu + (_fdu === 1 ? " dia útil" : " dias úteis")) : "Sem fato novo recente";
+        } else {
+          dot.style.background = "#10B981";
+          label.style.color = "#94A3B8";
+          label.textContent = "Sistema operacional";
+        }
       } else {
         dot.style.background = "#EF4444";
         label.style.color = "#EF4444";
