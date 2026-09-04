@@ -4,6 +4,39 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.238.js = v4.9.237 + FEEDRETRO1 FASE2 (a rotina passa a saber o que ja
+#   sabemos). A Fase 1 deu visibilidade ao feed parado; esta fase ataca a causa.
+#   Medido em 03/09: os 17 itens que a noturna mandou para verificacao eram todos
+#   datados de 05/08 a 28/08, porque o prompt so tinha "janela de 30 dias" e nada
+#   perguntava "o que saiu desde a ultima analise" - o modelo devolvia o fato mais
+#   relevante do MES, sempre o mesmo. montarPlanoRotina passa a entregar, por
+#   emissor, ultimo_evento_data (maior data_evento ja salva), eventos_conhecidos
+#   (ate 10, com data, titulo em 80 chars e host da fonte) e janela_delta_inicio
+#   (ultima analise menos 2 dias, nunca antes da janela de 30 dias). Os 5 pontos
+#   de prompt passam a exigir ancora de recencia na primeira busca, proibir
+#   recriacao de fato ja listado em eventos_conhecidos (mesmo com URL diferente) e
+#   tratar continuacao de saga como evento NOVO com a data de agora.
+#   receber_analise devolve metricas que antes so existiam em console.log:
+#   n_eventos_avanco_data conta DATAS DISTINTAS que superam o max anterior daquele
+#   emissor (dois fatos legitimos na MESMA data nova contam 1, nao 2 - mede avanco
+#   temporal, nunca quantidade de fatos), n_chaves_novas conta chave de dedup
+#   ausente no anterior (medida separada, e a que responde "quantos fatos novos"),
+#   n_eventos_conhecidos, max_data_evento_antes/depois e descartes com os 5 motivos
+#   do saneamento (ruido, sem_data, fora_janela, data_futura, data_aproximada) mais
+#   fonte_inacessivel (agregado do validarDatasFontes, espelha
+#   removidos_pre_verificador). sanitizarPayloadRadar ganhou 5o parametro OPCIONAL
+#   para o contador; os outros 5 call sites nao mudam de comportamento.
+#   persistirResultadoCompartilhadoInterno agora RETORNA as metricas nos 6 pontos
+#   de saida (o wrapper e o EstadoSemanaDO ja propagavam retorno, nada mais mudou).
+#   Motor local (run_vixradar_varredura.ps1): ledger ganha n_avanco_data como
+#   ULTIMO campo (nao desloca os 6 indices que o watchdog le), linha FIM: ganha
+#   eventos_avanco_data/chaves_novas/descartados, e a guarda DESCARTADO| de
+#   repor-varredura.ps1 foi portada - submit com evento enviado e n_eventos=0
+#   agora aparece no log com o motivo, em vez de contar como sucesso pleno.
+#   Guarda api/test/health.test.mjs, 5 casos novos (evento repetido=0, chave nova
+#   com data antiga=0, data maior=1, segundo fato na mesma data nova nao dobra,
+#   n_chaves_novas separado). Suite 26 arquivos / 251 testes.
+#   Rollback: main = "v4.9.237.js".
 # v4.9.237.js = v4.9.236 + FEEDRETRO1 (health enxerga a idade do FATO, nao so
 #   a da escrita). Entre 28/08 e 03/09/2026 o painel ficou 5 dias uteis preso em
 #   "Evento mais recente 28 de agosto" com ok:true, painel_fresco:true,

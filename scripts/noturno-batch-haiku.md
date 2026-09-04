@@ -1,5 +1,14 @@
 # Lote Haiku - buscas condicionais. Dados CVM ja vem no JSON (nao rebuscar CVM).
 #
+# DELTA - nao recrie fato conhecido (FEEDRETRO1, 2026-09-04): cada emissor no JSON tem ultimo_evento_data
+# (data do fato mais recente ja salvo) e eventos_conhecidos (amostra do que ja esta no estado), mais
+# janela_delta_inicio (inicio real desta busca, sempre dentro da JANELA do cabecalho). Primeira busca com
+# ancora de recencia (mes e ano correntes, nao termo generico), procure primeiro fato com
+# data_evento >= janela_delta_inicio. Achando so fato ja em eventos_conhecidos, mesmo com URL diferente da
+# que esta la: eventos=[], cobertura_nota="sem fato novo desde <ultimo_evento_data>, confirmado <o que achou>".
+# Continuacao de saga conhecida (nova decisao judicial, novo prazo, nova negociacao, nova acao de rating
+# sobre o MESMO caso) e evento NOVO com a data do fato de agora, nunca dobra no protocolo antigo.
+#
 # BUSCAS por emissor (WebSearch): R2 primeiro (noticias de credito: rating, divida, default, covenant, M&A, resultado).
 # Executar R6 (cross-check rating/regulatorio) SOMENTE se: R2 trouxe sinal CRITICO/RELEVANTE, ou ews_score>=20, ou cvm_novos>0.
 # Threshold 20 e provisorio (abaixo de ROTINA_EWS_LIGHT=30 do Worker, por seguranca - nao ha telemetria de 3+ noites ainda para calibrar). Revisar apos acumular dados de quantos CRITICOs teriam sido bloqueados pelo gate.

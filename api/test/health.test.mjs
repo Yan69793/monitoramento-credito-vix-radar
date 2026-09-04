@@ -312,3 +312,123 @@ describe("receber_analise: fronteira global do feed (carimbo so avanca por data)
     expect(est.feed_ultimo_evento_novo_em).toBe(CARIMBO_FIXO);
   });
 });
+
+// Casos do operador (correcao final, 04/09): n_eventos_avanco_data mede avanco
+// TEMPORAL (quantas DATAS DISTINTAS superam o maximo anterior), nunca quantidade
+// de fatos novos - dois fatos legitimos e diferentes na MESMA data nova contam 1
+// avanco, nao 2. n_chaves_novas mede outra coisa (chave de dedup ausente em
+// anterior, com qualquer data) e nunca prova ausencia de outro evento legitimo
+// na mesma data. Mesma tecnica de URL com data no path da suite de fronteira
+// acima, para nao depender de rede.
+describe("receber_analise: n_eventos_avanco_data mede avanco temporal, nao contagem de fatos", () => {
+  const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao";
+  const EMPRESA = "Dasa";
+  const FRONTEIRA_ATUAL = "2026-08-20";
+  const URL_CONHECIDA = "https://www.rad.cvm.gov.br/enet/frmDownloadDocumento.aspx?id=1";
+  const AGORA_FAKE = "2026-09-03T15:00:00Z";
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function chaveAtual() { return chaveEstadoParaInstante(AGORA_FAKE); }
+
+  async function seed() {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_FAKE));
+    const chave = chaveAtual();
+    await env.RADAR_KV.delete(chave);
+    await env.RADAR_KV.put(chave, JSON.stringify({
+      week: chave.replace("radar:estado:", ""),
+      updated_at: "2026-08-20T09:00:00.000Z",
+      results: {
+        [EMPRESA]: {
+          sem_eventos: false,
+          eventos: [{
+            // `empresa` DENTRO do evento e obrigatorio no fixture: _chaveDedupEvento usa
+            // data|empresa|fonte_base, e o pipeline real sempre preenche esse campo antes
+            // de persistir (receber_analise faz Object.assign({}, e, { empresa }) na cadeia
+            // do validarDatasFontes). Seed sem ele gera chave diferente do evento reenviado
+            // e faria o caso 1 e o 5 medirem chave nova onde nao ha.
+            empresa: EMPRESA,
+            classificacao: "RELEVANTE", titulo: "Fato anterior", data_evento: FRONTEIRA_ATUAL,
+            fonte_primaria: URL_CONHECIDA, fonte_tipo: "CVM_FATO_RELEVANTE", tags: []
+          }]
+        }
+      }
+    }));
+  }
+
+  async function submeter(eventosSpec) {
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.77" },
+      body: JSON.stringify({
+        action: "receber_analise",
+        routine_key: ROUTINE_KEY,
+        empresa: EMPRESA,
+        setor: "Saúde",
+        _tier: "FULL",
+        provedor: "teste-avanco-data",
+        resultado: {
+          sem_eventos: false,
+          eventos: eventosSpec.map((e, i) => ({
+            classificacao: "RELEVANTE", titulo: "Evento de teste " + i, data_evento: e.data,
+            data_aproximada: false, fonte_primaria: e.url, fonte_tipo: "IMPRENSA", tags: []
+          })),
+          fontes_consultadas: [{ rodada: "R2", query: "teste avanco data", resultado: "achou fonte" }],
+          cobertura_nota: "teste avanco data"
+        }
+      })
+    });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  it("caso 1: evento repetido (mesma chave de dedup) -> n_eventos_avanco_data=0", async () => {
+    await seed();
+    const j = await submeter([{ data: FRONTEIRA_ATUAL, url: URL_CONHECIDA }]);
+    expect(j.ok).toBe(true);
+    expect(j.n_eventos_avanco_data).toBe(0);
+  });
+
+  it("caso 2: chave nova com data_evento <= max anterior -> n_eventos_avanco_data=0", async () => {
+    await seed();
+    const j = await submeter([{ data: "2026-08-10", url: "https://www.infomoney.com.br/mercados/2026/08/10/teste-caso2/" }]);
+    expect(j.ok).toBe(true);
+    expect(j.n_eventos_avanco_data).toBe(0);
+    expect(j.n_chaves_novas).toBe(1);
+  });
+
+  it("caso 3: evento com data_evento > max anterior -> n_eventos_avanco_data=1", async () => {
+    await seed();
+    const j = await submeter([{ data: "2026-09-03", url: "https://www.infomoney.com.br/mercados/2026/09/03/teste-caso3/" }]);
+    expect(j.ok).toBe(true);
+    expect(j.n_eventos_avanco_data).toBe(1);
+    expect(j.max_data_evento_antes).toBe(FRONTEIRA_ATUAL);
+    expect(j.max_data_evento_depois).toBe("2026-09-03");
+  });
+
+  it("caso 4: segundo fato legitimo na MESMA data nova nao dobra n_eventos_avanco_data", async () => {
+    await seed();
+    const j = await submeter([
+      { data: "2026-09-03", url: "https://www.infomoney.com.br/mercados/2026/09/03/teste-caso4-a/" },
+      { data: "2026-09-03", url: "https://www.moneytimes.com.br/2026/09/03/teste-caso4-b/" }
+    ]);
+    expect(j.ok).toBe(true);
+    expect(j.n_eventos_avanco_data).toBe(1);
+    expect(j.n_chaves_novas).toBe(2);
+  });
+
+  it("caso 5: n_chaves_novas e medido separado, nao confundir com avanco de data", async () => {
+    await seed();
+    const j = await submeter([
+      { data: FRONTEIRA_ATUAL, url: URL_CONHECIDA },
+      { data: "2026-08-15", url: "https://www.infomoney.com.br/mercados/2026/08/15/teste-caso5/" }
+    ]);
+    expect(j.ok).toBe(true);
+    expect(j.n_eventos_avanco_data).toBe(0);
+    expect(j.n_chaves_novas).toBe(1);
+    expect(j.n_eventos_conhecidos).toBe(1);
+  });
+});

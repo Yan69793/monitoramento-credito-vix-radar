@@ -3564,7 +3564,7 @@ var CUSTO_PRECO = {
   web_search_por_uso: 0.01
 };
 var CUSTO_DISJUNTOR_USD_DIA = 25;
-var WORKER_DEPLOY_NOTE = "v4.9.237: FEEDRETRO1 feed_evento_mais_novo/feed_idade_du/feed_fresco/feed_ultimo_evento_novo_em no GET publico; fronteira global do feed em persistirResultadoCompartilhadoInterno, carimbo so avanca por data mais nova, nunca por chave nova. Sobre v4.9.236. 2026-09-04.";
+var WORKER_DEPLOY_NOTE = "v4.9.238: FEEDRETRO1 FASE2, rotina incremental. Plano ganha ultimo_evento_data, eventos_conhecidos e janela_delta_inicio (delta por emissor); receber_analise devolve n_eventos_avanco_data (datas distintas que superam o max anterior, nunca contagem de fatos), n_chaves_novas, n_eventos_conhecidos, max_data_evento_antes/depois e descartes por motivo. Sobre v4.9.237. 2026-09-04.";
 var ANCORAS_SINTETICAS = [
   "Ra\xEDzen",
   "Petrobras",
@@ -9435,9 +9435,41 @@ function _carimbarAnaliseReal(alvo, payload, agora) {
 }
 __name(_carimbarAnaliseReal, "_carimbarAnaliseReal");
 async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, payload) {
-  if (!env2222.RADAR_KV || !empresa) return;
+  if (!env2222.RADAR_KV || !empresa) return null;
   const estado = await carregarEstadoCompartilhado(env2222, semana);
   const anterior = estado.results[empresa];
+  // FEEDRETRO1 FASE2 (2026-09-04): metricas de avanco POR EMISSOR (diferente da fronteira
+  // GLOBAL do feed mais abaixo). Calculadas AQUI, antes de qualquer merge com o anterior
+  // (os blocos desta funcao mutam payload.eventos adiante). Base de comparacao e sempre o
+  // payload ORIGINAL desta submissao contra o que ja estava salvo. n_eventos_avanco_data
+  // mede avanco TEMPORAL: conta DATAS DISTINTAS que superam o maximo anterior, nao
+  // eventos individuais. Dois fatos legitimos e diferentes na MESMA data nova (ex.: dois
+  // rebaixamentos de rating no mesmo dia) contam 1 avanco, nao 2 - a metrica responde "a
+  // fronteira deste emissor avancou, e quantas vezes" (quase sempre 0 ou 1), nunca
+  // "quantos fatos novos chegaram". Contagem de fatos e outra pergunta, respondida por
+  // n_chaves_novas (chave de dedup ausente em anterior, com qualquer data).
+  const _metrAnteriorEventos = anterior && Array.isArray(anterior.eventos) ? anterior.eventos : [];
+  let _metrMaxAntes = null;
+  for (const _aev of _metrAnteriorEventos) {
+    const _ad = _aev && _aev.data_evento;
+    if (typeof _ad === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_ad) && (_metrMaxAntes === null || _ad > _metrMaxAntes)) _metrMaxAntes = _ad;
+  }
+  const _metrChavesAnteriores = new Set(_metrAnteriorEventos.map(_chaveDedupEvento));
+  const _metrPayloadOriginal = Array.isArray(payload.eventos) ? payload.eventos : [];
+  const _metrDatasAvanco = new Set();
+  let _metrChavesNovas = 0;
+  for (const _pev of _metrPayloadOriginal) {
+    const _pd = _pev && _pev.data_evento;
+    if (typeof _pd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_pd) && (_metrMaxAntes === null || _pd > _metrMaxAntes)) _metrDatasAvanco.add(_pd);
+    if (!_metrChavesAnteriores.has(_chaveDedupEvento(_pev))) _metrChavesNovas++;
+  }
+  const _metricas = {
+    n_eventos_avanco_data: _metrDatasAvanco.size,
+    n_chaves_novas: _metrChavesNovas,
+    n_eventos_conhecidos: _metrPayloadOriginal.length - _metrChavesNovas,
+    max_data_evento_antes: _metrMaxAntes,
+    max_data_evento_depois: _metrMaxAntes
+  };
   if (payload.sem_eventos) {
     const agora = (/* @__PURE__ */ new Date()).toISOString();
     const _tsVarredura = payload.timestamp || agora;
@@ -9491,7 +9523,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-        return;
+        return _metricas;
       }
       if (anterior && anterior.sem_eventos && anterior._status !== "INCONCLUSIVO") {
         console.log(`[cobertura][PRESERVADO] emp=${empresa ? empresa.slice(0, 25) : "?"} tipo=sem_eventos_comprovado rodadas=${_cobertura}/9`);
@@ -9514,7 +9546,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         estado.results[empresa] = anterior;
         estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-        return;
+        return _metricas;
       }
       const estadoInc = anterior || {};
       // FIX(FIN1-REV, v4.9.163): idem — varredura rasa e varredura. O _status abaixo carrega a
@@ -9535,7 +9567,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       estado.results[empresa] = estadoInc;
       estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
       await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-      return;
+      return _metricas;
     }
     if (anterior && !anterior.sem_eventos && Array.isArray(anterior.eventos) && anterior.eventos.length > 0) {
       anterior._last_scanned_at = agora;
@@ -9549,7 +9581,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       estado.results[empresa] = anterior;
       estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
       await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-      return;
+      return _metricas;
     }
     const estadoAtual = anterior || {};
     estadoAtual._last_scanned_at = agora;
@@ -9567,7 +9599,7 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     estado.results[empresa] = estadoAtual;
     estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-    return;
+    return _metricas;
   }
   if (anterior) {
     if (!payload.sem_eventos && Array.isArray(anterior.eventos) && anterior.eventos.length > 0 && (!Array.isArray(payload.eventos) || payload.eventos.length === 0)) {
@@ -9661,6 +9693,11 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
   estado.results[empresa] = normalizarMojibake(payload);
   estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
   await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+  // max_data_evento_depois aqui e o mesmo _feedMaxNovoLocal calculado acima para a
+  // fronteira global (maximo de payload.eventos POS-merge); se o payload final ficou
+  // sem nenhum evento datado, o "depois" continua sendo o "antes" (nada mudou).
+  _metricas.max_data_evento_depois = _feedMaxNovoLocal !== null ? _feedMaxNovoLocal : _metrMaxAntes;
+  return _metricas;
 }
 __name(persistirResultadoCompartilhadoInterno, "persistirResultadoCompartilhadoInterno");
 __name2(persistirResultadoCompartilhadoInterno, "persistirResultadoCompartilhadoInterno");
@@ -10837,6 +10874,41 @@ async function montarPlanoRotina(env2222, opts) {
       if (res._last_scanned_at) partes.push("Ultima analise: " + res._last_scanned_at.slice(0, 16));
       ctxHist = partes.join(" | ");
     }
+    // FEEDRETRO1 FASE2 (2026-09-04): delta para a rotina nao reencontrar fato ja
+    // conhecido (causa raiz do feed parado 28/08-03/09: prompt de janela de 30 dias
+    // sem perguntar "o que saiu desde a ultima analise", entao o modelo devolvia o
+    // fato mais relevante do MES, sempre o mesmo). ultimo_evento_data e o maximo de
+    // data_evento ja salvo para este emissor; eventos_conhecidos e uma amostra do
+    // que ja esta no estado, para o prompt dizer "nao recrie isto"; janela_delta_inicio
+    // e o inicio real da busca desta passada (ultima analise menos 2 dias de folga,
+    // nunca antes da janela de 30 dias que ja vale como limite externo).
+    var ultimoEventoData = null;
+    var eventosConhecidos = [];
+    if (Array.isArray(eventos) && eventos.length > 0) {
+      var _evsOrd = eventos.slice().sort(function(a, b) {
+        var da = a && a.data_evento ? String(a.data_evento) : "";
+        var db = b && b.data_evento ? String(b.data_evento) : "";
+        return db.localeCompare(da);
+      });
+      for (var _ei = 0; _ei < _evsOrd.length; _ei++) {
+        var _ed = _evsOrd[_ei] && _evsOrd[_ei].data_evento;
+        if (typeof _ed === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_ed) && (ultimoEventoData === null || _ed > ultimoEventoData)) ultimoEventoData = _ed;
+      }
+      eventosConhecidos = _evsOrd.slice(0, 10).map(function(ev) {
+        return {
+          data_evento: ev && ev.data_evento ? ev.data_evento : null,
+          titulo: (ev && ev.titulo ? String(ev.titulo) : "").slice(0, 80),
+          fonte_host: ev && ev.fonte_primaria ? _hostnameFromUrl(ev.fonte_primaria) : ""
+        };
+      });
+    }
+    var janelaDeltaInicio = janelaInicio;
+    if (lastTs) {
+      try {
+        var _deltaStr = new Date(new Date(lastTs).getTime() - 2 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+        if (_deltaStr > janelaInicio) janelaDeltaInicio = _deltaStr;
+      } catch (_eDelta) { }
+    }
     plano.push({
       empresa: emp,
       setor: setor,
@@ -10855,6 +10927,9 @@ async function montarPlanoRotina(env2222, opts) {
       contexto_historico: ctxHist,
       janela_inicio: janelaInicio,
       janela_fim: hoje,
+      ultimo_evento_data: ultimoEventoData,
+      eventos_conhecidos: eventosConhecidos,
+      janela_delta_inicio: janelaDeltaInicio,
       instrumentos_ativos: res && Array.isArray(res.instrumentos_ativos) ? res.instrumentos_ativos : [],
       // v4.9.159 (STALE-GATE1): expõe _status para o gate de staleness distinguir
       // INCONCLUSIVO (clock pausado de propósito, FIN1) de staleness real.
@@ -12238,7 +12313,7 @@ __name2(_validarDataPublicacaoFonte, "_validarDataPublicacaoFonte");
 __name22(_validarDataPublicacaoFonte, "_validarDataPublicacaoFonte");
 __name222(_validarDataPublicacaoFonte, "_validarDataPublicacaoFonte");
 __name2222(_validarDataPublicacaoFonte, "_validarDataPublicacaoFonte");
-function sanitizarPayloadRadar(payload, hoje, trintaDiasAtras, env2222) {
+function sanitizarPayloadRadar(payload, hoje, trintaDiasAtras, env2222, _contagemDescartes) {
   if (!payload || typeof payload !== "object") return payload;
   if (!Array.isArray(payload.eventos)) payload.eventos = [];
   const _emp = (payload.empresa || "").slice(0, 25);
@@ -12315,28 +12390,38 @@ function sanitizarPayloadRadar(payload, hoje, trintaDiasAtras, env2222) {
     var _empLimpo = ev?.empresa ? _stripTags(ev.empresa).slice(0, 60) : ev?.empresa;
     return { ...ev, titulo: _titLimpo, empresa: _empLimpo, data_evento: _de, data_publicacao_fonte: _dpRaw, escopo: classificarEscopo(ev, payload.empresa), tipo_dado: _td, classificacao: _cls, rebaixado_de: _rebaixadoDe };
   }).filter((ev) => {
+    // FEEDRETRO1 FASE2 (2026-09-04): _contagemDescartes e opcional, mutado por
+    // referencia quando o chamador passa um objeto (so receber_analise passa hoje;
+    // os outros 5 call sites nao mudam de comportamento, o parametro fica undefined).
+    // Sem isso, os 5 motivos abaixo so existiam em console.log, invisiveis na
+    // resposta HTTP - exatamente o que deixou 03/09 passar sem ninguem notar.
     const _tit = (ev.titulo || "").slice(0, 40);
     if (!ev.classificacao || ev.classificacao === "RUIDO") {
       console.log(`[sanitizar][RUIDO] emp=${_emp} titulo=${_tit}`);
+      if (_contagemDescartes) _contagemDescartes.ruido = (_contagemDescartes.ruido || 0) + 1;
       return false;
     }
     const dt = ev?.data_evento;
     if (!dt || dt === "nao_identificada") {
       console.log(`[sanitizar][SEM_DATA] emp=${_emp} class=${ev.classificacao} titulo=${_tit}`);
+      if (_contagemDescartes) _contagemDescartes.sem_data = (_contagemDescartes.sem_data || 0) + 1;
       return false;
     }
     if (trintaDiasAtras && dt < trintaDiasAtras) {
       console.log(`[sanitizar][FORA_JANELA] emp=${_emp} dt=${dt} min=${trintaDiasAtras} titulo=${_tit}`);
+      if (_contagemDescartes) _contagemDescartes.fora_janela = (_contagemDescartes.fora_janela || 0) + 1;
       return false;
     }
     if (hoje && dt > hoje) {
       console.log(`[sanitizar][DATA_FUTURA] emp=${_emp} dt=${dt} max=${hoje} titulo=${_tit}`);
+      if (_contagemDescartes) _contagemDescartes.data_futura = (_contagemDescartes.data_futura || 0) + 1;
       return false;
     }
     if (ev.data_aproximada === true) {
       const ontem = new Date((/* @__PURE__ */ new Date(hoje + "T12:00:00Z")).getTime() - 864e5).toISOString().split("T")[0];
       if (dt === hoje || dt === ontem) {
         console.log(`[sanitizar][DATA_APROXIMADA] emp=${_emp} dt=${dt} titulo=${_tit}`);
+        if (_contagemDescartes) _contagemDescartes.data_aproximada = (_contagemDescartes.data_aproximada || 0) + 1;
         return false;
       }
     }
@@ -19757,7 +19842,10 @@ async function __coreFetch(request, env2222, ctx) {
       var _raHoje = _raAgoraBRT.toISOString().split("T")[0];
       var _raJanelaInicio = new Date(_raAgoraBRT.getTime() - 30 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
       try {
-        var _raSaneado = sanitizarPayloadRadar(_raRes, _raHoje, _raJanelaInicio, env2222);
+        // FEEDRETRO1 FASE2: contador de descarte por referencia, exposto na resposta
+        // como `descartes` (ver return resp() no fim deste handler).
+        var _raDescartes = { ruido: 0, sem_data: 0, fora_janela: 0, data_futura: 0, data_aproximada: 0, fonte_inacessivel: 0 };
+        var _raSaneado = sanitizarPayloadRadar(_raRes, _raHoje, _raJanelaInicio, env2222, _raDescartes);
         _raSaneado.empresa = _raEmp;
         _raSaneado.setor = body.setor || _raSaneado.setor || (SETOR_DE_EMPRESA[_raEmp] || "Outros");
         var _raProv = body.provedor || body._provedor || (body._matinal === true ? "claude-opus-routine" : "claude-sonnet-routine");
@@ -19790,6 +19878,11 @@ async function __coreFetch(request, env2222, ctx) {
           if (_raParaFila.length > 0) {
             _raFilaAdicionados = await enfileirarVerificacaoAssincrona(env2222, _raEmp, _raSemana, _raSaneado.setor, _raParaFila);
           }
+          // fonte_inacessivel aqui e o AGREGADO de tudo que validarDatasFontes rejeita
+          // (fetch bloqueado, data da fonte fora da janela, divergencia >60d), nao
+          // decomposto por motivo interno - removidos_pre_verificador ja media isso,
+          // este campo so o espelha dentro de `descartes` para leitura num lugar so.
+          _raDescartes.fonte_inacessivel = _raSaneado.eventos.length - _raDatasOk.length;
           _raVerificacao = { total: _raDatasOk.length, verificados: 0, cache_hits: 0, aprovados: _raAutoAprovados.length, rejeitados: 0, quarentenados: 0, pendente_verificacao_async: _raFilaAdicionados, removidos_pre_verificador: _raSaneado.eventos.length - _raDatasOk.length };
           _raParaFila.forEach(function(ev) { ev._pendente_verificacao = true; });
           _raSaneado.eventos = _raAutoAprovados.concat(_raParaFila);
@@ -19814,7 +19907,8 @@ async function __coreFetch(request, env2222, ctx) {
         _raSaneado._last_scanned_at = (/* @__PURE__ */ new Date()).toISOString();
         var _dpaCvmDocs = await buscarDocumentosCVM(env2222, _raEmp, _raJanelaInicio, _raHoje).catch(function() { return []; });
         _raSaneado.cvm_documentos = _dpaCvmDocs;
-        await persistirResultadoCompartilhado(env2222, _raSemana, _raEmp, _raSaneado);
+        var _raMetricas = await persistirResultadoCompartilhado(env2222, _raSemana, _raEmp, _raSaneado);
+        if (!_raMetricas) _raMetricas = { n_eventos_avanco_data: 0, n_chaves_novas: 0, n_eventos_conhecidos: 0, max_data_evento_antes: null, max_data_evento_depois: null };
         // SENTINELA1 (2026-08-25): so aqui, DEPOIS da persistencia dar certo, os
         // documentos entram em cvm_vistos. Qualquer falha acima cai no catch e
         // devolve 500 sem marcar nada, entao o gatilho sobrevive e o emissor volta
@@ -19847,7 +19941,12 @@ async function __coreFetch(request, env2222, ctx) {
         // mede ENTREGA, nao inicio de rotina. baterHeartbeat nunca lanca (HEARTBEATLOG1).
         await baterHeartbeat(env2222, "varredura_local", "ok", { origem: _raOrigem, provedor: String(_raProv).slice(0, 48), tier: _raSaneado._tier || null, empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length });
         await tel(env2222, request, { evento: "routine_analise_recebida", empresa: _raEmp.slice(0, 40), n_eventos: (_raSaneado.eventos || []).length, provedor: _raProv, pendente_async: _raVerificacao.pendente_verificacao_async || 0 });
-        return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0, cvm_marcados: _raCvmMarcados }, 200, request);
+        // FEEDRETRO1 FASE2 (2026-09-04): n_eventos_avanco_data mede avanco TEMPORAL por
+        // emissor (data_evento > max anterior), NUNCA quantidade de fatos novos - um
+        // segundo fato legitimo na mesma data maxima nao incrementa este campo, so
+        // n_chaves_novas capta isso (ver persistirResultadoCompartilhadoInterno).
+        // n_eventos_conhecidos e o resto: chave de dedup que ja existia no estado.
+        return resp({ ok: true, empresa: _raEmp, semana: _raSemana, n_eventos: (_raSaneado.eventos || []).length, sem_eventos: _raSaneado.sem_eventos, verificacao: _raVerificacao, rejeicoes: _raRejeicoes, pendente_verificacao_async: _raVerificacao.pendente_verificacao_async || 0, cvm_marcados: _raCvmMarcados, descartes: _raDescartes, n_eventos_avanco_data: _raMetricas.n_eventos_avanco_data, n_chaves_novas: _raMetricas.n_chaves_novas, n_eventos_conhecidos: _raMetricas.n_eventos_conhecidos, max_data_evento_antes: _raMetricas.max_data_evento_antes, max_data_evento_depois: _raMetricas.max_data_evento_depois }, 200, request);
       } catch (_raErr) {
         return resp({ ok: false, erro: _raErr.message }, 500, request);
       }

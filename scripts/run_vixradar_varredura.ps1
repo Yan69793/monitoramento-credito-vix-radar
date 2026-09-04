@@ -72,7 +72,10 @@ if ($Rotina -eq 'noturno') {
     }
 }
 $LogFile     = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + '.log')
-$MetricsFile = Join-Path $LogDir ($Perfil.prefix + '_metrics_' + $DateTag + $(if ($DryRun) { '_dryrun' } else { '' }) + '.json')
+# DRYRUN-METRICS-SOBRESCREVE1 (02/09): um so _dryrun.json por dia apagava o gasto do dry-run anterior
+# (16h59 apagou os 35.619 de 12h58) e o cap dinamico lia 85k onde o dia tinha gasto 120k. Cada dry-run
+# grava o proprio arquivo, com hora no nome, e Get-VixCustoDia soma todos os _dryrun*.json do dia.
+$MetricsFile = Join-Path $LogDir ($Perfil.prefix + '_metrics_' + $DateTag + $(if ($DryRun) { '_dryrun_' + (Get-Date -Format 'HHmmss') } else { '' }) + '.json')
 $LockFile    = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + '.lock')
 $TokenTarget = $Perfil.meta
 $TokenHardCap = $Perfil.capProprio
@@ -184,6 +187,12 @@ function Get-SlimEmissor($emp, [switch]$Ultra) {
     $o = [ordered]@{
         empresa = $emp.empresa; setor = $emp.setor; tier = $Perfil.tier
         ews_score = $emp.ews_score; cvm_novos = $emp.cvm_novos; cvm_documentos = $docs
+        # FEEDRETRO1 FASE2 (2026-09-04): delta que o Worker ja calcula no plano
+        # (montarPlanoRotina), so repassado aqui. Sem isso o modelo nao tem como
+        # saber "o que ja sabemos" e reencontra o mesmo fato do mes toda noite.
+        ultimo_evento_data = $emp.ultimo_evento_data
+        eventos_conhecidos = $emp.eventos_conhecidos
+        janela_delta_inicio = $emp.janela_delta_inicio
     }
     $ctx = '' + $emp.contexto_historico
     if ($ctx) {
@@ -357,6 +366,7 @@ function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaIni
     return @"
 Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais. Sem chamadas HTTP de submit - o orquestrador grava os resultados.
 JANELA: $janelaInicio a $janelaFim
+DELTA - nao recrie fato conhecido (FEEDRETRO1): cada emissor no JSON abaixo tem ultimo_evento_data, eventos_conhecidos e janela_delta_inicio. Primeira busca com ancora de recencia (mes e ano correntes, nao termo generico), procure primeiro fato com data_evento >= janela_delta_inicio. So achar fato ja em eventos_conhecidos, mesmo com URL diferente da que esta la: eventos=[], cobertura_nota="sem fato novo desde <ultimo_evento_data>, confirmado <o que achou>". Continuacao de saga conhecida (nova decisao judicial, novo prazo, nova negociacao, nova acao de rating sobre o MESMO caso) e evento NOVO com a data do fato de agora, nunca dobra no protocolo antigo.
 PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
 SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
@@ -383,9 +393,14 @@ function Remove-BatchPrompts([string]$tag) {
     Remove-Item (Join-Path $LogDir ($Perfil.prefix + '_plano_' + $tag + '.json')) -Force -ErrorAction SilentlyContinue
 }
 
-function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, [bool]$subOk, [string]$status) {
+function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, [bool]$subOk, [string]$status, [int]$nAvancoData = 0) {
+    # FEEDRETRO1 FASE2 (2026-09-04): campo novo NO FINAL da linha, para nao deslocar os
+    # indices que Get-VixLedgerEmissoresNaJanela e Test-VixLedgerEntregueNaJanela ja usam
+    # (regex por posicao fixa dos 6 campos originais). SKIP e DEFERIDO sempre mandam 0
+    # (nunca analisam, nunca avancam data); ANALISADO manda o n_eventos_avanco_data que
+    # o Worker devolveu nesta submissao.
     $pfx = if ($DryRun) { 'DRYRUN|' } else { 'OK|' }
-    Write-Log ($pfx + $emp + '|' + $tier + '|' + $classif + '|' + $nEv + '|' + $subOk.ToString().ToLower() + '|' + $status)
+    Write-Log ($pfx + $emp + '|' + $tier + '|' + $classif + '|' + $nEv + '|' + $subOk.ToString().ToLower() + '|' + $status + '|' + $nAvancoData)
 }
 
 if (-not (Test-Path $Perfil.skill)) { Write-Log ('ERRO: skill ausente ' + $Perfil.skill); exit 1 }
@@ -463,7 +478,8 @@ Write-Log ('AUTH_MODO: ' + $authModoInicial)
 if ($authModoInicial -eq 'nenhum') {
     Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
     Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
-    Write-Log ('ALERTA_AUTH: sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
+    # DRYRUN-CRASH1: tambem aqui a tag decide (02/09 16:00 um dry-run sem credencial virou 9004 real).
+    Write-Log ($AlertaAuthTag + 'sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
     exit 5
 }
 if ($authModoInicial -eq 'api') {
@@ -526,6 +542,11 @@ $stats = @{
     batches_run = 0; analisados = 0; submit_ok = 0; submit_fail = 0; buscas_total = 0
     input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0
     auth_escalou = 'nenhum'
+    # FEEDRETRO1 FASE2 (2026-09-04): eventos_avanco_data soma o campo homonimo que o
+    # Worker devolve por emissor (avanco TEMPORAL, nao contagem de fatos); descartados
+    # conta submit com evento enviado mas n_eventos=0 (Worker aceitou o transporte e
+    # descartou tudo no saneamento ou no pre-verificador - ver DESCARTADO| no log).
+    eventos_avanco_data = 0; chaves_novas = 0; descartados = 0
     criticos = New-Object System.Collections.Generic.List[string]
 }
 $lotesDetalhe = New-Object System.Collections.Generic.List[object]
@@ -689,7 +710,7 @@ try {
             $retryPath = Join-Path $LogDir ($Perfil.prefix + '_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
             $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
-            if ($retryRes.Escalou) { $stats.auth_escalou = 'api'; Write-Log ('ALERTA_AUTH: escalou para chave paga no retry ' + $retryLabel) }
+            if ($retryRes.Escalou) { $stats.auth_escalou = 'api'; Write-Log ($AlertaAuthTag + 'escalou para chave paga no retry ' + $retryLabel) }
             if ($retryRes.AuthFailure) {
                 # RETRYDROP1: preserva o que o lote principal ja parseou, marca abort apos submit.
                 Write-Log ('ERRO CRITICO: claude -p recusou o retry do lote ' + $label + ' - ' + (Get-ClaudeAuthMotivo $retryRes.Output) + ' - ' + $missing.Count + ' faltantes recebem fallback; lotes restantes NAO serao processados.')
@@ -749,7 +770,7 @@ try {
                 if (-not $res.cobertura_nota) { $res.cobertura_nota = 'Zero buscas efetivas - cobertura nao verificavel (falha de ferramenta ou modelo).' }
             }
             try { $res | Add-Member -NotePropertyName '_tier' -NotePropertyValue $Perfil.tier -Force } catch { }
-            $subOk = $false; $nEv = 0
+            $subOk = $false; $nEv = 0; $nAvanco = 0
             try {
                 $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor $Perfil.tier @($emp.cvm_novos_ids)
                 if ($resp.ok -ne $true -and -not $DryRun) {
@@ -757,13 +778,35 @@ try {
                     $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor $Perfil.tier @($emp.cvm_novos_ids)
                 }
                 $subOk = ($resp.ok -eq $true)
-                if ($subOk) { $nEv = [int]$resp.n_eventos }
+                if ($subOk) {
+                    $nEv = [int]$resp.n_eventos
+                    if ($null -ne $resp.n_eventos_avanco_data) { $nAvanco = [int]$resp.n_eventos_avanco_data }
+                    $stats.eventos_avanco_data += $nAvanco
+                    if ($null -ne $resp.n_chaves_novas) { $stats.chaves_novas += [int]$resp.n_chaves_novas }
+                    # FEEDRETRO1 FASE2 (2026-09-04, guarda portada de repor-varredura.ps1): o
+                    # Worker responde ok:true mesmo quando descarta TODOS os eventos enviados
+                    # (removidos_pre_verificador>0 ou saneamento). ok de transporte nao prova
+                    # que o fato entrou no estado - so n_eventos>=1 prova. Sem esta linha, um
+                    # submit assim contava como sucesso pleno e ninguem via o descarte (e foi
+                    # exatamente isso que passou 5 dias uteis sem alarme em 28/08-03/09).
+                    if (@($res.eventos).Count -ge 1 -and $nEv -eq 0) {
+                        $descMotivos = @()
+                        if ($resp.descartes) {
+                            foreach ($k in @('ruido', 'sem_data', 'fora_janela', 'data_futura', 'data_aproximada', 'fonte_inacessivel')) {
+                                if ($resp.descartes.$k -gt 0) { $descMotivos += ($k + '=' + $resp.descartes.$k) }
+                            }
+                        }
+                        $motivoTxt = if ($descMotivos.Count -gt 0) { $descMotivos -join ',' } else { 'motivo_nao_detalhado' }
+                        Write-Log ('DESCARTADO|' + $emp.empresa + '|enviados=' + @($res.eventos).Count + '|persistidos=0|' + $motivoTxt)
+                        $stats.descartados++
+                    }
+                }
                 elseif ($resp.erro) { Write-Log ('SUBMIT_ERRO|' + $emp.empresa + '|' + $resp.erro) }
             } catch {
                 Write-Log ('SUBMIT_EXC|' + $emp.empresa + '|' + $_.Exception.Message)
             }
             if ($DryRun) { $subOk = $false }
-            Write-Ledger $emp.empresa $Perfil.tier $classif $nEv $subOk 'ANALISADO'
+            Write-Ledger $emp.empresa $Perfil.tier $classif $nEv $subOk 'ANALISADO' $nAvanco
             $stats.analisados++
             # Dry-run nao submete: nao e ok nem fail, e contado a parte (antes saia fail=3 enganoso).
             if ($DryRun) { $loteDry++ } elseif ($subOk) { $loteOk++ } else { $loteFail++ }
@@ -827,9 +870,14 @@ try {
     }
 
     $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
+    # FEEDRETRO1 FASE2 (2026-09-04): eventos_avanco_data pode ser 0 legitimamente num dia
+    # quieto - nao e criterio de falha. Mede avanco TEMPORAL, nunca prova ausencia de
+    # outro fato legitimo na mesma data maxima (ver n_chaves_novas ao lado).
     Write-Log ($fimTag + $Rotina + ' concluido. Total do dia ' + $ledgerTotal + '/' + $planoTotal + '. analisados=' + $stats.analisados + ' skip=' + $stats.skip_ok + ' deferidos=' + $stats.deferred + ' submits_aceitos=' + $submitsAceitos +
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' cap_efetivo=' + $TokenHardCap + ' lotes=' + $stats.batches_run +
-        ' buscas=' + $stats.buscas_total + ' silent_fail=' + $stats.silent_fail + ' criticos=' + $stats.criticos.Count + ' auth_escalou=' + $stats.auth_escalou + ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
+        ' buscas=' + $stats.buscas_total + ' silent_fail=' + $stats.silent_fail + ' criticos=' + $stats.criticos.Count + ' auth_escalou=' + $stats.auth_escalou +
+        ' eventos_avanco_data=' + $stats.eventos_avanco_data + ' chaves_novas=' + $stats.chaves_novas + ' descartados=' + $stats.descartados +
+        ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail

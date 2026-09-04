@@ -3,6 +3,15 @@
 # RE/RJ/default/rebaixamento: checar rad.cvm.gov.br por Fato Relevante do proprio protocolo antes de fechar so com
 # imprensa; achando, usar como fonte_primaria (fonte_tipo=CVM_FATO_RELEVANTE). Sem achar, manter imprensa normalmente.
 #
+# DELTA - nao recrie fato conhecido (FEEDRETRO1, 2026-09-04): cada emissor no JSON tem ultimo_evento_data
+# (data do fato mais recente ja salvo) e eventos_conhecidos (amostra do que ja esta no estado), mais
+# janela_delta_inicio (inicio real desta busca, sempre dentro da JANELA do cabecalho). Primeira busca com
+# ancora de recencia (mes e ano correntes), procure primeiro fato com data_evento >= janela_delta_inicio.
+# Achando so fato ja em eventos_conhecidos, mesmo com URL diferente da que esta la: eventos=[],
+# cobertura_nota="sem fato novo desde <ultimo_evento_data>, confirmado <o que achou>". Continuacao de saga
+# conhecida (nova decisao/prazo/negociacao/rating sobre o MESMO caso) e evento NOVO com a data de agora,
+# nunca dobra no protocolo antigo.
+#
 # SAIDA: somente linhas RESULTADO| / LOTE_RESUMO| / ANOTA| no formato do cabecalho.
 # Sem markdown, sem tabelas, sem backticks, sem narrativa. Sem blocos de codigo PowerShell.
 # NAO executar curl nem qualquer submit HTTP - o orquestrador (PS1) grava.
