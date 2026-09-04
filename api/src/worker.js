@@ -3564,7 +3564,7 @@ var CUSTO_PRECO = {
   web_search_por_uso: 0.01
 };
 var CUSTO_DISJUNTOR_USD_DIA = 25;
-var WORKER_DEPLOY_NOTE = "v4.9.167: F002 catch{} vazios remanescentes (7) com console.error + F014 cap 1MB webhook Resend com 413. Sobre v4.9.166 (bookkeeping rename). 2026-07-20.";
+var WORKER_DEPLOY_NOTE = "v4.9.237: FEEDRETRO1 feed_evento_mais_novo/feed_idade_du/feed_fresco/feed_ultimo_evento_novo_em no GET publico; fronteira global do feed em persistirResultadoCompartilhadoInterno, carimbo so avanca por data mais nova, nunca por chave nova. Sobre v4.9.236. 2026-09-04.";
 var ANCORAS_SINTETICAS = [
   "Ra\xEDzen",
   "Petrobras",
@@ -9052,15 +9052,19 @@ __name222222(_auditarStringsProibidas, "_auditarStringsProibidas");
 __name2222222(_auditarStringsProibidas, "_auditarStringsProibidas");
 __name22222222(_auditarStringsProibidas, "_auditarStringsProibidas");
 async function carregarEstadoCompartilhado(env2222, semana) {
-  if (!env2222.RADAR_KV) return { week: semana, results: {}, updated_at: null };
+  // FEEDRETRO1 (2026-09-04): feed_frontier_data e feed_ultimo_evento_novo_em sao
+  // campos de topo do blob semanal, paralelos a updated_at. Sem le-los aqui,
+  // persistirResultadoCompartilhadoInterno escreveria o carimbo e a proxima
+  // leitura (desta mesma funcao) o perderia, forcando bootstrap toda chamada.
+  if (!env2222.RADAR_KV) return { week: semana, results: {}, updated_at: null, feed_frontier_data: null, feed_ultimo_evento_novo_em: null };
   try {
     const raw = await env2222.RADAR_KV.get(chaveEstadoCompartilhado(semana), "text");
-    if (!raw) return { week: semana, results: {}, updated_at: null };
+    if (!raw) return { week: semana, results: {}, updated_at: null, feed_frontier_data: null, feed_ultimo_evento_novo_em: null };
     const p = JSON.parse(raw);
     const results = p?.results && typeof p.results === "object" ? normalizarMojibake(p.results) : {};
-    return { week: semana, results, updated_at: p?.updated_at || null };
+    return { week: semana, results, updated_at: p?.updated_at || null, feed_frontier_data: p?.feed_frontier_data || null, feed_ultimo_evento_novo_em: p?.feed_ultimo_evento_novo_em || null };
   } catch {
-    return { week: semana, results: {}, updated_at: null };
+    return { week: semana, results: {}, updated_at: null, feed_frontier_data: null, feed_ultimo_evento_novo_em: null };
   }
 }
 // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): versao leve de
@@ -9084,6 +9088,46 @@ async function _lerUpdatedAtEstado(env2222, agoraBRT) {
   }
   return maisRecente;
 }
+// FEEDRETRO1 (2026-09-04): duas leituras publicas do feed, complementares.
+// _calcularEventoMaisNovoFeed faz um scan real (mesma formula do
+// checks.evento_mais_novo do admin_health_check, EVENTO_MAX_DU dias uteis) -
+// "qual e a data mais nova que o feed tem agora". _lerFeedFrontierEstado le o
+// carimbo GRAVADO por persistirResultadoCompartilhadoInterno - "quando essa
+// data avancou pela ultima vez de verdade", que so muda por avanco de data,
+// nunca por chave nova de fato ja conhecido (dedup por host+path deixava
+// duplicata antiga, com URL diferente, contar como "novo"; medido em 03/09,
+// os 17 itens da fila de verificacao daquela noite eram todos de agosto).
+async function _calcularEventoMaisNovoFeed(env2222) {
+  let _evMax = null;
+  try {
+    const _estadoFeed = await carregarEstadoMultiSemana(env2222, 2);
+    for (const _fer of Object.values(_estadoFeed.results || {})) {
+      if (!_fer || !Array.isArray(_fer.eventos)) continue;
+      for (const _fev of _fer.eventos) {
+        const _fd = _fev && _fev.data_evento;
+        if (typeof _fd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_fd) && (_evMax === null || _fd > _evMax)) _evMax = _fd;
+      }
+    }
+  } catch { }
+  const _feedHoje = obterAgoraBRT().toISOString().slice(0, 10);
+  const _feedIdade = _evMax ? _cvmDiasUteisApos(_evMax, _feedHoje) : null;
+  return { data: _evMax, idade_du: _feedIdade, fresco: _feedIdade !== null && _feedIdade <= EVENTO_MAX_DU };
+}
+__name(_calcularEventoMaisNovoFeed, "_calcularEventoMaisNovoFeed");
+async function _lerFeedFrontierEstado(env2222, agoraBRT) {
+  if (!env2222.RADAR_KV) return { frontier: null, ultimoNovoEm: null };
+  const semanas = [semanaISO(agoraBRT), semanaISO(new Date(agoraBRT.getTime() - 7 * 864e5))];
+  let frontier = null, ultimoNovoEm = null;
+  for (const semana of semanas) {
+    try {
+      const est = await carregarEstadoCompartilhado(env2222, semana);
+      if (est.feed_frontier_data && (!frontier || est.feed_frontier_data > frontier)) frontier = est.feed_frontier_data;
+      if (est.feed_ultimo_evento_novo_em && (!ultimoNovoEm || est.feed_ultimo_evento_novo_em > ultimoNovoEm)) ultimoNovoEm = est.feed_ultimo_evento_novo_em;
+    } catch { }
+  }
+  return { frontier, ultimoNovoEm };
+}
+__name(_lerFeedFrontierEstado, "_lerFeedFrontierEstado");
 __name(carregarEstadoCompartilhado, "carregarEstadoCompartilhado");
 __name2(carregarEstadoCompartilhado, "carregarEstadoCompartilhado");
 __name22(carregarEstadoCompartilhado, "carregarEstadoCompartilhado");
@@ -9578,6 +9622,42 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
   // agora, nunca uma data civil convertida.
   if (!payload._last_scanned_at) payload._last_scanned_at = _agoraPersist;
   payload._versao = (anterior?._versao || 0) + 1;
+  // FEEDRETRO1 (2026-09-04): fronteira GLOBAL do feed (nao por emissor), para o
+  // carimbo feed_ultimo_evento_novo_em so mudar quando o feed de verdade avanca
+  // no tempo, nunca por chave nova de fato ja conhecido. Medido em 03/09: os 17
+  // itens da fila de verificacao daquela noite eram todos datados de agosto
+  // (dedup por host+path deixa passar duplicata antiga com URL diferente); uma
+  // regra por chave-nova teria carimbado "fato novo" sem o feed sair do lugar.
+  // Bootstrap so quando ainda nao ha fronteira conhecida (null), do maximo das
+  // ultimas 2 semanas, para a segunda-feira nao comecar do zero.
+  if (estado.feed_frontier_data === null) {
+    try {
+      const _bootstrapEstado = await carregarEstadoMultiSemana(env2222, 2);
+      let _bootstrapMax = null;
+      for (const _bres of Object.values(_bootstrapEstado.results || {})) {
+        if (!_bres || !Array.isArray(_bres.eventos)) continue;
+        for (const _bev of _bres.eventos) {
+          const _bd = _bev && _bev.data_evento;
+          if (typeof _bd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_bd) && (_bootstrapMax === null || _bd > _bootstrapMax)) _bootstrapMax = _bd;
+        }
+      }
+      if (_bootstrapMax !== null) estado.feed_frontier_data = _bootstrapMax;
+    } catch (_eBootstrap) {
+      // Fail-open: bootstrap do carimbo nunca bloqueia o submit.
+    }
+  }
+  let _feedMaxNovoLocal = null;
+  if (Array.isArray(payload.eventos)) {
+    for (const _fev of payload.eventos) {
+      const _fd = _fev && _fev.data_evento;
+      if (typeof _fd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_fd) && (_feedMaxNovoLocal === null || _fd > _feedMaxNovoLocal)) _feedMaxNovoLocal = _fd;
+    }
+  }
+  if (_feedMaxNovoLocal !== null && (estado.feed_frontier_data === null || _feedMaxNovoLocal > estado.feed_frontier_data)) {
+    console.log("[feed][FRONTEIRA_AVANCOU] de=" + estado.feed_frontier_data + " para=" + _feedMaxNovoLocal + " emp=" + (empresa ? empresa.slice(0, 25) : "?"));
+    estado.feed_frontier_data = _feedMaxNovoLocal;
+    estado.feed_ultimo_evento_novo_em = _agoraPersist;
+  }
   estado.results[empresa] = normalizarMojibake(payload);
   estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
   await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
@@ -18888,11 +18968,32 @@ async function __coreFetch(request, env2222, ctx) {
       } catch (ePainel) {
         console.error("[health] painel_fresco:", ePainel && ePainel.message ? ePainel.message : String(ePainel));
       }
+      // FEEDRETRO1 (2026-09-04): painel_fresco (acima) mede SLA de ESCRITA da
+      // rotina, nao se o fato mostrado na tela e novo. Um estado que so
+      // re-narra fato de dias atras passa painel_fresco:true o tempo todo
+      // (medido 28/08 a 03/09/2026: painel_fresco:true, feed parado 5 dias
+      // uteis). feed_fresco mede o EVENTO, mesma regua de checks.evento_mais_novo
+      // do admin_health_check (EVENTO_MAX_DU dias uteis), exposta aqui sem senha
+      // para o frontend e a prova de frescor nao dependerem de credencial admin.
+      // feed_ultimo_evento_novo_em so muda quando a fronteira global do feed
+      // avanca de verdade (persistirResultadoCompartilhadoInterno), nunca por
+      // chave nova de fato ja conhecido.
+      var _feedEventoMaisNovo = null, _feedIdadeDu = null, _feedFresco = null, _feedUltimoNovoEm = null;
+      try {
+        var _feedCalc = await _calcularEventoMaisNovoFeed(env2222);
+        _feedEventoMaisNovo = _feedCalc.data;
+        _feedIdadeDu = _feedCalc.idade_du;
+        _feedFresco = _feedCalc.fresco;
+        var _feedFrontierLido = await _lerFeedFrontierEstado(env2222, _agoraBRTPainel);
+        _feedUltimoNovoEm = _feedFrontierLido.ultimoNovoEm;
+      } catch (eFeed) {
+        console.error("[health] feed_fresco:", eFeed && eFeed.message ? eFeed.message : String(eFeed));
+      }
       const _okHealth = !!env2222.RADAR_KV && !!env2222.RADAR_USAGE_EVENTS && !!env2222.RESEND_API_KEY && _adminEmailOk && _sentryOk && _verificadorRealOk && !_cvmDegrada;
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde }, 200, request, { "Cache-Control": "no-store" });
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };

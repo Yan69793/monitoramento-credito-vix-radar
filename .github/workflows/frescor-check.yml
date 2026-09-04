@@ -87,24 +87,21 @@ jobs:
             exit 1
           fi
 
-          # AVANCOFEED1 (2026-09-01). A decisao passou de "N dias uteis sem
-          # evento" para "a fonte andou e o feed nao?".
-          #
-          # O gate de idade abaixo era ERRO ate aqui e reprovaria o estado de
-          # 02/09/2026, que e saudavel: medido em 01/09, o teto do acervo da CVM
-          # era 2026-08-28, exatamente igual ao evento mais novo do feed. O lote
-          # semanal publicado no domingo 30/08 so carrega documento ate a sexta
-          # 28/08 e o proximo sai em 06/09, entao nao havia fato para persistir.
-          # Reprovar ali seria ensinar o operador a ignorar o alarme, que e como
-          # o CVMURL404 passou quatro dias invisivel.
-          #
-          # A idade continua sendo medida e continua aparecendo, agora como
-          # WARNING: a maior parte dos eventos vem de imprensa e rating, que
-          # publicam todo dia util, entao feed longo sem andar segue merecendo
-          # olhada mesmo com a CVM no teto. O que ela deixou de fazer e reprovar
-          # sozinha.
+          # AVANCOFEED1 (2026-09-01) REVERTIDO por FEEDRETRO1 (2026-09-04). A
+          # democao para warning presumia que "fonte no teto e dentro da
+          # cadencia" implicava ausencia de fato para persistir. Medido em
+          # 28/08 a 03/09/2026: o feed ficou 5 dias uteis parado
+          # (evento_mais_novo=2026-08-28, idade_du=5) com avanco_feed em
+          # saudavel_sem_fato_novo o tempo todo, porque a rotina reencontrava
+          # eventos de agosto em vez de fato novo (causa raiz em FEEDRETRO1,
+          # rotina sem delta no prompt, nao falta de imprensa/rating publicando).
+          # Isso e exatamente o "verde que esconde o pipeline parado" que esta
+          # regra foi escrita para pegar. avanco_feed volta a ser so diagnostico
+          # no texto do erro, nao decide mais este gate.
+          av_estado_preview=$(echo "$hc" | jq -r '.checks.avanco_feed.estado // "nao_avaliado"')
           if (( ev_idade > ev_limite )); then
-            echo "::warning::Feed sem evento novo ha ${ev_idade} dias uteis (limite ${ev_limite}), mais novo em ${ev_data}, ${ev_total} eventos no estado. Isoladamente isto NAO reprova: quem decide e checks.avanco_feed abaixo. Se ele disser saudavel_sem_fato_novo, a fonte tambem esta parada no mesmo teto e nao ha fato para persistir."
+            echo "::error::Feed sem evento novo ha ${ev_idade} dias uteis (limite ${ev_limite}), mais novo em ${ev_data}, ${ev_total} eventos no estado. avanco_feed=${av_estado_preview} (diagnostico, ver bloco abaixo, nao decide este gate)."
+            exit 1
           fi
 
           # Guarda de AVANCO. Compara o teto do feed com o teto da fonte e com a

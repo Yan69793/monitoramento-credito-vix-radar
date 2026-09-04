@@ -4,6 +4,40 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.237.js = v4.9.236 + FEEDRETRO1 (health enxerga a idade do FATO, nao so
+#   a da escrita). Entre 28/08 e 03/09/2026 o painel ficou 5 dias uteis preso em
+#   "Evento mais recente 28 de agosto" com ok:true, painel_fresco:true,
+#   cvm_fonte_ok:true e o frescor-check.yml verde 4 dias seguidos. Causa medida:
+#   a rotina reencontrava fato de agosto todo dia (prompt de janela de 30 dias
+#   sem delta), os 17 itens que a noturna de 03/09 mandou para a fila de
+#   verificacao eram todos datados de 05/08 a 28/08, e a guarda AVANCOFEED1
+#   (01/09) dizia saudavel_sem_fato_novo porque o feed estava no teto da CVM e a
+#   CVM dentro da cadencia semanal. Log do Worker de 01 a 04/09 confirma que o
+#   descarte NAO era do lado dele: [sanitizar][FORA_JANELA]=0, SEM_DATA=0,
+#   DATA_APROXIMADA=0, RUIDO=0, DATA_FUTURA=0, DESCARTADO_FONTE_INACESSIVEL=0,
+#   contra [persistir][MERGE]=54 e [cobertura][PRESERVADO]=66, ou seja evento
+#   velho fundido com evento velho, com updated_at subindo a cada escrita.
+#   GET / publico passa a expor feed_evento_mais_novo, feed_idade_du,
+#   feed_fresco (mesma regua de checks.evento_mais_novo, EVENTO_MAX_DU=2 dias
+#   uteis, inalterado) e feed_ultimo_evento_novo_em. Este ultimo e carimbo de
+#   AVANCO REAL: persistirResultadoCompartilhadoInterno mantem
+#   estado.feed_frontier_data, fronteira GLOBAL do feed, e so carimba quando a
+#   data maxima nova supera a anterior. Chave nova de fato ja conhecido nao
+#   carimba, que e o ponto: o dedup e por data|empresa|host+path, entao a mesma
+#   noticia com URL diferente entra como chave nova sendo fato velho. Bootstrap
+#   da fronteira uma vez por semana ISO, do maximo das 2 ultimas semanas, para a
+#   segunda-feira nao comecar do zero. feed_* fica FORA de _okHealth
+#   (HEALTHSPLIT1): ok mede servico. Quem reprova e o frescor-check.yml, que
+#   volta a dar ::error:: e exit 1 na idade do evento (a democao para warning do
+#   AVANCOFEED1 fica revertida; avanco_feed segue calculado e aparece no texto
+#   do erro como diagnostico). Frontend v202.37: rodape mostra ambar e
+#   "Sem fato novo ha N dias uteis" quando feed_fresco:false, em vez de
+#   "Sistema operacional" lendo so d.ok. Guarda api/test/health.test.mjs, 5
+#   casos novos: feed_fresco nas duas pontas (evento de 10 dias -> false,
+#   evento de hoje -> true) e os 3 casos do carimbo via POST receber_analise
+#   real (evento velho com chave nova nao avanca, data maior avanca, duplicata
+#   da mesma data maxima com URL alternativa nao avanca). Rollback:
+#   main = "v4.9.236.js".
 # v4.9.236.js = v4.9.235 + PAINELFRESCOR1 (health enxerga a idade do PAINEL).
 #   Em 02/09 a tela ficou 12h41 mostrando "Painel atualizado em 02 de setembro
 #   as 11:09 BRT" com ok:true o tempo todo. O carimbo estava CERTO: a ultima

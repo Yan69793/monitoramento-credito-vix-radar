@@ -161,3 +161,154 @@ describe("GET / painel_fresco (SLA de agenda real)", () => {
     expect(body.ok).toBe(true);
   });
 });
+
+// FEEDRETRO1 (2026-09-04): duas guardas novas, complementares a painel_fresco.
+// feed_fresco mede o EVENTO (mesma formula de checks.evento_mais_novo do
+// admin_health_check), nao a rotina. feed_ultimo_evento_novo_em e um carimbo
+// que so avanca quando a data mais nova de fato do feed avanca de verdade,
+// nunca por chave nova de um fato ja conhecido (dedup por data|empresa|
+// host+path deixava duplicata antiga, com URL diferente, ser tratada como
+// "evento novo"; medido em 03/09: os 17 itens da fila de verificacao daquela
+// noite eram todos datados de agosto, e uma regra por chave-nova teria
+// carimbado "fato novo" sem o feed sair do lugar).
+describe("GET / feed_fresco (evento mais novo do feed, nao a rotina)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  async function medirComEventos(isoAgoraReal, eventosDasa) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(isoAgoraReal));
+    const chaveAtual = chaveEstadoParaInstante(isoAgoraReal);
+    const chaveAnterior = chaveEstadoParaInstante(new Date(new Date(isoAgoraReal).getTime() - 7 * 864e5).toISOString());
+    await env.RADAR_KV.delete(chaveAtual);
+    await env.RADAR_KV.delete(chaveAnterior);
+    await env.RADAR_KV.put(chaveAtual, JSON.stringify({
+      week: chaveAtual.replace("radar:estado:", ""),
+      updated_at: isoAgoraReal,
+      results: { Dasa: { sem_eventos: false, eventos: eventosDasa } }
+    }));
+    const res = await SELF.fetch("https://example.com/");
+    return res.json();
+  }
+
+  it("evento de 10 dias atras -> feed_fresco false", async () => {
+    const body = await medirComEventos("2026-09-03T04:40:00Z", [
+      { classificacao: "RELEVANTE", titulo: "t", data_evento: "2026-08-24", fonte_primaria: "https://x.com/a", tags: [] }
+    ]);
+    expect(body.feed_evento_mais_novo).toBe("2026-08-24");
+    expect(body.feed_idade_du).toBeGreaterThan(2);
+    expect(body.feed_fresco).toBe(false);
+  });
+
+  it("evento de hoje -> feed_fresco true", async () => {
+    const body = await medirComEventos("2026-09-03T04:40:00Z", [
+      { classificacao: "RELEVANTE", titulo: "t", data_evento: "2026-09-03", fonte_primaria: "https://x.com/a", tags: [] }
+    ]);
+    expect(body.feed_evento_mais_novo).toBe("2026-09-03");
+    expect(body.feed_idade_du).toBe(0);
+    expect(body.feed_fresco).toBe(true);
+  });
+});
+
+// Casos A/B/C do operador (04/09, correcao 2): a semantica e avanco da
+// FRONTEIRA GLOBAL, nunca novidade de chave. Testa o caminho de escrita real
+// (POST receber_analise), nao um mock - le o estado bruto do KV depois do
+// submit, mesmo padrao de lerDasa() em plano-credito-dia.test.mjs. As URLs de
+// evento usam data no path (/2026/08/10/.../) de proposito: extrairDataDaURL
+// aceita sem precisar buscar a pagina (regra de ouro da skill repor-varredura,
+// worker.js:12862-12869), entao o teste nao depende de rede.
+describe("receber_analise: fronteira global do feed (carimbo so avanca por data)", () => {
+  const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao";
+  const EMPRESA = "Dasa";
+  const FRONTEIRA_ATUAL = "2026-08-20";
+  const CARIMBO_FIXO = "2026-08-20T09:00:00.000Z";
+  const AGORA_FAKE = "2026-09-03T14:00:00Z";
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  function chaveAtual() { return chaveEstadoParaInstante(AGORA_FAKE); }
+
+  async function seedComFronteira() {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_FAKE));
+    const chave = chaveAtual();
+    await env.RADAR_KV.delete(chave);
+    await env.RADAR_KV.put(chave, JSON.stringify({
+      week: chave.replace("radar:estado:", ""),
+      updated_at: CARIMBO_FIXO,
+      results: {
+        [EMPRESA]: {
+          sem_eventos: false,
+          eventos: [{
+            classificacao: "RELEVANTE", titulo: "Fato anterior", data_evento: FRONTEIRA_ATUAL,
+            fonte_primaria: "https://www.rad.cvm.gov.br/enet/frmDownloadDocumento.aspx?id=1",
+            fonte_tipo: "CVM_FATO_RELEVANTE", tags: []
+          }]
+        }
+      },
+      feed_frontier_data: FRONTEIRA_ATUAL,
+      feed_ultimo_evento_novo_em: CARIMBO_FIXO
+    }));
+  }
+
+  async function submeter(dataEvento, url) {
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.77" },
+      body: JSON.stringify({
+        action: "receber_analise",
+        routine_key: ROUTINE_KEY,
+        empresa: EMPRESA,
+        setor: "Saúde",
+        _tier: "FULL",
+        provedor: "teste-feedretro1",
+        resultado: {
+          sem_eventos: false,
+          eventos: [{
+            classificacao: "RELEVANTE", titulo: "Evento de teste", data_evento: dataEvento,
+            data_aproximada: false, fonte_primaria: url, fonte_tipo: "IMPRENSA", tags: []
+          }],
+          fontes_consultadas: [{ rodada: "R2", query: "teste feedretro1", resultado: "achou fonte" }],
+          cobertura_nota: "teste FEEDRETRO1"
+        }
+      })
+    });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  async function lerEstadoBruto() {
+    return env.RADAR_KV.get(chaveAtual(), "json");
+  }
+
+  it("caso A: evento velho com chave nova (URL diferente) nao avanca a fronteira nem o carimbo", async () => {
+    await seedComFronteira();
+    const j = await submeter("2026-08-10", "https://www.infomoney.com.br/mercados/2026/08/10/teste-a-chave-nova/");
+    expect(j.ok).toBe(true);
+    const est = await lerEstadoBruto();
+    expect(est.feed_frontier_data).toBe(FRONTEIRA_ATUAL);
+    expect(est.feed_ultimo_evento_novo_em).toBe(CARIMBO_FIXO);
+  });
+
+  it("caso B: evento com data maior que a fronteira avanca a fronteira e o carimbo", async () => {
+    await seedComFronteira();
+    const j = await submeter("2026-09-03", "https://www.infomoney.com.br/mercados/2026/09/03/teste-b-avanco/");
+    expect(j.ok).toBe(true);
+    const est = await lerEstadoBruto();
+    expect(est.feed_frontier_data).toBe("2026-09-03");
+    expect(est.feed_ultimo_evento_novo_em).not.toBe(CARIMBO_FIXO);
+    expect(new Date(est.feed_ultimo_evento_novo_em).getTime()).toBeGreaterThan(new Date(CARIMBO_FIXO).getTime());
+  });
+
+  it("caso C: duplicata da MESMA data maxima, com URL alternativa, nao avanca o carimbo", async () => {
+    await seedComFronteira();
+    const j = await submeter(FRONTEIRA_ATUAL, "https://www.moneytimes.com.br/2026/08/20/teste-c-url-alternativa/");
+    expect(j.ok).toBe(true);
+    const est = await lerEstadoBruto();
+    expect(est.feed_frontier_data).toBe(FRONTEIRA_ATUAL);
+    expect(est.feed_ultimo_evento_novo_em).toBe(CARIMBO_FIXO);
+  });
+});
