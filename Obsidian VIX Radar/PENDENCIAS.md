@@ -11,6 +11,26 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 04/09 (manhã), FEEDRETRO1 FASE 3. A noite deixa de ser perdida por limite de sessão, e o script de registro das tasks tinha os horários trocados
+
+> **Status:** FECHADO. Com isto o plano FEEDRETRO1 está inteiro. **Data da Versão:** 2026-09-04. **Origem do Registro:** medição do estado real antes de escrever (settings vivas das tasks, duração real das noturnas nos logs, as duas regex de auth, o formato do ledger). **Condição de Obsolescência:** cai quando a primeira noite com limite de sessão real exercitar a espera e o log registrar a linha `RETRY: limite de sessao da assinatura`.
+
+**Dois itens do plano já estavam prontos e não foram refeitos.** `ExecutionTimeLimit` já era `PT4H` e `MultipleInstances` já era `IgnoreNew` nas duas tasks de retry, feitos pela sessão de 03/09. A regra de medir antes de planejar evitou trabalho duplicado aqui.
+
+**SESSIONLIMIT1 e ESCALADAFORCADA1, a causa raiz da noite perdida.** Limite de uso da assinatura não é credencial inválida, mas caía no mesmo balde. Existiam **duas** regex de falha de auth em arquivos diferentes: a do motor (`$script:AuthFailRegex`) casa `hit your ... limit`, a da lib (`Test-VixClaudeAuthFailure`) não. O motor classificava como falha de auth, chamava a escalada, e a lib recusava em silêncio porque a régua dela era outra. Foi exatamente isso em 03/09 às 21h38, com a chave paga no registro e ninguém escalando, depois de 90 segundos de backoff. Agora o motor espera o reset real lido do texto do erro quando ele cabe no orçamento, e escala por uma função nova que não depende da regex quando esperar não resolve, nos três casos: reset ilegível (limite semanal, `resets Sunday`, sem HH:MM), reset longe demais, e limite que voltou depois da espera. Nenhum ramo termina em silêncio.
+
+**TETOPAREDE1, o risco que o plano não separou.** O perigo não era uma espera longa, era a soma delas. A política de 429 do pré-flight já podia esperar 120 minutos e a do lote pediria outro tanto, estourando o `PT4H` com o Windows matando o processo no meio de um lote, sem linha `FIM:` e sem ledger fechado. Agora há um teto de parede único e compartilhado. Os números saem de medição e não de estimativa: a noturna completa levou **48 min em 01/09** (10:07:18 a 10:55:51) e **26 min em 03/09** (09:07:18 a 09:33:03), contra as "~2h" que o comentário antigo assumia, cerca de 2,5 vezes o real.
+
+**DEFERIDO-NAO-E-ENTREGA1.** `Get-VixLedgerEmissoresNaJanela` contava linha `DEFERIDO` como processada, porque o regex parava no nome do emissor e nunca lia o campo status. O ledger de 03/09 fechou 58 `ANALISADO` e 45 `DEFERIDO`, e uma segunda invocação na mesma janela via 103 feitos e saía em no-op sem tocar na cauda adiada, com orçamento sobrando na hora. `SKIP` continua contando como entrega, porque foi avaliado e submetido de propósito. `RECOVERY-JANELA1` também foi portado para a matinal, com `JanelaHora 10`.
+
+**DRIFTRETRY1, achado por acidente e perigoso.** `register-retry-tasks.ps1` tinha os dois agendamentos **trocados** em relação ao que estava vivo: o script mandava matinal Seg-Sex e noturna diária, o vivo era matinal diária e noturna Seg-Sex. O vivo estava certo, porque acompanha a cadência de cada rotina. Rodar o script inverteria os dois de uma vez, e eu só descobri porque precisava rodá-lo para acrescentar o gatilho novo. Corrigido para a realidade, e acrescentado o segundo gatilho às **23:20 Seg-Sex**, rede de segurança para a noite em que a passada das 21:30 nem chegou a começar.
+
+**Decisão de orçamento que fica com o operador, não com o agente.** A cauda adiada só é reprocessada por uma invocação que já vai acontecer. Fazer o retry **lançar** por causa de cauda adiada exigiria mudar `Test-VixLedgerEntregueNaJanela`, que hoje conta `DEFERIDO` e também aceita `submit_ok=N` da linha `FIM:` (esse número inclui adiados). Isso relançaria a noturna quase toda noite, porque adiar por cap é o comportamento normal, e o custo é real. Não foi feito.
+
+**Provas.** `scripts/test-session-limit-policy.ps1`, 19 asserts, inclui o incidente de 03/09 ponta a ponta e a prova reversa de por que a escalada antiga recusava. `scripts/test-idempotencia-janela.ps1`, 31 asserts, com os casos G a J novos. Os dois estavam fora do git e entraram, então passam a ser cobertos pelo lint e pelo pre-commit, que só olham arquivo versionado.
+
+---
+
 ## 04/09 (manhã), FONTEDIVERG1 e CARTEIRA-PISO1. A Fase 2 entrou, e o dry-run dela achou dois defeitos que a revisão não tinha achado
 
 > **Status:** FECHADO, com a Fase 3 do plano FEEDRETRO1 ainda aberta. **Data da Versão:** 2026-09-04. **Origem do Registro:** dry-run do motor (`run_vixradar_varredura.ps1 -DryRun -MaxEmissores 5`), duas passagens, mais leitura do código do pré-verificador e do gate do plano. **Condição de Obsolescência:** cai quando a primeira noturna real com o prompt novo fechar com `eventos_avanco_data` registrado e sem fato de agosto recriado.

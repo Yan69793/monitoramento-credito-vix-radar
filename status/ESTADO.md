@@ -1,6 +1,23 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-09-04 (Worker v4.9.240, frontend v202.39. FEEDRETRO1 Fases 1 e 2 em produção com o dry-run validado; FONTEDIVERG1 e CARTEIRA-PISO1 fechados. Fase 3 aberta. Ver blocos abaixo)
+Última atualização: 2026-09-04 (Worker v4.9.240, frontend v202.39. **Plano FEEDRETRO1 fechado por inteiro**, Fases 0 a 3. Ver blocos abaixo)
+
+> [!info] 04/09 (manhã) — FEEDRETRO1 FASE 3: a noite deixa de ser perdida por limite de sessão.
+> **Status:** FECHADO. Com isto o plano FEEDRETRO1 está completo. **Data da Versão:** 2026-09-04. **Origem do Registro:** medição do estado real antes de escrever cada item. **Condição de Obsolescência:** cai quando uma noite com limite de sessão real exercitar a espera e o log registrar `RETRY: limite de sessao da assinatura`.
+>
+> **Dois itens do plano já estavam prontos** (`ExecutionTimeLimit PT4H` e `MultipleInstances IgnoreNew`), feitos em 03/09, e não foram refeitos.
+>
+> **A causa raiz da noite perdida eram duas regex divergentes.** A do motor casa `hit your ... limit`, a da lib não, e a lib era quem autorizava a escalada. Em 03/09 às 21h38 a chave paga estava disponível e ninguém escalou. Agora o motor espera o reset real quando ele cabe no orçamento, e escala por uma função que não depende da regex quando esperar não resolve.
+>
+> **Teto de parede compartilhado**, porque o risco era a soma das esperas (pré-flight mais lote) estourar o `PT4H`. Dimensionado por medição: a noturna completa leva 26 a 48 min, não as ~2h que o comentário antigo assumia.
+>
+> **`DEFERIDO` deixou de contar como entrega** na idempotência por janela, então uma segunda invocação processa a cauda adiada em vez de sair em no-op. `SKIP` continua contando. `RECOVERY-JANELA1` portado para a matinal.
+>
+> **Achado por acidente:** `register-retry-tasks.ps1` tinha os agendamentos das duas tasks de retry **trocados** em relação ao que estava vivo, e rodá-lo inverteria matinal e noturna. Corrigido para a realidade antes de acrescentar o gatilho novo das **23:20 Seg-Sex**.
+>
+> **Fica com o operador:** fazer o retry *lançar* por causa de cauda adiada exigiria mudar a definição de entrega do vigia, o que relançaria a noturna quase toda noite. É decisão de custo, não foi feito.
+>
+> **Provas:** 19 asserts em `scripts/test-session-limit-policy.ps1` (inclui o incidente de 03/09 ponta a ponta) e 31 em `scripts/test-idempotencia-janela.ps1`. Os dois entraram no git nesta leva e passam a ser cobertos pelo lint.
 
 > [!info] 04/09 (manhã) — FONTEDIVERG1 e CARTEIRA-PISO1 (v4.9.240): o dry-run da Fase 2 achou dois defeitos que a revisão de código não achou.
 > **Status:** FECHADOS, em produção. **Data da Versão:** 2026-09-04. **Origem do Registro:** duas passagens de `run_vixradar_varredura.ps1 -DryRun -MaxEmissores 5`. **Condição de Obsolescência:** cai quando a primeira noturna real com o prompt novo fechar sem recriar fato de agosto.
