@@ -3811,6 +3811,7 @@ var EMISSORES_LISTA = [
   "Omega Energia",
   "Comerc Energia",
   "Light",
+  "Usina Pampa Sul",
   // CARTEIRA-24AGO1 (2026-08-24): AES Brasil SAIU da carteira. Foi incorporada
   // pela Auren Energia, que ja esta nos 103, entao manter as duas contava o mesmo
   // risco de credito duas vezes e deixava um emissor permanentemente sem evento.
@@ -4502,7 +4503,7 @@ var REGULADORES = {
 var SETOR_DE_EMPRESA = {};
 (function() {
   var EMISSORES_MAP = {
-    "Energia El\xE9trica": ["Equatorial Energia", "CEMIG", "Eletrobras", "Eneva", "Engie Brasil Energia", "Energisa", "Copel", "ISA Energia", "Neoenergia", "Taesa", "Auren Energia", "CPFL Energia", "Omega Energia", "Comerc Energia", "Light"],
+    "Energia El\xE9trica": ["Equatorial Energia", "CEMIG", "Eletrobras", "Eneva", "Engie Brasil Energia", "Energisa", "Copel", "ISA Energia", "Neoenergia", "Taesa", "Auren Energia", "CPFL Energia", "Omega Energia", "Comerc Energia", "Light", "Usina Pampa Sul"],
     "Transportes e Log\xEDstica": ["CCR", "Rumo", "Simpar", "MRS Log\xEDstica", "Santos Brasil", "EcoRodovias", "Hidrovias do Brasil", "JSL", "Embraer", "VLI", "Tegma", "Arteris", "Azul"],
     "Saneamento": ["Sabesp", "Aegea Saneamento", "Igu\xE1 Saneamento", "Copasa", "Sanepar", "BRK Ambiental"],
     "Petr\xF3leo, G\xE1s e Combust\xEDveis": ["Petrobras", "Ra\xEDzen", "PRIO", "Vibra Energia", "Cosan", "Brava Energia", "Compass G\xE1s e Energia", "Braskem"],
@@ -7040,6 +7041,8 @@ async function buscarDocumentosCVM(env2222, empresa, trintaDiasAtras, hoje) {
   }
 }
 var ALIASES_LEITOR_CVM = {
+  // Usina Termelétrica Pampa Sul S.A., emissora de debêntures incentivadas.
+  "Usina Pampa Sul": ["USINA TERMELETRICA PAMPA SUL", "USINA P. PAMPA SUL", "PAMPA SUL"],
   "P\xE3o de A\xE7\xFAcar (GPA)": ["COMPANHIA BRASILEIRA DE DIST", "GPA", "CBD"],
   "Assa\xED Atacadista": ["SENDAS DISTRIBUIDORA", "SENDAS"],
   "Ra\xEDzen": ["RAIZEN ENERGIA", "RAIZEN", "RA\xCDZEN"],
@@ -7176,6 +7179,9 @@ var CVM_CATEGORIAS = [
 //   SERENA         Omega Energia para Serena Energia (CNPJ 42.500.384/0001-51)
 //   BRASKEM        entrou na carteira em 24/08 (CARTEIRA-24AGO1)
 var SYNC_ALIAS_TO_EMPRESA = {
+  "USINA TERMELETRICA PAMPA SUL": "Usina Pampa Sul",
+  "USINA P. PAMPA SUL": "Usina Pampa Sul",
+  "PAMPA SUL": "Usina Pampa Sul",
   "ISA CTEEP": "ISA Energia",
   // SENDASGPA1 (2026-08-24): havia TRES chaves quase iguais aqui, "SENDAS DISTRIB" e
   // "SENDAS DISTRIBUIDORA S/A" para o Assai e "SENDAS DISTRIBUIDORA" para o GPA. A do
@@ -7461,6 +7467,7 @@ var CNPJ_PRIMARIO_EMISSOR = {
   "61.409.892/0001-73": "CBA",
   "02.846.056/0001-97": "CCR",
   "17.155.730/0001-64": "CEMIG",
+  "04.739.720/0001-24": "Usina Pampa Sul",
   "01.027.058/0001-91": "Cielo",
   "02.800.026/0001-40": "Cogna Educa\xE7\xE3o",
   "25.369.840/0001-57": "Comerc Energia",
@@ -18094,13 +18101,14 @@ function _chaveDedupBriefing(ev) {
   return d + "|" + e + "|" + t;
 }
 __name(_chaveDedupBriefing, "_chaveDedupBriefing");
-async function montarBriefingInterno(env2222, _estado) {
+async function montarBriefingInterno(env2222, _estado, opcoes) {
   var agora = obterAgoraBRT();
   var semana = semanaISO(agora);
   var hoje = agora.toISOString().split("T")[0];
+  var opcoesBriefing = opcoes || {};
   var estado = _estado || await carregarEstadoMultiSemana(env2222, 5);
   if (!estado.results || Object.keys(estado.results).length === 0) {
-    return { data: hoje, semana, eventos_total: 0, mensagem: "Sem eventos nas ultimas 5 semanas." };
+    return { data: hoje, semana, eventos_total: 0, escopo: opcoesBriefing.escopo || "historico", mensagem: opcoesBriefing.escopo === "dia" ? "Sem fatos novos hoje." : "Sem eventos nas ultimas 5 semanas." };
   }
   var todosEventos = [];
   var porSetor = {};
@@ -18111,6 +18119,9 @@ async function montarBriefingInterno(env2222, _estado) {
     var setorEmp = SETOR_DE_EMPRESA[emp] || resultado.setor || "Outros";
     var setorNorm = normalizarMojibake(String(setorEmp));
     for (var ev of resultado.eventos) {
+      var dataEvento = String(ev && ev.data_evento || "").slice(0, 10);
+      if (opcoesBriefing.dataInicio && dataEvento < opcoesBriefing.dataInicio) continue;
+      if (opcoesBriefing.dataFim && dataEvento > opcoesBriefing.dataFim) continue;
       var copia = Object.assign({}, ev, { empresa: emp });
       enriquecerEvento(copia, setorNorm);
       todosEventos.push(copia);
@@ -18207,6 +18218,7 @@ async function montarBriefingInterno(env2222, _estado) {
   return {
     data: hoje,
     semana,
+    escopo: opcoesBriefing.escopo || "historico",
     gerado_em: (/* @__PURE__ */ new Date()).toISOString(),
     resumo: {
       eventos_total: todosEventos.length,
@@ -18230,11 +18242,12 @@ async function handleBriefingExecutivo(env2222, request) {
   var agora = obterAgoraBRT();
   var hoje = agora.toISOString().split("T")[0];
   var semana = semanaISO(agora);
-  var estado = await carregarEstadoMultiSemana(env2222, 5);
+  var escopoHistorico = new URL(request.url).searchParams.get("escopo") === "historico";
+  var estado = await carregarEstadoMultiSemana(env2222, escopoHistorico ? 5 : 1);
   if (!estado.results || Object.keys(estado.results).length === 0) {
-    return resp({ ok: true, briefing: { data: hoje, semana, eventos_total: 0, mensagem: "Sem eventos nas \xFAltimas 5 semanas." } }, 200, request);
+    return resp({ ok: true, briefing: { data: hoje, semana, escopo: escopoHistorico ? "historico" : "dia", eventos_total: 0, mensagem: escopoHistorico ? "Sem eventos nas \xFAltimas 5 semanas." : "Sem fatos novos hoje." } }, 200, request);
   }
-  var briefing = await montarBriefingInterno(env2222, estado);
+  var briefing = await montarBriefingInterno(env2222, estado, escopoHistorico ? { escopo: "historico" } : { escopo: "dia", dataInicio: hoje, dataFim: hoje });
   return resp({ ok: true, briefing }, 200, request);
 }
 __name(handleBriefingExecutivo, "handleBriefingExecutivo");

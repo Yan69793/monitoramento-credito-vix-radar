@@ -1,4 +1,9 @@
 {
+  "Usina Pampa Sul": {
+    "cnpj": "04.739.720/0001-24",
+    "denom": "USINA TERMELETRICA PAMPA SUL S.A.",
+    "match": "manual-cvm"
+  },
   "Sabesp": {
     "cnpj": "43.776.517/0001-80",
     "denom": "CIA SANEAMENTO BÁSICO ESTADO SÃO PAULO",

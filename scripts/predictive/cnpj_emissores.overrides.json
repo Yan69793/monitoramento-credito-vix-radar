@@ -3,6 +3,12 @@
   "_motivo": "A heuristica casa por prefixo de nome normalizado e pegava a primeira entidade na ordem do CSV da CVM, que costuma ser a subsidiaria operacional e nao a emissora da divida. Efeito medido: Light aparecia com Altman z_em 4.71 (zona cinzenta) medindo a LIGHT ENERGIA, subsidiaria de geracao com R$3.1bi de ativo, enquanto a holding em recuperacao judicial tem R$25.7bi e z_em 3.51 (distress).",
   "_regra": "Nao remover entrada daqui sem verificar no cadastro CVM. Adicionar entrada nova quando a heuristica escolher subsidiaria, quando a denominacao social nao contiver o nome curto do emissor, ou quando o desempate por ativo total escolher a holding no lugar da emissora.",
 
+  "Usina Pampa Sul": {
+    "cnpj": "04.739.720/0001-24",
+    "denom": "USINA TERMELETRICA PAMPA SUL S.A.",
+    "motivo": "Emissora de debentures incentivadas. O nome de carteira omite TERMELÉTRICA, portanto a heuristica de prefixo nao a encontra com seguranca. CNPJ confirmado no comunicado ao mercado da emissora."
+  },
+
   "Light": {
     "cnpj": "03.378.521/0001-75",
     "denom": "LIGHT S.A. - EM RECUPERAÇÃO JUDICIAL",

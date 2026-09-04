@@ -73,6 +73,18 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
     soltarRelogio();
   });
 
+  it("briefing padrao mostra somente fatos do dia, sem puxar o historico semanal", async () => {
+    const token = await mintJWT(env.JWT_SECRET);
+    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    expect(r.status).toBe(200);
+    const j = await r.json();
+    expect(j.ok).toBe(true);
+    expect(j.briefing.escopo).toBe("dia");
+    expect(j.briefing.top_eventos.every((e) => e.data_evento === "2026-08-30")).toBe(true);
+  });
+
   it("mecanismo: os 3 eventos Cosan 16/07 com tag rating colapsam na mesma chave", () => {
     const cosan16 = eventosDe(estado, "Cosan").filter((e) => e.data_evento === "2026-07-16");
     expect(cosan16.length).toBeGreaterThan(3);
@@ -106,7 +118,7 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
 
   it("top_eventos: Cosan e Braskem aparecem uma vez cada, Auren ganha vaga", async () => {
     const token = await mintJWT(env.JWT_SECRET);
-    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
+    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo&escopo=historico", {
       headers: { Authorization: `Bearer ${token}` }
     });
     expect(r.status).toBe(200);
@@ -137,7 +149,7 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
     const token = await mintJWT(env.JWT_SECRET);
     // Com o relogio preso em 30/08 o endpoint pede W35..W31, as chaves onde o
     // beforeEach ja gravou os fixtures. Nao ha mais remapeamento de semana.
-    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
+    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo&escopo=historico", {
       headers: { Authorization: `Bearer ${token}` }
     });
     expect(r.status).toBe(200);

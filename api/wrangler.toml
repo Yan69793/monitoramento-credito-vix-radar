@@ -4,6 +4,11 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.239.js = v4.9.238 + briefing diario e cobertura Usina Pampa Sul.
+#   O briefing executivo passa a retornar somente fatos classificados no dia,
+#   preservando a consulta historica explicita para consumidores internos. O
+#   cadastro de Energia Eletrica inclui Usina Pampa Sul, com alias e CNPJ CVM.
+#   Rollback: main = "v4.9.238.js".
 # v4.9.238.js = v4.9.237 + FEEDRETRO1 FASE2 (a rotina passa a saber o que ja
 #   sabemos). A Fase 1 deu visibilidade ao feed parado; esta fase ataca a causa.
 #   Medido em 03/09: os 17 itens que a noturna mandou para verificacao eram todos

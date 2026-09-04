@@ -157,7 +157,7 @@ describe("MATERIALIDADE — sem saturacao (MATERIALSAT1)", () => {
     // fixture entra sob a propria semana. Antes do RELOGIOTESTE1 este teste
     // remapeava os fixtures para as semanas correntes, o que mantinha as duas
     // pontas de acordo mas embaralhava a ordem cronologica do merge.
-    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
+    const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo&escopo=historico", {
       headers: { Authorization: `Bearer ${token}` }
     });
     expect(r.status).toBe(200);
