@@ -32,7 +32,8 @@ param(
     [switch]$Force,
     [switch]$DryRun,
     [int]$MaxEmissores = 0,
-    [switch]$SimularTokenVencido
+    [switch]$SimularTokenVencido,
+    [switch]$ForceClaude
 )
 
 $ErrorActionPreference = 'Continue'
@@ -466,6 +467,15 @@ function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, 
     # o Worker devolveu nesta submissao.
     $pfx = if ($DryRun) { 'DRYRUN|' } else { 'OK|' }
     Write-Log ($pfx + $emp + '|' + $tier + '|' + $classif + '|' + $nEv + '|' + $subOk.ToString().ToLower() + '|' + $status + '|' + $nAvancoData)
+}
+
+# CLAUDE-FREE-MIGRATION (2026-09-04): Claude nao e mais requisito operacional. Sem provider
+# manual forcado (VIXRADAR_LLM_PROVIDER='claude-manual' + -ForceClaude), esta rotina bloqueia
+# AQUI com exit 86, antes de mutex, lock de arquivo, sonda, auth ou claude. Scheduler nunca
+# passa -ForceClaude, entao provider 'none' (default) ou 'claude-manual' sem flag = bloqueio.
+if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+    Write-Log (Get-VixLlmBloqueadoMsg ('run_vixradar_varredura.ps1 ' + $Rotina))
+    exit $VixLlmBloqueadoExit
 }
 
 if (-not (Test-Path $Perfil.skill)) { Write-Log ('ERRO: skill ausente ' + $Perfil.skill); exit 1 }

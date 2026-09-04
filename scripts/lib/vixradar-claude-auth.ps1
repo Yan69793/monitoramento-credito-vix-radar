@@ -44,6 +44,13 @@
 
 Set-Variable -Name VixAuthPrefixoValido -Value 'sk-ant-' -Scope Script -Force
 
+# CLAUDE-FREE-MIGRATION (2026-09-04): Claude nao e mais infraestrutura operacional e
+# PAYG Anthropic e NAO AUTORIZADO. A decisao de provider vive em vixradar-llm-provider.ps1
+# (variavel VIXRADAR_LLM_PROVIDER, exit canonico 86). Sem provider 'claude-manual' com
+# -ForceClaude explicito do operador, NENHUMA credencial e lida, nenhuma sonda roda e
+# nenhum `claude -p` e chamado. Backstops abaixo garantem isso em cada ponto de auth.
+. (Join-Path $PSScriptRoot 'vixradar-llm-provider.ps1')
+
 function Write-VixAuthLog([string]$Mensagem) {
     # Usa o Write-Log do script chamador quando existe, para a linha cair no log da
     # rotina. Fora dele (teste manual) cai no console em vez de sumir.
@@ -52,6 +59,10 @@ function Write-VixAuthLog([string]$Mensagem) {
 }
 
 function Get-VixAnthropicApiKey {
+    # GATE CLAUDE-FREE (2026-09-04): chave paga so e lida sob provider 'claude-manual'
+    # com -ForceClaude explicito do operador. Scheduler nunca passa -ForceClaude, entao
+    # a escalada automatica para chave paga morre aqui com exit 86.
+    if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-auth-Get-VixAnthropicApiKey' }
     # So aceita chave no formato Anthropic. Chave de agregador e recusada e registrada:
     # em 30/07 uma base URL de agregador servia deepseek-v4-flash para pedido de
     # claude-sonnet-4-6, e o log carimbava Claude.
@@ -98,6 +109,10 @@ function Get-VixAnthropicAuthToken {
 }
 
 function Set-VixClaudeAuthEnv {
+    # GATE CLAUDE-FREE (2026-09-04): esta funcao roda imediatamente antes de cada
+    # `claude -p` em todas as rotinas. Sem provider manual forcado, exit 86 antes de
+    # tocar no ambiente, garantindo que nenhum claude chegue a ser invocado.
+    if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-auth-Set-VixClaudeAuthEnv' }
     # Aplica o modo ja decidido. Chamar antes de CADA invocacao do claude, porque o
     # ambiente do processo pode ter sido mexido entre lotes.
     $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
@@ -186,6 +201,11 @@ function Initialize-VixClaudeAuth {
         [string]$ModeloSonda = 'claude-haiku-4-5-20251001',
         [string]$McpConfigFile
     )
+
+    # GATE CLAUDE-FREE (2026-09-04): sem provider manual forcado, nenhuma sonda e feita
+    # e nenhuma credencial e lida. A sonda e gratuita, mas o caminho de cair para chave
+    # paga depois nao e: este gate corta o caminho inteiro antes da primeira chamada.
+    if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-auth-Initialize-VixClaudeAuth' }
 
     if ($script:VixAuthDecidido) { return $script:VixAuthModo }
 

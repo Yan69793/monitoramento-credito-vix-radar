@@ -18,7 +18,11 @@ param(
     # e o proprio entry point da task do Task Scheduler, entao ele passa o proprio
     # StartTime aqui. Chamada manual/direta usa o default (este processo comecou
     # agora), que nunca aciona a guarda de margem abaixo.
-    [datetime]$TaskInicio = (Get-Process -Id $PID).StartTime
+    [datetime]$TaskInicio = (Get-Process -Id $PID).StartTime,
+    # CLAUDE-FREE-MIGRATION (2026-09-04): so o operador passa, em chamada manual com
+    # VIXRADAR_LLM_PROVIDER='claude-manual'. O Task Scheduler nunca passa; sem a flag, o
+    # gate abaixo bloqueia RoutineId vixradar-* com exit 86 (Szuchmacher fica intacto).
+    [switch]$ForceClaude
 )
 
 $ErrorActionPreference = 'Continue'
@@ -124,6 +128,25 @@ function Write-Log([string]$msg) {
             }
             else { Start-Sleep -Milliseconds ([Math]::Min(200 * [Math]::Pow(2, $i - 1), 2000)) }
         }
+    }
+}
+
+# CLAUDE-FREE-MIGRATION (2026-09-04): gate de provider SOMENTE para RoutineId vixradar-*.
+# Routinas Szuchmacher (atualizar-agenda-macro-szuchmacher) nao sao escopo desta migracao e
+# nao mudam. Para as vixradar-*, sem provider manual forcado (VIXRADAR_LLM_PROVIDER +
+# -ForceClaude) este runner bloqueia AQUI com exit 86, antes de probe WebSearch, sonda ou
+# qualquer `claude -p`. Scheduler nunca passa -ForceClaude; provider 'none' (default) ou
+# 'claude-manual' sem flag = BLOQUEADO_SEM_PROVIDER.
+if ($RoutineId -like 'vixradar-*') {
+    $ProviderLib = Join-Path $LibDir 'vixradar-llm-provider.ps1'
+    if (-not (Test-Path -LiteralPath $ProviderLib)) {
+        Write-Log 'ERRO FATAL: lib vixradar-llm-provider.ps1 ausente - sem ela nao posso decidir provider.'
+        exit 2
+    }
+    . $ProviderLib
+    if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+        Write-Log (Get-VixLlmBloqueadoMsg ('run_claude_routine.ps1 ' + $RoutineId))
+        exit $VixLlmBloqueadoExit
     }
 }
 

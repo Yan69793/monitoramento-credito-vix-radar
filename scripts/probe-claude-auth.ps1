@@ -19,7 +19,8 @@ param(
     [switch]$SemApiKey,
     [switch]$SemAlerta,
     [string]$Rotina = 'probe-auth',
-    [string]$ModeloSonda = 'claude-haiku-4-5-20251001'
+    [string]$ModeloSonda = 'claude-haiku-4-5-20251001',
+    [switch]$ForceClaude
 )
 
 $ErrorActionPreference = 'Continue'
@@ -61,6 +62,15 @@ function Get-Cabeca([string]$txt, [int]$max) {
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
 Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeSonda', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo', 'Send-VixRoutineAlert', 'Get-VixUsageParcelas')
+
+# CLAUDE-FREE-MIGRATION (2026-09-04): sonda diagnostica que invoca claude de verdade.
+# Sem provider manual forcado, exit 86 ANTES de ler credencial, sondar ou disparar
+# notificar_rotina. Para diagnosticar auth manualmente, setar VIXRADAR_LLM_PROVIDER=
+# 'claude-manual' e rodar com -ForceClaude. Scheduler nunca passa -ForceClaude.
+if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+    Write-Log (Get-VixLlmBloqueadoMsg 'probe-claude-auth.ps1')
+    exit $VixLlmBloqueadoExit
+}
 
 Write-Log ('INICIO: probe-auth modo=' + $Modo + ' pid=' + $PID + ' ps=' + $PSVersionTable.PSVersion + ' user=' + $env:USERNAME + ' cwd=' + (Get-Location).Path)
 Write-Log ('AMBIENTE registro User (so tamanho): VIXRADAR_ANTHROPIC_AUTH_TOKEN=' + (Get-Len ([Environment]::GetEnvironmentVariable('VIXRADAR_ANTHROPIC_AUTH_TOKEN', 'User'))) +

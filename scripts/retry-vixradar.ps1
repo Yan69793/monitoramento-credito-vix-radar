@@ -66,6 +66,21 @@ if (Test-Path -LiteralPath $ClaudeAuth) {
     try { . $ClaudeAuth; $temClaudeAuth = $true } catch { Write-Log "AVISO: dot-source $ClaudeAuth falhou: $_" }
 } else { Write-Log "AVISO: $ClaudeAuth ausente" }
 
+# CLAUDE-FREE-MIGRATION (2026-09-04): com provider none (ou claude-manual sem forca manual),
+# a rotina base ja sai exit 86 e nao deixa ledger no dia. Relancar aqui so geraria email de
+# falso "SEM ENTREGA". Retry vira no-op limpo: linha canonica + exit 0, sem relancar, sem
+# alerta. (Quando a Fase B migrar o runner para provider novo, este no-op e revisto.)
+$ProviderLibRetry = Join-Path $LibDir 'vixradar-llm-provider.ps1'
+if (Test-Path -LiteralPath $ProviderLibRetry) {
+    . $ProviderLibRetry
+    if (-not (Test-VixLlmPermiteClaude)) {
+        Write-Log ((Get-VixLlmBloqueadoMsg ('retry-vixradar.ps1 ' + $RoutineId)) + ' - no-op, nao relanca')
+        exit 0
+    }
+} else {
+    Write-Log "AVISO: $ProviderLibRetry ausente - retry segue sem gate de provider"
+}
+
 function Send-VixRetryAlerta([string]$Motivo) {
     if ($SemAlerta) { Write-Log ('ALERTA (SemAlerta, POST suprimido): ' + $Motivo); return }
     $rk = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')

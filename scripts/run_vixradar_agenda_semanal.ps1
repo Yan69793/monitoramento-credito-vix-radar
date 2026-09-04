@@ -17,6 +17,14 @@
 #
 # 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script aborta antes
 # do 'exit' e o Task Scheduler perde o codigo de saida real.
+#
+# CLAUDE-FREE-MIGRATION (2026-09-04): -ForceClaude so o operador passa, em chamada manual
+# explicita com VIXRADAR_LLM_PROVIDER='claude-manual'. O Task Scheduler nunca passa essa
+# flag; sem ela o gate abaixo bloqueia com exit 86 antes de gastar qualquer token.
+param(
+    [switch]$ForceClaude
+)
+
 $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -248,6 +256,13 @@ Nenhum texto antes ou depois do JSON. Schema exato de cada objeto:
 Se nao achar nenhuma data para nenhum trimestre pedido de uma empresa, devolva
 "trimestres": [] para ela (nunca omita a empresa do array).
 "@
+}
+
+# CLAUDE-FREE-MIGRATION (2026-09-04): a agenda pesquisa com claude (WebSearch + JSON por
+# lote). Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
+if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+    Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_agenda_semanal.ps1')
+    exit $VixLlmBloqueadoExit
 }
 
 $__mutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-agenda-semanal')

@@ -10,10 +10,16 @@
 #     - VIXRadar-Reconciliacao-CVM → scripts/register-reconciliacao-cvm-task.ps1
 #     - VIXRadar-Ranking-Mensal    → scripts/register-ranking-mensal-task.ps1
 #
-#   VIXRadar-Verificacao-Async PASSOU a ser coberto por este script (REGDRIFT1-FIX,
-#   2026-08-15): registrada com Disabled = $true, guarda anti-duplicata com a sessao
-#   Claude Desktop. O registrador dedicado (register-verificacao-async-task.ps1) foi
-#   desativado com guarda dura, mesmo padrao do register-vixradar-tasks.ps1.
+#   CLAUDE-FREE-MIGRATION (2026-09-04, Fase A): Matinal, Noturno e Verificacao-Async
+#   voltam a ser tasks nativas ENABLED, executadas pelo Task Scheduler como motor unico.
+#   Nao existe mais sessao agendada do Claude Desktop guardando duplicata: o proprio script
+#   de cada rotina carrega o gate de provider (BLOQUEADO_SEM_PROVIDER, exit 86) e, sem
+#   provider habilitado, sai bloqueado sem tocar em claude. O registro canoneiro destas 5
+#   (3 rotinas + 2 retries) e o scripts/cutover-motor.ps1: este registrador so expressa UM
+#   trigger por task e nao cobre os retries, entao NAO reproduz o estado pos-Fase-A completo
+#   (a Verificacao-Async real tem dois triggers, 11:03 e 19:15). Para reconstruir o scheduler
+#   das rotinas LLM, rodar cutover-motor.ps1; este arquivo segue valido para AgendaSemanal e
+#   para o cluster Szuchmacher. A secao "Status" abaixo nao lista Sentinela nem retries.
 #
 # ATENCAO: A linha Unregister-ScheduledTask em Register-OneTask zera o LastRunTime
 # e a task perde o disparo do dia se o horario do trigger ja passou.
@@ -62,10 +68,6 @@ $Tasks = @(
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '10:00'
         Daily       = $false
-        # REGDRIFT1-FIX (2026-08-15): roda por sessao agendada do Claude Desktop;
-        # task nativa fica DISABLED como guarda anti-duplicata. O registrador
-        # passa a reproduzir esse estado (antes era aplicado so a mao).
-        Disabled    = $true
     },
     @{
         Name        = 'VIXRadar-Noturno'
@@ -75,17 +77,15 @@ $Tasks = @(
         DaysOfWeek  = $null
         At          = '18:00'
         Daily       = $true
-        Disabled    = $true
     },
     @{
         Name        = 'VIXRadar-Verificacao-Async'
-        Description = 'VIX Radar dreno fila verificacao (Claude Desktop)'
+        Description = 'VIX Radar dreno fila verificacao (motor nativo)'
         Script      = Join-Path $Scripts 'run_vixradar_verificacao_async.ps1'
         ArgList     = @()
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '10:20'
         Daily       = $false
-        Disabled    = $true
     },
     @{
         Name        = 'Szuchmacher-AgendaMacro-Claude'
@@ -163,11 +163,10 @@ function Register-OneTask($t) {
     Register-ScheduledTask -TaskName $t.Name -Action $act -Trigger $trg `
         -Settings (New-TaskSettings) -Principal $principal -Description $desc -Force | Out-Null
 
-    # REGDRIFT1-FIX (2026-08-15): reproduz o estado Disabled das tasks de rotina
-    # Claude Desktop apos o registro. Antes deste fix, nenhum script reproduzia
-    # esse estado e re-registrar reabilitava a task, abrindo dupla execucao.
-    # Revisao 15/08: Disable sem guarda falhava em silencio (ErrorActionPreference
-    # Continue) e o script imprimia OK com a task reabilitada. Agora falha alto.
+    # CLAUDE-FREE-MIGRATION (2026-09-04, Fase A): nenhuma task registrada aqui carrega mais
+    # Disabled = $true (Matinal/Noturno/Verificacao-Async sao o motor nativo Enabled, com o
+    # gate de provider dentro do proprio script). O ramo abaixo fica como guarda generica
+    # para task futura que precise nascer desligada, e falha alto se o Disable nao pegar.
     if ($t.Disabled) {
         try {
             Disable-ScheduledTask -TaskName $t.Name -ErrorAction Stop | Out-Null

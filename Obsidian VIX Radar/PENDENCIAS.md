@@ -11,6 +11,25 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 04/09 (noite), CLAUDE-FREE-MIGRATION Fase A. Claude deixa de ser infraestrutura; código pronto, portões G1-G5 do operador
+
+> **Status:** EM ANDAMENTO, código da Fase A pronto e testado, aguardando os portões do operador G1-G5. **Data da Versão:** 2026-09-04. **Origem do Registro:** execução do plano aprovado `C:\Users\User\.claude\plans\fluffy-prancing-grove.md`. **Condição de Obsolescência:** cai quando G1-G7 fecharem e o Fase A for declarada no fechamento da sessão; não se reescreve depois disso (registro do andamento).
+
+**Governança:** `CLAUDE_SUBSCRIPTION=FREE`, `CLAUDE_CODE=OPCIONAL/NÃO GARANTIDO`, `ANTHROPIC_API_PAYG=NÃO AUTORIZADO`, dependência operacional de Claude Code PROIBIDA. Produção (Worker/Cloudflare) intocada por decisão; correção do residual é Fase B.
+
+**O que o código já entrega (no disco):** as rotinas LLM (varredura/motor, matinal, noturno, `verificacao_async`, sentinela, `agenda_semanal`, `run_claude_routine` p/ `vixradar-*`, `retry-vixradar`, `probe-claude-auth`, libs `vixradar-claude-auth` e `vixradar-ambient-check`) carregam `scripts/lib/vixradar-llm-provider.ps1` e saem bloqueadas sem provider habilitado, com linha canônica `BLOQUEADO_SEM_PROVIDER provider=<v> exit=86 gatilho=<script> motivo=...` e exit 86. Config única em env User `VIXRADAR_LLM_PROVIDER` (ausente/`none` = bloqueado, `claude-manual` = só `-ForceClaude` manual fora do scheduler, `deepseek`/`openrouter` = reservado Fase B, ainda bloqueado). Corte da escalação automática para chave paga na auth lib (`claude-manual` exigido; chave removida do processo no bloqueio; registry User intacto). Monitor `monitor-tasks.ps1` trata 86 como esperado e 9006 em resultado ≠ 86 (fail-closed). Gate anti-regressão: `scripts/check-claude-free.ps1` + Gate 8 no pre-commit + `.github/workflows/claude-free.yml`. Scheduler das 5 rotinas vira nativo via `scripts/cutover-motor.ps1 -Acao Ativar`. Determinísticas (coleta-volatilidade, export-histórico, reconciliação CVM) e watchdogs intactas. Inventário A/B/C/D/E completo, arquivo por arquivo, em [[100 - CLAUDE-FREE-MIGRATION Fase A 2026-09-04]].
+
+**Pendências registradas nesta data:**
+
+1. **Produção residual (Fase B, não corrigir na Fase A por decisão do operador):** o Worker segue com cascade Anthropic-only, secret `ANTHROPIC_API_KEY`, `consulta_empresa` e `sentry` atrelados. Health `providers_configurados 2/2` (Anthropic + Resend) permanece. Documentado como pendência; remoção é Fase B+.
+2. **Decisão de provider Fase B (do operador, não executada):** reescrita do motor para DeepSeek/OpenRouter (chaves `DEEPSEEK_API_KEY`/`OPENROUTER_API_KEY` já em env User, não usar agora, não inventar chave, não criar serviço pago). Provider configurado mas motor não migrado ⇒ ainda BLOQUEADO (o log avisa).
+3. **CCD/Remote a desligar (G2, ação do operador):** desligar as 4 tasks do CCD no MCP `scheduled-tasks` (`vixradar-matinal`, `vixradar-noturno`, `vixradar-verificacao-async-11h`, `vixradar-verificacao-async-1845`) e pausar as 2 Remote Routines (verificação remota, frescor remoto). Confirmar `list_scheduled_tasks` com `nextRunAt` nulo.
+4. **Enquanto G1-G3 não rodarem:** scheduler segue no regime anterior (natives Disabled + CCD ativo), só que cada rotina LLM já sai bloqueada 86 sem provider.
+
+**Portões abertos:** G1 setar `VIXRADAR_LLM_PROVIDER=none` em User; G2 desligar CCD/Remote; G3 `cutover-motor.ps1 -Acao Ativar` (elevação); G4 1 disparo real de cada rotina bloqueada; G5 monitor `-DryRun` + ciclos; G6 commit da migração + CI verde; G7 portão de verificação final. Prova de cada um no fechamento da sessão. Referências: `routines/README.md` (bloco Fase A), `status/ESTADO.md`, `CLAUDE.md`.
+
+---
+
 ## 04/09, FEEDRETRO1 ENCERRADO. Plano completo, Fases 0 a 3
 
 > **Status:** ENCERRADO. **Data da Versão:** 2026-09-04. **Origem do Registro:** fechamento formal a pedido do operador. **Condição de Obsolescência:** este bloco é registro histórico e não se reescreve. Regressão futura abre item novo com tag própria.

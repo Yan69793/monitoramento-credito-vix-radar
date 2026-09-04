@@ -341,6 +341,44 @@ MODS_EOF
     fi
 fi
 
+# ─── Gate 8: reintroducao de claude sem gate de provider (CLAUDE-FREE-MIGRATION) ──
+# Em 2026-09-04 o operador saiu do Claude Pro/Max (plano FREE, PAYG nao autorizado) e o Claude
+# Code deixou de ser infraestrutura operacional do VIX Radar. Toda rotina LLM agora carrega a
+# lib scripts/lib/vixradar-llm-provider.ps1 e, sem provider habilitado, sai exit 86 com a linha
+# BLOQUEADO_SEM_PROVIDER antes de qualquer auth/claude. Este gate reprova no commit qualquer
+# .ps1 vivo de scripts/routines que volte a invocar claude sem o gate, ou que cite token de
+# chave paga (sk-ant- / VIXRADAR_ANTHROPIC_API_KEY / Get-VixAnthropicApiKey) fora da allowlist
+# do checker. Mesma tecnica do Gate 1: roda sobre o blob EM STAGING (git cat-file), nunca o
+# working tree, senao staging por hunk diverge e o que vale e o indice.
+STAGED_CLAUDE=$(git diff --cached --name-only --diff-filter=ACM | grep -Ei '^(scripts|routines)/.*\.ps1$' | grep -Ev '/(claude-desktop)/' || true)
+CHECKER_CLAUDE="scripts/check-claude-free.ps1"
+
+if [ -n "$STAGED_CLAUDE" ] && [ -f "$CHECKER_CLAUDE" ]; then
+    LISTA_CLAUDE=""
+    while IFS= read -r f; do
+        [ -z "$f" ] && continue
+        stage_blob "$f" || continue
+        if [ -z "$LISTA_CLAUDE" ]; then
+            LISTA_CLAUDE="$STAGEDIR/$f"
+        else
+            LISTA_CLAUDE="$LISTA_CLAUDE,$STAGEDIR/$f"
+        fi
+    done <<CLAUDE_EOF
+$STAGED_CLAUDE
+CLAUDE_EOF
+
+    if [ -n "$LISTA_CLAUDE" ]; then
+        if ! powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$CHECKER_CLAUDE" -Path "$LISTA_CLAUDE" -RootPrefix "$STAGEDIR/"; then
+            echo ""
+            echo "GATE 8 (CLAUDE-FREE-MIGRATION) REPROVOU: .ps1 vivo reintroduz dependencia de claude sem o gate de provider."
+            echo "Os caminhos exibidos sao copias do conteudo EM STAGING. O arquivo real e o mesmo caminho sem o prefixo $STAGEDIR/."
+            echo "Sem provider habilitado a rotina tem que sair 86 (BLOQUEADO_SEM_PROVIDER), nunca chamar claude."
+            echo "Corrigir dot-source da lib de provider antes do primeiro auth/claude. Emergencia assumindo o risco: git commit --no-verify."
+            FALHOU=1
+        fi
+    fi
+fi
+
 rm -rf "$STAGEDIR"
 
 # --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------

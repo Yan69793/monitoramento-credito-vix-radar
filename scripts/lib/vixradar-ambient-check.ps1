@@ -5,6 +5,11 @@
 # nao-Claude. O incidente de 27/07 aconteceu porque ANTHROPIC_BASE_URL apontava para
 # api.deepseek.com e os nomes de modelo Claude eram roteados para deepseek-v4-pro,
 # sem erro. Esta guarda aborta antes de queimar um token.
+#
+# CLAUDE-FREE-MIGRATION (2026-09-04): as funcoes abaixo que invocam `claude` so rodam sob
+# provider 'claude-manual' + -ForceClaude explicito. Sem isso, exit 86 BLOQUEADO_SEM_PROVIDER
+# antes da sonda. A decisao vive em vixradar-llm-provider.ps1 (variavel VIXRADAR_LLM_PROVIDER).
+. (Join-Path $PSScriptRoot 'vixradar-llm-provider.ps1')
 
 function Test-VixClaudeAmbienteLimpo {
     # Devolve $null se limpo, ou uma string com a violacao encontrada.
@@ -129,6 +134,9 @@ function Get-VixWsProbeClassificacao {
 }
 
 function Test-VixWebSearchProbe([string]$McpConfigFile) {
+    # GATE CLAUDE-FREE (2026-09-04): sonda custa ~2k tokens e invoca claude. Scheduler
+    # nunca passa -ForceClaude, entao este caminho inteiro esta cortado sem provider.
+    if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-ambient-Test-VixWebSearchProbe' }
     # Probe de WebSearch: busca trivial para validar que a ferramenta de busca
     # esta funcional antes de queimar tokens em lotes. Em 27/07 todas as buscas
     # retornavam "WebSearch indisponivel (modelo deepseek-v4-flash)" e os emissores
@@ -340,6 +348,9 @@ function Invoke-VixWebSearchPreflight {
 }
 
 function Test-VixHeadlessTools {
+    # GATE CLAUDE-FREE (2026-09-04): prova real invoca claude de verdade. Mesma regra
+    # das demais: sem provider manual forcado, nada de tocar no CLI.
+    if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-ambient-Test-VixHeadlessTools' }
     # Prova real (CLI de verdade, nao stub) de que a linha de comando headless da
     # rotina (Get-VixRunnerClaudeArgs) da acesso a PowerShell/Bash, Read, Write,
     # Agent e WebSearch SEM prompt de permissao pendurado. INCIDENTE-FRESHNESS2,

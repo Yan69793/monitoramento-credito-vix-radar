@@ -14,7 +14,7 @@
 # claimante padrao, 4 parcelas de usage na regua unica, ALERTA_AUTH na escalada e -DryRun
 # (lista e reserva com origem "local-dryrun", nunca confirma). Drenos: local 11h03 e 19h15,
 # remoto 02h07 (RemoteTrigger), mais o dreno inline no fim de cada varredura.
-param([switch]$DryRun)
+param([switch]$DryRun, [switch]$ForceClaude)
 # 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
 # aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
 $ErrorActionPreference = 'Continue'
@@ -32,6 +32,10 @@ $LogDir         = Join-Path $ProjectRoot 'logs\routines'
 $DateTag        = Get-Date -Format 'yyyyMMdd'
 $LogFile        = Join-Path $LogDir ('vixradar-verificacao-async_' + $DateTag + '.log')
 $MetricsFile    = Join-Path $LogDir ('verificacao_async_metrics_' + $DateTag + '.json')
+# DRYRUN-METRICS-SOBRESCREVE1 (02/09): dry-run nunca escreve o metrics da execucao real, e cada
+# dry-run tem o proprio arquivo (hora no nome). Get-VixCustoDia soma os _dryrun*.json do dia.
+$MetricsOut     = $MetricsFile
+if ($DryRun) { $MetricsOut = [regex]::Replace($MetricsFile, '\.json$', ('_dryrun_' + (Get-Date -Format 'HHmmss') + '.json')) }
 $McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelVerificador = 'claude-sonnet-4-6'
@@ -188,8 +192,13 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             if (Invoke-VixClaudeAuthEscalate $saidaFalha) {
                 # MOTOR1: escalada nunca e silenciosa. Log, alerta ao admin e carimbo na FIM.
                 $script:AuthEscalou = 'api'
-                Write-Log 'ALERTA_AUTH: verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.'
-                $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey
+                # DRYRUN-CRASH1: em dry-run a linha vira DRYRUN_ALERTA_AUTH (monitor nao trata teste como
+                # 9004) e notificar_rotina nunca dispara (02/09 02:45 um teste mandou e-mail real).
+                $alertaTag = 'ALERTA_AUTH: '
+                if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
+                Write-Log ($alertaTag + 'verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.')
+                if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey }
             }
         }
     } catch {
@@ -309,6 +318,15 @@ function Invoke-WorkerJsonUtf8 {
 # nao colidiu porque a fila estava vazia e o dreno durou 2s. Com fila cheia o dreno leva ~29 min
 # (16/07: 18:39:38 -> 19:08:43), entao qualquer atraso da matinal faz as duas instancias drenarem
 # os mesmos ids e pagarem o mesmo evento 2x. Mesmo padrao ja provado em noturno/matinal/export.
+# CLAUDE-FREE-MIGRATION (2026-09-04): drenar a fila de verificacao consome claude por
+# evento. Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
+# Scheduler nunca passa -ForceClaude; provider 'none' (default) ou 'claude-manual' sem flag
+# = BLOQUEADO_SEM_PROVIDER.
+if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+    Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_verificacao_async.ps1')
+    exit $VixLlmBloqueadoExit
+}
+
 $__verifMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-verifasync')
 if (-not $__verifMutex.WaitOne(0)) {
     Write-Log 'ABORT: outra instancia do dreno ja esta em execucao (mutex ocupado) - saindo limpo em 0 tokens'
@@ -409,7 +427,7 @@ try {
         Write-Log 'FIM: fila vazia, nada a fazer'
         $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         Write-Log ('ROTINA_RESUMO|vixradar-verificacao-async|local|' + $inicioIso + '|' + $fimIso + '|OK|0|0|0|' + $versaoWorker)
-        @{ data = $DateTag; total_fila = 0; lotes = 0 } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
+        @{ data = $DateTag; total_fila = 0; lotes = 0; dryrun = [bool]$DryRun } | ConvertTo-Json | Set-Content $MetricsOut -Encoding UTF8
         exit 0
     }
 
@@ -621,7 +639,7 @@ try {
         Start-Sleep -Seconds $PauseSec
     }
 
-    $metricsOut = if ($DryRun) { [regex]::Replace($MetricsFile, '\.json$', '_dryrun.json') } else { $MetricsFile }
+    $metricsOut = $MetricsOut
     [ordered]@{
         data = $DateTag; rotina = 'verificacao-async'; dryrun = [bool]$DryRun; total_fila = $stats.total_fila; lotes = $stats.lotes
         reservados = $stats.reservados; ja_reservados = $stats.ja_reservados; protecao_ativa = $stats.protecao_ativa

@@ -215,25 +215,35 @@ servido direto, validado manualmente ou pelo `Portão de verificação`.
 Estes scripts PowerShell chamam o Claude CLI localmente. Todos usam `routine_key` para
 autenticar contra o Worker. A chave nunca está versionada.
 
-**O agendamento está dividido em dois mecanismos, e confundi-los causa execução
-dupla.** As três primeiras rodam por sessão agendada do Claude Desktop e têm a
-task homônima do Windows Task Scheduler mantida `Disabled` de propósito, como
-guarda anti-duplicata verificada pelo próprio script (`GUARD_OK` no log). Nunca
-reabilitar essas três. O `LastTaskResult` delas está congelado desde 06/08/2026 e
-não indica saúde, quem indica é a linha `FIM:` no log em `logs/routines/`.
+**Claude deixou de ser infraestrutura operacional (CLAUDE-FREE-MIGRATION, Fase A,
+04/09/2026).** Governança registrada: `CLAUDE_SUBSCRIPTION = FREE`, `CLAUDE_CODE =
+OPCIONAL/NÃO GARANTIDO`, `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`, dependência
+operacional de Claude Code proibida. Claude Web Free segue como ferramenta
+manual/advisory. O agendamento das rotinas LLM voltou ao **Task Scheduler nativo**,
+reconstruído por `scripts/cutover-motor.ps1` (registro canônico de Matinal,
+Noturno, Verificacao-Async, Sentinela e AgendaSemanal; retries
+`Szuchmacher-RetryVixMatinal/Noturno` ficam Disabled) e anotado em
+`logs\monitor-tasks\motor.json` (`motor: task-scheduler`). As sessões agendadas do
+Claude Desktop e as duas Remote Routines saíram de cena. O
+`register-all-routines-scheduler.ps1` não reproduz esse estado (um trigger por
+task, sem retries): para reconstruir, rodar o cutover.
 
-O agendamento real das três sessões vive no CCD store
-`%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`,
-lido pelo app só na ativação (INVERSAO-CD1, 26/08). **Editar o arquivo à mão não
-vale até reiniciar o Claude Desktop. Mexer pelo MCP `scheduled-tasks` vale na
-hora.** A distinção é de 01/09/2026 e importa: `update_scheduled_task` grava no
-store e reprograma o scheduler vivo no mesmo passo, então não precisa de restart.
-Medido ao reverter o cron da noturna, sem tocar em processo nenhum: `nextRunAt`
-saiu de `2026-09-01T11:05:24Z` para `2026-09-01T13:05:24Z` na resposta de
-`list_scheduled_tasks`, e esse campo não existe no arquivo em disco, é computado
-pelo processo que está rodando. Prefira sempre o MCP, editar o JSON à mão é o
-caminho que exige restart. A task nativa `Disabled` é guarda anti-duplicata, não
-sinal de saúde.
+**Provider único de LLM: env User `VIXRADAR_LLM_PROVIDER`.** Ausente ou `none` =
+bloqueado; `claude-manual` = Claude só com `-ForceClaude` (manual do operador);
+`deepseek`/`openrouter` = reservados à Fase B, ainda bloqueados até o motor migrar.
+Sem provider habilitado, a rotina grava a linha canônica `BLOQUEADO_SEM_PROVIDER` e
+sai com **exit 86** antes de mutex, sonda, auth ou claude. O gate vive em
+`scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada rotina. As 5
+tasks ficam Enabled rodando o gate: executor visível, bloqueio observável, e na
+Fase B a rotina volta sem tocar no scheduler. `monitor-tasks.ps1` trata exit 86
+como estado esperado (não alerta) e gera **9006** se uma rotina bloqueada rodar com
+resultado ≠ 86 (violação do gate). Gate anti-regressão no commit e no CI:
+`scripts/check-claude-free.ps1` (R1-R5).
+
+Registro histórico do regime CCD (tasks nativas Disabled como guarda anti-duplicata,
+sessões agendadas do Claude Desktop, `GUARD_OK` no log, edição do CCD store exigir
+restart) permanece em `routines/README.md` como referência do período anterior ao
+cutover.
 
 **Inversão de nomes x horários revertida em 01/09/2026, a pedido do operador.**
 Entre 25/08 e 01/09/2026 os nomes ficaram invertidos em relação aos horários
@@ -249,9 +259,9 @@ antigos foram gravados sob o regime invertido.
 
 | Tarefa | Mecanismo | Frequência | Script | Escopo |
 |---|---|---|---|---|
-| `VIXRadar-Noturno` | Claude Desktop, task `Disabled` | Seg-Sex **18h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
-| `VIXRadar-Matinal` | Claude Desktop, task `Disabled` | Diário **10h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
-| `VIXRadar-Verificacao-Async` | Claude Desktop, task `Disabled` | Diário **11h00 e 18h45** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 18h45 impede fila presa até o dia seguinte |
+| `VIXRadar-Noturno` | Task Scheduler nativo (gate provider) | Seg-Sex **18h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
+| `VIXRadar-Matinal` | Task Scheduler nativo (gate provider) | Diário **10h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
+| `VIXRadar-Verificacao-Async` | Task Scheduler nativo (gate provider) | Diário **11h00 e 18h45** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 18h45 impede fila presa até o dia seguinte |
 | `VIXRadar-Sentinela` | Task Scheduler | Seg-Sex, :25 e :55 de 09h25 a 17h55 BRT | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho, teto 8 emissores e 120k tokens. Quase sempre sai em 0 token |
 | `VIXRadar-AgendaSemanal` | Task Scheduler | **Dom e Qua** 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale. 2x/semana é decisão deliberada de 14/08 (CALVAL-V2 regra 9, motivo `revalidar_proximo`), ver `routines/README.md` |
 | `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
@@ -260,13 +270,18 @@ antigos foram gravados sob o regime invertido.
 | `VIXRadar-Health-Watch` | Task Scheduler | **DESATIVADO 21/08/2026, decisão do operador** | — | Vigia de health a cada 15 min, desligado. O alerta de queda continua existindo, mais lento, via `canonical-test` a cada 6h e `frescor-check` diário. Reativar: `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"` |
 | `VIXRadar-Ranking-Mensal` | **OBSOLETO** (task não existe) | — | — | SEO mensal, descontinuada 18/08/2026, ver `routines/README.md` |
 
-Duas Claude Code Routines remotas (nuvem, fora do Task Scheduler) também existem:
-verificação async (02h/14h BRT) e frescor diário (23h BRT). Detalhe e trigger IDs em
+Duas Claude Code Routines remotas (nuvem, fora do Task Scheduler) existiam além
+disso: verificação async (02h/14h BRT) e frescor diário (23h BRT). Na Fase A elas
+saem de cena junto com o CCD. Detalhe e trigger IDs históricos em
 `routines/README.md`.
 
-A matinal usa Haiku em lotes de 6 + Sonnet para EWS≥38 em lotes de 4.
-A noturna varre os 103 emissores: fila rápida em Haiku, lotes de até 15, fila aprofundada em Sonnet, lotes de até 16.
-Disjuntores de custo LLM barram matinal/noturno se estouro; watchdog e agenda rodam sempre.
+**Enquanto houver provider habilitado** (`claude-manual` + `-ForceClaude`, ou
+provider de Fase B migrado), a matinal usa Haiku em lotes de 6 + Sonnet para
+EWS≥38 em lotes de 4. A noturna varre os 103 emissores: fila rápida em Haiku,
+lotes de até 15, fila aprofundada em Sonnet, lotes de até 16. Disjuntores de custo
+LLM barram matinal/noturno se estouro. **Sem provider, matinal, noturno,
+verificacao-async, sentinela e agenda saem com exit 86 antes de tocar em modelo
+algum**; o watchdog determinístico (monitor-tasks) roda sempre.
 
 Scripts de suporte relevantes: `monitor-tasks.ps1`, `verify-rotinas-v2.ps1`,
 `dry-run-rotinas-v2.ps1`, `replay-criticos.ps1`, `replay-falhas.ps1`,
@@ -311,9 +326,22 @@ Ao planejar mudança de provedor, medir o array antes. A redação antiga sugeri
 fallback de terceiro para onde cair, e não há. Se a Anthropic ficar indisponível, a
 análise para.
 
-A máquina local usa o Claude CLI (conta Szuchmacher) para análise e verificação.
-O contrato de rotina expõe: `listar_todos_emissores`, `listar_emissores_prioritarios`,
+A máquina local usava o Claude CLI (conta Szuchmacher) para análise e verificação.
+**Desde a Fase A o Claude CLI local é OPCIONAL/manual** e a análise local das
+rotinas fica bloqueada até existir provider habilitado. O contrato de rotina
+expõe: `listar_todos_emissores`, `listar_emissores_prioritarios`,
 `listar_plano_rotina`, `dados_para_analise`, `receber_analise`.
+
+**Residual de produção (documentado, correção é Fase B):** o cascade do Worker
+segue Anthropic-only, com o secret `ANTHROPIC_API_KEY`, o health
+(`providers_configurados`) e a rota `consulta_empresa` intocados, por decisão de
+produção intocada nesta migração. Enquanto o motor local não migrar para
+DeepSeek/OpenRouter, o sistema roda determinístico e o serviço de análise no
+Worker permanece dependente de Anthropic como antes. A divisão conceitual
+(Claude Free manual, Claude Code eventual, ChatGPT revisão, providers por
+capability, scripts/Worker/Scheduler autônomos) está na nota de auditoria da Fase A
+e em `Obsidian VIX Radar/operacional/Modelo_de_Atuacao.md`, que hoje não existe no
+vault: a ausência foi registrada e o conteúdo vive na nota e neste arquivo.
 
 ## Multi-semana
 

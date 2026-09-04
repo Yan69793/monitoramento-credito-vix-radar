@@ -23,6 +23,22 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # MESMA funcao que a producao usa.
 . (Join-Path $ScriptDir 'lib\vixradar-watchdog.ps1')
 . (Join-Path $ScriptDir 'lib\vixradar-custo.ps1')
+# CLAUDE-FREE-MIGRATION (2026-09-04): fonte unica de provider de LLM das rotinas.
+# Quando bloqueado (provider none, claude-manual sem forca manual, ou provider de Fase B
+# reservado com motor nao migrado), as rotinas LLM do VIX saem exit 86 com a linha canonica
+# BLOQUEADO_SEM_PROVIDER ANTES de qualquer auth/claude. Este monitor trata exit 86 como
+# esperado nesse regime, suprime a vigilancia de entrega (nao ha entrega esperada) e troca
+# por checagem de que o executor rodou o ciclo (sentinel no log do dia). Resultado != 86 de
+# uma rotina que rodou DEPOIS do bloqueio e 9006 (violacao do gate). 9004 ALERTA_AUTH segue
+# valendo: escalacao para chave paga vista em log prova que o corte falhou e vira erro.
+. (Join-Path $ScriptDir 'lib\vixradar-llm-provider.ps1')
+$LlmProvider   = Get-VixLlmProvider
+$LlmBloqueado  = -not (Test-VixLlmPermiteClaude)
+# Nomes das 5 tasks nativas de rotina LLM do VIX + nomes de log correspondentes (bloco
+# ROTINACEGA1 abaixo usa os nomes de log). Sentinela pode sair exit 0 (sem alvos) e 86
+# (com alvos bloqueado); 0 ja e benigno globalmente.
+$BloqueadasSet = @('VIXRadar-Matinal', 'VIXRadar-Noturno', 'VIXRadar-Verificacao-Async', 'VIXRadar-Sentinela', 'VIXRadar-AgendaSemanal')
+$BloqueadasLog = @('vixradar-noturno', 'vixradar-matinal', 'vixradar-verificacao-async', 'vixradar-sentinela', 'vixradar-agenda-semanal')
 $VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'
@@ -152,10 +168,16 @@ $GuardedDisabled = @{
 # {motor:"task-scheduler"} e as tres tasks passam a ser o motor real: Disabled vira erro
 # 9002 (o Passo 0 de uma sessao Claude Desktop reativada as desabilita em silencio).
 $MotorAtual = 'claude-desktop'
+$MotorDesde = $null
 if (Test-Path $MotorFile) {
     try {
         $mj = Get-Content $MotorFile -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($mj.motor) { $MotorAtual = [string]$mj.motor }
+        # CLAUDE-FREE-MIGRATION: `desde` e o marco do regime bloqueado. Uma rotina do
+        # $BloqueadasSet com LastTaskResult != 86 SO e violacao (9006) se a execucao que
+        # produziu aquele resultado correu DEPOIS deste marco; resultado anterior e
+        # historico congelado e vira "aguardando 1o ciclo" (evita tempestade na transicao).
+        if ($null -ne $mj.desde) { $MotorDesde = [string]$mj.desde }
     } catch { Write-Log "AVISO: motor.json ilegivel - $($_.Exception.Message)" }
 }
 $MustBeEnabled = @{}
@@ -164,10 +186,20 @@ if ($MotorAtual -eq 'task-scheduler') {
         $GuardedDisabled.Remove($t)
         $MustBeEnabled[$t] = 'MOTOR1: motor Task Scheduler ativo (logs\monitor-tasks\motor.json). Esta task e o motor real da rotina e precisa estar Enabled.'
     }
+    # CLAUDE-FREE-MIGRATION (2026-09-04): os 2 retries sao desligados de proposito na Fase A.
+    # Com a rotina base bloqueada por provider (BLOQUEADO_SEM_PROVIDER, exit 86), relancar nao
+    # entrega e o retry-vixradar.ps1 ja vira no-op exit 0. Task Enabled aqui e guard quebrado.
+    foreach ($t in @('Szuchmacher-RetryVixMatinal', 'Szuchmacher-RetryVixNoturno')) {
+        $GuardedDisabled[$t] = @{
+            reason = 'Retry desligado na Fase A (CLAUDE-FREE-MIGRATION 2026-09-04): rotina base bloqueada por provider, relancamento nao entrega e viraria falso SEM ENTREGA. Reativar na Fase B quando houver provider de LLM.'
+            since  = '2026-09-04'
+        }
+    }
 }
 
 Write-Log '=== MONITOR TASK SCHEDULER ==='
 Write-Log "Escopo: $Escopo | motor: $MotorAtual | dryrun: $DryRun"
+Write-Log ("Provider LLM: " + $LlmProvider + " | bloqueado: " + $LlmBloqueado + " | exit 86 = BLOQUEADO_SEM_PROVIDER esperado")
 Write-Log "Whitelist benigna: $($BenignCodes -join ', ')"
 
 $erros = @()
@@ -264,6 +296,42 @@ foreach ($task in $allTasks) {
             reason  = "GUARD QUEBRADO: task esta $state e precisa estar Disabled. Roda em paralelo com a sessao agendada do Claude Desktop. Desabilitar imediatamente."
         }
         Write-Log "ERRO GUARD: $name esta $state e deveria estar Disabled. Risco de execucao dupla."
+        continue
+    }
+
+    # CLAUDE-FREE-MIGRATION: rotina LLM nativa sob provider bloqueado. Exit 86 = canonico,
+    # esperado, NAO e erro. Resultado != 86 de execucao que correu DEPOIS do `desde` do
+    # motor.json (marco do corte) e 9006: o gate nao cortou, claude rodou por bypass, ou a
+    # acao da task passou -ForceClaude. Codigo anterior ao marco e historico congelado do
+    # regime antigo e nao e violacao: entra como "aguardando 1o ciclo" para nao incendiar a
+    # transicao. Sem motor.json (motor claude-desktop, janela G1-G3) nenhuma destas roda pelo
+    # Scheduler alem de Sentinela/Agenda, e codigo velho nao-bloqueado segue esse mesmo
+    # caminho de aguardando. A calibracao fina e o gate G5 do plano.
+    if ($LlmBloqueado -and ($BloqueadasSet -contains $name) -and $code -eq 86) {
+        Write-Log "BLOQUEADO esperado: $name exit=86 ($scriptPath). Rotina bloqueada por design, sem entrega esperada."
+        $ok++
+        continue
+    }
+    if ($LlmBloqueado -and ($BloqueadasSet -contains $name) -and ($code -notin $BenignCodes) -and $code -ne 86) {
+        $rodouNoBloqueio = $false
+        if ($MotorDesde) {
+            try { if ($lastRun -gt ([datetime]$MotorDesde)) { $rodouNoBloqueio = $true } } catch { }
+        }
+        if ($rodouNoBloqueio) {
+            $erros += [ordered]@{
+                task    = $name
+                code    = 9006
+                codeHex = '0x232E'
+                lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm')
+                ageDays = $ageDays
+                script  = $scriptPath
+                reason  = 'VIOLACAO DO GATE: rotina LLM bloqueada por provider (' + $LlmProvider + ') rodou no regime bloqueado e nao saiu exit 86 (saiu ' + $code + '). Gate ausente/quebrado ou acao da task passou -ForceClaude. Conferir o log do dia e o gate no topo do run_vixradar_varredura.ps1.'
+            }
+            Write-Log "ERRO 9006: $name exit=$code sob provider bloqueado - gate nao cortou (deveria ser 86)."
+            continue
+        }
+        Write-Log "AGUARDANDO 1o ciclo no regime bloqueado: $name LastResult=$code e de antes do bloqueio, nao e violacao."
+        $ok++
         continue
     }
 
@@ -609,6 +677,35 @@ foreach ($rot in $RotinasVigiadas) {
     $alvo = Get-AlvoEntregaRotina -Agora $agoraR -Hora $rot.hora -DiasUteis ([bool]$rot.diasUteis) -DiasPermitidos $rot.diasPermitidos
     $alvoTxt = $alvo.ToString('yyyy-MM-dd')
     $logRot  = Join-Path $RotinasLogDir ($rot.nome + '_' + $alvo.ToString('yyyyMMdd') + '.log')
+
+    # CLAUDE-FREE-MIGRATION: provider bloqueado => esta rotina nao entrega de proposito, e a
+    # vigilancia normal de entrega (FIM:/ledger) so geraria 9001 falso todo dia. O que prova
+    # que o executor rodou o ciclo e a linha canonica BLOQUEADO_SEM_PROVIDER no log do dia,
+    # gravada pelo gate antes de qualquer auth/claude. Entrega normal no mesmo dia (ex.:
+    # matinal 10h entregue e provider setado a tarde) tambem conta como ciclo executado.
+    # Log ausente OU sem nenhum dos dois = executor nao rodou: gate ausente, task desligada
+    # ou script quebrou antes do gate. Fail-closed: vira 9001, nunca silencio.
+    if ($LlmBloqueado -and ($BloqueadasLog -contains $rot.nome)) {
+        $txtRot = ''
+        if (Test-Path $logRot) { try { $txtRot = Get-Content $logRot -Raw -Encoding UTF8 -ErrorAction SilentlyContinue } catch { $txtRot = '' } }
+        $rodouBlq = ($txtRot -match 'BLOQUEADO_SEM_PROVIDER') -or ($txtRot -match '(?m)(?<!SHADOW_)FIM:') -or ((Get-VixEmissoresUnicos $txtRot) -ge 1)
+        if ($rodouBlq) {
+            Write-Log "ROTINA BLOQUEADA esperado: $($rot.rotulo) | $alvoTxt executor rodou o ciclo (sentinel ou entrega)"
+            $ok++
+        } else {
+            Write-Log "ROTINA SEM EXECUCAO (provider bloqueado): $($rot.rotulo) | $alvoTxt log sem BLOQUEADO_SEM_PROVIDER nem entrega"
+            $erros += [ordered]@{
+                task    = $rot.rotulo
+                code    = 9001
+                codeHex = '0x2329'
+                lastRun = "$alvoTxt (ciclo esperado)"
+                ageDays = [int]((Get-Date).Date - $alvo).Days
+                script  = $logRot
+                reason  = "$alvoTxt sem BLOQUEADO_SEM_PROVIDER nem entrega no log: executor nao rodou o ciclo (task desligada, gate ausente ou script quebrou antes do gate)"
+            }
+        }
+        continue
+    }
 
     # SENTINELA-DIAPERDIDO1 (falso positivo medido 30/08): trigger-driven, 0 analises no dia e legitimo.
     # Evidencia de entrega = log do dia util + linha FIM: (rodou ao menos uma vez ate o
@@ -989,6 +1086,9 @@ Write-Log "Warnings: $($warnings.Count)"
 Write-Log "Deliberados (Disabled): $($deliberate.Count)"
 Write-Log "Skipped (falso-positivo conhecido): $skipped"
 Write-Log "Rotinas por evidencia de entrega (nao sao tasks do Scheduler, entram nas contagens acima): $($RotinasVigiadas.Count)"
+if ($LlmBloqueado) {
+    Write-Log ("PROVIDER BLOQUEADO (" + $LlmProvider + "): rotinas LLM paradas por design na Fase A (CLAUDE-FREE-MIGRATION). Exit 86 contado como esperado; entrega normal nao esperada ate haver provider (Fase B).")
+}
 
 # Persiste erros em JSON
 $report = [ordered]@{

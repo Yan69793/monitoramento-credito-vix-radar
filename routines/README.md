@@ -1,31 +1,80 @@
 # Rotinas Operacionais — VIX Radar (fonte canônica versionada)
 
+> **CLAUDE-FREE-MIGRATION, Fase A (2026-09-04). Leia antes de mexer em task.**
+>
+> **Governança registrada nesta data:** `CLAUDE_SUBSCRIPTION = FREE`, `CLAUDE_CODE =
+> OPCIONAL/NÃO GARANTIDO`, `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`, dependência
+> operacional de Claude Code = proibida. Claude Code deixou de ser infraestrutura
+> do VIX Radar; Claude Web Free segue como ferramenta manual/advisory.
+>
+> **Provider único de LLM nas rotinas: env User `VIXRADAR_LLM_PROVIDER`.** Ausente
+> ou `none` = bloqueado; `claude-manual` = Claude só com `-ForceClaude` (manual do
+> operador, fora do scheduler); `deepseek`/`openrouter` = reservados à Fase B,
+> ainda bloqueados até o motor migrar. Sem provider habilitado, toda rotina LLM
+> grava a linha canônica `BLOQUEADO_SEM_PROVIDER` e sai com exit **86**. O gate
+> vive em `scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada
+> rotina, antes de qualquer auth, sonda ou claude.
+>
+> **Mecanismo de agendamento das rotinas LLM a partir desta data: Task Scheduler
+> nativo**, reconstruído por `scripts/cutover-motor.ps1`, que é o registro canônico
+> das 5 tasks (`VIXRadar-Matinal`, `VIXRadar-Noturno`, `VIXRadar-Verificacao-Async`,
+> `VIXRadar-Sentinela`, `VIXRadar-AgendaSemanal`); os dois retries
+> (`Szuchmacher-RetryVixMatinal/Noturno`) ficam Disabled. As sessões agendadas do
+> Claude Desktop (`vixradar-matinal`, `vixradar-noturno`,
+> `vixradar-verificacao-async-11h`, `vixradar-verificacao-async-1845`) e as duas
+> Remote Routines saem de cena. `logs\monitor-tasks\motor.json` registra
+> `motor: task-scheduler`. As tasks LLM ficam Enabled rodando o gate: executor
+> visível, bloqueio observável (exit 86 + linha no log), e na Fase B a rotina
+> volta sem tocar no scheduler.
+>
+> **Estado real no dia da edição (04/09/2026):** ainda o regime anterior (3 natives
+> Disabled + CCD ativo). A virada para o estado acima é executada pelo operador nos
+> portões G1-G3 (setar o env, desligar o CCD no MCP, rodar o cutover) e acompanhada
+> em G4/G5; a fila exata está em `status/ESTADO.md` (Itens abertos) e em
+> `Obsidian VIX Radar/PENDENCIAS.md`. Os blocos antigos abaixo ficam como registro
+> histórico do regime CCD e não valem mais para Matinal/Noturno/Verificacao-Async
+> depois do cutover. Gate anti-regressão no commit e no CI:
+> `scripts/check-claude-free.ps1` (regras R1-R5). Inventário A/B/C/D/E completo e
+> decisões na nota de auditoria do vault e na seção Cascade do `CLAUDE.md`.
+
 **Status:** vigente
-**Data da Versão:** 2026-08-25
-**Origem do Registro:** `Get-ScheduledTask` ao vivo em 25/08/2026, logs em
-`logs/routines/`, e decisão do operador sobre a inversão de horários.
+**Data da Versão:** 2026-09-04 (Fase A CLAUDE-FREE-MIGRATION no bloco acima)
+**Origem do Registro:** `Get-ScheduledTask` e `list_scheduled_tasks` (MCP) ao vivo
+em 01/09/2026, logs em `logs/routines/`, e decisão do operador de reverter a
+inversão de horários de 25/08/2026.
 **Condição de Obsolescência:** perde validade quando o mecanismo de agendamento
 do Claude Desktop mudar, quando qualquer linha das duas tabelas divergir do que
 `Get-ScheduledTask` responde, ou quando a rotina Sentinela for aposentada.
 
-> **INVERSÃO DE HORÁRIOS (2026-08-25). Os nomes das rotinas estão invertidos em
-> relação aos horários, e isso é deliberado.**
+> **INVERSÃO DE HORÁRIOS REVERTIDA (01/09/2026), a pedido explícito e repetido do
+> operador.** Nome e horário voltam a bater: `vixradar-noturno` roda **à noite,
+> seg-sex às 18h**, e é ela que varre os 103 emissores. `vixradar-matinal` roda
+> **de manhã, diário às 10h**, e é a passada curta no top 15. A reversão foi feita
+> pelo MCP `scheduled-tasks` (`update_scheduled_task`, efeito imediato) e
+> confirmada via `list_scheduled_tasks`. Os dois vigias de retry do Windows Task
+> Scheduler (`Szuchmacher-RetryVixMatinal` e `Szuchmacher-RetryVixNoturno`, ver
+> tabela abaixo) também tiveram os horários trocados de volta no mesmo momento,
+> porque cada um depende do horário do outro mecanismo para saber quando checar
+> `FIM:` no log — deixá-los desalinhados da rotina que vigiam gera falso alarme ou
+> vigia tarde demais para ser útil, e isso é o motivo mais provável dos problemas
+> diários que motivaram o pedido de reversão.
 >
-> A rotina chamada `vixradar-noturno` roda **de manhã, às 10h**, e é ela que varre
-> os 103 emissores. A chamada `vixradar-matinal` roda **à noite, às 18h**, e é a
-> passada curta no top 15. Os identificadores não foram renomeados de propósito:
-> eles aparecem em nome de arquivo de log, no argumento `-RoutineId` dos dois
-> vigias de retry, na leitura do `scripts/monitor-tasks.ps1`, nos nomes de
-> heartbeat dentro do Worker (`varredura_matinal`, `varredura_batch`) e na lista
-> `expectedAgents` do watchdog. Renomear tocaria tudo isso para ganho de função
-> zero. **Ao ler um log, vá pelo horário, não pelo nome.**
+> **Histórico (janela 25/08 a 01/09/2026, não reproduzir sem novo pedido
+> explícito):** os nomes tinham ficado invertidos de propósito, com a
+> justificativa de que quem abre o painel ao meio-dia via mais emissores com dado
+> recente se a varredura completa (103 emissores) rodasse de manhã em vez de à
+> noite, já que fato relevante no Brasil sai majoritariamente depois do
+> fechamento. O custo aceito na época era notícia intradiária em emissor fora do
+> top 15 esperar a manhã seguinte. Essa lógica não foi refutada tecnicamente, só
+> foi substituída pela decisão do operador de manter nome e horário alinhados.
 >
-> Motivo da inversão: quem abre o painel ao meio-dia via 88 dos 103 emissores com
-> dado da noite anterior, e fato relevante no Brasil sai principalmente depois do
-> fechamento. Com a varredura completa às 10h, o lote da noite anterior entra 15h
-> depois em vez de 23h, e ao meio-dia as 103 foram olhadas há uma hora e meia.
-> Custo aceito: notícia intradiária em emissor fora do top 15 espera a manhã
-> seguinte, em vez de ser pega às 18h do mesmo dia.
+> Os identificadores das tasks não foram renomeados nesta reversão, continuam
+> como antes: eles aparecem em nome de arquivo de log, no argumento `-RoutineId`
+> dos dois vigias de retry, na leitura do `scripts/monitor-tasks.ps1`, nos nomes
+> de heartbeat dentro do Worker (`varredura_matinal`, `varredura_batch`) e na
+> lista `expectedAgents` do watchdog. **Ao ler um log de sessão anterior a
+> 01/09/2026, vá pelo horário registrado no log, não pelo nome da task**, porque
+> esses logs antigos foram gravados sob o regime invertido.
 
 > **Atualizado 2026-08-07. Leia o aviso abaixo antes de mexer em qualquer task.**
 >
@@ -52,14 +101,17 @@ do Claude Desktop mudar, quando qualquer linha das duas tabelas divergir do que
 > usados pelos scripts. Para agendamento, a fonte de verdade é esta tabela mais o
 > estado real da máquina; os SKILL.md são a fonte de verdade para o contrato analítico.
 
-## Rotinas em sessão agendada do Claude Desktop (task nativa Disabled de propósito)
+## Rotinas em sessão agendada do Claude Desktop (regime CCD, SUPERSEDIDO pela Fase A em 2026-09-04 — ver bloco no topo)
 
-Estado da task nativa verificado na máquina em 2026-08-07, as três `Disabled`.
+**Este regime deixou de valer para Matinal/Noturno/Verificacao-Async na Fase A.**
+Fica abaixo como registro histórico do período CCD. A partir do cutover (G3), as
+três voltam ao Task Scheduler nativo como tasks Enabled rodando o gate de provider
+(exit 86 sem provider). Estado da task nativa verificado na máquina em 2026-08-07, as três `Disabled` (regime CCD).
 
 | Rotina | Gatilho | Script | Função |
 |------|---------|--------|--------|
-| `VIXRadar-Noturno` | **Diário 10h00 BRT** | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, fila rápida em Haiku primeiro (lotes de até 15) + fila aprofundada em Sonnet depois (lotes de até 16). **É a varredura completa, e roda de manhã** |
-| `VIXRadar-Matinal` | **Seg-Sex 18h00 BRT** | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4). **É a passada curta, e roda à noite** |
+| `VIXRadar-Noturno` | **Seg-Sex 18h00 BRT** | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, fila rápida em Haiku primeiro (lotes de até 15) + fila aprofundada em Sonnet depois (lotes de até 16). É a varredura completa, e roda à noite |
+| `VIXRadar-Matinal` | **Diário 10h00 BRT** | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4). É a passada curta, e roda de manhã |
 | `VIXRadar-Verificacao-Async` | **Diário 11h00 e 18h45 BRT** | `run_vixradar_verificacao_async.ps1` | Dreno da fila `radar:verif_fila:{data}` (também acionado inline pós-varredura) |
 
 A verificação passou a ter **duas sessões, e a das 18h45 não é opcional**. Sem
@@ -87,10 +139,45 @@ raiz diferente) compartilham a mesma máquina e ficam fora de escopo deste docum
 | `VIXRadar-Reconciliacao-CVM` | Seg 08:00 BRT | `scripts/predictive/reconciliar_ipe_cvm.ps1` | Reconcilia IPE CVM (RJ/RE/default) vs estado semanal do Radar; publica KV `radar:reconciliacao_cvm:latest` + nota Obsidian. Sem LLM |
 | `VIXRadar-Health-Watch` | **DESATIVADO 21/08/2026** | `watch-vixradar-health.ps1` | Vigia de health a cada 15 min (criado 13/08, `HEALTHWATCH1`), desligado por decisão do operador. Alerta de queda continua via `canonical-test` (6h) e `frescor-check` (diário). Reativar: `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"` |
 | `VIXRadar-Sentinela` | **Seg-Sex, 09h25 e 09h55 até 17h25 e 17h55 BRT** | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho. Consulta `listar_plano_rotina modo=pontual` e analisa só quem tem documento da CVM ainda não entregue à análise, deferido por teto ou inconclusivo. Teto de 8 emissores e 120k tokens por execução. Na maioria das execuções sai em 0 token. Ver seção própria abaixo |
-| `Szuchmacher-RetryVixMatinal` | **Seg-Sex 21:30 BRT** | `retry-vixradar.ps1 -RoutineId vixradar-matinal` | Relança a matinal (top 15, que agora roda às 18h) via `claude` CLI local se o log do dia não tiver `FIM:` válido até o horário. Watchdog da sessão Claude Desktop, não duplica se ela ainda estiver rodando (lock de 3h da skill) |
-| `Szuchmacher-RetryVixNoturno` | **Diário 13:30 BRT** | `retry-vixradar.ps1 -RoutineId vixradar-noturno` | Mesmo watchdog, para a varredura completa, que agora roda às 10h |
+| `Szuchmacher-RetryVixMatinal` | **Diário 13:30 BRT** | `retry-vixradar.ps1 -RoutineId vixradar-matinal` | Relança a matinal (top 15, roda diário às 10h) via `claude` CLI local se o log do dia não tiver `FIM:` válido até o horário. Watchdog da sessão Claude Desktop, não duplica se ela ainda estiver rodando (lock de 3h da skill). Trigger trocado de volta para `Daily 13:30` em 01/09/2026, junto com a reversão da inversão de horários acima — antes disso apontava para 21:30 (herdado do período em que a matinal rodava às 18h) |
+| `Szuchmacher-RetryVixNoturno` | **Seg-Sex 21:30 BRT** | `retry-vixradar.ps1 -RoutineId vixradar-noturno` | Mesmo watchdog, para a varredura completa, que roda seg-sex às 18h. Trigger trocado de volta para `Weekly Mon-Fri 21:30` em 01/09/2026, mesmo motivo — antes disso apontava para 13:30 diário (herdado do período em que a noturna rodava às 10h) |
 | `VIXRadar-Ranking-Mensal` | — | `run_vixradar_ranking_mensal.ps1` | **OBSOLETO.** Task não existe no Scheduler (confirmado 18/08, 0 resultado). Script funcional, sem LLM quebrado (usa `claude -p` só para a medição, do jeito certo), simplesmente não está agendado desde antes de 11/07. Ver nota abaixo |
 | `Szuchmacher-AgendaMacro-Claude` | Sex 07:07 BRT | `run_claude_routine.ps1 -RoutineId atualizar-agenda-macro-szuchmacher` | Calendário macro semanal de szuchmacher.com.br (projeto irmão, mesmo runner genérico). Deploy exige aprovação humana explícita (SKILL.md Passo 6) |
+
+### Nota sobre os dois retries (corrigido 2026-09-03, INCIDENTE-FRESHNESS2)
+
+Os dois vigias de retry mudaram em três pontos, depois de o painel ficar 12h41
+parado em 02/09 com `ok:true` (detalhe em `PENDENCIAS.md` e `status/ESTADO.md`):
+
+1. **429 de limite de sessão não é mais "WebSearch indisponivel".** A sonda do
+   pré-flight (`Test-VixWebSearchProbe`) classifica a falha em `session_limit`,
+   `rate_limit_transitorio`, `websearch_indisponivel` ou `erro_desconhecido`, e
+   extrai o horário de reset do texto REAL do erro (nunca chumbado). Sendo
+   limite de sessão da assinatura, o runner ESPERA o reset quando ele cabe no
+   teto de 120 min, re-sonda, e só então considera a chave paga como
+   contingência, sempre com `ALERTA_AUTH` e e-mail antes. Nunca cai para chave
+   paga por falha que não seja limite da própria assinatura, e a chave vive só
+   no ambiente do processo. `-Fallback429 Nenhum` desliga a contingência.
+2. **A linha headless deixou de tirar o shell da skill.** Era
+   `--tools WebSearch,WebFetch`, que é ALLOWLIST no CLI: removia PowerShell,
+   Bash, Read, Write e Agent, então a skill relançada não tinha como criar o
+   lock, chamar o health nem fazer o POST (mesmo defeito do AGENDASEM-CAUSA1
+   nesta mesma tabela). Agora é `--tools default` + `--permission-mode dontAsk`
+   + `--allowedTools` explícito, com `CLAUDE_CODE_USE_POWERSHELL_TOOL=1`, e um
+   pré-flight novo (`Test-VixHeadlessTools`) que roda o CLI de verdade e exige
+   shell, leitura, escrita, subagente e busca ANTES de deixar a rotina começar.
+3. **Entrega é julgada pelo ledger dentro da janela, nunca por exit code.**
+   `Test-VixLedgerEntregueNaJanela` (em `scripts/lib/vixradar-watchdog.ps1`) só
+   conta `OK|` e `FIM:` carimbados a partir do horário da rotina (noturno
+   18:00, matinal 10:00), e o retry reconfere depois de relançar: se não
+   entregou, alerta, mesmo com exit 0. A linha de fecho do runner virou
+   `RUNNER_FIM:` para nunca ser confundida com o `FIM:` da rotina.
+
+O SLA de `painel_fresco` no Worker (v4.9.236) é derivado desta mesma agenda:
+matinal com prazo 10:36 exige `updated_at >= 10:00` do dia, noturna com prazo
+01:30 exige `>= 18:00` do dia útil anterior. **Mudar horário de rotina aqui
+exige atualizar `_painelSlaAtivo` no `api/src/worker.js` junto**, senão o health
+passa a cobrar pontualidade de um horário que não existe mais.
 
 ### Nota sobre `VIXRadar-AgendaSemanal` (corrigido 2026-08-18, FASE 2)
 

@@ -1,0 +1,78 @@
+name: claude-free
+
+# CLAUDE-FREE-MIGRATION (Fase A, 2026-09-04): gate anti-regressao no CI.
+# Reintroduzir chamada a `claude -p` sem o gate de provider (BLOQUEADO_SEM_PROVIDER,
+# exit 86) em arquivo vivo de scripts/ ou routines/ reprova o build.
+#
+# Pre-commit Gate 8 cobre a mesma regra por commit (blobs em staging). Este workflow
+# e a segunda ponta da guarda: pega o que entrar por merge sem passar pelo hook local.
+#
+# Escopo: diff de .ps1 sob scripts/ e routines/ (exclui routines/claude-desktop/,
+# que e material historico do CCD desligado). Arquivos legados inalterados nao sao
+# reavaliados: a regra vale sobre a mudanca corrente, nao sobre a arvore inteira.
+# O gate nao roda sobre api/** (Worker, residual documentado, correcao e Fase B).
+
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - 'routines/**'
+      - '.github/workflows/claude-free.yml'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'routines/**'
+      - '.github/workflows/claude-free.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout com historico completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rodar checker sobre o diff
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $base = ''
+          if ('${{ github.event.pull_request.base.sha }}' -match '^[0-9a-f]{40}$') { $base = '${{ github.event.pull_request.base.sha }}' }
+          elseif ('${{ github.event.before }}' -match '^[0-9a-f]{40}$') { $base = '${{ github.event.before }}' }
+
+          $diff = @()
+          if ($base) {
+            $diff = @(git diff --name-only --diff-filter=ACM $base HEAD -- scripts routines)
+          }
+          if (-not $base -or $LASTEXITCODE -ne 0) {
+            Write-Host 'base nao resolvida, caindo para HEAD~1'
+            $diff = @(git diff --name-only --diff-filter=ACM HEAD~1 HEAD -- scripts routines)
+          }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host 'diff HEAD~1 indisponivel, listando todos os .ps1 versionados'
+            $diff = @(git ls-files -- scripts routines)
+          }
+
+          $alvos = @()
+          foreach ($d in $diff) {
+            if ($d -notmatch '^(scripts|routines)/.*\.ps1$') { continue }
+            if ($d -match '^routines/claude-desktop/') { continue }
+            $alvos += $d
+          }
+
+          if ($alvos.Count -eq 0) {
+            Write-Host 'nenhum .ps1 vivo alterado em scripts/routines, gate ok'
+            exit 0
+          }
+
+          Write-Host ('alvos do gate: ' + ($alvos -join ', '))
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'scripts/check-claude-free.ps1' -Path ($alvos -join ',')
+          if ($LASTEXITCODE -ne 0) {
+            Write-Host '::error::CLAUDE-FREE-MIGRATION - gate anti-regressao reprovado: claude -p sem gate de provider reintroduzido'
+            exit $LASTEXITCODE
+          }
+          Write-Host 'gate ok: todo claude sob provider habilitado'

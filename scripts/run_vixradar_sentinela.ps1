@@ -46,6 +46,13 @@
 #
 # PowerShell 5.1: sem ternario, sem ?? e sem ?., BOM UTF-8 obrigatorio, exit e nao
 # return (o Task Scheduler le o exit code do processo).
+#
+# CLAUDE-FREE-MIGRATION (2026-09-04): -ForceClaude so o operador passa, em chamada manual
+# com VIXRADAR_LLM_PROVIDER='claude-manual'. O Task Scheduler nunca passa essa flag; sem
+# ela o gate abaixo bloqueia com exit 86 antes de gastar qualquer token.
+param(
+    [switch]$ForceClaude
+)
 
 $ErrorActionPreference = 'Continue'
 
@@ -356,6 +363,18 @@ if ($alvos.Count -eq 0) {
 }
 foreach ($a in $alvos) {
     Write-Log ('  ALVO ' + $a.empresa + ' tier=' + $a.tier + ' cvm_novos=' + $a.cvm_novos + ' fr=' + $a.cvm_novos_fato_relevante + ' motivos=' + ($a.motivos -join ','))
+}
+
+# CLAUDE-FREE-MIGRATION (2026-09-04): daqui pra frente a sentinela gasta LLM (claude por
+# lote). Sem provider manual forcado, bloqueia com exit 86 ANTES do Get-Command claude, da
+# sonda WebSearch e de qualquer claude. Provider 'none' (default) ou 'claude-manual' sem a
+# flag = BLOQUEADO. A task segue Enabled de proposito: bloqueio visivel, nao rotina morta.
+. (Join-Path $ScriptsDir 'lib\vixradar-llm-provider.ps1')
+if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+    Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_sentinela.ps1')
+    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+    Write-Log 'FIM: sentinela bloqueada sem provider. tokens=0 analisados=0 motivo=sem_provider'
+    exit $VixLlmBloqueadoExit
 }
 
 # --- A partir daqui gasta LLM. Guardas de ambiente antes do primeiro token. --
