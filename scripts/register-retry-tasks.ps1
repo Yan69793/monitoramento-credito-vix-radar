@@ -59,17 +59,32 @@ $settings = New-ScheduledTaskSettingsSet `
 $principal = New-ScheduledTaskPrincipal -UserId 'User' -LogonType Interactive -RunLevel Limited
 
 $tasks = @(
+    # DRIFTRETRY1 (04/09/2026): este bloco tinha os DOIS agendamentos TROCADOS em relacao
+    # ao que estava vivo no Task Scheduler, e rodar o script inverteria os dois de uma vez.
+    # Medido em 04/09: vivo era matinal=Daily 13:30 e noturno=Weekly Seg-Sex 21:30, enquanto
+    # o script mandava matinal=Weekly Seg-Sex e noturno=Daily. O vivo e que estava certo,
+    # porque acompanha a cadencia da propria rotina: a matinal roda todo dia (exceto feriado
+    # B3, decidido dentro do script da rotina, nao no gatilho) e a noturna roda Seg-Sex.
+    # Corrigido para a realidade, para o script voltar a ser seguro de rodar.
     @{
         Nome      = 'Szuchmacher-RetryVixMatinal'
         RoutineId = 'vixradar-matinal'
-        Trigger   = (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday -At '13:30')
-        Descricao = 'VIX Radar - retry da rotina matinal se o log do dia nao tem FIM valido (Seg-Sex 13:30 BRT)'
+        Triggers  = @( (New-ScheduledTaskTrigger -Daily -At '13:30') )
+        Descricao = 'VIX Radar - retry da rotina matinal se o log do dia nao tem FIM valido (diario 13:30 BRT)'
     },
     @{
         Nome      = 'Szuchmacher-RetryVixNoturno'
         RoutineId = 'vixradar-noturno'
-        Trigger   = (New-ScheduledTaskTrigger -Daily -At '21:30')
-        Descricao = 'VIX Radar - retry da rotina noturna se o log do dia nao tem FIM valido (diario 21:30 BRT)'
+        # RETRY2320-1 (04/09/2026): segundo gatilho as 23:20, rede de seguranca para a noite
+        # em que a passada das 21:30 nem chegou a comecar. Nao duplica execucao: a task tem
+        # MultipleInstances=IgnoreNew, entao se a das 21:30 ainda estiver viva (inclusive
+        # dormindo a espera do reset de um limite de sessao, ver SESSIONLIMIT1) a nova e
+        # ignorada; e se ja tiver entregue, retry-vixradar.ps1 sai em no-op pelo ledger.
+        Triggers  = @(
+            (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday -At '21:30'),
+            (New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday, Tuesday, Wednesday, Thursday, Friday -At '23:20')
+        )
+        Descricao = 'VIX Radar - retry da rotina noturna se o log do dia nao tem FIM valido (Seg-Sex 21:30 e 23:20 BRT)'
     }
 )
 
@@ -78,7 +93,7 @@ foreach ($t in $tasks) {
     $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
 
     $reg = Register-ScheduledTask -TaskName $t.Nome -TaskPath '\' `
-        -Action $action -Trigger $t.Trigger `
+        -Action $action -Trigger $t.Triggers `
         -Principal $principal -Settings $settings `
         -Description $t.Descricao `
         -Force

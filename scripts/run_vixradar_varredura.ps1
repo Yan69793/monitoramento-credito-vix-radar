@@ -115,6 +115,34 @@ function Write-Log([string]$msg) {
 
 $script:AuthFailRegex = '(?i)not logged in|please run /login|disabled claude subscription|use an anthropic api key instead|weekly limit|hit your.*limit|credit balance is too low|insufficient.*credit|authentication_error|invalid.*(api key|token)|oauth.*(expired|invalid)|token.*(expired|invalid)|(http|status)\s*401'
 
+# TETOPAREDE1 (04/09/2026): teto de parede COMPARTILHADO por toda espera desta execucao.
+#
+# O problema que ele resolve nao e uma espera longa, e a SOMA delas. A politica de 429 do
+# pre-flight (INCIDENTE-FRESHNESS2, run_claude_routine.ps1) ja podia esperar ate 120 min, e
+# a espera de limite de sessao por lote, abaixo, pode pedir outro tanto. Cada uma dentro do
+# seu proprio teto, somadas, estouram o ExecutionTimeLimit PT4H da task e o Windows mata o
+# processo no meio de um lote, sem linha FIM: e sem ledger fechado.
+#
+# Numeros medidos em 04/09, nao estimados: a noturna completa de 103 emissores levou 48 min
+# em 01/09 (10:07:18 -> 10:55:51) e 26 min em 03/09 (09:07:18 -> 09:33:03). O comentario
+# antigo de run_claude_routine.ps1 assumia "~2h de execucao", cerca de 2,5x o real. Com o
+# retry das 21h30 e PT4H, o processo tem ate 01h30. Reservando 60 min para a rotina rodar
+# depois de qualquer espera (o dobro da mediana medida) e 30 de margem, sobram 150 min de
+# espera total, que e exatamente o teto que o plano pediu.
+$script:VixInicioProcesso = (Get-Date)
+$script:VixTetoParedeMin = 240   # ExecutionTimeLimit PT4H da task
+$script:VixReservaRotinaMin = 60 # tempo guardado para a rotina rodar apos a ultima espera
+$script:VixMargemMin = 30        # folga para housekeeping, dreno da fila e escrita do ledger
+
+function Get-VixEsperaDisponivelMin {
+    # Minutos que ainda podem ser gastos ESPERANDO, ja descontado o tempo decorrido e o que
+    # a rotina precisa depois. Nunca negativo.
+    $decorrido = ((Get-Date) - $script:VixInicioProcesso).TotalMinutes
+    $disp = $script:VixTetoParedeMin - $decorrido - $script:VixReservaRotinaMin - $script:VixMargemMin
+    if ($disp -lt 0) { return 0 }
+    return $disp
+}
+
 function Test-ClaudeAuthFailure([string[]]$outputLines) {
     # Achado 2026-07-08: o claude.exe pode perder a sessao e imprimir a mensagem com exit 0.
     # MOTOR1: regex ampliada para token longevo recusado (401/authentication_error/token expirado).
@@ -164,7 +192,7 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
-Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Invoke-VixClaudeAuthEscalate', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo')
+Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Invoke-VixClaudeAuthEscalate', 'Invoke-VixClaudeAuthEscalateForcado', 'Get-VixSessionLimitAcao', 'Get-VixWsProbeClassificacao', 'ConvertTo-VixWsProbeResetAt', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo')
 foreach ($fn in @('Get-VixCustoConfig', 'Get-VixCustoDia', 'Get-VixCapEfetivo', 'Get-VixUsageParcelas')) {
     if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-custo.ps1'); exit 1 }
 }
@@ -274,6 +302,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         $OutputEncoding = [System.Text.Encoding]::UTF8
         $retryDelays = @(0, 30, 60)
         $retryLog = @()
+        # Limite que volta DEPOIS de ja ter esperado o reset nao se resolve esperando de
+        # novo: o plano manda escalar nesse caso. Sem esta memoria, duas esperas seguidas
+        # comeriam o teto de parede e a rotina morreria mesmo assim.
+        $jaEsperouReset = $false
         for ($attempt = 0; $attempt -lt $retryDelays.Count; $attempt++) {
             if ($attempt -gt 0) {
                 $delay = $retryDelays[$attempt]
@@ -295,10 +327,41 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             $exitCode = $LASTEXITCODE
             $retryLog += ('t' + ($attempt + 1) + ':exit=' + $exitCode + ':model=' + $Model)
             if ($exitCode -eq 0) { break }
-            # Credencial que venceu no meio da rotina: escala para a chave paga e repete.
             $saidaFalha = ('' + $raw)
-            if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
-            if (Invoke-VixClaudeAuthEscalate $saidaFalha) { $retryLog += 'auth:escalado-para-api'; $escalou = $true }
+            $stderrTxt = ''
+            if (Test-Path $stderrFile) { $stderrTxt = ('' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
+            $saidaFalha += (' ' + $stderrTxt)
+
+            # SESSIONLIMIT1 (04/09/2026): limite de uso da assinatura NAO e credencial
+            # invalida, e ate hoje caia no mesmo balde. O motor classificava como falha de
+            # auth pela regex propria, chamava Invoke-VixClaudeAuthEscalate, e a lib recusava
+            # porque a regex DELA nao cobre 'hit your ... limit'. Nenhum ramo esperava o
+            # reset, nenhum ramo escalava, e o backoff @(0,30,60) se esgotava em 90 segundos.
+            # Foi assim que a noturna de 03/09 morreu as 21h38 com a chave paga disponivel.
+            #
+            # Ordem agora: esperar o reset REAL quando ele cabe no teto de parede (assinatura
+            # e mais barata que a chave paga), e so escalar quando esperar nao resolve.
+            $cls = Get-VixWsProbeClassificacao -Saida $saidaFalha -StderrTxt $stderrTxt
+            if ($cls.Motivo -eq 'session_limit') {
+                # A tabela de decisao vive em Get-VixSessionLimitAcao (lib de auth), pura e
+                # testavel sem CLI. Aqui so se EXECUTA o que ela decidiu, para o que roda em
+                # producao ser exatamente o que scripts/test-session-limit-policy.ps1 prova.
+                $acao = Get-VixSessionLimitAcao -Agora (Get-Date) -ResetAt $cls.ResetAt -EsperaDisponivelMin (Get-VixEsperaDisponivelMin) -JaEsperou $jaEsperouReset
+                if ($acao.Acao -eq 'esperar') {
+                    Write-Log ('RETRY: limite de sessao da assinatura. ' + $acao.Motivo + ' (' + [Math]::Round($acao.EsperaMin, 1) + ' min).')
+                    $retryLog += ('espera:reset:' + [Math]::Round($acao.EsperaMin, 1) + 'min')
+                    Start-Sleep -Seconds ([int]($acao.EsperaMin * 60))
+                    $jaEsperouReset = $true
+                    Update-VixLock
+                }
+                else {
+                    Write-Log ('RETRY: ' + $acao.Motivo + '. Escalando em vez de esperar.')
+                    if (Invoke-VixClaudeAuthEscalateForcado $acao.Motivo) { $retryLog += ('auth:forcado:' + $acao.Acao); $escalou = $true }
+                    else { Write-Log ($AlertaAuthTag + $acao.Motivo + ', e sem chave paga para assumir. A rotina vai morrer neste lote.') }
+                }
+            }
+            # Credencial que venceu no meio da rotina: escala para a chave paga e repete.
+            elseif (Invoke-VixClaudeAuthEscalate $saidaFalha) { $retryLog += 'auth:escalado-para-api'; $escalou = $true }
         }
         if ($retryLog.Count -gt 1) { Write-Log ('RETRY log: ' + ($retryLog -join ' ')) }
         # DRYRUN-CRASH1: exit != 0 sem stderr deixava a causa sem evidencia (02/09 02:45).

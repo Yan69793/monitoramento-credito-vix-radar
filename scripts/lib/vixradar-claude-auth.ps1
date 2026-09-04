@@ -268,6 +268,68 @@ function Invoke-VixClaudeAuthEscalate([string]$Saida) {
     return $true
 }
 
+function Get-VixSessionLimitAcao {
+    # SESSIONLIMIT1 (04/09/2026): tabela de decisao PURA para limite de uso da assinatura.
+    # Vive aqui, separada de Invoke-ClaudeBatch, exatamente para poder ser provada sem
+    # invocar o CLI. A regra que ela codifica, na ordem:
+    #   1. limite que voltou DEPOIS de ja termos esperado o reset -> escalar (esperar de novo
+    #      so queimaria o teto de parede e a rotina morreria igual);
+    #   2. reset ilegivel (limite semanal, "resets Sunday", sem HH:MM) -> escalar, porque
+    #      esperar as cegas nao tem prazo;
+    #   3. reset conhecido que CABE no tempo de espera disponivel -> esperar, porque a
+    #      assinatura ja esta paga e a chave avulsa custa por token;
+    #   4. reset conhecido que NAO cabe -> escalar.
+    # Devolve { Acao; EsperaMin; Motivo }. Acao em:
+    #   'esperar' | 'escalar_persistiu' | 'escalar_sem_reset' | 'escalar_reset_longe'
+    param(
+        [Parameter(Mandatory)][datetime]$Agora,
+        $ResetAt,
+        [Parameter(Mandatory)][double]$EsperaDisponivelMin,
+        [bool]$JaEsperou = $false
+    )
+    if ($JaEsperou) {
+        return [PSCustomObject]@{ Acao = 'escalar_persistiu'; EsperaMin = 0; Motivo = 'limite de sessao persistiu APOS a espera do reset' }
+    }
+    if ($null -eq $ResetAt) {
+        return [PSCustomObject]@{ Acao = 'escalar_sem_reset'; EsperaMin = 0; Motivo = 'limite de sessao sem horario de reset legivel (provavel limite semanal)' }
+    }
+    $esperaMin = ([datetime]$ResetAt - $Agora).TotalMinutes + 2
+    if ($esperaMin -le 0) { $esperaMin = 2 }
+    if ($esperaMin -le $EsperaDisponivelMin) {
+        return [PSCustomObject]@{ Acao = 'esperar'; EsperaMin = $esperaMin; Motivo = ('aguardar reset real ate ' + ([datetime]$ResetAt).ToString('HH:mm')) }
+    }
+    return [PSCustomObject]@{ Acao = 'escalar_reset_longe'; EsperaMin = $esperaMin; Motivo = ('reset em ' + [Math]::Round($esperaMin, 1) + ' min nao cabe no teto de parede (' + [Math]::Round($EsperaDisponivelMin, 1) + ' min disponiveis)') }
+}
+
+function Invoke-VixClaudeAuthEscalateForcado([string]$Motivo) {
+    # ESCALADAFORCADA1 (04/09/2026). Mesmo corpo de Invoke-VixClaudeAuthEscalate, SEM a
+    # exigencia de Test-VixClaudeAuthFailure.
+    #
+    # Existe porque ha DUAS regex de falha de auth em arquivos diferentes e elas divergem.
+    # O motor (run_vixradar_varredura.ps1, $script:AuthFailRegex) cobre 'hit your.*limit' e
+    # 'weekly limit'. A daqui (Test-VixClaudeAuthFailure) NAO cobre nenhuma das duas, de
+    # proposito: limite de uso nao e credencial invalida, e trocar de credencial por limite
+    # de sessao seria gasto desnecessario quando basta esperar o reset. O efeito colateral e
+    # que o motor classificava limite de sessao como falha de auth, chamava a escalada, e a
+    # lib recusava em silencio. Foi isso na noite de 03/09 as 21h38: a chave paga estava no
+    # registro, o limite era de assinatura, e ninguem escalou. A rotina morreu apos
+    # @(0,30,60) segundos de backoff.
+    #
+    # O chamador decide QUANDO forcar (limite sem reset conhecido, reset longe demais para o
+    # teto de parede, ou limite que persiste depois da espera). Aqui so se executa a troca,
+    # sempre com motivo registrado, porque escalada e gasto real por token.
+    if ($script:VixAuthModo -ne 'assinatura' -and $script:VixAuthModo -ne 'assinatura-token') { return $false }
+    $modoAnterior = $script:VixAuthModo
+    if (-not $script:VixAuthChave) {
+        Write-VixAuthLog ('AUTH: escalada forcada pedida (' + $Motivo + ') e nao ha chave paga para assumir.')
+        return $false
+    }
+    $script:VixAuthModo = 'api'
+    Set-VixClaudeAuthEnv
+    Write-VixAuthLog ('AUTH: escalada FORCADA de ' + $modoAnterior + ' para chave paga. Motivo: ' + $Motivo + '. Lotes seguintes sao pay-per-token.')
+    return $true
+}
+
 function Get-VixClaudeAuthModo {
     if ($script:VixAuthModo) { return $script:VixAuthModo }
     return 'indefinido'
@@ -297,6 +359,13 @@ function Send-VixRoutineAlert {
         } | ConvertTo-Json -Compress
         $r = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 30
         if ($r -and $r.ok -eq $true) {
+            # NOTIFYDEDUP-LOG1 (02/09): o Worker deduplica 1/dia por rotina e responde
+            # {ok:true, enviado:false, dedup:true}; a lib dizia "admin notificado" mesmo assim.
+            # Enviado de verdade e so enviado:true. Sem o campo (Worker antigo), assume enviado.
+            if ($r.PSObject.Properties['enviado'] -and $r.enviado -ne $true) {
+                Write-VixAuthLog ('ALERTA: NAO enviado, dedup do Worker (rotina=' + $Rotina + ' ja avisada hoje).')
+                return $false
+            }
             Write-VixAuthLog ('ALERTA: admin notificado (notificar_rotina, rotina=' + $Rotina + ').')
             return $true
         }

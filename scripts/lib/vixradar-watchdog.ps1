@@ -184,3 +184,80 @@ function Get-VixAlertasAuth([string]$RotinasLogDir, [datetime[]]$Dias) {
     }
     return $achados
 }
+
+# RECOVERY-JANELA1 (03/09/2026): a SKILL da noturna (Passo 4) julgava idempotencia por DIA
+# CIVIL - qualquer linha OK| do dia, a qualquer hora, tirava o emissor da fila. Em 03/09 a
+# recuperacao manual das 09:07 fechou o ledger com 103 OK| e a invocacao agendada das 18:15
+# saiu sem submeter nada, enquanto retry-vixradar.ps1 e o PAINEL_SLA do Worker julgam entrega
+# por JANELA (>= 18:00). Resultado previsto: relancamento das 21:30 tambem no-op, alerta falso
+# do retry, painel_fresco=false das 01:30 ate a matinal. As duas funcoes abaixo dao a skill a
+# MESMA regua do vigia (mesmo regex de linha, mesmo corte por timestamp), devolvendo o CONJUNTO
+# de emissores em vez da contagem, para ela decidir quem pular e quem processar.
+function Get-VixJanelaInicioRotina {
+    # Inicio da janela que vale AGORA. A partir de JanelaHora do dia, a janela e
+    # [JanelaHora:00, fim do dia). Antes disso (recuperacao manual de manha, dry-run de
+    # madrugada), a janela e o dia inteiro, preservando o comportamento antigo para
+    # reexecucao fora do horario agendado. Sem ternario (PS 5.1).
+    param(
+        [Parameter(Mandatory)][datetime]$Agora,
+        [Parameter(Mandatory)][int]$JanelaHora
+    )
+    $inicio = $Agora.Date
+    if ($Agora.Hour -ge $JanelaHora) { $inicio = $Agora.Date.AddHours($JanelaHora) }
+    return $inicio
+}
+
+function Get-VixLedgerEmissoresNaJanela {
+    # Emissores com linha OK| carimbada >= JanelaInicio (ja processados NESTA janela) e
+    # contagem dos que so aparecem antes dela (fora da janela: nao contam para pular).
+    #
+    # DEFERIDO-NAO-E-ENTREGA1 (04/09/2026): linha com status DEFERIDO NAO conta como
+    # processada. O formato do ledger e
+    #   OK|empresa|tier|classe|n_eventos|submit|status|n_avanco_data
+    # e o regex antigo parava no nome, entao os emissores que o cap adiou apareciam como
+    # feitos. Consequencia medida no ledger de 03/09: a passada fechou 58 ANALISADO e 45
+    # DEFERIDO, e uma segunda invocacao DENTRO da mesma janela via 103 processados e saia
+    # em no-op, sem tocar na cauda adiada, mesmo tendo orcamento sobrando na hora.
+    # SKIP continua contando como entrega: o emissor foi avaliado e submetido de proposito,
+    # so nao precisou de busca. Status ausente (ledger antigo, anterior a este formato)
+    # tambem conta como entrega, para nao reprocessar historico retroativamente.
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Conteudo,
+        [Parameter(Mandatory)][datetime]$JanelaInicio
+    )
+    $dentro    = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $fora      = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $deferidos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $linhas = 0
+    $linhaRegex = [regex]'^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) OK\|([^|]+)\|'
+    foreach ($linhaRaw in ($Conteudo -split "`r?`n")) {
+        $lm = $linhaRegex.Match($linhaRaw)
+        if (-not $lm.Success) { continue }
+        $linhas++
+        $ts = [datetime]::MinValue
+        if (-not [datetime]::TryParseExact($lm.Groups[1].Value + ' ' + $lm.Groups[2].Value, 'yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$ts)) { continue }
+        $nome = $lm.Groups[3].Value.Trim()
+        # Status pelo indice do campo, nao por regex rigido: o campo 8 (n_avanco_data)
+        # entrou em 04/09 e outro pode entrar depois. Split tolera linha curta.
+        $campos = $linhaRaw.Substring($linhaRaw.IndexOf('OK|')) -split '\|'
+        $status = ''
+        if ($campos.Count -ge 7) { $status = $campos[6].Trim() }
+        if ($ts -lt $JanelaInicio) { [void]$fora.Add($nome); continue }
+        if ($status -eq 'DEFERIDO') { [void]$deferidos.Add($nome); continue }
+        [void]$dentro.Add($nome)
+    }
+    # .ToArray() de proposito: @() sobre List generica estoura o binder do PS 5.1.
+    $lista = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($n in $dentro) { $lista.Add($n) }
+    $listaDef = New-Object 'System.Collections.Generic.List[string]'
+    foreach ($n in $deferidos) { $listaDef.Add($n) }
+    return [PSCustomObject]@{
+        Emissores         = $lista.ToArray()
+        NaJanela          = $dentro.Count
+        ForaDaJanela      = $fora.Count
+        Deferidos         = $listaDef.ToArray()
+        DeferidosNaJanela = $deferidos.Count
+        LinhasOK          = $linhas
+        JanelaInicio      = $JanelaInicio
+    }
+}
