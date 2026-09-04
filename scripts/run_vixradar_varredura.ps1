@@ -367,6 +367,8 @@ function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaIni
 Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais. Sem chamadas HTTP de submit - o orquestrador grava os resultados.
 JANELA: $janelaInicio a $janelaFim
 DELTA - nao recrie fato conhecido (FEEDRETRO1): cada emissor no JSON abaixo tem ultimo_evento_data, eventos_conhecidos e janela_delta_inicio. Primeira busca com ancora de recencia (mes e ano correntes, nao termo generico), procure primeiro fato com data_evento >= janela_delta_inicio. So achar fato ja em eventos_conhecidos, mesmo com URL diferente da que esta la: eventos=[], cobertura_nota="sem fato novo desde <ultimo_evento_data>, confirmado <o que achou>". Continuacao de saga conhecida (nova decisao judicial, novo prazo, nova negociacao, nova acao de rating sobre o MESMO caso) e evento NOVO com a data do fato de agora, nunca dobra no protocolo antigo.
+
+DATA - sai da fonte, nunca da busca (FONTEDIVERG1): data_evento e a data em que o fato ocorreu ou foi publicado pela fonte que voce esta citando, lida no proprio conteudo (data no topo da materia, data no path da URL, protocolo CVM). Encontrar a materia numa busca ancorada no mes corrente NAO a torna do mes corrente: a ancora estreita a busca, nao data o resultado. Sem conseguir confirmar a data de publicacao, trate como fato conhecido (eventos=[]) em vez de carimbar hoje. Medido em 04/09/2026: a Kora Saude voltou com data_evento=2026-09-04 citando materia cujo article:published_time no HTML era 2026-05-05.
 PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
 SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
@@ -560,7 +562,19 @@ try {
     if ($Perfil.top_n -gt 0) { $bodyPlano.top_n = $Perfil.top_n }
     $plano = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj $bodyPlano -TimeoutSec 180
     if ($plano.ok -ne $true) { Write-Log 'ERRO: plano'; exit 5 }
-    if ($Perfil.modo -eq 'noturno' -and $plano.total -ne 103) { Write-Log ('ERRO: plano noturno com total ' + $plano.total + ' (esperado 103)'); exit 5 }
+    # CARTEIRA-PISO1 (2026-09-04): este gate era `-ne 103`. A carteira cresceu para 104
+    # (Usina Pampa Sul, commit da4c2ba) e a igualdade exata matou a noturna com exit 5 antes
+    # de analisar qualquer emissor - medido no dry-run das 05:15 ("ERRO: plano noturno com
+    # total 104 (esperado 103)"). O gate existe para barrar plano TRUNCADO, nao para congelar
+    # o tamanho da carteira: quem cresce a carteira nao deve precisar lembrar de um numero
+    # magico em dois motores. Piso barra truncagem; a linha CARTEIRA avisa que o numero mudou
+    # sem derrubar a rotina. Mesma regra no Passo 3 da SKILL.md do motor CCD.
+    $PlanoPisoNoturno = 100
+    $PlanoBaseNoturno = 104
+    if ($Perfil.modo -eq 'noturno') {
+        if ($plano.total -lt $PlanoPisoNoturno) { Write-Log ('ERRO: plano noturno com total ' + $plano.total + ' (piso ' + $PlanoPisoNoturno + ' - plano truncado)'); exit 5 }
+        if ($plano.total -ne $PlanoBaseNoturno) { Write-Log ('CARTEIRA: plano noturno com ' + $plano.total + ' emissores (base conhecida ' + $PlanoBaseNoturno + ') - carteira mudou, conferir cadastro') }
+    }
     if ($plano.total -eq 0) {
         Write-Log ('FIM: ' + $Rotina + ' concluido. Total do dia 0/0. analisados=0 skip=0 deferidos=0 submits_aceitos=0 (plano vazio)')
         exit 0
@@ -789,7 +803,13 @@ try {
                     # que o fato entrou no estado - so n_eventos>=1 prova. Sem esta linha, um
                     # submit assim contava como sucesso pleno e ninguem via o descarte (e foi
                     # exatamente isso que passou 5 dias uteis sem alarme em 28/08-03/09).
-                    if (@($res.eventos).Count -ge 1 -and $nEv -eq 0) {
+                    # -not $DryRun e obrigatorio: Submit-Analise em dry-run devolve o stub
+                    # { ok=true; n_eventos=0 } sem chamar o Worker (linha 218), entao TODO
+                    # emissor que devolvesse evento sairia como DESCARTADO falso. Medido no
+                    # dry-run de 04/09: Kora Saude, 1 evento real de 04/09, logou
+                    # 'DESCARTADO|Kora Saude|enviados=1|persistidos=0|motivo_nao_detalhado'
+                    # e somou descartados=1 no FIM_DRYRUN sem nenhum descarte ter existido.
+                    if (-not $DryRun -and @($res.eventos).Count -ge 1 -and $nEv -eq 0) {
                         $descMotivos = @()
                         if ($resp.descartes) {
                             foreach ($k in @('ruido', 'sem_data', 'fora_janela', 'data_futura', 'data_aproximada', 'fonte_inacessivel')) {

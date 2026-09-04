@@ -12,6 +12,13 @@
 # conhecida (nova decisao/prazo/negociacao/rating sobre o MESMO caso) e evento NOVO com a data de agora,
 # nunca dobra no protocolo antigo.
 #
+# DATA - sai da fonte, nunca da busca (FONTEDIVERG1, 2026-09-04): data_evento e a data em que o fato ocorreu
+# ou foi publicado pela fonte que voce esta citando, lida no proprio conteudo (data no topo da materia, data
+# no path da URL, protocolo CVM). Encontrar a materia numa busca ancorada no mes corrente NAO a torna do mes
+# corrente: a ancora estreita a busca, nao data o resultado. Sem conseguir confirmar a data de publicacao,
+# trate como fato conhecido (eventos=[]) em vez de carimbar hoje. Medido em 04/09/2026: a Kora Saude voltou
+# com data_evento=2026-09-04 citando materia cujo article:published_time no HTML era 2026-05-05.
+#
 # SAIDA: somente linhas RESULTADO| / LOTE_RESUMO| / ANOTA| no formato do cabecalho.
 # Sem markdown, sem tabelas, sem backticks, sem narrativa. Sem blocos de codigo PowerShell.
 # NAO executar curl nem qualquer submit HTTP - o orquestrador (PS1) grava.
