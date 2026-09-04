@@ -6418,7 +6418,7 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     for(var i=0;i<hist.length;i++){var v=hist[i].percentual_taxa!=null?hist[i].percentual_taxa:hist[i].taxa_indicativa;if(v!=null)pts.push({data:hist[i].data,v:v});}
     var delta=null;
     if(pts.length>=2)delta=Math.round((pts[pts.length-1].v-pts[0].v)*10)/10;
-    var chartHtml=pts.length>=5?buildSpark(pts,"#F59E0B","#F59E0B"):'<div class="p14-empty">Histórico insuficiente</div>';
+    var chartHtml=pts.length>=5?buildSpark(pts,"#F59E0B","#F59E0B"):'<div class="p14-empty"></div>';
     var tooltip="Taxa indicativa ANBIMA do mercado secundário · ref "+(dataRef||"—")+" · ativo "+p.codigo_ativo;
     var sub='<div class="p14-code">'+esc(p.codigo_ativo)+' · '+esc(p.indice_original||p.grupo||"—")+'</div>';
     return'<div class="p14-card" title="'+esc(tooltip)+'"><div class="p14-label">Taxa indicativa ANBIMA</div>'+sub+'<div class="p14-val">'+esc(p.taxa_display)+fmtDelta(delta," p.p.")+'</div><div class="p14-chart">'+chartHtml+'</div></div>';
