@@ -1760,14 +1760,49 @@ inteira, o ponteiro do `AGENTS.md` apontava para arquivo não versionado, e a re
 de `.gitignore` para `setup-deploy-credential.ps1` era ilusória porque o arquivo é
 trackeado desde `201ebda`.
 
-### Abertos desta janela
+### Resolvidos em 22/08
 
-**MANIFESTOFRAGIL1 (P3).** O `status/allclear-manifesto.json` indexa cada frase de
-ausência junto com o HTML e o estilo inline. Trocar `color:#6b7280` por `#94A3B8`
-fez duas frases idênticas aparecerem como NOVAS e reprovarem a guarda. Falso
-positivo de segurança, mas fragilidade real: qualquer mudança de CSS quebra o
-manifesto e obriga atualização manual. **Pronto quando** a chave for derivada só do
-texto visível, sem estilo nem tag.
+**MANIFESTOFRAGIL1 (P3).** **RESOLVIDO 31/08.** O `status/allclear-manifesto.json`
+indexava cada frase de ausência junto com o HTML e o estilo inline. Trocar
+`color:#6b7280` por `#94A3B8` fazia duas frases idênticas aparecerem como NOVAS e
+reprovarem a guarda. Falso positivo de segurança, mas fragilidade real: qualquer
+mudança de CSS quebrava o manifesto e obrigava atualização manual. Correção:
+`scripts/check-frontend-allclear.mjs` ganhou `textoVisivel()`, que remove tag HTML
+antes de normalizar — a chave agora nasce só do texto visível. `status/allclear-manifesto.json`
+foi migrado por script dedicado (`vistos` reagrupado pela chave nova, herdando a
+classificação da chave antiga correspondente) para não perder classificação já
+feita: 57 frases antes, 57 depois, zero colisão, uma frase genuinamente nova
+(`escopo_registro`, ausência de métrica de balanço curada para um único emissor).
+Prova: `node scripts/check-frontend-allclear.mjs` → `CHECK_ALLCLEAR_OK`.
+**Achado no mesmo fechamento:** a correção já tinha sido feita e commitada nesta
+sessão numa passada anterior (PR #20, aberto 22/08), mas o commit
+`0bada923b88680ee8a6f9f6bc116eebe01a91c14` sumiu do histórico da branch
+`claude/vixradar-monitoring-audit-k7i0bv` — não resolve mais como objeto git
+(`git cat-file -t 0bada92` → `fatal: Not a valid object name`). Causa provável:
+a branch é reaproveitada por sessões diárias automatizadas distintas, e alguma
+delas deu fast-forward/reset sobre o commit não mesclado. A correção foi refeita
+do zero sobre o `main` atual nesta janela; PR #20 segue sendo o mesmo PR, sem
+recriação.
+
+**FRESCORHARNESS-DRIFT2 (P3).** **RESOLVIDO 31/08.** `scripts/test-frescor-cvm.mjs`
+quebrou de novo: `node scripts/test-frescor-cvm.mjs` lançava
+`ReferenceError: _cvmDiasCorridosApos is not defined`. Causa raiz: o CVMDURA1
+(24/08) acrescentou `falha_dura`/`degrada_servico` a `avaliarFrescorCVM` e passou
+a depender de `_cvmDiasCorridosApos` e `_cvmProximaPublicacaoPrevista`, mas o
+harness — reescrito em 20/08 para o CVMCADENCIA1 — não tinha essas duas funções
+na lista de extração nem as constantes `CVM_FONTE_MAX_FALHAS` e
+`CVM_FONTE_MOTIVOS_DUROS` no prelúdio. O conserto do SACFALSA-RESIDUO em 24/08 só
+tinha tocado o comentário de cabeçalho do arquivo, não a lógica de extração, então
+o drift do CVMDURA1 passou despercebido. Segunda vez que este harness quebra por
+não acompanhar mudança em `avaliarFrescorCVM` (primeira foi o CVMCADENCIA1 em
+20/08) — reforça o próprio aviso que o arquivo carrega desde então, de extrair
+direto do `worker.js` real. Correção: as duas funções e as duas constantes
+entraram na extração/prelúdio, e 3 casos novos cobrem `falha_dura`/
+`degrada_servico` (1ª falha não degrada, 4ª falha dura consecutiva degrada,
+motivo de cadência nunca degrada mesmo com muitas falhas). Prova:
+`node scripts/test-frescor-cvm.mjs` → `TUDO VERDE em 43 casos.`
+
+### Abertos desta janela
 
 **DEDUPON2 e FEEDRERENDER1 (P2, diagnosticados, fora de escopo de propósito).** O
 `_isDupSemantico` deduplica O(n²) sobre todos os eventos, no boot e em todo
