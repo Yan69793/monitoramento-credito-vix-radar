@@ -1,6 +1,17 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-09-04 (FEEDRETRO1 Fases 1 e 2 em produção: Worker v4.9.238, frontend v202.38, feed reposto, `feed_fresco:true`, rotina com delta. Ver bloco abaixo)
+Última atualização: 2026-09-04 (Worker v4.9.240, frontend v202.39. FEEDRETRO1 Fases 1 e 2 em produção com o dry-run validado; FONTEDIVERG1 e CARTEIRA-PISO1 fechados. Fase 3 aberta. Ver blocos abaixo)
+
+> [!info] 04/09 (manhã) — FONTEDIVERG1 e CARTEIRA-PISO1 (v4.9.240): o dry-run da Fase 2 achou dois defeitos que a revisão de código não achou.
+> **Status:** FECHADOS, em produção. **Data da Versão:** 2026-09-04. **Origem do Registro:** duas passagens de `run_vixradar_varredura.ps1 -DryRun -MaxEmissores 5`. **Condição de Obsolescência:** cai quando a primeira noturna real com o prompt novo fechar sem recriar fato de agosto.
+>
+> **A Fase 2 funciona.** No dry-run, 4 de 5 emissores devolveram `eventos: []` citando o fato que já está no estado (Braskem 28/08, Oncoclínicas 27/08, Oi 25/08, Raízen 25/08). A janela efetiva da Cemig caiu de 30 dias para 1.
+>
+> **CARTEIRA-PISO1.** A entrada da Usina Pampa Sul (commit `da4c2ba`) levou o plano de 103 para 104, e os dois motores exigiam exatamente 103. O headless abortou com `exit 5` (medido) e o CCD abortaria por instrução literal; três testes do Worker ficaram vermelhos pelo mesmo número mágico. O gate virou piso de 100 mais linha `CARTEIRA:` quando o total muda. Prova de duas pontas: 12 e 99 abortam, 100/103/104 seguem.
+>
+> **FONTEDIVERG1.** Na primeira passagem a Kora Saúde devolveu `data_evento: 2026-09-04` citando matéria cujo `article:published_time` é `2026-05-05`; na segunda o mesmo prompt acertou a data e devolveu `eventos: []`. O pré-verificador já marca esse caso (`_data_fonte_divergente`) e o aceita de propósito para os domínios de `_ehFonteConfitavelBloqueada`, que incluem InfoMoney, Valor, Exame, NeoFeed, Money Times, Seu Dinheiro, Braz Journal e Estadão. A fronteira do feed não lia a marca, então um fato velho com data de hoje deixaria `feed_fresco` verde. Agora há dois máximos, e só o certificável move a fronteira e o carimbo. Guardas: casos D e E em `api/test/health.test.mjs` e a regra de data nos cinco prompts.
+>
+> **Suíte:** 26 arquivos, 254 testes, verde. **Portão às 13:48Z:** `HTTP:200`, `versao:"v4.9.240"`, `ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`, `feed_fresco:true`, `feed_evento_mais_novo:"2026-09-03"`, `feed_idade_du:1`.
 
 > [!info] 04/09 (madrugada) — FEEDRETRO1 FASE 2: a rotina passa a saber o que já sabemos (v4.9.238).
 > **Status:** ENTREGUE e em produção. Fase 3 (resiliência de execução) segue aberta. **Data da Versão:** 2026-09-04. **Origem do Registro:** plano FEEDRETRO1 aprovado pelo operador, com quatro rodadas de correção dele. **Condição de Obsolescência:** cai quando a primeira noturna com o prompt novo fechar registrando `eventos_avanco_data`.
