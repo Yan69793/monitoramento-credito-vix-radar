@@ -126,18 +126,18 @@ scheduler.ps1` NÃO reproduz o estado (1 trigger por task, sem retries) e foi aj
 registrar as 3 tasks migradas Enabled (ramo `$t.Disabled` virou guarda genérica). Horários
 canônicos declarados em `routines/README.md`.
 
-## Portões (estado em 2026-09-04 noite)
+## Portões (estado em 2026-09-04 noite, atualizado após G6)
 
 | Portão | Dono | Estado |
 |---|---|---|
-| G0 | agente | código + libs + gate + docs + backups `.bak-2026-09-04` prontos; testes T1-T9 a rodar com saída crua colada |
+| G0 | agente | **PASS** — código + libs + gate + docs + backups `.bak-2026-09-04`; T1-T9 verdes (7/9 exit 86 + sentinela exit 0 legítimo + retry no-op exit 0; contrato 6/6; lint 16/16; gate 2 pontas) e T11 prod (HTTP 200, `ok:true`) |
 | G1 | operador | ABERTO — setar `VIXRADAR_LLM_PROVIDER=none` em User |
 | G2 | operador | ABERTO — desligar 4 CCD (MCP) + pausar 2 Remote; `nextRunAt` nulo |
-| G3 | operador (elevação) | ABERTO — `cutover-motor.ps1 -Acao Ativar` |
+| G3 | operador (elevação) | ABERTO — `cutover-motor.ps1 -Acao Estado` (registro) → `-Acao Ativar` |
 | G4 | observação | ABERTO — 1 disparo real de cada rotina bloqueada (log canônico + exit 86) |
-| G5 | observação | ABERTO — `monitor-tasks.ps1 -DryRun` + ciclos |
-| G6 | agente | ABERTO — commit da migração por caminho explícito + CI verde |
-| G7 | verificação | ABERTO — portão final com saída crua colada |
+| G5 | observação | ABERTO — `monitor-tasks.ps1 -DryRun` + ciclos; T6/T7 rodam aqui |
+| G6 | agente | **PASS** — commit `37bf0ec` (24 arquivos, push em `main`), CI `claude-free` run 33930018633 verde (gate ✓ 20s), Gate 8 instalado (`install-hooks.ps1 -Force`), blobs do commit validados exit 0, reintrodução reprova (R1, exit 1). Nota: o commit inicial rodou o hook antigo sem Gate 8; validação pós-hoc cobre |
+| G7 | verificação | ABERTO (com o operador) — portão final com saída crua colada. Fase A só se declara concluída depois de G1-G5/G7 |
 
 ## Riscos e bloqueios
 
