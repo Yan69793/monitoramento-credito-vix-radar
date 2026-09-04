@@ -311,6 +311,87 @@ describe("receber_analise: fronteira global do feed (carimbo so avanca por data)
     expect(est.feed_frontier_data).toBe(FRONTEIRA_ATUAL);
     expect(est.feed_ultimo_evento_novo_em).toBe(CARIMBO_FIXO);
   });
+
+  // FONTEDIVERG1 (04/09/2026), prova de 2 pontas do guarda de certificacao de frescor.
+  //
+  // Origem: no dry-run do motor a Kora Saude devolveu data_evento=2026-09-04 citando
+  // materia cujo article:published_time no HTML era 2026-05-05, quatro meses antes.
+  //
+  // Onde a marca nasce em producao: validarDatasFontes (worker.js:13045). Quando a URL
+  // NAO tem data no path, o pre-verificador busca a pagina, le a data do HTML e, se ela
+  // for anterior a janela de 30 dias ou divergir mais de 60 dias do data_evento, tem
+  // DOIS desfechos - dominio fora de _ehFonteConfitavelBloqueada e DESCARTADO, e dominio
+  // dentro dela e ACEITO com _verif_forcar e _data_fonte_divergente. Essa lista inclui a
+  // imprensa financeira que a rotina mais cita (infomoney, valor, exame, neofeed,
+  // moneytimes, seudinheiro, braziljournal, estadao), entao o caminho de aceite com marca
+  // e o caminho COMUM, nao a excecao. Era ele que avancava a fronteira antes deste fix.
+  //
+  // Por que o teste injeta a marca em vez de provocar a busca: URL com data no path
+  // resolve em extrairDataDaURL sem rede (worker.js:13055-13062) e passa o evento adiante
+  // intacto, inclusive campos que o cliente mandou. Isso isola UMA variavel, a presenca de
+  // _data_fonte_divergente, com os dois casos identicos no resto. Provocar o ramo do fetch
+  // exigiria rede dentro do teste, que e justamente o que os casos A/B/C evitam.
+  async function submeterComMarca(dataEvento, url, marcaDivergencia) {
+    const ev = {
+      classificacao: "RELEVANTE", titulo: "Evento de teste", data_evento: dataEvento,
+      data_aproximada: false, fonte_primaria: url, fonte_tipo: "IMPRENSA", tags: []
+    };
+    if (marcaDivergencia) {
+      ev._data_fonte_divergente = marcaDivergencia;
+      ev._verif_forcar = true;
+    }
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.77" },
+      body: JSON.stringify({
+        action: "receber_analise",
+        routine_key: ROUTINE_KEY,
+        empresa: EMPRESA,
+        setor: "Saúde",
+        _tier: "FULL",
+        provedor: "teste-fontediverg1",
+        resultado: {
+          sem_eventos: false,
+          eventos: [ev],
+          fontes_consultadas: [{ rodada: "R2", query: "teste fontediverg1", resultado: "achou fonte" }],
+          cobertura_nota: "teste FONTEDIVERG1"
+        }
+      })
+    });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  it("caso D (ponta ruim): evento marcado _data_fonte_divergente nao avanca fronteira, carimbo nem metrica", async () => {
+    await seedComFronteira();
+    const j = await submeterComMarca(
+      "2026-09-03",
+      "https://www.infomoney.com.br/mercados/2026/09/03/teste-d-fonte-divergente/",
+      "diff_121d dataFonte=2026-05-05 data_evento=2026-09-03"
+    );
+    expect(j.ok).toBe(true);
+    // O evento ENTRA no estado (fail-open, segue para verificacao adversarial)...
+    const est = await lerEstadoBruto();
+    expect(est.results[EMPRESA].eventos.some((e) => e.data_evento === "2026-09-03")).toBe(true);
+    // ...mas nao certifica frescor: fronteira e carimbo intactos, metrica zerada.
+    expect(est.feed_frontier_data).toBe(FRONTEIRA_ATUAL);
+    expect(est.feed_ultimo_evento_novo_em).toBe(CARIMBO_FIXO);
+    expect(j.n_eventos_avanco_data).toBe(0);
+  });
+
+  it("caso E (ponta boa): mesmo evento SEM a marca avanca fronteira, carimbo e metrica", async () => {
+    await seedComFronteira();
+    const j = await submeterComMarca(
+      "2026-09-03",
+      "https://www.infomoney.com.br/mercados/2026/09/03/teste-e-fonte-coerente/",
+      null
+    );
+    expect(j.ok).toBe(true);
+    const est = await lerEstadoBruto();
+    expect(est.feed_frontier_data).toBe("2026-09-03");
+    expect(est.feed_ultimo_evento_novo_em).not.toBe(CARIMBO_FIXO);
+    expect(j.n_eventos_avanco_data).toBe(1);
+  });
 });
 
 // Casos do operador (correcao final, 04/09): n_eventos_avanco_data mede avanco

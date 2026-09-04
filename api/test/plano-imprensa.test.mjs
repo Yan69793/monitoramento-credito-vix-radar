@@ -71,7 +71,8 @@ describe("FONTELATENCIA1: imprensa recente promove para fila aprofundada", () =>
     expect(res.status).toBe(200);
     const plano = await res.json();
     expect(plano.ok).toBe(true);
-    expect(plano.total).toBe(103);
+    // Acompanha EMISSORES_LISTA em api/src/worker.js (104 desde a Usina Pampa Sul, 04/09/2026).
+    expect(plano.total).toBe(104);
 
     const vibra = plano.emissores.find((e) => e.empresa === "Vibra Energia");
     expect(vibra).toBeDefined();

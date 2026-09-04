@@ -4,6 +4,23 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.240.js = v4.9.239 + FONTEDIVERG1: fonte que contradiz a propria data nao
+#   certifica frescor do feed. O pre-verificador ja marcava esses eventos
+#   (_data_fonte_divergente + _verif_forcar) e os ACEITAVA de proposito quando o
+#   dominio esta em _ehFonteConfitavelBloqueada, lista que inclui infomoney, valor,
+#   exame, neofeed, moneytimes, seudinheiro, braziljournal e estadao, ou seja a
+#   imprensa que a rotina mais cita. A fronteira do feed (FEEDRETRO1 FASE1) nao lia
+#   essa marca, entao um fato antigo carimbado com data de hoje avancava
+#   feed_frontier_data e deixava feed_fresco verde. Achado no dry-run do motor em
+#   04/09: a Kora Saude devolveu data_evento=2026-09-04 citando materia cujo
+#   article:published_time era 2026-05-05, e na segunda passagem o MESMO prompt
+#   devolveu a data certa e eventos vazios. Fix: dois maximos, _feedMaxNovoLocal
+#   (cru, alimenta max_data_evento_depois na resposta) e _feedMaxCertificavel (sem
+#   marcados, unico que move a fronteira e o carimbo). n_eventos_avanco_data segue a
+#   mesma regra. Evento marcado continua persistindo e indo para verificacao
+#   adversarial, ele so nao atesta frescor. Log [feed][FRONTEIRA_IGNORADA].
+#   Testes: casos D e E em api/test/health.test.mjs, prova de 2 pontas com uma
+#   variavel isolada. Rollback: main = "v4.9.239.js".
 # v4.9.239.js = v4.9.238 + briefing diario e cobertura Usina Pampa Sul.
 #   O briefing executivo passa a retornar somente fatos classificados no dia,
 #   preservando a consulta historica explicita para consumidores internos. O

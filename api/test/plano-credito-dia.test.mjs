@@ -268,9 +268,12 @@ describe("PONTUALFATO1: a varredura pontual so entra por documento novo", () => 
 });
 
 describe("excluir_top_n e top_n com extras por setor", () => {
-  it("excluir_top_n marca exatamente N do topo como SKIP coberto_matinal_top_N e mantem total 103", async () => {
+  // O numero acompanha EMISSORES_LISTA em api/src/worker.js (104 desde a entrada da
+  // Usina Pampa Sul, 04/09/2026). Quem adiciona emissor atualiza aqui, no gate do
+  // motor (run_vixradar_varredura.ps1) e no Passo 3 da SKILL.md do noturno.
+  it("excluir_top_n marca exatamente N do topo como SKIP coberto_matinal_top_N e mantem o total da carteira", async () => {
     const p = await plano("noturno", { excluir_top_n: 5 });
-    expect(p.total).toBe(103);
+    expect(p.total).toBe(104);
     const cobertos = p.emissores.filter((e) => e.motivos[0] === "coberto_matinal_top_5");
     expect(cobertos.length).toBe(5);
     for (const c of cobertos) { expect(c.tier).toBe("SKIP"); expect(c.rodadas).toEqual([]); }

@@ -247,9 +247,10 @@ describe("SENTINELA1 parte 3: modo pontual", () => {
     expect(p.total).toBe(1);
     expect(p.emissores[0].empresa).toBe(DASA);
     expect(p.emissores[0].tier).not.toBe("SKIP");
-    // O noturno do mesmo estado devolve os 103. O recorte e o que a pontual faz.
+    // O noturno do mesmo estado devolve a carteira inteira. O recorte e o que a pontual faz.
+    // O numero acompanha EMISSORES_LISTA em api/src/worker.js (104 desde a Usina Pampa Sul, 04/09/2026).
     const n = await plano("noturno");
-    expect(n.total).toBe(103);
+    expect(n.total).toBe(104);
   });
 
   it("teto corta e o excedente e declarado, nao sumido", async () => {

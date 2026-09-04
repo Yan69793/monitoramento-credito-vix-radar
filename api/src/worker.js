@@ -9467,7 +9467,15 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
   let _metrChavesNovas = 0;
   for (const _pev of _metrPayloadOriginal) {
     const _pd = _pev && _pev.data_evento;
-    if (typeof _pd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_pd) && (_metrMaxAntes === null || _pd > _metrMaxAntes)) _metrDatasAvanco.add(_pd);
+    // FONTEDIVERG1 (2026-09-04): evento cuja PROPRIA fonte contradiz a data nao conta como
+    // avanco de feed. validarDatasFontes marca esses casos e os aceita de proposito (fail-open,
+    // seguem para verificacao adversarial via _verif_forcar), mas aceitar para PERSISTIR e
+    // certificar FRESCOR sao decisoes diferentes. Medido no dry-run de 04/09: a Kora Saude
+    // voltou com data_evento=2026-09-04 citando materia cujo article:published_time no HTML e
+    // 2026-05-05, quatro meses antes. Sem esta linha, esse evento sozinho levaria
+    // n_eventos_avanco_data a 1 e o painel a verde com um fato de maio.
+    const _pDivergente = !!(_pev && _pev._data_fonte_divergente);
+    if (typeof _pd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_pd) && !_pDivergente && (_metrMaxAntes === null || _pd > _metrMaxAntes)) _metrDatasAvanco.add(_pd);
     if (!_metrChavesAnteriores.has(_chaveDedupEvento(_pev))) _metrChavesNovas++;
   }
   const _metricas = {
@@ -9685,16 +9693,29 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       // Fail-open: bootstrap do carimbo nunca bloqueia o submit.
     }
   }
+  // FONTEDIVERG1 (2026-09-04): dois maximos de proposito. _feedMaxNovoLocal e o maximo CRU do
+  // que foi persistido, e continua alimentando max_data_evento_depois na resposta (a resposta
+  // deve dizer a verdade sobre o que entrou). _feedMaxCertificavel exclui evento marcado com
+  // _data_fonte_divergente e e o unico que move a fronteira do feed e carimba
+  // feed_ultimo_evento_novo_em. Um fato cuja fonte citada contradiz a propria data pode entrar
+  // no estado, mas nao pode atestar que o feed esta fresco.
   let _feedMaxNovoLocal = null;
+  let _feedMaxCertificavel = null;
   if (Array.isArray(payload.eventos)) {
     for (const _fev of payload.eventos) {
       const _fd = _fev && _fev.data_evento;
-      if (typeof _fd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_fd) && (_feedMaxNovoLocal === null || _fd > _feedMaxNovoLocal)) _feedMaxNovoLocal = _fd;
+      if (typeof _fd !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(_fd)) continue;
+      if (_feedMaxNovoLocal === null || _fd > _feedMaxNovoLocal) _feedMaxNovoLocal = _fd;
+      if (_fev._data_fonte_divergente) {
+        console.log("[feed][FRONTEIRA_IGNORADA] emp=" + (empresa ? empresa.slice(0, 25) : "?") + " data_evento=" + _fd + " motivo=" + _fev._data_fonte_divergente);
+        continue;
+      }
+      if (_feedMaxCertificavel === null || _fd > _feedMaxCertificavel) _feedMaxCertificavel = _fd;
     }
   }
-  if (_feedMaxNovoLocal !== null && (estado.feed_frontier_data === null || _feedMaxNovoLocal > estado.feed_frontier_data)) {
-    console.log("[feed][FRONTEIRA_AVANCOU] de=" + estado.feed_frontier_data + " para=" + _feedMaxNovoLocal + " emp=" + (empresa ? empresa.slice(0, 25) : "?"));
-    estado.feed_frontier_data = _feedMaxNovoLocal;
+  if (_feedMaxCertificavel !== null && (estado.feed_frontier_data === null || _feedMaxCertificavel > estado.feed_frontier_data)) {
+    console.log("[feed][FRONTEIRA_AVANCOU] de=" + estado.feed_frontier_data + " para=" + _feedMaxCertificavel + " emp=" + (empresa ? empresa.slice(0, 25) : "?"));
+    estado.feed_frontier_data = _feedMaxCertificavel;
     estado.feed_ultimo_evento_novo_em = _agoraPersist;
   }
   estado.results[empresa] = normalizarMojibake(payload);
