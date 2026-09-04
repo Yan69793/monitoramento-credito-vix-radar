@@ -11,6 +11,44 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 04/09, FEEDRETRO1 ENCERRADO. Plano completo, Fases 0 a 3
+
+> **Status:** ENCERRADO. **Data da Versão:** 2026-09-04. **Origem do Registro:** fechamento formal a pedido do operador. **Condição de Obsolescência:** este bloco é registro histórico e não se reescreve. Regressão futura abre item novo com tag própria.
+
+O incidente começou com o painel parado em 28/08 por 5 dias úteis, com `ok:true`,
+`painel_fresco:true` e o frescor-check verde. Terminou com o feed andando, três guardas
+novas provadas nas duas pontas e a rotina sabendo o que o sistema já sabe.
+
+**Estado final em produção:** Worker `v4.9.240`, frontend `v202.39`,
+`feed_fresco:true`, `feed_evento_mais_novo:2026-09-03`, `feed_idade_du:1`.
+
+| Fase | O que era | Onde está registrado |
+|---|---|---|
+| 1 | Guarda e visibilidade do feed (`feed_*` no health, frescor-check reprovando, rodapé âmbar) | bloco de 04/09 madrugada, abaixo |
+| 0 | Reposição dirigida de 31/08 a 04/09, com data verificada no HTML da fonte | bloco de 04/09 madrugada, abaixo |
+| 2 | Rotina incremental, delta nos 5 pontos de prompt, métricas no `receber_analise` | bloco de 04/09 manhã, abaixo |
+| 3 | Resiliência de execução, semântica de entrega, gatilho de retry | bloco de 04/09 manhã, abaixo |
+
+**Dois defeitos foram achados pelo próprio dry-run da Fase 2, não por revisão de código,**
+e ambos foram corrigidos dentro do plano: `CARTEIRA-PISO1` (gate de 103 travando a noturna
+nos dois motores) e `FONTEDIVERG1` (fato antigo carimbado com data de hoje certificando
+frescor). Um terceiro, `DRIFTRETRY1`, apareceu ao rodar o script de registro de tasks.
+
+**Semântica de entrega e de retry.** A regra canônica de quando uma rotina conta como
+entregue, e de quando o retry deve disparar, foi fixada em
+[[10_Estado_Atual_Validado]], seção `## Semântica de entrega e de retry`. Em resumo,
+`DEFERIDO` não conta como entrega e também não dispara retry por si só, `SKIP` conta como
+processado, a cauda adiada volta pela próxima invocação normal, e retry segue reservado a
+falha real de execução ou entrega, nunca a cap operacional planejado. **Não duplicar essa
+matriz aqui**, a versão canônica é a do documento de governança.
+
+**Provas acumuladas do plano:** 254 testes vitest em 26 arquivos, 19 asserts em
+`scripts/test-session-limit-policy.ps1`, 31 em `scripts/test-idempotencia-janela.ps1`,
+lint de encoding limpo em 88 `.ps1` mais 5 shell, e dry-run do motor fim a fim com
+`exit 0`.
+
+---
+
 ## 04/09 (manhã), FEEDRETRO1 FASE 3. A noite deixa de ser perdida por limite de sessão, e o script de registro das tasks tinha os horários trocados
 
 > **Status:** FECHADO. Com isto o plano FEEDRETRO1 está inteiro. **Data da Versão:** 2026-09-04. **Origem do Registro:** medição do estado real antes de escrever (settings vivas das tasks, duração real das noturnas nos logs, as duas regex de auth, o formato do ledger). **Condição de Obsolescência:** cai quando a primeira noite com limite de sessão real exercitar a espera e o log registrar a linha `RETRY: limite de sessao da assinatura`.

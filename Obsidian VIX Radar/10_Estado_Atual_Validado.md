@@ -8,6 +8,9 @@ tags: [vix-radar, rotinas, governanca, fase-2, auditoria]
 
 # Estado Atual Validado — Governança de Rotinas (FASE 2)
 
+> [!info] Atualização de versão, 2026-09-04 (não reabre a auditoria de rotinas abaixo, datada de 18/08 e ainda válida na sua própria matéria)
+> Produção do Worker em **v4.9.240**, frontend em **v202.39**. O plano FEEDRETRO1 foi fechado por inteiro nesta data (Fases 0 a 3), e a Fase 3 tocou a governança desta matriz num ponto que não estava escrito em lugar nenhum: **o que conta como entrega de uma rotina**. A regra ficou registrada na seção `## Semântica de entrega e de retry`, abaixo. Nenhuma rotina mudou de classificação. Mudaram os gatilhos de `Szuchmacher-RetryVixNoturno`, que passou a ter dois (21:30 e 23:20, Seg-Sex), e a matinal foi confirmada como diária depois de o script de registro ser achado divergente do Scheduler vivo (DRIFTRETRY1).
+
 > [!info] Atualização de versão, 2026-09-03 (não reabre a auditoria de rotinas abaixo, datada de 18/08 e ainda válida na sua própria matéria)
 > Produção do Worker avançou de v4.9.198 (data desta auditoria) para **v4.9.236**, via INCIDENTE-FRESHNESS2 (detalhe em `PENDENCIAS.md` e `status/ESTADO.md`). Repositório local e `origin/main` sincronizados, ambos no commit `b5460c1745b117d1534d4ad5ea8d729fc9355824`, confirmado por comparação direta de SHA depois do push e de um `git fetch` novo. Nenhuma rotina desta matriz mudou de classificação por causa desse deploy, ele só adicionou campos de observabilidade ao health.
 
@@ -188,6 +191,54 @@ confirmado intacto antes e depois do repontamento. Remote Routine de verificaç�
 confirmada com `cron_expression:"0 5,17 * * *"` e `next_run_at` coerente com 02:00/14:00 BRT.
 
 **Status final: VALIDADO.**
+
+## Semântica de entrega e de retry
+
+Regra de governança fixada em 2026-09-04 (FEEDRETRO1 Fase 3, tag `DEFERIDO-NAO-E-ENTREGA1`).
+Ela não existia escrita em lugar nenhum, e a ausência dela produziu um comportamento errado
+que passou despercebido: o ledger tratava emissor adiado por orçamento como emissor feito.
+
+Uma rotina de varredura fecha cada emissor com uma linha de ledger no formato
+`OK|empresa|tier|classe|n_eventos|submit|status|n_avanco_data`. O campo `status` é o que
+decide, e ele tem três valores com significados diferentes:
+
+| `status` | O que aconteceu | Conta como entrega? | Volta na próxima invocação? |
+|---|---|---|---|
+| `ANALISADO` | Emissor pesquisado e submetido | Sim | Não |
+| `SKIP` | Avaliado pelo plano e submetido sem busca, de propósito | **Sim** | Não |
+| `DEFERIDO` | Adiado pelo teto de tokens, nunca chegou a ser analisado | **Não** | **Sim** |
+
+As cinco regras que decorrem disso:
+
+1. **`DEFERIDO` não conta como entrega concluída para efeito de idempotência.** Emissor
+   adiado continua pendente e a próxima invocação vai enxergá-lo como trabalho a fazer.
+   Antes de 04/09 o regex de `Get-VixLedgerEmissoresNaJanela` parava no nome do emissor e
+   nunca lia o `status`, então adiado e analisado contavam igual.
+2. **`DEFERIDO` não dispara retry por si só.** Adiar por teto de tokens é o comportamento
+   planejado do sistema, não uma falha. Um ledger com cauda adiada e sem erro é um ledger
+   saudável, e `Test-VixLedgerEntregueNaJanela` continua deliberadamente sem transformar
+   cauda adiada em motivo de relançamento.
+3. **`SKIP` continua contando como processado.** O emissor foi avaliado pelo plano, o
+   sistema decidiu que ele não precisava de busca naquele ciclo, e a submissão aconteceu.
+   Isso é trabalho concluído, não trabalho pulado.
+4. **A cauda adiada é retomada pela próxima invocação normal**, seja a segunda invocação da
+   mesma janela, seja a rotina do dia seguinte, onde ela volta priorizada
+   (`motivo=deferred_prioritario` no plano do Worker). Não existe mecanismo especial de
+   recuperação de cauda, e não precisa existir.
+5. **Retry continua reservado a falha real de execução ou de entrega.** Rotina que morreu,
+   que não escreveu ledger, que ficou abaixo do mínimo por erro. Nunca cap operacional
+   planejado. Misturar as duas coisas relançaria a noturna quase toda noite, porque adiar
+   por teto é o normal e não a exceção, e o custo por token seria real.
+
+A distinção entre a regra 1 e a regra 2 é o ponto fino e vale repetir: **adiado deixa de
+contar como feito, mas não passa a contar como falha.** Ele muda o que uma invocação que já
+ia acontecer vai processar, e não muda a decisão de lançar uma invocação nova.
+
+Prova de duas pontas em `scripts/test-idempotencia-janela.ps1` (31 asserts). Casos G e H
+cobrem exatamente esta matriz: ledger com 58 `ANALISADO` mais 45 `DEFERIDO` na janela devolve
+45 pendentes com prova reversa de que a regra antiga devolvia zero; ledger com 103
+`ANALISADO` devolve zero pendentes; caso I confirma `SKIP` contando como entrega; caso J
+garante que ledger antigo, de antes deste formato, não é reprocessado retroativamente.
 
 ## Referências
 

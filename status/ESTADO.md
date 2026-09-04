@@ -1,6 +1,15 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-09-04 (Worker v4.9.240, frontend v202.39. **Plano FEEDRETRO1 fechado por inteiro**, Fases 0 a 3. Ver blocos abaixo)
+Última atualização: 2026-09-04 (Worker v4.9.240, frontend v202.39. **Plano FEEDRETRO1 ENCERRADO**, Fases 0 a 3. Ver blocos abaixo)
+
+> [!success] 04/09 — FEEDRETRO1 encerrado formalmente. Do painel parado em 28/08 ao feed andando com guarda provada.
+> **Estado em produção:** Worker `v4.9.240`, frontend `v202.39`, `feed_fresco:true`, `feed_evento_mais_novo:2026-09-03`, `feed_idade_du:1`, portão `HTTP:200 ok:true kv:true telemetria:true sentry_ok:true`.
+>
+> **Semântica de entrega e de retry, regra canônica.** Fixada em `Obsidian VIX Radar/10_Estado_Atual_Validado.md`, seção `## Semântica de entrega e de retry`. Resumo, sem duplicar a matriz: `DEFERIDO` **não** conta como entrega concluída para idempotência e **não** dispara retry por si só; `SKIP` **continua contando** como processado; a cauda `DEFERIDO` é retomada pela próxima invocação normal, priorizada como `deferred_prioritario` no plano do dia seguinte; o retry segue reservado a **falha real de execução ou de entrega**, nunca a cap operacional planejado. O ponto fino: adiado deixou de contar como feito, mas não passou a contar como falha.
+>
+> **Três defeitos apareceram durante a execução do plano e foram fechados dentro dele:** `CARTEIRA-PISO1` (gate de 103 travando a noturna nos dois motores após a entrada do 104º emissor), `FONTEDIVERG1` (fato de maio carimbado com data de hoje podendo certificar frescor) e `DRIFTRETRY1` (script de registro com os agendamentos das tasks de retry trocados em relação ao Scheduler vivo). Os dois primeiros foram achados pelo dry-run, não por revisão de código.
+>
+> **Provas do plano:** 254 testes vitest em 26 arquivos, 19 asserts na política de limite de sessão, 31 na idempotência por janela, lint limpo em 88 `.ps1` e 5 shell, dry-run do motor fim a fim com `exit 0`.
 
 > [!info] 04/09 (manhã) — FEEDRETRO1 FASE 3: a noite deixa de ser perdida por limite de sessão.
 > **Status:** FECHADO. Com isto o plano FEEDRETRO1 está completo. **Data da Versão:** 2026-09-04. **Origem do Registro:** medição do estado real antes de escrever cada item. **Condição de Obsolescência:** cai quando uma noite com limite de sessão real exercitar a espera e o log registrar `RETRY: limite de sessao da assinatura`.
