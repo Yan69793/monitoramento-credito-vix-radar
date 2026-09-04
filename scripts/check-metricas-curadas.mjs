@@ -144,7 +144,20 @@ function avaliarLiteral(lit, nome) {
 }
 
 function extrairMetricas(html) {
-  return avaliarLiteral(recortarLiteral(html, "METRICAS_CURADAS={", "{", "}"), "METRICAS_CURADAS");
+  const metricas = avaliarLiteral(recortarLiteral(html, "METRICAS_CURADAS={", "{", "}"), "METRICAS_CURADAS");
+
+  // O frontend minificado pode receber curadorias pontuais logo depois do literal
+  // principal. A guarda precisa enxergar a composicao que o navegador realmente
+  // executa, senao uma atribuicao valida aparece como lacuna falsa de cobertura.
+  const atribuicoes = /METRICAS_CURADAS\["([^"]+)"\]\s*=/g;
+  for (const m of html.matchAll(atribuicoes)) {
+    const depoisDoIgual = html.slice((m.index || 0) + m[0].length);
+    metricas[m[1]] = avaliarLiteral(
+      recortarLiteral(depoisDoIgual, "", "[", "]"),
+      "METRICAS_CURADAS[\"" + m[1] + "\"]"
+    );
+  }
+  return metricas;
 }
 
 // SETOR_DE deriva de EMISSORES em runtime, entao o menu real e EMISSORES.
