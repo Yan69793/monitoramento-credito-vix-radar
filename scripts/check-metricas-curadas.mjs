@@ -144,6 +144,7 @@ function avaliarLiteral(lit, nome) {
 }
 
 function extrairMetricas(html) {
+  const declaracao = html.indexOf("METRICAS_CURADAS={");
   const metricas = avaliarLiteral(recortarLiteral(html, "METRICAS_CURADAS={", "{", "}"), "METRICAS_CURADAS");
 
   // O frontend minificado pode receber curadorias pontuais logo depois do literal
@@ -151,6 +152,11 @@ function extrairMetricas(html) {
   // executa, senao uma atribuicao valida aparece como lacuna falsa de cobertura.
   const atribuicoes = /METRICAS_CURADAS\["([^"]+)"\]\s*=/g;
   for (const m of html.matchAll(atribuicoes)) {
+    if ((m.index || 0) < declaracao) {
+      throw new Error(
+        'METRICAS_CURADAS["' + m[1] + '"] aparece antes da declaracao principal'
+      );
+    }
     const depoisDoIgual = html.slice((m.index || 0) + m[0].length);
     metricas[m[1]] = avaliarLiteral(
       recortarLiteral(depoisDoIgual, "", "[", "]"),
