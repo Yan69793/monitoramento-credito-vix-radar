@@ -39,7 +39,7 @@ if (-not (Test-Path $tickersFile)) {
 $tickersMap = Get-Content $tickersFile -Raw -Encoding UTF8 | ConvertFrom-Json
 $emissores = $tickersMap.emissores
 $total = ($emissores | Get-Member -MemberType NoteProperty).Count
-Write-Host "Emissores listados com ticker: $total de 103"
+Write-Host "Emissores listados com ticker: $total de 104"
 Write-Host "Output: $seriesDir"
 Write-Host ""
 
