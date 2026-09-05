@@ -177,7 +177,7 @@ describe("CREDITODIA1: analise valida do dia e creditada por qualquer rotina", (
 
   it("o credito vale tambem no plano matinal (noturna de ontem 18h ainda cobre a matinal? nao: 16h; mas 2h sim)", async () => {
     await gravarEstado({ [DASA]: dasaAnalisadaHaPouco({ _ultima_origem: "noturno" }) });
-    const d = await planoDasa("matinal", { top_n: 103 });
+    const d = await planoDasa("matinal", { top_n: 104 });
     expect(d.tier).toBe("SKIP");
     expect(d.motivos[0]).toBe("analisado_hoje_por_noturno");
   });

@@ -289,7 +289,7 @@ describe("SENTINELA1 parte 4: gatilho da matinal nao depende mais do horario", (
       results: { [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true } }
     }));
 
-    const p = await plano("matinal", { top_n: 103 });
+    const p = await plano("matinal", { top_n: 104 });
     const dasa = p.emissores.find((e) => e.empresa === DASA);
     expect(dasa).toBeDefined();
     expect(dasa.tier).toBe("FULL");
@@ -305,7 +305,7 @@ describe("SENTINELA1 parte 4: gatilho da matinal nao depende mais do horario", (
       results: { [DASA]: { _last_scanned_at: new Date().toISOString(), eventos: [], sem_eventos: true } }
     }));
 
-    const p = await plano("matinal", { top_n: 103 });
+    const p = await plano("matinal", { top_n: 104 });
     const dasa = p.emissores.find((e) => e.empresa === DASA);
     if (dasa) {
       expect(dasa.motivos.some((m) => m.startsWith("cvm_overnight_"))).toBe(false);

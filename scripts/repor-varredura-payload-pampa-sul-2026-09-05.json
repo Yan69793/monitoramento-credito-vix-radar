@@ -1,0 +1,62 @@
+[
+  {
+    "empresa": "Usina Pampa Sul",
+    "setor": "Energia Elétrica",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Usina Pampa Sul",
+      "setor": "Energia Elétrica",
+      "sem_eventos": false,
+      "cobertura_nota": "Backfill de integracao da Pampa Sul (104o emissor). Fato de 13/08: ITR 2T26 com EBITDA LTM R$ 357 mi e divida liquida R$ 1,49 bi. Fonte: RI Pampa Sul.",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "backfill Pampa Sul resultado 2T26", "resultado": "ITR 2T26 publicado no RI da Pampa Sul, base usada pelo Radar em 13/08/2026" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "RELEVANTE",
+          "titulo": "Pampa Sul reporta EBITDA de R$ 106 mi no 2T26 e divida liquida de R$ 1,49 bi",
+          "data_evento": "2026-08-13",
+          "fonte_primaria": "https://pampasulenergia.com.br/admin/assets/upload/arquivos_subMenu/350/2debf5fdd8deca7a7a4eb9708a661fc405837db8.pdf",
+          "tags": ["resultado trimestral", "ITR", "divida liquida", "EBITDA"],
+          "impacto_credito": "EBITDA do 2T26 de R$ 106 milhoes, alta de 13,9% contra 2T25, e EBITDA LTM de R$ 357 milhoes. Divida liquida de R$ 1,49 bilhao, 4,9% abaixo de dezembro de 2025, com caixa de R$ 225 milhoes e depositos vinculados de R$ 134 milhoes. Alavancagem gerencial de 4,18x DL/EBITDA LTM.",
+          "memo_acontecimento": "ITR 2T26 com EBITDA LTM de R$ 357 mi e divida liquida de R$ 1,49 bi.",
+          "memo_importancia_credito": "Alavancagem de 4,18x DL/EBITDA, confortavel frente ao covenant ICSD de 1,1x-1,2x, com caixa e depositos vinculados reforcando liquidez.",
+          "memo_monitorar": "Proximo ITR (3T26), trajetoria do ICSD, capex e divida liquida.",
+          "_confianca": 0.9
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  },
+  {
+    "empresa": "Usina Pampa Sul",
+    "setor": "Energia Elétrica",
+    "provedor": "reposicao-manual",
+    "resultado": {
+      "empresa": "Usina Pampa Sul",
+      "setor": "Energia Elétrica",
+      "sem_eventos": false,
+      "cobertura_nota": "Backfill de integracao da Pampa Sul (104o emissor). Fato de 14/08: pedido a ANEEL de recomposicao economico-financeira dos CCEARs apos mudanca tributaria sobre o carvao (LC 224/2025). Fonte: MegaWhat.",
+      "fontes_consultadas": [
+        { "rodada": "0", "query": "backfill Pampa Sul recomposicao ANEEL carvao", "resultado": "Pedido a ANEEL de 14/08/2026 reportado pela MegaWhat" }
+      ],
+      "eventos": [
+        {
+          "classificacao": "RELEVANTE",
+          "titulo": "Pampa Sul pede a ANEEL recomposicao dos CCEARs apos mudanca tributaria sobre o carvao",
+          "data_evento": "2026-08-14",
+          "fonte_primaria": "https://megawhat.uol.com.br/economia-e-politica/empresas/ute-pampa-sul-pede-recomposicao-de-contratos-apos-mudanca-tributaria/",
+          "tags": ["regulatorio", "ANEEL", "recomposicao", "carvao", "CCEAR"],
+          "impacto_credito": "A companhia pediu a ANEEL a recomposicao economico-financeira dos CCEARs apos a Lei Complementar 224/2025 elevar o custo do carvao mineral. Estimativa de aumento mensal de aproximadamente R$ 107 mil no custo do combustivel. Evento em acompanhamento, ainda nao e recomposicao aprovada.",
+          "memo_acontecimento": "Pedido de recomposicao dos CCEARs a ANEEL apos LC 224/2025 elevar custo do carvao.",
+          "memo_importancia_credito": "Se aprovada, a recomposicao preserva a receita contratada; sem ela, o custo adicional comprime margem e pode pressionar o ICSD.",
+          "memo_monitorar": "Decisao da ANEEL sobre a recomposicao; impacto no custo de combustivel e na receita.",
+          "_confianca": 0.9
+        }
+      ],
+      "_tier": "FULL",
+      "_rotina_v2": true
+    }
+  }
+]

@@ -3883,7 +3883,7 @@ if(!o.length){var _nBase=Number(n&&n.totalDebenturesAnalisadas)||0;return void(e
             <span aria-hidden="true" style="width:20px;height:20px;border:1px solid #0D2438;display:inline-flex;align-items:center;justify-content:center;font-family:'Manrope',sans-serif;font-weight:700;font-size:8px;color:#0D2438;flex-shrink:0">YS</span>
             <div style="color:#9CA3AF;font-size:9px;line-height:1.7">
               © 2026 Szuchmacher Consultoria Ltda. · Software registrado<br>
-              103 Emissores · Acesso autenticado · Uso sujeito aos termos acima
+              104 Emissores · Acesso autenticado · Uso sujeito aos termos acima
             </div>
           </div>
           <button onclick="toggleGuia()" style="background:#0D2438;color:#B7985D;border:none;border-radius:4px;padding:8px 20px;font-size:10px;font-family:inherit;cursor:pointer;font-weight:700">Fechar</button>
@@ -4670,7 +4670,7 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     stats.setAttribute("aria-label","Estatisticas da janela rolante 7 dias uteis");
     stats.style.cssText = "display:flex;align-items:center;gap:18px;padding:8px 14px;background:#0A1525;border-bottom:1px solid #1f2937;font-size:11px;flex-wrap:wrap";
     /* P0-2026-05-11: KPIs rotulados com janela e denominador explicitos */
-    var _totalUniverse = (typeof TOTAL_EMISSORES === "number") ? TOTAL_EMISSORES : 103;
+    var _totalUniverse = (typeof TOTAL_EMISSORES === "number") ? TOTAL_EMISSORES : 104;
     stats.innerHTML =
       '<span style="color:#B7985D;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase">Janela rolante 7 dias uteis '+String.fromCharCode(0xb7)+' '+_v201FmtBR(jan.inicio)+' a '+_v201FmtBR(jan.fim)+'</span>'+
       /* ROTULOEVENTO1 (auditoria 2026-08-20). O rotulo visivel dizia "6 criticos (7d)"
@@ -6007,7 +6007,7 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
     if (!body) return;
     body.innerHTML = "";
     var sel = [];
-    body.appendChild(_mkEl("div", { className: "cmp-hint" }, "Selecione de 2 a 5 emissores para comparar lado a lado. Última análise só aparece para emissores já varridos pelo radar (não são os 103 todos os dias)."));
+    body.appendChild(_mkEl("div", { className: "cmp-hint" }, "Selecione de 2 a 5 emissores para comparar lado a lado. Última análise só aparece para emissores já varridos pelo radar (não são os 104 todos os dias)."));
     var search = _mkEl("input", { className: "cmp-search", type: "text", placeholder: "Buscar emissor…" });
     body.appendChild(search);
     var list = _mkEl("div", { className: "cmp-list" });
@@ -6095,7 +6095,7 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
         td.textContent = _fmtDataBr(String(c.ultima_analise).slice(0, 10));
       } else if (c.tem_estado === false) {
         td.textContent = "Nunca analisado";
-        td.title = "Este emissor ainda não tem varredura salva no radar (universo: 103).";
+        td.title = "Este emissor ainda não tem varredura salva no radar (universo: 104).";
       } else {
         td.textContent = "Sem data";
         td.title = "Há registro no radar, mas sem timestamp da última varredura.";
