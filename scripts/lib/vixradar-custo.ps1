@@ -85,13 +85,24 @@ function Get-VixCustoDia([string]$LogDir, [string]$DateTag, $Config) {
     foreach ($r in $rotinas) {
         $m = Read-VixMetrics (Join-Path $LogDir $r.arquivo)
         $p = Get-VixParcelas $m
-        # Dry-run gasta token de verdade (assinatura) e conta no dia, em arquivo separado
-        # (<prefixo>_metrics_<data>_dryrun.json) para nao ser confundido com a execucao real.
-        $md = Read-VixMetrics (Join-Path $LogDir ([regex]::Replace($r.arquivo, '\.json$', '_dryrun.json')))
-        if ($md) {
+        # Dry-run gasta token de verdade (assinatura) e conta no dia, em arquivo separado da
+        # execucao real. DRYRUN-METRICS-SOBRESCREVE1 (02/09): eram um unico
+        # <prefixo>_metrics_<data>_dryrun.json e o segundo dry-run do dia apagava o primeiro
+        # (o CUSTO_DIA dizia 85k com 120k gastos). Agora cada dry-run tem hora no nome
+        # (_dryrun_HHmmss.json) e TODOS os _dryrun*.json do dia sao somados, o legado inclusive.
+        $padraoDry = [regex]::Replace($r.arquivo, '\.json$', '_dryrun*.json')
+        $nDry = 0
+        foreach ($fd in @(Get-ChildItem -Path $LogDir -Filter $padraoDry -File -ErrorAction SilentlyContinue | Sort-Object Name)) {
+            $md = Read-VixMetrics $fd.FullName
+            if (-not $md) { continue }
             $pd = Get-VixParcelas $md
             foreach ($k in @('input', 'output', 'cache_creation', 'cache_read', 'trabalho')) { $p[$k] = [int64]$p[$k] + [int64]$pd[$k] }
-            if ($p.regua -eq 'ausente') { $p.regua = $pd.regua + '+dryrun' } else { $p.regua = $p.regua + '+dryrun' }
+            $p.lotes = [int]$p.lotes + [int]$pd.lotes
+            $nDry++
+        }
+        if ($nDry -gt 0) {
+            if ($p.regua -eq 'ausente') { $p.regua = 'parcelas+dryrun' } elseif ($p.regua -notmatch '\+dryrun') { $p.regua = $p.regua + '+dryrun' }
+            if ($nDry -gt 1) { $p.regua = $p.regua + 'x' + $nDry }
         }
         $por[$r.nome] = $p
         $total += $p.trabalho
