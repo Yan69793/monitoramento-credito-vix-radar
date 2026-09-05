@@ -143,6 +143,15 @@ function Get-RoutineKey {
 # atualizar os call sites sao detectadas na hora, com erro claro, em vez de
 # silenciosamente apos 24h como aconteceu em 04-05/08/2026.
 Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert')
+# Fase B D1 (2026-09-04): adapter OpenRouter e opcional. Ausencia do arquivo nao derruba
+# os outros providers (none/claude-manual seguem intactos); so o provider 'openrouter'
+# exige o adapter e o gate abaixo aborta 86 se ele nao existir.
+if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
+    . (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')
+    $script:VixLibOpenRouterOk = $true
+} else {
+    $script:VixLibOpenRouterOk = $false
+}
 
 function Get-AnthropicApiKey {
     # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
@@ -162,43 +171,56 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $fallbackArgs = @()
     if ($ModelFallback -and $Model -ne $ModelFallback) { $fallbackArgs = @('--fallback-model', $ModelFallback) }
     try {
-        # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao
-        # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        $OutputEncoding = [System.Text.Encoding]::UTF8
-        # Auth resolvida no boot por Initialize-VixClaudeAuth: assinatura primeiro, chave paga
-        # so se o OAuth nao responder. Reaplicada a cada lote porque o ambiente do processo
-        # pode ter sido mexido no meio. Fixa a base URL oficial junto (incidente 73), o que
-        # aqui e critico: com agregador, Haiku e Sonnet colapsavam no mesmo modelo.
-        Set-VixClaudeAuthEnv
-        $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
-            --model $Model `
-            --permission-mode bypassPermissions `
-            --output-format json `
-            --tools 'WebSearch,WebFetch' `
-            --strict-mcp-config --mcp-config $McpConfigFile `
-            --setting-sources project `
-            --disable-slash-commands `
-            --no-session-persistence `
-            --exclude-dynamic-system-prompt-sections `
-            @fallbackArgs 2>>$stderrFile
-        $exitCode = $LASTEXITCODE
-        if ($exitCode -ne 0) {
-            # Sem retry interno aqui, entao a escalada nao recupera ESTE lote. Ela troca o
-            # modo para os lotes seguintes, que e a diferenca entre perder um e perder a fila
-            # inteira quando o OAuth vence no meio da drenagem.
-            $saidaFalha = ('' + $raw)
-            if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
-            if (Invoke-VixClaudeAuthEscalate $saidaFalha) {
-                # MOTOR1: escalada nunca e silenciosa. Log, alerta ao admin e carimbo na FIM.
-                $script:AuthEscalou = 'api'
-                # DRYRUN-CRASH1: em dry-run a linha vira DRYRUN_ALERTA_AUTH (monitor nao trata teste como
-                # 9004) e notificar_rotina nunca dispara (02/09 02:45 um teste mandou e-mail real).
-                $alertaTag = 'ALERTA_AUTH: '
-                if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
-                Write-Log ($alertaTag + 'verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.')
-                if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
-                else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey }
+        # Fase B D1 (2026-09-04): provider openrouter despacha para o adapter HTTP proprio
+        # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
+        # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter; se esgotar,
+        # itens ficam na fila (mesmo efeito do fluxo claude, sem tocar em chave paga).
+        if ($script:VixUsaOpenRouter) {
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+            $raw = @($__orResp.Linhas)
+            $exitCode = $__orResp.ExitCode
+            if ($exitCode -ne 0) {
+                Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ') - itens ficam na fila')
+            }
+        } else {
+            # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao
+            # de mojibake achado no noturno em 08/07 - ver run_vixradar_noturno_claude.ps1).
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            $OutputEncoding = [System.Text.Encoding]::UTF8
+            # Auth resolvida no boot por Initialize-VixClaudeAuth: assinatura primeiro, chave paga
+            # so se o OAuth nao responder. Reaplicada a cada lote porque o ambiente do processo
+            # pode ter sido mexido no meio. Fixa a base URL oficial junto (incidente 73), o que
+            # aqui e critico: com agregador, Haiku e Sonnet colapsavam no mesmo modelo.
+            Set-VixClaudeAuthEnv
+            $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+                --model $Model `
+                --permission-mode bypassPermissions `
+                --output-format json `
+                --tools 'WebSearch,WebFetch' `
+                --strict-mcp-config --mcp-config $McpConfigFile `
+                --setting-sources project `
+                --disable-slash-commands `
+                --no-session-persistence `
+                --exclude-dynamic-system-prompt-sections `
+                @fallbackArgs 2>>$stderrFile
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+                # Sem retry interno aqui, entao a escalada nao recupera ESTE lote. Ela troca o
+                # modo para os lotes seguintes, que e a diferenca entre perder um e perder a fila
+                # inteira quando o OAuth vence no meio da drenagem.
+                $saidaFalha = ('' + $raw)
+                if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
+                if (Invoke-VixClaudeAuthEscalate $saidaFalha) {
+                    # MOTOR1: escalada nunca e silenciosa. Log, alerta ao admin e carimbo na FIM.
+                    $script:AuthEscalou = 'api'
+                    # DRYRUN-CRASH1: em dry-run a linha vira DRYRUN_ALERTA_AUTH (monitor nao trata teste como
+                    # 9004) e notificar_rotina nunca dispara (02/09 02:45 um teste mandou e-mail real).
+                    $alertaTag = 'ALERTA_AUTH: '
+                    if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
+                    Write-Log ($alertaTag + 'verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.')
+                    if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                    else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey }
+                }
             }
         }
     } catch {
@@ -322,7 +344,13 @@ function Invoke-WorkerJsonUtf8 {
 # evento. Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
 # Scheduler nunca passa -ForceClaude; provider 'none' (default) ou 'claude-manual' sem flag
 # = BLOQUEADO_SEM_PROVIDER.
-if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+if ($script:VixUsaOpenRouter) {
+    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
+        exit $VixLlmBloqueadoExit
+    }
+} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_verificacao_async.ps1')
     exit $VixLlmBloqueadoExit
 }
@@ -379,34 +407,47 @@ if ($__pfResp.ok -ne $true) {
 Write-Log ('Preflight: ROUTINE_API_KEY aceita pelo Worker (' + [int]$__pfResp.total + ' emissores). Nenhum token gasto ate aqui.')
 # Sonda a assinatura uma vez e registra no log qual credencial serviu a execucao. A linha
 # importa para proveniencia: em 30/07 o log carimbava Claude sem que isso fosse verificavel.
-Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
-    Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
-    Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
-    exit 5
-}
-# Alinhado com 2b025b0: a guarda perdeu o parametro -ModeloFixadoNaChamada e a funcao
-# Get-VixModeloEnvInfo, mas as duas chamadas continuaram aqui. Sob $ErrorActionPreference
-# 'Continue' isso nao mataria o script - e pior: parametro inexistente faz o bind falhar,
-# $ambientViolacao fica $null e o `if` abaixo nunca dispara. A guarda inteira (incluindo
-# ANTHROPIC_BASE_URL, o vetor real do 27/07) sairia de servico em silencio, com so um
-# registro de erro no log. Chamada normalizada para a assinatura que a lib expoe hoje.
-$ambientViolacao = Test-VixClaudeAmbienteLimpo
-if ($ambientViolacao) {
-    Write-Log "ERRO FATAL: ambiente contaminado detectado — $ambientViolacao"
-    Write-Log 'ERRO FATAL: variavel de ambiente ou settings.json aponta para agregador/modelo nao-Claude.'
-    Write-Log 'ERRO FATAL: corrija o ambiente e reexecute. Verificar: registry User/Machine, settings.json, env vars do processo.'
-    exit 6
-}
-if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
-    Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
-    Write-Log 'ERRO FATAL: verificar modelo configurado e conectividade. A execucao foi abortada antes do primeiro evento.'
-    exit 7
-}
+# Fase B D1 (2026-09-04): provider openrouter nao usa auth Claude, nao roda probe WebSearch do
+# CLI e nao exige claude.exe. O adapter tem a chave OpenRouter (ambiente) e as server tools
+# web_search/web_fetch nativas; a credencial ja foi validada externamente pelo operador.
+if ($script:VixUsaOpenRouter) {
+    $__orBoot = Test-VixOpenRouterPronto
+    if (-not $__orBoot.ok) {
+        Write-Log ('ERRO FATAL: ' + $__orBoot.motivo)
+        Write-Log 'ERRO FATAL: OpenRouter configurado mas adapter nao pronto. Nenhuma chamada sera feita.'
+        exit 5
+    }
+    Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+} else {
+    Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
+    if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
+        Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
+        Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
+        exit 5
+    }
+    # Alinhado com 2b025b0: a guarda perdeu o parametro -ModeloFixadoNaChamada e a funcao
+    # Get-VixModeloEnvInfo, mas as duas chamadas continuaram aqui. Sob $ErrorActionPreference
+    # 'Continue' isso nao mataria o script - e pior: parametro inexistente faz o bind falhar,
+    # $ambientViolacao fica $null e o `if` abaixo nunca dispara. A guarda inteira (incluindo
+    # ANTHROPIC_BASE_URL, o vetor real do 27/07) sairia de servico em silencio, com so um
+    # registro de erro no log. Chamada normalizada para a assinatura que a lib expoe hoje.
+    $ambientViolacao = Test-VixClaudeAmbienteLimpo
+    if ($ambientViolacao) {
+        Write-Log "ERRO FATAL: ambiente contaminado detectado — $ambientViolacao"
+        Write-Log 'ERRO FATAL: variavel de ambiente ou settings.json aponta para agregador/modelo nao-Claude.'
+        Write-Log 'ERRO FATAL: corrija o ambiente e reexecute. Verificar: registry User/Machine, settings.json, env vars do processo.'
+        exit 6
+    }
+    if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+        Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
+        Write-Log 'ERRO FATAL: verificar modelo configurado e conectividade. A execucao foi abortada antes do primeiro evento.'
+        exit 7
+    }
 
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-    Write-Log 'ERRO: claude.exe ausente'
-    exit 2
+    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+        Write-Log 'ERRO: claude.exe ausente'
+        exit 2
+    }
 }
 
 $stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0; tokens_desconhecidos = 0; deferred = 0; token_hard_hit = $false

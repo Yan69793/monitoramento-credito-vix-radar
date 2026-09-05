@@ -11,6 +11,22 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 05/09 (madrugada), CLAUDE-FREE-MIGRATION Fase B D1: OpenRouter migrado no runtime automatico, 5/5 rotinas no adapter
+
+> **Status:** EM ANDAMENTO, migração D1 executada (B1 a B4 verdes), fechamento B5 (docs + commit único) nesta sessão. **Data da Versão:** 2026-09-05. **Origem do Registro:** execução da Fase B D1 aprovada via `/goal` (plano `fluffy-prancing-grove.md`, continuação da Fase A). **Condição de Obsolescência:** registro do andamento; após o commit de fechamento da sessão não se reescreve.
+
+**Decisão do operador (via `/goal`, anterior, permanece):** transport-first (mesmos prompts/parsers, adapter devolve texto do modelo como `.result` do envelope claude-style), motor-first, exit 86/BLOQUEADO_SEM_PROVIDER preservado, Anthropic PAYG proibido, Produção (Worker/Pages) intocada. Provider efetivo: `VIXRADAR_LLM_PROVIDER=openrouter` (User), chave `OPENROUTER_API_KEY` no ambiente, **nenhum provider Anthropic**.
+
+**Código entregue:** adapter `scripts/lib/vixradar-openrouter.ps1` (POST `https://openrouter.ai/api/v1/chat/completions`, modelo `~deepseek/deepseek-v4-flash-latest`, server tools `openrouter:web_search`/`openrouter:web_fetch`, retry bounded, envelope normalizado com `.result`/`.usage`, sem segredo em retorno). As 4 rotinas LLM (motor `run_vixradar_varredura.ps1` = matinal+noturno, `run_vixradar_verificacao_async.ps1`, `run_vixradar_sentinela.ps1`, `run_vixradar_agenda_semanal.ps1`) têm gate `$script:VixUsaOpenRouter` no provider, boot que testa o adapter (`AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)`), e dispatch do lote para `Invoke-VixOpenRouterLote`; o ramo claude/Anthropic ficou num `else` alcançável só sob `claude-manual` + `-ForceClaude` manual do operador, nunca pelo scheduler. Contratos preservados por rotina (motor/sentinela textual `RESULTADO|`, verificacao/agenda JSON puro).
+
+**Testes verdes (saída colada na sessão):** smoke real B1 (HTTP 2xx, exit 0, sem imprimir chave); canário do motor B2 (matinal DRYRUN, 2 emissores reais via OpenRouter, `logs/routines/vixradar-matinal_20260905.log`: `RESULTADO|` íntegro, tokens 35053 input 32051 output 3002 cache_read 16896, `auth_escalou=nenhum`, sem claude, sem segredo); adapter offline 45/45 (`test-openrouter-adapter.ps1`); contratos offline 24/24 (`test-openrouter-contratos.ps1`); dispatch do ramo openrouter das 3 rotinas 20/20 em pwsh7 E em PowerShell 5.1 real (`test-openrouter-dispatch.ps1`); parse 5.1 dos 4 arquivos exit 0; `scripts/check-claude-free.ps1` exit 0.
+
+**Scheduler (medido, sem alterar):** Matinal/Noturno/Verificacao-Async Disabled, Sentinela/AgendaSemanal Ready, 2 retries Ready. Discrepância vs declarativo do `cutover-motor.ps1` (5 Enabled, retries Disabled) herdada, não tocada (mexer em task é decisão do operador). Com provider `openrouter` persistido, task que rodar sai pelo adapter; nenhuma executa claude.
+
+**Pendências que permanecem da Fase A (não reabrir as decididas):** produção residual (Worker `ANTHROPIC_API_KEY`, correção Fase B+); G1/G2/G3/G4/G5/G7 da Fase A seguem com o operador; CCD/Remote desligamento (G2). ROTAÇÃO da `routine_key` recusada pelo operador em 03/09, não reabrir.
+
+---
+
 ## 04/09 (noite), CLAUDE-FREE-MIGRATION Fase A. Claude deixa de ser infraestrutura; código commitado (37bf0ec) e CI verde, portões do operador G1-G5/G7 abertos
 
 > **Status:** EM ANDAMENTO, código da Fase A commitado (`37bf0ec`) e CI verde, aguardando os portões do operador G1-G5/G7. G0 e G6 fechados. **Data da Versão:** 2026-09-04. **Origem do Registro:** execução do plano aprovado `C:\Users\User\.claude\plans\fluffy-prancing-grove.md`. **Condição de Obsolescência:** cai quando G1-G7 fecharem e o Fase A for declarada no fechamento da sessão; não se reescreve depois disso (registro do andamento).

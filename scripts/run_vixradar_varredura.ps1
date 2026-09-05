@@ -193,6 +193,15 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
+# Fase B D1 (2026-09-04): adapter OpenRouter e opcional. Ausencia do arquivo nao derruba
+# os outros providers (none/claude-manual seguem intactos); so o provider 'openrouter'
+# exige o adapter e o gate abaixo aborta 86 se ele nao existir.
+if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
+    . (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')
+    $script:VixLibOpenRouterOk = $true
+} else {
+    $script:VixLibOpenRouterOk = $false
+}
 Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Invoke-VixClaudeAuthEscalate', 'Invoke-VixClaudeAuthEscalateForcado', 'Get-VixSessionLimitAcao', 'Get-VixWsProbeClassificacao', 'ConvertTo-VixWsProbeResetAt', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo')
 foreach ($fn in @('Get-VixCustoConfig', 'Get-VixCustoDia', 'Get-VixCapEfetivo', 'Get-VixUsageParcelas')) {
     if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-custo.ps1'); exit 1 }
@@ -314,6 +323,18 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                 Start-Sleep -Seconds $delay
             }
             Update-VixLock
+            # Fase B D1: provider openrouter despacha para o adapter HTTP proprio
+            # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch.
+            # Mesmo prompt, mesmo protocolo textual; envelope normalizado no parser abaixo.
+            if ($script:VixUsaOpenRouter) {
+                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+                $raw = @($__orResp.Linhas)
+                $exitCode = $__orResp.ExitCode
+                $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel))
+                if ($exitCode -eq 0) { break }
+                Write-Log ('RETRY openrouter: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ': ' + $__orResp.Msg)
+                continue
+            }
             Set-VixClaudeAuthEnv
             $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
                 --model $Model `
@@ -473,7 +494,15 @@ function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, 
 # manual forcado (VIXRADAR_LLM_PROVIDER='claude-manual' + -ForceClaude), esta rotina bloqueia
 # AQUI com exit 86, antes de mutex, lock de arquivo, sonda, auth ou claude. Scheduler nunca
 # passa -ForceClaude, entao provider 'none' (default) ou 'claude-manual' sem flag = bloqueio.
-if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+# Fase B D1 (2026-09-04): provider 'openrouter' libera a execucao pelo adapter HTTP proprio
+# (lib\vixradar-openrouter.ps1), sem claude, sem auth Anthropic, sem escalacao paga.
+$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+if ($script:VixUsaOpenRouter) {
+    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
+        exit $VixLlmBloqueadoExit
+    }
+} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
     Write-Log (Get-VixLlmBloqueadoMsg ('run_vixradar_varredura.ps1 ' + $Rotina))
     exit $VixLlmBloqueadoExit
 }
@@ -547,40 +576,53 @@ if ($SimularTokenVencido) {
     Write-Log 'SIMULACAO: VIXRADAR_ANTHROPIC_AUTH_TOKEN invalido injetado no processo (prova de escalada, -SimularTokenVencido)'
 }
 
-Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-$authModoInicial = Get-VixClaudeAuthModo
-Write-Log ('AUTH_MODO: ' + $authModoInicial)
-if ($authModoInicial -eq 'nenhum') {
-    Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
-    Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
-    # DRYRUN-CRASH1: tambem aqui a tag decide (02/09 16:00 um dry-run sem credencial virou 9004 real).
-    Write-Log ($AlertaAuthTag + 'sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
-    exit 5
+if ($script:VixUsaOpenRouter) {
+    # Fase B D1: provider openrouter nao usa auth Claude, nao roda probe WebSearch do CLI e
+    # nao exige claude.exe. O adapter tem a chave OpenRouter (ambiente) e as server tools
+    # web_search/web_fetch nativas; a credencial ja foi validada externamente pelo operador.
+    $__orBoot = Test-VixOpenRouterPronto
+    if (-not $__orBoot.ok) {
+        Write-Log ('ERRO FATAL: ' + $__orBoot.motivo)
+        Write-Log 'ERRO FATAL: OpenRouter configurado mas adapter nao pronto. Nenhuma chamada sera feita.'
+        exit 5
+    }
+    Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+} else {
+    Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
+    $authModoInicial = Get-VixClaudeAuthModo
+    Write-Log ('AUTH_MODO: ' + $authModoInicial)
+    if ($authModoInicial -eq 'nenhum') {
+        Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
+        Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
+        # DRYRUN-CRASH1: tambem aqui a tag decide (02/09 16:00 um dry-run sem credencial virou 9004 real).
+        Write-Log ($AlertaAuthTag + 'sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
+        exit 5
+    }
+    if ($authModoInicial -eq 'api') {
+        Write-Log ($AlertaAuthTag +$Rotina + ' comecou direto na chave paga (assinatura indisponivel no boot). Cada lote custa dolar.')
+    }
+    $ambientViolacao = Test-VixClaudeAmbienteLimpo
+    if ($ambientViolacao) {
+        Write-Log "AVISO: ambiente contaminado detectado - $ambientViolacao"
+        $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+        Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
+        Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+        Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
+        Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
+        Remove-Item Env:\ANTHROPIC_DEFAULT_OPUS_MODEL -ErrorAction SilentlyContinue
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+        Write-Log 'RECUPERACAO: env vars Anthropic injetadas para neutralizar contaminacao do settings.json.'
+    }
+    if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+        Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel. Abortado antes do primeiro submit.'
+        exit 7
+    }
+    Invoke-Cleanup
+    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Write-Log 'ERRO: claude.exe ausente'; exit 2 }
 }
-if ($authModoInicial -eq 'api') {
-    Write-Log ($AlertaAuthTag +$Rotina + ' comecou direto na chave paga (assinatura indisponivel no boot). Cada lote custa dolar.')
-}
-$ambientViolacao = Test-VixClaudeAmbienteLimpo
-if ($ambientViolacao) {
-    Write-Log "AVISO: ambiente contaminado detectado - $ambientViolacao"
-    $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
-    Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
-    Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
-    Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
-    Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
-    Remove-Item Env:\ANTHROPIC_DEFAULT_OPUS_MODEL -ErrorAction SilentlyContinue
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
-    Write-Log 'RECUPERACAO: env vars Anthropic injetadas para neutralizar contaminacao do settings.json.'
-}
-if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
-    Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel. Abortado antes do primeiro submit.'
-    exit 7
-}
-Invoke-Cleanup
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Write-Log 'ERRO: claude.exe ausente'; exit 2 }
 
 try {
     $health = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 30

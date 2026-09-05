@@ -91,6 +91,15 @@ function Get-RoutineKey {
 
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
+# Fase B D1 (2026-09-04): adapter OpenRouter e opcional. Ausencia do arquivo nao derruba
+# os outros providers (none/claude-manual seguem intactos); so o provider 'openrouter'
+# exige o adapter e o gate abaixo aborta 86 se ele nao existir.
+if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
+    . (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')
+    $script:VixLibOpenRouterOk = $true
+} else {
+    $script:VixLibOpenRouterOk = $false
+}
 Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo', 'Invoke-VixClaudeAuthEscalate')
 
 function Test-ClaudeAuthFailure([string[]]$outputLines) {
@@ -109,25 +118,35 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada) {
     $fallbackArgs = @()
     if ($ModelFallback -and $ModeloChamada -ne $ModelFallback) { $fallbackArgs = @('--fallback-model', $ModelFallback) }
     try {
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        $OutputEncoding = [System.Text.Encoding]::UTF8
-        Set-VixClaudeAuthEnv
-        $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
-            --model $ModeloChamada `
-            --permission-mode bypassPermissions `
-            --output-format json `
-            --tools 'WebSearch,WebFetch' `
-            --strict-mcp-config --mcp-config $McpConfigFile `
-            --setting-sources project `
-            --disable-slash-commands `
-            --no-session-persistence `
-            --exclude-dynamic-system-prompt-sections `
-            @fallbackArgs 2>>$stderrFile
-        $exitCode = $LASTEXITCODE
-        if ($exitCode -ne 0) {
-            $saidaFalha = ('' + $raw)
-            if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
-            Invoke-VixClaudeAuthEscalate $saidaFalha | Out-Null
+        # Fase B D1 (2026-09-04): provider openrouter despacha para o adapter HTTP proprio
+        # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
+        # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter.
+        if ($script:VixUsaOpenRouter) {
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+            $raw = @($__orResp.Linhas)
+            $exitCode = $__orResp.ExitCode
+            if ($exitCode -ne 0) { Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ')') }
+        } else {
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            $OutputEncoding = [System.Text.Encoding]::UTF8
+            Set-VixClaudeAuthEnv
+            $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+                --model $ModeloChamada `
+                --permission-mode bypassPermissions `
+                --output-format json `
+                --tools 'WebSearch,WebFetch' `
+                --strict-mcp-config --mcp-config $McpConfigFile `
+                --setting-sources project `
+                --disable-slash-commands `
+                --no-session-persistence `
+                --exclude-dynamic-system-prompt-sections `
+                @fallbackArgs 2>>$stderrFile
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -ne 0) {
+                $saidaFalha = ('' + $raw)
+                if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
+                Invoke-VixClaudeAuthEscalate $saidaFalha | Out-Null
+            }
         }
     } catch {
         Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
@@ -260,7 +279,13 @@ Se nao achar nenhuma data para nenhum trimestre pedido de uma empresa, devolva
 
 # CLAUDE-FREE-MIGRATION (2026-09-04): a agenda pesquisa com claude (WebSearch + JSON por
 # lote). Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
-if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+if ($script:VixUsaOpenRouter) {
+    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
+        exit $VixLlmBloqueadoExit
+    }
+} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_agenda_semanal.ps1')
     exit $VixLlmBloqueadoExit
 }
@@ -313,24 +338,37 @@ try {
         exit 0
     }
 
-    # Ambiente + WebSearch so testados DEPOIS do preflight barato, mesma ordem da async.
-    Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-    if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
-        Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
-        exit 5
-    }
-    $ambientViolacao = Test-VixClaudeAmbienteLimpo
-    if ($ambientViolacao) {
-        Write-Log ('ERRO FATAL: ambiente contaminado detectado - ' + $ambientViolacao)
-        exit 6
-    }
-    if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
-        Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
-        exit 7
-    }
-    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-        Write-Log 'ERRO: claude.exe ausente'
-        exit 2
+    # Fase B D1 (2026-09-04): provider openrouter nao usa auth Claude, nao roda probe WebSearch
+    # do CLI e nao exige claude.exe. O adapter tem a chave OpenRouter (ambiente) e as server
+    # tools web_search/web_fetch nativas; a credencial ja foi validada externamente pelo operador.
+    if ($script:VixUsaOpenRouter) {
+        $__orBoot = Test-VixOpenRouterPronto
+        if (-not $__orBoot.ok) {
+            Write-Log ('ERRO FATAL: ' + $__orBoot.motivo)
+            Write-Log 'ERRO FATAL: OpenRouter configurado mas adapter nao pronto. Nenhuma chamada sera feita.'
+            exit 5
+        }
+        Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+    } else {
+        # Ambiente + WebSearch so testados DEPOIS do preflight barato, mesma ordem da async.
+        Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
+        if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
+            Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
+            exit 5
+        }
+        $ambientViolacao = Test-VixClaudeAmbienteLimpo
+        if ($ambientViolacao) {
+            Write-Log ('ERRO FATAL: ambiente contaminado detectado - ' + $ambientViolacao)
+            exit 6
+        }
+        if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+            Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
+            exit 7
+        }
+        if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+            Write-Log 'ERRO: claude.exe ausente'
+            exit 2
+        }
     }
 
     $emissores = @($stale.emissores)

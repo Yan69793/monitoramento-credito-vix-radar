@@ -370,7 +370,24 @@ foreach ($a in $alvos) {
 # sonda WebSearch e de qualquer claude. Provider 'none' (default) ou 'claude-manual' sem a
 # flag = BLOQUEADO. A task segue Enabled de proposito: bloqueio visivel, nao rotina morta.
 . (Join-Path $ScriptsDir 'lib\vixradar-llm-provider.ps1')
-if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+# Fase B D1 (2026-09-04): adapter OpenRouter e opcional. Ausencia do arquivo nao derruba
+# os outros providers (none/claude-manual seguem intactos); so o provider 'openrouter'
+# exige o adapter e o gate abaixo aborta 86 se ele nao existir.
+if (Test-Path (Join-Path $ScriptsDir 'lib\vixradar-openrouter.ps1')) {
+    . (Join-Path $ScriptsDir 'lib\vixradar-openrouter.ps1')
+    $script:VixLibOpenRouterOk = $true
+} else {
+    $script:VixLibOpenRouterOk = $false
+}
+$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+if ($script:VixUsaOpenRouter) {
+    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+        Write-Log 'FIM: sentinela bloqueada sem adapter openrouter. tokens=0 analisados=0 motivo=sem_adapter'
+        exit $VixLlmBloqueadoExit
+    }
+} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_sentinela.ps1')
     Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
     Write-Log 'FIM: sentinela bloqueada sem provider. tokens=0 analisados=0 motivo=sem_provider'
@@ -378,12 +395,9 @@ if (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
 }
 
 # --- A partir daqui gasta LLM. Guardas de ambiente antes do primeiro token. --
-if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-    Write-Log 'ERRO: claude.exe ausente.'
-    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
-    Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=claude_ausente'
-    exit 2
-}
+# Fase B D1 (2026-09-04): provider openrouter nao usa auth Claude, nao roda probe WebSearch do
+# CLI e nao exige claude.exe. O adapter tem a chave OpenRouter (ambiente) e as server tools
+# web_search/web_fetch nativas; a credencial ja foi validada externamente pelo operador.
 foreach ($f in @($HaikuSkill, $SonnetSkill)) {
     if (-not (Test-Path $f)) {
         Write-Log ('ERRO: skill de lote ausente ' + $f)
@@ -392,31 +406,48 @@ foreach ($f in @($HaikuSkill, $SonnetSkill)) {
         exit 6
     }
 }
-Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
-. (Join-Path $ScriptsDir 'lib\vixradar-claude-auth.ps1')
-. (Join-Path $ScriptsDir 'lib\vixradar-ambient-check.ps1')
+if ($script:VixUsaOpenRouter) {
+    $__orBoot = Test-VixOpenRouterPronto
+    if (-not $__orBoot.ok) {
+        Write-Log ('ERRO: ' + $__orBoot.motivo)
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+        Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=openrouter_nao_pronto'
+        exit 5
+    }
+    Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+} else {
+    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+        Write-Log 'ERRO: claude.exe ausente.'
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+        Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=claude_ausente'
+        exit 2
+    }
+    Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding UTF8
+    . (Join-Path $ScriptsDir 'lib\vixradar-claude-auth.ps1')
+    . (Join-Path $ScriptsDir 'lib\vixradar-ambient-check.ps1')
 
-Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
-    Write-Log 'ERRO: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
-    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
-    Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=sem_credencial'
-    exit 5
-}
-$ambientViolacao = Test-VixClaudeAmbienteLimpo
-if ($ambientViolacao) {
-    Write-Log ('AVISO: ambiente contaminado - ' + $ambientViolacao + '. Sobrescrevendo com valores oficiais Anthropic.')
-    $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
-    Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
-    Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
-}
-if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
-    Write-Log 'ERRO: probe WebSearch falhou - busca indisponivel. Nenhum submit feito.'
-    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
-    Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=websearch_indisponivel'
-    exit 7
+    Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
+    if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
+        Write-Log 'ERRO: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+        Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=sem_credencial'
+        exit 5
+    }
+    $ambientViolacao = Test-VixClaudeAmbienteLimpo
+    if ($ambientViolacao) {
+        Write-Log ('AVISO: ambiente contaminado - ' + $ambientViolacao + '. Sobrescrevendo com valores oficiais Anthropic.')
+        $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+        Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
+        Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
+    }
+    if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+        Write-Log 'ERRO: probe WebSearch falhou - busca indisponivel. Nenhum submit feito.'
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+        Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=websearch_indisponivel'
+        exit 7
+    }
 }
 
 function Get-SlimEmissorSentinela($emp) {
@@ -491,46 +522,57 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
     $raw = $null
     $timedOut = $false
     try {
-        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-        $OutputEncoding = [System.Text.Encoding]::UTF8
-        Set-VixClaudeAuthEnv
-        $exe = (Get-Command claude -ErrorAction SilentlyContinue).Source
-        if (-not $exe) { throw 'claude.exe ausente no PATH' }
-        # ASPAS OBRIGATORIAS no caminho do mcp-config. Start-Process junta o
-        # -ArgumentList com espaco e NAO cita nada, entao
-        # "E:\Diretorio\Claude\Monitoramento de Credito\..." chegava ao claude como
-        # tres argumentos e todo lote morria com "Invalid MCP configuration:
-        # MCP config file not found: E:\Diretorio\Claude\Monitoramento".
-        # O pipeline antigo nao sofria porque quem montava a linha era o PowerShell.
-        # Achado na verificacao de entrega de 26/08, antes da primeira execucao
-        # agendada: sem isto a rotina rodaria 16 vezes por dia entregando zero analise.
-        $argumentos = @(
-            '-p',
-            '--model', $Model,
-            '--permission-mode', 'bypassPermissions',
-            '--output-format', 'json',
-            '--tools', 'WebSearch,WebFetch',
-            '--strict-mcp-config', '--mcp-config', ('"' + $McpConfigFile + '"'),
-            '--setting-sources', 'project',
-            '--disable-slash-commands',
-            '--no-session-persistence',
-            '--exclude-dynamic-system-prompt-sections'
-        )
-        Remove-Item $stdoutFile -Force -ErrorAction SilentlyContinue
-        $proc = Start-Process -FilePath $exe -ArgumentList $argumentos `
-            -RedirectStandardInput $promptPath `
-            -RedirectStandardOutput $stdoutFile `
-            -RedirectStandardError $stderrFile `
-            -NoNewWindow -PassThru
-        if (-not $proc.WaitForExit($TimeoutMin * 60 * 1000)) {
-            $timedOut = $true
-            Write-Log ('TIMEOUT: lote passou de ' + $TimeoutMin + ' min sem terminar. Matando a arvore do PID ' + $proc.Id + '.')
-            Stop-ArvoreProcesso $proc.Id
-            # Sem re-disparo imediato de proposito: um lote que estourou o relogio quase
-            # sempre estoura de novo na sequencia, e gastaria o teto duas vezes. Quem
-            # reexecuta e o backlog, na proxima janela, com os emissores intactos.
+        # Fase B D1 (2026-09-04): provider openrouter despacha para o adapter HTTP proprio
+        # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
+        # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter (tem timeout
+        # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
+        # no backlog, mesmo efeito do timeout do claude.
+        if ($script:VixUsaOpenRouter) {
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+            $raw = @($__orResp.Linhas)
+            if ($__orResp.ExitCode -ne 0) { Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ') - emissores preservados no backlog') }
+        } else {
+            [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+            $OutputEncoding = [System.Text.Encoding]::UTF8
+            Set-VixClaudeAuthEnv
+            $exe = (Get-Command claude -ErrorAction SilentlyContinue).Source
+            if (-not $exe) { throw 'claude.exe ausente no PATH' }
+            # ASPAS OBRIGATORIAS no caminho do mcp-config. Start-Process junta o
+            # -ArgumentList com espaco e NAO cita nada, entao
+            # "E:\Diretorio\Claude\Monitoramento de Credito\..." chegava ao claude como
+            # tres argumentos e todo lote morria com "Invalid MCP configuration:
+            # MCP config file not found: E:\Diretorio\Claude\Monitoramento".
+            # O pipeline antigo nao sofria porque quem montava a linha era o PowerShell.
+            # Achado na verificacao de entrega de 26/08, antes da primeira execucao
+            # agendada: sem isto a rotina rodaria 16 vezes por dia entregando zero analise.
+            $argumentos = @(
+                '-p',
+                '--model', $Model,
+                '--permission-mode', 'bypassPermissions',
+                '--output-format', 'json',
+                '--tools', 'WebSearch,WebFetch',
+                '--strict-mcp-config', '--mcp-config', ('"' + $McpConfigFile + '"'),
+                '--setting-sources', 'project',
+                '--disable-slash-commands',
+                '--no-session-persistence',
+                '--exclude-dynamic-system-prompt-sections'
+            )
+            Remove-Item $stdoutFile -Force -ErrorAction SilentlyContinue
+            $proc = Start-Process -FilePath $exe -ArgumentList $argumentos `
+                -RedirectStandardInput $promptPath `
+                -RedirectStandardOutput $stdoutFile `
+                -RedirectStandardError $stderrFile `
+                -NoNewWindow -PassThru
+            if (-not $proc.WaitForExit($TimeoutMin * 60 * 1000)) {
+                $timedOut = $true
+                Write-Log ('TIMEOUT: lote passou de ' + $TimeoutMin + ' min sem terminar. Matando a arvore do PID ' + $proc.Id + '.')
+                Stop-ArvoreProcesso $proc.Id
+                # Sem re-disparo imediato de proposito: um lote que estourou o relogio quase
+                # sempre estoura de novo na sequencia, e gastaria o teto duas vezes. Quem
+                # reexecuta e o backlog, na proxima janela, com os emissores intactos.
+            }
+            if (Test-Path $stdoutFile) { $raw = Get-Content $stdoutFile -Encoding UTF8 }
         }
-        if (Test-Path $stdoutFile) { $raw = Get-Content $stdoutFile -Encoding UTF8 }
     } catch {
         Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho.')
     } finally {
