@@ -4,9 +4,9 @@
 # reconciliação de 2026-06-01, por isso este teste usa o health check público
 # GET / em vez do antigo POST de análise (que falhava sempre com 401).
 #
-# NOTA: listar_emissores_prioritarios top_n=103 pode retornar <103 quando
+# NOTA: listar_emissores_prioritarios top_n=104 pode retornar <104 quando
 # staleness dos emissores é baixo (varredura recente). Isso NÃO indica gap de
-# cobertura — use listar_todos_emissores (total:103) para validar universo.
+# cobertura — use listar_todos_emissores (total:104) para validar universo.
 #
 # DIAGNOSTICO DE ok:false (2026-08-05, atualizado 2026-08-19): o campo `ok` do
 # health depende de SETE fatores no Worker (v4.9.201, lido do bundle deployado):

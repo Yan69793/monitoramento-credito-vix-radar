@@ -1,6 +1,6 @@
 # Radar de Crédito Privado (VIX Radar)
 
-Sistema de inteligência de crédito privado com IA. Monitora 103 emissores de renda fixa
+Sistema de inteligência de crédito privado com IA. Monitora 104 emissores de renda fixa
 no Brasil e classifica eventos por criticidade (CRÍTICO / RELEVANTE / ECO / RUÍDO),
 eliminando a varredura manual da equipe de gestão. Roda 100% em Cloudflare — sem servidor
 próprio, sem banco de dados, sem manutenção de infraestrutura.
@@ -71,7 +71,7 @@ research/            ← pesquisa e referências externas
 | Rate Limiting | Cloudflare Durable Object (`RATE_LIMITER_DO`, SQLite) |
 | Telemetria | Cloudflare Analytics Engine (`RADAR_USAGE_EVENTS`) |
 | IA inline | `claude-haiku-4-5-20251001` via Anthropic API (Pulso manual) |
-| IA em lote | Haiku + Sonnet 4.6 (matinal top 15 e noturno 103/103) via Scheduled Tasks — nenhuma rotina usa Opus |
+| IA em lote | Haiku + Sonnet 4.6 (matinal top 15 e noturno 104/104) via Scheduled Tasks — nenhuma rotina usa Opus |
 | Email | Resend (`boletim@vixradar.com`) |
 | Deploy | Cloudflare Pages + Workers + Wrangler CLI |
 
@@ -83,7 +83,7 @@ research/            ← pesquisa e referências externas
 |---|---|---|
 | Worker `radar-credito-api` | v4.9.240 | 2026-09-04 |
 | Frontend `vixradar.com` | v202.42 | 2026-09-05 |
-| Emissores monitorados | 103 empresas / 13 setores | — |
+| Emissores monitorados | 104 empresas / 13 setores | — |
 
 ---
 

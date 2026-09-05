@@ -60,7 +60,7 @@ jobs:
           companies=$(echo "$hc" | jq -er '.checks.estado_semanal.empresas_com_dados')
           updated=$(echo "$hc" | jq -er '.checks.estado_semanal.updated_at')
           [[ "$companies" =~ ^[0-9]+$ ]] || { echo "::error::Cobertura invalida: $companies"; exit 1; }
-          (( companies >= 50 )) || { echo "::error::Cobertura baixa: $companies/103"; exit 1; }
+          (( companies >= 50 )) || { echo "::error::Cobertura baixa: $companies/104"; exit 1; }
 
           updated_epoch=$(date -d "$updated" +%s)
           now_epoch=$(date +%s)
