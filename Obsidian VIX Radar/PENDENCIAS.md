@@ -11,6 +11,12 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 06/09 (tarde), SWEEP-ORFAOS1/LIVENESS1 RESOLVIDO (deployado v4.9.243)
+
+> **Status:** RESOLVIDO, em produção. **Data da Versao:** 2026-09-06. **Origem do Registro:** fechamento do P0 de resolução de órfãos da fila de verificação (falso-verde estrutural: o sweep tirava itens >48h da fila sem registro durável e o health media a fila, devolvendo verde com `_pendente_verificacao` ainda em aberto). **Condicao de Obsolescencia:** não se aplica — item encerrado; entrada mantida como registro histórico (não havia item ativo com esta tag na fila).
+
+**RESOLVIDO (SWEEP-ORFAOS1/LIVENESS1, P0, v4.9.243).** Solução terminal+marcador+reconcile: órfão só resolve por prova direta do desfecho do EVENTO (`mesclarEventoVerificado() !== false` aprovado / `retratarEventoRejeitado() === true` reprovado sem fonte), nunca por releitura de KV nem por remoção da fila como gate (LIVENESS1: órfão só existe porque o sweep já esvaziou a fila); marcador `radar:verif:concluido:{id}` (sem TTL) gravado antes do delete; reconcile do sweep só apaga órfão com marcador posterior ao `expirado_em`. `removerDaFilaVerificacaoInterno` devolve `{removido:true}` só após put/delete sem erro e apaga a chave do dia quando a fila esvazia. Commits `811c7c8`, `a6791bc`, `df95d05`. Provas: suíte 323/323 (31 arquivos, sweep-orfaos 25 testes de duas pontas); portão HTTP 200 com `ok/kv/telemetria/sentry_ok/verificador_ok/admin_email_ok` verdadeiros e `verif_orfaos_ativos:0`. Rollback nativo: version `5745bfbe-b54e-4515-9d9a-10d6ab0aada6` (v4.9.242). MERGEDUP1 não foi reaberto e segue RESOLVIDO desde v4.9.241; nenhum outro item da fila foi alterado.
+
 ## 05/09 (noite), SOURCEFIX-PAMPASUL1 RESOLVIDO nos dados; MERGEDUP1 RESOLVIDO (deployado v4.9.241); VERIFHORARIO1 aberto; task de verificacao DISABLED
 
 > **Status:** dados corrigidos e verificados; MERGEDUP1 corrigido e deployado (v4.9.241); VERIFHORARIO1 aberto; task ainda Disabled. **Data da Versao:** 2026-09-05. **Origem do Registro:** auditoria adversarial da integracao da Usina Pampa Sul (104o emissor, commits `2ef7703`, `6f6372d`, `03736a6`), com correcao autorizada item a item pelo operador. **Condicao de Obsolescencia:** quando a task de verificacao for reabilitada (decisao do operador).
