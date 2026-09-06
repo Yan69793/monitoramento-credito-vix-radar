@@ -9851,6 +9851,9 @@ async function enfileirarVerificacaoAssincronaInterno(env2222, empresa, semana, 
   const agora = (/* @__PURE__ */ new Date()).toISOString();
   const existentes = new Set(fila.map(function(it) { return it.id; }));
   let adicionados = 0;
+  // SWEEP-ORFAOS1 (2026-09-06): ids que de fato voltaram ao ciclo nesta chamada.
+  // O orfao correspondente so e apagado DEPOIS de a fila persistir, nunca antes.
+  const _idsAdicionados = [];
   for (const ev of eventos) {
     const id = _chaveDedupEvento(Object.assign({}, ev, { empresa }));
     if (existentes.has(id)) continue;
@@ -9864,10 +9867,26 @@ async function enfileirarVerificacaoAssincronaInterno(env2222, empresa, semana, 
     if (_eaBloqueio) continue;
     fila.push({ id, empresa, semana, setor: setor || null, evento: ev, criado_em: agora });
     existentes.add(id);
+    _idsAdicionados.push(id);
     adicionados++;
   }
   if (adicionados > 0) {
     await env2222.RADAR_KV.put(chave, JSON.stringify(fila), { expirationTtl: 60 * 60 * 24 * 7 });
+    // SWEEP-ORFAOS1 (2026-09-06): ordem obrigatoria. O orfao so e removido DEPOIS
+    // de a fila persistir. Apagar antes perderia o rastro se este put falhasse, e
+    // o falso-verde voltaria pela porta dos fundos. Se o delete falhar aqui, fila
+    // e orfao coexistem e o health fica conservadoramente vermelho ate a proxima
+    // passagem limpar — vermelho a mais, nunca verde a menos.
+    // NUNCA apagar chaveTentativaVerificacao(id) neste ponto: zeraria o contador
+    // de tentativas e quebraria o teto n=3 do REPROVADO-FAILCLOSED1.
+    for (const _idOrf of _idsAdicionados) {
+      try {
+        if (_falhaInjetadaTesteAtiva(env2222, "orfao_delete_reentrada")) throw new Error("falha_injetada_orfao_delete_reentrada");
+        await env2222.RADAR_KV.delete(chaveOrfaoVerificacao(_idOrf));
+      } catch (_eOrf) {
+        console.error("[verif][orfao] reentrada persistida mas orfao NAO limpo para " + _idOrf + " (health segue vermelho, sem perda de rastro):", _eOrf && _eOrf.message || String(_eOrf));
+      }
+    }
   }
   return { adicionados, indice_erro: null };
 }
@@ -9914,8 +9933,13 @@ async function listarFilaVerificacaoPendente(env2222, dias) {
   // REPROVADO-FAILCLOSED1 (2026-09-05, portao B): tira da leitura o que o motor nao pode
   // processar agora (esgotado/aguarda_manual ou dentro do backoff). O motor de verificacao
   // so pega o que sai daqui; esconder o id bloqueado e o que impede a quarta tentativa
-  // automatica de gastar LLM num evento que saiu do ciclo. O item fisico da fila segue la
-  // ate o TTL de 7d; o portao A ja impede que novos entrem.
+  // automatica de gastar LLM num evento que saiu do ciclo. O portao A ja impede que
+  // novos entrem.
+  // SWEEP-ORFAOS1 (2026-09-06): a redacao anterior dizia que "o item fisico da fila
+  // segue la ate o TTL de 7d". Errado desde o VERIFQ-ORFAO1. A CHAVE do dia tem TTL de
+  // 7d, mas o ITEM e removido em 48h por sweepFilaVerificacaoOrfaos, que antes grava
+  // radar:verif:orfao:{id} (esse sim sem TTL). Depois disso o id nao vive mais na fila,
+  // vive como orfao, e o health le os dois.
   let _ocultos = 0;
   if (itens.length > 0) {
     const _idsUnicos = [];
@@ -9986,6 +10010,16 @@ function chaveTentativaVerificacao(id) {
   return "radar:verif:attempt:" + id;
 }
 __name(chaveTentativaVerificacao, "chaveTentativaVerificacao");
+// SWEEP-ORFAOS1 (2026-09-06): registro durave de orfao de fila.
+// SEM TTL de proposito. Orfao e pendencia real ainda nao resolvida; qualquer
+// expiracao automatica recriaria o falso-verde no exato momento em que o
+// registro sumisse. So sai por reentrada CONFIRMADA no ciclo (ver o delete no
+// fim de enfileirarVerificacaoAssincronaInterno). Passagem de tempo nao resolve.
+var ORFAO_PREFIXO = "radar:verif:orfao:";
+function chaveOrfaoVerificacao(id) {
+  return ORFAO_PREFIXO + id;
+}
+__name(chaveOrfaoVerificacao, "chaveOrfaoVerificacao");
 var VERIF_RETRY_MAX = 3;
 var VERIF_TENTATIVA_TTL = 60 * 60 * 24 * 90;
 var VERIF_H24 = 24 * 60 * 60 * 1e3;
@@ -10261,11 +10295,49 @@ __name(reservarItensFilaInterno, "reservarItensFilaInterno");
 // Itens com criado_em > maxHoras (default 48h) sao removidos — ou ja foram processados
 // e o removerDaFilaVerificacao falhou silenciosamente, ou sao duplicatas que nunca serao drenadas.
 // Executado no health check (a cada ~5min via Cron Triggers e health dashboard).
-async function sweepFilaVerificacaoOrfaos(env2222, maxHoras) {
-  if (!env2222.RADAR_KV) return { dias_escaneados: 0, removidos: 0 };
+// SWEEP-ORFAOS1 (2026-09-06): grava o registro durave do orfao ANTES de o sweep
+// remover o item da fila. Uma chave por id, escrita cega, sem read-modify-write,
+// entao dois sweeps concorrentes nao se atropelam. Idempotente: se ja existe,
+// preserva o expirado_em da PRIMEIRA deteccao em vez de reescrever.
+// Retorna true SOMENTE quando o registro esta durave no KV. False = o chamador
+// tem que manter o item na fila (fail-closed).
+async function _registrarOrfaoVerificacao(env2222, item, dataFila, agoraMs, request) {
+  const chave = chaveOrfaoVerificacao(item.id);
+  try {
+    if (_falhaInjetadaTesteAtiva(env2222, "orfao_put")) throw new Error("falha_injetada_orfao_put");
+    const _existente = await env2222.RADAR_KV.get(chave, "json");
+    if (_existente && _existente.id) return true;
+    const _reg = {
+      id: item.id,
+      empresa: item.empresa || null,
+      semana: item.semana || null,
+      setor: item.setor || null,
+      criado_em: item.criado_em || null,
+      expirado_em: new Date(agoraMs).toISOString(),
+      data_fila: dataFila,
+      motivo: "fila_expirada_48h",
+      origem: "sweep"
+    };
+    // SEM expirationTtl de proposito. Ver o comentario de chaveOrfaoVerificacao.
+    await env2222.RADAR_KV.put(chave, JSON.stringify(_reg));
+    return true;
+  } catch (e) {
+    const _msg = e && e.message ? e.message : String(e);
+    console.error("[sweep][orfao][FAIL-CLOSED] nao registrou orfao " + item.id + ", item PERMANECE na fila:", _msg);
+    if (request) {
+      try {
+        await tel(env2222, request, { evento: "sweep_orfao_falha", empresa: String(item.empresa || "").slice(0, 40), extra: { id: String(item.id).slice(0, 128), erro: _msg.slice(0, 128) } });
+      } catch (_) { }
+    }
+    return false;
+  }
+}
+__name(_registrarOrfaoVerificacao, "_registrarOrfaoVerificacao");
+async function sweepFilaVerificacaoOrfaos(env2222, maxHoras, request) {
+  if (!env2222.RADAR_KV) return { dias_escaneados: 0, removidos: 0, orfaos_registrados: 0, falhas: 0 };
   const limite = maxHoras || 48;
   const agora = Date.now();
-  let removidos = 0, dias = 0;
+  let removidos = 0, dias = 0, orfaosRegistrados = 0, falhas = 0;
   for (let i = 0; i < 7; i++) {
     const d = new Date(agora - i * 24 * 60 * 60 * 1e3).toISOString().slice(0, 10);
     const chave = chaveFilaVerificacao(d);
@@ -10273,11 +10345,18 @@ async function sweepFilaVerificacaoOrfaos(env2222, maxHoras) {
       const fila = await env2222.RADAR_KV.get(chave, "json") || [];
       if (!fila.length) { dias++; continue; }
       const antes = fila.length;
-      const viva = fila.filter(function(it) {
-        if (!it.criado_em) return true; // sem timestamp, preserva
+      // SWEEP-ORFAOS1: era um filter puro. Agora o expirado so sai da fila depois
+      // que o registro de orfao esta durave. Falhou o registro, o item volta para
+      // `viva` e continua na fila — fail-closed auto-observavel, porque ele segue
+      // envelhecendo e segue segurando _filaVerifAtrasada no health.
+      const viva = [];
+      for (const it of fila) {
+        if (!it.criado_em) { viva.push(it); continue; } // sem timestamp, preserva
         const idadeMs = agora - new Date(it.criado_em).getTime();
-        return idadeMs < limite * 60 * 60 * 1e3;
-      });
+        if (idadeMs < limite * 60 * 60 * 1e3) { viva.push(it); continue; }
+        const _okOrfao = await _registrarOrfaoVerificacao(env2222, it, d, agora, request);
+        if (_okOrfao) { orfaosRegistrados++; } else { falhas++; viva.push(it); }
+      }
       if (viva.length < antes) {
         removidos += (antes - viva.length);
         if (viva.length === 0) {
@@ -10289,7 +10368,7 @@ async function sweepFilaVerificacaoOrfaos(env2222, maxHoras) {
     } catch (_sweepErr) { console.error("[sweep] erro no dia " + d + ":", _sweepErr?.message ?? String(_sweepErr)); }
     dias++;
   }
-  return { dias_escaneados: dias, removidos };
+  return { dias_escaneados: dias, removidos, orfaos_registrados: orfaosRegistrados, falhas };
 }
 __name(sweepFilaVerificacaoOrfaos, "sweepFilaVerificacaoOrfaos");
 // MERGEDUP1 (2026-09-05): `chaveOriginal` e o `id` que a fila carrega, ou seja a chave
@@ -19738,11 +19817,31 @@ async function __coreFetch(request, env2222, ctx) {
       // HEALTHWAIT1 (auditoria 2026-08-15): sem ctx.waitUntil o runtime pode congelar
       // o isolate ao completar a resposta e o sweep nunca rodar. Agora amarrado ao
       // ciclo de vida do request quando ctx existe.
-      if (env2222.RADAR_KV) { var _sweepP = sweepFilaVerificacaoOrfaos(env2222).catch(function(_sErr) { console.error("[health] sweep orfaos:", _sErr?.message ?? String(_sErr)); }); if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(_sweepP); }
+      // SWEEP-ORFAOS1 (2026-09-06): `request` viaja para o sweep so para a telemetria
+      // de falha (tel exige o Request como 2o argumento).
+      if (env2222.RADAR_KV) { var _sweepP = sweepFilaVerificacaoOrfaos(env2222, null, request).catch(function(_sErr) { console.error("[health] sweep orfaos:", _sErr?.message ?? String(_sErr)); }); if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(_sweepP); }
       // PRED2 (2026-07-24): self-healing de case divergente no estado multi-semana.
       // Normaliza chaves de results divergentes por capitalizacao (ex.: "Eletrobras" vs "ELETROBRAS").
       if (env2222.RADAR_KV) { var _caseP = normalizarCaseEstado(env2222).catch(function(_cErr) { console.error("[health] case-norm:", _cErr?.message ?? String(_cErr)); }); if (ctx && typeof ctx.waitUntil === "function") ctx.waitUntil(_caseP); }
-      _verificadorRealOk = _verificadorRealOk && !_filaVerifAtrasada;
+      // SWEEP-ORFAOS1 (2026-09-06): fila vazia deixou de ser prova de "nada pendente".
+      // O sweep remove o item em 48h e o evento continua com _pendente_verificacao
+      // true, entao medir SO a fila devolvia verde com pendencia real em aberto. Agora
+      // o orfao tambem segura o gate. Fail-closed na leitura: nao conseguir provar
+      // ausencia de orfao nao e o mesmo que ausencia (-1 nunca satisfaz === 0).
+      var _orfaosAtivos = 0;
+      if (env2222.RADAR_KV) {
+        try {
+          // limit 100 e teto barato para o health: >=1 ja basta para segurar o gate,
+          // o numero exposto e amostra, nao censo.
+          if (_falhaInjetadaTesteAtiva(env2222, "orfao_list")) throw new Error("falha_injetada_orfao_list");
+          var _orfList = await env2222.RADAR_KV.list({ prefix: ORFAO_PREFIXO, limit: 100 });
+          _orfaosAtivos = _orfList && _orfList.keys ? _orfList.keys.length : 0;
+        } catch (_orfErr) {
+          _orfaosAtivos = -1;
+          console.error("[health][orfaos][FAIL-CLOSED] list falhou, assumindo pendencia:", _orfErr?.message ?? String(_orfErr));
+        }
+      }
+      _verificadorRealOk = _verificadorRealOk && !_filaVerifAtrasada && _orfaosAtivos === 0;
       // SECRETMISS1 (2026-07-27): ADMIN_EMAIL passa a contar no _okHealth.
       // De 24/07 a 27/07 o secret nao existiu (removido do [vars] pelo commit
       // dfa6854 e nunca criado no Cloudflare) e o health seguiu ok:true por
@@ -19857,7 +19956,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
@@ -19888,6 +19987,9 @@ async function __coreFetch(request, env2222, ctx) {
         telemetria: !!env2222.RADAR_USAGE_EVENTS,
         admin_email_ok: _adminEmailOk,
         sentry_ok: _sentryOk,
+        // SWEEP-ORFAOS1: amostra, nao censo (teto de 100). -1 = falha ao listar,
+        // tratada como pendencia (fail-closed).
+        verif_orfaos_ativos: _orfaosAtivos,
         ts: (/* @__PURE__ */ new Date()).toISOString()
       }, 200, request);
     }
@@ -22368,6 +22470,12 @@ export {
   localizarEventoQuarentenado,
   _definirFalhaInjetadaTeste,
   _limparFalhasInjetadasTeste,
+  sweepFilaVerificacaoOrfaos,
+  chaveOrfaoVerificacao,
+  chaveTentativaVerificacao,
+  chaveFilaVerificacao,
+  ORFAO_PREFIXO,
+  enfileirarVerificacaoAssincronaInterno,
   EmissorDO,
   UsuarioDO,
   ConfigDO,
