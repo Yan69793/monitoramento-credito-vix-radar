@@ -837,6 +837,55 @@ describe("T9 — fault injection das SAIDAS: indice permanece ate a publicacao e
     expect(await lerEventos(SEMANA)).toHaveLength(1);
     expect((await lerIndice(env)).ids[ID_A]).toBeUndefined();
   });
+
+  it("MERGEDUP1: falha ao apagar attempt DENTRO do merge => propaga erro, indice NAO removido (nunca chega a tentar), evento segue oculto; retry com delete ok converge sem duplicar nem orfao", async () => {
+    const SEMANA = SEMANA_ATUAL;
+    const evento = eventoBase({ _pendente_verificacao: true });
+    await semear(SEMANA, [evento]);
+    await quarentenarViaHTTP(ID_A, DATA_1, SEMANA);
+    // Mesmo desenho do teste anterior: bypassa so o portao A/attempt-esgotado
+    // (apaga o registro ANTES, ortogonal a este teste) e deixa o indice real
+    // (ConfigDO + KV) intocado, com ID_A genuinamente quarentenado.
+    await env.RADAR_KV.delete(`radar:verif:attempt:${ID_A}`);
+
+    // Falha especificamente no delete do attempt DENTRO do merge (nao no gate de
+    // remocao do indice, que e o teste acima): o conteudo do evento ja foi
+    // persistido (marca de espera limpa) mas o delete do attempt nao foi
+    // confirmado, entao a funcao tem que propagar erro e NUNCA chegar a tentar
+    // remover o indice — publicacao continua fechada pelo mesmo motivo que a
+    // exigiria mesmo se a remocao do indice fosse tentada e desse certo.
+    _definirFalhaInjetadaTeste("mesclar_attempt_delete");
+    const r = await confirmar([item(SEMANA, ID_A, eventoBase({}), { veredicto: "APROVADO", confianca: 0.9, motivo: "ok", fontes_validas: [FONTE_A] })]);
+    expect(r.status).toBe(200);
+    const b = await r.json();
+    // a) retorna erro: conta aprovado (conteudo aplicado) mas sinaliza quarentena_erro,
+    // nunca um sucesso limpo — o mesmo contrato observavel do teste de gate acima.
+    expect(b.resultado.aprovados).toBe(1);
+    expect(b.resultado.mesclas_quarentena_erro).toBe(1);
+    const evs = await lerEventos(SEMANA);
+    expect(evs).toHaveLength(1);
+    expect(evs[0]._verif_aguarda_manual).toBe(false);
+    expect(evs[0]._pendente_verificacao).toBe(false);
+    expect(evs[0]._verif_quarentena_id).toBe(ID_A);
+
+    // b) quarantineId permanece no indice real: o delete falhou ANTES de a funcao
+    // sequer tentar _mutarIndiceQuarentena("quarentenaRemover", ...).
+    expect((await lerIndice(env)).ids[ID_A]).toBeTruthy();
+    // c) evento continua oculto pelo indice em qualquer consumidor (predicado).
+    expect(_eventoQuarentenado(evs[0], new Set([ID_A]), EMPRESA)).toBe(true);
+
+    // d) retry com o delete funcionando converge e publica; e) sem duplicar
+    // evento nem deixar orfao (attempt e indice ambos limpos ao final).
+    _limparFalhasInjetadasTeste();
+    const r2 = await confirmar([item(SEMANA, ID_A, eventoBase({}), { veredicto: "APROVADO", confianca: 0.9, motivo: "ok", fontes_validas: [FONTE_A] })]);
+    expect(r2.status).toBe(200);
+    const b2 = await r2.json();
+    expect(b2.resultado.aprovados).toBe(1);
+    expect(b2.resultado.mesclas_quarentena_erro).toBe(0);
+    expect(await lerEventos(SEMANA)).toHaveLength(1);
+    expect((await lerIndice(env)).ids[ID_A]).toBeUndefined();
+    expect(await lerRegistro(ID_A)).toBeNull();
+  });
 });
 
 describe("T10 — caminho feliz com indice vazio valido", () => {

@@ -10388,12 +10388,19 @@ async function mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAp
   await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
   // REPROVADO-FAILCLOSED1 (2026-09-06): saida da quarentena no merge. Ordem:
   // 1. evento persistido acima com marca de espera limpa, AINDA protegido pelo indice;
-  // 2. limpar attempt correspondente a quarantineId;
+  // 2. limpar attempt correspondente a quarantineId — falha AQUI propaga e NUNCA chega
+  //    a tentar remover o indice (fail-closed: delete nao confirmado, indice permanece,
+  //    evento segue oculto). Nao e warning recuperavel pos-publicacao: e o proprio gate.
   // 3. preservar exatamente 1 evento (invariantes MERGEDUP1 checados acima);
-  // 4. SOMENTE POR ULTIMO remover quarantineId do indice (publication gate).
+  // 4. SOMENTE POR ULTIMO, e SOMENTE com o delete acima confirmado, remover
+  //    quarantineId do indice (publication gate).
   if (_qIdMerge) {
-    try { await env2222.RADAR_KV.delete(chaveTentativaVerificacao(_qIdMerge)); } catch (_eAttemptMerge) {
-      console.error("[mesclar][quarentena] falha ao limpar attempt (indice permanece):", _eAttemptMerge && _eAttemptMerge.message || String(_eAttemptMerge));
+    try {
+      if (_falhaInjetadaTesteAtiva(env2222, "mesclar_attempt_delete")) throw new Error("falha_injetada_mesclar_attempt_delete");
+      await env2222.RADAR_KV.delete(chaveTentativaVerificacao(_qIdMerge));
+    } catch (_eAttemptMerge) {
+      console.error("[mesclar][quarentena][FAIL-CLOSED] falha ao limpar attempt; indice NAO removido, evento persistido segue oculto:", _eAttemptMerge && _eAttemptMerge.message || String(_eAttemptMerge));
+      return { ok: true, quarentena_erro: "attempt_delete_falhou", attempt_erro: String(_eAttemptMerge && _eAttemptMerge.message || _eAttemptMerge) };
     }
     try {
       await _mutarIndiceQuarentena(env2222, "quarentenaRemover", [_qIdMerge]);
