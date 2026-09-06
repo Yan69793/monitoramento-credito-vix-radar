@@ -16,8 +16,8 @@ export default defineConfig({
   retries: 0,
   timeout: 60_000,
   // Template fixo (sem platform): os PNGs de baseline nascem no Linux do CI e
-  // sao validados no mesmo ambiente. O nome passado ja inclui a extensao.
-  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}',
+  // sao validados no mesmo ambiente. {arg} exclui a extensao; o '.png' e literal.
+  snapshotPathTemplate: '{testDir}/__screenshots__/{arg}.png',
   expect: {
     timeout: 10_000,
     toHaveScreenshot: {

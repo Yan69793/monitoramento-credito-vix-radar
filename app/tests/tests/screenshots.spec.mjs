@@ -21,8 +21,8 @@ test.describe('visual baseline', () => {
   test.skip(!isLinux, SKIP_MSG);
 
   test('landing por viewport', async ({ page }, testInfo) => {
-    const name = `landing-${testInfo.project.name}.png`;
-    const baselinePath = path.join(BASELINE_DIR, name);
+    const name = `landing-${testInfo.project.name}`;
+    const baselinePath = path.join(BASELINE_DIR, `${name}.png`);
     const generating = process.env.UPDATE_SNAPSHOTS === '1';
 
     if (!generating && !existsSync(baselinePath)) {
