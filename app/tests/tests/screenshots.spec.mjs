@@ -37,7 +37,7 @@ test.describe('visual baseline', () => {
 
     await openLanding(page, { extended: true });
     await waitDemoCard(page);
-    await expect(page).toHaveScreenshot(`landing-${testInfo.project.name}`, {
+    await expect(page).toHaveScreenshot(name, {
       maxDiffPixelRatio: 0.02,
       animations: 'disabled',
     });
