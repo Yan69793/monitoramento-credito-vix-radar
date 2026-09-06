@@ -4,6 +4,23 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.242.js = v4.9.241 + REPROVADO-FAILCLOSED1: retry bounded (N=3) para veredicto
+#   NAO_CONCLUSIVO do verificador adversarial, com indice de quarentena fail-closed
+#   (radar:verif:quarentena_idx) como unico writer via ConfigDO. Ancora canonica por
+#   evento e _verif_quarentena_id (nunca recalculada por fonte_primaria, protege contra
+#   regressao de MERGEDUP1). Tres portoes (A enfileirar, B listar fila, C confirmar_
+#   verificacao) tratam indice ilegivel como erro, nunca default permissivo; freshness
+#   nunca certificado por evento quarentenado; compartilhamento retroativo filtra
+#   quarentenados e responde com Cache-Control: no-store. mesclarEventoVerificadoInterno
+#   propaga falha do delete de radar:verif:attempt:{id} e NUNCA remove o indice sem o
+#   delete confirmado (evento persistido segue oculto ate a proxima tentativa convergir).
+#   Testes: api/test/reprovado-failclosed-quarentena.test.mjs, retry-naoconclusivo.test.mjs,
+#   retratar-reprovado.test.mjs, mergedup-verificador.test.mjs.
+#   ROLLOUT: indice bootstrapado e validado em producao (schema:1, ids:{}) em
+#   2026-09-06T11:33:01.802Z, ANTES deste deploy (leitura fail-closed trata ausencia
+#   da chave como erro, nunca como vazio permissivo).
+#   Rollback: wrangler rollback 5c2adfc3-5af0-4ca9-9357-bb5d0c6e9563 --name radar-credito-api
+#   (volta para v4.9.241, deployment atualmente em producao). main = "v4.9.241.js".
 # v4.9.241.js = v4.9.240 + MERGEDUP1: verificador que reescreve fonte_primaria nao pode duplicar evento.
 #   mesclarEventoVerificadoInterno casava o evento verificado por chave dedup RECALCULADA
 #   (_chaveDedupEvento inclui host+path de fonte_primaria). Um veredicto CORRIGIR que
