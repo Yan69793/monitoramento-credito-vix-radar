@@ -9105,12 +9105,21 @@ async function _lerUpdatedAtEstado(env2222, agoraBRT) {
 // duplicata antiga, com URL diferente, contar como "novo"; medido em 03/09,
 // os 17 itens da fila de verificacao daquela noite eram todos de agosto).
 async function _calcularEventoMaisNovoFeed(env2222) {
+  // REPROVADO-FAILCLOSED1 (2026-09-06): quarentenado NAO certifica frescor. O mesmo
+  // snapshot validado do indice e usado aqui e pelos consumidores. Indice ilegivel =
+  // nao afirmar feed_fresco=true (erro/degradação coerente, nunca calculo cru).
+  const _qiFeed = await carregarIndiceQuarentena(env2222);
+  if (!_qiFeed.ok) {
+    console.error("[feed][indice-quarentena] calculo de frescor bloqueado (fail-closed):", _qiFeed.erro);
+    return { data: null, idade_du: null, fresco: false, indice_erro: _qiFeed.erro };
+  }
   let _evMax = null;
   try {
     const _estadoFeed = await carregarEstadoMultiSemana(env2222, 2);
     for (const _fer of Object.values(_estadoFeed.results || {})) {
       if (!_fer || !Array.isArray(_fer.eventos)) continue;
       for (const _fev of _fer.eventos) {
+        if (_eventoQuarentenado(_fev, _qiFeed.ids, _fev.empresa)) continue;
         const _fd = _fev && _fev.data_evento;
         if (typeof _fd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_fd) && (_evMax === null || _fd > _evMax)) _evMax = _fd;
       }
@@ -9677,6 +9686,19 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
   // regra por chave-nova teria carimbado "fato novo" sem o feed sair do lugar.
   // Bootstrap so quando ainda nao ha fronteira conhecida (null), do maximo das
   // ultimas 2 semanas, para a segunda-feira nao comecar do zero.
+  // REPROVADO-FAILCLOSED1 (2026-09-06): quarentenado NAO certifica frescor. A correcao
+  // nao pode depender de a flag do evento ter sido gravada: depois que A (indice) ja
+  // passou, o calculo dinamico usa o indice e ja ignora o evento mesmo se a gravacao
+  // duravel B falhou. Indice ilegivel = nao avancar fronteira nem carimbar (nunca
+  // calculo cru). Metricas internas de ingestao (_feedMaxNovoLocal/max_data_evento_depois)
+  // continuam cruas.
+  var _feedIdx = { ok: false, ids: null, erro: "indice_nao_carregado" };
+  try {
+    _feedIdx = await carregarIndiceQuarentena(env2222);
+  } catch (_eFeedIdx) {
+    _feedIdx = { ok: false, ids: null, erro: "excecao_indice" };
+    console.error("[feed][indice-quarentena] persistencia sem certificar frescor:", _eFeedIdx && _eFeedIdx.message || String(_eFeedIdx));
+  }
   if (estado.feed_frontier_data === null) {
     try {
       const _bootstrapEstado = await carregarEstadoMultiSemana(env2222, 2);
@@ -9684,11 +9706,13 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       for (const _bres of Object.values(_bootstrapEstado.results || {})) {
         if (!_bres || !Array.isArray(_bres.eventos)) continue;
         for (const _bev of _bres.eventos) {
+          if (_feedIdx.ok && _eventoQuarentenado(_bev, _feedIdx.ids, _bev.empresa)) continue;
           const _bd = _bev && _bev.data_evento;
           if (typeof _bd === "string" && /^\d{4}-\d{2}-\d{2}$/.test(_bd) && (_bootstrapMax === null || _bd > _bootstrapMax)) _bootstrapMax = _bd;
         }
       }
-      if (_bootstrapMax !== null) estado.feed_frontier_data = _bootstrapMax;
+      // Indice ilegivel: nao cria fronteira a partir de calculo potencialmente cru.
+      if (_bootstrapMax !== null && _feedIdx.ok) estado.feed_frontier_data = _bootstrapMax;
     } catch (_eBootstrap) {
       // Fail-open: bootstrap do carimbo nunca bloqueia o submit.
     }
@@ -9710,10 +9734,14 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         console.log("[feed][FRONTEIRA_IGNORADA] emp=" + (empresa ? empresa.slice(0, 25) : "?") + " data_evento=" + _fd + " motivo=" + _fev._data_fonte_divergente);
         continue;
       }
+      if (_feedIdx.ok && _eventoQuarentenado(_fev, _feedIdx.ids, _fev.empresa || empresa)) {
+        console.log("[feed][QUARENTENA_IGNORADA] emp=" + (empresa ? empresa.slice(0, 25) : "?") + " data_evento=" + _fd + " id=" + (obterQuarantineIdEvento(_fev, _fev.empresa || empresa) || "?"));
+        continue;
+      }
       if (_feedMaxCertificavel === null || _fd > _feedMaxCertificavel) _feedMaxCertificavel = _fd;
     }
   }
-  if (_feedMaxCertificavel !== null && (estado.feed_frontier_data === null || _feedMaxCertificavel > estado.feed_frontier_data)) {
+  if (_feedIdx.ok && _feedMaxCertificavel !== null && (estado.feed_frontier_data === null || _feedMaxCertificavel > estado.feed_frontier_data)) {
     console.log("[feed][FRONTEIRA_AVANCOU] de=" + estado.feed_frontier_data + " para=" + _feedMaxCertificavel + " emp=" + (empresa ? empresa.slice(0, 25) : "?"));
     estado.feed_frontier_data = _feedMaxCertificavel;
     estado.feed_ultimo_evento_novo_em = _agoraPersist;
@@ -9803,9 +9831,17 @@ function chaveFilaVerificacao(data) {
   return `radar:verif_fila:${data}`;
 }
 async function enfileirarVerificacaoAssincronaInterno(env2222, empresa, semana, setor, eventos) {
-  if (!env2222.RADAR_KV || !eventos || !eventos.length) return 0;
+  if (!env2222.RADAR_KV || !eventos || !eventos.length) return { adicionados: 0, indice_erro: null };
   const hoje = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const chave = chaveFilaVerificacao(hoje);
+  // REPROVADO-FAILCLOSED1 (2026-09-06, portao A): indice fail-closed ANTES de
+  // enfileirar qualquer coisa. Erro de leitura = nao enfileira (erro recuperavel
+  // volta no retorno). Quarentenados (flag OU indice) nao voltam ao ciclo.
+  const _idxQuarentena = await carregarIndiceQuarentena(env2222);
+  if (!_idxQuarentena.ok) {
+    console.error("[verif][indice-quarentena][portao-A] enfileiramento bloqueado (fail-closed):", _idxQuarentena.erro);
+    return { adicionados: 0, indice_erro: _idxQuarentena.erro };
+  }
   let fila = [];
   try {
     fila = await env2222.RADAR_KV.get(chave, "json") || [];
@@ -9818,6 +9854,14 @@ async function enfileirarVerificacaoAssincronaInterno(env2222, empresa, semana, 
   for (const ev of eventos) {
     const id = _chaveDedupEvento(Object.assign({}, ev, { empresa }));
     if (existentes.has(id)) continue;
+    if (_idxQuarentena.ids.has(id)) continue; // quarentena decide bloqueio
+    // REPROVADO-FAILCLOSED1 (2026-09-05, portao A): id esgotado (n>=3, aguarda revisao manual)
+    // ou dentro do backoff nao volta ao ciclo automatico. A varredura re-emite o evento
+    // pendente a cada ciclo; sem este portao o mesmo id re-queimava verificacao adversaria
+    // diariamente, mesmo apos o teto de tentativas. O DO "enfileirar" delega para ca, entao
+    // este e o chokepoint unico de reentrada (ver op === "enfileirar" no EstadoSemanaDO).
+    const _eaBloqueio = await _verifEstadoAuto(env2222, id);
+    if (_eaBloqueio) continue;
     fila.push({ id, empresa, semana, setor: setor || null, evento: ev, criado_em: agora });
     existentes.add(id);
     adicionados++;
@@ -9825,7 +9869,7 @@ async function enfileirarVerificacaoAssincronaInterno(env2222, empresa, semana, 
   if (adicionados > 0) {
     await env2222.RADAR_KV.put(chave, JSON.stringify(fila), { expirationTtl: 60 * 60 * 24 * 7 });
   }
-  return adicionados;
+  return { adicionados, indice_erro: null };
 }
 __name(enfileirarVerificacaoAssincronaInterno, "enfileirarVerificacaoAssincronaInterno");
 // VERIFQ-ORFAO1 (2026-07-24): wrapper com serializacao via EstadoSemanaDO.
@@ -9846,9 +9890,17 @@ async function enfileirarVerificacaoAssincrona(env2222, empresa, semana, setor, 
 }
 __name(enfileirarVerificacaoAssincrona, "enfileirarVerificacaoAssincrona");
 async function listarFilaVerificacaoPendente(env2222, dias) {
-  if (!env2222.RADAR_KV) return [];
+  if (!env2222.RADAR_KV) return { itens: [], indice_erro: "kv_ausente", ocultos: 0 };
+  // REPROVADO-FAILCLOSED1 (2026-09-06, portao B): indice fail-closed ANTES de
+  // entregar qualquer item ao motor. Erro = nao entrega (erro recuperavel no
+  // retorno). Quarentena decide bloqueio SOMENTE pelo snapshot do indice.
+  const _idxQuarentena = await carregarIndiceQuarentena(env2222);
+  if (!_idxQuarentena.ok) {
+    console.error("[verif][indice-quarentena][portao-B] lista bloqueada (fail-closed):", _idxQuarentena.erro);
+    return { itens: [], indice_erro: _idxQuarentena.erro, ocultos: 0 };
+  }
   const n = dias || 3;
-  const itens = [];
+  let itens = [];
   for (let i = 0; i < n; i++) {
     const d = new Date(Date.now() - i * 24 * 60 * 60 * 1e3).toISOString().slice(0, 10);
     try {
@@ -9859,7 +9911,28 @@ async function listarFilaVerificacaoPendente(env2222, dias) {
     } catch (_) {
     }
   }
-  return itens;
+  // REPROVADO-FAILCLOSED1 (2026-09-05, portao B): tira da leitura o que o motor nao pode
+  // processar agora (esgotado/aguarda_manual ou dentro do backoff). O motor de verificacao
+  // so pega o que sai daqui; esconder o id bloqueado e o que impede a quarta tentativa
+  // automatica de gastar LLM num evento que saiu do ciclo. O item fisico da fila segue la
+  // ate o TTL de 7d; o portao A ja impede que novos entrem.
+  let _ocultos = 0;
+  if (itens.length > 0) {
+    const _idsUnicos = [];
+    const _vistos = new Set();
+    for (const _itU of itens) { if (!_vistos.has(_itU.id)) { _vistos.add(_itU.id); _idsUnicos.push(_itU.id); } }
+    const _bloqueados = {};
+    await Promise.all(_idsUnicos.map(async function(_idB) {
+      if (_idxQuarentena.ids.has(_idB)) { _bloqueados[_idB] = { motivo: "quarentena" }; return; }
+      const _estado = await _verifEstadoAuto(env2222, _idB);
+      if (_estado) _bloqueados[_idB] = _estado;
+    }));
+    const _antes = itens.length;
+    itens = itens.filter(function(_itF) { return !_bloqueados[_itF.id]; });
+    _ocultos = _antes - itens.length;
+    if (_ocultos > 0) console.error("[verif-list] " + _ocultos + " item(ns) escondido(s) do motor por retry bounded/quarentena (REPROVADO-FAILCLOSED1)");
+  }
+  return { itens, indice_erro: null, ocultos: _ocultos };
 }
 async function removerDaFilaVerificacaoInterno(env2222, dataFila, id) {
   if (!env2222.RADAR_KV || !dataFila || !id) return;
@@ -9889,6 +9962,271 @@ async function removerDaFilaVerificacao(env2222, dataFila, id) {
   return await removerDaFilaVerificacaoInterno(env2222, dataFila, id);
 }
 __name(removerDaFilaVerificacao, "removerDaFilaVerificacao");
+// REPROVADO-FAILCLOSED1, retry bounded (2026-09-05, decisao do operador, N=3).
+//
+// O verificador adversarial devolve REPROVADO tanto ao provar falsidade quanto ao NAO
+// conseguir confirmar (fonte inacessivel, reCAPTCHA, fonte_primaria ausente). O evento
+// real que so nao foi re-confirmavel fica pendente no estado (ver _eventoComFonteCitavel
+// e retratarEventoRejeitadoInterno) e a varredura seguinte re-emite o mesmo id para a
+// fila. Sem controle, esse ciclo re-queima verificacao adversaria paga todo dia no mesmo
+// evento, indefinidamente.
+//
+// Regra canonica: maximo 3 verificacoes NAO-CONCLUSIVAS por id; backoff persistente entre
+// tentativas (n=1 -> proxima elegivel >= 24h; n=2 -> >= 48h); a 3a nao-conclusiva retira o
+// id do ciclo automatico e marca revisao manual (esgotado/aguarda_manual). O contador vive
+// em radar:verif:attempt:{id} no KV: persistente, idempotente por id, TTL 90d (cobre a
+// janela de decisao manual). NUNCA apaga evento com fonte citavel, nunca certifica, e o
+// cache terminal so e gravado no desfecho realmente terminal (alucinacao sem fonte).
+//
+// Tres portoes usam o mesmo helper _verifEstadoAuto:
+//   A. enfileirarVerificacaoAssincronaInterno (portao unico de reentrada no ciclo);
+//   B. listarFilaVerificacaoPendente (o motor so ve o que sai daqui);
+//   C. confirmar_verificacao (guarda contra item orfao que ja estava em voo).
+function chaveTentativaVerificacao(id) {
+  return "radar:verif:attempt:" + id;
+}
+__name(chaveTentativaVerificacao, "chaveTentativaVerificacao");
+var VERIF_RETRY_MAX = 3;
+var VERIF_TENTATIVA_TTL = 60 * 60 * 24 * 90;
+var VERIF_H24 = 24 * 60 * 60 * 1e3;
+var VERIF_H48 = 48 * 60 * 60 * 1e3;
+// =============================================================================
+// REPROVADO-FAILCLOSED1 (2026-09-06): indice unico de quarentena de verificacao.
+//
+// Autoridade de visibilidade/bloqueio por quarentena. KV e a fonte de leitura dos
+// consumidores; o ConfigDO singleton (_global) e o UNICO escritor (serializacao
+// FIFO + copia autoritativa em state.storage). Mutacao KV direta e proibida.
+//
+// Garantia adotada: "ordered fail-closed local/best-effort. O indice unico elimina
+// divergencia entre autoridades dentro de uma mesma versao observada, mas nao
+// fornece consistencia cross-PoP." Nao e atomico, nem transacional, nem strongly
+// consistent: Workers KV continua eventualmente consistente. cacheTtl:30 e o
+// minimo suportado desde 30/01/2026 (default 60s quando omitido); janela de
+// propagacao por PoP <=30s declarada. Negative lookup tambem e cacheado por
+// cacheTtl: apos o bootstrap pode haver alguns segundos de 503 fail-closed.
+//
+// Leitura fail-closed: ausencia, null, JSON invalido, schema invalido ou ids
+// invalido = ERRO, NUNCA Set vazio. Vazio valido e somente {schema:1, ids:{}}.
+// =============================================================================
+var QUARENTENA_IDX_KEY = "radar:verif:quarentena_idx";
+var QUARENTENA_IDX_SCHEMA = 1;
+function _ehObjetoSimplesQuarentena(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+// cacheTtl: 30 e o minimo suportado desde 30/01/2026 (default 60s quando omitido).
+// Em testes (Miniflare) cacheTtl simula cache de PoP e tornaria as assertions
+// flaky apos mutacao no mesmo isolate; a var de teste QUARENTENA_IDX_SEM_CACHE=1
+// omite o cacheTtl (Miniflare so cacheia quando o parametro e informado).
+// Gate duplo: exige ENVIRONMENT==="test" E a var — producao tem
+// ENVIRONMENT="production" (medido no wrangler.toml) e nao tem a var.
+function _cacheTtlIndiceQuarentena(env2222) {
+  return (env2222 && env2222.ENVIRONMENT === "test" && env2222.QUARENTENA_IDX_SEM_CACHE === "1") ? undefined : 30;
+}
+// --- Falhas injetadas SOMENTE para testes (fault injection T5/T9) ---
+// Impossivel ativar em producao: _falhaInjetadaTesteAtiva exige os MESMOS dois
+// gates do cacheTtl (ENVIRONMENT==="test" + QUARENTENA_IDX_SEM_CACHE==="1").
+// Sem os dois, qualquer chave do mapa e ignorada no runtime.
+var _falhasInjetadasTeste = Object.create(null);
+function _falhaInjetadaTesteAtiva(env2222, chave) {
+  return !!(env2222 && env2222.ENVIRONMENT === "test" && env2222.QUARENTENA_IDX_SEM_CACHE === "1" && _falhasInjetadasTeste[chave]);
+}
+function _definirFalhaInjetadaTeste(chave) {
+  _falhasInjetadasTeste[chave] = true;
+}
+function _limparFalhasInjetadasTeste() {
+  _falhasInjetadasTeste = Object.create(null);
+}
+function _validarIndiceQuarentena(raw) {
+  if (raw === null || raw === undefined) return { ok: false, erro: "indice_ausente" };
+  if (!_ehObjetoSimplesQuarentena(raw)) return { ok: false, erro: "json_invalido" };
+  if (raw.schema !== QUARENTENA_IDX_SCHEMA) return { ok: false, erro: "schema_invalido" };
+  if (!_ehObjetoSimplesQuarentena(raw.ids)) return { ok: false, erro: "ids_invalido" };
+  for (const _qk of Object.keys(raw.ids)) {
+    const _qv = raw.ids[_qk];
+    if (!(_qv === null || _qv === undefined || _ehObjetoSimplesQuarentena(_qv))) return { ok: false, erro: "entrada_invalida", id: _qk };
+  }
+  return { ok: true, indice: raw };
+}
+async function carregarIndiceQuarentena(env2222) {
+  if (!env2222 || !env2222.RADAR_KV) return { ok: false, erro: "kv_ausente" };
+  let raw = null;
+  try {
+    raw = await env2222.RADAR_KV.get(QUARENTENA_IDX_KEY, { type: "json", cacheTtl: _cacheTtlIndiceQuarentena(env2222) });
+  } catch (e) {
+    return { ok: false, erro: "kv_get_exception", detalhe: e && e.message ? String(e.message).slice(0, 200) : null };
+  }
+  const _val = _validarIndiceQuarentena(raw);
+  if (!_val.ok) return { ok: false, erro: _val.erro, detalhe: _val.id || null };
+  return { ok: true, ids: new Set(Object.keys(_val.indice.ids)), raw: _val.indice };
+}
+// Identidade canonica da quarentena. Na entrada em quarentena o evento grava
+// _verif_quarentena_id = quarantineId (o id da fila no momento da entrada). Depois
+// da entrada a identidade e SEMPRE a ancora armazenada: nunca recalcular a partir
+// de fonte_primaria, porque CORRIGIR/MERGEDUP1 pode trocar a fonte e mudar a chave.
+// Fallback para _chaveDedupEvento somente para legado/estado parcial sem ancora,
+// computado com a empresa do contexto (share antigo pode nao carregar empresa no
+// evento: a chave mudaria e o evento vazaria).
+function obterQuarantineIdEvento(ev, empresaCtx) {
+  if (!ev || typeof ev !== "object") return null;
+  const _q = ev._verif_quarentena_id;
+  if (typeof _q === "string" && _q.trim()) return _q.trim();
+  const _emp = empresaCtx || (ev.empresa ? String(ev.empresa) : null);
+  if (!_emp) return null;
+  return _chaveDedupEvento(Object.assign({}, ev, { empresa: _emp }));
+}
+// Predicado de visibilidade: oculta pela UNIAO (flag duravel conservadora OU id no
+// indice). Se qualquer lado ja enxergou a quarentena, esconder.
+function _eventoQuarentenado(ev, ids, empresaCtx) {
+  if (!(ids instanceof Set)) throw new Error("ids deve ser um Set");
+  if (!ev || typeof ev !== "object") return false;
+  if (ev._verif_aguarda_manual === true) return true;
+  const _qid = obterQuarantineIdEvento(ev, empresaCtx);
+  return _qid ? ids.has(_qid) : false;
+}
+// Filtra eventos quarentenados num estado multi-semana (mutacao LOCAL, sem persistir).
+// Devolve o total de eventos ocultados. Todos os consumidores de um mesmo fluxo
+// carregam UM snapshot do indice e reutilizam o mesmo Set.
+function filtrarQuarentenaDoEstado(estadoMS, ids) {
+  let _ocultos = 0;
+  if (!estadoMS || !estadoMS.results || !(ids instanceof Set)) return _ocultos;
+  for (const _emp of Object.keys(estadoMS.results)) {
+    const _reg = estadoMS.results[_emp];
+    if (!_reg || !Array.isArray(_reg.eventos) || _reg.eventos.length === 0) continue;
+    const _restantes = _reg.eventos.filter(function(_ev) { return !_eventoQuarentenado(_ev, ids, _emp); });
+    if (_restantes.length !== _reg.eventos.length) {
+      _ocultos += _reg.eventos.length - _restantes.length;
+      _reg.eventos = _restantes;
+      _reg.sem_eventos = _restantes.length === 0;
+    }
+  }
+  return _ocultos;
+}
+// Mutador unico do indice: exclusivamente via ConfigDO. Proibido fallback para
+// mutacao KV direta se o ConfigDO falhar — falha propaga fail-closed.
+async function _mutarIndiceQuarentena(env2222, op, args) {
+  // Fault injection T9 (gate de publicacao): SOMENTE em ambiente de teste.
+  if (op === "quarentenaRemover" && _falhaInjetadaTesteAtiva(env2222, "gate_remover")) {
+    throw new Error("falha_injetada_gate_remover");
+  }
+  return await _rotearParaConfigDO(env2222, op, args);
+}
+async function lerTentativaVerificacao(env2222, id) {
+  if (!env2222.RADAR_KV || !id) return null;
+  try { return await env2222.RADAR_KV.get(chaveTentativaVerificacao(id), "json"); } catch (_) { return null; }
+}
+async function gravarTentativaVerificacao(env2222, id, reg) {
+  if (!env2222.RADAR_KV || !id || !reg) throw new Error("gravarTentativaVerificacao: parametros ausentes");
+  // REPROVADO-FAILCLOSED1 (2026-09-06): para de engolir erro. Quem chama decide
+  // o que fazer com a falha (n=1/n=2 propaga; n=3 trata como erro recuperavel
+  // mantendo o indice como autoridade de ocultacao).
+  await env2222.RADAR_KV.put(chaveTentativaVerificacao(id), JSON.stringify(reg), { expirationTtl: VERIF_TENTATIVA_TTL });
+}
+function _verifJanelaProxima(n) {
+  // Backoff apos a enesima nao-conclusiva: 24h depois de n=1, 48h depois de n=2.
+  // n>=3 nao tem janela: sai do ciclo (quem chama trata esgotado/aguarda_manual).
+  if (n === 1) return VERIF_H24;
+  if (n === 2) return VERIF_H48;
+  return null;
+}
+// Calculo PURO da proxima tentativa (persistencia separada, REPROVADO-FAILCLOSED1).
+function _verifCalcularProximaTentativa(atual, agora, empresa, id, semana) {
+  const n = ((atual && atual.n) ? atual.n : 0) + 1;
+  const reg = {
+    id: id,
+    n: n,
+    ultima_em: new Date(agora).toISOString(),
+    atualizado_em: new Date(agora).toISOString()
+  };
+  if (empresa) reg.empresa = String(empresa).slice(0, 80);
+  if (semana) reg.semana = String(semana).slice(0, 20);
+  if (n >= VERIF_RETRY_MAX) {
+    reg.esgotado = true;
+    reg.aguarda_manual = true;
+    reg.proxima_em = null;
+  } else {
+    reg.proxima_em = new Date(agora + _verifJanelaProxima(n)).toISOString();
+  }
+  return reg;
+}
+// Registra mais uma tentativa nao-conclusiva. Le o registro atual e incrementa em cima
+// (nunca zera nem sobrescreve contador menor). Devolve o registro resultante.
+// n=1/n=2: comportamento anterior (uma escrita de attempt; erro agora propaga).
+// n=3: ordem obrigatoria — A. indice via ConfigDO; B. evento marcado no estado;
+// C. attempt n=3/esgotado. A falhou: mantem n=2 e renova proxima_em +48h para evitar
+// hot loop (se ate essa escrita falhar, estado anterior intacto). B/C falhou: NUNCA
+// remove o id do indice (publicacao continua fechada), erro recuperavel no retorno.
+async function registrarTentativaNaoConclusiva(env2222, id, empresa, semana) {
+  const agora = Date.now();
+  const atual = await lerTentativaVerificacao(env2222, id) || {};
+  const reg = _verifCalcularProximaTentativa(atual, agora, empresa, id, semana);
+  if (reg.n < VERIF_RETRY_MAX) {
+    await gravarTentativaVerificacao(env2222, id, reg);
+    return { reg, quarentena: false };
+  }
+  // Idempotencia do retry: se ja estava esgotado (n>=3 persistido), nao re-entra
+  // nem recalcula n=4. Retry apos falha de C parte do n persistido=2 e recalcula
+  // n=3, nunca n=4.
+  if (atual && atual.n && atual.n >= VERIF_RETRY_MAX) {
+    return { reg: atual, quarentena: true, ja_estava: true };
+  }
+  let _indiceErro = null, _eventoErro = null, _tentativaErro = null;
+  // A. indice via ConfigDO (single writer). Falhou: NUNCA tocar no evento.
+  // (falha injetada somente com ENVIRONMENT=test + var de teste, T5/T9)
+  try {
+    if (_falhaInjetadaTesteAtiva(env2222, "n3_indice")) throw new Error("falha_injetada_indice");
+    await _mutarIndiceQuarentena(env2222, "quarentenaAdicionar", [{ id, empresa: empresa || null, semana: semana || null, desde: new Date(agora).toISOString() }]);
+  } catch (e) {
+    _indiceErro = e && e.message ? String(e.message) : "erro_indice";
+    console.error("[verif-quarentena][n3][A] falha no indice, mantendo n=2 com +48h:", _indiceErro);
+    const _reg2 = { id, n: 2, ultima_em: new Date(agora).toISOString(), atualizado_em: new Date(agora).toISOString(), proxima_em: new Date(agora + VERIF_H48).toISOString() };
+    if (empresa) _reg2.empresa = String(empresa).slice(0, 80);
+    if (semana) _reg2.semana = String(semana).slice(0, 20);
+    try {
+      await gravarTentativaVerificacao(env2222, id, _reg2);
+    } catch (e2) {
+      console.error("[verif-quarentena][n3][A] e renovacao +48h tambem falhou; estado anterior intacto:", e2 && e2.message || String(e2));
+    }
+    return { reg: _reg2, quarentena: false, indice_erro: _indiceErro };
+  }
+  // B. evento marcado no estado (flag duravel + ancora + pendente).
+  if (semana && empresa) {
+    if (_falhaInjetadaTesteAtiva(env2222, "n3_evento")) {
+      // T5-B: evento NAO marcado; o indice continua sendo a unica autoridade de
+      // ocultacao (a correcao de frescor/visibilidade nao pode depender da flag).
+      _eventoErro = "falha_injetada_evento";
+    } else {
+      const _marcou = await marcarEventoQuarentenado(env2222, semana, empresa, id);
+      if (_marcou.resultado === "falhou") _eventoErro = _marcou.motivo || "falha_ao_marcar";
+      else if (_marcou.resultado === "nao_encontrado") _eventoErro = "evento_nao_encontrado_no_estado";
+    }
+  }
+  // C. attempt terminal. Falhou: o evento continua oculto pela autoridade do indice.
+  try {
+    if (_falhaInjetadaTesteAtiva(env2222, "n3_attempt")) throw new Error("falha_injetada_attempt");
+    await gravarTentativaVerificacao(env2222, id, reg);
+  } catch (e) {
+    _tentativaErro = e && e.message ? String(e.message) : "falha_ao_gravar_attempt";
+    console.error("[verif-quarentena][n3][C] falha ao gravar attempt (indice permanece, evento oculto):", _tentativaErro);
+  }
+  if (_eventoErro || _tentativaErro) {
+    return { reg, quarentena: true, erro: "quarentena_parcial", evento_erro: _eventoErro, tentativa_erro: _tentativaErro };
+  }
+  return { reg, quarentena: true };
+}
+// Estado automatico do id para os tres portoes. null = liberado. Bloqueio quando esgotado
+// (aguarda revisao manual) ou dentro do backoff (proxima_em no futuro).
+async function _verifEstadoAuto(env2222, id) {
+  const agora = Date.now();
+  const reg = await lerTentativaVerificacao(env2222, id);
+  if (!reg) return null;
+  if (reg.esgotado || reg.aguarda_manual) return { motivo: "esgotado", n: reg.n, reg: reg };
+  if (reg.proxima_em) {
+    const t = new Date(reg.proxima_em).getTime();
+    if (!isNaN(t) && t > agora) return { motivo: "backoff", n: reg.n, reg: reg, elegivel_em: reg.proxima_em };
+  }
+  return null;
+}
+__name(_verifEstadoAuto, "_verifEstadoAuto");
 // CONCORVERIF1 (2026-08-18): claim/reserva de itens da fila, roda DENTRO do EstadoSemanaDO
 // (op "reservar", keyed por "fila:"+data), serializado pelo mesmo _fila FIFO da classe — por
 // isso e atomico de verdade, ao contrario de listar_fila_verificacao (leitura pura, sem reserva).
@@ -9998,9 +10336,22 @@ async function mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAp
   } else {
     idxExistente = existentes.findIndex(function(ev) { return _chaveDedupEvento(ev) === chaveNovo; });
   }
+  var _qIdMerge = null;
   if (idxExistente >= 0) {
     var _original = existentes[idxExistente];
-    existentes[idxExistente] = Object.assign({}, _original, evEnriquecido, { _pendente_verificacao: false });
+    // REPROVADO-FAILCLOSED1 (2026-09-06): MERGEDUP1 x quarentena. A identidade
+    // canonica e a ancora armazenada (NUNCA chaveOriginal === quarantineId assumido,
+    // nunca recalcular de fonte_primaria). Aprovado/corrigido sai com marca de espera
+    // limpa MAS ainda protegido pelo indice; reemissao nao pode limpar quarentena.
+    if (_original && typeof _original._verif_quarentena_id === "string" && _original._verif_quarentena_id.trim()) {
+      _qIdMerge = _original._verif_quarentena_id.trim();
+    }
+    var _mergeBase = Object.assign({}, _original, evEnriquecido, { _pendente_verificacao: false });
+    if (_qIdMerge) {
+      _mergeBase._verif_aguarda_manual = false;
+      _mergeBase._verif_quarentena_id = _qIdMerge;
+    }
+    existentes[idxExistente] = _mergeBase;
   } else {
     existentes.push(evEnriquecido);
   }
@@ -10030,7 +10381,27 @@ async function mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAp
   anterior._ultima_verificacao_async = (/* @__PURE__ */ new Date()).toISOString();
   estado.results[empresa] = normalizarMojibake(anterior);
   estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+  // Fault injection T9 (MERGEDUP1): falha ANTES de remover o indice, SOMENTE teste.
+  if (_falhaInjetadaTesteAtiva(env2222, "mesclar_persist")) {
+    throw new Error("falha_injetada_mesclar_persist");
+  }
   await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+  // REPROVADO-FAILCLOSED1 (2026-09-06): saida da quarentena no merge. Ordem:
+  // 1. evento persistido acima com marca de espera limpa, AINDA protegido pelo indice;
+  // 2. limpar attempt correspondente a quarantineId;
+  // 3. preservar exatamente 1 evento (invariantes MERGEDUP1 checados acima);
+  // 4. SOMENTE POR ULTIMO remover quarantineId do indice (publication gate).
+  if (_qIdMerge) {
+    try { await env2222.RADAR_KV.delete(chaveTentativaVerificacao(_qIdMerge)); } catch (_eAttemptMerge) {
+      console.error("[mesclar][quarentena] falha ao limpar attempt (indice permanece):", _eAttemptMerge && _eAttemptMerge.message || String(_eAttemptMerge));
+    }
+    try {
+      await _mutarIndiceQuarentena(env2222, "quarentenaRemover", [_qIdMerge]);
+    } catch (_eIdxMerge) {
+      console.error("[mesclar][quarentena][FAIL-CLOSED] evento persistido continua oculto pelo indice; remocao falhou:", _eIdxMerge && _eIdxMerge.message || String(_eIdxMerge));
+      return { ok: true, quarentena_erro: String(_eIdxMerge && _eIdxMerge.message || _eIdxMerge) };
+    }
+  }
   return true;
 }
 __name(mesclarEventoVerificadoInterno, "mesclarEventoVerificadoInterno");
@@ -10053,21 +10424,47 @@ async function retratarEventoRejeitadoInterno(env2222, semana, empresa, eventoRe
   if (!anterior || !Array.isArray(anterior.eventos) || anterior.eventos.length === 0) return false;
   const evEnriquecido = enriquecerEvento(Object.assign({}, eventoRejeitado, { empresa }), setor || anterior.setor);
   const chaveAlvo = _chaveDedupEvento(evEnriquecido);
+  // REPROVADO-FAILCLOSED1 (2026-09-05): o verificador parte do MANDATO "assuma falso ate
+  // provar verdadeiro" e devolve REPROVADO tanto quando prova falsidade quanto quando
+  // simplesmente NAO consegue conferir (fonte inacessivel, reCAPTCHA no rad.cvm.gov.br).
+  // O contrato do prompt e explicito: confirmacao exige fonte primaria DISTINTA da citada
+  // pelo gerador, achada por busca ativa. Entao ter fonte_primaria/secundaria preenchido
+  // NAO e evidencia valida, e apagar qualquer pendente que casasse por chave derrubava
+  // evento REAL cuja fonte ficou fora do alcance do verificador (caso Usina Pampa Sul,
+  // SOURCEFIX-PAMPASUL1). Fail-closed real:
+  //   - pendente SEM nenhuma fonte citavel = alucinacao sem proveniencia, retracao legitima.
+  //   - pendente COM fonte = NAO-CONCLUSIVO (fonte inacessivel, nao provado falso). Nao
+  //     apaga e nao certifica: o evento permanece intocado, _pendente_verificacao continua
+  //     true, elegivel para reprocessamento quando o emissor for varrido de novo.
+  // Nenhuma flag _verif_rejeitado e gravada aqui: nenhum consumidor a le (a sanitizacao
+  // remove todo campo _* antes do frontend), entao marca-la limparia _pendente_verificacao
+  // e certificaria um evento que o contrato diz nao confirmado.
   const antes = anterior.eventos.length;
-  const restantes = anterior.eventos.filter(function(ev) {
-    if (_chaveDedupEvento(ev) !== chaveAlvo) return true;
-    return ev._pendente_verificacao !== true;
+  // filter retorna true = MANTEM. Com fonte, nao-conclusivo, permanece; sem fonte,
+  // alucinacao, sai do estado.
+  const restantes = anterior.eventos.filter(function(_evAlvo) {
+    if (_chaveDedupEvento(_evAlvo) !== chaveAlvo) return true;
+    if (_evAlvo._pendente_verificacao !== true) return true;
+    return _eventoComFonteCitavel(_evAlvo);
   });
   if (restantes.length === antes) return false;
+  const agora = (/* @__PURE__ */ new Date()).toISOString();
   anterior.eventos = restantes;
   anterior.sem_eventos = restantes.length === 0;
   anterior._versao = (anterior._versao || 0) + 1;
-  anterior._ultima_verificacao_async = (/* @__PURE__ */ new Date()).toISOString();
+  anterior._ultima_verificacao_async = agora;
   estado.results[empresa] = normalizarMojibake(anterior);
-  estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+  estado.updated_at = agora;
   await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
   return true;
 }
+function _eventoComFonteCitavel(ev) {
+  if (!ev || typeof ev !== "object") return false;
+  var _f1 = ev.fonte_primaria ? String(ev.fonte_primaria).trim() : "";
+  var _f2 = ev.fonte_secundaria ? String(ev.fonte_secundaria).trim() : "";
+  return _f1 !== "" || _f2 !== "";
+}
+__name(_eventoComFonteCitavel, "_eventoComFonteCitavel");
 __name(retratarEventoRejeitadoInterno, "retratarEventoRejeitadoInterno");
 async function retratarEventoRejeitado(env2222, semana, empresa, eventoRejeitado, setor) {
   let r;
@@ -10081,6 +10478,207 @@ async function retratarEventoRejeitado(env2222, semana, empresa, eventoRejeitado
   return await retratarEventoRejeitadoInterno(env2222, semana, empresa, eventoRejeitado, setor);
 }
 __name(retratarEventoRejeitado, "retratarEventoRejeitado");
+// =============================================================================
+// REPROVADO-FAILCLOSED1 (2026-09-06): marcacao/localizacao de evento quarentenado.
+// Localizar: 1o _verif_quarentena_id === id; fallback legado _chaveDedupEvento === id;
+// 0 ou >1 matches = abortar fail-closed. Resultado discriminado: gravou | ja_estava
+// | nao_encontrado | falhou (motivo).
+// =============================================================================
+function _localizarEventoQuarentenaIdx(eventos, id) {
+  const _comAncora = [];
+  const _porChave = [];
+  for (let _i = 0; _i < eventos.length; _i++) {
+    const _ev = eventos[_i];
+    if (!_ev || typeof _ev !== "object") continue;
+    if (_ev._verif_quarentena_id === id) { _comAncora.push(_i); continue; }
+    if (_chaveDedupEvento(_ev) === id) _porChave.push(_i);
+  }
+  if (_comAncora.length > 1) return { ok: false, motivo: "ancora_ambigua" };
+  if (_comAncora.length === 1) return { ok: true, idx: _comAncora[0], via: "ancora" };
+  if (_porChave.length === 1) return { ok: true, idx: _porChave[0], via: "chave_dedup" };
+  if (_porChave.length > 1) return { ok: false, motivo: "chave_ambigua" };
+  return { ok: false, motivo: "nao_encontrado" };
+}
+async function marcarEventoQuarentenadoInterno(env2222, semana, empresa, quarantineId) {
+  if (!env2222.RADAR_KV || !semana || !empresa || !quarantineId) return { resultado: "falhou", motivo: "parametros_ausentes" };
+  try {
+    const _estado = await carregarEstadoCompartilhado(env2222, semana);
+    const _anterior = _estado.results[empresa];
+    if (!_anterior || !Array.isArray(_anterior.eventos) || _anterior.eventos.length === 0) return { resultado: "nao_encontrado" };
+    const _loc = _localizarEventoQuarentenaIdx(_anterior.eventos, quarantineId);
+    if (!_loc.ok) return { resultado: _loc.motivo === "nao_encontrado" ? "nao_encontrado" : "falhou", motivo: _loc.motivo };
+    const _ev = _anterior.eventos[_loc.idx];
+    if (_ev._verif_aguarda_manual === true && _ev._verif_quarentena_id === quarantineId && _ev._pendente_verificacao === true) {
+      return { resultado: "ja_estava" }; // idempotente: marcar ja marcado = no-op
+    }
+    _anterior.eventos[_loc.idx] = Object.assign({}, _ev, { _verif_aguarda_manual: true, _verif_quarentena_id: quarantineId, _pendente_verificacao: true });
+    _anterior._versao = (_anterior._versao || 0) + 1;
+    _estado.results[empresa] = normalizarMojibake(_anterior);
+    _estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+    await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(_estado), { expirationTtl: 60 * 60 * 24 * 35 });
+    return { resultado: "gravou" };
+  } catch (e) {
+    return { resultado: "falhou", motivo: e && e.message ? String(e.message).slice(0, 200) : "excecao" };
+  }
+}
+__name(marcarEventoQuarentenadoInterno, "marcarEventoQuarentenadoInterno");
+async function marcarEventoQuarentenado(env2222, semana, empresa, quarantineId) {
+  let r;
+  try {
+    r = await _rotearParaEstadoSemanaDO(env2222, semana, "marcar_quarentena", [semana, empresa, quarantineId]);
+  } catch (e) {
+    console.error("[EstadoSemanaDO][marcar_quarentena] erro, fallback sem serializacao:", e && e.message);
+    r = { disponivel: false };
+  }
+  if (r.disponivel) return r.resultado;
+  return await marcarEventoQuarentenadoInterno(env2222, semana, empresa, quarantineId);
+}
+__name(marcarEventoQuarentenado, "marcarEventoQuarentenado");
+// Reabertura administrativa do evento quarentenado: limpa a marca de espera,
+// mantem/arquiva a ancora _verif_quarentena_id como historico e volta pendente
+// para o ciclo. Publicacao continua fechada pelo indice ate o publication gate.
+async function reabrirEventoQuarentenadoInterno(env2222, semana, empresa, quarantineId) {
+  if (!env2222.RADAR_KV || !semana || !empresa || !quarantineId) return { resultado: "falhou", motivo: "parametros_ausentes" };
+  try {
+    const _estado = await carregarEstadoCompartilhado(env2222, semana);
+    const _anterior = _estado.results[empresa];
+    if (!_anterior || !Array.isArray(_anterior.eventos) || _anterior.eventos.length === 0) return { resultado: "nao_encontrado" };
+    const _loc = _localizarEventoQuarentenaIdx(_anterior.eventos, quarantineId);
+    if (!_loc.ok) return { resultado: _loc.motivo === "nao_encontrado" ? "nao_encontrado" : "falhou", motivo: _loc.motivo };
+    const _ev = _anterior.eventos[_loc.idx];
+    if (_ev._verif_aguarda_manual !== true && _ev._pendente_verificacao === true) return { resultado: "ja_estava" }; // idempotente
+    _anterior.eventos[_loc.idx] = Object.assign({}, _ev, { _verif_aguarda_manual: false, _pendente_verificacao: true });
+    _anterior._versao = (_anterior._versao || 0) + 1;
+    _estado.results[empresa] = normalizarMojibake(_anterior);
+    _estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+    await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(_estado), { expirationTtl: 60 * 60 * 24 * 35 });
+    return { resultado: "gravou" };
+  } catch (e) {
+    return { resultado: "falhou", motivo: e && e.message ? String(e.message).slice(0, 200) : "excecao" };
+  }
+}
+__name(reabrirEventoQuarentenadoInterno, "reabrirEventoQuarentenadoInterno");
+async function reabrirEventoQuarentenado(env2222, semana, empresa, quarantineId) {
+  let r;
+  try {
+    r = await _rotearParaEstadoSemanaDO(env2222, semana, "reabrir_quarentena", [semana, empresa, quarantineId]);
+  } catch (e) {
+    console.error("[EstadoSemanaDO][reabrir_quarentena] erro, fallback sem serializacao:", e && e.message);
+    r = { disponivel: false };
+  }
+  if (r.disponivel) return r.resultado;
+  return await reabrirEventoQuarentenadoInterno(env2222, semana, empresa, quarantineId);
+}
+__name(reabrirEventoQuarentenado, "reabrirEventoQuarentenado");
+// Resolucao manual (confirmar | descartar), serializada pelo DO. O indice continua
+// segurando a publicacao ate o chamador remove-lo como ULTIMO passo.
+async function resolverEventoQuarentenadoInterno(env2222, semana, empresa, quarantineId, acao, manual) {
+  if (!env2222.RADAR_KV || !semana || !empresa || !quarantineId) return { resultado: "falhou", motivo: "parametros_ausentes" };
+  try {
+    const _estado = await carregarEstadoCompartilhado(env2222, semana);
+    const _anterior = _estado.results[empresa];
+    if (!_anterior || !Array.isArray(_anterior.eventos) || _anterior.eventos.length === 0) return { resultado: "nao_encontrado" };
+    const _loc = _localizarEventoQuarentenaIdx(_anterior.eventos, quarantineId);
+    if (!_loc.ok) return { resultado: _loc.motivo === "nao_encontrado" ? "nao_encontrado" : "falhou", motivo: _loc.motivo };
+    if (acao === "confirmar") {
+      const _ev = _anterior.eventos[_loc.idx];
+      if (_ev._verif_aguarda_manual !== true && _ev._pendente_verificacao !== true && _ev._verif_manual && _ev._verif_manual.decisao === "confirmar") {
+        return { resultado: "ja_estava" }; // idempotente
+      }
+      _anterior.eventos[_loc.idx] = Object.assign({}, _ev, { _verif_aguarda_manual: false, _pendente_verificacao: false, _verif_manual: manual || null });
+    } else if (acao === "descartar") {
+      // Retratar/remover o evento do estado; indice so sai DEPOIS (publication gate).
+      _anterior.eventos = _anterior.eventos.slice(0, _loc.idx).concat(_anterior.eventos.slice(_loc.idx + 1));
+      _anterior.sem_eventos = _anterior.eventos.length === 0;
+    } else {
+      return { resultado: "falhou", motivo: "acao_invalida" };
+    }
+    _anterior._versao = (_anterior._versao || 0) + 1;
+    _estado.results[empresa] = normalizarMojibake(_anterior);
+    _estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+    await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(_estado), { expirationTtl: 60 * 60 * 24 * 35 });
+    return { resultado: "gravou" };
+  } catch (e) {
+    return { resultado: "falhou", motivo: e && e.message ? String(e.message).slice(0, 200) : "excecao" };
+  }
+}
+__name(resolverEventoQuarentenadoInterno, "resolverEventoQuarentenadoInterno");
+async function resolverEventoQuarentenado(env2222, semana, empresa, quarantineId, acao, manual) {
+  let r;
+  try {
+    r = await _rotearParaEstadoSemanaDO(env2222, semana, "resolver_quarentena", [semana, empresa, quarantineId, acao, manual]);
+  } catch (e) {
+    console.error("[EstadoSemanaDO][resolver_quarentena] erro, fallback sem serializacao:", e && e.message);
+    r = { disponivel: false };
+  }
+  if (r.disponivel) return r.resultado;
+  return await resolverEventoQuarentenadoInterno(env2222, semana, empresa, quarantineId, acao, manual);
+}
+__name(resolverEventoQuarentenado, "resolverEventoQuarentenado");
+// Localiza o evento quarentenado por id varrendo ate 5 semanas (para reabertura/
+// resolucao administrativa). 0 ou >1 matches = fail-closed. A semana correta e a
+// da chave onde o evento mora (o merge multi-semana nao preserva a origem).
+async function localizarEventoQuarentenado(env2222, quarantineId) {
+  if (!env2222.RADAR_KV || !quarantineId) return { ok: false, motivo: "parametros_ausentes" };
+  const _semanas = [];
+  // A semana do attempt (gravada na entrada n=3) e a pista primaria de onde o
+  // evento mora; o scan das ultimas 5 semanas e a rede de seguranca.
+  const _reg = await lerTentativaVerificacao(env2222, quarantineId);
+  if (_reg && _reg.semana && typeof _reg.semana === "string" && _semanas.indexOf(_reg.semana) < 0) _semanas.push(_reg.semana);
+  const _agora = Date.now();
+  for (let _i = 0; _i < 5; _i++) {
+    const _semana = semanaISO(new Date(_agora - _i * 7 * 864e5));
+    if (_semanas.indexOf(_semana) < 0) _semanas.push(_semana);
+  }
+  const _achados = [];
+  for (const _semana of _semanas) {
+    let _estado = { results: {} };
+    try {
+      _estado = await carregarEstadoCompartilhado(env2222, _semana);
+    } catch (_e) {
+      continue;
+    }
+    for (const [_emp, _regE] of Object.entries(_estado.results || {})) {
+      if (!_regE || !Array.isArray(_regE.eventos)) continue;
+      const _loc = _localizarEventoQuarentenaIdx(_regE.eventos, quarantineId);
+      if (_loc.ok) _achados.push({ empresa: _emp, idx: _loc.idx, evento: _regE.eventos[_loc.idx], setor: _regE.setor || null, semana: _semana });
+    }
+  }
+  if (_achados.length === 1) return { ok: true, ..._achados[0] };
+  if (_achados.length === 0) return { ok: false, motivo: "nao_encontrado" };
+  return { ok: false, motivo: "ambiguo", matches: _achados.length };
+}
+__name(localizarEventoQuarentenado, "localizarEventoQuarentenado");
+// Reenfileiramento administrativo (reabertura): grava o item direto na fila do dia,
+// idempotente por id. NAO passa pelo portao A de proposito — a reabertura enfileira
+// com o id AINDA no indice e o portao B segura o item ate o publication gate remover
+// o id. Bypass exclusivo desta rota administrativa.
+async function reenfileirarItemVerificacao(env2222, item) {
+  if (!env2222.RADAR_KV || !item || !item.id) return { ok: false, erro: "item_invalido" };
+  // Fault injection T9 (reabertura): SOMENTE em ambiente de teste.
+  if (_falhaInjetadaTesteAtiva(env2222, "reabrir_enqueue")) return { ok: false, erro: "falha_injetada_enqueue" };
+  const hoje = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const chave = chaveFilaVerificacao(hoje);
+  let fila = [];
+  try {
+    fila = await env2222.RADAR_KV.get(chave, "json") || [];
+  } catch (_) {
+    fila = [];
+  }
+  const _jaExiste = fila.some(function(it) { return it.id === item.id; });
+  if (_jaExiste) return { ok: true, ja_existia: true };
+  fila.push({
+    id: item.id,
+    empresa: item.empresa || null,
+    semana: item.semana || null,
+    setor: item.setor || null,
+    evento: item.evento || null,
+    criado_em: (/* @__PURE__ */ new Date()).toISOString()
+  });
+  await env2222.RADAR_KV.put(chave, JSON.stringify(fila), { expirationTtl: 60 * 60 * 24 * 7 });
+  return { ok: true, ja_existia: false };
+}
+__name(reenfileirarItemVerificacao, "reenfileirarItemVerificacao");
 function eventosFixturesTeste(hoje) {
   return [{ empresa: "Oi", classificacao: "CRITICO", titulo: "Extens\xE3o do plano de RJ", evento: "Oi protocolou pedido de extens\xE3o do plano de RJ.", impacto_credito: "Risco elevado.", fonte_primaria: "https://valor.globo.com", fonte_tipo: "IMPRENSA", data_evento: hoje, tags: ["recuperacao-judicial"] }, { empresa: "Sabesp", classificacao: "RELEVANTE", titulo: "38\xAA Emiss\xE3o de Deb\xEAntures", evento: "Sabesp aprovou emiss\xE3o de R$ 6,3 bi.", impacto_credito: "Aumento da d\xEDvida bruta.", fonte_primaria: "https://rad.cvm.gov.br", fonte_tipo: "CVM", data_evento: hoje, tags: ["captacao"] }];
 }
@@ -11431,9 +12029,16 @@ async function handleShareCriar(body, env2222, request) {
   const ttl_label = SHARE_TTL_OPCOES[body.ttl] ? body.ttl : "24h";
   const ttl_seg = SHARE_TTL_OPCOES[ttl_label];
   if (!empresa) return resp({ ok: false, erro: "empresa obrigatorio." }, 400, request);
+  // REPROVADO-FAILCLOSED1 (2026-09-06): nao cria share com evento quarentenado nem
+  // em erro de indice (o link nasceria ja com o fato exposto).
+  const _qiShareCriar = await carregarIndiceQuarentena(env2222);
+  if (!_qiShareCriar.ok) {
+    return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+  }
   const estado = await carregarEstadoMultiSemana(env2222, 5).catch(() => ({ results: {} }));
   const reg = estado.results && estado.results[empresa] || null;
   let eventos = reg && Array.isArray(reg.eventos) ? reg.eventos.slice(0, 30) : [];
+  eventos = eventos.filter(function(_ev) { return !_eventoQuarentenado(_ev, _qiShareCriar.ids, empresa); });
   try {
     if (typeof enriquecerPayload === "function" && eventos.length) {
       const enrRes = enriquecerPayload({ empresa, setor, eventos }, env2222);
@@ -11612,12 +12217,31 @@ async function handleShareLer(pathname, env2222, request) {
   } catch {
     return new Response(renderShareHTMLNotFound("Link corrompido", "N\xE3o foi poss\xEDvel ler este link."), { status: 500, headers: { "Content-Type": "text/html;charset=UTF-8", "Cache-Control": "no-store" } });
   }
+  // REPROVADO-FAILCLOSED1 (2026-09-06): share RETROATIVO. O snapshot foi gravado no
+  // momento da criacao; a guarda precisa rodar em TODA abertura, inclusive para links
+  // criados ANTES da quarentena. Erro de indice = 503, nunca renderizar cru. O registro
+  // armazenado NAO e alterado para renderizar: filtra-se uma copia local. A empresa do
+  // registro e a autoridade para o fallback legado _chaveDedupEvento (snapshot antigo
+  // pode nao carregar empresa dentro do evento; a chave mudaria e o evento vazaria).
+  const _qiShareLer = await carregarIndiceQuarentena(env2222);
+  if (!_qiShareLer.ok) {
+    return new Response(renderShareHTMLNotFound("Indispon\xEDvel", "N\xE3o foi poss\xEDvel validar este link agora. Tente novamente em instantes."), { status: 503, headers: { "Content-Type": "text/html;charset=UTF-8", "Cache-Control": "no-store" } });
+  }
+  var _regRender = reg;
+  if (reg && reg.snapshot && Array.isArray(reg.snapshot.eventos) && reg.snapshot.eventos.length > 0) {
+    var _snapEventos = reg.snapshot.eventos.filter(function(_ev) { return !_eventoQuarentenado(_ev, _qiShareLer.ids, reg.empresa); });
+    if (_snapEventos.length !== reg.snapshot.eventos.length) {
+      _regRender = Object.assign({}, reg, { snapshot: Object.assign({}, reg.snapshot, { eventos: _snapEventos }) });
+    }
+  }
   try {
     await tel(env2222, request, { evento: "share_abrir", empresa: reg.empresa, status_code: 200 });
   } catch (e) {
   }
-  const html = renderShareHTML(reg);
-  return new Response(html, { status: 200, headers: { "Content-Type": "text/html;charset=UTF-8", "Cache-Control": "public, max-age=60", "X-Robots-Tag": "noindex, nofollow", "X-Frame-Options": "SAMEORIGIN", "Referrer-Policy": "no-referrer" } });
+  const html = renderShareHTML(_regRender);
+  // no-store: a guarda precisa executar em toda abertura; CDN/browser nao podem servir
+  // HTML anterior sem passar pelo indice.
+  return new Response(html, { status: 200, headers: { "Content-Type": "text/html;charset=UTF-8", "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "X-Frame-Options": "SAMEORIGIN", "Referrer-Policy": "no-referrer" } });
 }
 __name(handleShareLer, "handleShareLer");
 __name2(handleShareLer, "handleShareLer");
@@ -11659,6 +12283,16 @@ async function executarNewsletter(env2222, opts) {
   const ontem = new Date(a.getTime() - 864e5).toISOString().split("T")[0];
   const log = { data: hoje, etapas: [], versao: "v4.8.3_kv_only" };
   var estado = await carregarEstadoMultiSemana(env2222, 2);
+  // REPROVADO-FAILCLOSED1 (2026-09-06): newsletter e digest abortam sem efeito externo
+  // quando o indice esta ilegivel (enviado:false com motivo de infra proprio, NUNCA
+  // registrado como "sem fato novo").
+  const _qiNews = await carregarIndiceQuarentena(env2222);
+  if (!_qiNews.ok) {
+    log.etapas.push({ etapa: "indice_quarentena", ok: false, motivo: "indisponivel", detalhe: _qiNews.erro });
+    console.error("[newsletter][indice-quarentena] abortada sem envio (fail-closed):", _qiNews.erro);
+    return { ok: true, enviado: false, motivo: "quarentena_indice_indisponivel", indice_erro: _qiNews.erro, log };
+  }
+  filtrarQuarentenaDoEstado(estado, _qiNews.ids);
   log.etapas.push({ etapa: "carregar_kv", semanas: estado.weeks_loaded, emissores: Object.keys(estado.results || {}).length });
   const evKV = [];
   for (const [emp, dados] of Object.entries(estado.results || {})) {
@@ -11950,6 +12584,16 @@ function ehFechamentoSemanalB3(hoje) {
 }
 async function coletarDestaquesSemana(env2222, inicio, fim) {
   var estado = await carregarEstadoMultiSemana(env2222, 3);
+  // REPROVADO-FAILCLOSED1 (2026-09-06): destaques do relatorio/digest nao incluem
+  // evento oculto. Indice ilegivel aborta (throw) — chamador do cron captura sem
+  // efeito externo e nao registra "sem fato novo".
+  var _qiDestaques = await carregarIndiceQuarentena(env2222);
+  if (!_qiDestaques.ok) {
+    var _errDestaques = new Error("QUARENTENA_INDICE_ERRO: " + _qiDestaques.erro);
+    _errDestaques.codigo = "QUARENTENA_INDICE_ERRO";
+    throw _errDestaques;
+  }
+  filtrarQuarentenaDoEstado(estado, _qiDestaques.ids);
   var destaques = []; var emissoresComEvento = {};
   for (var emp of Object.keys(estado.results || {})) {
     var dados = estado.results[emp];
@@ -16383,6 +17027,13 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
   const empresa = url.searchParams.get("empresa");
   const anomalias = _anomalias || await carregarAnomalias(env2222);
   const estado = _estado || await carregarEstadoMultiSemana(env2222, 5);
+  // REPROVADO-FAILCLOSED1 (2026-09-06): consumidor publico filtra quarentena antes
+  // de calcular EWS (score nao pode ser alimentado por evento oculto).
+  const _qiEws = await carregarIndiceQuarentena(env2222);
+  if (!_qiEws.ok) {
+    return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+  }
+  filtrarQuarentenaDoEstado(estado, _qiEws.ids);
   if (empresa) {
     const resultado = estado.results[empresa];
     const eventos = resultado?.eventos || [];
@@ -18175,6 +18826,16 @@ async function montarBriefingInterno(env2222, _estado, opcoes) {
   var hoje = agora.toISOString().split("T")[0];
   var opcoesBriefing = opcoes || {};
   var estado = _estado || await carregarEstadoMultiSemana(env2222, 5);
+  // REPROVADO-FAILCLOSED1 (2026-09-06): briefing publico nao agrega evento oculto.
+  // Erro de indice aborta via throw; o chamador interativo devolve 503 e o cron
+  // captura sem efeito externo.
+  var _qiBriefing = await carregarIndiceQuarentena(env2222);
+  if (!_qiBriefing.ok) {
+    var _errBriefing = new Error("QUARENTENA_INDICE_ERRO: " + _qiBriefing.erro);
+    _errBriefing.codigo = "QUARENTENA_INDICE_ERRO";
+    throw _errBriefing;
+  }
+  filtrarQuarentenaDoEstado(estado, _qiBriefing.ids);
   if (!estado.results || Object.keys(estado.results).length === 0) {
     return { data: hoje, semana, eventos_total: 0, escopo: opcoesBriefing.escopo || "historico", mensagem: opcoesBriefing.escopo === "dia" ? "Sem fatos novos hoje." : "Sem eventos nas ultimas 5 semanas." };
   }
@@ -18315,7 +18976,16 @@ async function handleBriefingExecutivo(env2222, request) {
   if (!estado.results || Object.keys(estado.results).length === 0) {
     return resp({ ok: true, briefing: { data: hoje, semana, escopo: escopoHistorico ? "historico" : "dia", eventos_total: 0, mensagem: escopoHistorico ? "Sem eventos nas \xFAltimas 5 semanas." : "Sem fatos novos hoje." } }, 200, request);
   }
-  var briefing = await montarBriefingInterno(env2222, estado, escopoHistorico ? { escopo: "historico" } : { escopo: "dia", dataInicio: hoje, dataFim: hoje });
+  var briefing = await montarBriefingInterno(env2222, estado, escopoHistorico ? { escopo: "historico" } : { escopo: "dia", dataInicio: hoje, dataFim: hoje }).catch(function(_eB) {
+    // REPROVADO-FAILCLOSED1 (2026-09-06): indice ilegivel = 503, nunca briefing cru.
+    if (_eB && _eB.codigo === "QUARENTENA_INDICE_ERRO") {
+      return { _indice_erro: String(_eB.message || _eB) };
+    }
+    throw _eB;
+  });
+  if (briefing && briefing._indice_erro !== undefined) {
+    return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true, detalhe: briefing._indice_erro }, 503, request);
+  }
   return resp({ ok: true, briefing }, 200, request);
 }
 __name(handleBriefingExecutivo, "handleBriefingExecutivo");
@@ -18337,8 +19007,14 @@ async function handleHistoricoEmissor(url, env2222, request) {
   var hoje = agora.toISOString().split("T")[0];
   var eventosAtuais = [];
   var setorEmissor = "Outros";
+  // REPROVADO-FAILCLOSED1 (2026-09-06): consumidor publico; indice ilegivel = 503.
+  var _qiHistorico = await carregarIndiceQuarentena(env2222);
+  if (!_qiHistorico.ok) {
+    return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+  }
   try {
     var estado = await carregarEstadoMultiSemana(env2222, 5);
+    filtrarQuarentenaDoEstado(estado, _qiHistorico.ids);
     if (estado.results && estado.results[empresa]) {
       var res = estado.results[empresa];
       setorEmissor = res.setor || setorEmissor;
@@ -18451,6 +19127,12 @@ async function handleCompararEmissores(url, env2222, request) {
   if (empresas.length < 2) return resp({ ok: false, erro: "M\xEDnimo 2 empresas para compara\xE7\xE3o." }, 400, request);
   var agora = obterAgoraBRT();
   var estado = await carregarEstadoMultiSemana(env2222, 5);
+  // REPROVADO-FAILCLOSED1 (2026-09-06): consumidor publico; indice ilegivel = 503.
+  var _qiComparar = await carregarIndiceQuarentena(env2222);
+  if (!_qiComparar.ok) {
+    return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+  }
+  filtrarQuarentenaDoEstado(estado, _qiComparar.ids);
   var anomalias = {};
   try {
     anomalias = await carregarAnomalias(env2222);
@@ -18807,6 +19489,13 @@ async function __coreFetch(request, env2222, ctx) {
       }
       if (op === "state") {
         const e = await carregarEstadoMultiSemana(env2222, 5);
+        // REPROVADO-FAILCLOSED1 (2026-09-06): consumidor publico filtra quarentena antes
+        // de sanitizar/agregar. Indice ilegivel = 503, nunca estado cru.
+        const _qiState = await carregarIndiceQuarentena(env2222);
+        if (!_qiState.ok) {
+          return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+        }
+        filtrarQuarentenaDoEstado(e, _qiState.ids);
         const _calOverridesState = await carregarCalendarioOverrides(env2222);
         const _emps = Object.entries(e.results || {}).filter(([_emp]) => EMISSORES_LISTA.includes(_emp));
         const _flagsArr = await Promise.all(_emps.map(([emp]) => lerFlagsEmissor(env2222, emp)));
@@ -19030,9 +19719,11 @@ async function __coreFetch(request, env2222, ctx) {
           // idade e <48h de criado_em ficava invisivel ao health e nao era morto pelo sweep
           // (janela cega confirmada em 09/08: 10 itens passaram 46h na fila com painel verde).
           // 7 dias alinha o lookback com a janela do sweep — tudo que o sweep toca, o health ve.
-          var _filaVerifPend = await listarFilaVerificacaoPendente(env2222, 7);
+          var _lfvPendRes = await listarFilaVerificacaoPendente(env2222, 7);
+          var _filaVerifPend = _lfvPendRes.itens || [];
           var _filaVerifLimite = Date.now() - 20 * 60 * 60 * 1e3;
           _filaVerifAtrasada = _filaVerifPend.some(function(it) { return new Date(it.criado_em || 0).getTime() < _filaVerifLimite; });
+          if (_lfvPendRes.indice_erro) console.error("[verif][indice-quarentena][health] fila verificada com indice em erro (fail-closed, itens nao entregues):", _lfvPendRes.indice_erro);
         } catch (e) { console.error("[health] fila_verif_atrasada:", e?.message ?? String(e)); }
       }
       // VERIFQ-ORFAO1 (2026-07-24): sweep de orfaos >48h na fila de verificacao.
@@ -19477,6 +20168,169 @@ async function __coreFetch(request, env2222, ctx) {
       const forcado = { ...evento, classificacao: "CRITICO" };
       const { aprovados, rejeitados, estatisticas } = await verificarEventosBatch([forcado], env2222);
       return resp({ ok: true, aprovado: aprovados.length > 0, rejeitado: rejeitados.length > 0, veredicto: aprovados[0]?._verif || rejeitados[0]?.veredicto, estatisticas }, 200, request);
+    }
+    // REPROVADO-FAILCLOSED1 (2026-09-05): exposicao em admin do retry bounded. A 3a tentativa
+    // nao-conclusiva marca o id como esgotado/aguarda_manual (saiu do ciclo automatico) e o
+    // evento continua pendente no estado. admin_verif_tentativas lista os registros
+    // (quarentena=true filtra so os que aguardam decisao); admin_verif_tentativa_limpar apaga
+    // o registro do id, reabrindo o item para a proxima varredura automatica ou para a
+    // decisao manual do operador.
+    if (body.action === "admin_verif_tentativas") {
+      const { admin_senha } = body;
+      if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      const _atPrefixo = "radar:verif:attempt:";
+      const _atQuarentena = body.quarentena === true;
+      // REPROVADO-FAILCLOSED1 (2026-09-06): expoe o estado de quarentena por id.
+      // Listagem e superficie de diagnostico autenticada: indice ilegivel NAO derruba
+      // a listagem, vem como campo indice_erro (a guarda de seguranca e dos gates).
+      const _atIdxDiag = await carregarIndiceQuarentena(env2222);
+      const _atIdxSet = _atIdxDiag.ok ? _atIdxDiag.ids : null;
+      const _atRegistros = [];
+      let _atCursor;
+      try {
+        do {
+          const _atPagina = await env2222.RADAR_KV.list({ prefix: _atPrefixo, cursor: _atCursor || undefined });
+          for (const _atKey of _atPagina.keys) {
+            try {
+              const _atReg = await env2222.RADAR_KV.get(_atKey.name, "json");
+              if (!_atReg) continue;
+              if (_atQuarentena && !(_atReg.esgotado || _atReg.aguarda_manual)) continue;
+              const _atId = _atReg.id || _atKey.name.slice(_atPrefixo.length);
+              const _atPartes = String(_atId).split("|");
+              // empresa vem do registro (payload, nome canonico); cai para o segmento do id
+              // (minuscular da chave dedup) em registros antigos sem o campo.
+              _atRegistros.push(Object.assign({ kv_key: _atKey.name, id: _atId, empresa: _atReg.empresa || _atPartes[1] || null, quarentenado: _atIdxSet ? _atIdxSet.has(_atId) : null }, _atReg));
+            } catch (_) { }
+          }
+          _atCursor = _atPagina.cursor || null;
+        } while (_atCursor);
+        _atRegistros.sort(function(_a, _b) { return String(_b.atualizado_em || "").localeCompare(String(_a.atualizado_em || "")); });
+      } catch (_atErr) {
+        return resp({ ok: false, erro: "listagem falhou: " + (_atErr && _atErr.message || String(_atErr)) }, 500, request);
+      }
+      return resp({ ok: true, total: _atRegistros.length, registros: _atRegistros, indice_erro: _atIdxDiag.ok ? null : _atIdxDiag.erro }, 200, request);
+    }
+    if (body.action === "admin_verif_tentativa_limpar") {
+      const { admin_senha, id } = body;
+      if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      if (!id || typeof id !== "string" || id.length > 512) return resp({ ok: false, erro: "id obrigatorio." }, 400, request);
+      // REPROVADO-FAILCLOSED1 (2026-09-06): leitura valida do indice ANTES de decidir.
+      // (A) id NAO quarentenado: preserva a semantica administrativa anterior (limpar
+      // attempt/backoff), sem tocar no evento. (B) id quarentenado: reabertura completa
+      // com publication gate — remover do indice e SEMPRE O ULTIMO PASSO.
+      const _atIdx = await carregarIndiceQuarentena(env2222);
+      if (!_atIdx.ok) {
+        return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+      }
+      const _atChave = "radar:verif:attempt:" + id;
+      let _atAntes = null;
+      try { _atAntes = await env2222.RADAR_KV.get(_atChave, "json"); } catch (_) { }
+      if (!_atIdx.ids.has(id)) {
+        // (A) sem quarentena: comportamento anterior preservado.
+        try { await env2222.RADAR_KV.delete(_atChave); } catch (_) { }
+        return resp({ ok: true, id: id, removido: _atAntes ? true : false, quarentena: false, registro: _atAntes || null }, 200, request);
+      }
+      // (B) reabertura completa. Falha em 1-5: indice permanece. Remocao e o passo final.
+      const _atLocalizado = await localizarEventoQuarentenado(env2222, id);
+      if (!_atLocalizado.ok) {
+        return resp({ ok: false, erro: "Evento quarentenado nao localizado inequivocamente (fail-closed).", codigo: "QUARENTENA_EVENTO_NAO_LOCALIZADO", motivo: _atLocalizado.motivo }, 500, request);
+      }
+      const _atSemana = _atLocalizado.semana;
+      const _atEmpresa = _atLocalizado.empresa;
+      // 2. re-enfileirar com id AINDA no indice (portao B segura o item ate o passo final).
+      const _atReenq = await reenfileirarItemVerificacao(env2222, {
+        id: id,
+        empresa: _atEmpresa,
+        semana: _atSemana,
+        setor: _atLocalizado.setor || null,
+        evento: _atLocalizado.evento || null
+      });
+      if (!_atReenq.ok) {
+        return resp({ ok: false, erro: "Falha ao reenfileirar (indice permanece).", codigo: "QUARENTENA_REENFILEIRA_FALHOU", detalhe: _atReenq.erro }, 500, request);
+      }
+      // 3. confirmar item novo OU ja existente idempotentemente na fila (ja feito acima).
+      // 4. apagar/resetar attempt, ainda oculto. Falhou: indice permanece (T9).
+      try {
+        if (_falhaInjetadaTesteAtiva(env2222, "attempt_delete")) throw new Error("falha_injetada_attempt_delete");
+        await env2222.RADAR_KV.delete(_atChave);
+      } catch (_eAttReabrir) {
+        console.error("[verif-quarentena][reabrir] falha ao limpar attempt (indice permanece):", _eAttReabrir && _eAttReabrir.message || String(_eAttReabrir));
+        return resp({ ok: false, erro: "Falha ao limpar attempt (indice permanece).", codigo: "QUARENTENA_ATTEMPT_FALHOU", detalhe: _eAttReabrir && _eAttReabrir.message ? String(_eAttReabrir.message) : null }, 500, request);
+      }
+      // 5. persistir evento reaberto (aguarda_manual:false, pendente:true, ancora mantida).
+      let _atReabriu;
+      if (_falhaInjetadaTesteAtiva(env2222, "reabrir_persist")) {
+        _atReabriu = { resultado: "falhou", motivo: "falha_injetada_reabrir_persist" };
+      } else {
+        _atReabriu = await reabrirEventoQuarentenado(env2222, _atSemana, _atEmpresa, id);
+      }
+      if (_atReabriu.resultado === "falhou" || _atReabriu.resultado === "nao_encontrado") {
+        return resp({ ok: false, erro: "Falha ao reabrir evento no estado (indice permanece).", codigo: "QUARENTENA_REABERTURA_FALHOU", motivo: _atReabriu.motivo || _atReabriu.resultado }, 500, request);
+      }
+      // 6. SOMENTE ENTÃO remover o id do indice (publication gate).
+      try {
+        await _mutarIndiceQuarentena(env2222, "quarentenaRemover", [id]);
+      } catch (_eGate) {
+        console.error("[verif-quarentena][reabrir][gate] remocao do indice falhou; evento continua oculto (fail-closed):", _eGate && _eGate.message || String(_eGate));
+        return resp({ ok: false, erro: "Falha no publication gate (indice permanece).", codigo: "QUARENTENA_GATE_FALHOU", detalhe: _eGate && _eGate.message ? String(_eGate.message) : null }, 500, request);
+      }
+      return resp({ ok: true, id: id, quarentena: true, reaberto: true, reenfileirado: !_atReenq.ja_existia, registro: _atAntes || null }, 200, request);
+    }
+    if (body.action === "admin_verif_resolver") {
+      // REPROVADO-FAILCLOSED1 (2026-09-06): resolucao manual da quarentena.
+      // decisao estrita: confirmar | descartar. Indice e removido SOMENTE depois do
+      // estado certificado e do attempt limpo. Qualquer falha antes: indice permanece.
+      const { admin_senha, id, decisao, motivo } = body;
+      if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      if (!id || typeof id !== "string" || id.length > 512) return resp({ ok: false, erro: "id obrigatorio." }, 400, request);
+      if (decisao !== "confirmar" && decisao !== "descartar") return resp({ ok: false, erro: "decisao invalida (use confirmar ou descartar)." }, 400, request);
+      const _rvIdx = await carregarIndiceQuarentena(env2222);
+      if (!_rvIdx.ok) {
+        return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
+      }
+      if (!_rvIdx.ids.has(id)) {
+        return resp({ ok: false, erro: "id nao esta em quarentena.", codigo: "QUARENTENA_ID_AUSENTE" }, 400, request);
+      }
+      const _rvLocalizado = await localizarEventoQuarentenado(env2222, id);
+      if (!_rvLocalizado.ok) {
+        return resp({ ok: false, erro: "Evento quarentenado nao localizado inequivocamente (fail-closed).", codigo: "QUARENTENA_EVENTO_NAO_LOCALIZADO", motivo: _rvLocalizado.motivo }, 500, request);
+      }
+      // 2. limpar attempt, ainda oculto. Falhou: indice permanece (T9).
+      try {
+        if (_falhaInjetadaTesteAtiva(env2222, "attempt_delete")) throw new Error("falha_injetada_attempt_delete");
+        await env2222.RADAR_KV.delete("radar:verif:attempt:" + id);
+      } catch (_eAttRv) {
+        console.error("[verif-quarentena][resolver] falha ao limpar attempt (indice permanece):", _eAttRv && _eAttRv.message || String(_eAttRv));
+        return resp({ ok: false, erro: "Falha ao limpar attempt (indice permanece).", codigo: "QUARENTENA_ATTEMPT_FALHOU", detalhe: _eAttRv && _eAttRv.message ? String(_eAttRv.message) : null }, 500, request);
+      }
+      // 3. persistir decisao no evento.
+      const _rvManual = {
+        decisao: decisao,
+        por: "admin",
+        em: (/* @__PURE__ */ new Date()).toISOString(),
+        motivo: typeof motivo === "string" ? motivo.slice(0, 500) : null
+      };
+      let _rvRes;
+      if (_falhaInjetadaTesteAtiva(env2222, "resolver_persist")) {
+        _rvRes = { resultado: "falhou", motivo: "falha_injetada_resolver_persist" };
+      } else {
+        _rvRes = await resolverEventoQuarentenado(env2222, _rvLocalizado.semana, _rvLocalizado.empresa, id, decisao, _rvManual);
+      }
+      if (_rvRes.resultado === "falhou" || _rvRes.resultado === "nao_encontrado") {
+        return resp({ ok: false, erro: "Falha ao aplicar decisao no estado (indice permanece).", codigo: "QUARENTENA_RESOLUCAO_FALHOU", motivo: _rvRes.motivo || _rvRes.resultado }, 500, request);
+      }
+      // 4. somente depois remover o id do indice (publication gate).
+      try {
+        await _mutarIndiceQuarentena(env2222, "quarentenaRemover", [id]);
+      } catch (_eGateRv) {
+        console.error("[verif-quarentena][resolver][gate] remocao do indice falhou; evento continua oculto (fail-closed):", _eGateRv && _eGateRv.message || String(_eGateRv));
+        return resp({ ok: false, erro: "Falha no publication gate (indice permanece).", codigo: "QUARENTENA_GATE_FALHOU", detalhe: _eGateRv && _eGateRv.message ? String(_eGateRv.message) : null }, 500, request);
+      }
+      await tel(env2222, request, { evento: "verificacao_quarentena_resolvida", empresa: String(_rvLocalizado.empresa).slice(0, 40), extra: { id: id, decisao: decisao } });
+      return resp({ ok: true, id: id, decisao: decisao, resolvido: true, indice_removido: true }, 200, request);
     }
     if (body.action === "admin_remover_data") {
       const { admin_senha, data_alvo } = body;
@@ -19956,15 +20810,23 @@ async function __coreFetch(request, env2222, ctx) {
             if (deveVerificar(ev)) { _raParaFila.push(ev); } else { ev._verif_skip = "fora_amostra"; _raAutoAprovados.push(ev); }
           });
           var _raFilaAdicionados = 0;
+          var _raIndiceErro = null;
           if (_raParaFila.length > 0) {
-            _raFilaAdicionados = await enfileirarVerificacaoAssincrona(env2222, _raEmp, _raSemana, _raSaneado.setor, _raParaFila);
+            var _raEnq = await enfileirarVerificacaoAssincrona(env2222, _raEmp, _raSemana, _raSaneado.setor, _raParaFila);
+            _raEnq = _raEnq && typeof _raEnq === "object" && "adicionados" in _raEnq ? _raEnq : { adicionados: 0, indice_erro: null };
+            _raFilaAdicionados = _raEnq.adicionados || 0;
+            _raIndiceErro = _raEnq.indice_erro || null;
+            // REPROVADO-FAILCLOSED1 (2026-09-06): persistencia de ingestao continua,
+            // mas fila_indisponivel aparece explicitamente e a publicacao segue fechada
+            // pelos consumidores (portoes + filtro). Portao A nao enfileira em erro.
+            if (_raIndiceErro) console.error("[verif][indice-quarentena][portao-A][receber_analise] enfileiramento bloqueado:", _raIndiceErro);
           }
           // fonte_inacessivel aqui e o AGREGADO de tudo que validarDatasFontes rejeita
           // (fetch bloqueado, data da fonte fora da janela, divergencia >60d), nao
           // decomposto por motivo interno - removidos_pre_verificador ja media isso,
           // este campo so o espelha dentro de `descartes` para leitura num lugar so.
           _raDescartes.fonte_inacessivel = _raSaneado.eventos.length - _raDatasOk.length;
-          _raVerificacao = { total: _raDatasOk.length, verificados: 0, cache_hits: 0, aprovados: _raAutoAprovados.length, rejeitados: 0, quarentenados: 0, pendente_verificacao_async: _raFilaAdicionados, removidos_pre_verificador: _raSaneado.eventos.length - _raDatasOk.length };
+          _raVerificacao = { total: _raDatasOk.length, verificados: 0, cache_hits: 0, aprovados: _raAutoAprovados.length, rejeitados: 0, quarentenados: 0, pendente_verificacao_async: _raFilaAdicionados, quarentena_indice_indisponivel: !!_raIndiceErro, removidos_pre_verificador: _raSaneado.eventos.length - _raDatasOk.length };
           _raParaFila.forEach(function(ev) { ev._pendente_verificacao = true; });
           _raSaneado.eventos = _raAutoAprovados.concat(_raParaFila);
           _raSaneado.sem_eventos = _raSaneado.eventos.length === 0;
@@ -20036,7 +20898,12 @@ async function __coreFetch(request, env2222, ctx) {
       // CHAVEESCOPO1 (2026-08-18): aceita ROUTINE_API_KEY (local, todas as acoes) OU
       // REMOTE_VERIFICACAO_KEY (escopo minimo: so listar/reservar/confirmar verificacao).
       if (!body.routine_key || (body.routine_key !== env2222.ROUTINE_API_KEY && body.routine_key !== env2222.REMOTE_VERIFICACAO_KEY)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
-      var _lfvItens = await listarFilaVerificacaoPendente(env2222, body.dias || 3);
+      var _lfvRes = await listarFilaVerificacaoPendente(env2222, body.dias || 3);
+      if (_lfvRes.indice_erro) {
+        // Portao B fail-closed: nao entrega item ao motor quando o indice esta ilegivel.
+        return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true, detalhe: _lfvRes.indice_erro }, 503, request);
+      }
+      var _lfvItens = _lfvRes.itens;
       if (Array.isArray(body.ids) && body.ids.length > 0) {
         var _lfvIdsSet = new Set(body.ids);
         _lfvItens = _lfvItens.filter(function(it) { return _lfvIdsSet.has(it.id); });
@@ -20071,12 +20938,49 @@ async function __coreFetch(request, env2222, ctx) {
       if (!body.routine_key || (body.routine_key !== env2222.ROUTINE_API_KEY && body.routine_key !== env2222.REMOTE_VERIFICACAO_KEY)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _cvItens = Array.isArray(body.itens) ? body.itens : [];
       if (_cvItens.length === 0) return resp({ ok: false, erro: "itens obrigatorio (array)." }, 400, request);
-      var _cvResultado = { processados: 0, aprovados: 0, rejeitados: 0, retratados: 0, erros: 0, mesclas_recusadas: 0 };
+      // REPROVADO-FAILCLOSED1 (2026-09-06, portao C): indice fail-closed ANTES de
+      // aplicar qualquer veredicto. Erro = nao aplica NENHUM veredicto (erro
+      // recuperavel na resposta). Quarentena decide SOMENTE pelo snapshot do indice.
+      var _cvIdx = await carregarIndiceQuarentena(env2222);
+      if (!_cvIdx.ok) {
+        console.error("[verif][indice-quarentena][portao-C] veredictos bloqueados (fail-closed):", _cvIdx.erro);
+        return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true, detalhe: _cvIdx.erro }, 503, request);
+      }
+      var _cvResultado = { processados: 0, aprovados: 0, rejeitados: 0, retratados: 0, esgotados: 0, erros: 0, mesclas_recusadas: 0, mesclas_quarentena_erro: 0, quarentenados: 0, bloqueados_quarentena: 0 };
       for (const it of _cvItens) {
         try {
           if (!it || !it.id || !it.empresa || !it.semana || !it.data_fila || !it.veredicto) { _cvResultado.erros++; continue; }
+          // REPROVADO-FAILCLOSED1 (2026-09-05, portao C): id esgotado (3 nao-conclusivas,
+          // aguarda revisao manual) nao recebe veredicto nenhum — nem REPROVADO que
+          // incrementaria de novo, nem APROVADO que o motor nao tem como ter produzido para
+          // um id que o listar esconde. Devolve o item e conta esgotados. O operador decide
+          // por admin_verif_tentativas (listar) + admin_verif_tentativa_limpar (reabrir).
+          var _cvTentativaTopo = await lerTentativaVerificacao(env2222, it.id);
+          if (_cvTentativaTopo && (_cvTentativaTopo.esgotado || _cvTentativaTopo.aguarda_manual)) {
+            try { await removerDaFilaVerificacao(env2222, it.data_fila, it.id); } catch (_) { }
+            _cvResultado.esgotados++;
+            _cvResultado.processados++;
+            continue;
+          }
+          // REPROVADO-FAILCLOSED1 (2026-09-06, portao C): id em quarentena (indice) nao
+          // recebe REPROVADO — cobre o caso de falha parcial B/C em que o attempt terminal
+          // nao foi gravado mas o indice ja segura a publicacao, evitando reentrada inutil
+          // em registrarTentativaNaoConclusiva para um id ja parado.
+          // APROVADO e excecao deliberada: e o UNICO mecanismo que sabe liberar a propria
+          // ancora (_qIdMerge em mesclarEventoVerificadoInterno), com gate proprio,
+          // idempotente e fail-closed (T4). Bloquear aqui tornaria uma falha de remocao do
+          // indice (quarentena_erro, ver mesclarEventoVerificadoInterno) permanente: nenhuma
+          // nova confirmacao para o mesmo id conseguiria completar a remocao, mesmo com o
+          // evento ja mesclado/aprovado no estado (MERGEDUP1, caso "falha AO remover indice").
+          if (_cvIdx.ids.has(it.id) && it.veredicto.veredicto !== "APROVADO") {
+            try { await removerDaFilaVerificacao(env2222, it.data_fila, it.id); } catch (_) { }
+            _cvResultado.bloqueados_quarentena++;
+            _cvResultado.processados++;
+            continue;
+          }
           var _cvEvento = Object.assign({}, it.evento || {});
           var _cvAprovado = it.veredicto.veredicto === "APROVADO" || aplicarCorrecaoVerificador(_cvEvento, it.veredicto);
+          var _cvNaoConclusivo = false;
           if (_cvAprovado) {
             _cvEvento._verif = { veredicto: it.veredicto.veredicto, confianca: it.veredicto.confianca, motivo: it.veredicto.motivo, fontes_validas: it.veredicto.fontes_validas || [], _async: true };
             // MERGEDUP1 (2026-09-05): `it.id` e a chave dedup de quando o item entrou na fila,
@@ -20088,17 +20992,52 @@ async function __coreFetch(request, env2222, ctx) {
               console.error("[verif-async][MERGEDUP1] merge recusado (fail-closed), item nao aplicado ao estado", { empresa: it.empresa, id: it.id, semana: it.semana });
             } else {
               _cvResultado.aprovados++;
+              if (_cvMesclou && _cvMesclou.quarentena_erro) {
+                _cvResultado.mesclas_quarentena_erro++;
+                console.error("[verif-async][quarentena] merge aplicado mas remocao do indice falhou (evento continua oculto, fail-closed)", { empresa: it.empresa, id: it.id, erro: _cvMesclou.quarentena_erro });
+              }
             }
           } else {
             var _cvRetratado = await retratarEventoRejeitado(env2222, it.semana, it.empresa, _cvEvento, it.setor);
             await tel(env2222, request, { evento: "verificacao_async_rejeitado", empresa: String(it.empresa).slice(0, 40), extra: { motivo: (it.veredicto.motivo || "").slice(0, 128), retratado: _cvRetratado } });
             _cvResultado.rejeitados++;
             if (_cvRetratado) _cvResultado.retratados++;
+            // REPROVADO-FAILCLOSED1 (2026-09-05): REPROVADO de evento COM fonte e
+            // nao-conclusivo, nao terminal. So e cacheado se retratou de verdade (alucinacao
+            // sem fonte apagada); caso contrario o item nao pode envenenar o cache de 30d
+            // que o motor usa para pular re-verificacao via cache_hits, senao o pendente
+            // preservado nunca e reavaliado quando a fonte voltar a ser acessivel.
+            _cvNaoConclusivo = !_cvRetratado && _eventoComFonteCitavel(it.evento);
+            if (_cvNaoConclusivo) {
+              // REPROVADO-FAILCLOSED1 (2026-09-05): contabiliza a tentativa nao-conclusiva e
+              // abre o backoff (n=1 -> +24h; n=2 -> +48h; n=3 -> esgotado/aguarda_manual).
+              // Replay do mesmo item dentro da janela (motor ja tinha reservado antes de o
+              // registro existir) nao incrementa de novo: idempotencia por id. Esgotado nao
+              // chega aqui, o portao C do topo intercepta.
+              var _cvRegJanela = await lerTentativaVerificacao(env2222, it.id);
+              var _cvJanelaNaoVencida = _cvRegJanela && _cvRegJanela.proxima_em && new Date(_cvRegJanela.proxima_em).getTime() > Date.now();
+              if (!_cvJanelaNaoVencida) {
+                try {
+                  var _cvTentativa = await registrarTentativaNaoConclusiva(env2222, it.id, it.empresa, it.semana);
+                  if (_cvTentativa && _cvTentativa.quarentena === true) _cvResultado.quarentenados++;
+                  if (_cvTentativa && (_cvTentativa.indice_erro || _cvTentativa.erro)) {
+                    console.error("[verif-quarentena][n3] entrada parcial, indice permanece como autoridade", { id: it.id, indice_erro: _cvTentativa.indice_erro || null, erro: _cvTentativa.erro || null, evento_erro: _cvTentativa.evento_erro || null, tentativa_erro: _cvTentativa.tentativa_erro || null });
+                  }
+                } catch (_cvRegErr) {
+                  console.error("[verif-async] falha ao registrar tentativa nao-conclusiva", { empresa: it && it.empresa, id: it && it.id, erro: String(_cvRegErr && _cvRegErr.message || _cvRegErr) });
+                  _cvResultado.erros++;
+                }
+              }
+            }
           }
           await removerDaFilaVerificacao(env2222, it.data_fila, it.id);
           // VERIFCACHE1 (2026-07-24): grava resultado no cache para reuso futuro.
           // Evita re-verificacao paga do mesmo evento em execucoes subsequentes.
-          try { await setCachedVerification(it.id, it.veredicto, env2222); } catch (_) { console.error("[verif-confirm] cache write falhou para " + it.id + ":", _?.message ?? String(_)); }
+          // REPROVADO-FAILCLOSED1: REPROVADO nao-conclusivo (evento com fonte que nao foi
+          // retratado) fica fora do cache de proposito, ver _cvNaoConclusivo acima.
+          if (!_cvNaoConclusivo) {
+            try { await setCachedVerification(it.id, it.veredicto, env2222); } catch (_) { console.error("[verif-confirm] cache write falhou para " + it.id + ":", _?.message ?? String(_)); }
+          }
           _cvResultado.processados++;
         } catch (_cvErr) {
           console.error("[verif-async] erro ao processar item da fila", { empresa: it && it.empresa, id: it && it.id, erro: String(_cvErr && _cvErr.message || _cvErr) });
@@ -20110,7 +21049,7 @@ async function __coreFetch(request, env2222, ctx) {
       // HEARTBEATVERIF1 (2026-08-18): heartbeat com placar completo do lote, mesmo mecanismo
       // dos outros agentes vigiados pelo watchdog (baterHeartbeat/lerTodosHeartbeats).
       try {
-        var _cvPendentes = (await listarFilaVerificacaoPendente(env2222, 3)).length;
+        var _cvPendentes = (await listarFilaVerificacaoPendente(env2222, 3)).itens.length;
         var _cvStatus = _cvResultado.erros === 0 ? "ok" : _cvResultado.processados > 0 ? "parcial" : "falha";
         await baterHeartbeat(env2222, "verificacao_async", _cvStatus, {
           fase: "confirmacao",
@@ -20119,6 +21058,7 @@ async function __coreFetch(request, env2222, ctx) {
           aprovados: _cvResultado.aprovados,
           rejeitados: _cvResultado.rejeitados,
           retratados: _cvResultado.retratados,
+          esgotados: _cvResultado.esgotados,
           erros: _cvResultado.erros,
           mesclas_recusadas: _cvResultado.mesclas_recusadas,
           pendentes: _cvPendentes,
@@ -20778,6 +21718,11 @@ var EstadoSemanaDO = class {
     if (op === "mesclar") return await mesclarEventoVerificadoInterno(this.env, ...args);
     if (op === "retratar") return await retratarEventoRejeitadoInterno(this.env, ...args);
     if (op === "sweep") return await rodarSweepRevalidacaoInterno(this.env, ...args);
+    // REPROVADO-FAILCLOSED1 (2026-09-06): marcacao de quarentena serializada pelo
+    // mesmo FIFO das demais escritas do blob semanal.
+    if (op === "marcar_quarentena") return await marcarEventoQuarentenadoInterno(this.env, ...args);
+    if (op === "reabrir_quarentena") return await reabrirEventoQuarentenadoInterno(this.env, ...args);
+    if (op === "resolver_quarentena") return await resolverEventoQuarentenadoInterno(this.env, ...args);
     // VERIFQ-ORFAO1 (2026-07-24): operacoes da fila de verificacao serializadas pelo mesmo DO
     if (op === "enfileirar") return await enfileirarVerificacaoAssincronaInterno(this.env, ...args);
     if (op === "remover") { await removerDaFilaVerificacaoInterno(this.env, ...args); return null; }
@@ -20909,6 +21854,105 @@ var ConfigDO = class {
     this.env = env2222;
     this._fila = Promise.resolve();
   }
+  // --- Quarentena de verificacao: metodos do single writer (REPROVADO-FAILCLOSED1) ---
+  async _quarentenaLerStorage() {
+    // Copia autoritativa em state.storage. Se ainda nao existe (primeira op apos
+    // deploy), tenta KV; KV ausente/invalido = erro fail-closed (bootstrap antes).
+    const _s = await this.state.storage.get("quarentena:idx");
+    if (_s !== null && _s !== undefined) {
+      const _vs = _validarIndiceQuarentena(_s);
+      if (_vs.ok) return _vs.indice;
+    }
+    let _raw = null;
+    try {
+      _raw = await this.env.RADAR_KV.get(QUARENTENA_IDX_KEY, { type: "json", cacheTtl: _cacheTtlIndiceQuarentena(this.env) });
+    } catch (e) {
+      throw new Error("quarentena_indice_kv_get_exception: " + (e && e.message || e));
+    }
+    const _v = _validarIndiceQuarentena(_raw);
+    if (!_v.ok) throw new Error("quarentena_indice_invalido: " + _v.erro + (_v.id ? " id=" + _v.id : ""));
+    await this.state.storage.put("quarentena:idx", _v.indice);
+    return _v.indice;
+  }
+  async _quarentenaPublicar(indice) {
+    // Pacing: Workers KV limita writes na MESMA chave a 1/s. O singleton FIFO
+    // elimina writers concorrentes, mas nao o limite de chave: espera o restante
+    // para >=1s desde o ultimo PUT bem-sucedido (timestamp no isolate; eviction
+    // perde o timestamp e o caminho sem timestamp tenta normalmente e trata 429).
+    const _agora = Date.now();
+    if (this._ultimoPutIdxAt && _agora - this._ultimoPutIdxAt < 1000) {
+      await new Promise(function(_r) { setTimeout(_r, 1000 - (_agora - this._ultimoPutIdxAt)); }.bind(this));
+    }
+    let _ultimoErro = null;
+    for (let _tent = 0; _tent < 3; _tent++) {
+      try {
+        await this.env.RADAR_KV.put(QUARENTENA_IDX_KEY, JSON.stringify(indice));
+        this._ultimoPutIdxAt = Date.now();
+        return;
+      } catch (e) {
+        _ultimoErro = e;
+        if (_tent < 2) await new Promise(function(_r) { setTimeout(_r, 1200 + _tent * 1500); });
+      }
+    }
+    throw new Error("quarentena_indice_kv_put_falhou: " + (_ultimoErro && _ultimoErro.message || String(_ultimoErro)));
+  }
+  async _quarentenaAdicionar(args) {
+    const _entradas = Array.isArray(args[0]) ? args[0] : [args[0]];
+    const _idx = await this._quarentenaLerStorage();
+    const _novo = JSON.parse(JSON.stringify(_idx));
+    let _adicionados = 0;
+    for (const _ent of _entradas) {
+      if (!_ent || typeof _ent.id !== "string" || !_ent.id) continue;
+      if (_novo.ids[_ent.id]) continue; // idempotente: adicionar existente = no-op
+      _novo.ids[_ent.id] = { empresa: _ent.empresa || null, semana: _ent.semana || null, desde: _ent.desde || new Date().toISOString() };
+      _adicionados++;
+    }
+    if (_adicionados === 0) return { ok: true, adicionados: 0, total_ids: Object.keys(_novo.ids).length };
+    _novo.atualizado_em = new Date().toISOString();
+    // Publica ANTES de comitar storage: falha no KV aborta sem divergir.
+    await this._quarentenaPublicar(_novo);
+    await this.state.storage.put("quarentena:idx", _novo);
+    return { ok: true, adicionados: _adicionados, total_ids: Object.keys(_novo.ids).length };
+  }
+  async _quarentenaRemover(args) {
+    const _id = args[0];
+    if (!_id || typeof _id !== "string") throw new Error("quarentena_remover_id_invalido");
+    const _idx = await this._quarentenaLerStorage();
+    if (!_idx.ids[_id]) return { ok: true, removido: false, total_ids: Object.keys(_idx.ids).length }; // idempotente
+    const _novo = JSON.parse(JSON.stringify(_idx));
+    delete _novo.ids[_id];
+    _novo.atualizado_em = new Date().toISOString();
+    await this._quarentenaPublicar(_novo);
+    await this.state.storage.put("quarentena:idx", _novo);
+    return { ok: true, removido: true, total_ids: Object.keys(_novo.ids).length };
+  }
+  async _quarentenaLer() {
+    const _idx = await this._quarentenaLerStorage();
+    return { ok: true, ids: Object.keys(_idx.ids), indice: _idx };
+  }
+  async _bootstrapQuarentena() {
+    // Cria {schema:1, ids:{}} somente quando o KV nao tem a chave. Indice ja
+    // valido = no-op; indice invalido = erro (nunca sobrescrever com vazio).
+    let _raw = null;
+    try {
+      _raw = await this.env.RADAR_KV.get(QUARENTENA_IDX_KEY, { type: "json", cacheTtl: _cacheTtlIndiceQuarentena(this.env) });
+    } catch (e) {
+      throw new Error("quarentena_bootstrap_kv_get_exception: " + (e && e.message || e));
+    }
+    if (_raw !== null && _raw !== undefined) {
+      const _v = _validarIndiceQuarentena(_raw);
+      if (!_v.ok) throw new Error("quarentena_bootstrap_indice_invalido: " + _v.erro);
+      const _s = await this.state.storage.get("quarentena:idx");
+      if (_s === null || _s === undefined || !_validarIndiceQuarentena(_s).ok) {
+        await this.state.storage.put("quarentena:idx", _v.indice);
+      }
+      return { ok: true, criado: false, total_ids: Object.keys(_v.indice.ids).length };
+    }
+    const _idx = { schema: QUARENTENA_IDX_SCHEMA, ids: {}, atualizado_em: new Date().toISOString() };
+    await this._quarentenaPublicar(_idx);
+    await this.state.storage.put("quarentena:idx", _idx);
+    return { ok: true, criado: true, total_ids: 0 };
+  }
   async fetch(request) {
     let body;
     try {
@@ -20944,6 +21988,17 @@ var ConfigDO = class {
     // --- Eventos promovidos ---
     if (op === "getEventosPromovidos") return await this.state.storage.get("eventos:confirmados:promovidos");
     if (op === "putEventosPromovidos") { await this.state.storage.put("eventos:confirmados:promovidos", args[0]); return null; }
+    // --- Quarentena de verificacao (REPROVADO-FAILCLOSED1, 2026-09-06) ---
+    // Single writer do radar:verif:quarentena_idx: copia autoritativa em
+    // state.storage, publicacao em KV com pacing >=1s entre PUTs da mesma chave
+    // (limite oficial do KV: 1 write/s por chave) e retry bounded em 429.
+    if (op === "quarentenaAdicionar") return await this._quarentenaAdicionar(args);
+    if (op === "quarentenaRemover") return await this._quarentenaRemover(args);
+    if (op === "quarentenaLer") return await this._quarentenaLer();
+    if (op === "bootstrapQuarentena") return await this._bootstrapQuarentena();
+    // SOMENTE testes/limpeza: apaga a copia autoritativa do storage do singleton.
+    // O KV e a fonte publica; a proxima op re-le o KV (fail-closed).
+    if (op === "quarentenaResetStorage") { await this.state.storage.delete("quarentena:idx"); return { ok: true }; }
     throw new Error("op invalida no ConfigDO: " + op);
   }
 };
@@ -21293,6 +22348,19 @@ export {
   aplicarRegrasNegocio,
   PALAVRAS_CRITICAS,
   _chaveDedupBriefing,
+  carregarIndiceQuarentena,
+  _validarIndiceQuarentena,
+  _eventoQuarentenado,
+  obterQuarantineIdEvento,
+  filtrarQuarentenaDoEstado,
+  _verifCalcularProximaTentativa,
+  registrarTentativaNaoConclusiva,
+  marcarEventoQuarentenado,
+  reabrirEventoQuarentenado,
+  resolverEventoQuarentenado,
+  localizarEventoQuarentenado,
+  _definirFalhaInjetadaTeste,
+  _limparFalhasInjetadasTeste,
   EmissorDO,
   UsuarioDO,
   ConfigDO,

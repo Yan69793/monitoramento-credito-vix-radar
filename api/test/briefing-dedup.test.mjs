@@ -1,4 +1,5 @@
 import { SELF, env } from "cloudflare:test";
+import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
 import estadoW31 from "./fixtures/materialidade-estado-2026-W31.json" with { type: "json" };
@@ -9,6 +10,9 @@ import estadoW35 from "./fixtures/materialidade-estado-2026-W35.json" with { typ
 import anomalias from "./fixtures/anomalias.json" with { type: "json" };
 import { _chaveDedupBriefing, carregarEstadoMultiSemana } from "../src/worker.js";
 import { rankingTopComDedup } from "./_materialidade-common.mjs";
+
+// REPROVADO-FAILCLOSED1 (2026-09-06): gates sao fail-closed; indice ausente = erro.
+beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 
 // BRIEFDEDUP1 (auditoria 2026-08-29, Fase 1.3).
 //

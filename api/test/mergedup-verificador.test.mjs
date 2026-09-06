@@ -1,5 +1,9 @@
 import { SELF, env } from "cloudflare:test";
+import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { beforeEach, describe, expect, it } from "vitest";
+
+// REPROVADO-FAILCLOSED1 (2026-09-06): gates sao fail-closed; indice ausente = erro.
+beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 
 // MERGEDUP1 (auditoria 2026-09-05, fix 2026-09-05).
 //
@@ -28,7 +32,9 @@ import { beforeEach, describe, expect, it } from "vitest";
 //     exato da Usina Pampa Sul em SOURCEFIX-PAMPASUL1) tem que terminar com 1 evento.
 //     Contra o codigo pre-fix esses casos terminavam com 2.
 //   - ponta boa: APROVADO sem mexer na fonte continua atualizando no lugar, e
-//     REPROVADO continua retratando. O fix nao pode ter fechado o caminho feliz.
+//     REPROVADO continua retratando a alucinacao sem fonte (a retracao de evento real
+//     foi restringida por REPROVADO-FAILCLOSED1, ver test/retratar-reprovado.test.mjs).
+//     O fix nao pode ter fechado o caminho feliz.
 
 const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao"; // vars do wrangler.test.jsonc
 const EMPRESA = "Acme Energia";
@@ -171,12 +177,19 @@ describe("MERGEDUP1: verificador que altera fonte_primaria nao pode duplicar nem
     expect(evs[0].fonte_primaria).toBe(FONTE_B);
   });
 
-  it("ponta boa: REPROVADO segue retratando o evento pendente (comportamento atual, explicitado)", async () => {
+  it("ponta boa: REPROVADO segue apagando alucinacao sem fonte nenhuma (retracao preservada)", async () => {
     const SEMANA = "2026-W43";
-    await semear(SEMANA, [eventoBase({ _pendente_verificacao: true })]);
+    // A partir de REPROVADO-FAILCLOSED1 (2026-09-05), REPROVADO so apaga pendente sem
+    // fonte citavel; evento com fonte_primaria ou fonte_secundaria e nao-conclusivo e
+    // permanece pendente, sem apagar nem certificar (coberto em
+    // test/retratar-reprovado.test.mjs). Este caso semear fonte nula nas duas pontas
+    // para continuar exercitando a retracao legitima aqui no MERGEDUP1.
+    await semear(SEMANA, [
+      eventoBase({ data_evento: "2026-08-14", titulo: TITULO_SEM_FONTE, fonte_primaria: null, fonte_secundaria: null, _pendente_verificacao: true }),
+    ]);
 
     const r = await confirmar([
-      item(SEMANA, ID_A, eventoBase({}), {
+      item(SEMANA, ID_SEM_FONTE, eventoBase({ data_evento: "2026-08-14", titulo: TITULO_SEM_FONTE, fonte_primaria: null }), {
         veredicto: "REPROVADO",
         confianca: 0.2,
         motivo: "evidencia nao encontrada",

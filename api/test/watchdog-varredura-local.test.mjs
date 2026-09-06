@@ -1,6 +1,10 @@
 import { SELF, env, createScheduledController, createExecutionContext, waitOnExecutionContext } from "cloudflare:test";
+import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import worker from "../src/worker.js";
+
+// REPROVADO-FAILCLOSED1 (2026-09-06): gates sao fail-closed; indice ausente = erro.
+beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 
 // WATCHDOG-AGENTEMORTO1 (2026-09-02, auditoria de rotinas de 01/09, nota 99).
 //

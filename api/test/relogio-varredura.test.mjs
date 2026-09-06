@@ -1,5 +1,9 @@
 import { SELF, env } from "cloudflare:test";
-import { afterEach, describe, expect, it } from "vitest";
+import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
+import { beforeEach, afterEach, describe, expect, it } from "vitest";
+
+// REPROVADO-FAILCLOSED1 (2026-09-06): gates sao fail-closed; indice ausente = erro.
+beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 
 // RELOGIO3H1 (auditoria 2026-08-24). `_last_scanned_at` e INSTANTE de varredura e e
 // comparado contra Date.now() cru em _parseHorasStale. O caminho de receber_analise

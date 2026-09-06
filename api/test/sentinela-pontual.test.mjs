@@ -1,5 +1,9 @@
 import { SELF, env } from "cloudflare:test";
+import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+
+// REPROVADO-FAILCLOSED1 (2026-09-06): gates sao fail-closed; indice ausente = erro.
+beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 
 // SENTINELA1 (2026-08-25).
 //
