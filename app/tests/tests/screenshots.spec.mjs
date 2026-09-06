@@ -26,7 +26,10 @@ test.describe('visual baseline', () => {
     const generating = process.env.UPDATE_SNAPSHOTS === '1';
 
     if (!generating && !existsSync(baselinePath)) {
-      test.skip(
+      // Politica: sem baseline commitado, CI normal FALHA com instrucao
+      // (nada e criado silenciosamente). Geracao explicita roda com
+      // UPDATE_SNAPSHOTS=1 + --update-snapshots (CI Linux) e publica artefatos.
+      test.fail(
         true,
         `baseline ${name} ausente no repo. Gerar via CI Linux (workflow_dispatch generate-baseline), revisar os artefatos e commitar em etapa controlada.`,
       );
