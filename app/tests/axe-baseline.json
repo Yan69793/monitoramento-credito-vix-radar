@@ -1,0 +1,20 @@
+{
+  "generatedAt": "2026-09-06T16:32:08.715Z",
+  "scope": "landing-publica",
+  "tags": [
+    "wcag2a",
+    "wcag2aa",
+    "wcag21a",
+    "wcag21aa",
+    "wcag22aa"
+  ],
+  "projects": [
+    "desktop",
+    "mobile"
+  ],
+  "violations": {
+    "link-in-text-block": [
+      ".cookie-banner-text > a[href$=\"#disclaimer-bar\"]"
+    ]
+  }
+}
