@@ -24,8 +24,7 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 . (Join-Path $ScriptDir 'lib\vixradar-watchdog.ps1')
 . (Join-Path $ScriptDir 'lib\vixradar-custo.ps1')
 # CLAUDE-FREE-MIGRATION (2026-09-04): fonte unica de provider de LLM das rotinas.
-# Quando bloqueado (provider none, claude-manual sem forca manual, ou provider de Fase B
-# reservado com motor nao migrado), as rotinas LLM do VIX saem exit 86 com a linha canonica
+# Quando bloqueado, as rotinas LLM do VIX saem exit 86 com a linha canonica
 # BLOQUEADO_SEM_PROVIDER ANTES de qualquer auth/claude. Este monitor trata exit 86 como
 # esperado nesse regime, suprime a vigilancia de entrega (nao ha entrega esperada) e troca
 # por checagem de que o executor rodou o ciclo (sentinel no log do dia). Resultado != 86 de
@@ -33,7 +32,13 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # valendo: escalacao para chave paga vista em log prova que o corte falhou e vira erro.
 . (Join-Path $ScriptDir 'lib\vixradar-llm-provider.ps1')
 $LlmProvider   = Get-VixLlmProvider
-$LlmBloqueado  = -not (Test-VixLlmPermiteClaude)
+$OpenRouterAdapter = Join-Path $ScriptDir 'lib\vixradar-openrouter.ps1'
+$OpenRouterAdapterHabilitado = $false
+if (Test-Path $OpenRouterAdapter) {
+    . $OpenRouterAdapter
+    $OpenRouterAdapterHabilitado = ((Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
+}
+$LlmBloqueado  = -not (Test-VixLlmProviderPermiteRotina -OpenRouterAdapterHabilitado:$OpenRouterAdapterHabilitado)
 # Nomes das 5 tasks nativas de rotina LLM do VIX + nomes de log correspondentes (bloco
 # ROTINACEGA1 abaixo usa os nomes de log). Sentinela pode sair exit 0 (sem alvos) e 86
 # (com alvos bloqueado); 0 ja e benigno globalmente.
@@ -312,7 +317,7 @@ foreach ($task in $allTasks) {
         $ok++
         continue
     }
-    if ($LlmBloqueado -and ($BloqueadasSet -contains $name) -and ($code -notin $BenignCodes) -and $code -ne 86) {
+    if (($BloqueadasSet -contains $name) -and (Test-VixLlmGateViolacao -ProviderBloqueado $LlmBloqueado -ExitCode $code -BenignCodes $BenignCodes)) {
         $rodouNoBloqueio = $false
         if ($MotorDesde) {
             try { if ($lastRun -gt ([datetime]$MotorDesde)) { $rodouNoBloqueio = $true } } catch { }

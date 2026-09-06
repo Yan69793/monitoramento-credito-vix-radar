@@ -497,13 +497,14 @@ function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, 
 # Fase B D1 (2026-09-04): provider 'openrouter' libera a execucao pelo adapter HTTP proprio
 # (lib\vixradar-openrouter.ps1), sem claude, sem auth Anthropic, sem escalacao paga.
 $script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
-if ($script:VixUsaOpenRouter) {
-    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+$openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
+if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado)) {
+    if ($script:VixUsaOpenRouter) {
         Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
-        exit $VixLlmBloqueadoExit
     }
-} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
-    Write-Log (Get-VixLlmBloqueadoMsg ('run_vixradar_varredura.ps1 ' + $Rotina))
+    else {
+        Write-Log (Get-VixLlmBloqueadoMsg ('run_vixradar_varredura.ps1 ' + $Rotina))
+    }
     exit $VixLlmBloqueadoExit
 }
 

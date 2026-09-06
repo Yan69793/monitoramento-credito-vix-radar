@@ -8,7 +8,8 @@
 # Variavel de ambiente (escopo User, nunca versionada):
 #   VIXRADAR_LLM_PROVIDER = none           (padrao) rotinas LLM BLOQUEADO_SEM_PROVIDER
 #                          | claude-manual Claude so com -ForceClaude explicito (operador)
-#                          | deepseek | openrouter   reservado Fase B, ainda BLOQUEADO
+#                          | openrouter            permitido com adapter habilitado
+#                          | deepseek              reservado, bloqueado
 #
 # Exit canonico do bloqueio: 86 ($VixLlmBloqueadoExit). Nao colide com o mapa 0-8 do
 # monitor nem com os exits 1/2/3/4/5/7/8 das rotinas. Linha canonica de log:
@@ -17,7 +18,9 @@
 # Contrato das funcoes:
 #   Get-VixLlmProvider                -> 'none'|'claude-manual'|'deepseek'|'openrouter'
 #   Set-VixLlmForceClaude [switch]    -> registra forca manual no escopo do script
-#   Test-VixLlmPermiteClaude [-ForceClaude] -> bool; registra -ForceClaude se vier
+#   Test-VixLlmPermiteClaude [-ForceClaude] -> bool; caminho Claude manual
+#   Test-VixLlmProviderPermiteRotina        -> bool; decisao canonica do motor
+#   Test-VixLlmGateViolacao                 -> bool; classifica 9006 no monitor
 #   Get-VixLlmBloqueadoMsg [Gatilho]  -> string canonica (para o Write-Log do chamador)
 #   Stop-VixLlmBloqueado [Gatilho]    -> imprime a linha canonica e exit 86 (backstop)
 #
@@ -69,6 +72,37 @@ function Test-VixLlmPermiteClaude {
         $script:VixLlmMotivo = ('provider ' + $provider + ' reservado para Fase B, motor ainda nao migrado')
     }
     return $false
+}
+
+function Test-VixLlmProviderPermiteRotina {
+    # Decisao unica para qualquer rotina LLM. OpenRouter e permitido somente quando o
+    # adapter que o motor despacha esta habilitado. O monitor recebe a mesma condicao,
+    # sem reinterpretar provider como se fosse o caminho Claude legado.
+    param(
+        [switch]$ForceClaude,
+        [bool]$OpenRouterAdapterHabilitado = $false
+    )
+    $provider = Get-VixLlmProvider
+    if ($provider -eq 'openrouter') {
+        if ($OpenRouterAdapterHabilitado) {
+            $script:VixLlmMotivo = $null
+            return $true
+        }
+        $script:VixLlmMotivo = 'provider openrouter configurado sem adapter habilitado'
+        return $false
+    }
+    return (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)
+}
+
+function Test-VixLlmGateViolacao {
+    # Exit 86 e o unico termino esperado de uma rotina LLM cujo provider efetivo esta
+    # bloqueado. Codigos benignos preservam os casos deterministas, como sentinela sem alvo.
+    param(
+        [bool]$ProviderBloqueado,
+        [int]$ExitCode,
+        [int[]]$BenignCodes = @()
+    )
+    return ($ProviderBloqueado -and $ExitCode -ne $VixLlmBloqueadoExit -and $ExitCode -notin $BenignCodes)
 }
 
 function Get-VixLlmBloqueadoMsg {
