@@ -11,6 +11,41 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 05/09 (noite), SOURCEFIX-PAMPASUL1 RESOLVIDO nos dados; MERGEDUP1 RESOLVIDO (deployado v4.9.241); VERIFHORARIO1 aberto; task de verificacao DISABLED
+
+> **Status:** dados corrigidos e verificados; MERGEDUP1 corrigido e deployado (v4.9.241); VERIFHORARIO1 aberto; task ainda Disabled. **Data da Versao:** 2026-09-05. **Origem do Registro:** auditoria adversarial da integracao da Usina Pampa Sul (104o emissor, commits `2ef7703`, `6f6372d`, `03736a6`), com correcao autorizada item a item pelo operador. **Condicao de Obsolescencia:** quando a task de verificacao for reabilitada (decisao do operador).
+
+**RESOLVIDO (SOURCEFIX-PAMPASUL1, P2, sem deploy).** Os 2 eventos de credito da Usina Pampa Sul persistidos em `radar:estado:2026-W36` tinham `fonte_primaria` mal atribuida: o ITR de 13/08 apontava para o PDF do **1T26** no site da empresa (evento e do 2T26), e o pedido de recomposicao a ANEEL de 14/08 apontava para materia da MegaWhat como se fosse fonte primaria. Numeros do ITR conferidos de forma independente contra o dataset aberto oficial da CVM (`itr_cia_aberta_2026.zip`, CNPJ `04.739.720/0001-24`, documento **160616**, entrega 13/08/2026, `DT_FIM_EXERC=2026-06-30`), reconstruindo EBITDA por DRE+BPA+BPP. Nenhuma fonte oficial da ANEEL foi encontrada para o pedido de agosto/2026 (buscado nos registros IPE da propria empresa, em `site:aneel.gov.br` e em busca aberta), entao o evento ficou declaradamente sem fonte primaria em vez de ganhar uma inventada.
+
+**Correcao aplicada (2026-09-05 21:36:49Z, escrita direta no KV via `wrangler`, fora do Worker).** Nao existe endpoint administrativo que faca isso sem duplicar: `admin_upsert_analise` funde por `_chaveDedupEvento` (`worker.js:9163`), que inclui host+path de `fonte_primaria`, entao resubmeter com a URL corrigida **cria um segundo evento** em vez de substituir; `admin_kv_put` tem allowlist de prefixo (`worker.js:19422`) que exclui `radar:estado:`. Provado tambem que `EstadoSemanaDO` (`worker.js:20697-20743`) nao guarda copia propria do estado nem da fila, e so serializa chamadas: `radar:estado:{semana}` e `radar:verif_fila:{data}` no KV sao a fonte da verdade sozinhas.
+
+| chave | hash canonico antes | hash depois |
+|---|---|---|
+| `radar:estado:2026-W36` | `98494e760eae575f40a988b30b715d9fdde2a4de2f78cbbe1c09fc43b1ec415a` | `c505276007e71b2387acf4dd01905389ec9170ae6e1417c76fd02eb94634d317` |
+| `radar:verif_fila:2026-09-05` | `89536d5d92cce5360dd21e392e06cbd699a2c7524a1e8f9bde438a023e3c74c2` | `e124e1fa0af9c42c1d7c5eed205d49d8ab3c27bfcd7d4e7c58b40e8784e5c2f0` |
+
+Estado final medido por releitura independente: 104 emissores preservados, Usina Pampa Sul com exatamente **2 eventos** (sem duplicata), ITR com `fonte_primaria` = RAD CVM doc 160616, ANEEL com `fonte_primaria=null` + `fonte_secundaria` = MegaWhat + `_fonte_oficial_confirmada=false`, fila com 2 itens e `id` recalculado pela mesma funcao do Worker, **0 empresas alteradas fora da Pampa Sul**. Backup integral em `%TEMP%\pampasul-fix-20260905-183644\backup`.
+
+**RESOLVIDO (MERGEDUP1, P1, deployado v4.9.241).** `mesclarEventoVerificadoInterno` (`worker.js:9963-9970`) casava o evento verificado com o existente por **chave dedup recalculada**, nao pelo `id` que a fila carrega:
+
+```js
+const chaveNovo = _chaveDedupEvento(evEnriquecido);
+const idxExistente = existentes.findIndex(ev => _chaveDedupEvento(ev) === chaveNovo);
+if (idxExistente >= 0) { /* merge no lugar */ } else { existentes.push(evEnriquecido); }
+```
+
+Só que `aplicarCorrecaoVerificador` (`worker.js:12827-12828`) **reescreve `fonte_primaria`** quando o veredicto e CORRIGIR. Reescrita a fonte, a chave muda, o `findIndex` nao acha nada e o codigo **empurra duplicata** em vez de atualizar. O call site (`worker.js:20037-20052`) tem `it.id`, a chave original da fila, e nao passa adiante. Nao e defeito introduzido pela correcao de hoje: e caminho vivo desde sempre, so que um evento com `fonte_primaria` estavel raramente dispara CORRIGIR sobre a propria fonte. Patch minimo fail-closed **aplicado e deployado no v4.9.241** (passar `it.id` como `chaveOriginal`, casar por ela primeiro, recusar a insercao com `console.error` quando nao casar por nenhuma das duas chaves, e tratar reenvio idempotente por chave nova como no-op). Commit do fix `225bda1`, deploy `99614b7`. Testes: `mergedup-verificador.test.mjs` (7, prova de 2 pontas) + `verif-cache-roundtrip.test.mjs` atualizado. Suite 27 arquivos / 261 testes (260 verdes + 1 `login-timing` flaky sob paralelo, isolado 3/3).
+
+**ACAO DO OPERADOR PENDENTE: `VIXRadar-Verificacao-Async` esta `Disabled` desde 05/09 18:47:19.** Parada preventivamente, 28 min antes do disparo, com autorizacao explicita do operador para interromper diante de risco iminente de corrupcao. Os 2 eventos estao com `_pendente_verificacao=true`, o que arma os **dois** desfechos destrutivos: no ramo REPROVADO, `retratarEventoRejeitadoInterno` (`worker.js:10010-10013`) filtra e **apaga** o evento justamente porque a flag e `true`; no ramo CORRIGIR, cai no MERGEDUP1 acima e **duplica**. O ANEEL com `fonte_primaria=null` chega ao prompt do verificador como `Fonte citada: """"""` vazio, e a regra de rejeicao automatica (`worker.js:12683`) manda REPROVADO quando a evidencia nao e encontrada; o ITR aponta para o RAD da CVM, que esta fora por reCAPTCHA e devolve conteudo ilegivel a fetch automatico. MERGEDUP1 ja deployado (v4.9.241). Reabilitar segue como decisao do operador, com `Enable-ScheduledTask -TaskName "VIXRadar-Verificacao-Async"`; nao reabilitado nesta sessao.
+
+**ABERTO P3 (VERIFHORARIO1), divergencia agendamento vs documentacao.** O Task Scheduler tem 2 triggers para `VIXRadar-Verificacao-Async`: `11:03` e **`19:15`** (medido em `StartBoundary`). `CLAUDE.md` e `routines/README.md` documentam **11h00 e 18h45**. Producao vence documentacao pela hierarquia de verdade, entao o horario real e 11:03/19:15. Nao corrigido nesta sessao para nao misturar frente; a doc segue divergente ate decisao do operador sobre qual dos dois e o desejado.
+
+**ACHADO OPERACIONAL (WRANGLERMOJIBAKE1), 5o caminho de mojibake em PowerShell.** `npx wrangler kv key get ... > arquivo` corrompe todo caractere acentuado quando o console da sessao nao esta em UTF-8: 15 dos 104 emissores tiveram o nome destruido na captura (`Assaí` virou `Assa├¡`), inflando o arquivo em ~22 KB sem mudar o conteudo real no KV. Isso fez a guarda de hash do script de correcao abortar **duas vezes** por falso positivo, ambas as vezes sem gravar nada, e por um tempo pareceu haver um escritor concorrente em producao. Nao havia: `updated_at` era identico ao milissegundo (`2026-09-05T14:06:03.539Z`) nas duas leituras, e nenhuma task rodou na janela. Soma-se aos 4 caminhos ja registrados em `project_verificacao_async_mojibake_curl_powershell.md`. Mitigacao no script: `[Console]::OutputEncoding` e `$OutputEncoding` forcados a UTF-8 antes de qualquer chamada nativa, e hash canonico (leitura com `-Encoding utf8` explicito + `TrimEnd()`) em vez de hash de bytes crus, que tambem falso-abortava por CRLF de redirecao.
+
+**Confirmado sem regressao:** `scrubMoneyWorker` nao aparece em nenhum dos 3 commits (`git show | grep -c` = 0 nos tres) e segue presente no `worker.js` (7 ocorrencias). Nenhuma referencia orfa ao `id` antigo do ANEEL: as 3 chaves KV da Pampa Sul (`ews:hist:`, `fallback:`, `mercado:serie:`) sao indexadas por nome de empresa, nao por id de evento, e as filas de verificacao de 29/08 a 04/09 estao todas vazias. O cache do verificador (`radar:verif:{hash}`) usa hash que inclui `fonte_primaria`, entao a mudanca gera cache miss, que e o comportamento seguro.
+
+---
+
 ## 05/09 (madrugada), CLAUDE-FREE-MIGRATION Fase B D1: OpenRouter migrado no runtime automatico, 5/5 rotinas no adapter
 
 > **Status:** EM ANDAMENTO, migração D1 executada (B1 a B4 verdes), fechamento B5 (docs + commit único) nesta sessão. **Data da Versão:** 2026-09-05. **Origem do Registro:** execução da Fase B D1 aprovada via `/goal` (plano `fluffy-prancing-grove.md`, continuação da Fase A). **Condição de Obsolescência:** registro do andamento; após o commit de fechamento da sessão não se reescreve.
