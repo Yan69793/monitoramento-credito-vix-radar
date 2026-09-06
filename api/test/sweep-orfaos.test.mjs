@@ -9,6 +9,7 @@ import {
   ORFAO_PREFIXO,
   enfileirarVerificacaoAssincronaInterno,
   _reconciliarOrfaosConcluidos,
+  removerDaFilaVerificacaoInterno,
   carregarIndiceQuarentena,
   _definirFalhaInjetadaTeste,
   _limparFalhasInjetadasTeste,
@@ -48,18 +49,21 @@ const ID = `${DATA_EV}|${EMPRESA.toLowerCase()}|${HOST}`;
 const H = 60 * 60 * 1e3;
 const hoje = () => new Date().toISOString().slice(0, 10);
 
-function eventoBase() {
-  return {
-    empresa: EMPRESA,
-    classificacao: "CRITICO",
-    titulo: "Fato de credito relevante",
-    evento: "Petrobras divulgou fato de credito.",
-    impacto_credito: "Relevante para credito.",
-    fonte_primaria: FONTE,
-    fonte_tipo: "CVM",
-    data_evento: DATA_EV,
-    tags: ["resultados"],
-  };
+function eventoBase(extra) {
+  return Object.assign(
+    {
+      empresa: EMPRESA,
+      classificacao: "CRITICO",
+      titulo: "Fato de credito relevante",
+      evento: "Petrobras divulgou fato de credito.",
+      impacto_credito: "Relevante para credito.",
+      fonte_primaria: FONTE,
+      fonte_tipo: "CVM",
+      data_evento: DATA_EV,
+      tags: ["resultados"],
+    },
+    extra || {}
+  );
 }
 
 // idadeH horas atras. Item no formato exato que enfileirarVerificacaoAssincronaInterno grava.
@@ -486,5 +490,172 @@ describe("SWEEP-ORFAOS1 - so a conclusao terminal resolve", () => {
     expect(attempt.n).toBe(2);
     const idx = await lerIndice(env);
     expect(Object.keys(idx.ids)).toHaveLength(0);
+  });
+});
+
+// =============================================================================
+// SWEEP-ORFAOS1-LIVENESS1 (P0, 2026-09-06, corrigido no mesmo dia): a primeira
+// versao deste fix exigia removido:true da REMOCAO DA FILA como prova de
+// conclusao terminal, para nao depender de uma releitura do KV apos a escrita
+// (releitura e o problema real: KV e eventualmente consistente, um GET pode
+// devolver snapshot velho e o codigo antigo tomava "nao achei na fila" como
+// "removido de verdade", recriando o falso-verde). So que um orfao SO EXISTE
+// porque o sweep JA tirou o item da fila — entao no caminho comum, quando a
+// verificacao termina de verdade, nao ha mais nada para o terminal remover, a
+// escrita nunca acontece, removido nunca e true, e o orfao ficava PRESO PARA
+// SEMPRE mesmo com o evento genuinamente concluido. Bug pior que o original.
+//
+// Fix real: a prova de conclusao vem do retorno DIRETO das escritas que
+// decidem o desfecho do EVENTO — mesclarEventoVerificado() !== false
+// (aprovado) ou retratarEventoRejeitado() === true (reprovado sem fonte) —
+// nunca de releitura, e nunca da remocao da fila, que e limpeza best-effort e
+// ortogonal ao desfecho. Continua nao usando releitura em lugar nenhum; so
+// mudou QUAL escrita conta como prova.
+// =============================================================================
+describe("SWEEP-ORFAOS1-LIVENESS1 (P0) - remocao da fila continua correta, mas nao e mais o gate", () => {
+  it("20. removerDaFilaVerificacaoInterno so retorna removido:true apos escrita confirmada", async () => {
+    // Vale por si so: a fila ainda precisa de limpeza correta, mesmo que ela
+    // nao gate mais a resolucao do orfao.
+    const d = hoje();
+    await semearFila(d, [itemFila(10)]);
+    _definirFalhaInjetadaTeste("fila_remover_put");
+
+    const r = await removerDaFilaVerificacaoInterno(env, d, ID);
+
+    expect(r.removido).toBe(false);
+    expect(r.erro).toBeTruthy();
+    const fila = await lerFila(d);
+    expect(fila).toHaveLength(1);
+    expect(fila[0].id).toBe(ID);
+
+    _limparFalhasInjetadasTeste();
+    const r2 = await removerDaFilaVerificacaoInterno(env, d, ID);
+    expect(r2.removido).toBe(true);
+    expect(await lerFila(d)).toBeNull();
+  });
+
+  it("21. P0 CENTRAL: merge recusado (MERGEDUP1) NAO resolve o orfao, mesmo com a fila ja vazia", async () => {
+    // Sem semear radar:estado:{semana}, mesclarEventoVerificadoInterno nao acha
+    // o evento nem por chaveOriginal nem por chaveNova e recusa (fail-closed,
+    // retorna false). Fila ja vazia (o sweep ja limpou) e IRRELEVANTE para essa
+    // decisao — e exatamente o ponto: nenhum dos dois eixos, isolado, prova
+    // conclusao. So a escrita do EVENTO prova, e aqui ela nao aconteceu.
+    const d = hoje();
+    await semearFila(d, [itemFila(50)]);
+    await sweepFilaVerificacaoOrfaos(env);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(await lerFila(d)).toBeNull(); // fila ja vazia, por construcao do sweep
+
+    const r = await confirmarAprovado(d); // sem estado semeado => merge recusado
+
+    expect(r.ok).toBe(true);
+    expect(r.resultado.mesclas_recusadas).toBe(1);
+    expect(r.resultado.aprovados).toBe(0);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(await lerConclusao(ID)).toBeNull();
+    const h = await health();
+    expect(h.verificador_ok).toBe(false);
+    expect(h.verif_orfaos_ativos).toBeGreaterThanOrEqual(1);
+  });
+
+  it("22. merge confirmado (retorno direto, sem releitura) resolve o orfao mesmo com a fila ja vazia", async () => {
+    // Outra ponta do 21: mesmo estado de fila (ja vazia, sweep ja rodou), mas
+    // agora o evento EXISTE no estado, entao o merge acontece de verdade e
+    // mesclarEventoVerificado() devolve != false. Isso sozinho tem que resolver
+    // o orfao — a fila continuar vazia nao impede nada, porque ela nunca foi
+    // a prova.
+    const d = await prepararOrfaoComEstado();
+    expect(await lerFila(d)).toBeNull(); // ja vazia, sem nada physicamente para remover
+
+    const r = await confirmarAprovado(d);
+
+    expect(r.ok).toBe(true);
+    expect(r.resultado.aprovados).toBe(1);
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerConclusao(ID)).toBeNull();
+    const h = await health();
+    expect(h.verif_orfaos_ativos).toBe(0);
+  });
+
+  it("23. reentrada legitima (id de volta na fila) nao muda o resultado: so o merge decide", async () => {
+    // Antes do fix real, este caso (id fisicamente na fila) era o unico em que
+    // a resolucao funcionava, porque so ele produzia removido:true. Prova que
+    // o novo gate nao ficou mais fraco: resolve igual, com ou sem o id na fila.
+    const d = await prepararOrfaoComEstado();
+    await semearFila(d, [itemFila(1)]);
+    expect(await lerFila(d)).toHaveLength(1);
+
+    const r = await confirmarAprovado(d);
+
+    expect(r.ok).toBe(true);
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerFila(d)).toBeNull(); // limpeza best-effort da fila ainda roda
+  });
+
+  it("24. reprovado sem fonte citavel (retratado) tambem resolve o orfao, pela prova direta de retratarEventoRejeitado", async () => {
+    // Cobre o outro ramo de _cvProvaTerminal, que ate aqui so tinha o caminho
+    // aprovado testado. Evento sem fonte_primaria/secundaria => alucinacao,
+    // retratarEventoRejeitado apaga do estado e devolve true.
+    const d = hoje();
+    await semearEstado([Object.assign(eventoBase({ fonte_primaria: null }), { _pendente_verificacao: true })]);
+    await semearFila(d, [itemFila(50)]);
+    await sweepFilaVerificacaoOrfaos(env);
+    expect(await lerOrfao(ID)).toBeTruthy();
+
+    const resp = await post({
+      action: "confirmar_verificacao",
+      itens: [{
+        id: ID, empresa: EMPRESA, semana: SEMANA, data_fila: d, setor: SETOR,
+        evento: eventoBase({ fonte_primaria: null }),
+        veredicto: { veredicto: "REPROVADO", confianca: 0.9, motivo: "sem fonte primaria ou secundaria localizavel" },
+      }],
+    });
+    const r = await resp.json();
+
+    expect(r.ok).toBe(true);
+    expect(r.resultado.retratados).toBe(1);
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerConclusao(ID)).toBeNull();
+    const evs = await lerEventos();
+    expect(evs).toHaveLength(0); // alucinacao retratada, evento sai do estado
+  });
+
+  it("25. reprovado NAO-CONCLUSIVO (com fonte, sem retratar) NAO resolve o orfao", async () => {
+    // _cvNaoConclusivo=true (fonte citavel, nao retratado) ja era excluido do
+    // gate antes do P0; confirma que a correcao nao afrouxou essa regra.
+    const d = await prepararOrfaoComEstado(); // eventoBase() tem fonte_primaria
+
+    const resp = await post({
+      action: "confirmar_verificacao",
+      itens: [{
+        id: ID, empresa: EMPRESA, semana: SEMANA, data_fila: d, setor: SETOR,
+        evento: eventoBase(),
+        veredicto: { veredicto: "REPROVADO", confianca: 0.6, motivo: "fonte primaria inacessivel, nao provado falso" },
+      }],
+    });
+    const r = await resp.json();
+
+    expect(r.ok).toBe(true);
+    expect(r.resultado.rejeitados).toBe(1);
+    expect(r.resultado.retratados).toBe(0);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(await lerConclusao(ID)).toBeNull();
+  });
+
+  it("26. no cenario P0 corrigido, attempt e quarentena continuam intocados quando o merge resolve", async () => {
+    const d = await prepararOrfaoComEstado();
+    const reg = { id: ID, n: 1, proxima_em: "2026-09-07T00:00:00.000Z", atualizado_em: "2026-09-06T00:00:00.000Z" };
+    await env.RADAR_KV.put(chaveTentativaVerificacao(ID), JSON.stringify(reg), { expirationTtl: 60 * 60 * 24 * 90 });
+
+    await confirmarAprovado(d);
+
+    // orfao resolveu (merge aconteceu), attempt e quarentena nao foram tocados
+    expect(await lerOrfao(ID)).toBeNull();
+    const attempt = await env.RADAR_KV.get(chaveTentativaVerificacao(ID), "json");
+    expect(attempt.n).toBe(1);
+    const idx = await lerIndice(env);
+    expect(Object.keys(idx.ids)).toHaveLength(0);
+    const evs = await lerEventos();
+    expect(evs[0]._pendente_verificacao).toBe(false);
   });
 });

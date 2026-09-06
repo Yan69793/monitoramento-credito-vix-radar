@@ -9944,23 +9944,49 @@ async function listarFilaVerificacaoPendente(env2222, dias) {
   }
   return { itens, indice_erro: null, ocultos: _ocultos };
 }
+// SWEEP-ORFAOS1 (2026-09-06): passa a devolver resultado explicito em vez de
+// engolir erro em catch vazio. `removido: true` SO depois de a escrita concluir
+// sem erro — e a unica prova autoritativa de que o id saiu da fila. Reler o KV
+// depois nao serve: o store e eventualmente consistente, entao um get pode
+// devolver snapshot sem o id mesmo quando a escrita falhou, e resolver um orfao
+// com base nisso recriaria o falso-verde. Sem escrita, sem prova.
+// Os call sites antigos ignoram o retorno, entao o comportamento deles nao muda.
 async function removerDaFilaVerificacaoInterno(env2222, dataFila, id) {
-  if (!env2222.RADAR_KV || !dataFila || !id) return;
+  if (!env2222.RADAR_KV || !dataFila || !id) return { removido: false, erro: "parametros_invalidos" };
   const chave = chaveFilaVerificacao(dataFila);
+  let fila;
   try {
-    const fila = await env2222.RADAR_KV.get(chave, "json") || [];
-    const restante = fila.filter(function(it) { return it.id !== id; });
-    if (restante.length !== fila.length) {
+    fila = await env2222.RADAR_KV.get(chave, "json") || [];
+  } catch (e) {
+    console.error("[fila][remover] leitura falhou para " + id + ":", e && e.message || String(e));
+    return { removido: false, erro: "leitura_falhou" };
+  }
+  const restante = fila.filter(function(it) { return it.id !== id; });
+  if (restante.length === fila.length) {
+    // Nenhuma escrita aconteceu. Pode ser id genuinamente ausente OU snapshot
+    // stale escondendo o item. Nao da para distinguir, entao nao e prova.
+    return { removido: false, erro: "sem_escrita_id_ausente" };
+  }
+  try {
+    if (_falhaInjetadaTesteAtiva(env2222, "fila_remover_put")) throw new Error("falha_injetada_fila_remover_put");
+    // Fila esvaziou: apaga a chave do dia (mesma semantica do sweep), senao o
+    // dia ficaria com [] e a chave nunca convergiria para ausente.
+    if (restante.length === 0) {
+      await env2222.RADAR_KV.delete(chave);
+    } else {
       await env2222.RADAR_KV.put(chave, JSON.stringify(restante), { expirationTtl: 60 * 60 * 24 * 7 });
     }
-  } catch (_) {
+  } catch (e) {
+    console.error("[fila][remover] escrita falhou para " + id + ":", e && e.message || String(e));
+    return { removido: false, erro: "escrita_falhou" };
   }
+  return { removido: true };
 }
 __name(removerDaFilaVerificacaoInterno, "removerDaFilaVerificacaoInterno");
 // VERIFQ-ORFAO1 (2026-07-24): wrapper com serializacao via EstadoSemanaDO.
 // Mesmo padrao do enfileirar: tenta DO primeiro, cai para direto em caso de falha.
 async function removerDaFilaVerificacao(env2222, dataFila, id) {
-  if (!env2222.RADAR_KV || !dataFila || !id) return;
+  if (!env2222.RADAR_KV || !dataFila || !id) return { removido: false, erro: "parametros_invalidos" };
   let r;
   try {
     r = await _rotearParaFilaVerificacaoDO(env2222, dataFila, "remover", [dataFila, id]);
@@ -9968,7 +9994,12 @@ async function removerDaFilaVerificacao(env2222, dataFila, id) {
     console.error("[FilaVerificacaoDO][remover] erro, fallback sem serializacao:", e && e.message);
     r = { disponivel: false };
   }
-  if (r.disponivel) return r.resultado;
+  // SWEEP-ORFAOS1: o resultado do DO carrega a prova de escrita. Se vier vazio
+  // (versao antiga do DO ou resposta malformada), trata como NAO provado.
+  if (r.disponivel) {
+    const _res = r.resultado;
+    return _res && typeof _res === "object" ? _res : { removido: false, erro: "resultado_do_ausente" };
+  }
   return await removerDaFilaVerificacaoInterno(env2222, dataFila, id);
 }
 __name(removerDaFilaVerificacao, "removerDaFilaVerificacao");
@@ -10338,14 +10369,25 @@ __name(_registrarOrfaoVerificacao, "_registrarOrfaoVerificacao");
 // terminal do confirmar_verificacao, DEPOIS de o evento ja ter sido persistido
 // como nao pendente. Ordem obrigatoria e nao negociavel:
 //   1. so age se existe orfao (caso comum nao paga escrita nenhuma);
-//   2. CONFIRMA a saida da fila relendo o KV — removerDaFilaVerificacaoInterno
-//      engole erro em catch vazio, entao o retorno da chamada nao prova nada;
+//   2. exige PROVA DIRETA de que a operacao TERMINAL sobre o EVENTO aconteceu
+//      nesta chamada — mesclarEventoVerificado()!==false (aprovado) ou
+//      retratarEventoRejeitado()===true (reprovado sem fonte). NUNCA releitura
+//      do KV: o store e eventualmente consistente, entao um get pode devolver
+//      snapshot sem o item mesmo com uma escrita anterior ainda em duvida, e
+//      resolver o orfao com base nisso recriaria o falso-verde. Atraso de
+//      observacao pode adiar a resolucao, jamais autoriza-la.
+//      DELIBERADAMENTE nao usa a remocao da fila como prova (correcao de
+//      2026-09-06 sobre a versao anterior deste comentario): a fila e limpeza
+//      best-effort e ortogonal. Um orfao so existe PORQUE o sweep ja tirou o
+//      item da fila, entao exigir uma remocao NOVA nesta chamada tornaria a
+//      resolucao praticamente impossivel no caminho comum — a prova certa e
+//      o desfecho do EVENTO, nao o estado da fila;
 //   3. grava o marcador de conclusao ANTES de tentar apagar o orfao, senao uma
 //      falha no delete deixaria o orfao sem prova e ele nunca convergiria;
 //   4. apaga o orfao;
 //   5. so entao apaga o marcador, que existe apenas para cobrir a janela.
 // Falha em qualquer ponto = orfao permanece e health segue vermelho.
-async function _resolverOrfaoPorConclusao(env2222, id, dataFila, veredicto, request) {
+async function _resolverOrfaoPorConclusao(env2222, id, provaTerminal, veredicto, request) {
   if (!env2222.RADAR_KV || !id) return { acao: "sem_kv" };
   let _orfao = null;
   try {
@@ -10355,16 +10397,10 @@ async function _resolverOrfaoPorConclusao(env2222, id, dataFila, veredicto, requ
     return { acao: "orfao_leitura_falhou" };
   }
   if (!_orfao || !_orfao.id) return { acao: "sem_orfao" };
-  // 2. saida da fila confirmada por releitura, nunca pelo retorno da remocao.
-  try {
-    const _filaPos = await env2222.RADAR_KV.get(chaveFilaVerificacao(dataFila), "json") || [];
-    if (Array.isArray(_filaPos) && _filaPos.some(function(it) { return it && it.id === id; })) {
-      console.error("[verif][orfao][terminal][FAIL-CLOSED] id ainda na fila apos remocao, orfao preservado:", id);
-      return { acao: "fila_nao_confirmada" };
-    }
-  } catch (e) {
-    console.error("[verif][orfao][terminal][FAIL-CLOSED] nao confirmou saida da fila, orfao preservado:", e && e.message || String(e));
-    return { acao: "fila_leitura_falhou" };
+  // 2. prova direta da operacao terminal sobre o EVENTO, nada de releitura.
+  if (provaTerminal !== true) {
+    console.error("[verif][orfao][terminal][FAIL-CLOSED] conclusao do evento nao provada por escrita, orfao preservado:", id);
+    return { acao: "conclusao_nao_provada" };
   }
   const _agoraIso = (/* @__PURE__ */ new Date()).toISOString();
   try {
@@ -21192,6 +21228,11 @@ async function __coreFetch(request, env2222, ctx) {
           var _cvEvento = Object.assign({}, it.evento || {});
           var _cvAprovado = it.veredicto.veredicto === "APROVADO" || aplicarCorrecaoVerificador(_cvEvento, it.veredicto);
           var _cvNaoConclusivo = false;
+          // SWEEP-ORFAOS1 (2026-09-06): prova direta de conclusao TERMINAL do
+          // EVENTO, computada abaixo a partir do retorno das proprias escritas
+          // (mesclarEventoVerificado / retratarEventoRejeitado). Nunca a
+          // remocao da fila, que e limpeza best-effort e ortogonal.
+          var _cvProvaTerminal = false;
           if (_cvAprovado) {
             _cvEvento._verif = { veredicto: it.veredicto.veredicto, confianca: it.veredicto.confianca, motivo: it.veredicto.motivo, fontes_validas: it.veredicto.fontes_validas || [], _async: true };
             // MERGEDUP1 (2026-09-05): `it.id` e a chave dedup de quando o item entrou na fila,
@@ -21202,6 +21243,11 @@ async function __coreFetch(request, env2222, ctx) {
               _cvResultado.mesclas_recusadas++;
               console.error("[verif-async][MERGEDUP1] merge recusado (fail-closed), item nao aplicado ao estado", { empresa: it.empresa, id: it.id, semana: it.semana });
             } else {
+              // SWEEP-ORFAOS1: merge diferente de false e a propria escrita ja
+              // awaited desta chamada nos dizendo que aconteceu. Prova valida
+              // mesmo quando quarentena_erro aparece (esse erro e so a limpeza
+              // do indice, o evento em si ja esta persistido e nao-pendente).
+              _cvProvaTerminal = true;
               _cvResultado.aprovados++;
               if (_cvMesclou && _cvMesclou.quarentena_erro) {
                 _cvResultado.mesclas_quarentena_erro++;
@@ -21219,6 +21265,10 @@ async function __coreFetch(request, env2222, ctx) {
             // que o motor usa para pular re-verificacao via cache_hits, senao o pendente
             // preservado nunca e reavaliado quando a fonte voltar a ser acessivel.
             _cvNaoConclusivo = !_cvRetratado && _eventoComFonteCitavel(it.evento);
+            // SWEEP-ORFAOS1: retratarEventoRejeitado so devolve true quando a
+            // propria escrita (RADAR_KV.put do estado) genuinamente aconteceu
+            // nesta chamada — mesma garantia do merge acima, prova direta.
+            _cvProvaTerminal = _cvRetratado === true;
             if (_cvNaoConclusivo) {
               // REPROVADO-FAILCLOSED1 (2026-09-05): contabiliza a tentativa nao-conclusiva e
               // abre o backoff (n=1 -> +24h; n=2 -> +48h; n=3 -> esgotado/aguarda_manual).
@@ -21241,15 +21291,20 @@ async function __coreFetch(request, env2222, ctx) {
               }
             }
           }
+          // SWEEP-ORFAOS1: remocao da fila continua rodando, e best-effort e
+          // ortogonal a resolucao do orfao (o resultado dela nao gate mais
+          // nada abaixo — ver o comentario extenso em _resolverOrfaoPorConclusao
+          // sobre por que fila-removal-como-prova quebrava o caminho comum).
           await removerDaFilaVerificacao(env2222, it.data_fila, it.id);
-          // SWEEP-ORFAOS1 (2026-09-06): conclusao TERMINAL e o unico fato que
-          // resolve um orfao. Nao-conclusivo (REPROVADO com fonte, que volta ao
-          // ciclo por backoff) nao resolve nada, por isso o mesmo gate do cache.
-          // O evento ja foi persistido como nao pendente acima; a saida da fila
-          // e reconfirmada por releitura dentro do helper.
+          // SWEEP-ORFAOS1 (2026-09-06, P0): conclusao TERMINAL do EVENTO e o
+          // unico fato que resolve um orfao, provado pelo retorno direto de
+          // mesclarEventoVerificado/retratarEventoRejeitado (_cvProvaTerminal
+          // acima), nunca por releitura do KV. Nao-conclusivo (REPROVADO com
+          // fonte, que volta ao ciclo por backoff) nao resolve nada, por isso o
+          // mesmo gate do cache.
           if (!_cvNaoConclusivo) {
             try {
-              await _resolverOrfaoPorConclusao(env2222, it.id, it.data_fila, it.veredicto && it.veredicto.veredicto, request);
+              await _resolverOrfaoPorConclusao(env2222, it.id, _cvProvaTerminal, it.veredicto && it.veredicto.veredicto, request);
             } catch (_cvOrfErr) {
               console.error("[verif][orfao][terminal] erro nao esperado ao resolver orfao de " + it.id + ":", _cvOrfErr && _cvOrfErr.message || String(_cvOrfErr));
             }
@@ -21948,7 +22003,9 @@ var EstadoSemanaDO = class {
     if (op === "resolver_quarentena") return await resolverEventoQuarentenadoInterno(this.env, ...args);
     // VERIFQ-ORFAO1 (2026-07-24): operacoes da fila de verificacao serializadas pelo mesmo DO
     if (op === "enfileirar") return await enfileirarVerificacaoAssincronaInterno(this.env, ...args);
-    if (op === "remover") { await removerDaFilaVerificacaoInterno(this.env, ...args); return null; }
+    // SWEEP-ORFAOS1: devolve o resultado em vez de null. A prova de escrita da
+    // remocao precisa atravessar o DO ate o chamador.
+    if (op === "remover") { return await removerDaFilaVerificacaoInterno(this.env, ...args); }
     // CONCORVERIF1 (2026-08-18): reserva atomica de itens da fila, usa this.state.storage (nao
     // this.env), por isso passa "this" (a instancia do DO) em vez de "this.env" como os demais.
     if (op === "reservar") return await reservarItensFilaInterno(this, ...args);
@@ -22593,6 +22650,7 @@ export {
   CONCLUSAO_PREFIXO,
   enfileirarVerificacaoAssincronaInterno,
   _reconciliarOrfaosConcluidos,
+  removerDaFilaVerificacaoInterno,
   EmissorDO,
   UsuarioDO,
   ConfigDO,
