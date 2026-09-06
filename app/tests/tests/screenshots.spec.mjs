@@ -15,7 +15,7 @@ import path from 'node:path';
 import { openLanding, waitDemoCard, isLinux } from './helpers.mjs';
 
 const SKIP_MSG = 'baseline visual gerado/validado somente no Linux do CI (Windows gera rendering divergente)';
-const BASELINE_DIR = path.join(process.cwd(), '__screenshots__');
+const BASELINE_DIR = path.join(process.cwd(), 'tests', '__screenshots__');
 
 test.describe('visual baseline', () => {
   test.skip(!isLinux, SKIP_MSG);

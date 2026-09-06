@@ -52,11 +52,22 @@ test('axe WCAG 2.2 AA — landing publica', async ({ page }, testInfo) => {
 
   const update = process.env.UPDATE_AXE_BASELINE === '1';
   if (update) {
+    // Merge entre projects (desktop + mobile): a 1a rodada roda os dois e o
+    // baseline final e a UNIAO de violacoes (viewports diferentes acham
+    // violacoes diferentes — ex.: link-in-text-block so no mobile).
+    const merged = {};
+    const prev = loadBaseline();
+    if (prev && prev.violations) Object.assign(merged, prev.violations);
+    for (const [id, targets] of Object.entries(map)) {
+      const base = new Set(merged[id] || []);
+      for (const t of targets) base.add(t);
+      merged[id] = [...base].sort();
+    }
     writeFileSync(
       BASELINE_PATH,
-      JSON.stringify({ generatedAt: new Date().toISOString(), scope: 'landing-publica', tags: TAGS, violations: map }, null, 2),
+      JSON.stringify({ generatedAt: new Date().toISOString(), scope: 'landing-publica', tags: TAGS, projects: ['desktop', 'mobile'], violations: merged }, null, 2),
     );
-    testInfo.annotations.push({ type: 'axe-baseline', description: 'baseline gravado em axe-baseline.json (revisar/commitar em etapa controlada)' });
+    testInfo.annotations.push({ type: 'axe-baseline', description: 'baseline (merge desktop+mobile) gravado em axe-baseline.json (revisar/commitar em etapa controlada)' });
     return;
   }
 
