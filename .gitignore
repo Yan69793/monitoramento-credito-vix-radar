@@ -140,6 +140,8 @@ Obsidian VIX Radar/.obsidian/
 node_modules/
 package-lock.json
 !api/package-lock.json
+# frontend-qa (app/tests): npm ci no CI exige o lockfile versionado (mesmo motivo do api/)
+!app/tests/package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
