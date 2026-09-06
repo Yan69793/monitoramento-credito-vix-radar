@@ -1,0 +1,18 @@
+{
+  "name": "vix-radar-frontend-qa",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Baseline QA do frontend VIX Radar (Playwright + axe + Lighthouse). Sem deploy; ferramentas gratuitas; custo adicional R$ 0. Baselines visuais/axe sao gerados no CI Linux e entram no repo por etapa controlada apos aprovacao humana.",
+  "scripts": {
+    "test": "playwright test",
+    "report": "playwright show-report",
+    "lhci:collect": "lhci collect",
+    "lhci:upload": "lhci upload"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.63.0",
+    "http-server": "^14.1.1"
+  }
+}

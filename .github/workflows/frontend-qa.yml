@@ -1,0 +1,101 @@
+# Frontend QA (baseline ANTES do redesign) — Playwright + axe + Lighthouse.
+# - Superficie publica anonima (landing) servida localmente; sem deploy; sem credenciais.
+# - Deterministico: workers=1, retries=0 (playwright.config.mjs), versoes fixadas
+#   via app/tests/package-lock.json (npm ci).
+# - permissions: contents: read — ESTE WORKFLOW NUNCA COMMITA NADA.
+#
+# Politica de baseline (aprovada 2026-09-06):
+#   * axe: inventario na 1a rodada; depois falha so por regressao NOVA contra
+#     axe-baseline.json commitado.
+#   * screenshots: canonico nasce no Linux (workflow_dispatch generate-baseline),
+#     publicado como artefato; commit em etapa controlada apos aprovacao humana.
+#   * lighthouse: sem thresholds (assert vazio); relatorios preservados como
+#     artefato para definir thresholds depois.
+name: Frontend QA
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '.github/workflows/frontend-qa.yml'
+  pull_request:
+    paths:
+      - 'app/**'
+      - '.github/workflows/frontend-qa.yml'
+  workflow_dispatch:
+    inputs:
+      generate-baseline:
+        description: 'Gerar baselines (axe + screenshots) como artefatos, sem commitar'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: frontend-qa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-qa:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: app/tests
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/tests/package-lock.json
+
+      - name: Instalar dependencias (lockfile)
+        run: npm ci
+
+      - name: Instalar Chromium (versao do lockfile)
+        run: npx playwright install --with-deps chromium
+
+      - name: Gerar baselines (axe + screenshots) — nunca commita
+        if: github.event_name == 'workflow_dispatch' && inputs.generate-baseline == 'true'
+        run: |
+          UPDATE_AXE_BASELINE=1 npx playwright test axe-inventory --project=desktop
+          npx playwright test screenshots --project=desktop --project=mobile --update-snapshots
+
+      - name: Rodar suite (smoke, keyboard, viewport, axe, screenshots linux)
+        run: npx playwright test
+
+      - name: Lighthouse baseline (sem thresholds; artefato p/ thresholds futuros)
+        run: |
+          npx http-server .. -a 127.0.0.1 -p 4173 -c-1 -s &
+          sleep 3
+          CHROME_PATH=$(find ~/.cache/ms-playwright -name chrome -type f | head -1) npx lhci collect --config lighthouserc.json
+          npx lhci upload --config lighthouserc.json
+
+      - name: Upload artefatos — relatorio Playwright + Lighthouse + evidencias
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-qa-report
+          path: |
+            playwright-report/**
+            .lighthouseci/**
+            .local/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload artefatos — baselines gerados (revisar e commitar em etapa controlada)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-qa-baselines
+          path: |
+            axe-baseline.json
+            __screenshots__/**
+          if-no-files-found: ignore
+          retention-days: 14

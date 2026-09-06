@@ -1,0 +1,18 @@
+{
+  "ci": {
+    "collect": {
+      "url": ["http://127.0.0.1:4173/"],
+      "numberOfRuns": 1,
+      "settings": {
+        "formFactor": "desktop",
+        "screenEmulation": { "mobile": false, "width": 1280, "height": 800 },
+        "chromeFlags": "--headless --no-sandbox --disable-gpu"
+      }
+    },
+    "upload": {
+      "target": "filesystem",
+      "outputDir": ".lighthouseci"
+    },
+    "assert": {}
+  }
+}

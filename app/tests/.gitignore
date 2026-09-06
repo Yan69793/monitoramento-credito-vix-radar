@@ -1,0 +1,7 @@
+# Artefatos locais/CI — nunca versionar
+node_modules/
+playwright-report/
+test-results/
+blob-report/
+.lighthouseci/
+.local/
