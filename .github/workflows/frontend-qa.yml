@@ -83,9 +83,9 @@ jobs:
         with:
           name: frontend-qa-report
           path: |
-            playwright-report/**
-            .lighthouseci/**
-            .local/**
+            app/tests/playwright-report/**
+            app/tests/.lighthouseci/**
+            app/tests/.local/**
           if-no-files-found: ignore
           retention-days: 14
 
@@ -95,7 +95,7 @@ jobs:
         with:
           name: frontend-qa-baselines
           path: |
-            axe-baseline.json
-            __screenshots__/**
+            app/tests/axe-baseline.json
+            app/tests/__screenshots__/**
           if-no-files-found: ignore
           retention-days: 14
