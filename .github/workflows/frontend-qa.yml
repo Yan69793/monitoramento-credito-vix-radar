@@ -62,7 +62,7 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Gerar baselines (axe + screenshots) — nunca commita
-        if: github.event_name == 'workflow_dispatch' && inputs.generate-baseline == 'true'
+        if: github.event_name == 'workflow_dispatch' && inputs.generate-baseline == true
         run: |
           UPDATE_AXE_BASELINE=1 npx playwright test axe-inventory --project=desktop
           npx playwright test screenshots --project=desktop --project=mobile --update-snapshots
