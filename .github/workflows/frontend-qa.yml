@@ -86,6 +86,7 @@ jobs:
             app/tests/playwright-report/**
             app/tests/.lighthouseci/**
             app/tests/.local/**
+          include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 14
 
