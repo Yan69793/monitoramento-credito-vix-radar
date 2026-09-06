@@ -269,7 +269,7 @@ antigos foram gravados sob o regime invertido.
 |---|---|---|---|---|
 | `VIXRadar-Noturno` | Task Scheduler nativo (gate provider) | Seg-Sex **18h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
 | `VIXRadar-Matinal` | Task Scheduler nativo (gate provider) | Diário **10h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
-| `VIXRadar-Verificacao-Async` | Task Scheduler nativo (gate provider) | Diário **11h00 e 18h45** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 18h45 impede fila presa até o dia seguinte |
+| `VIXRadar-Verificacao-Async` | Task Scheduler nativo (gate provider) | Diário **11h03 e 19h15** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 19h15 impede fila presa até o dia seguinte |
 | `VIXRadar-Sentinela` | Task Scheduler | Seg-Sex, :25 e :55 de 09h25 a 17h55 BRT | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho, teto 8 emissores e 120k tokens. Quase sempre sai em 0 token |
 | `VIXRadar-AgendaSemanal` | Task Scheduler | **Dom e Qua** 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale. 2x/semana é decisão deliberada de 14/08 (CALVAL-V2 regra 9, motivo `revalidar_proximo`), ver `routines/README.md` |
 | `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
