@@ -3,10 +3,12 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   sweepFilaVerificacaoOrfaos,
   chaveOrfaoVerificacao,
+  chaveConclusaoVerificacao,
   chaveTentativaVerificacao,
   chaveFilaVerificacao,
   ORFAO_PREFIXO,
   enfileirarVerificacaoAssincronaInterno,
+  _reconciliarOrfaosConcluidos,
   carregarIndiceQuarentena,
   _definirFalhaInjetadaTeste,
   _limparFalhasInjetadasTeste,
@@ -104,6 +106,53 @@ async function semearEstado(eventos) {
 }
 
 const health = () => SELF.fetch("https://example.com/").then((r) => r.json());
+
+const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao"; // vars do wrangler.test.jsonc
+
+function post(body) {
+  return SELF.fetch("https://example.com/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ routine_key: ROUTINE_KEY }, body)),
+  });
+}
+
+async function lerConclusao(id) {
+  return env.RADAR_KV.get(chaveConclusaoVerificacao(id), "json");
+}
+
+async function lerEventos() {
+  const raw = await env.RADAR_KV.get(`radar:estado:${SEMANA}`, "json");
+  const reg = raw && raw.results && raw.results[EMPRESA];
+  return reg && Array.isArray(reg.eventos) ? reg.eventos : [];
+}
+
+// Estado com o evento pendente + fila expirada, roda o sweep e devolve a
+// data_fila. Ponto de partida de todo teste de conclusao terminal: para o merge
+// casar, o evento tem que existir no estado com a mesma chave dedup do id.
+async function prepararOrfaoComEstado() {
+  const d = hoje();
+  await semearEstado([Object.assign(eventoBase(), { _pendente_verificacao: true })]);
+  await semearFila(d, [itemFila(50)]);
+  await sweepFilaVerificacaoOrfaos(env);
+  return d;
+}
+
+async function confirmarAprovado(dataFila) {
+  const r = await post({
+    action: "confirmar_verificacao",
+    itens: [{
+      id: ID,
+      empresa: EMPRESA,
+      semana: SEMANA,
+      data_fila: dataFila,
+      setor: SETOR,
+      evento: eventoBase(),
+      veredicto: { veredicto: "APROVADO", confianca: 0.95, motivo: "fonte primaria confirmada", fontes_validas: [FONTE] },
+    }],
+  });
+  return r.json();
+}
 
 beforeEach(async () => {
   const _limpar = async (prefixo) => {
@@ -298,16 +347,22 @@ describe("SWEEP-ORFAOS1 - a reentrada resolve, e so ela", () => {
 
     const r = await enfileirarVerificacaoAssincronaInterno(env, EMPRESA, SEMANA, SETOR, [eventoBase()]);
 
+    // a reentrada acontece normalmente
     expect(r.adicionados).toBe(1);
     expect(r.indice_erro).toBeNull();
     const fila = await lerFila(hoje());
     expect(fila).toHaveLength(1);
     expect(fila[0].id).toBe(ID);
-    expect(await lerOrfao(ID)).toBeNull();
-    expect(await listarOrfaos()).toHaveLength(0);
+    // ...e o orfao CONTINUA. Voltar para a fila prova reentrada no ciclo, nao
+    // conclusao da verificacao. Health segue vermelho.
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(await lerConclusao(ID)).toBeNull();
+    const h = await health();
+    expect(h.verificador_ok).toBe(false);
+    expect(h.verif_orfaos_ativos).toBeGreaterThanOrEqual(1);
   });
 
-  it("11. FAIL-CLOSED: reentrada que NAO persiste mantem o orfao", async () => {
+  it("11. FAIL-CLOSED: reentrada bloqueada tambem mantem o orfao", async () => {
     await semearFila(hoje(), [itemFila(50)]);
     await sweepFilaVerificacaoOrfaos(env);
     expect(await lerOrfao(ID)).toBeTruthy();
@@ -319,33 +374,117 @@ describe("SWEEP-ORFAOS1 - a reentrada resolve, e so ela", () => {
     expect(r.adicionados).toBe(0);
     expect(r.indice_erro).toBeTruthy();
     expect(await lerFila(hoje())).toBeNull();
-    // o rastro nao pode ter sumido
     expect(await lerOrfao(ID)).toBeTruthy();
   });
+});
 
-  it("12. falha ao apagar o orfao apos reentrada deixa fila E orfao (vermelho a mais)", async () => {
-    await semearFila(hoje(), [itemFila(50)]);
-    await sweepFilaVerificacaoOrfaos(env);
+describe("SWEEP-ORFAOS1 - so a conclusao terminal resolve", () => {
+  it("14. conclusao terminal apaga o orfao e nao deixa marcador para tras", async () => {
+    const d = await prepararOrfaoComEstado();
+
+    const r = await confirmarAprovado(d);
+    expect(r.ok).toBe(true);
+    expect(r.resultado.aprovados).toBe(1);
+
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerConclusao(ID)).toBeNull();
+    // o evento concluiu de verdade
+    const evs = await lerEventos();
+    expect(evs).toHaveLength(1);
+    expect(evs[0]._pendente_verificacao).toBe(false);
+    // e o health solta
+    const h = await health();
+    expect(h.verif_orfaos_ativos).toBe(0);
+  });
+
+  it("15. FAIL-CLOSED: falha no delete terminal preserva orfao E grava a prova", async () => {
+    const d = await prepararOrfaoComEstado();
+    _definirFalhaInjetadaTeste("orfao_delete_terminal");
+
+    const r = await confirmarAprovado(d);
+    expect(r.ok).toBe(true);
+    expect(r.resultado.aprovados).toBe(1);
+
+    // orfao permanece e a prova de conclusao ficou gravada, senao nada
+    // convergiria depois.
+    // NAO chamar health() aqui: ele dispara o sweep, o sweep reconcilia e o
+    // orfao some no meio do teste. A convergencia e assunto do teste 16; aqui
+    // o que se prova e o estado imediatamente apos a falha do delete.
+    expect(await lerOrfao(ID)).toBeTruthy();
+    const marcador = await lerConclusao(ID);
+    expect(marcador).toBeTruthy();
+    expect(marcador.id).toBe(ID);
+    expect(Number.isNaN(Date.parse(marcador.concluido_em))).toBe(false);
+    // e a conclusao e posterior ao orfao, que e o que autoriza a convergencia
+    const orfao = await lerOrfao(ID);
+    expect(Date.parse(marcador.concluido_em)).toBeGreaterThan(Date.parse(orfao.expirado_em));
+  });
+
+  it("16. o sweep seguinte converge: marcador posterior ao expirado_em resolve o orfao", async () => {
+    const d = await prepararOrfaoComEstado();
+    _definirFalhaInjetadaTeste("orfao_delete_terminal");
+    await confirmarAprovado(d);
     expect(await lerOrfao(ID)).toBeTruthy();
 
-    _definirFalhaInjetadaTeste("orfao_delete_reentrada");
-    const r = await enfileirarVerificacaoAssincronaInterno(env, EMPRESA, SEMANA, SETOR, [eventoBase()]);
+    // a falha era so no delete; o marcador esta la e prova conclusao posterior
+    _limparFalhasInjetadasTeste();
+    const rec = await _reconciliarOrfaosConcluidos(env, 100);
 
-    // a reentrada valeu: o item esta na fila
-    expect(r.adicionados).toBe(1);
-    const fila = await lerFila(hoje());
-    expect(fila).toHaveLength(1);
-    expect(fila[0].id).toBe(ID);
-    // e o orfao coexiste, segurando o health em vermelho
+    expect(rec.resolvidos).toBe(1);
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerConclusao(ID)).toBeNull();
+    const h = await health();
+    expect(h.verif_orfaos_ativos).toBe(0);
+  });
+
+  it("17. FAIL-CLOSED: marcador ANTERIOR ao expirado_em nao resolve (snapshot stale)", async () => {
+    const agora = Date.now();
+    // orfao expirado AGORA, conclusao de uma hora ATRAS: nao prova nada sobre
+    // este orfao, e um desfecho velho de outra rodada.
+    await env.RADAR_KV.put(chaveOrfaoVerificacao(ID), JSON.stringify({
+      id: ID, empresa: EMPRESA, semana: SEMANA, setor: SETOR,
+      criado_em: new Date(agora - 50 * H).toISOString(),
+      expirado_em: new Date(agora).toISOString(),
+      data_fila: hoje(), motivo: "fila_expirada_48h", origem: "sweep",
+    }));
+    await env.RADAR_KV.put(chaveConclusaoVerificacao(ID), JSON.stringify({
+      id: ID, concluido_em: new Date(agora - 1 * H).toISOString(), veredicto: "APROVADO", origem: "confirmar_verificacao",
+    }));
+
+    const rec = await _reconciliarOrfaosConcluidos(env, 100);
+
+    expect(rec.avaliados).toBe(1);
+    expect(rec.resolvidos).toBe(0);
     expect(await lerOrfao(ID)).toBeTruthy();
     const h = await health();
     expect(h.verificador_ok).toBe(false);
+  });
 
-    // outra ponta: sem a falha, a mesma reentrada limpa
-    _limparFalhasInjetadasTeste();
-    await env.RADAR_KV.delete(chaveFilaVerificacao(hoje()));
-    const r2 = await enfileirarVerificacaoAssincronaInterno(env, EMPRESA, SEMANA, SETOR, [eventoBase()]);
-    expect(r2.adicionados).toBe(1);
-    expect(await lerOrfao(ID)).toBeNull();
+  it("18. FAIL-CLOSED: sem marcador o sweep nunca resolve, por mais que rode", async () => {
+    await semearFila(hoje(), [itemFila(50)]);
+    await sweepFilaVerificacaoOrfaos(env);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(await lerConclusao(ID)).toBeNull();
+
+    await sweepFilaVerificacaoOrfaos(env);
+    await sweepFilaVerificacaoOrfaos(env);
+
+    expect(await lerOrfao(ID)).toBeTruthy();
+    const h = await health();
+    expect(h.verificador_ok).toBe(false);
+  });
+
+  it("19. a conclusao terminal nao toca attempt nem quarentena", async () => {
+    const d = await prepararOrfaoComEstado();
+    const reg = { id: ID, n: 2, proxima_em: "2026-09-08T00:00:00.000Z", atualizado_em: "2026-09-06T00:00:00.000Z" };
+    await env.RADAR_KV.put(chaveTentativaVerificacao(ID), JSON.stringify(reg), { expirationTtl: 60 * 60 * 24 * 90 });
+
+    await confirmarAprovado(d);
+
+    const attempt = await env.RADAR_KV.get(chaveTentativaVerificacao(ID), "json");
+    expect(attempt).toBeTruthy();
+    expect(attempt.n).toBe(2);
+    const idx = await lerIndice(env);
+    expect(Object.keys(idx.ids)).toHaveLength(0);
   });
 });

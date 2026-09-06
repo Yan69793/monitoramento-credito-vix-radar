@@ -4,6 +4,29 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.243.js = v4.9.242 + SWEEP-ORFAOS1: fila expirada deixa de virar pendencia
+#   invisivel. sweepFilaVerificacaoOrfaos removia o item em 48h sem tocar o evento;
+#   como o health media pendencia lendo a FILA (listarFilaVerificacaoPendente) e nunca
+#   o estado, a remocao devolvia verificador_ok=true com _pendente_verificacao:true
+#   ainda em aberto. Falso-verde estrutural, mesma familia do VERIFSLA2. Agora o
+#   expirado so sai da fila depois que radar:verif:orfao:{id} esta durave (SEM TTL:
+#   expirar recriaria o falso-verde no instante em que o registro sumisse), e falha
+#   ao gravar preserva o item na fila. O health lista o prefixo, expoe
+#   verif_orfaos_ativos e segura verificador_ok; falha no list vira -1 e nunca
+#   satisfaz ===0 (fail-closed). Reentrada na fila NAO resolve orfao: enfileirar
+#   prova que o id voltou ao ciclo, nao que a verificacao concluiu. Quem resolve e a
+#   conclusao TERMINAL do confirmar_verificacao, que confirma a saida da fila
+#   RELENDO o KV (removerDaFilaVerificacaoInterno engole erro em catch vazio, entao
+#   o retorno nao prova nada), grava radar:verif:concluido:{id} com timestamp e so
+#   entao apaga o orfao. Se o delete falhar, o marcador sustenta a convergencia: o
+#   sweep reconcilia e so apaga quando concluido_em > expirado_em, comparado por
+#   epoch. Marcador ausente, ilegivel, sem hora valida ou anterior ao orfao nao
+#   resolve nada. attempt, evento e quarentena intocados em todos os caminhos.
+#   Corrige tambem a afirmacao de que o item "segue na fila ate o TTL de 7d", errada
+#   desde o VERIFQ-ORFAO1: a CHAVE tem TTL de 7d, o ITEM sai em 48h.
+#   Testes: api/test/sweep-orfaos.test.mjs (18, prova de 2 pontas).
+#   Rollback: wrangler rollback --name radar-credito-api (volta para v4.9.242).
+#   main = "v4.9.242.js".
 # v4.9.242.js = v4.9.241 + REPROVADO-FAILCLOSED1: retry bounded (N=3) para veredicto
 #   NAO_CONCLUSIVO do verificador adversarial, com indice de quarentena fail-closed
 #   (radar:verif:quarentena_idx) como unico writer via ConfigDO. Ancora canonica por
