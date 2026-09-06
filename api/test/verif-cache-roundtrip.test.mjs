@@ -1,5 +1,5 @@
 import { SELF, env } from "cloudflare:test";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // VERIFCACHE-ROUNDTRIP1 (auditoria 2026-08-27, fix 2026-08-31).
 //
@@ -37,7 +37,14 @@ const SEMANA = "2026-W33";
 const DATA_FILA = "2026-08-13";
 const FONTE = "https://example.com/fato-simpar";
 const ID_CORRIGIR = `2026-08-13|${EMPRESA.toLowerCase()}|roundtrip-corrigir`;
-const ID_APROVADO = `2026-08-14|aegea|roundtrip-aprovado`;
+// MERGEDUP1 (2026-09-05): este id era `2026-08-14|aegea|roundtrip-aprovado`, com o
+// segmento de empresa ("aegea") divergindo da empresa do proprio item ("Simpar"). Era
+// token sintetico de cache, nao chave dedup real. Desde que `confirmar_verificacao`
+// passa `it.id` como `chaveOriginal` do merge, o id precisa ter a forma que
+// `enfileirarVerificacaoAssincronaInterno` (worker.js:9819) de fato produz:
+// `data|empresa_lowercase|fonte`. O assunto deste teste (round-trip do veredicto pelo
+// cache) nao mudou.
+const ID_APROVADO = `2026-08-13|${EMPRESA.toLowerCase()}|roundtrip-aprovado`;
 
 function item(id, veredicto) {
   return {
@@ -69,7 +76,50 @@ function confirmar(itens) {
   });
 }
 
+// MERGEDUP1 (2026-09-05): o merge do fluxo async passou a casar o evento pelo `id` da
+// fila (`chaveOriginal`) e a recusar insercao quando nao encontra o correspondente no
+// estado, em vez de empurrar duplicata. Este teste nunca semeava o estado — atalho que
+// funcionava so porque o codigo antigo fazia `push` em estado vazio. Semeando os dois
+// eventos com as chaves dedup iguais aos ids da fila, o assunto original do teste
+// (round-trip do veredicto pelo cache) fica preservado e passa a exercitar o caminho
+// real de producao, onde o evento SEMPRE ja existe no estado quando entra na fila.
+async function semearEstado() {
+  const evento = /* @__PURE__ */ ((fonte, id) => ({
+    empresa: EMPRESA,
+    classificacao: "RELEVANTE",
+    titulo: "Evento original antes da correcao",
+    evento: "Simpar divulgou resultado do trimestre.",
+    impacto_credito: "Aumento da divida.",
+    fonte_primaria: fonte,
+    fonte_tipo: "IMPRENSA",
+    data_evento: id.split("|")[0],
+    tags: ["resultados"],
+    _pendente_verificacao: true,
+  }));
+  await env.RADAR_KV.put(
+    `radar:estado:${SEMANA}`,
+    JSON.stringify({
+      week: SEMANA,
+      results: {
+        [EMPRESA]: {
+          empresa: EMPRESA,
+          setor: "Transportes",
+          sem_eventos: false,
+          // fonte_primaria crua vira o 3o segmento da chave dedup via
+          // _fonteBaseParaDedup, entao estas duas chaves batem com ID_CORRIGIR/ID_APROVADO.
+          eventos: [evento("roundtrip-corrigir", ID_CORRIGIR), evento("roundtrip-aprovado", ID_APROVADO)],
+        },
+      },
+      updated_at: "2026-09-05T00:00:00.000Z",
+    })
+  );
+}
+
 describe("VERIFCACHE-ROUNDTRIP1: veredicto corrigido em cache nao pode virar rejeicao no reenvio", () => {
+  beforeEach(async () => {
+    await semearEstado();
+  });
+
   it("ponta ruim: reenvio literal do cache de CORRIGIR com correcoes aprova, nao retrata", async () => {
     const vCorrigir = {
       veredicto: "CORRIGIR",

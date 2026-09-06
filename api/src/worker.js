@@ -9954,19 +9954,65 @@ async function sweepFilaVerificacaoOrfaos(env2222, maxHoras) {
   return { dias_escaneados: dias, removidos };
 }
 __name(sweepFilaVerificacaoOrfaos, "sweepFilaVerificacaoOrfaos");
-async function mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAprovado, setor) {
-  if (!env2222.RADAR_KV || !empresa) return;
+// MERGEDUP1 (2026-09-05): `chaveOriginal` e o `id` que a fila carrega, ou seja a chave
+// dedup calculada ANTES de o verificador mexer no evento. Sem ela, esta funcao casava
+// por `_chaveDedupEvento(evEnriquecido)` recalculada, e como essa chave inclui host+path
+// de `fonte_primaria` (`_chaveDedupEvento`), qualquer veredicto CORRIGIR que reescrevesse
+// a fonte (`aplicarCorrecaoVerificador`) mudava a chave, nao casava com nada, e caia no
+// `push` — duplicando o evento em vez de atualiza-lo. Com `chaveOriginal` presente o
+// comportamento e fail-closed: casou 1, atualiza no lugar; casou 0 ou >1, aborta sem
+// gravar. `push` so continua existindo no caminho legado, quando o chamador nao informa
+// a chave. A semantica de `_chaveDedupEvento` nao mudou.
+async function mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAprovado, setor, chaveOriginal) {
+  if (!env2222.RADAR_KV || !empresa) return false;
   const estado = await carregarEstadoCompartilhado(env2222, semana);
   const anterior = estado.results[empresa] || {};
   const evEnriquecido = enriquecerEvento(Object.assign({}, eventoAprovado, { empresa }), setor || anterior.setor);
   const existentes = Array.isArray(anterior.eventos) ? anterior.eventos.slice() : [];
   const chaveNovo = _chaveDedupEvento(evEnriquecido);
-  const idxExistente = existentes.findIndex(function(ev) { return _chaveDedupEvento(ev) === chaveNovo; });
+  let idxExistente;
+  if (chaveOriginal) {
+    const _casados = [];
+    for (let _i = 0; _i < existentes.length; _i++) {
+      if (_chaveDedupEvento(existentes[_i]) === chaveOriginal) _casados.push(_i);
+    }
+    if (_casados.length === 1) {
+      idxExistente = _casados[0];
+    } else if (_casados.length === 0) {
+      // Reenvio idempotente (VERIFCACHE-ROUNDTRIP1): numa passada anterior o merge ja
+      // aplicou a correcao, entao o evento no estado ja carrega a chave NOVA e a chave
+      // original nao existe mais. Reaplicar por cima e no-op seguro. Continua sem push.
+      const _jaAplicado = [];
+      for (let _k = 0; _k < existentes.length; _k++) {
+        if (_chaveDedupEvento(existentes[_k]) === chaveNovo) _jaAplicado.push(_k);
+      }
+      if (_jaAplicado.length !== 1) {
+        console.error("[mesclar][MERGEDUP1][FAIL-CLOSED] merge recusado, nada gravado", { empresa, semana, chave_original: chaveOriginal, chave_nova: chaveNovo, matches_original: 0, matches_nova: _jaAplicado.length, eventos_no_estado: existentes.length });
+        return false;
+      }
+      idxExistente = _jaAplicado[0];
+    } else {
+      console.error("[mesclar][MERGEDUP1][FAIL-CLOSED] merge recusado por chave original ambigua, nada gravado", { empresa, semana, chave_original: chaveOriginal, chave_nova: chaveNovo, matches_original: _casados.length, eventos_no_estado: existentes.length });
+      return false;
+    }
+  } else {
+    idxExistente = existentes.findIndex(function(ev) { return _chaveDedupEvento(ev) === chaveNovo; });
+  }
   if (idxExistente >= 0) {
     var _original = existentes[idxExistente];
     existentes[idxExistente] = Object.assign({}, _original, evEnriquecido, { _pendente_verificacao: false });
   } else {
     existentes.push(evEnriquecido);
+  }
+  if (chaveOriginal) {
+    let _posMerge = 0;
+    for (let _j = 0; _j < existentes.length; _j++) {
+      if (_chaveDedupEvento(existentes[_j]) === chaveNovo) _posMerge++;
+    }
+    if (_posMerge !== 1) {
+      console.error("[mesclar][MERGEDUP1][FAIL-CLOSED] pos-merge com contagem invalida, nada gravado", { empresa, semana, chave_nova: chaveNovo, correspondentes: _posMerge });
+      return false;
+    }
   }
   existentes.sort(function(a, b) {
     const ma = a && a._enriquecimento ? a._enriquecimento.materialidade : 0;
@@ -9985,18 +10031,19 @@ async function mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAp
   estado.results[empresa] = normalizarMojibake(anterior);
   estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
   await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+  return true;
 }
 __name(mesclarEventoVerificadoInterno, "mesclarEventoVerificadoInterno");
-async function mesclarEventoVerificado(env2222, semana, empresa, eventoAprovado, setor) {
+async function mesclarEventoVerificado(env2222, semana, empresa, eventoAprovado, setor, chaveOriginal) {
   let r;
   try {
-    r = await _rotearParaEstadoSemanaDO(env2222, semana, "mesclar", [semana, empresa, eventoAprovado, setor]);
+    r = await _rotearParaEstadoSemanaDO(env2222, semana, "mesclar", [semana, empresa, eventoAprovado, setor, chaveOriginal]);
   } catch (e) {
     console.error("[EstadoSemanaDO][mesclar] erro, fallback sem serializacao:", e && e.message);
     r = { disponivel: false };
   }
   if (r.disponivel) return r.resultado;
-  return await mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAprovado, setor);
+  return await mesclarEventoVerificadoInterno(env2222, semana, empresa, eventoAprovado, setor, chaveOriginal);
 }
 __name(mesclarEventoVerificado, "mesclarEventoVerificado");
 async function retratarEventoRejeitadoInterno(env2222, semana, empresa, eventoRejeitado, setor) {
@@ -20024,7 +20071,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!body.routine_key || (body.routine_key !== env2222.ROUTINE_API_KEY && body.routine_key !== env2222.REMOTE_VERIFICACAO_KEY)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
       var _cvItens = Array.isArray(body.itens) ? body.itens : [];
       if (_cvItens.length === 0) return resp({ ok: false, erro: "itens obrigatorio (array)." }, 400, request);
-      var _cvResultado = { processados: 0, aprovados: 0, rejeitados: 0, retratados: 0, erros: 0 };
+      var _cvResultado = { processados: 0, aprovados: 0, rejeitados: 0, retratados: 0, erros: 0, mesclas_recusadas: 0 };
       for (const it of _cvItens) {
         try {
           if (!it || !it.id || !it.empresa || !it.semana || !it.data_fila || !it.veredicto) { _cvResultado.erros++; continue; }
@@ -20032,8 +20079,16 @@ async function __coreFetch(request, env2222, ctx) {
           var _cvAprovado = it.veredicto.veredicto === "APROVADO" || aplicarCorrecaoVerificador(_cvEvento, it.veredicto);
           if (_cvAprovado) {
             _cvEvento._verif = { veredicto: it.veredicto.veredicto, confianca: it.veredicto.confianca, motivo: it.veredicto.motivo, fontes_validas: it.veredicto.fontes_validas || [], _async: true };
-            await mesclarEventoVerificado(env2222, it.semana, it.empresa, _cvEvento, it.setor);
-            _cvResultado.aprovados++;
+            // MERGEDUP1 (2026-09-05): `it.id` e a chave dedup de quando o item entrou na fila,
+            // antes de o verificador poder ter reescrito `fonte_primaria`. Sem passa-la, um
+            // veredicto CORRIGIR sobre a fonte duplicava o evento no estado.
+            var _cvMesclou = await mesclarEventoVerificado(env2222, it.semana, it.empresa, _cvEvento, it.setor, it.id);
+            if (_cvMesclou === false) {
+              _cvResultado.mesclas_recusadas++;
+              console.error("[verif-async][MERGEDUP1] merge recusado (fail-closed), item nao aplicado ao estado", { empresa: it.empresa, id: it.id, semana: it.semana });
+            } else {
+              _cvResultado.aprovados++;
+            }
           } else {
             var _cvRetratado = await retratarEventoRejeitado(env2222, it.semana, it.empresa, _cvEvento, it.setor);
             await tel(env2222, request, { evento: "verificacao_async_rejeitado", empresa: String(it.empresa).slice(0, 40), extra: { motivo: (it.veredicto.motivo || "").slice(0, 128), retratado: _cvRetratado } });
@@ -20065,6 +20120,7 @@ async function __coreFetch(request, env2222, ctx) {
           rejeitados: _cvResultado.rejeitados,
           retratados: _cvResultado.retratados,
           erros: _cvResultado.erros,
+          mesclas_recusadas: _cvResultado.mesclas_recusadas,
           pendentes: _cvPendentes,
           origem: body.origem || "desconhecida"
         });
