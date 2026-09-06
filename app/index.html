@@ -345,7 +345,7 @@
 .ph-eyebrow { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.18em; text-transform:uppercase; color:rgba(183,152,93,0.85); margin-bottom:14px; display:block; }
 .ph-h1 { font-family:'Cormorant Garamond',Georgia,serif; font-size:clamp(2rem,5.5vw,3.25rem); font-weight:500; line-height:1.15; color:#E8E4DC; text-wrap:balance; margin:0 0 16px; letter-spacing:-0.02em; }
 .ph-h2 { font-family:'Cormorant Garamond',Georgia,serif; font-size:clamp(1.5rem,3.5vw,2.1rem); font-weight:500; color:#E8E4DC; margin:0 0 12px; text-wrap:balance; }
-.ph-lead { font-size:15px; line-height:1.7; color:rgba(232,228,220,0.62); max-width:62ch; margin:0 0 20px; font-weight:300; }
+.ph-lead { font-size:16px; line-height:1.75; color:rgba(232,228,220,0.7); max-width:64ch; margin:0 0 20px; font-weight:400; }
 .ph-actions { display:flex; flex-wrap:wrap; gap:12px; margin-top:8px; }
 .ph-btn-primary { font-family:'Manrope',sans-serif; font-size:12px; letter-spacing:0.14em; text-transform:uppercase; color:#0B1426; background:rgba(183,152,93,0.92); border:1px solid rgba(183,152,93,0.6); border-radius:4px; padding:13px 22px; cursor:pointer; text-decoration:none; display:inline-block; transition:all .25s ease; }
 .ph-btn-primary:hover { background:#B7985D; color:#fff; }
@@ -362,8 +362,8 @@
 .ph-demo__tag { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:#B7985D; border:1px solid rgba(183,152,93,0.35); padding:4px 8px; border-radius:3px; margin-bottom:12px; }
 .ph-demo__score { font-family:'JetBrains Mono',monospace; font-size:28px; color:#E8E4DC; line-height:1; margin:8px 0; }
 .ph-demo__score small { font-size:11px; color:rgba(232,228,220,0.4); font-weight:400; }
-.ph-demo__meta { font-size:11px; color:rgba(232,228,220,0.42); line-height:1.5; margin-top:10px; }
-.ph-demo__note { font-size:10px; color:rgba(232,228,220,0.28); margin-top:12px; font-style:italic; }
+.ph-demo__meta { font-size:12px; color:rgba(232,228,220,0.55); line-height:1.55; margin-top:10px; }
+.ph-demo__note { font-size:11px; color:rgba(232,228,220,0.45); margin-top:12px; font-style:italic; }
 .ph-demo.is-loading { opacity:0.55; pointer-events:none; }
 .ph-demo__skeleton { height:88px; border-radius:6px; background:linear-gradient(90deg,rgba(183,152,93,0.06),rgba(183,152,93,0.14),rgba(183,152,93,0.06)); background-size:200% 100%; animation:phSkel 1.2s ease-in-out infinite; }
 @keyframes phSkel { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
@@ -378,7 +378,7 @@
 .ph-signature__text { font-family:'Manrope',sans-serif; font-size:10px; font-weight:300; letter-spacing:0.08em; color:rgba(232,228,220,0.45); }
 #publicHome.vix-landing-extended .ph-auth-container.visible { max-height:none !important; opacity:1 !important; margin:16px auto 0; }
 .ph-pills { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
-.ph-pill { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(232,228,220,0.55); border:1px solid rgba(183,152,93,0.2); border-radius:999px; padding:8px 12px; }
+.ph-pill { font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(232,228,220,0.62); border:1px solid rgba(183,152,93,0.22); border-radius:999px; padding:8px 12px; }
 .ph-pill strong { color:#B7985D; font-weight:500; }
 .ph-nav__back { font-family:'Manrope',sans-serif; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:rgba(232,228,220,0.4); background:none; border:none; cursor:pointer; text-decoration:none; margin-right:auto; transition:color .2s; }
 .ph-nav__back:hover { color:#B7985D; }
@@ -563,7 +563,7 @@
 .lgpd-header h2{margin:0;font-size:14px;font-weight:700;color:#B7985D;letter-spacing:.06em}
 .lgpd-close{background:none;border:none;color:#8899AA;font-size:22px;cursor:pointer;padding:4px 8px;line-height:1;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center}
 .lgpd-close:hover{color:#B7985D}
-.lgpd-body{padding:20px 24px;overflow-y:auto;flex:1;font-size:12.5px;color:#C8C4BC;line-height:1.75}
+.lgpd-body{padding:20px 24px;overflow-y:auto;flex:1;font-size:13px;color:#CEC9BF;line-height:1.75}
 .lgpd-body h3{font-size:13px;font-weight:700;color:#E8E4DC;margin:20px 0 8px;letter-spacing:.02em}
 .lgpd-body h3:first-child{margin-top:0}
 .lgpd-body p{margin:0 0 12px}
@@ -3213,6 +3213,10 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
 }
 .vix-toggle-research-btn:hover { border-color: rgba(148, 163, 184, 0.32); color: #94A3B8; }
 .vix-toggle-research-btn.is-on { background: rgba(183, 152, 93, 0.07); border-color: rgba(183, 152, 93, 0.28); color: #B7985D; }
+/* ━━ D2 Fase 1 (2026-09-06): foco visivel consistente em todo interativo ━━ */
+:focus-visible { outline: 2px solid rgba(201,169,110,0.85); outline-offset: 2px; border-radius: 2px; }
+button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focus-visible, [tabindex]:focus-visible { outline: 2px solid rgba(201,169,110,0.85); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { :focus-visible { transition: none; } }
 </style>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">window.VIX_LANDING_EXTENDED=false;window.VIX_LANDING_P1=true;</script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">function _normTituloDedup(t){if(!t)return'';return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(fato relevante|comunicado ao mercado|informa sobre|informa acerca de|informa acerca|informa que|comunica sobre|comunica que|informa|comunica|sobre|acerca de|acerca)\b/gi,' ').replace(/\bde\b/gi,' ').replace(/\b(rating)s\b/gi,'$1').replace(/^[^a-z0-9]+/,'').replace(/\s+/g,' ').trim()}function _isDupSemantico(ev,existentes){const normA=_normTituloDedup(ev.titulo);if(!normA)return false;const empA=(ev.empresa||ev._empresa||'').toLowerCase();const dEvA=String(ev.data_evento||'');const fA=(ev.fonte_primaria||'').split('?')[0].replace(/\/$/,'');for(const ex of existentes){const empB=(ex.empresa||ex._empresa||'').toLowerCase();if(empA!==empB)continue;if((ev.titulo||'')===(ex.titulo||'')&&dEvA===(ex.data_evento||''))return true;const fB=(ex.fonte_primaria||'').split('?')[0].replace(/\/$/,'');if(fA&&fB&&fA===fB)return true;const normB=_normTituloDedup(ex.titulo);if(normA!==normB)continue;if(dEvA===(ex.data_evento||''))return true}return false}</script></head>
@@ -3256,8 +3260,8 @@ body.vix-hide-research .ev-card[data-tipo-dado="research"] { display: none !impo
       <div class="ph-demo" id="phDemoCard" data-demo-fallback="1">
         <div class="ph-demo__skeleton" id="phDemoSkeleton" hidden></div>
         <span class="ph-demo__tag" id="phDemoTag">RELEVANTE · Exemplo ilustrativo</span>
-        <div id="phDemoEmpresa" style="font-size:13px;color:#E8E4DC;font-weight:500;margin-bottom:4px;">Emissor do setor elétrico</div>
-        <div id="phDemoResumo" style="font-size:12px;color:rgba(232,228,220,0.55);line-height:1.5;">Comunicado ao mercado — revisão de guidance operacional e impacto na geração de caixa.</div>
+        <div id="phDemoEmpresa" style="font-size:14px;color:#F0E9DA;font-weight:500;margin-bottom:4px;">Emissor do setor elétrico</div>
+        <div id="phDemoResumo" style="font-size:13px;color:rgba(232,228,220,0.68);line-height:1.6;">Comunicado ao mercado — revisão de guidance operacional e impacto na geração de caixa.</div>
         <div class="ph-demo__score" id="phDemoScore">72<small> /100 materialidade</small></div>
         <div class="ph-demo__meta" id="phDemoMeta">Fonte: documento CVM · Monitorar: spreads e próximos vencimentos · Atualização: dia útil pós-B3</div>
         <p class="ph-demo__note" id="phDemoNote">Card demonstrativo do formato entregue no painel. Dados reais disponíveis após login.</p>
