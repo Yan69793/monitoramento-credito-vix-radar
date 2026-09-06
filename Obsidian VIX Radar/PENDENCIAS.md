@@ -11,6 +11,26 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ---
 
+## 06/09 (noite), FRONTEND-QA FECHADO (baseline versionado) + D2 Fases 1–2 CONCLUÍDAS
+
+> **Status:** CONCLUÍDO no repositório (`origin/main=10e8e18`), sem deploy. **Data:** 2026-09-06. **Origem do Registro:** fechamento auditado da cadeia Frontend-QA (P0 da pesquisa PESQUISA-MCP-VIX-2026-09-06) e da direção visual D2 "Marble Editorial Premium" (DIRECAO-VISUAL-VIX-2026-09-06). **Condicao de Obsolescencia:** não se aplica a itens concluídos; a pendência aberta (aprovação estética do operador) está registrada em `status/ESTADO.md`.
+
+**Frontend-QA:** suite `app/tests` (Playwright `workers:1` + @axe-core/playwright + Lighthouse CI, tudo gratuito, custo R$ 0) e workflow `.github/workflows/frontend-qa.yml` (`permissions: contents: read`; nunca commita; gera baseline Linux por `workflow_dispatch generate-baseline` e publica artefatos). Baseline aprovado versionado em `836e095` (`axe-baseline.json` — merge desktop+mobile, violação `link-in-text-block` no cookie banner — + `landing-desktop.png`/`landing-mobile.png`). Commits de infra: `842dd67` (scaffolding), `b039842` (lockfile versionado), `f7bbbac` (upload prefixado), `19922f7` (condição booleana), `74fa8cc` (merge axe desktop+mobile), `96a1985` (UPDATE_SNAPSHOTS), `5462a2c` (template .png), `5fd1186` (`include-hidden-files` p/ dot-dirs). CI normal verde `34046032345`; runs generate-baseline `34045711064`/`34046927410`.
+
+**D2 Fase 1** (`f38e6f5`, só `app/index.html`, 11+/7-): corpo 12.5→13px, `.ph-lead` 15→16px/weight 400/alpha .70, card demo da landing mais legível (empresa 14px, resumo 13px, meta/nota maiores), pills 10px, `:focus-visible` dourado global 2px (vence `outline:none` antigos). **D2 Fase 2** (`d44f37b` 2+/2- e `10e8e18` 3+/3-): stat-cards internos radius 10px + borda dourada 0.12 + grid 14px; EWS rows radius 8px, hover dourado `rgba(183,152,93,.06)` (removeu hover azul `rgba(59,130,246,.04)` fora da identidade), posição do rank 10→11px. Baseline atualizado em **commit separado** `01992d6` (só `axe-baseline.json` + 2 PNGs).
+
+**Provas:** CI final verde por etapa (`34047047264` F1, `34047304063` F2a, `34047661718` F2b); no run intermediário `34046850721` o único vermelho foi o visual esperado (screenshots), com 8 testes verdes; axe sem regressão nova (desktop 0, mobile `link-in-text-block:1` = baseline); overflow zero em 1280 e 375; Lighthouse local (sem thresholds) perf 55→56 · a11y 98 · bp 96 · seo 100 (não pior); `git diff --check` OK; capturas BEFORE×AFTER pareadas em `app/tests/.local/compare/` (não versionadas).
+
+**Riscos:** (1) flap leve do PNG desktop entre regenerações sem mudança visual (d213e15b→b3402f34 com código idêntico) — se reaparecer, congelar relógio/animações/font loading no spec antes de atualizar baseline; (2) Actions `checkout@v4`/`setup-node@v4`/`upload-artifact@v4` em runtime Node 20 (deprecado) — migrar antes de 23/09/2026.
+
+**Reversão D2 (mantém o Frontend-QA):** `git revert 10e8e18 d44f37b 01992d6 f38e6f5` — volta código e baselines ao estado `836e095`.
+
+## 06/09 (tarde), VIXRadar-Verificacao-Async REABILITADA (decisão do operador)
+
+> **Status:** REABILITADA em produção. **Data:** 2026-09-06. **Origem do Registro:** o operador pediu a reabilitação da task após os três fixes estarem em produção (MERGEDUP1 v4.9.241, REPROVADO-FAILCLOSED1 v4.9.242, LIVENESS1/SWEEP-ORFAOS1 v4.9.243). **Condicao de Obsolescencia:** não se aplica — item encerrado; esta entrada fecha a pendência "task Disabled" aberta no bloco de 05/09 abaixo, que permanece como registro histórico.
+
+**Ação executada:** `Enable-ScheduledTask -TaskName "VIXRadar-Verificacao-Async"` depois de preflight verde (produção `v4.9.243`, `ok:true`, `verificador_ok:true`, `verif_orfaos_ativos:0`; `HEAD == origin/main == b412be5`). Pós-enable medido: `State=Ready`, triggers intactos (2 diários, 11:03 e 19:15 BRT, sem alteração), `NextRunTime=2026-09-06 19:15`, `LastRunTime=2026-09-05 11:03`, `LastTaskResult=0`. Nenhuma outra task tocada, sem `Start-ScheduledTask` forçado, sem escrita em KV/DO, sem deploy, sem commit. VERIFHORARIO1 (11:03/19:15 vs doc 11h00/18h45) segue aberto, abaixo.
+
 ## 06/09 (tarde), SWEEP-ORFAOS1/LIVENESS1 RESOLVIDO (deployado v4.9.243)
 
 > **Status:** RESOLVIDO, em produção. **Data da Versao:** 2026-09-06. **Origem do Registro:** fechamento do P0 de resolução de órfãos da fila de verificação (falso-verde estrutural: o sweep tirava itens >48h da fila sem registro durável e o health media a fila, devolvendo verde com `_pendente_verificacao` ainda em aberto). **Condicao de Obsolescencia:** não se aplica — item encerrado; entrada mantida como registro histórico (não havia item ativo com esta tag na fila).
