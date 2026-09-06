@@ -4,6 +4,16 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.241.js = v4.9.240 + MERGEDUP1: verificador que reescreve fonte_primaria nao pode duplicar evento.
+#   mesclarEventoVerificadoInterno casava o evento verificado por chave dedup RECALCULADA
+#   (_chaveDedupEvento inclui host+path de fonte_primaria). Um veredicto CORRIGIR que
+#   reescreve a fonte (aplicarCorrecaoVerificador) mudava a chave, nao casava com nada e
+#   empurrava DUPLICATA em vez de atualizar. Fix: o id da fila viaja como chaveOriginal
+#   ate o interno; casou 1, atualiza no lugar; casou 0 ou >1, aborta sem gravar (fail-closed,
+#   contabilizado em mesclas_recusadas). Reenvio idempotente (VERIFCACHE-ROUNDTRIP1) e no-op
+#   seguro. confirmar_verificacao passou a enviar it.id e a resposta ganhou mesclas_recusadas.
+#   Testes: api/test/mergedup-verificador.test.mjs (7, prova de 2 pontas) e
+#   api/test/verif-cache-roundtrip.test.mjs atualizado. Rollback: main = "v4.9.240.js".
 # v4.9.240.js = v4.9.239 + FONTEDIVERG1: fonte que contradiz a propria data nao
 #   certifica frescor do feed. O pre-verificador ja marcava esses eventos
 #   (_data_fonte_divergente + _verif_forcar) e os ACEITAVA de proposito quando o
