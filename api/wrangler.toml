@@ -4,6 +4,20 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.244.js = v4.9.243 + BUSCADEGRADADA1: varredura com busca web degradada deixa de
+#   certificar "sem fato novo". Lote noturno de 08/09 esgotou max_total_results no POST
+#   unico (2 buscas OK, 23 esgotadas); o regex do motor contava "sem resultados - limite de
+#   busca" como busca efetiva e o ramo FIN1-REV do persistir reafirmava o sem_eventos do
+#   anterior com _last_scanned_at novo — feed preso com tudo verde. Motor passa a marcar
+#   _cobertura_web_degradada no payload quando 0 buscas efetivas + >=1 degradada + sem
+#   evento (INCONCLUSIVO, nunca ANALISADO); Worker honra a flag: nao reafirma sem_eventos,
+#   nao avanca _last_scanned_at/_ultima_analise_at/_ultima_checagem_vazia_*, preserva para
+#   rechecagem no fluxo normal (montarPlanoRotina exclui INCONCLUSIVO do SKIP), sem retry
+#   no mesmo lote e sujeito ao teto diario. "sem resultados" generico (busca valida sem
+#   achados) continua sendo busca efetiva — so evidencia explicita de falha/esgotamento
+#   (limite de busca|esgotad|max_total_results|restric.*busca|indisponivel|falha|erro|
+#   nao execut|timeout) e degradada. Testes: scripts/test-busca-degradada.ps1 27/27 + vitest
+#   BUSCADEGRADADA1 2/2 + suíte Worker 327/327. Commit c573a41.
 # v4.9.243.js = v4.9.242 + SWEEP-ORFAOS1: fila expirada deixa de virar pendencia
 #   invisivel. sweepFilaVerificacaoOrfaos removia o item em 48h sem tocar o evento;
 #   como o health media pendencia lendo a FILA (listarFilaVerificacaoPendente) e nunca
