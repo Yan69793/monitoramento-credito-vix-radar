@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
   Valida token unificado Cloudflare (DNS + Workers) e persiste em CLOUDFLARE_API_TOKEN (User).
   Uso:
@@ -83,4 +83,13 @@ Write-Host 'CLOUDFLARE_API_TOKEN atualizado (escopo User).' -ForegroundColor Gre
 Write-Host 'Abra novo terminal ou reinicie o IDE para propagar.'
 
 Set-Location (Split-Path $PSScriptRoot -Parent)
-npx wrangler whoami 2>&1 | Select-Object -First 8
+# EAPLOCAL1 (2026-09-01): 'Stop' + '2>&1' em 'wrangler whoami' aborraria o script no
+# stderr do wrangler (PS 5.1). E so checagem visual ao final; falha de execucao nao deve
+# virar erro depois que a rotacao ja persistiu.
+try {
+    $eapAnterior = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    npx wrangler whoami 2>&1 | Select-Object -First 8
+} finally {
+    $ErrorActionPreference = $eapAnterior
+}
