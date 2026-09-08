@@ -517,3 +517,89 @@ describe("receber_analise: n_eventos_avanco_data mede avanco temporal, nao conta
     expect(j.n_eventos_conhecidos).toBe(1);
   });
 });
+
+// BUSCADEGRADADA1 (2026-09-08): busca web esgotada/indisponivel NAO certifica "sem fato
+// novo". Reproduz o modo de falha do lote noturno de 08/09 (23 de 25 buscas esgotadas por
+// limite de max_total_results no POST unico; 15 emissores gravados como analisados sem
+// evento, feed preso em 04/09 com tudo verde). Prova de DUAS PONTAS:
+//  - com flag `_cobertura_web_degradada` no resultado: emissor com anterior sem_eventos NAO
+//    pode ser reafirmado como ausencia comprovada; vira _status=INCONCLUSIVO (montarPlanoRotina
+//    exclui INCONCLUSIVO do SKIP -> rechecagem no fluxo normal) e _last_scanned_at NAO avanca
+//    (varredura degradada nao vale como frescor/analise valida).
+//  - sem a flag: comportamento legado preservado (cobertura rasa mas varrida continua
+//    reafirmando sem_eventos e carimbando frescor - FIN1-REV nao foi alterado).
+describe("receber_analise: BUSCADEGRADADA1 - busca web degradada nao certifica sem_eventos", () => {
+  const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao";
+  const EMPRESA = "Dasa";
+  const AGORA_FAKE = "2026-09-08T14:00:00Z";
+  const SCAN_ANTERIOR = "2026-09-07T10:00:00.000Z";
+
+  afterEach(() => { vi.useRealTimers(); });
+  function chaveAtual() { return chaveEstadoParaInstante(AGORA_FAKE); }
+
+  async function seedAnteriorSemEventos() {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(AGORA_FAKE));
+    const chave = chaveAtual();
+    await env.RADAR_KV.delete(chave);
+    await env.RADAR_KV.put(chave, JSON.stringify({
+      week: chave.replace("radar:estado:", ""),
+      updated_at: SCAN_ANTERIOR,
+      results: {
+        [EMPRESA]: { sem_eventos: true, _status: "OK", _last_scanned_at: SCAN_ANTERIOR, _versao: 3 }
+      }
+    }));
+  }
+
+  async function postComResultado(extraNoResultado) {
+    const res = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.77" },
+      body: JSON.stringify(Object.assign({
+        action: "receber_analise",
+        routine_key: ROUTINE_KEY,
+        empresa: EMPRESA,
+        setor: "Saúde",
+        _tier: "LIGHT",
+        provedor: "teste-buscadegradada1"
+      }, {
+        // merge DENTRO de resultado: Object.assign no nivel de cima substituiria o
+        // objeto inteiro e perderia sem_eventos/eventos/fontes_consultadas degradadas.
+        resultado: Object.assign({
+          sem_eventos: true,
+          eventos: [],
+          cobertura_nota: "teste BUSCADEGRADADA1",
+          fontes_consultadas: [
+            { rodada: "R2", query: "teste", resultado: "sem resultados - limite de busca" },
+            { rodada: "R2", query: "teste2", resultado: "sem resultados por restricao de max_total_results" }
+          ]
+        }, extraNoResultado)
+      }))
+    });
+    expect(res.status).toBe(200);
+    return res.json();
+  }
+
+  it("com flag _cobertura_web_degradada: nao reafirma sem_eventos, vira INCONCLUSIVO e nao avanca frescor", async () => {
+    await seedAnteriorSemEventos();
+    const j = await postComResultado({ _cobertura_web_degradada: true });
+    expect(j.ok).toBe(true);
+    const est = await env.RADAR_KV.get(chaveAtual(), "json");
+    const d = est.results[EMPRESA];
+    expect(d._status).toBe("INCONCLUSIVO");
+    expect(d._motivo).toContain("busca_web_degradada");
+    expect(d._last_scanned_at).toBe(SCAN_ANTERIOR); // frescor NAO avancou
+    expect(d._versao).toBe(4);
+  });
+
+  it("sem flag (legado FIN1-REV): cobertura rasa mas varrida continua reafirmando e carimbando", async () => {
+    await seedAnteriorSemEventos();
+    const j = await postComResultado({});
+    expect(j.ok).toBe(true);
+    const est = await env.RADAR_KV.get(chaveAtual(), "json");
+    const d = est.results[EMPRESA];
+    // comportamento pre-BUSCADEGRADADA1 preservado: sem_eventos do anterior vale, frescor avanca
+    expect(d._status).toBe("OK");
+    expect(d._last_scanned_at).toBe(new Date(AGORA_FAKE).toISOString()); // = "...T14:00:00.000Z"
+  });
+});

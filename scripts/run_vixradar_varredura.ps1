@@ -449,6 +449,41 @@ function Get-ParsedResultados($outputLines) {
 
 function Get-ResultadoEmissor($parsedMap, [string]$empresaPlano) { return $parsedMap[(Get-NomeNormalizado $empresaPlano)] }
 
+# BUSCADEGRADADA1 (2026-09-08): busca web esgotada/indisponivel NAO e evidencia de "sem fato
+# novo". O lote noturno de 08/09 provou o modo de falha: 15 emissores num POST unico com server
+# tools, max_total_results=8 no adapter; apos 2 buscas bem-sucedidas o limite esgotou e 23 buscas
+# seguiram com resultado literal "sem resultados - limite de busca". O motor contava essas como
+# busca efetiva (nao casavam o regex antigo), o modelo classificava NENHUM/sem_eventos=true, e o
+# emissor virava "analisado sem evento" no estado — feed preso em 04/09 com tudo verde.
+# Regra: so contam como DEGRADADA as respostas com evidencia EXPLICITA de falha/esgotamento
+# (limite de busca, esgotad, max_total_results, restric.*busca, indisponivel, falha, erro,
+# nao execut, timeout). "sem resultados" generico (busca valida com zero achados) NAO e
+# degradada: buscar e nao achar nada e resultado legitimo de busca efetiva.
+function Test-VixBuscaDegradada([string]$resultadoTxt) {
+    $iA = [char]0x00ED  # i com acento agudo
+    $aT = [char]0x00E3  # a com til
+    $re = 'limite de busca|esgotad|max_total_results|restric.*busca|indisponivel|indispon' + $iA + 'vel|falha|erro|n[a' + $aT + ']o execut|timeout'
+    return ('' + $resultadoTxt) -match $re
+}
+
+# Resolve a cobertura web de UM resultado de emissor. Efetiva = buscou e obteve resposta
+# utilizavel (inclusive "nada na janela"); degradada = falha/esgotamento explicito
+# (Test-VixBuscaDegradada). Vazia/ausente nao conta em nenhum dos dois.
+# pendente = true quando NAO ha evento e a web nao entregou NENHUMA busca efetiva mas teve
+# busca degradada: esse emissor NAO pode sair como "sem fato novo certificado" — vira
+# INCONCLUSIVO e volta no fluxo normal (BUSCADEGRADADA1).
+function Resolve-VixCoberturaWeb($res) {
+    $efetivas = 0; $degradadas = 0
+    foreach ($f in @($res.fontes_consultadas)) {
+        $r = '' + $f.resultado
+        if (-not $r -or $r -match '^vazio$') { continue }
+        if (Test-VixBuscaDegradada $r) { $degradadas++ } else { $efetivas++ }
+    }
+    $temEventos = @($res.eventos).Count -gt 0
+    $pendente = (-not $temEventos -and $efetivas -eq 0 -and $degradadas -gt 0)
+    return [pscustomobject]@{ efetivas = $efetivas; degradadas = $degradadas; pendente = $pendente }
+}
+
 function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [switch]$Ultra) {
     $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Ultra:$Ultra })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
@@ -889,11 +924,8 @@ try {
 
         $loteOk = 0; $loteFail = 0; $loteCrit = 0; $loteDry = 0
         $buscasReaisLote = 0
-        $iAgudo = [char]0x00ED
-        $aTil = [char]0x00E3
         foreach ($emp in $job.Chunk) {
             $res = Get-ResultadoEmissor $parsed.Map $emp.empresa
-            $buscasEfetivas = 0
             if (-not $res) {
                 Write-Log ('WARN: ' + $emp.empresa + '|sem RESULTADO apos retry - submit minimo de cobertura pendente')
                 $res = [pscustomobject]@{
@@ -901,16 +933,29 @@ try {
                     cobertura_nota = 'Falha de parse do agente apos retry - cobertura pendente, revisar manualmente.'
                     eventos = @(); fontes_consultadas = @()
                 }
-            } else {
-                foreach ($f in @($res.fontes_consultadas)) {
-                    $r = '' + $f.resultado
-                    if ($r -and $r -notmatch "indisponivel|indispon${iAgudo}vel|falha|erro|n[a${aTil}]o execut|timeout|^vazio$|^$") { $buscasEfetivas++ }
-                }
             }
+            # BUSCADEGRADADA1 (2026-09-08): conta buscas EFETIVAS x DEGRADADAS por emissor.
+            # Antes o regex so pegava "indisponivel|falha|erro|timeout|vazio"; o texto real de
+            # esgotamento ("sem resultados - limite de busca", "max_total_results", "restric")
+            # NAO casava e virava "busca efetiva" — lote noturno de 08/09 gravou 15 emissores
+            # ANALISADO/sem_eventos com 23 das 25 buscas esgotadas por limite do lote.
+            $cobWeb = Resolve-VixCoberturaWeb $res
+            $buscasEfetivas = $cobWeb.efetivas
             $buscasReaisLote += $buscasEfetivas
             $classif = '' + $res.classificacao_geral
             if (-not $classif) { $classif = if (@($res.eventos).Count -gt 0) { 'RELEVANTE' } else { 'ECO' } }
-            if ($Perfil.tier -eq 'FULL' -and $buscasEfetivas -eq 0 -and $classif -ne 'CRITICO') {
+            # Cobertura web degradada (sem evento + 0 buscas efetivas + >=1 degradada) NAO
+            # certifica "sem fato novo": vira INCONCLUSIVO com flag no payload para o Worker
+            # nao reafirmar sem_eventos anterior nem carimbar frescor como analise valida.
+            # Vale para FULL e LIGHT (antes a guarda so existia para FULL com 0 buscas).
+            if ($cobWeb.pendente) {
+                Write-Log ('WARN: ' + $emp.empresa + '|busca web degradada (' + $cobWeb.degradadas + ' esgotada(s)/indisponivel(eis), 0 efetivas) -> INCONCLUSIVO (cobertura incompleta, rechecagem no fluxo normal)')
+                $classif = 'INCONCLUSIVO'
+                $res.sem_eventos = $true
+                if (-not $res.cobertura_nota) { $res.cobertura_nota = 'Busca web degradada (limite/esgotamento/indisponibilidade) - cobertura incompleta, rechecagem no fluxo normal.' }
+                try { $res | Add-Member -NotePropertyName '_cobertura_web_degradada' -NotePropertyValue $true -Force } catch { }
+            } elseif ($Perfil.tier -eq 'FULL' -and $buscasEfetivas -eq 0 -and $classif -ne 'CRITICO') {
+                # Guarda original FULL (0 buscas efetivas por qualquer motivo, sem flag): mantida.
                 Write-Log ('WARN: ' + $emp.empresa + '|FULL com 0 buscas efetivas -> INCONCLUSIVO')
                 $classif = 'INCONCLUSIVO'
                 $res.sem_eventos = $true

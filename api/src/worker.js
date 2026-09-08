@@ -9516,6 +9516,32 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     else if (_cobertura >= 7) { _coberturaMin = 7; }
     else { _coberturaMin = 7; }
     const _coberturaCompleta = _cobertura >= _coberturaMin;
+    // BUSCADEGRADADA1 (2026-09-08): flag explicita vinda do motor quando a busca web do lote
+    // esgotou/ficou indisponivel (ex.: "sem resultados - limite de busca", max_total_results,
+    // restric) e o emissor veio sem evento. Varredura degradada NAO e varredura: nao certifica
+    // "sem fato novo", nao reafirma sem_eventos anterior e nao carimba frescor/analise valida.
+    // Sem este ramo, o bloco abaixo tratava a cobertura degradada como o caso FIN1-REV (rasa
+    // mas varrida) e reafirmava o sem_eventos do anterior com _last_scanned_at novo — feed
+    // preso com tudo verde (medido no lote noturno de 08/09: 23 de 25 buscas esgotadas, 15
+    // emissores gravados como analisados sem evento). O emissor fica _status=INCONCLUSIVO
+    // (montarPlanoRotina exclui INCONCLUSIVO do SKIP) e volta no fluxo normal da proxima
+    // passada, sujeito ao teto diario — sem retry no mesmo lote.
+    if (payload._cobertura_web_degradada === true) {
+      console.log(`[cobertura][BUSCA_DEGRADADA] emp=${empresa ? empresa.slice(0, 25) : "?"} nao certifica sem_eventos; preserva para rechecagem`);
+      const _estDeg = anterior ? Object.assign({}, anterior) : { empresa };
+      _estDeg._status = "INCONCLUSIVO";
+      _estDeg._motivo = "busca_web_degradada: cobertura incompleta por esgotamento/indisponibilidade da busca (nao certifica sem fato novo)";
+      _estDeg._busca_degradada_em = agora;
+      if (payload._token_cap_deferred === true) _estDeg._token_cap_deferred = true;
+      else delete _estDeg._token_cap_deferred;
+      _estDeg._versao = (_estDeg._versao || 0) + 1;
+      // NAO atualiza _last_scanned_at/_ultima_analise_at/_ultima_checagem_vazia_*: varredura
+      // degradada nao vale como frescor nem como analise valida.
+      estado.results[empresa] = _estDeg;
+      estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+      await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+      return _metricas;
+    }
     if (!_coberturaCompleta) {
       console.log(`[cobertura][INCONCLUSIVO] emp=${empresa ? empresa.slice(0, 25) : "?"} rodadas=${_cobertura}/9 sem_eventos nao salvo como ausencia comprovada`);
       if (anterior && !anterior.sem_eventos && Array.isArray(anterior.eventos) && anterior.eventos.length > 0) {
