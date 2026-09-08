@@ -23,6 +23,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | Auditoria geral backend/frontend, arquitetura, seguranca/perf/a11y | `/vix-radar-general-audit` | readonly primeiro | deploy |
 | Drift repo/prod, pós-incidente | `/vix-radar-audit` | `--readonly` se só leitura | — |
 | Repor varredura perdida / replay de dias, feed preso em data antiga | `/repor-varredura` | default | audit |
+| Executar/validar varredura matinal/noturno do dia (FIM, locks, health) | `/vixradar-varredura` | default | audit, repor-varredura |
 | Deploy Worker, wrangler, KV, DO | `/wrangler` + `/workers-best-practices` | — | audit |
 | Feature/debug profundo Radar | `radar-credito-privado` (VIXRADAR/skills) | lazy | só quando necessário |
 | Incidente urgente | `/ODDA` | — | — |
@@ -42,6 +43,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | `vix-radar-audit` | Vistoria multi-camada |
 | `vix-radar-general-audit` | Auditoria geral backend/frontend, segurança, performance, acessibilidade e dívida técnica |
 | `repor-varredura` | Reposição de varredura de dias perdidos, caçada dirigida com data real de fonte e regra anti-ancoragem (REPOSIC1) |
+| `vixradar-varredura` | Executar e validar a varredura matinal/noturno do dia com segurança: pre-flight, locks/mutex, FIM, painel_fresco/feed_fresco |
 | `vix-radar-next-steps` | P0/P1/P2 + quick wins |
 | `wrangler` | CLI Cloudflare |
 | `workers-best-practices` | Anti-patterns Worker |
