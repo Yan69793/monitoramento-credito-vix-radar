@@ -267,7 +267,7 @@ antigos foram gravados sob o regime invertido.
 
 | Tarefa | Mecanismo | Frequência | Script | Escopo |
 |---|---|---|---|---|
-| `VIXRadar-Noturno` | Task Scheduler nativo (gate provider) | Seg-Sex **18h00** BRT | `run_vixradar_noturno_claude.ps1` | 103 emissores, varredura completa |
+| `VIXRadar-Noturno` | Task Scheduler nativo (gate provider) | Seg-Sex **18h00** BRT | `run_vixradar_noturno_claude.ps1` | 104 emissores, varredura completa |
 | `VIXRadar-Matinal` | Task Scheduler nativo (gate provider) | Diário **10h00** BRT | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS |
 | `VIXRadar-Verificacao-Async` | Task Scheduler nativo (gate provider) | Diário **11h03 e 19h15** BRT | `run_vixradar_verificacao_async.ps1` | Fila `radar:verif_fila:{data}`. A das 19h15 impede fila presa até o dia seguinte |
 | `VIXRadar-Sentinela` | Task Scheduler | Seg-Sex, :25 e :55 de 09h25 a 17h55 BRT | `run_vixradar_sentinela.ps1` | Varredura pontual por gatilho, teto 8 emissores e 120k tokens. Quase sempre sai em 0 token |
@@ -285,7 +285,7 @@ saem de cena junto com o CCD. Detalhe e trigger IDs históricos em
 
 **Enquanto houver provider habilitado** (`claude-manual` + `-ForceClaude`, ou
 provider de Fase B migrado), a matinal usa Haiku em lotes de 6 + Sonnet para
-EWS≥38 em lotes de 4. A noturna varre os 103 emissores: fila rápida em Haiku,
+EWS≥38 em lotes de 4. A noturna varre os 104 emissores: fila rápida em Haiku,
 lotes de até 15, fila aprofundada em Sonnet, lotes de até 16. Disjuntores de custo
 LLM barram matinal/noturno se estouro. **Sem provider, matinal, noturno,
 verificacao-async, sentinela e agenda saem com exit 86 antes de tocar em modelo
@@ -382,7 +382,7 @@ ramo de varredura, que é o único que gasta LLM no Worker.
 
 - `canonical-test.yml`: health check GET / a cada 6h (valida ok, kv, rate_limiter, telemetria, providers). Gate usa o campo `ok` agregado, então cai se `verificador_ok`, `sentry_ok` ou `admin_email_ok` ficarem `false`, mesmo com `kv`/`telemetria` saudáveis
 - `daily-status-email.yml`: status diário via Issue + email Resend (não depende de MCP/OAuth)
-- `frescor-check.yml`: diário 01:37 UTC, avanço da ingestão. Quem reprova o gate é a idade do evento mais novo em dias úteis (`checks.evento_mais_novo.idade_du > limite_du`, `::error::` e `exit 1`). `checks.avanco_feed` (AVANCOFEED1, v4.9.229 a v4.9.231, 01/09), que compara o teto do feed (`MAX(data_evento)`) com o teto ELEGÍVEL da fonte (documento com dono entre os 103 e com data de referência já passada, mesma régua do `costurarCvmEmEventos`) e com a cadência esperada dela, segue calculado e aparece no texto do erro como diagnóstico, mas não decide mais o gate desde FEEDRETRO1 (v4.9.237, 04/09/2026). A demoção anterior (regra virava `::warning::`) deixou o feed parado 5 dias úteis (28/08 a 03/09) com `avanco_feed` em `saudavel_sem_fato_novo` o tempo todo, porque a causa era a rotina reencontrando fato de agosto por falta de delta no prompt, não ausência de fato para persistir. Ver `Obsidian VIX Radar/PENDENCIAS.md`, item FEEDRETRO1
+- `frescor-check.yml`: diário 01:37 UTC, avanço da ingestão. Quem reprova o gate é a idade do evento mais novo em dias úteis (`checks.evento_mais_novo.idade_du > limite_du`, `::error::` e `exit 1`). `checks.avanco_feed` (AVANCOFEED1, v4.9.229 a v4.9.231, 01/09), que compara o teto do feed (`MAX(data_evento)`) com o teto ELEGÍVEL da fonte (documento com dono entre os 104 e com data de referência já passada, mesma régua do `costurarCvmEmEventos`) e com a cadência esperada dela, segue calculado e aparece no texto do erro como diagnóstico, mas não decide mais o gate desde FEEDRETRO1 (v4.9.237, 04/09/2026). A demoção anterior (regra virava `::warning::`) deixou o feed parado 5 dias úteis (28/08 a 03/09) com `avanco_feed` em `saudavel_sem_fato_novo` o tempo todo, porque a causa era a rotina reencontrando fato de agosto por falta de delta no prompt, não ausência de fato para persistir. Ver `Obsidian VIX Radar/PENDENCIAS.md`, item FEEDRETRO1
 - `scan-emergencia.yml`: fallback 23:30 UTC quando estado principal stale
 - `worker-tests.yml`: suíte `vitest` em push/PR que toque `api/**`, ver `## Testes`
 
