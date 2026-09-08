@@ -5423,7 +5423,7 @@ __name2222222(dispararAlertaCritico, "dispararAlertaCritico");
 __name22222222(dispararAlertaCritico, "dispararAlertaCritico");
 function montarEmailAlertaCritico(empresa, eventos, hoje) {
   const df = formatarData(hoje);
-  const listaEventos = eventos.map((ev) => `<div style="margin-bottom:12px;border-left:4px solid #C41E3A;padding:10px 14px;background:#FFF5F5;border-radius:0 6px 6px 0;"><div style="color:#C41E3A;font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:4px;">\u26A0 CR\xCDTICO</div><div style="color:#0F172A;font-size:13px;font-weight:700;margin-bottom:6px;">${ev.titulo || "Evento identificado"}</div><p style="color:#334155;font-size:12px;line-height:1.6;margin:0 0 8px;">${ev.evento || ""}</p>${ev.impacto_credito ? `<div style="background:#FEE2E2;border-radius:4px;padding:7px 10px;margin-bottom:8px;"><span style="color:#991B1B;font-size:11px;font-weight:700;">Impacto no cr\xE9dito:</span><p style="color:#7F1D1D;font-size:11px;margin:3px 0 0;">${ev.impacto_credito}</p></div>` : ""}</div>`).join("");
+  const listaEventos = eventos.map((ev) => `<div style="margin-bottom:12px;border-left:4px solid #C41E3A;padding:10px 14px;background:#FFF5F5;border-radius:0 6px 6px 0;"><div style="color:#C41E3A;font-size:10px;font-weight:800;text-transform:uppercase;margin-bottom:4px;">\u26A0 CR\xCDTICO</div><div style="color:#0F172A;font-size:13px;font-weight:700;margin-bottom:6px;">${escapeHtml(ev.titulo) || "Evento identificado"}</div><p style="color:#334155;font-size:12px;line-height:1.6;margin:0 0 8px;">${escapeHtml(ev.evento)}</p>${ev.impacto_credito ? `<div style="background:#FEE2E2;border-radius:4px;padding:7px 10px;margin-bottom:8px;"><span style="color:#991B1B;font-size:11px;font-weight:700;">Impacto no cr\xE9dito:</span><p style="color:#7F1D1D;font-size:11px;margin:3px 0 0;">${escapeHtml(ev.impacto_credito)}</p></div>` : ""}</div>`).join("");
   return emailWrap(`Alerta Cr\xEDtico \u2014 ${empresa}`, `<div style="background:#FFF0F0;border:1px solid #FECACA;border-radius:6px;padding:12px 16px;margin-bottom:20px;"><div style="color:#C41E3A;font-size:11px;font-weight:800;text-transform:uppercase;">Alerta Cr\xEDtico</div><div style="color:#0F172A;font-size:16px;font-weight:800;">${empresa}</div><div style="color:#64748B;font-size:11px;">${df} \xB7 ${eventos.length} evento${eventos.length > 1 ? "s" : ""} cr\xEDtico${eventos.length > 1 ? "s" : ""}</div></div>${listaEventos}<div style="margin-top:20px;padding-top:16px;border-top:1px solid #E2E8F0;"><a href="${FRONTEND_URL}" style="display:inline-block;background:#001830;color:#B7985D;font-size:11px;font-weight:700;text-decoration:none;padding:8px 16px;border-radius:4px;">Abrir Radar \u2192</a></div>`);
 }
 __name(montarEmailAlertaCritico, "montarEmailAlertaCritico");
@@ -22675,5 +22675,7 @@ export {
   _familiasDosPapeis,
   _agruparRegistrosAnbima,
   parseANBIMATxt,
+  montarEmailAlertaCritico,
+  escapeHtml,
   worker_com_sentry as default
 };
