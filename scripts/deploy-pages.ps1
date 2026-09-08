@@ -37,6 +37,10 @@ $appDir  = Join-Path $root "app"
 $zipDir  = Join-Path $appDir "deploy_zip"
 $indexSrc = Join-Path $appDir "index.html"
 
+# DRIFT-CONTEUDO1 (2026-09-08): funcao do gate de conteudo repo x deploy_zip,
+# compartilhada com scripts/test-deploy-pages-gate.ps1 (roda o codigo real).
+. (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-pages-content-gate.ps1")
+
 function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
 function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
 
@@ -174,6 +178,21 @@ if ($script:prodVersion) {
   }
   Write-Host "Gate pre-deploy: producao=$($script:prodVersion), deploy=$ver OK" -ForegroundColor Green
 }
+
+# --- 1.6 GATE DRIFT_CONTEUDO_MESMA_VERSAO (fail-closed, roda ANTES do sync) -
+# DRIFT-CONTEUDO1 (2026-09-08): mudanca de conteudo em app/index.html sem bump
+# de CACHE_VERSION deixa o deploy_zip (e a producao) servindo o bundle velho
+# sob o rotulo novo, e quem compara so a versao conclui "sem drift". O sync do
+# passo 2 apagaria a divergencia antes de qualquer gate enxergar, entao o
+# compare acontece aqui, contra o deploy_zip PRE-sync: conteudo divergente com
+# CACHE_VERSION identica aborta o deploy (exit 1) com DRIFT_CONTEUDO_MESMA_VERSAO.
+# Conteudo divergente com versao diferente (bump em voo) e conteudo igual
+# passam: o sync do passo 2 resolve o conteudo sob o rotulo novo.
+$driftPages = Get-VixPagesContentDrift -IndexPath $indexSrc -ZipIndexPath (Join-Path $zipDir "index.html")
+if ($driftPages) {
+  Fail ("DRIFT_CONTEUDO_MESMA_VERSAO: app/index.html diverge de deploy_zip/index.html e os dois declaram CACHE_VERSION=" + $driftPages.cacheVersion + ". Conteudo mudou sem bump de versao. Sincronize o deploy_zip e rode bump-cache-version.ps1 (bump no MESMO commit do conteudo) antes de deployar.")
+}
+Write-Host "Gate de conteudo: sem drift bloqueante (conteudo igual ou bump em voo)" -ForegroundColor Green
 
 # --- 2. Sincroniza deploy_zip (raiz vence) ---------------------------------
 Copy-Item -Force $indexSrc (Join-Path $zipDir "index.html")
