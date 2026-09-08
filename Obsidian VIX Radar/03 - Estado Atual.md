@@ -5,6 +5,11 @@ tags: [vix-radar, producao, estado-atual]
 status: saudavel-com-achado
 ---
 
+
+> [!info] 08/09 BRT — **OPENROUTER-429-SENTINELA fechado com prova de execução real; PRs #23/#24 resolvidas.** Causa raiz do 429 de 07/09 (17/17 lotes): alias `~deepseek/deepseek-v4-flash-latest` em upstream saturado + `allow_fallbacks=false` + retry curto. Fix (commit `e155d57`, pendente push): modelo fixo `deepseek/deepseek-v4-flash-0731`, fallback explícito `deepseek/deepseek-v4-flash`, `Retry-After` respeitado, exit 9 em falha total de provider, logs com modelo real. **Sentinela controlada 08/09: resultado=OK, 8/8 emissores, 45 docs CVM marcados, submit_fail=0, lotes_ok=2, 0 timeouts/429, backlog=True, excedente_worker=41.** PR #23: correção do registrador já em main (`c6411d5`) — fechada sem merge; PR #24: bloco morto de 12 linhas removido em commit separado. Produção intocada. Detalhe completo em `status/ESTADO.md`.
+> **Status:** vigente · **Data:** 2026-09-08 · **Origem do Registro:** fechamento da investigação 429 + validação real.
+> **Condição de Obsolescência:** cai quando o fix chegar à Produção (push + deploy) ou se a sentinela voltar a falhar em lote integral.
+
 # Estado Atual — VIX Radar
 
 > [!info] 01/09 BRT — **Produção v4.9.232. PREVERIFSEC1: sec.gov aceita como fonte oficial de documento no pré-verificador; fechamento dos 5 resíduos da sessão anterior.** O evento CRÍTICO da Braskem de 31/08 (recuperação extrajudicial, Form 6-K da SEC) era descartado pelo pré-verificador com `ok:true` mas `n_eventos:0`, porque a SEC retorna 403 a User-Agent genérico e `sec.gov` não era reconhecido como fonte confiável. Fix distinto: novo conjunto `DOMINIOS_FONTE_OFICIAL_DOCUMENTOS` (SEC/CVM/B3/BCB/IN/Anbima) separado de agência de rating, helper `_ehFonteConfitavelBloqueada`, aceite só dentro da janela de 30d e sempre com `_verif_forcar=true`. Não é bypass genérico. Guarda `api/test/pre-verificador-sec-gov.test.mjs` (8 testes, prova de 3 pontas). Deploy `deploy-worker.ps1 -Version v4.9.232`, commit `66b8b74`, push OK. Também fechados nesta sessão: `SUBMITOK-ENGANOSO1` (ledger `OK|` com 6º campo e resumo analisados/skip/deferidos/submits), cruzamento dos 1.439 sem dono = COMPORTAMENTO ESPERADO (nenhuma correção de atribuição), cron da noturna com descrição corrigida para 10h, e fonte intradiária = LIMITAÇÃO ACEITA COM CONDIÇÃO DE REABERTURA.
