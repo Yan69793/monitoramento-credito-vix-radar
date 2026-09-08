@@ -318,8 +318,15 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     if (-not $delays -or $delays.Count -eq 0) { $delays = @(0, 5, 20) }
     $ultimo = ''
     $ultimoCod = 0
+    # OPENROUTER_EMPTY_RESULT (2026-09-07): 2xx parseado cujo modelo devolveu resultado vazio/
+    # whitespace e uma falha SEMANTICA retryable (o provider respondeu mas nao produziu trabalho),
+    # nao um sucesso honesto. Nao altera politica de provider/fallback (allow_fallbacks segue
+    # false, modelo e status 429 intactos): apenas reutiliza a malha de retries bounded existente
+    # e, esgotada, devolve codigo estavel. Nada de body/prompt/secret em log.
+    $vazioFinal = $false
     for ($i = 0; $i -lt $delays.Count; $i++) {
         if ($i -gt 0) { Start-Sleep -Seconds $delays[$i] }
+        $vazioFinal = $false
         $http = Send-VixOpenRouterHttp -ApiKey $apiKey -JsonBody $json
         if ($http.Status -gt 0) { $ultimoCod = $http.Status }
         if ($http.Erro) { $ultimo = ('erro de transporte: ' + $http.Erro); continue }
@@ -328,10 +335,18 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
             try { $parsed = $http.Body | ConvertFrom-Json } catch { $parsed = $null }
             if ($null -eq $parsed -or $null -eq $parsed.choices -or @($parsed.choices).Count -eq 0) {
                 $ultimo = ('HTTP ' + $http.Status + ' resposta sem choices (body malformado ou vazio)')
+                $vazioFinal = $false
                 if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
                 break
             }
             $env = ConvertTo-VixOpenRouterEnvelope $parsed
+            if ([string]::IsNullOrWhiteSpace(('' + $env.result))) {
+                # 2xx valido porem sem conteudo: o modelo nao produziu trabalho (completion vazio
+                # apos loop de server-tools). Retryable semantico - reutiliza a malha bounded.
+                $ultimo = 'OPENROUTER_EMPTY_RESULT'
+                $vazioFinal = $true
+                continue
+            }
             $linha = $env | ConvertTo-Json -Depth 8 -Compress
             $parcelas = @{ input = [int64]$env.usage.input_tokens; output = [int64]$env.usage.output_tokens; cache_creation = [int64]$env.usage.cache_creation_input_tokens; cache_read = [int64]$env.usage.cache_read_input_tokens }
             $parcelas.trabalho = $parcelas.input + $parcelas.output + $parcelas.cache_creation
@@ -345,8 +360,18 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
         } catch { }
         if ($motivo.Length -gt 200) { $motivo = $motivo.Substring(0, 200) }
         $ultimo = ('OPENROUTER_HTTP_STATUS=' + $http.Status + $motivo)
+        $vazioFinal = $false
         if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
         break  # 4xx duro: sem retry (401/402/403/400/404/...)
+    }
+    if ($vazioFinal) {
+        # Esgotou os retries com o modelo devolvendo resultado vazio: codigo SEMANTICO estavel,
+        # sem body/prompt/secret, para o parser do motor nao confundir com falha de auth.
+        $falha.Msg = $ultimo
+        #Linha de erro SEM corpo (mesma regra do bloco abaixo): motivo vazio nao dispara o parser
+        # de auth Anthropic do motor.
+        $falha.Linhas = @('OPENROUTER_EMPTY_RESULT')
+        return $falha
     }
     $falha.Msg = $ultimo
     # Linha de erro SEM corpo: o parser do motor varre o stdout por falha de auth Anthropic e o

@@ -328,6 +328,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             # Mesmo prompt, mesmo protocolo textual; envelope normalizado no parser abaixo.
             if ($script:VixUsaOpenRouter) {
                 $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+                # JSONCICLO1: serializacao pre-HTTP passa a ser observavel. Sem isto, os 55 min
+                # presos de 05/09 nao apareceram em log nenhum.
+                Write-Log ('PAYLOAD: serializacao=' + ([double]$script:VixOpenRouterUltimaSerializacaoSeg).ToString('F3') +
+                           's bytes=' + $script:VixOpenRouterUltimoPayloadBytes +
+                           ' modelo=' + (Get-VixOpenRouterModel))
                 $raw = @($__orResp.Linhas)
                 $exitCode = $__orResp.ExitCode
                 $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel))
@@ -588,6 +593,12 @@ if ($script:VixUsaOpenRouter) {
         exit 5
     }
     Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+    # MODELOLOG1 (05/09): o modelo efetivo sai resolvido AQUI, inclusive quando vem do default
+    # do adapter. Antes so existia o rotulo legado de Claude nos lotes, que dizia
+    # claude-haiku-4-5 numa execucao que nao tocava em Anthropic nenhuma.
+    $__orModelo = Get-VixOpenRouterModel
+    $__orOrigem = if (Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL') { 'env VIXRADAR_OPENROUTER_MODEL' } else { 'default do adapter' }
+    Write-Log ('MODELO_EFETIVO: ' + $__orModelo + ' (origem: ' + $__orOrigem + ')')
 } else {
     Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
     $authModoInicial = Get-VixClaudeAuthModo
@@ -785,7 +796,11 @@ try {
         $promptPath = Join-Path $LogDir ($Perfil.prefix + '_' + $label + '_' + $DateTag + '.txt')
         Set-Content $promptPath -Value $prompt -Encoding UTF8
 
-        Write-Log ('Lote ' + $label + ' [' + $job.Model + ']: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', '))
+        # MODELOLOG1: provider openrouter nunca imprime o rotulo Claude legado como se fosse o
+        # modelo executado. $job.Model so descreve o TIER do plano (rapido x aprofundado).
+        $modeloLote = $job.Model
+        if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel) + ' tier=' + $job.Name }
+        Write-Log ('Lote ' + $label + ' [' + $modeloLote + ']: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', '))
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
         $result = Invoke-ClaudeBatch $promptPath $job.Model
         $swLote.Stop()
