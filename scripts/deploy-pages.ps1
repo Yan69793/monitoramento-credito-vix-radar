@@ -241,6 +241,7 @@ $ignorarDirs = @(
   "_arquivo",    # snapshots historicos
   "_preview",    # rascunho de template
   "design",      # documentacao e PNG de design, nao referenciado pelo index.html
+  "tests",       # harness QA local Playwright/Lighthouse (06/09/2026), nao e asset publicado
   "node_modules"
 )
 $assetConhecidos = @($assetDirs | ForEach-Object { $_.Src })
