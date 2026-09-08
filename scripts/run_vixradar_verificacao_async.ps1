@@ -181,6 +181,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             $exitCode = $__orResp.ExitCode
             if ($exitCode -ne 0) {
                 Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ') - itens ficam na fila')
+            } else {
+                Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower())
             }
         } else {
             # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao

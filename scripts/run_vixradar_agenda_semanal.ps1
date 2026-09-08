@@ -125,7 +125,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada) {
             $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
             $raw = @($__orResp.Linhas)
             $exitCode = $__orResp.ExitCode
-            if ($exitCode -ne 0) { Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ')') }
+            if ($exitCode -ne 0) { Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ')') } else { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()) }
         } else {
             [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
             $OutputEncoding = [System.Text.Encoding]::UTF8

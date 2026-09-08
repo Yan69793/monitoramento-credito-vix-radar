@@ -43,6 +43,7 @@
 #   4 ROUTINE_API_KEY ausente     5 sem credencial Claude
 #   6 ambiente contaminado ou erro de posting
 #   7 probe WebSearch falhou      8 Worker recusou listar_plano_rotina
+#   9 provedor/transporte (OpenRouter): todos os lotes falharam, NENHUM lote processado
 #
 # PowerShell 5.1: sem ternario, sem ?? e sem ?., BOM UTF-8 obrigatorio, exit e nao
 # return (o Task Scheduler le o exit code do processo).
@@ -521,6 +522,8 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
     $stdoutFile = Join-Path $LogDir ('sentinela_stdout_' + $DateTag + '_' + $PID + '.json')
     $raw = $null
     $timedOut = $false
+    $falhaTransporte = $false
+    $falhaMsg = ''
     try {
         # Fase B D1 (2026-09-04): provider openrouter despacha para o adapter HTTP proprio
         # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
@@ -530,7 +533,10 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         if ($script:VixUsaOpenRouter) {
             $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
             $raw = @($__orResp.Linhas)
-            if ($__orResp.ExitCode -ne 0) { Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ') - emissores preservados no backlog') }
+            if ($__orResp.ExitCode -ne 0) {
+                $falhaTransporte = $true
+                $falhaMsg = '' + $__orResp.Msg
+            }
         } else {
             [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
             $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -595,7 +601,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
     } catch {
         Write-Log ('AVISO: parse do envelope JSON falhou - tokens DESCONHECIDO.')
     }
-    return @{ Output = $textOut; Tokens = $tokens; AuthFailure = (Test-VixClaudeAuthFailure $textOut); TimedOut = $timedOut }
+    return @{ Output = $textOut; Tokens = $tokens; AuthFailure = (Test-VixClaudeAuthFailure $textOut); TimedOut = $timedOut; FalhaTransporte = $falhaTransporte; FalhaMsg = $falhaMsg }
 }
 
 function Get-ParsedResultadosSentinela($outputLines) {
@@ -625,6 +631,8 @@ $submitFail   = 0
 $deferidos    = 0
 $buscasTotal  = 0
 $semResultado = 0
+$lotesOk = 0
+$lotesFalhaProvider = 0
 
 # Sonnet para quem tem risco alto ou documento novo, Haiku para o resto. Mesma regra
 # de Build-LlmQueues da noturna, para o custo por emissor nao divergir entre rotinas.
@@ -661,13 +669,18 @@ foreach ($job in $jobs) {
         Write-Log ('CAP_TEMPO: ' + [math]::Round($decorridoMin, 1) + ' min decorridos (teto ' + $TempoMaxMin + '). ' + $job.Chunk.Count + ' emissores deferidos no lote ' + $job.Label + ' - voltam na proxima execucao pelo mesmo gatilho.')
         continue
     }
+    $modeloLote = $job.Model
+    if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel) + ' tier=' + $job.Label }
+    $modeloPrompt = $job.Model
+    if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel }
     $promptPath = Join-Path $LogDir ('sentinela_' + $job.Label + '_' + $DateTag + '_' + $PID + '.txt')
-    New-BatchPromptSentinela $job.Chunk $job.Label $job.Model $job.Skill $janelaInicio $janelaFim | Set-Content -Path $promptPath -Encoding UTF8
-    Write-Log ('LOTE ' + $job.Label + ': ' + $job.Chunk.Count + ' emissores, modelo ' + $job.Model)
+    New-BatchPromptSentinela $job.Chunk $job.Label $modeloPrompt $job.Skill $janelaInicio $janelaFim | Set-Content -Path $promptPath -Encoding UTF8
+    Write-Log ('LOTE ' + $job.Label + ': ' + $job.Chunk.Count + ' emissores, modelo ' + $modeloLote)
     # O teto por lote e o que sobra do teto da execucao, nunca mais que isso, com um
     # piso de 4 min para nao nascer expirado quando a janela ja esta quase no fim.
     $restanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
     $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model $restanteMin
+    if ($res.FalhaTransporte) { $lotesFalhaProvider++ }
     if ($res.Tokens -ge 0) { $tokensAcum += $res.Tokens }
     if ($res.TimedOut) {
         # Emissores do lote ficam intactos: nada de submit, nada marcado em cvm_vistos.
@@ -688,11 +701,16 @@ foreach ($job in $jobs) {
     $parsed = Get-ParsedResultadosSentinela $res.Output
     if ($parsed.Buscas -ge 0) { $buscasTotal += $parsed.Buscas }
     if ($parsed.Map.Count -eq 0) {
-        Write-Log ('ERRO: lote ' + $job.Label + ' sem RESULTADO| - falha silenciosa, 0 de ' + $job.Chunk.Count + ' emissores analisados.')
+        if ($res.FalhaTransporte) {
+            Write-Log ('ERRO: lote ' + $job.Label + ' falhou por provedor/transporte (' + $res.FalhaMsg + ') - ' + $job.Chunk.Count + ' emissores preservados no backlog.')
+        } else {
+            Write-Log ('ERRO: lote ' + $job.Label + ' sem RESULTADO| - falha silenciosa, 0 de ' + $job.Chunk.Count + ' emissores analisados.')
+        }
         $semResultado += $job.Chunk.Count
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
         continue
     }
+    $lotesOk++
     foreach ($emp in $job.Chunk) {
         $obj = $parsed.Map[(Get-NomeNormalizado ('' + $emp.empresa))]
         if (-not $obj) {
@@ -700,6 +718,8 @@ foreach ($job in $jobs) {
             $semResultado++
             continue
         }
+        $provRotina = 'claude-sentinela-' + $job.Model
+        if ($script:VixUsaOpenRouter) { $provRotina = 'openrouter-sentinela-' + (Get-VixOpenRouterModel) }
         $resultado = [ordered]@{
             empresa = $emp.empresa; setor = $emp.setor
             classificacao_geral = $obj.classificacao_geral
@@ -714,7 +734,7 @@ foreach ($job in $jobs) {
         $body = @{
             action = 'receber_analise'; routine_key = $routineKey
             empresa = $emp.empresa; setor = $emp.setor
-            _matinal = $false; provedor = ('claude-sentinela-' + $job.Model)
+            _matinal = $false; provedor = $provRotina
             resultado = $resultado
             cvm_ids_analisados = @($emp.cvm_novos_ids)
         }
@@ -744,8 +764,21 @@ $novoStreak = 0
 if ($sobrou) { $novoStreak = $streak + 1 }
 Write-State $workerLm $zipLmParaEstado $sobrou $novoStreak
 
-Write-Log ('FIM: sentinela concluida. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou)
-exit 0
+# E. EXIT CODE / HEALTH (2026-09-07): sucesso real so com pelo menos um lote processado.
+# Cap/defer planejado segue exit 0; TODOS os lotes falhando por provedor/transporte nao
+# pode virar sucesso falso. exit 9 = disparou mas nao processou nenhum lote.
+$lotesIntentados = $lotesOk + $lotesFalhaProvider
+$resultadoFim = 'OK'
+$exitFim = 0
+if ($lotesIntentados -gt 0 -and $lotesOk -eq 0 -and $lotesFalhaProvider -gt 0) {
+    $resultadoFim = 'FALLO_PROVEEDOR'
+    $exitFim = 9
+} elseif ($semResultado -gt 0 -or $submitFail -gt 0) {
+    $resultadoFim = 'PARCIAL'
+}
+
+Write-Log ('FIM: sentinela resultado=' + $resultadoFim + '. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou + ' lotes_ok=' + $lotesOk + ' lotes_falha_provider=' + $lotesFalhaProvider)
+exit $exitFim
 
 } finally {
     if ($__mutex) { $__mutex.ReleaseMutex(); $__mutex.Dispose() }

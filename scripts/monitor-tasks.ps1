@@ -1,4 +1,4 @@
-# monitor-tasks.ps1 - Alerta de falha silenciosa em Task Scheduler
+﻿# monitor-tasks.ps1 - Alerta de falha silenciosa em Task Scheduler
 # Roda diario 07h BRT, varre tasks do workspace, reporta LastTaskResult != benigno.
 # ASCII puro (roda no powershell.exe 5.1 sem risco de parse).
 param(
@@ -44,6 +44,7 @@ $LlmBloqueado  = -not (Test-VixLlmProviderPermiteRotina -OpenRouterAdapterHabili
 # (com alvos bloqueado); 0 ja e benigno globalmente.
 $BloqueadasSet = @('VIXRadar-Matinal', 'VIXRadar-Noturno', 'VIXRadar-Verificacao-Async', 'VIXRadar-Sentinela', 'VIXRadar-AgendaSemanal')
 $BloqueadasLog = @('vixradar-noturno', 'vixradar-matinal', 'vixradar-verificacao-async', 'vixradar-sentinela', 'vixradar-agenda-semanal')
+# Sentinela exit 9 = provedor/transporte zerou todos os lotes (erro real, nao-benigno).
 $VixRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $LogDir    = Join-Path $VixRoot 'logs\monitor-tasks'
 $DateTag   = Get-Date -Format 'yyyyMMdd'

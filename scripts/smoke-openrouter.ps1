@@ -1,4 +1,4 @@
-# smoke-openrouter.ps1 - chamada HTTP real MINIMA via adapter OpenRouter (Fase B D1, gate de credencial).
+﻿# smoke-openrouter.ps1 - chamada HTTP real MINIMA via adapter OpenRouter (Fase B D1, gate de credencial).
 # Prova: autenticacao valida, modelo configurado acessivel, HTTP 2xx, resposta parseavel, envelope ok.
 # NAO toca producao, NAO persiste VIXRADAR_LLM_PROVIDER, NAO liga outras rotinas.
 #
@@ -29,7 +29,7 @@ Set-Content -Path $tmp -Value 'Responda somente com a palavra ACESSO_OK e nada m
 
 $sw = New-Object System.Diagnostics.Stopwatch
 $sw.Start()
-$r = Invoke-VixOpenRouterLote -PromptPath $tmp -RetryDelays @(0, 0, 0)
+$r = Invoke-VixOpenRouterLote -PromptPath $tmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
 $sw.Stop()
 $lat = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
 

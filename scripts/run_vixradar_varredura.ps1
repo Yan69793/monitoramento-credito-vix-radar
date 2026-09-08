@@ -1,4 +1,4 @@
-# run_vixradar_varredura.ps1 - motor unico das varreduras do VIX Radar (Task Scheduler + claude -p).
+﻿# run_vixradar_varredura.ps1 - motor unico das varreduras do VIX Radar (Task Scheduler + claude -p).
 #
 # MOTOR1 (2026-09-02, decisao do operador). Substitui o corpo de run_vixradar_noturno_claude.ps1
 # e run_vixradar_matinal_claude.ps1, que viraram wrappers de uma linha. Um so motor, dois perfis:
@@ -336,7 +336,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                 $raw = @($__orResp.Linhas)
                 $exitCode = $__orResp.ExitCode
                 $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel))
-                if ($exitCode -eq 0) { break }
+                if ($exitCode -eq 0) { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()); break }
                 Write-Log ('RETRY openrouter: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ': ' + $__orResp.Msg)
                 continue
             }
@@ -792,7 +792,9 @@ try {
 
         $batchSeq++
         $label = $job.Name + '-' + $ji
-        $prompt = New-BatchPrompt $job.Chunk $label $job.Model $job.Skill $janIni $janFim -Ultra:$job.Ultra
+        $modeloPrompt = $job.Model
+        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel }
+        $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim -Ultra:$job.Ultra
         $promptPath = Join-Path $LogDir ($Perfil.prefix + '_' + $label + '_' + $DateTag + '.txt')
         Set-Content $promptPath -Value $prompt -Encoding UTF8
 
@@ -851,7 +853,7 @@ try {
         if ($missing.Count -gt 0) {
             Write-Log ('WARN: ' + $missing.Count + ' sem RESULTADO no lote ' + $label + ' - retry parcial: ' + (($missing | ForEach-Object { $_.empresa }) -join ', '))
             $retryLabel = $label + '-retry'
-            $retryPrompt = New-BatchPrompt $missing $retryLabel $job.Model $job.Skill $janIni $janFim -Ultra:$job.Ultra
+            $retryPrompt = New-BatchPrompt $missing $retryLabel $modeloPrompt $job.Skill $janIni $janFim -Ultra:$job.Ultra
             $retryPath = Join-Path $LogDir ($Perfil.prefix + '_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
             $retryRes = Invoke-ClaudeBatch $retryPath $job.Model

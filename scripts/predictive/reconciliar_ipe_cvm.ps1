@@ -44,6 +44,7 @@ param(
 
 $ErrorActionPreference = 'Continue'
 $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+. (Join-Path $PSScriptRoot '..\lib\vixradar-wrangler.ps1')
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 
@@ -330,8 +331,19 @@ try {
             $env:CLOUDFLARE_API_TOKEN = $null
             $prev = $ErrorActionPreference
             $ErrorActionPreference = 'Continue'
-            & npx wrangler kv key get $Key --namespace-id $NamespaceId --remote 2>$ErrFile | Out-File -FilePath $OutFile -Encoding utf8
-            $code = $LASTEXITCODE
+            $code = 1
+            $intento = 0
+            while ($intento -lt 3) {
+                $intento++
+                & npx wrangler kv key get $Key --namespace-id $NamespaceId --remote 2>$ErrFile | Out-File -FilePath $OutFile -Encoding utf8
+                $code = $LASTEXITCODE
+                if ($code -eq 0 -and (Test-Path $OutFile) -and (Get-Item $OutFile).Length -gt 0) { break }
+                $errTxt = ''
+                if (Test-Path $ErrFile) { $errTxt = (Get-Content $ErrFile -Raw -ErrorAction SilentlyContinue) }
+                if (-not (Test-VixWranglerFalhaTransitoria $errTxt)) { break }
+                Write-Log ("KV retry: '{0}' tentativa {1}/3 (transitorio)" -f $Key, $intento)
+                if ($intento -lt 3) { Start-Sleep -Seconds (2 * $intento) }
+            }
             $ErrorActionPreference = $prev
             return $code
         } finally {
@@ -345,8 +357,19 @@ try {
             $env:CLOUDFLARE_API_TOKEN = $null
             $prev = $ErrorActionPreference
             $ErrorActionPreference = 'Continue'
-            & npx wrangler kv key put $Key --path $Path --namespace-id $NamespaceId --remote 2>$ErrFile
-            $code = $LASTEXITCODE
+            $code = 1
+            $intento = 0
+            while ($intento -lt 3) {
+                $intento++
+                & npx wrangler kv key put $Key --path $Path --namespace-id $NamespaceId --remote 2>$ErrFile
+                $code = $LASTEXITCODE
+                if ($code -eq 0) { break }
+                $errTxt = ''
+                if (Test-Path $ErrFile) { $errTxt = (Get-Content $ErrFile -Raw -ErrorAction SilentlyContinue) }
+                if (-not (Test-VixWranglerFalhaTransitoria $errTxt)) { break }
+                Write-Log ("KV retry put: '{0}' tentativa {1}/3 (transitorio)" -f $Key, $intento)
+                if ($intento -lt 3) { Start-Sleep -Seconds (2 * $intento) }
+            }
             $ErrorActionPreference = $prev
             return $code
         } finally {

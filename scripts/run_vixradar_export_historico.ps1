@@ -1,4 +1,4 @@
-# run_vixradar_export_historico.ps1
+﻿# run_vixradar_export_historico.ps1
 # VIX Radar - fundacao de dados do motor preditivo (plano 2026-07-11, nota 51).
 # Exporta diariamente o estado preditivo do KV de producao para data/historico/YYYY-MM-DD/,
 # antes que os TTLs do KV (serie 90d, ews:hist 120d, zscores 7d, predictive 14d) apaguem o
@@ -33,6 +33,7 @@ $ErrorActionPreference = 'Continue'
 $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $Utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+. (Join-Path $PSScriptRoot 'lib\vixradar-wrangler.ps1')
 
 $ProjectRoot = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $ApiDir      = Join-Path $ProjectRoot 'api'
@@ -40,6 +41,7 @@ $NamespaceId = 'c6805b8d8a7b468e9f854ab4f91fb93a'   # RADAR_KV (api/wrangler.tom
 # Marca 401/403 vindo da API. Declarado aqui e nao so dentro de Get-KvValue para o script
 # seguir correto caso alguem adicione Set-StrictMode depois.
 $script:KvAuthFalhou = $false
+$script:KvFalhasTransitorias = 0
 $HealthUrl   = 'https://radar-credito-api.prospects-intel.workers.dev'
 $LogDir      = Join-Path $ProjectRoot 'logs\routines'
 
@@ -98,46 +100,59 @@ function ConvertTo-UriComponent([string]$s) {
 }
 
 function Get-KvValue([string]$Key) {
-    # Retorna a string do valor, ou $null se a chave nao existir / falhar.
-    # ErrorActionPreference local Continue: em PS 5.1, '2>arquivo' com Stop converte o
-    # banner de stderr do npx/wrangler em NativeCommandError e mata a chamada valida.
+    # Retorna [pscustomobject]@{ Valor; Estado; Motivo }. Estado: ok|ausente|transitorio|auth|outro.
+    # 'ausente' = chave nao existe (sem serie legitima); 'transitorio' = transporte falhou apos
+    # retry e NAO pode ser contado como sem serie em silencio (G.KV, 2026-09-07).
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $env:TEMP ("kvget_{0}_{1}.err" -f $PID, [System.IO.Path]::GetRandomFileName())
     try {
-        Push-Location $ApiDir
-        $raw = (& npx wrangler kv key get $Key --namespace-id $NamespaceId --remote 2>$stderrFile | Out-String)
-        $code = $LASTEXITCODE
-        Pop-Location
+        $intento = 0
+        $code = 1
+        $raw = ''
+        while ($intento -lt 3) {
+            $intento++
+            $raw = ''
+            Push-Location $ApiDir
+            $raw = (& npx wrangler kv key get $Key --namespace-id $NamespaceId --remote 2>$stderrFile | Out-String)
+            $code = $LASTEXITCODE
+            Pop-Location
+            if ($code -eq 0 -and -not [string]::IsNullOrWhiteSpace($raw)) { break }
+            if (Test-Path $stderrFile) { $errFull = (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue) } else { $errFull = '' }
+            $classe = Get-VixWranglerFalhaClase $errFull
+            if ($classe -ne 'transitorio') { break }
+            if ($intento -lt 3) { Start-Sleep -Seconds (2 * $intento) }
+        }
         if ($code -ne 0 -or [string]::IsNullOrWhiteSpace($raw)) {
             $errHead = ''
             $errFull = ''
             if (Test-Path $stderrFile) {
                 $errHead = ((Get-Content $stderrFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' | ')
-                # Casar o padrao no arquivo inteiro, nao no $errHead. O PS 5.1 quebra o stderr
-                # nativo na largura do console, e o '- 401: Unauthorized' do wrangler cai na
-                # terceira linha, fora das duas que vao para o log.
                 $errFull = (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)
             }
-            Write-Log ("  kvget '{0}': exit={1}, len={2}, stderr: {3}" -f $Key, $code, ([string]$raw).Trim().Length, $errHead)
-            # 2026-07-30: em 30/07 01:46 esta funcao devolveu $null por 401 Unauthorized e o
-            # chamador acusou "pipeline nao rodou?", mandando o diagnostico para o lado errado.
-            # Falha de credencial e falha de dado exigem acoes opostas, entao separam-se aqui.
-            if ($errFull -match '\b401\b|\b403\b|Unauthorized|Forbidden|Authentication') {
+            Write-Log ("  kvget '{0}': exit={1}, intentos={2}, len={3}, stderr: {4}" -f $Key, $code, $intento, ([string]$raw).Trim().Length, $errHead)
+            $classe = Get-VixWranglerFalhaClase $errFull
+            if ($classe -eq 'auth') {
                 $script:KvAuthFalhou = $true
                 Write-Log '  CAUSA: credencial recusada pela API (401/403). Nao e ausencia de dado no KV.'
                 Write-Log '  Verificar CLOUDFLARE_API_TOKEN: precisa da permissao Workers KV Storage na conta.'
+                return [pscustomobject]@{ Valor = $null; Estado = 'auth'; Motivo = $errHead }
             }
-            return $null
+            if ($classe -eq 'transitorio') {
+                $script:KvFalhasTransitorias++
+                Write-Log ('  CAUSA: falha transitoria de transporte persistiu apos ' + $intento + ' tentativas. Nao tratado como ausencia de serie.')
+                return [pscustomobject]@{ Valor = $null; Estado = 'transitorio'; Motivo = $errHead }
+            }
+            return [pscustomobject]@{ Valor = $null; Estado = 'ausente'; Motivo = $errHead }
         }
         # wrangler pode prefixar banner - extrair do primeiro delimitador JSON em diante
         $iObj = $raw.IndexOf('{'); $iArr = $raw.IndexOf('[')
         $i = if ($iObj -lt 0) { $iArr } elseif ($iArr -lt 0) { $iObj } else { [Math]::Min($iObj, $iArr) }
-        if ($i -lt 0) { return $raw.Trim() }
-        return $raw.Substring($i).Trim()
+        if ($i -lt 0) { $valor = $raw.Trim() } else { $valor = $raw.Substring($i).Trim() }
+        return [pscustomobject]@{ Valor = $valor; Estado = 'ok'; Motivo = '' }
     } catch {
         Write-Log ("  kvget '{0}': EXCECAO {1}: {2}" -f $Key, $_.Exception.GetType().Name, $_.Exception.Message)
         if ((Get-Location).Path -eq $ApiDir) { Pop-Location }
-        return $null
+        return [pscustomobject]@{ Valor = $null; Estado = 'outro'; Motivo = $_.Exception.Message }
     } finally {
         Remove-Item $stderrFile -Force -ErrorAction SilentlyContinue
     }
@@ -174,7 +189,9 @@ try {
         # esta guarda o script descobre a falha so depois de parcialmente executado.
         # Custa ~2s e evita o cenario de 30/07: 4 dias falhando com a mesma causa.
         Write-Log 'Pre-voo KV: validando acesso...'
-        $predRaw = Get-KvValue 'predictive_v1:latest'
+        $predRes = Get-KvValue 'predictive_v1:latest'
+        if ($predRes.Estado -eq 'transitorio') { $erros += 'predictive_v1:latest: falha transitoria persistente'; Write-Log 'AVISO: predictive_v1:latest indisponivel por falha transitoria (nao ausencia)' }
+        $predRaw = $predRes.Valor
         if ($script:KvAuthFalhou) {
             Write-Log 'ERRO FATAL: token CLOUDFLARE_API_TOKEN sem permissao Workers KV Storage.'
             Write-Log 'ERRO FATAL: abrir https://dash.cloudflare.com, conta Szuchmacher, conceder Workers KV Storage ao token.'
@@ -187,7 +204,9 @@ try {
         }
         Write-Log 'Pre-voo KV: OK.'
 
-        $zscoresRaw = Get-KvValue 'anbima:zscores'
+        $zsRes = Get-KvValue 'anbima:zscores'
+        $zscoresRaw = $zsRes.Valor
+        if ($zsRes.Estado -eq 'transitorio') { $erros += 'anbima:zscores: falha transitoria persistente'; Write-Log 'AVISO: anbima:zscores indisponivel por falha transitoria (nao ausencia)' }
         if (-not $zscoresRaw) { $erros += 'anbima:zscores ausente (TTL 7d vencido ou sync nao rodou)'; Write-Log 'AVISO: anbima:zscores ausente' }
 
         # op=ews exige JWT (401 para anonimo) - nao exportado; o ews_score diario por emissor
@@ -214,7 +233,9 @@ try {
             $serieRaw = '[{"data":"' + $DataRef + '","spread_bps":150,"n_papeis":3}]'
         } else {
             $key = 'mercado:serie:' + (ConvertTo-UriComponent ($emp.ToLowerInvariant().Trim()))
-            $serieRaw = Get-KvValue $key
+            $serieRes = Get-KvValue $key
+            $serieRaw = $serieRes.Valor
+            if ($serieRes.Estado -eq 'transitorio') { $semSerie++; $erros += ("kvget transitorio: '{0}'" -f $emp); continue }
         }
         if (-not $serieRaw) { $semSerie++; continue }
         try {
@@ -259,6 +280,7 @@ try {
         emissores     = $emissores.Count
         com_serie     = $comSerie
         sem_serie     = $semSerie
+        kv_transitorios = $script:KvFalhasTransitorias
         erros         = $erros
         dry_run       = [bool]$DryRun
         duracao_s     = [int]((Get-Date) - $t0).TotalSeconds

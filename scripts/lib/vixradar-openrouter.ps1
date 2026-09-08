@@ -1,4 +1,4 @@
-# vixradar-openrouter.ps1 - adapter HTTP proprio para OpenRouter (Fase B D1, 2026-09-04).
+﻿# vixradar-openrouter.ps1 - adapter HTTP proprio para OpenRouter (Fase B D1, 2026-09-04).
 #
 # CLAUDE-FREE-MIGRATION Fase B D1: substitui a invocacao `claude -p --tools WebSearch,WebFetch`
 # por POST https://openrouter.ai/api/v1/chat/completions com as SERVER TOOLS nativas
@@ -25,7 +25,8 @@
 # PowerShell 5.1, ASCII puro (sem BOM necessario), $ErrorActionPreference Continue.
 
 $VixOpenRouterBase = 'https://openrouter.ai/api/v1/chat/completions'
-$VixOpenRouterModelDefault = '~deepseek/deepseek-v4-flash-latest'
+$VixOpenRouterModelDefault = 'deepseek/deepseek-v4-flash-0731'
+$VixOpenRouterFallbackDefault = 'deepseek/deepseek-v4-flash'
 $VixOpenRouterRetryable = @(408, 429, 500, 502, 503, 504, 522, 524, 529)
 
 function Get-VixOpenRouterEnv([string]$Name) {
@@ -41,18 +42,55 @@ function Get-VixOpenRouterApiKey {
     return $k
 }
 
+# Test-VixModeloIdValido: ID concreto vendor/modelo. Rechaza alias ~name (semantica
+# ~latest de OpenRouter) y sufijo -latest: son punteros moviles que OpenRouter reparte
+# entre upstreams, y ese reparto fue la fuente del 429 intermitente de la sentinela
+# 07/09/2026. La rotina manda con ID fijo; un alias en env cae al default operacional.
+function Test-VixModeloIdValido([string]$Modelo) {
+    $m = ('' + $Modelo).Trim()
+    if ($m -eq '') { return $false }
+    if ($m.StartsWith('~')) { return $false }
+    if ($m -match '(?i)-latest$') { return $false }
+    return ($m -match '^[a-z0-9_-]+/[a-z0-9][a-z0-9._-]*$')
+}
+
 function Get-VixOpenRouterModel {
     $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL'
-    if (-not $m) { $m = $VixOpenRouterModelDefault }
-    return (('' + $m).Trim())
+    if (-not $m) { return $VixOpenRouterModelDefault }
+    $m = ('' + $m).Trim()
+    if (Test-VixModeloIdValido $m) { return $m }
+    return $VixOpenRouterModelDefault
+}
+
+# Fallback explicito (politica C2): segundo modelo DeepSeek validado, usado SOLO cuando el
+# primario agota retries con status retryable/transporte/resultado vacio. Nunca para 400
+# (modelo invalido) ni para auth (401/403): deterministas, no se enmascaran. Sin fallback
+# si la env es invalida o igual al primario. Las server tools van en la llamada de fallback
+# igual que en la primaria (mismo contrato).
+function Get-VixOpenRouterFallbackModel {
+    $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_FALLBACK_MODEL'
+    if (-not $m) { $m = $VixOpenRouterFallbackDefault }
+    $m = ('' + $m).Trim()
+    if (-not (Test-VixModeloIdValido $m)) { return $null }
+    if ($m -eq (Get-VixOpenRouterModel)) { return $null }
+    return $m
+}
+
+function Get-VixOpenRouterInfo {
+    return [pscustomobject]@{
+        provider = 'openrouter'
+        modelo   = (Get-VixOpenRouterModel)
+        fallback = (Get-VixOpenRouterFallbackModel)
+        alias_restringido = '~name y sufijo -latest'
+    }
 }
 
 function Get-VixOpenRouterTimeoutMin {
     $t = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_TIMEOUT_MIN'
-    if (-not $t) { return 12 }
+    if (-not $t) { return 6 }
     $n = 0
     if ([int]::TryParse(('' + $t).Trim(), [ref]$n) -and $n -gt 0) { return $n }
-    return 12
+    return 6
 }
 
 # Teto CURTO e explicito da serializacao pre-HTTP. Serializar este corpo e trabalho de
@@ -240,8 +278,8 @@ function ConvertTo-VixOpenRouterEnvelope($Resp) {
 # POST unico ao OpenRouter. Retorna @{ Status; Body; Erro } sem lancar. Nada de segredo no
 # retorno. Timeout de parede por tentativa = Get-VixOpenRouterTimeoutMin.
 function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
-    $res = @{ Status = 0; Body = ''; Erro = '' }
-    if (-not $ApiKey) { $res.Erro = 'chave ausente antes do POST'; return $res }
+    $res = @{ Status = 0; Body = ''; Erro = ''; RetryAfter = '' }
+    if (-not $ApiKey) { $res.Erro = 'chave ausente antes del POST'; return $res }
     $client = $null
     try {
         Add-Type -AssemblyName System.Net.Http -ErrorAction SilentlyContinue
@@ -252,6 +290,10 @@ function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
         $content = New-Object System.Net.Http.StringContent($JsonBody, [System.Text.Encoding]::UTF8, 'application/json')
         $resp = $client.PostAsync($VixOpenRouterBase, $content).GetAwaiter().GetResult()
         $res.Status = [int]$resp.StatusCode
+        # Retry-After (429/503): OpenRouter lo envia en segundos o como HTTP-date. Se captura
+        # aqui y la malha de retry lo respeta acotado (Get-VixOpenRouterRetryAfterSec).
+        try { $ra = $resp.Headers.GetFirst('Retry-After'); if ($ra) { $res.RetryAfter = ('' + $ra).Trim() } } catch { }
+        if (-not $res.RetryAfter) { try { $ra2 = $resp.Headers.GetFirst('retry-after'); if ($ra2) { $res.RetryAfter = ('' + $ra2).Trim() } } catch { } }
         try { $res.Body = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult() } catch { $res.Body = '' }
         try { $resp.Dispose() } catch { }
     } catch {
@@ -266,116 +308,166 @@ function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
 # Retenta bounded em status retryable. Retorna @{ Linhas; ExitCode; Msg; Tokens; Parcelas }.
 #   ExitCode 0 = resposta HTTP 2xx parseada (mesmo que o texto do modelo venha vazio).
 #   ExitCode != 0 = falha apos retries; Linhas carrega linha de erro NAO-JSON (sem segredo).
-function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20)) {
-    $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null }
+# Retry-After (429/503): resuelve el header a segundos acotados (0..120). Segundos
+# enteros o HTTP-date; invalido/ausente -> $DefaultSec. Pura y testable sin red ni reloj.
+function Get-VixOpenRouterRetryAfterSec([string]$Header, [int]$DefaultSec) {
+    $h = ('' + $Header).Trim()
+    if ($h -eq '') { return $DefaultSec }
+    $n = 0
+    if ([int]::TryParse($h, [ref]$n) -and $n -gt 0) {
+        if ($n -gt 120) { $n = 120 }
+        return $n
+    }
+    $d = [datetime]::MinValue
+    if ([datetime]::TryParse($h, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal, [ref]$d)) {
+        $diff = [int](( $d - (Get-Date).ToUniversalTime()).TotalSeconds)
+        if ($diff -lt 0) { $diff = 0 }
+        if ($diff -gt 120) { $diff = 120 }
+        return $diff
+    }
+    return $DefaultSec
+}
+
+
+# Orquestra un lote completo: lee el prompt, POST con server tools, normaliza el envelope.
+# Retenta bounded en status retryable; agotado el primario, prueba el fallback explicito
+# (DeepSeek validado) con su propia malha de retry. Retorna
+#   @{ Linhas; ExitCode; Msg; Tokens; Parcelas; Modelo; FallbackUsado; Intentos; Status; RetryAfter }
+#   ExitCode 0 = HTTP 2xx parseado (aunque el texto del modelo venga vacio).
+#   ExitCode != 0 = falla tras retries; Linhas lleva linea de error NO-JSON (sin segredo).
+#   400/401/402/403/404: duros, SIN retry y SIN fallback (deterministas).
+#   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
+function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10)) {
+    $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = '' }
     $prompt = ''
-    # JSONCICLO1: o [string] nao e cosmetico. Get-Content devolve string decorada com PSDrive/
-    # PSProvider, e essa decoracao e o ciclo que travou a noturna de 05/09 no ConvertTo-Json.
+    # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
+    # PSDrive/PSProvider, y esa decoracion es el ciclo que trabo la noturna de 05/09 en el
+    # ConvertTo-Json. Copia OS pura o el serializador vuelve a entrar en ciclo.
     try { $prompt = [string]::Copy([string](Get-Content -LiteralPath $PromptPath -Raw -Encoding UTF8 -ErrorAction Stop)) } catch { $falha.Msg = 'falha ao ler prompt: ' + $_.Exception.Message; return $falha }
     if (-not $prompt) { $falha.Msg = 'prompt vazio'; return $falha }
 
     $apiKey = Get-VixOpenRouterApiKey
-    $model = Get-VixOpenRouterModel
-    $timeoutMin = Get-VixOpenRouterTimeoutMin
     if (-not $apiKey) { $falha.Msg = 'OPENROUTER_API_KEY ausente'; $falha.Linhas = @('OPENROUTER_FALHA_COD=1'); return $falha }
 
     $tools = @(
         [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'exa'; max_results = 5; max_total_results = 15 } },
         [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 20000 } }
     )
-    $bodyObj = [ordered]@{
-        model = $model
-        messages = @([ordered]@{ role = 'user'; content = $prompt })
-        tools = $tools
-        stream = $false
-        # Roteamento (spec D1): nunca openrouter/auto, nunca :floor, nenhum Anthropic em
-        # model/fallback. allow_fallbacks=false garante que provider nenhum assuma a chamada.
-        provider = [ordered]@{ require_parameters = $true; allow_fallbacks = $false }
-    }
-    # JSONCICLO1, guarda de 2 estagios antes de qualquer rede:
-    #   1) sanitiza: reconstroi o payload so com [ordered], array, string e primitivo. Tipo
-    #      complexo aborta AQUI, em microssegundos, nomeando o campo.
-    #   2) serializa com teto de parede curto. Nada de POST sem JSON pronto.
-    $bodySeguro = $null
-    try {
-        $bodySeguro = ConvertTo-VixOpenRouterPayloadSeguro $bodyObj
-    } catch {
-        $falha.Msg = 'PAYLOAD_INVALIDO: ' + $_.Exception.Message
-        $falha.Linhas = @('OPENROUTER_FALHA_COD=1')
-        return $falha
-    }
-    $ser = ConvertTo-VixOpenRouterJsonLimitado $bodySeguro 12
-    if (-not $ser.Ok) {
-        $falha.Msg = $ser.Erro + ' (prompt_chars=' + $prompt.Length + ', ' + $ser.Segundos.ToString('F1') + 's)'
-        $falha.Linhas = @('OPENROUTER_FALHA_COD=1')
-        return $falha
-    }
-    $json = $ser.Json
-    $script:VixOpenRouterUltimaSerializacaoSeg = $ser.Segundos
-    $script:VixOpenRouterUltimoPayloadBytes = [System.Text.Encoding]::UTF8.GetByteCount($json)
-
-    $delays = $RetryDelays
-    if (-not $delays -or $delays.Count -eq 0) { $delays = @(0, 5, 20) }
-    $ultimo = ''
+    $modeloPrincipal = Get-VixOpenRouterModel
+    $modeloFallback  = Get-VixOpenRouterFallbackModel
+    $modelos = @()
+    if ($modeloPrincipal) { $modelos += ,@{ M = $modeloPrincipal; Delays = $RetryDelays } }
+    if ($modeloFallback) { $modelos += ,@{ M = $modeloFallback; Delays = $FallbackRetryDelays } }
+    $modeloUsado = ''
+    $intentos = 0
     $ultimoCod = 0
-    # OPENROUTER_EMPTY_RESULT (2026-09-07): 2xx parseado cujo modelo devolveu resultado vazio/
-    # whitespace e uma falha SEMANTICA retryable (o provider respondeu mas nao produziu trabalho),
-    # nao um sucesso honesto. Nao altera politica de provider/fallback (allow_fallbacks segue
-    # false, modelo e status 429 intactos): apenas reutiliza a malha de retries bounded existente
-    # e, esgotada, devolve codigo estavel. Nada de body/prompt/secret em log.
-    $vazioFinal = $false
-    for ($i = 0; $i -lt $delays.Count; $i++) {
-        if ($i -gt 0) { Start-Sleep -Seconds $delays[$i] }
-        $vazioFinal = $false
-        $http = Send-VixOpenRouterHttp -ApiKey $apiKey -JsonBody $json
-        if ($http.Status -gt 0) { $ultimoCod = $http.Status }
-        if ($http.Erro) { $ultimo = ('erro de transporte: ' + $http.Erro); continue }
-        if ($http.Status -ge 200 -and $http.Status -lt 300) {
-            $parsed = $null
-            try { $parsed = $http.Body | ConvertFrom-Json } catch { $parsed = $null }
-            if ($null -eq $parsed -or $null -eq $parsed.choices -or @($parsed.choices).Count -eq 0) {
-                $ultimo = ('HTTP ' + $http.Status + ' resposta sem choices (body malformado ou vazio)')
-                $vazioFinal = $false
-                if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
-                break
+    $ultimoMsg = 'falha interna'
+    $ultimoRetryAfter = ''
+    $vacioFinal = $false
+    $duro = $false
+    foreach ($item in $modelos) {
+        $modeloUsado = $item.M
+        $esFallback = ($item.M -ne $modeloPrincipal)
+        $delays = $item.Delays
+        if (-not $delays -or $delays.Count -eq 0) { $delays = @(0, 5, 20) }
+        for ($i = 0; $i -lt $delays.Count; $i++) {
+            $intentos++
+            if ($i -gt 0) {
+                $sleepSec = $delays[$i]
+                if (($ultimoCod -eq 429) -and ($ultimoRetryAfter -ne '')) { $sleepSec = Get-VixOpenRouterRetryAfterSec $ultimoRetryAfter $sleepSec }
+                if ($sleepSec -gt 0) { Start-Sleep -Seconds $sleepSec }
             }
-            $env = ConvertTo-VixOpenRouterEnvelope $parsed
-            if ([string]::IsNullOrWhiteSpace(('' + $env.result))) {
-                # 2xx valido porem sem conteudo: o modelo nao produziu trabalho (completion vazio
-                # apos loop de server-tools). Retryable semantico - reutiliza a malha bounded.
-                $ultimo = 'OPENROUTER_EMPTY_RESULT'
-                $vazioFinal = $true
-                continue
+            $bodyObj = [ordered]@{
+                model = $item.M
+                messages = @([ordered]@{ role = 'user'; content = $prompt })
+                tools = $tools
+                stream = $false
+                # Ruteo (spec D1): nunca openrouter/auto, nunca :floor, ningun Anthropic en
+                # model/fallback. allow_fallbacks=false: el fallback lo decide ESTE adaptador
+                # con un segundo modelo DeepSeek validado, nunca un provider ajeno.
+                provider = [ordered]@{ require_parameters = $true; allow_fallbacks = $false }
             }
-            $linha = $env | ConvertTo-Json -Depth 8 -Compress
-            $parcelas = @{ input = [int64]$env.usage.input_tokens; output = [int64]$env.usage.output_tokens; cache_creation = [int64]$env.usage.cache_creation_input_tokens; cache_read = [int64]$env.usage.cache_read_input_tokens }
-            $parcelas.trabalho = $parcelas.input + $parcelas.output + $parcelas.cache_creation
-            return @{ Linhas = @($linha); ExitCode = 0; Msg = 'ok http=' + $http.Status + ' model=' + $env.model; Tokens = [int64]$parcelas.trabalho; Parcelas = $parcelas }
+            # JSONCICLO1, guarda de 2 estagios antes de cualquier red:
+            #   1) sanitiza: reconstruye el payload solo con [ordered], array, string y primitivo.
+            #   2) serializa con teto de pared corto. Nada de POST sin JSON listo.
+            $bodySeguro = $null
+            try { $bodySeguro = ConvertTo-VixOpenRouterPayloadSeguro $bodyObj }
+            catch {
+                $falha.Msg = 'PAYLOAD_INVALIDO: ' + $_.Exception.Message
+                $falha.Linhas = @('OPENROUTER_FALHA_COD=1')
+                return $falha
+            }
+            $ser = ConvertTo-VixOpenRouterJsonLimitado $bodySeguro 12
+            if (-not $ser.Ok) {
+                $falha.Msg = $ser.Erro + ' (prompt_chars=' + $prompt.Length + ', ' + $ser.Segundos.ToString('F1') + 's)'
+                $falha.Linhas = @('OPENROUTER_FALHA_COD=1')
+                return $falha
+            }
+            $json = $ser.Json
+            $script:VixOpenRouterUltimaSerializacaoSeg = $ser.Segundos
+            $script:VixOpenRouterUltimoPayloadBytes = [System.Text.Encoding]::UTF8.GetByteCount($json)
+
+            $http = Send-VixOpenRouterHttp -ApiKey $apiKey -JsonBody $json
+            if ($http.RetryAfter) { $ultimoRetryAfter = '' + $http.RetryAfter }
+            $script:VixOpenRouterUltimoRetryAfter = $ultimoRetryAfter
+            if ($http.Status -gt 0) { $ultimoCod = $http.Status }
+            if ($http.Erro) { $ultimoMsg = ('erro de transporte: ' + $http.Erro); continue }
+            if ($http.Status -ge 200 -and $http.Status -lt 300) {
+                $parsed = $null
+                try { $parsed = $http.Body | ConvertFrom-Json } catch { $parsed = $null }
+                if ($null -eq $parsed -or $null -eq $parsed.choices -or @($parsed.choices).Count -eq 0) {
+                    $ultimoMsg = ('HTTP ' + $http.Status + ' resposta sem choices (body malformado ou vazio)')
+                    $vacioFinal = $false
+                    if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
+                    $duro = $true
+                    break
+                }
+                $env = ConvertTo-VixOpenRouterEnvelope $parsed
+                if ([string]::IsNullOrWhiteSpace(('' + $env.result))) {
+                    # 2xx valido pero sin contenido: el modelo no produjo trabajo (completion
+                    # vacio tras loop de server-tools). Retryable semantico: agota la malha y
+                    # luego prueba el fallback, igual que un 429.
+                    $ultimoMsg = 'OPENROUTER_EMPTY_RESULT'
+                    $vacioFinal = $true
+                    continue
+                }
+                $linha = $env | ConvertTo-Json -Depth 8 -Compress
+                $parcelas = @{ input = [int64]$env.usage.input_tokens; output = [int64]$env.usage.output_tokens; cache_creation = [int64]$env.usage.cache_creation_input_tokens; cache_read = [int64]$env.usage.cache_read_input_tokens }
+                $parcelas.trabajo = $parcelas.input + $parcelas.output + $parcelas.cache_creation
+                return @{ Linhas = @($linha); ExitCode = 0; Msg = 'ok http=' + $http.Status + ' model=' + $env.model + ' intentos=' + $intentos + ' fallback=' + $esFallback.ToString().ToLower(); Tokens = [int64]$parcelas.trabajo; Parcelas = $parcelas; Modelo = $item.M; FallbackUsado = $esFallback; Intentos = $intentos; Status = [int]$http.Status; RetryAfter = $ultimoRetryAfter }
+            }
+            # cuerpo de error puede venir con .error.message; extrae sin secreto, corta a 200
+            $motivo = ''
+            try {
+                $ep = $http.Body | ConvertFrom-Json
+                if ($ep -and $ep.error -and $ep.error.message) { $motivo = (' ' + (('' + $ep.error.message))) }
+            } catch { }
+            if ($motivo.Length -gt 200) { $motivo = $motivo.Substring(0, 200) }
+            $ultimoMsg = 'OPENROUTER_HTTP_STATUS=' + $http.Status + $motivo + ' modelo=' + $item.M + ' intento=' + $intentos
+            $vacioFinal = $false
+            if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
+            $duro = $true
+            break  # 4xx duro: sin retry (401/402/403/400/404/...)
         }
-        # corpo de erro pode vir com .error.message; extrai sem segredo, corta a 200 chars
-        $motivo = ''
-        try {
-            $ep = $http.Body | ConvertFrom-Json
-            if ($ep -and $ep.error -and $ep.error.message) { $motivo = (' ' + (('' + $ep.error.message))) }
-        } catch { }
-        if ($motivo.Length -gt 200) { $motivo = $motivo.Substring(0, 200) }
-        $ultimo = ('OPENROUTER_HTTP_STATUS=' + $http.Status + $motivo)
-        $vazioFinal = $false
-        if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
-        break  # 4xx duro: sem retry (401/402/403/400/404/...)
+        # Fallback SOLO si la ultima falla fue retryable (o transporte, o resultado vacio).
+        # 400 de modelo invalido / auth: deterministas, no se enmascaran con otro modelo.
+        if ($duro) { break }
+        if ($vacioFinal -and -not $modeloFallback) { break }
     }
-    if ($vazioFinal) {
-        # Esgotou os retries com o modelo devolvendo resultado vazio: codigo SEMANTICO estavel,
-        # sem body/prompt/secret, para o parser do motor nao confundir com falha de auth.
-        $falha.Msg = $ultimo
-        #Linha de erro SEM corpo (mesma regra do bloco abaixo): motivo vazio nao dispara o parser
-        # de auth Anthropic do motor.
+    $falha.Msg = $ultimoMsg
+    $falha.Modelo = $modeloUsado
+    $falha.Intentos = $intentos
+    $falha.Status = $ultimoCod
+    $falha.RetryAfter = $ultimoRetryAfter
+    if ($vacioFinal) {
+        # Esgotou los retries (y fallback si existia) con resultado vacio: codigo SEMANTICO
+        # estable, sin body/prompt/secret, para que el parser del motor no confunda con auth.
         $falha.Linhas = @('OPENROUTER_EMPTY_RESULT')
         return $falha
     }
-    $falha.Msg = $ultimo
-    # Linha de erro SEM corpo: o parser do motor varre o stdout por falha de auth Anthropic e o
-    # motivo completo contem palavras (api key, token, unauthorized) que dariam falso positivo.
+    # Linea de error SIN cuerpo: el parser del motor barre stdout por falla de auth Anthropic
+    # y el motivo completo contiene palabras (api key, token, unauthorized) que darias falso
+    # positivo. Modelo/intentos van solo en Msg (log), nunca en la linea del parser.
     $falha.Linhas = @('OPENROUTER_FALHA_COD=' + $ultimoCod)
     return $falha
 }
