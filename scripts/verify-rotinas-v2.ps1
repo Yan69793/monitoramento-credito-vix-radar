@@ -84,12 +84,14 @@ if (Test-Path $skillNot) {
     }
 }
 
-# 5. Emissores 103 (live baseline)
+# 5. Emissores (live baseline). Carteira cresce (era 103, hoje 104); o piso de 100
+#    so detecta reducao anormalmente grande (perda acidental de emissores), sem travar
+#    em crescimento legitimo da carteira.
 if ($key) {
     $body103 = @{ action = 'listar_todos_emissores'; routine_key = $key } | ConvertTo-Json -Compress
     try {
         $r103 = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' -Body $body103 -TimeoutSec 30
-        Assert-Check ($r103.ok -eq $true -and $r103.total -eq 103) "listar_todos_emissores 103/103 em $WorkerUrl"
+        Assert-Check ($r103.ok -eq $true -and $r103.total -ge 100) "listar_todos_emissores total=$($r103.total) (piso >=100) em $WorkerUrl"
     } catch {
         Write-Output "FAIL: listar_todos_emissores - $($_.Exception.Message)"
         $fail++
@@ -104,7 +106,7 @@ if ($Live -and $key) {
         if ($modo -eq 'matinal') { $body = (@{ action = 'listar_plano_rotina'; routine_key = $key; modo = $modo; top_n = 15 } | ConvertTo-Json -Compress) }
         try {
             $plan = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 120
-            $expTotal = if ($modo -eq 'noturno') { 103 } else { 15 }
+            $expTotal = if ($modo -eq 'noturno') { 100 } else { 15 }
             Assert-Check ($plan.ok -eq $true -and $plan.versao -eq 'rotina-v2') "plano $modo rotina-v2"
             Assert-Check ($plan.total -eq $expTotal) "plano $modo total=$($plan.total) esperado=$expTotal"
             Assert-Check ($plan.buscas_estimadas -lt $plan.buscas_full_legacy) "plano $modo economia buscas"
