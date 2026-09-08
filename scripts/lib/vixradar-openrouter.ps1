@@ -87,10 +87,10 @@ function Get-VixOpenRouterInfo {
 
 function Get-VixOpenRouterTimeoutMin {
     $t = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_TIMEOUT_MIN'
-    if (-not $t) { return 6 }
+    if (-not $t) { return 12 }
     $n = 0
     if ([int]::TryParse(('' + $t).Trim(), [ref]$n) -and $n -gt 0) { return $n }
-    return 6
+    return 12
 }
 
 # Teto CURTO e explicito da serializacao pre-HTTP. Serializar este corpo e trabalho de
@@ -337,7 +337,7 @@ function Get-VixOpenRouterRetryAfterSec([string]$Header, [int]$DefaultSec) {
 #   ExitCode != 0 = falla tras retries; Linhas lleva linea de error NO-JSON (sin segredo).
 #   400/401/402/403/404: duros, SIN retry y SIN fallback (deterministas).
 #   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
-function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10)) {
+function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0) {
     $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = '' }
     $prompt = ''
     # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
@@ -349,9 +349,15 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     $apiKey = Get-VixOpenRouterApiKey
     if (-not $apiKey) { $falha.Msg = 'OPENROUTER_API_KEY ausente'; $falha.Linhas = @('OPENROUTER_FALHA_COD=1'); return $falha }
 
+    # SENTINELA-TOOLSVOL1 (2026-09-08): a Fase B D1 subio el fetch a 20000 tokens y el total a
+    # 15 resultados, muy por encima del WebFetch legado (~un resumen de pagina). Dos corridas de
+    # sentinela reales (00:43 y 01:03) mostraron: probe minimo con server tools = ~3s; lote real de
+    # 4 emissores jamas completo con timeout de 12 min por intento (5 x 12 min al 00:43). El costo
+    # NO esta en la inferencia base, esta en el bucle de server tools con volumen pesado. Se vuelve
+    # a paridad con el flujo claude (fetch recortado) para que 12 min alcancen a una pasada.
     $tools = @(
-        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'exa'; max_results = 5; max_total_results = 15 } },
-        [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 20000 } }
+        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'exa'; max_results = 5; max_total_results = 8 } },
+        [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 4000 } }
     )
     $modeloPrincipal = Get-VixOpenRouterModel
     $modeloFallback  = Get-VixOpenRouterFallbackModel
@@ -365,6 +371,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     $ultimoRetryAfter = ''
     $vacioFinal = $false
     $duro = $false
+    $inicioLote = Get-Date
     foreach ($item in $modelos) {
         $modeloUsado = $item.M
         $esFallback = ($item.M -ne $modeloPrincipal)
@@ -376,6 +383,13 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 $sleepSec = $delays[$i]
                 if (($ultimoCod -eq 429) -and ($ultimoRetryAfter -ne '')) { $sleepSec = Get-VixOpenRouterRetryAfterSec $ultimoRetryAfter $sleepSec }
                 if ($sleepSec -gt 0) { Start-Sleep -Seconds $sleepSec }
+            }
+            # SENTINELA-TIMEOUT1: teto de parede por lote (respeita TempoMaxMin da sentinela).
+            if ($TotalTimeoutSec -gt 0 -and ([int](((Get-Date) - $inicioLote).TotalSeconds)) -ge $TotalTimeoutSec) {
+                $ultimoMsg = 'OPENROUTER_TIMEOUT_TOTAL (excedeu ' + $TotalTimeoutSec + 's)'
+                $vacioFinal = $false
+                $duro = $false
+                break
             }
             $bodyObj = [ordered]@{
                 model = $item.M

@@ -531,7 +531,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
         # no backlog, mesmo efeito do timeout do claude.
         if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -TotalTimeoutSec ($TimeoutMin * 60)
             $raw = @($__orResp.Linhas)
             if ($__orResp.ExitCode -ne 0) {
                 $falhaTransporte = $true
@@ -601,7 +601,16 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
     } catch {
         Write-Log ('AVISO: parse do envelope JSON falhou - tokens DESCONHECIDO.')
     }
-    return @{ Output = $textOut; Tokens = $tokens; AuthFailure = (Test-VixClaudeAuthFailure $textOut); TimedOut = $timedOut; FalhaTransporte = $falhaTransporte; FalhaMsg = $falhaMsg }
+    # AUTHMODO1 (2026-09-07): Test-VixClaudeAuthFailure mora na lib vixradar-claude-auth.ps1,
+    # que so dot-source o ramo claude. No ramo openrouter a funcao NAO existe e referenciarla
+    # era erro de runtime que varria o FIM e devolvia exit 0 falso (ralentizando o fix do 429:
+    # sentinela al 01:03:22 nao logue AVISO/FIM, apenas o error e exit 0). O adapter ja
+    # reporta FalhaTransporte/FalhaMsg; a deteccion de auth Anthropic no aplica aqui.
+    $authFailureFinal = $false
+    if (-not $script:VixUsaOpenRouter) {
+        $authFailureFinal = (Test-VixClaudeAuthFailure $textOut)
+    }
+    return @{ Output = $textOut; Tokens = $tokens; AuthFailure = $authFailureFinal; TimedOut = $timedOut; FalhaTransporte = $falhaTransporte; FalhaMsg = $falhaMsg }
 }
 
 function Get-ParsedResultadosSentinela($outputLines) {
