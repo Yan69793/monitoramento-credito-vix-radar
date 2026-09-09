@@ -30,3 +30,14 @@
 # Campos obrigatorios por evento: classificacao, titulo, evento (descricao), impacto_credito, memo_acontecimento, memo_importancia_credito, memo_monitorar, fonte_primaria (URL), fonte_tipo, data_evento, data_aproximada, tags.
 #
 # Ultima linha: LOTE_RESUMO|buscas=<total de buscas executadas>
+#
+# COBERTURA1 (2026-09-09) - OBRIGATORIO, sobrepoe limites acima: para CADA emissor, no minimo 1
+# busca por familia, nesta ordem: F1-emissor (nome + contexto/fato conhecido), F2-divida
+# (divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria).
+# Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato",
+# "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"openrouter:web_search|web_fetch",
+# "status_http":200, "resultado":"<resposta textual>", "classificacao":"ok". PROIBIDO (PROVAFALSA1):
+# registrar busca que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca
+# que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e
+# classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou;
+# "nao pesquisada" = familia ausente. NENHUM/ECO so vale com as 3 familias ok.

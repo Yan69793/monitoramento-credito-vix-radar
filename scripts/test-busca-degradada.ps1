@@ -46,6 +46,10 @@ Assert-True (Test-VixBuscaDegradada 'erro ao executar a busca') 'D7: "erro" = de
 Assert-True (Test-VixBuscaDegradada 'busca nao executada por limite') 'D8: "nao execut" = degradada'
 Assert-True (Test-VixBuscaDegradada 'timeout na busca web') 'D9: "timeout" = degradada'
 Assert-True (Test-VixBuscaDegradada 'restricao de busca por volume') 'D10: "restric.*busca" = degradada'
+Assert-True (Test-VixBuscaDegradada 'sem retorno - limite backend') 'D11: texto real Vibra 09/09 "sem retorno - limite backend" = degradada'
+Assert-True (Test-VixBuscaDegradada 'R2 sem retorno do backend (limite atingido)') 'D12: nota real Vibra 09/09 citando backend = degradada'
+Assert-True (Test-VixBuscaDegradada 'rate limit atingido pelo provedor de busca') 'D13: "rate limit" = degradada'
+Assert-True (Test-VixBuscaDegradada 'HTTP 429 do servico de busca') 'D14: "429" = degradada'
 
 Write-Host '== Test-VixBuscaDegradada: o que NAO e degradada (busca valida) =='
 Assert-True (-not (Test-VixBuscaDegradada 'artigos de julho/2026 ja em eventos_conhecidos; sem fato novo na janela')) 'N1: resultado descritivo real (Raizen 08/09) NAO e degradada'

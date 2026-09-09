@@ -41,4 +41,14 @@
 # Evento CRITICO/RELEVANTE exige memo_acontecimento + memo_importancia_credito + memo_monitorar preenchidos - alimentam o card do usuario e o contexto_historico de amanha. Preservar acentuacao exata do nome da empresa no RESULTADO|.
 #
 # SAIDA: somente linhas RESULTADO| / LOTE_RESUMO| / ANOTA| no formato do cabecalho do prompt.
-# Sem markdown, sem tabelas, sem backticks, sem narrativa. NAO executar curl nem qualquer submit HTTP - o orquestrador grava.
+# Sem markdown, sem tabelas, sem backticks, sem narrativa. NAO executar curl nem qualquer submit HTTP - o orquestrador grava.#
+# COBERTURA1 (2026-09-09) - OBRIGATORIO, sobrepoe "buscas condicionais" acima: para CADA emissor,
+# no minimo 1 busca por familia, nesta ordem: F1-emissor (nome + contexto/fato conhecido), F2-divida
+# (divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria).
+# Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato",
+# "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"openrouter:web_search|web_fetch",
+# "status_http":200, "resultado":"<resposta textual>", "classificacao":"ok". PROIBIDO (PROVAFALSA1):
+# registrar busca que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca
+# que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e
+# classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou;
+# "nao pesquisada" = familia ausente. NENHUM/ECO so vale com as 3 familias ok.

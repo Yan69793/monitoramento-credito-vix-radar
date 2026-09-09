@@ -475,14 +475,20 @@ function Get-ResultadoEmissor($parsedMap, [string]$empresaPlano) { return $parse
 # seguiram com resultado literal "sem resultados - limite de busca". O motor contava essas como
 # busca efetiva (nao casavam o regex antigo), o modelo classificava NENHUM/sem_eventos=true, e o
 # emissor virava "analisado sem evento" no estado — feed preso em 04/09 com tudo verde.
+# BUSCADEGRADADA1-REV (2026-09-09): a Vibra Energia na noturna real de 09/09 reafirmou
+# sem_eventos com a unica busca degradada escrita pelo modelo como "sem retorno - limite
+# backend" — redacao que o lexico abaixo nao cobria (so pegava "limite de busca"). Como a
+# busca falhou no backend e o texto nao casava, ela contou como EFETIVA e o emissor saiu
+# certificado NENHUM no mesmo dia em que a emissao de R$1,4 bi em debentures (08/09) circulava.
 # Regra: so contam como DEGRADADA as respostas com evidencia EXPLICITA de falha/esgotamento
 # (limite de busca, esgotad, max_total_results, restric.*busca, indisponivel, falha, erro,
-# nao execut, timeout). "sem resultados" generico (busca valida com zero achados) NAO e
-# degradada: buscar e nao achar nada e resultado legitimo de busca efetiva.
+# nao execut, timeout, sem retorno, limite backend, rate limit, 429). "sem resultados"
+# generico (busca valida com zero achados) NAO e degradada: buscar e nao achar nada e
+# resultado legitimo de busca efetiva.
 function Test-VixBuscaDegradada([string]$resultadoTxt) {
     $iA = [char]0x00ED  # i com acento agudo
     $aT = [char]0x00E3  # a com til
-    $re = 'limite de busca|esgotad|max_total_results|restric.*busca|indisponivel|indispon' + $iA + 'vel|falha|erro|n[a' + $aT + ']o execut|timeout'
+    $re = 'limite de busca|esgotad|esgotou|max_total_results|restric.*busca|indisponivel|indispon' + $iA + 'vel|falha|erro|n[a' + $aT + ']o execut|timeout|sem retorno|limite backend|rate ?limit|429'
     return ('' + $resultadoTxt) -match $re
 }
 
@@ -504,6 +510,76 @@ function Resolve-VixCoberturaWeb($res) {
     return [pscustomobject]@{ efetivas = $efetivas; degradadas = $degradadas; pendente = $pendente }
 }
 
+# COBERTURA1 (2026-09-09, decisao do operador): contrato persistido de cobertura por emissor/data.
+# A prova de cada familia e MECANICA: so conta como "pesquisada com sucesso" uma fonte com os
+# campos estruturais query/timestamp/provedor/status_http/resultado/classificacao, familia
+# conhecida e classificacao ok. Texto do modelo sem esses campos (PROVAFALSA1) NAO prova nada:
+# "busca realizada" por prosa, sem status http e classificacao, e tratada como NAO PESQUISADA.
+# NENHUM/sem_eventos so e aceito quando F1-emissor, F2-divida/emissao/captacao e F3-fato/
+# CVM/RI/fonte primaria foram pesquisadas com sucesso; familia ausente, degradada (429, rate
+# limit, limite backend, sem retorno) ou resposta vazia anomalia => DEFERIDO com faltantes e
+# reanalise na proxima execucao (faltantes antes de itens novos), idempotente e sem duplicar.
+function ConvertTo-VixFonteEstrutural($f) {
+    # Normaliza UMA fonte em @{ familia; ok; motivo }. Falha estrutural = sem_prova (nao conta).
+    $out = [pscustomobject]@{ familia = 'desconhecida'; ok = $false; motivo = 'sem_prova' }
+    if ($null -eq $f) { return $out }
+    $fam = ('' + $f.familia).Trim().ToLowerInvariant()
+    if ($fam -notin @('emissor', 'divida', 'fato')) { $out.motivo = 'sem_prova_sem_familia'; return $out }
+    $q = ('' + $f.query).Trim()
+    $ts = ('' + $f.timestamp).Trim()
+    $prov = ('' + $f.provedor).Trim()
+    $httpRaw = '' + $f.status_http
+    $http = 0
+    if (-not [int]::TryParse($httpRaw, [ref]$http)) { $out.motivo = 'sem_prova_sem_status_http'; return $out }
+    $res = ('' + $f.resultado).Trim()
+    $cl = ('' + $f.classificacao).Trim().ToLowerInvariant()
+    if (-not $q -or -not $ts -or -not $prov -or -not $res) { $out.motivo = 'sem_prova_campo_vazio'; return $out }
+    if ($res -eq 'vazio') { $out.motivo = 'resposta_vazia_anomalia'; return $out }
+    $okHttp = ($http -ge 200 -and $http -lt 300)
+    $okCl = ($cl -in @('ok', 'efetiva', 'sucesso', 'valida'))
+    if (-not $okHttp) { $out.motivo = ('degradada_http_' + $http); return $out }
+    if (-not $okCl) { $out.motivo = ('degradada_classificacao_' + $cl); return $out }
+    if (Test-VixBuscaDegradada $res) { $out.motivo = 'degradada_conteudo'; return $out }
+    $out.familia = $fam
+    $out.ok = $true
+    $out.motivo = 'ok'
+    return $out
+}
+
+function Resolve-VixCoberturaFamilias($res) {
+    # F1 emissor, F2 divida (divida|debentures|emissao|captacao), F3 fato (CVM/RI/fonte primaria).
+    # Retorna @{ ok; faltantes = [string[]]; n_provas = int }.
+    $okFam = @{ 'emissor' = $false; 'divida' = $false; 'fato' = $false }
+    $nProvas = 0
+    foreach ($f in @($res.fontes_consultadas)) {
+        $e = ConvertTo-VixFonteEstrutural $f
+        if ($e.ok) { $okFam[$e.familia] = $true; $nProvas++ }
+    }
+    $faltantes = @()
+    foreach ($fam in @('emissor', 'divida', 'fato')) { if (-not $okFam[$fam]) { $faltantes += $fam } }
+    return [pscustomobject]@{ ok = ($faltantes.Count -eq 0); faltantes = $faltantes; n_provas = $nProvas }
+}
+
+# Contrato persistido em logs\routines\cobertura_YYYYMMDD.json (DEFERIDOS por cobertura).
+function Get-VixContratoCoberturaPath([string]$tag) {
+    return Join-Path $LogDir ('cobertura_' + $tag + '.json')
+}
+
+function Read-VixContratoCobertura([string]$tag) {
+    $p = Get-VixContratoCoberturaPath $tag
+    if (-not (Test-Path $p)) { return @{} }
+    try { $o = Get-Content $p -Raw -Encoding UTF8 | ConvertFrom-Json; if ($o -and $o.emissores) { return $o.emissores } } catch { }
+    return @{}
+}
+
+function Merge-VixContratoCobertura($alvo, [string]$empresa, [string]$status, [string[]]$faltantes) {
+    # Idempotente: mesma empresa/data so atualiza a entrada (nunca duplica).
+    $alvo[(Get-NomeNormalizado $empresa)] = @{
+        empresa = $empresa; status = $status
+        faltantes = @($faltantes); updated_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+}
+
 function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [switch]$Ultra) {
     $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Ultra:$Ultra })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
@@ -515,6 +591,7 @@ DELTA - nao recrie fato conhecido (FEEDRETRO1): cada emissor no JSON abaixo tem 
 
 DATA - sai da fonte, nunca da busca (FONTEDIVERG1): data_evento e a data em que o fato ocorreu ou foi publicado pela fonte que voce esta citando, lida no proprio conteudo (data no topo da materia, data no path da URL, protocolo CVM). Encontrar a materia numa busca ancorada no mes corrente NAO a torna do mes corrente: a ancora estreita a busca, nao data o resultado. Sem conseguir confirmar a data de publicacao, trate como fato conhecido (eventos=[]) em vez de carimbar hoje. Medido em 04/09/2026: a Kora Saude voltou com data_evento=2026-09-04 citando materia cujo article:published_time no HTML era 2026-05-05.
 PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
+COBERTURA (OBRIGATORIO, COBERTURA1): para CADA emissor execute ao menos 1 busca por familia, nesta ordem: F1-emissor (nome + contexto/fato conhecido), F2-divida (divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria na janela). Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato", "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"openrouter:web_search|web_fetch", "status_http":200, "resultado":"<resposta textual da busca>", "classificacao":"ok". PROIBIDO (PROVAFALSA1): registrar busca que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou (ex.: "nada na janela apos X"); "nao pesquisada" = familia ausente.
 SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
 Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
@@ -731,10 +808,12 @@ $stats = @{
     # conta submit com evento enviado mas n_eventos=0 (Worker aceitou o transporte e
     # descartou tudo no saneamento ou no pre-verificador - ver DESCARTADO| no log).
     eventos_avanco_data = 0; chaves_novas = 0; descartados = 0
+    cobertura_deferidos = 0
     criticos = New-Object System.Collections.Generic.List[string]
 }
 $lotesDetalhe = New-Object System.Collections.Generic.List[object]
 $pendingDeferred = New-Object System.Collections.Generic.List[object]
+$contratoCobertura = @{}
 $exitCode = 0
 $batchSeq = 0
 
@@ -802,6 +881,18 @@ try {
     # Fila unica, ordenada por risco: cortes por cap caem sempre na cauda de menor EWS.
     $analyzeList = @($plano.emissores | Where-Object { $_.tier -ne 'SKIP' -and -not $jaProcessados.ContainsKey((Get-NomeNormalizado $_.empresa)) })
     $fila = @($analyzeList | Sort-Object -Property ews_score, cvm_novos -Descending)
+    # COBERTURA1: DEFERIDOS por cobertura (contrato persistido de hoje/ontem) sao reprocessados
+    # ANTES dos itens novos; ordem relativa dos demais e preservada (particao estavel).
+    $__faltAnt = @{}
+    foreach ($__tag in @($DateTag, (Get-Date).AddDays(-1).ToString('yyyyMMdd'))) {
+        foreach ($__e in @((Read-VixContratoCobertura $__tag).Values)) { if (@($__e.faltantes).Count -gt 0) { $__faltAnt[(Get-NomeNormalizado ('' + $__e.empresa))] = $true } }
+    }
+    if ($__faltAnt.Count -gt 0) {
+        $__com = @($fila | Where-Object { $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
+        $__sem = @($fila | Where-Object { -not $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
+        if ($__com.Count -gt 0) { Write-Log ('COBERTURA1: ' + $__com.Count + ' emissor(es) DEFERIDO(s) por cobertura priorizados no inicio da fila') }
+        $fila = @($__com) + @($__sem)
+    }
     foreach ($emp in $fila) {
         $h = if ($null -ne $emp.horas_desde_analise) { $emp.horas_desde_analise } else { '-' }
         $u = if ($emp.ultima_origem) { $emp.ultima_origem } else { '-' }
@@ -981,6 +1072,23 @@ try {
                 $res.sem_eventos = $true
                 if (-not $res.cobertura_nota) { $res.cobertura_nota = 'Zero buscas efetivas - cobertura nao verificavel (falha de ferramenta ou modelo).' }
             }
+            # COBERTURA1: ausencia certificada (NENHUM/ECO sem evento) so vale com as 3 familias
+            # obrigatorias (F1 emissor, F2 divida/emissao/captacao, F3 fato/CVM/RI/fonte primaria)
+            # comprovadas MECANICAMENTE. Familia ausente/sem prova/degradada => DEFERIDO com
+            # faltantes e reanalise na proxima execucao (faltantes primeiro, idempotente).
+            $__covFam = Resolve-VixCoberturaFamilias $res
+            $__classifAusencia = ($classif -in @('NENHUM', 'ECO', '')) -and (@($res.eventos).Count -eq 0)
+            if ($__classifAusencia -and -not $__covFam.ok) {
+                Write-Log ('DEFERIDO_COBERTURA|' + $emp.empresa + '|faltantes=' + ($__covFam.faltantes -join ',') + '|n_provas=' + $__covFam.n_provas)
+                $classif = 'INCONCLUSIVO'
+                $res.sem_eventos = $true
+                $__faltaTxt = 'Cobertura obrigatoria incompleta - familias nao comprovadas: ' + ($__covFam.faltantes -join ', ') + '. Reanalise na proxima execucao.'
+                if (-not $res.cobertura_nota) { $res.cobertura_nota = $__faltaTxt } else { $res.cobertura_nota = $res.cobertura_nota + ' ' + $__faltaTxt }
+                try { $res | Add-Member -NotePropertyName '_cobertura_web_degradada' -NotePropertyValue $true -Force } catch { }
+                try { $res | Add-Member -NotePropertyName '_familia_faltantes' -NotePropertyValue @($__covFam.faltantes) -Force } catch { }
+                $stats.cobertura_deferidos++
+                if (-not $DryRun) { Merge-VixContratoCobertura $contratoCobertura $emp.empresa 'DEFERIDO' $__covFam.faltantes }
+            }
             try { $res | Add-Member -NotePropertyName '_tier' -NotePropertyValue $Perfil.tier -Force } catch { }
             $subOk = $false; $nEv = 0; $nAvanco = 0
             try {
@@ -1085,6 +1193,13 @@ try {
             criticos = $stats.criticos.ToArray(); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
             auth_modo_inicial = $authModoInicial; auth_escalou = $stats.auth_escalou
         } | ConvertTo-Json -Depth 6 | Set-Content $MetricsFile -Encoding UTF8
+    }
+
+    # COBERTURA1: persiste o contrato do dia (DEFERIDOS por cobertura, p/ reprocessar primeiro).
+    if ($contratoCobertura.Count -gt 0 -and -not $DryRun) {
+        [ordered]@{ data = $DateTag; atualizado_em = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); emissores = $contratoCobertura } |
+            ConvertTo-Json -Depth 6 | Set-Content (Get-VixContratoCoberturaPath $DateTag) -Encoding UTF8
+        Write-Log ('COBERTURA1: contrato persistido com ' + $contratoCobertura.Count + ' emissor(es) DEFERIDO(s) por cobertura')
     }
 
     $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
