@@ -58,6 +58,16 @@ try {
     Assert-True ((Get-VixOpenRouterModel) -eq 'outro/sob-env') 'T4 modelo: env VIXRADAR_OPENROUTER_MODEL sobrepoe'
     Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL -ErrorAction SilentlyContinue
 
+    $env:VIXRADAR_OPENROUTER_MODEL_LIGHT = 'light/modelo-validado'
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'full/modelo-validado'
+    Assert-True ((Get-VixOpenRouterModel 'LIGHT') -eq 'light/modelo-validado') 'T4 tier LIGHT: override proprio'
+    Assert-True ((Get-VixOpenRouterModel 'FULL') -eq 'full/modelo-validado') 'T4 tier FULL: override proprio'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_LIGHT -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = '~modelo/invalido-latest'
+    Assert-True ((Get-VixOpenRouterModel 'FULL') -eq 'deepseek/deepseek-v4-flash-0731') 'T4 tier FULL: override invalido cai no default seguro'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+
     # ---- T5: pronto sem chave utilizavel = falha clara e sem segredo ----
     # A chave real vive no escopo User, entao ausencia e simulada sobrescrevendo a funcao
     # de resolucao (nao o env). Apos a prova, re-dot-source restaura as funcoes originais.
@@ -84,8 +94,13 @@ try {
     Assert-True ($script:CapturedBody -match 'openrouter:web_search') 'T6 body: tool web_search presente'
     Assert-True ($script:CapturedBody -match 'openrouter:web_fetch') 'T6 body: tool web_fetch presente'
     Assert-True ($script:CapturedBody -match '"require_parameters":true') 'T6 body: provider.require_parameters=true'
-    Assert-True ($script:CapturedBody -match '"allow_fallbacks":false') 'T6 body: provider.allow_fallbacks=false (sem fallback, nunca Anthropic)'
+    Assert-True ($script:CapturedBody -match '"allow_fallbacks":true') 'T6 body: provider.allow_fallbacks=true (failover nativo OR entre providers do mesmo modelo)'
     Assert-True ($script:CapturedBody -match [regex]::Escape('deepseek/deepseek-v4-flash-0731')) 'T6 body: model default'
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'full/modelo-validado'
+    $r6full = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -Tier 'FULL'
+    Assert-True ($r6full.ExitCode -eq 0) 'T6 tier FULL: lote ok'
+    Assert-True ($script:CapturedBody -match [regex]::Escape('full/modelo-validado')) 'T6 tier FULL: model no body'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
     $e6 = $r6.Linhas[0] | ConvertFrom-Json
     Assert-True ($e6.result -like 'RESULTADO|ACME*') 'T6 envelope: result do texto preservado'
     Assert-True ($e6.usage.input_tokens -eq 70 -and $e6.usage.cache_read_input_tokens -eq 30) 'T6 envelope: parcelas 4 via converter'
@@ -224,6 +239,60 @@ try {
     Assert-True ($script:HttpCalls -eq 3) 'T17 vazio: 3 tentativas (sem fallback invalido)'
     Assert-True ($r17.Linhas[0] -eq 'OPENROUTER_EMPTY_RESULT') 'T17 vazio: linha semantica'
     Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+
+    # ---- T18 (OR429-FIX): 429 persistente esgota primario + fallback e vira falha controlada ----
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-flash'
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        return @{ Status = 429; Body = '{"error":{"message":"Provider returned error"}}'; Erro = ''; RetryAfter = '' }
+    }
+    $r18 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r18.ExitCode -ne 0) 'T18 429 persistente: ExitCode != 0 (falha controlada, sem falso sucesso)'
+    Assert-True ($script:HttpCalls -eq 6) 'T18 429 persistente: 3 primario + 3 fallback = 6 (camada unica bounded)'
+    Assert-True ($r18.Msg -match 'OPENROUTER_HTTP_STATUS=429') 'T18 429 persistente: status 429 no Msg'
+    Assert-True ($r18.Linhas[0] -eq 'OPENROUTER_FALHA_COD=429') 'T18 429 persistente: linha de erro so com codigo'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+
+    # ---- T19 (OR429-FIX): Retry-After do 429 sobrepoe o delay fixo da proxima tentativa ----
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        if ($script:HttpCalls -eq 1) { return @{ Status = 429; Body = '{"error":{"message":"Provider returned error"}}'; Erro = ''; RetryAfter = '1' } }
+        $body = '{"id":"x","model":"deepseek/deepseek-v4-flash-0731","choices":[{"index":0,"message":{"role":"assistant","content":"RESULTADO|ACME|{\"ok\":1}\nFIM"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $sw19 = [System.Diagnostics.Stopwatch]::StartNew()
+    $r19 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 60) -FallbackRetryDelays @(0, 0)
+    $sw19.Stop()
+    Assert-True ($r19.ExitCode -eq 0) 'T19 Retry-After: ok apos 429'
+    Assert-True ($script:HttpCalls -eq 2) 'T19 Retry-After: 2 chamadas'
+    Assert-True ($sw19.Elapsed.TotalSeconds -lt 10) ('T19 Retry-After: espera usou Retry-After (1s), nao o delay fixo de 60s (elapsed=' + [Math]::Round($sw19.Elapsed.TotalSeconds, 1) + 's)')
+    Assert-True ($r19.RetryAfter -eq '1') 'T19 Retry-After: header capturado = 1'
+
+    # ---- T20 (OR429-FIX): TotalTimeoutSec limita o tempo total do lote (parede) ----
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        Start-Sleep -Milliseconds 700
+        return @{ Status = 0; Body = ''; Erro = 'timeout fake (teste)' }
+    }
+    $r20 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0) -TotalTimeoutSec 1
+    Assert-True ($r20.ExitCode -ne 0) 'T20 timeout total: ExitCode != 0'
+    Assert-True ($r20.Msg -match 'OPENROUTER_TIMEOUT_TOTAL') 'T20 timeout total: Msg = OPENROUTER_TIMEOUT_TOTAL'
+    Assert-True ($script:HttpCalls -ge 1 -and $script:HttpCalls -le 2) ('T20 timeout total: parou cedo (calls=' + $script:HttpCalls + ', nao 6)')
+
+    # ---- T21 (OR429-FIX): 2xx com corpo nao-JSON nao cruza como sucesso ----
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        return @{ Status = 200; Body = 'isto nao e json {{{'; Erro = ''; RetryAfter = '' }
+    }
+    $r21 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r21.ExitCode -ne 0) 'T21 JSON invalido: ExitCode != 0 (fail-closed)'
+    Assert-True ($script:HttpCalls -eq 1) 'T21 JSON invalido: 1 chamada (200 malformado nao retenta)'
+    Assert-True ($r21.Msg -match 'sem choices') 'T21 JSON invalido: Msg identifica body malformado'
+    Assert-True ($r21.Linhas[0] -eq 'OPENROUTER_FALHA_COD=200') 'T21 JSON invalido: linha de erro so com codigo'
 
 . (Join-Path $root 'lib\vixradar-openrouter.ps1')
 }

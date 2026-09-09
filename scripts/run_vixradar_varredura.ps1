@@ -311,6 +311,13 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
         $retryDelays = @(0, 30, 60)
+        # OR429-CAMADAUNICA (2026-09-09): com allow_fallbacks=true no adapter, o failover entre
+        # providers do MESMO modelo e nativo do OpenRouter e o retry de 429/transporte e bounded
+        # DENTRO do adapter (respeitando Retry-After). Re-disparar o lote inteiro aqui (30s/60s)
+        # duplicava ate ~11 POSTs no mesmo payload apos cada 429 e foi o que matou a matinal de
+        # 09/09 no backoff, sem FIM (pid 23428). Camada unica: 1 chamada do adapter por payload;
+        # falha controlada no fluxo normal abaixo (FIM/ROTINA_RESUMO + exit != 0).
+        if ($script:VixUsaOpenRouter) { $retryDelays = @(0) }
         $retryLog = @()
         # Limite que volta DEPOIS de ja ter esperado o reset nao se resolve esperando de
         # novo: o plano manda escalar nesse caso. Sem esta memoria, duas esperas seguidas
@@ -327,15 +334,28 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch.
             # Mesmo prompt, mesmo protocolo textual; envelope normalizado no parser abaixo.
             if ($script:VixUsaOpenRouter) {
-                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+                # OR429-TETO (2026-09-09): teto de parede TOTAL do lote passado ao adapter, para o
+                # ciclo retry+fallback+Retry-After nunca estourar o orcamento (09/09 morreu no meio
+                # do backoff sem teto). Default = 2 paredes de tentativa
+                # (VIXRADAR_OPENROUTER_TIMEOUT_MIN, 12 min cada) + 120s de margem; override por
+                # VIXRADAR_OPENROUTER_LOTE_TIMEOUT_MIN (minutos).
+                $__loteTimeoutSec = 0
+                $__loteMinEnv = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_LOTE_TIMEOUT_MIN'
+                if ($__loteMinEnv) {
+                    $__loteMin = 0
+                    if ([int]::TryParse(('' + $__loteMinEnv).Trim(), [ref]$__loteMin) -and $__loteMin -gt 0) { $__loteTimeoutSec = $__loteMin * 60 }
+                }
+                if ($__loteTimeoutSec -le 0) { $__loteTimeoutSec = (Get-VixOpenRouterTimeoutMin) * 120 + 120 }
+                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Perfil.tier -TotalTimeoutSec $__loteTimeoutSec
                 # JSONCICLO1: serializacao pre-HTTP passa a ser observavel. Sem isto, os 55 min
                 # presos de 05/09 nao apareceram em log nenhum.
                 Write-Log ('PAYLOAD: serializacao=' + ([double]$script:VixOpenRouterUltimaSerializacaoSeg).ToString('F3') +
                            's bytes=' + $script:VixOpenRouterUltimoPayloadBytes +
-                           ' modelo=' + (Get-VixOpenRouterModel))
+                           ' modelo=' + (Get-VixOpenRouterModel $Perfil.tier) +
+                           ' teto_lote_s=' + $__loteTimeoutSec)
                 $raw = @($__orResp.Linhas)
                 $exitCode = $__orResp.ExitCode
-                $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel))
+                $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel $Perfil.tier))
                 if ($exitCode -eq 0) { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()); break }
                 Write-Log ('RETRY openrouter: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ': ' + $__orResp.Msg)
                 continue
@@ -631,8 +651,8 @@ if ($script:VixUsaOpenRouter) {
     # MODELOLOG1 (05/09): o modelo efetivo sai resolvido AQUI, inclusive quando vem do default
     # do adapter. Antes so existia o rotulo legado de Claude nos lotes, que dizia
     # claude-haiku-4-5 numa execucao que nao tocava em Anthropic nenhuma.
-    $__orModelo = Get-VixOpenRouterModel
-    $__orOrigem = if (Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL') { 'env VIXRADAR_OPENROUTER_MODEL' } else { 'default do adapter' }
+    $__orModelo = Get-VixOpenRouterModel $Perfil.tier
+    $__orOrigem = if (Get-VixOpenRouterEnv ('VIXRADAR_OPENROUTER_MODEL_' + $Perfil.tier)) { 'env VIXRADAR_OPENROUTER_MODEL_' + $Perfil.tier } elseif (Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL') { 'env VIXRADAR_OPENROUTER_MODEL' } else { 'default do adapter' }
     Write-Log ('MODELO_EFETIVO: ' + $__orModelo + ' (origem: ' + $__orOrigem + ')')
 } else {
     Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
@@ -828,7 +848,7 @@ try {
         $batchSeq++
         $label = $job.Name + '-' + $ji
         $modeloPrompt = $job.Model
-        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel }
+        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $Perfil.tier }
         $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim -Ultra:$job.Ultra
         $promptPath = Join-Path $LogDir ($Perfil.prefix + '_' + $label + '_' + $DateTag + '.txt')
         Set-Content $promptPath -Value $prompt -Encoding UTF8
@@ -836,7 +856,7 @@ try {
         # MODELOLOG1: provider openrouter nunca imprime o rotulo Claude legado como se fosse o
         # modelo executado. $job.Model so descreve o TIER do plano (rapido x aprofundado).
         $modeloLote = $job.Model
-        if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel) + ' tier=' + $job.Name }
+        if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel $Perfil.tier) + ' tier=' + $job.Name }
         Write-Log ('Lote ' + $label + ' [' + $modeloLote + ']: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', '))
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
         $result = Invoke-ClaudeBatch $promptPath $job.Model

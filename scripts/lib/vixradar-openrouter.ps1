@@ -21,11 +21,15 @@
 #
 # Politica de retry (spec D1): 401/402/403 = falha imediata sem retry; 408/429/500/502/503/
 # 524/529 = retry bounded com backoff. Erro de transporte (status 0) tambem retenta.
+# OR429-FIX (2026-09-09): allow_fallbacks=true no payload reativa o failover NATIVO do
+# OpenRouter entre providers do mesmo modelo; o retry bounded abaixo e a camada unica apos
+# esse failover, respeitando Retry-After (0..120s).
 #
 # PowerShell 5.1, ASCII puro (sem BOM necessario), $ErrorActionPreference Continue.
 
 $VixOpenRouterBase = 'https://openrouter.ai/api/v1/chat/completions'
 $VixOpenRouterModelDefault = 'deepseek/deepseek-v4-flash-0731'
+$VixOpenRouterModelLightDefault = $VixOpenRouterModelDefault
 $VixOpenRouterFallbackDefault = 'deepseek/deepseek-v4-flash'
 $VixOpenRouterRetryable = @(408, 429, 500, 502, 503, 504, 522, 524, 529)
 
@@ -54,9 +58,12 @@ function Test-VixModeloIdValido([string]$Modelo) {
     return ($m -match '^[a-z0-9_-]+/[a-z0-9][a-z0-9._-]*$')
 }
 
-function Get-VixOpenRouterModel {
-    $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL'
-    if (-not $m) { return $VixOpenRouterModelDefault }
+function Get-VixOpenRouterModel([string]$Tier = '') {
+    $tierUpper = ('' + $Tier).Trim().ToUpperInvariant()
+    $envName = if ($tierUpper -eq 'LIGHT') { 'VIXRADAR_OPENROUTER_MODEL_LIGHT' } elseif ($tierUpper -eq 'FULL') { 'VIXRADAR_OPENROUTER_MODEL_FULL' } else { '' }
+    $m = if ($envName) { Get-VixOpenRouterEnv $envName } else { $null }
+    if (-not $m) { $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL' }
+    if (-not $m) { return $VixOpenRouterModelLightDefault }
     $m = ('' + $m).Trim()
     if (Test-VixModeloIdValido $m) { return $m }
     return $VixOpenRouterModelDefault
@@ -67,12 +74,12 @@ function Get-VixOpenRouterModel {
 # (modelo invalido) ni para auth (401/403): deterministas, no se enmascaran. Sin fallback
 # si la env es invalida o igual al primario. Las server tools van en la llamada de fallback
 # igual que en la primaria (mismo contrato).
-function Get-VixOpenRouterFallbackModel {
+function Get-VixOpenRouterFallbackModel([string]$Tier = '') {
     $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_FALLBACK_MODEL'
     if (-not $m) { $m = $VixOpenRouterFallbackDefault }
     $m = ('' + $m).Trim()
     if (-not (Test-VixModeloIdValido $m)) { return $null }
-    if ($m -eq (Get-VixOpenRouterModel)) { return $null }
+    if ($m -eq (Get-VixOpenRouterModel $Tier)) { return $null }
     return $m
 }
 
@@ -337,7 +344,7 @@ function Get-VixOpenRouterRetryAfterSec([string]$Header, [int]$DefaultSec) {
 #   ExitCode != 0 = falla tras retries; Linhas lleva linea de error NO-JSON (sin segredo).
 #   400/401/402/403/404: duros, SIN retry y SIN fallback (deterministas).
 #   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
-function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0) {
+function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '') {
     $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = '' }
     $prompt = ''
     # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
@@ -359,8 +366,8 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
         [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'exa'; max_results = 5; max_total_results = 8 } },
         [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 4000 } }
     )
-    $modeloPrincipal = Get-VixOpenRouterModel
-    $modeloFallback  = Get-VixOpenRouterFallbackModel
+    $modeloPrincipal = Get-VixOpenRouterModel $Tier
+    $modeloFallback  = Get-VixOpenRouterFallbackModel $Tier
     $modelos = @()
     if ($modeloPrincipal) { $modelos += ,@{ M = $modeloPrincipal; Delays = $RetryDelays } }
     if ($modeloFallback) { $modelos += ,@{ M = $modeloFallback; Delays = $FallbackRetryDelays } }
@@ -396,10 +403,14 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 messages = @([ordered]@{ role = 'user'; content = $prompt })
                 tools = $tools
                 stream = $false
-                # Ruteo (spec D1): nunca openrouter/auto, nunca :floor, ningun Anthropic en
-                # model/fallback. allow_fallbacks=false: el fallback lo decide ESTE adaptador
-                # con un segundo modelo DeepSeek validado, nunca un provider ajeno.
-                provider = [ordered]@{ require_parameters = $true; allow_fallbacks = $false }
+                # Ruteo (spec D1, revisado OR429-FIX 2026-09-09): allow_fallbacks=true reativa o
+                # FAILOVER NATIVO do OpenRouter entre providers do MESMO modelo (o slug fixo
+                # deepseek/deepseek-v4-flash-0731 tem varios providers; 429 de um upstream e
+                # absorvido pelo OpenRouter sem POST repetido do adapter). require_parameters=true
+                # permanece: so roteia para provider que aceite os parametros/tools deste payload.
+                # Sem provider.only/order/ignore. Retry bounded 429/transporte (com Retry-After)
+                # continua AQUI como camada unica apos o failover nativo.
+                provider = [ordered]@{ require_parameters = $true; allow_fallbacks = $true }
             }
             # JSONCICLO1, guarda de 2 estagios antes de cualquier red:
             #   1) sanitiza: reconstruye el payload solo con [ordered], array, string y primitivo.
