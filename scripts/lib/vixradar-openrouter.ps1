@@ -41,8 +41,10 @@ function Get-VixOpenRouterEnv([string]$Name) {
 }
 
 function Get-VixOpenRouterApiKey {
-    $k = Get-VixOpenRouterEnv 'OPENROUTER_API_KEY'
-    if (-not $k) { $k = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_API_KEY' }
+    # 2026-09-10: chave dedicada VIXRADAR_OPENROUTER_API_KEY tem precedencia; OPENROUTER_API_KEY
+    # e o fallback (rotinas fora do VIX Radar seguem usando so a OPENROUTER_API_KEY).
+    $k = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_API_KEY'
+    if (-not $k) { $k = Get-VixOpenRouterEnv 'OPENROUTER_API_KEY' }
     return $k
 }
 
@@ -281,6 +283,15 @@ function ConvertTo-VixOpenRouterEnvelope($Resp) {
     }
     return [pscustomobject]$r
 }
+# Headers HTTP constantes do adapter. Isolados numa funcao testavel offline (nada de rede) e
+# para a chave nunca vazar do Authorization para um dictionary/retorno testavel.
+function Get-VixOpenRouterHttpHeaders {
+    return [ordered]@{
+        'X-OpenRouter-Metadata' = 'enabled'
+        'HTTP-Referer'          = 'https://vixradar.com'
+        'X-Title'               = 'VIX Radar - Scheduler'
+    }
+}
 
 # POST unico ao OpenRouter. Retorna @{ Status; Body; Erro } sem lancar. Nada de segredo no
 # retorno. Timeout de parede por tentativa = Get-VixOpenRouterTimeoutMin.
@@ -293,7 +304,9 @@ function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
         $client = New-Object System.Net.Http.HttpClient
         $client.Timeout = [TimeSpan]::FromMinutes((Get-VixOpenRouterTimeoutMin))
         $client.DefaultRequestHeaders.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $ApiKey)
-        try { [void]$client.DefaultRequestHeaders.Add('X-OpenRouter-Metadata', 'enabled') } catch { }
+        foreach ($h in (Get-VixOpenRouterHttpHeaders).GetEnumerator()) {
+            try { [void]$client.DefaultRequestHeaders.Add([string]$h.Key, [string]$h.Value) } catch { }
+        }
         $content = New-Object System.Net.Http.StringContent($JsonBody, [System.Text.Encoding]::UTF8, 'application/json')
         $resp = $client.PostAsync($VixOpenRouterBase, $content).GetAwaiter().GetResult()
         $res.Status = [int]$resp.StatusCode
