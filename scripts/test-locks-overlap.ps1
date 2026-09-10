@@ -376,7 +376,7 @@ if ($ComTokens) {
     try {
         New-LockDeTeste 45
         $realAntesF = (Get-Item $LockNoturno).LastWriteTime
-        $procF = Start-Process powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Runner, '-Rotina', 'noturno', '-DryRun', '-MaxEmissores', '1') -PassThru -WindowStyle Hidden
+        $procF = Start-Process powershell.exe -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', ('"' + $Runner + '"'), '-Rotina', 'noturno', '-DryRun', '-MaxEmissores', '1') -PassThru -WindowStyle Hidden
         $logProbeF  = Get-LogDoProbe $procF.Id
         $lockProbeF = Get-LockDoProbe $procF.Id
         $procF.WaitForExit(900000) | Out-Null
