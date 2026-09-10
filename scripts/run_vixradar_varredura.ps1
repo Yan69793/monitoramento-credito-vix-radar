@@ -517,8 +517,9 @@ function Resolve-VixCoberturaWeb($res) {
 # "busca realizada" por prosa, sem status http e classificacao, e tratada como NAO PESQUISADA.
 # NENHUM/sem_eventos so e aceito quando F1-emissor, F2-divida/emissao/captacao e F3-fato/
 # CVM/RI/fonte primaria foram pesquisadas com sucesso; familia ausente, degradada (429, rate
-# limit, limite backend, sem retorno) ou resposta vazia anomalia => DEFERIDO com faltantes e
-# reanalise na proxima execucao (faltantes antes de itens novos), idempotente e sem duplicar.
+# limit, limite backend, sem retorno) ou resposta vazia anomalia => RECHECK_PENDENTE com
+# faltantes e reanalise na proxima execucao (faltantes antes de itens novos), idempotente e
+# sem duplicar, mantido na frente da fila ate ser resolvido (sem janela de 2 dias).
 function ConvertTo-VixFonteEstrutural($f) {
     # Normaliza UMA fonte em @{ familia; ok; motivo }. Falha estrutural = sem_prova (nao conta).
     $out = [pscustomobject]@{ familia = 'desconhecida'; ok = $false; motivo = 'sem_prova' }
@@ -560,16 +561,58 @@ function Resolve-VixCoberturaFamilias($res) {
     return [pscustomobject]@{ ok = ($faltantes.Count -eq 0); faltantes = $faltantes; n_provas = $nProvas }
 }
 
-# Contrato persistido em logs\routines\cobertura_YYYYMMDD.json (DEFERIDOS por cobertura).
+# BUSCADEGRADADA1-FIX (2026-09-09, decisao do operador): sem_eventos NUNCA pode sair quando
+# QUALQUER busca do emissor falhou, degradou, esgotou, deu timeout ou ficou insuficiente.
+# Ausencia de fato so e certificavel com busca valida E suficiente (3 familias ok, 0 degradadas).
+# Com evento, o fluxo normal nao e tocado. Emissor bloqueado vira RECHECK_PENDENTE persistido
+# no contrato do dia (mesmo arquivo do COBERTURA1) e a priorizacao existente o recoloca no
+# inicio da fila da proxima execucao. Repeticao nao afrouxa: o gate nao tem excecao por
+# recorrencia — 100 dias degradados = 100 dias INCONCLUSIVO/RECHECK_PENDENTE, nunca sem_eventos.
+function Test-VixAusenciaCertificavel($res) {
+    if (@($res.eventos).Count -gt 0) { return [pscustomobject]@{ permitir_sem_eventos = $true; recheck = $false; motivo = 'com_evento'; faltantes = @() } }
+    $cob = Resolve-VixCoberturaWeb $res
+    if ($cob.degradadas -gt 0) { return [pscustomobject]@{ permitir_sem_eventos = $false; recheck = $true; motivo = 'busca_degradada'; faltantes = @('web') } }
+    $fam = Resolve-VixCoberturaFamilias $res
+    if (-not $fam.ok) { return [pscustomobject]@{ permitir_sem_eventos = $false; recheck = $true; motivo = 'familias_incompletas'; faltantes = @($fam.faltantes) } }
+    return [pscustomobject]@{ permitir_sem_eventos = $true; recheck = $false; motivo = 'cobertura_valida'; faltantes = @() }
+}
+
+# Contrato persistido em logs\routines\cobertura_YYYYMMDD.json (RECHECK_PENDENTE/RESOLVIDO por cobertura).
 function Get-VixContratoCoberturaPath([string]$tag) {
     return Join-Path $LogDir ('cobertura_' + $tag + '.json')
 }
 
-function Read-VixContratoCobertura([string]$tag) {
-    $p = Get-VixContratoCoberturaPath $tag
-    if (-not (Test-Path $p)) { return @{} }
-    try { $o = Get-Content $p -Raw -Encoding UTF8 | ConvertFrom-Json; if ($o -and $o.emissores) { return $o.emissores } } catch { }
-    return @{}
+function Read-VixContratoCoberturaArquivo([string]$path) {
+    if (-not (Test-Path $path)) { return $null }
+    try { $o = Get-Content $path -Raw -Encoding UTF8 | ConvertFrom-Json; if ($o -and $o.emissores) { return $o.emissores } } catch { }
+    return $null
+}
+
+# BUSCADEGRADADA1-FIX (2026-09-10, decisao do operador): RECHECK_PENDENTE vale ATE SER
+# RESOLVIDO, sem janela de 2 dias. Le TODOS os cobertura_*.json do diretorio, do mais novo
+# para o mais antigo, e resolve cada emissor pelo registro MAIS RECENTE dele (o primeiro que
+# aparece na varredura). Uma pendencia de sexta continua na frente na segunda, coisa que a
+# janela fixa de hoje/ontem descartava. Um registro novo com faltantes vazio (RESOLVIDO)
+# devolve o emissor a fila normal, entao a prioridade nao fica presa para sempre. Ausencia
+# nao resolve: emissor que nao voltou a ser analisado mantem a pendencia viva.
+# A leitura e por PSObject.Properties porque o JSON volta como PSCustomObject e `.Values`
+# nao existe nesse tipo: era por isso que a varredura antiga nao enxergava contrato gravado.
+function Get-VixRecheckPendentes([string]$pasta) {
+    $pend = @{}
+    $visto = @{}
+    foreach ($arq in @(Get-ChildItem -Path $pasta -Filter 'cobertura_*.json' -File -ErrorAction SilentlyContinue | Sort-Object -Property Name -Descending)) {
+        $em = Read-VixContratoCoberturaArquivo $arq.FullName
+        if (-not $em) { continue }
+        foreach ($prop in @($em.PSObject.Properties)) {
+            $e = $prop.Value
+            if ($null -eq $e -or -not $e.empresa) { continue }
+            $k = Get-NomeNormalizado ('' + $e.empresa)
+            if ($visto.ContainsKey($k)) { continue }
+            $visto[$k] = $true
+            if (@($e.faltantes).Count -gt 0) { $pend[$k] = $true }
+        }
+    }
+    return $pend
 }
 
 function Merge-VixContratoCobertura($alvo, [string]$empresa, [string]$status, [string[]]$faltantes) {
@@ -808,7 +851,7 @@ $stats = @{
     # conta submit com evento enviado mas n_eventos=0 (Worker aceitou o transporte e
     # descartou tudo no saneamento ou no pre-verificador - ver DESCARTADO| no log).
     eventos_avanco_data = 0; chaves_novas = 0; descartados = 0
-    cobertura_deferidos = 0
+    cobertura_deferidos = 0; recheck_resolvidos = 0
     criticos = New-Object System.Collections.Generic.List[string]
 }
 $lotesDetalhe = New-Object System.Collections.Generic.List[object]
@@ -881,16 +924,14 @@ try {
     # Fila unica, ordenada por risco: cortes por cap caem sempre na cauda de menor EWS.
     $analyzeList = @($plano.emissores | Where-Object { $_.tier -ne 'SKIP' -and -not $jaProcessados.ContainsKey((Get-NomeNormalizado $_.empresa)) })
     $fila = @($analyzeList | Sort-Object -Property ews_score, cvm_novos -Descending)
-    # COBERTURA1: DEFERIDOS por cobertura (contrato persistido de hoje/ontem) sao reprocessados
-    # ANTES dos itens novos; ordem relativa dos demais e preservada (particao estavel).
-    $__faltAnt = @{}
-    foreach ($__tag in @($DateTag, (Get-Date).AddDays(-1).ToString('yyyyMMdd'))) {
-        foreach ($__e in @((Read-VixContratoCobertura $__tag).Values)) { if (@($__e.faltantes).Count -gt 0) { $__faltAnt[(Get-NomeNormalizado ('' + $__e.empresa))] = $true } }
-    }
+    # BUSCADEGRADADA1-FIX: RECHECK_PENDENTE de cobertura (contrato de QUALQUER data) e
+    # reprocessado ANTES dos itens novos e continua na frente ate ser resolvido, sem janela
+    # de 2 dias. Ordem relativa dos demais preservada (particao estavel).
+    $__faltAnt = Get-VixRecheckPendentes $LogDir
     if ($__faltAnt.Count -gt 0) {
         $__com = @($fila | Where-Object { $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
         $__sem = @($fila | Where-Object { -not $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
-        if ($__com.Count -gt 0) { Write-Log ('COBERTURA1: ' + $__com.Count + ' emissor(es) DEFERIDO(s) por cobertura priorizados no inicio da fila') }
+        if ($__com.Count -gt 0) { Write-Log ('COBERTURA1: ' + $__com.Count + ' emissor(es) com RECHECK_PENDENTE de cobertura priorizados no inicio da fila (sem janela de data)') }
         $fila = @($__com) + @($__sem)
     }
     foreach ($emp in $fila) {
@@ -1055,39 +1096,28 @@ try {
             $buscasReaisLote += $buscasEfetivas
             $classif = '' + $res.classificacao_geral
             if (-not $classif) { $classif = if (@($res.eventos).Count -gt 0) { 'RELEVANTE' } else { 'ECO' } }
-            # Cobertura web degradada (sem evento + 0 buscas efetivas + >=1 degradada) NAO
-            # certifica "sem fato novo": vira INCONCLUSIVO com flag no payload para o Worker
-            # nao reafirmar sem_eventos anterior nem carimbar frescor como analise valida.
-            # Vale para FULL e LIGHT (antes a guarda so existia para FULL com 0 buscas).
-            if ($cobWeb.pendente) {
-                Write-Log ('WARN: ' + $emp.empresa + '|busca web degradada (' + $cobWeb.degradadas + ' esgotada(s)/indisponivel(eis), 0 efetivas) -> INCONCLUSIVO (cobertura incompleta, rechecagem no fluxo normal)')
-                $classif = 'INCONCLUSIVO'
-                $res.sem_eventos = $true
-                if (-not $res.cobertura_nota) { $res.cobertura_nota = 'Busca web degradada (limite/esgotamento/indisponibilidade) - cobertura incompleta, rechecagem no fluxo normal.' }
-                try { $res | Add-Member -NotePropertyName '_cobertura_web_degradada' -NotePropertyValue $true -Force } catch { }
-            } elseif ($Perfil.tier -eq 'FULL' -and $buscasEfetivas -eq 0 -and $classif -ne 'CRITICO') {
-                # Guarda original FULL (0 buscas efetivas por qualquer motivo, sem flag): mantida.
-                Write-Log ('WARN: ' + $emp.empresa + '|FULL com 0 buscas efetivas -> INCONCLUSIVO')
-                $classif = 'INCONCLUSIVO'
-                $res.sem_eventos = $true
-                if (-not $res.cobertura_nota) { $res.cobertura_nota = 'Zero buscas efetivas - cobertura nao verificavel (falha de ferramenta ou modelo).' }
-            }
-            # COBERTURA1: ausencia certificada (NENHUM/ECO sem evento) so vale com as 3 familias
-            # obrigatorias (F1 emissor, F2 divida/emissao/captacao, F3 fato/CVM/RI/fonte primaria)
-            # comprovadas MECANICAMENTE. Familia ausente/sem prova/degradada => DEFERIDO com
-            # faltantes e reanalise na proxima execucao (faltantes primeiro, idempotente).
-            $__covFam = Resolve-VixCoberturaFamilias $res
+            # BUSCADEGRADADA1-FIX (2026-09-09): gate UNICO de ausencia. Substitui as tres rotas
+            # antigas (web pendente, FULL 0 buscas, COBERTURA1 de familias) que certificavam
+            # sem_eventos=true mesmo INCONCLUSIVO e nao persistiam recheck — foi assim que a
+            # Vibra saiu "sem evento" no dia da emissao de R$1,4 bi. Agora: QUALQUER busca
+            # falhada/degradada/esgotada/timeout/insuficiente PROIBE sem_eventos, classifica
+            # INCONCLUSIVO e grava RECHECK_PENDENTE no contrato do dia; a priorizacao existente
+            # (contrato com faltantes>0 vai ao inicio da fila) recoloca o emissor na proxima
+            # execucao. Saudavel sem fato => sem_eventos=true segue intocado; com evento, o
+            # fluxo normal segue intocado.
+            $__decAus = Test-VixAusenciaCertificavel $res
             $__classifAusencia = ($classif -in @('NENHUM', 'ECO', '')) -and (@($res.eventos).Count -eq 0)
-            if ($__classifAusencia -and -not $__covFam.ok) {
-                Write-Log ('DEFERIDO_COBERTURA|' + $emp.empresa + '|faltantes=' + ($__covFam.faltantes -join ',') + '|n_provas=' + $__covFam.n_provas)
+            if ($__classifAusencia -and -not $__decAus.permitir_sem_eventos) {
+                Write-Log ('RECHECK_PENDENTE|' + $emp.empresa + '|motivo=' + $__decAus.motivo + '|faltantes=' + ($__decAus.faltantes -join ',') + '|buscas=' + $cobWeb.degradadas + '_degradadas/' + $cobWeb.efetivas + '_efetivas -> INCONCLUSIVO, sem_eventos PROIBIDO, reanalise priorizada na proxima execucao')
                 $classif = 'INCONCLUSIVO'
-                $res.sem_eventos = $true
-                $__faltaTxt = 'Cobertura obrigatoria incompleta - familias nao comprovadas: ' + ($__covFam.faltantes -join ', ') + '. Reanalise na proxima execucao.'
+                $res.sem_eventos = $false
+                $__faltaTxt = 'Cobertura nao verificavel (' + $__decAus.motivo + ') - RECHECK_PENDENTE, reanalise priorizada na proxima execucao. Familias/itens: ' + ($__decAus.faltantes -join ', ') + '.'
                 if (-not $res.cobertura_nota) { $res.cobertura_nota = $__faltaTxt } else { $res.cobertura_nota = $res.cobertura_nota + ' ' + $__faltaTxt }
                 try { $res | Add-Member -NotePropertyName '_cobertura_web_degradada' -NotePropertyValue $true -Force } catch { }
-                try { $res | Add-Member -NotePropertyName '_familia_faltantes' -NotePropertyValue @($__covFam.faltantes) -Force } catch { }
+                try { $res | Add-Member -NotePropertyName '_recheck_pendente' -NotePropertyValue $true -Force } catch { }
+                try { $res | Add-Member -NotePropertyName '_familia_faltantes' -NotePropertyValue @($__decAus.faltantes) -Force } catch { }
                 $stats.cobertura_deferidos++
-                if (-not $DryRun) { Merge-VixContratoCobertura $contratoCobertura $emp.empresa 'DEFERIDO' $__covFam.faltantes }
+                if (-not $DryRun) { Merge-VixContratoCobertura $contratoCobertura $emp.empresa 'RECHECK_PENDENTE' $__decAus.faltantes }
             }
             try { $res | Add-Member -NotePropertyName '_tier' -NotePropertyValue $Perfil.tier -Force } catch { }
             $subOk = $false; $nEv = 0; $nAvanco = 0
@@ -1133,6 +1163,16 @@ try {
             }
             if ($DryRun) { $subOk = $false }
             Write-Ledger $emp.empresa $Perfil.tier $classif $nEv $subOk 'ANALISADO' $nAvanco
+            # BUSCADEGRADADA1-FIX: RECHECK_PENDENTE so sai da frente da fila quando RESOLVIDO.
+            # Emissor que estava pendente e fechou esta execucao com busca valida (sem recheck)
+            # grava a resolucao no contrato do dia; o registro mais novo vence na leitura, entao
+            # a prioridade termina aqui em vez de ficar presa para sempre. Sem submit aceito nao
+            # ha resolucao: a pendencia continua viva para a proxima execucao.
+            if ($subOk -and -not $__decAus.recheck -and $__faltAnt.ContainsKey((Get-NomeNormalizado $emp.empresa))) {
+                if (-not $DryRun) { Merge-VixContratoCobertura $contratoCobertura $emp.empresa 'RESOLVIDO' @() }
+                $stats.recheck_resolvidos++
+                Write-Log ('RECHECK_RESOLVIDO|' + $emp.empresa + '|motivo=' + $__decAus.motivo)
+            }
             $stats.analisados++
             # Dry-run nao submete: nao e ok nem fail, e contado a parte (antes saia fail=3 enganoso).
             if ($DryRun) { $loteDry++ } elseif ($subOk) { $loteOk++ } else { $loteFail++ }
@@ -1195,11 +1235,12 @@ try {
         } | ConvertTo-Json -Depth 6 | Set-Content $MetricsFile -Encoding UTF8
     }
 
-    # COBERTURA1: persiste o contrato do dia (DEFERIDOS por cobertura, p/ reprocessar primeiro).
+    # COBERTURA1: persiste o contrato do dia (RECHECK_PENDENTE p/ reprocessar primeiro,
+    # RESOLVIDO p/ tirar da frente). O arquivo do dia e sempre o registro mais novo da leitura.
     if ($contratoCobertura.Count -gt 0 -and -not $DryRun) {
         [ordered]@{ data = $DateTag; atualizado_em = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); emissores = $contratoCobertura } |
             ConvertTo-Json -Depth 6 | Set-Content (Get-VixContratoCoberturaPath $DateTag) -Encoding UTF8
-        Write-Log ('COBERTURA1: contrato persistido com ' + $contratoCobertura.Count + ' emissor(es) DEFERIDO(s) por cobertura')
+        Write-Log ('COBERTURA1: contrato persistido com ' + $contratoCobertura.Count + ' emissor(es) por cobertura (recheck_pendente=' + $stats.cobertura_deferidos + ' resolvidos=' + $stats.recheck_resolvidos + ')')
     }
 
     $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
