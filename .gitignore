@@ -300,6 +300,10 @@ data/reconciliacao/dryrun/
 Obsidian VIX Radar/Reconciliacao-CVM/dryrun/
 data/historico/.dryrun/
 
+# O payload preditivo bruto fica somente no disco local para backtests. Ele contem
+# probabilidades ainda nao calibradas por emissor e nunca deve entrar no repositorio.
+data/historico/*/predictive.json
+
 # Saida de DryRun do Ranking-Mensal SEO (rotina descontinuada 18/08/2026,
 # script mantido em quarentena - qualquer teste manual futuro gera estes arquivos)
 scripts/seo/*.dryrun.json

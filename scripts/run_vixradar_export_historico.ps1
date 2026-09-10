@@ -5,7 +5,8 @@
 # historico que o backtest/treino do v2 vai precisar.
 #
 # Conteudo do dump diario (delta, ~100-300 KB):
-#   predictive.json    <- KV predictive_v1:latest (inclui model_version/schema_v)
+#   predictive.json    <- KV predictive_v1:latest, somente copia local para backtest
+#                         (nao versionado: pode conter probabilidades nao calibradas)
 #   zscores.json       <- KV anbima:zscores (pode faltar se TTL venceu - aviso, nao erro)
 #   ews_ranking.json   <- GET publico ?op=ews (ranking de todos os emissores)
 #   series_delta.json  <- ultimo ponto de mercado:serie:{empresa} por emissor
@@ -220,6 +221,9 @@ try {
     $emissores = @($pred.emissores | ForEach-Object { [string]$_.name })
     Write-Log ("Predictive ok: {0} emissores, modelo {1} (run_date {2})" -f $emissores.Count, $pred.modelo, $pred.run_date)
 
+    # PRIVACY-PREDICTIVE1: o payload bruto continua no disco local para backtests,
+    # mas data/historico/*/predictive.json e ignorado pelo Git. O pre-commit tambem
+    # reprova tentativa explicita de forcar esse arquivo para o repositorio.
     Write-JsonFile (Join-Path $OutDir 'predictive.json') $predRaw
     if ($zscoresRaw) { Write-JsonFile (Join-Path $OutDir 'zscores.json') $zscoresRaw }
     if ($ewsRaw)     { Write-JsonFile (Join-Path $OutDir 'ews_ranking.json') $ewsRaw }

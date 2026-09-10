@@ -379,6 +379,19 @@ CLAUDE_EOF
     fi
 fi
 
+# ─── Gate 9: payload preditivo privado (PRIVACY-PREDICTIVE1) ─────────────────
+# predictive.json pode conter prob_30d/prob_90d sem calibracao por emissor.
+# O exporter preserva a copia local para backtests, mas nenhum desses arquivos
+# pode entrar no HEAD, inclusive por git add -f.
+STAGED_PREDICTIVE=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^data/historico/[0-9]{4}-[0-9]{2}-[0-9]{2}/predictive\.json$' || true)
+if [ -n "$STAGED_PREDICTIVE" ]; then
+    echo ""
+    echo "GATE 9 (PRIVACY-PREDICTIVE1) REPROVOU: predictive.json e somente local para backtests."
+    echo "$STAGED_PREDICTIVE"
+    echo "Remova o arquivo do staging. A copia local sera preservada pelo .gitignore."
+    FALHOU=1
+fi
+
 rm -rf "$STAGEDIR"
 
 # --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------
