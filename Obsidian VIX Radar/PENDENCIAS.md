@@ -9,6 +9,14 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 10/09, START-PROC-QUOTE1 fechado (commit `71151f8`); Case F aberto como pendência não bloqueante
+
+> **Status:** FECHADO no repositório (`origin/main=71151f8`), sem deploy. **Data:** 2026-09-10. **Origem do Registro:** fechamento do fix de isolamento de log/lock do `-DryRun` em `scripts/run_vixradar_varredura.ps1` e do teste `scripts/test-locks-overlap.ps1`. **Condicao de Obsolescencia:** para a pendência aberta (Case F), quando o `-ComTokens` for rodado e o caso passar.
+
+**FECHADO (START-PROC-QUOTE1, sem deploy).** `-196608` (0xFFFD0000) nos casos G/H não era captura prematura de `ExitCode`: `Start-Process -ArgumentList @(...)` junta o array com espaço e **sem aspas**, então o caminho do runner (que tem espaço) era cortado em `-File E:\Diretorio\Claude\Monitoramento` e o `powershell.exe` filho morria antes de executar uma linha do motor — o caso media um processo que nunca rodou. Prova de duas pontas nos dois hosts: forma sem aspas → `exit=-196608`; forma com aspas embutidas → `exit=0`; e `WaitForExit()` + `ExitCode` é confiável (`-File` inexistente → `-196608`, válido → `0`), o que refuta a hipótese de captura prematura. O motor não foi tocado. Commit `71151f8` com **só os 2 scripts** (340+/25-), `git diff --check` limpo, suíte `31/31 asserts OK, 0 falha(s)` em `powershell.exe` 5.1 e em `pwsh` 7 (G/H `exit=0`, restauração dos artefatos do dia PASS), `HEAD == origin/main == 71151f8` ao final. Nenhum deploy, nenhuma mudança em Scheduler, Worker ou produção.
+
+**ABERTO (Case F, P4, não bloqueante).** `scripts/test-locks-overlap.ps1:379` (Case F, atrás de `-ComTokens`) ainda usa a forma **sem aspas** em `Start-Process -ArgumentList ... '-File', $Runner ...` e carrega o mesmo defeito: reporta `exit=-196608` e derruba os asserts do caso. Não corrigido nesta rodada por escopo congelado pelo operador. Correção é a mesma já aplicada em G/H (linhas 440 e 496): trocar `$Runner` por `('"' + $Runner + '"')`.
+
 ## 10/09, PREDICTIVE-PRIVACY1 fechado para exposição, calibração ainda pendente
 
 Os 47 snapshots `data/historico/*/predictive.json` deixam o próximo HEAD sem apagar as cópias locais necessárias aos backtests. O `.gitignore`, o Gate 9 de `scripts/hooks/pre-commit` e a anotação do exportador impedem nova publicação, inclusive por staging explícito. A prova negativa bloqueia `predictive.json` staged e a prova positiva aceita um commit sem o payload. O endpoint `op=predictive_v1` permanece restrito ao laboratório administrativo, com `user_facing:false`, e o frontend não referencia `predictive_v1`, `prob_30d` ou `prob_90d`. **Pendente de domínio:** calibração estatística defensável por emissor antes de qualquer exposição desses campos como PD.
