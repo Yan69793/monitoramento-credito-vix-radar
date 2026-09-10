@@ -72,12 +72,17 @@ if ($Rotina -eq 'noturno') {
         mutex = 'Global\vixradar-matinal-v2'; prefix = 'matinal'; reservaOutrasKey = 'RESERVA_NOTURNO'
     }
 }
-$LogFile     = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + '.log')
+# DRYRUN-PROBE1 (10/09/2026): o probe (-DryRun) passa a usar log e lock PROPRIOS, com o PID no
+# nome. Antes ele escrevia no MESMO arquivo da execucao real: 17 probes em 10/09 deixaram 15
+# linhas ABORT e nenhuma INICIO no log do dia, e um lock de probe fresco bloqueava o noturno
+# real por 30 min (exit 0 sem rodar nada). O nome do log e do lock da execucao REAL nao muda.
+$DryRunSufixo = if ($DryRun) { '_dryrun_' + $PID } else { '' }
+$LogFile     = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + $DryRunSufixo + '.log')
 # DRYRUN-METRICS-SOBRESCREVE1 (02/09): um so _dryrun.json por dia apagava o gasto do dry-run anterior
 # (16h59 apagou os 35.619 de 12h58) e o cap dinamico lia 85k onde o dia tinha gasto 120k. Cada dry-run
 # grava o proprio arquivo, com hora no nome, e Get-VixCustoDia soma todos os _dryrun*.json do dia.
 $MetricsFile = Join-Path $LogDir ($Perfil.prefix + '_metrics_' + $DateTag + $(if ($DryRun) { '_dryrun_' + (Get-Date -Format 'HHmmss') } else { '' }) + '.json')
-$LockFile    = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + '.lock')
+$LockFile    = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + $DryRunSufixo + '.lock')
 $TokenTarget = $Perfil.meta
 $TokenHardCap = $Perfil.capProprio
 
@@ -719,6 +724,23 @@ while (-not $__sentMutex.WaitOne(0)) {
 }
 if ($__sentMutex.WaitOne(0)) { $__sentMutex.ReleaseMutex() }
 if ($__esperou -gt 0) { Write-Log ('sentinela livre apos ' + ($__esperou * 30) + 's') }
+
+# DRYRUN-PROBE1 (10/09/2026, regra do operador): o probe tem log e lock proprios e NUNCA
+# bloqueia a execucao real (nome diferente, logo abaixo). A reciproca tambem vale: com execucao
+# real viva, o probe nao roda em cima dela. ANTES de olhar o proprio lock, o probe consulta o
+# lock REAL e sai limpo AQUI - antes do boot do provider, sem rede e sem token. A execucao real
+# nao consulta lock de probe em momento nenhum.
+if ($DryRun) {
+    $LockReal = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + '.lock')
+    if (Test-Path $LockReal) {
+        $__realAgeMin = ((Get-Date) - (Get-Item $LockReal).LastWriteTime).TotalMinutes
+        if ($__realAgeMin -lt $LockAbandonoMin) {
+            Write-Log ('ABORT: lock real ' + (Split-Path $LockReal -Leaf) + ' tocado ha ' + [math]::Round($__realAgeMin, 1) + ' min (execucao real viva) - probe sai antes de provider/network/tokens')
+            $__mutex.ReleaseMutex()
+            exit 0
+        }
+    }
+}
 
 # Lock de arquivo: outra instancia (sessao Claude Desktop, Cowork, manual) escreve o mesmo
 # arquivo. Vivo = tocado nos ultimos $LockAbandonoMin minutos; alem disso e abandono.
