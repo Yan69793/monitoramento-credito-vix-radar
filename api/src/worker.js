@@ -5960,9 +5960,10 @@ async function enviarResend(apiKey, assunto, html, dest, extraHeaders, opts, env
   }
   if (extraHeaders && typeof extraHeaders === "object") {
     for (const [k, v] of Object.entries(extraHeaders)) baseHeaders[k] = v;
-  }
-  const resultados = [];
-  for (const to of destArray) {
+    }
+    const resultados = [];
+    const falhas = [];
+    for (const to of destArray) {
     const headersEnvio = Object.assign({}, baseHeaders, { "Message-ID": gerarMessageId() });
     let htmlEnvio = html;
     if (opts && typeof opts.htmlPara === "function") {
@@ -5989,12 +5990,13 @@ async function enviarResend(apiKey, assunto, html, dest, extraHeaders, opts, env
     try {
       const r = await fetchResendComRetry(apiKey, payload);
       resultados.push(r);
-    } catch (e) {
-      console.error("[resend] falha envio para " + to + ":", e.message);
-      if (destArray.length === 1) throw e;
+      } catch (e) {
+        console.error("[resend] falha envio para " + to + ":", e.message);
+        if (destArray.length === 1) throw e;
+        falhas.push({ destinatario: to, erro: e && e.message ? e.message : String(e) });
+      }
     }
-  }
-  return resultados.length === 1 ? resultados[0] : { batch: true, enviados: resultados.length, ids: resultados.map((x) => x && x.id).filter(Boolean) };
+    return resultados.length === 1 && falhas.length === 0 ? resultados[0] : { batch: true, enviados: resultados.length, falhas: falhas.length, total: destArray.length, ids: resultados.map((x) => x && x.id).filter(Boolean), erros: falhas };
 }
 __name(enviarResend, "enviarResend");
 __name2(enviarResend, "enviarResend");
@@ -20834,12 +20836,17 @@ async function __coreFetch(request, env2222, ctx) {
       const dests = (Array.isArray(destinatarios) && destinatarios.length > 0) ? destinatarios : (destinatario ? [destinatario] : []);
       if (dests.length === 0) return resp({ ok: false, erro: "Informe destinatario ou destinatarios." }, 400, request);
       if (dests.length > 25) return resp({ ok: false, erro: "Maximo 25 destinatarios." }, 400, request);
-      const destsOk = dests.map(function(e) { return String(e).trim().toLowerCase(); }).filter(function(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); });
-      if (destsOk.length === 0) return resp({ ok: false, erro: "Nenhum destinatario valido." }, 400, request);
-      try {
-        await enviarResend(env2222.RESEND_API_KEY, assunto, html, destsOk, null, { tipo: "transacional" }, env2222);
-        return resp({ ok: true, enviado: true, destinatarios: destsOk.length }, 200, request);
-      } catch (e) {
+        const destsOk = dests.map(function(e) { return String(e).trim().toLowerCase(); }).filter(function(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); });
+        if (destsOk.length === 0) return resp({ ok: false, erro: "Nenhum destinatario valido." }, 400, request);
+        try {
+          const envio = await enviarResend(env2222.RESEND_API_KEY, assunto, html, destsOk, null, { tipo: "transacional" }, env2222);
+          if (envio && envio.batch) {
+            const respostaLote = { ok: envio.falhas === 0, enviado: envio.falhas === 0, destinatarios: destsOk.length, enviados: envio.enviados, falhas: envio.falhas, total: envio.total, ids: envio.ids, erros: envio.erros };
+            if (envio.falhas > 0) return resp(respostaLote, envio.enviados > 0 ? 207 : 500, request);
+            return resp(respostaLote, 200, request);
+          }
+          return resp({ ok: true, enviado: true, destinatarios: destsOk.length, enviados: 1, falhas: 0, total: 1, ids: envio && envio.id ? [envio.id] : [], erros: [] }, 200, request);
+        } catch (e) {
         return resp({ ok: false, erro: "Falha ao enviar email.", detalhe: e && e.message }, 500, request);
       }
     }
