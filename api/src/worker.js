@@ -20340,6 +20340,20 @@ async function __coreFetch(request, env2222, ctx) {
       var _qLista = Object.keys(_qFila).map(function (k) { return _qFila[k]; });
       _qLista.sort(function (a, b) { return b.documentos - a.documentos; });
       var _qTotal = _qCob.cnpj + _qCob.nome + _qCob.quarentena + _qCob.sem_dono;
+      // QUARENTENACOB1: pagina a fila para a guarda avaliar toda a quarentena.
+      // Sem parametros, preserva a primeira pagina historica de 100 itens.
+      var _qPorPagina = 100;
+      if (body.por_pagina != null) {
+        var _qPp = Number(body.por_pagina);
+        if (isFinite(_qPp) && _qPp >= 1) _qPorPagina = Math.min(1e3, Math.floor(_qPp));
+      }
+      var _qPaginas = Math.max(1, Math.ceil(_qLista.length / _qPorPagina));
+      var _qPagina = 1;
+      if (body.pagina != null) {
+        var _qPg = Number(body.pagina);
+        if (isFinite(_qPg) && _qPg >= 1) _qPagina = Math.min(_qPaginas, Math.floor(_qPg));
+      }
+      var _qIni = (_qPagina - 1) * _qPorPagina;
       return resp({
         ok: true,
         acervo: _qDocs.length,
@@ -20348,7 +20362,11 @@ async function __coreFetch(request, env2222, ctx) {
         // `sugestao_por_nome` e so pista para quem for decidir, NAO e atribuicao.
         // O documento continua sem dono ate o CNPJ ser declarado no worker.
         entidades_em_quarentena: _qLista.length,
-        fila: _qLista.slice(0, 100)
+        pagina: _qPagina,
+        por_pagina: _qPorPagina,
+        paginas_total: _qPaginas,
+        tem_mais: _qPagina < _qPaginas,
+        fila: _qLista.slice(_qIni, _qIni + _qPorPagina)
       }, 200, request);
     }
     if (body.action === "admin_documentos_cvm") {

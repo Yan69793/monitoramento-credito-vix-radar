@@ -1,5 +1,6 @@
 import { SELF, env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
+import { _soDigito, CNPJ_FAMILIA_CVM, CNPJ_PRIMARIO_EMISSOR } from "../src/worker.js";
 
 // SUBSTRINGDONO1 (auditoria 2026-08-25).
 //
@@ -367,6 +368,91 @@ describe("SUBSTRINGDONO1 fase CNPJ - o nome deixa de decidir", () => {
         body: JSON.stringify({ action: "admin_cvm_quarentena" })
       });
       expect(r.status).toBe(403);
+    });
+  });
+
+  // QUARENTENACOB1: a pagina 1 nao pode continuar certificando uma fila truncada.
+  describe("cobertura da guarda: a varredura alcanca o que ficava depois da posicao 100", () => {
+    const cnpjFake = (i) => {
+      const d = String(20000000000000 + i);
+      return `${d.slice(0, 2)}.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-${d.slice(12)}`;
+    };
+
+    const TOPO = 100;
+    const RABO = 50;
+    const CNPJ_ULTIMO = cnpjFake(TOPO + RABO - 1);
+
+    async function semear() {
+      const docs = [];
+      for (let i = 0; i < TOPO; i++) {
+        docs.push(docCnpj(cnpjFake(i), `EMPRESA FORA DA CARTEIRA ${i} S.A.`));
+        docs.push(docCnpj(cnpjFake(i), `EMPRESA FORA DA CARTEIRA ${i} S.A.`, "Comunicado ao Mercado"));
+      }
+      for (let i = TOPO; i < TOPO + RABO; i++) {
+        docs.push(docCnpj(cnpjFake(i), `EMPRESA NOVA ${i} S.A.`));
+      }
+      await env.RADAR_KV.put(KEY_DOCS, JSON.stringify(docs));
+    }
+
+    async function pagina(n, porPagina) {
+      const r = await SELF.fetch("https://exemplo.invalid/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "admin_cvm_quarentena", admin_senha: env.ADMIN_PASSWORD,
+          pagina: n, por_pagina: porPagina
+        })
+      });
+      expect(r.status).toBe(200);
+      const j = await r.json();
+      expect(j.ok).toBe(true);
+      return j;
+    }
+
+    it("sem parametro a resposta e a de antes: pagina 1 com 100 itens", async () => {
+      await semear();
+      const q = await quarentena();
+      expect(q.pagina).toBe(1);
+      expect(q.por_pagina).toBe(100);
+      expect(q.fila.length).toBe(100);
+      expect(q.entidades_em_quarentena).toBe(TOPO + RABO);
+      expect(q.paginas_total).toBe(2);
+      expect(q.tem_mais).toBe(true);
+    });
+
+    it("a varredura das paginas alcanca a entidade da posicao 150", async () => {
+      await semear();
+      const p1 = await pagina(1, 100);
+      expect(p1.fila.map((e) => e.cnpj)).not.toContain(CNPJ_ULTIMO);
+      const p2 = await pagina(2, 100);
+      expect(p2.pagina).toBe(2);
+      expect(p2.tem_mais).toBe(false);
+      const todas = [...p1.fila, ...p2.fila];
+      expect(todas.length).toBe(TOPO + RABO);
+      expect(todas.map((e) => e.cnpj)).toContain(CNPJ_ULTIMO);
+      expect(new Set(todas.map((e) => _soDigito(e.cnpj))).size).toBe(TOPO + RABO);
+      expect(todas.length).toBe(p1.entidades_em_quarentena);
+    });
+
+    it("por_pagina alto devolve tudo numa pagina so", async () => {
+      await semear();
+      const q = await pagina(1, 1000);
+      expect(q.fila.length).toBe(TOPO + RABO);
+      expect(q.paginas_total).toBe(1);
+      expect(q.tem_mais).toBe(false);
+    });
+
+    it("fail-closed preservado: o criterio da guarda reprova CNPJ da carteira e aceita o de fora", async () => {
+      const map = {};
+      for (const c of Object.keys(CNPJ_PRIMARIO_EMISSOR)) map[_soDigito(c)] = CNPJ_PRIMARIO_EMISSOR[c];
+      for (const c of Object.keys(CNPJ_FAMILIA_CVM)) {
+        const d = _soDigito(c);
+        if (!map[d]) map[d] = CNPJ_FAMILIA_CVM[c];
+      }
+      expect(map[_soDigito(CNPJ_CSN)]).toBe("CSN");
+      expect(map[_soDigito(CNPJ_CEMIG_DIST)]).toBe("CEMIG");
+      expect(map[_soDigito(cnpjFake(0))]).toBeUndefined();
+      expect(map[_soDigito(CNPJ_ULTIMO)]).toBeUndefined();
     });
   });
 });
