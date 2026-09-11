@@ -131,6 +131,9 @@ try {
     Assert-True ($script:HttpCalls -eq 2) 'T8 500->200: 2 chamadas (retry bounded funcionou)'
 
     # ---- T9: transporte (stub lancando) retrya e falha no fim com codigo 0 ----
+    # OR402-DEGRADA1: o tier LIGHT tem fallback PROPRIO e versionado (deepseek-v4-pro-0813),
+    # diferente do principal (flash-0731). As duas malhas existem sem env nenhuma.
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
     $script:HttpCalls = 0
     function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
         $script:HttpCalls++
@@ -138,8 +141,9 @@ try {
     }
     $r9 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
     Assert-True ($r9.ExitCode -ne 0) 'T9 timeout: ExitCode != 0 apos esgotar retries'
-    Assert-True ($script:HttpCalls -eq 6) 'T9 timeout: 3 primario + 3 fallback (todas retryable)'
+    Assert-True ($script:HttpCalls -eq 6) 'T9 timeout: 3 primario + 3 fallback (LIGHT com fallback funcional, sem env)'
     Assert-True ($r9.Msg -match 'erro de transporte') 'T9 timeout: Msg explica causa'
+    Assert-True ($r9.Modelo -eq 'deepseek/deepseek-v4-pro-0813') 'T9 timeout: ultima malha foi o fallback do LIGHT (pro-0813)'
 
     # ---- T10: chave ausente utilizavel (mesma tecnica de override do T5) ----
     function Get-VixOpenRouterApiKey { return '' }
@@ -159,7 +163,25 @@ try {
     Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL -ErrorAction SilentlyContinue
 
     # ---- T12: fallback default e rejeicao de fallback invalido ----
-    Assert-True ((Get-VixOpenRouterFallbackModel) -eq 'deepseek/deepseek-v4-flash') 'T12 fallback: default = deepseek-v4-flash'
+    # OR402-DEGRADA1: o default passa a ser o ID versionado (nunca slug sem versao). Como ele e
+    # igual ao principal default (flash-0731), o tier sem env nao ganha segundo modelo: o
+    # fallback so existe quando o principal do tier e outro, e ai e ele que degrada.
+    Assert-True ((Get-VixOpenRouterFallbackModel) -eq 'deepseek/deepseek-v4-pro-0813') 'T12 fallback: sem tier (principal default flash-0731) -> pro-0813, distinto e versionado'
+    Assert-True ((Get-VixOpenRouterFallbackModel 'LIGHT') -eq 'deepseek/deepseek-v4-pro-0813') 'T12 fallback: tier LIGHT degrada para pro-0813'
+    Assert-True ((Get-VixOpenRouterFallbackModel 'LIGHT') -ne (Get-VixOpenRouterModel 'LIGHT')) 'T12 fallback: LIGHT nao duplica o principal'
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'deepseek/deepseek-v4-pro-0813'
+    Assert-True ((Get-VixOpenRouterFallbackModel 'FULL') -eq 'deepseek/deepseek-v4-flash-0731') 'T12 fallback: tier FULL degrada para o flash-0731 versionado'
+    Assert-True ((Get-VixOpenRouterFallbackModel 'FULL') -ne (Get-VixOpenRouterModel 'FULL')) 'T12 fallback: FULL nao duplica o principal'
+    Assert-True (-not ((Get-VixOpenRouterFallbackModel 'FULL') -match '-latest$')) 'T12 fallback: default sem sufixo -latest'
+    Assert-True ((Get-VixOpenRouterFallbackModel 'FULL') -match '/') 'T12 fallback: default com vendor/modelo'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+    # Override por tier tem precedencia sobre o global legado.
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'deepseek/deepseek-v4-pro-0813'
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-flash-0731'
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL_FULL = 'deepseek/deepseek-v4-pro-0813'
+    Assert-True ($null -eq (Get-VixOpenRouterFallbackModel 'FULL')) 'T12 override: fallback do tier igual ao principal -> null (sem degradar para o mesmo modelo)'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL_FULL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
     $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'claude-sonnet-4-6'
     Assert-True ($null -eq (Get-VixOpenRouterFallbackModel)) 'T12 fallback: id sem vendor -> null'
     $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = '~deepseek/deepseek-v4-flash-latest'
@@ -294,11 +316,139 @@ try {
     Assert-True ($r21.Msg -match 'sem choices') 'T21 JSON invalido: Msg identifica body malformado'
     Assert-True ($r21.Linhas[0] -eq 'OPENROUTER_FALHA_COD=200') 'T21 JSON invalido: linha de erro so com codigo'
 
+    # ---- T22 (OR402-DEGRADA1): 402 no principal segue UMA vez para o fallback e o lote fecha ----
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'deepseek/deepseek-v4-pro-0813'
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-flash-0731'
+    $script:HttpCalls = 0
+    $script:ModelosVistos = @()
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        $script:ModelosVistos += (('' + ($JsonBody | ConvertFrom-Json).model))
+        if ($script:HttpCalls -le 2) {
+            return @{ Status = 402; Body = '{"error":{"message":"This request requires more credits, or fewer max_tokens. You requested up to 131072 tokens, but can only afford 63537."}}'; Erro = ''; RetryAfter = '' }
+        }
+        $body = '{"id":"x","model":"deepseek/deepseek-v4-flash-0731","choices":[{"index":0,"message":{"role":"assistant","content":"RESULTADO|ACME|{\"ok\":1}\nFIM"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $r22 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r22.ExitCode -eq 0) 'T22 402 no principal: lote recuperado, ExitCode 0'
+    Assert-True ($script:HttpCalls -eq 3) 'T22 402 no principal: 1 retry reduzido + 1 fallback'
+    Assert-True ($script:ModelosVistos[0] -eq 'deepseek/deepseek-v4-pro-0813') 'T22: 1a chamada no modelo do tier (pro-0813)'
+    Assert-True ($script:ModelosVistos[1] -eq 'deepseek/deepseek-v4-pro-0813') 'T22: retry no mesmo modelo (pro-0813)'
+    Assert-True ($script:ModelosVistos[2] -eq 'deepseek/deepseek-v4-flash-0731') 'T22: 3a chamada no fallback versionado (flash-0731)'
+    Assert-True ($r22.FallbackUsado -eq $true) 'T22: FallbackUsado=true'
+    Assert-True ($r22.Degradado402 -eq $true) 'T22: Degradado402=true (degradacao observavel no retorno)'
+    Assert-True ($r22.Modelo -eq 'deepseek/deepseek-v4-flash-0731') 'T22: Modelo = fallback'
+
+    # ---- T23 (OR402-DEGRADA1): 402 no fallback tambem fecha duro, sem terceira chamada ----
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        return @{ Status = 402; Body = '{"error":{"message":"This request requires more credits, or fewer max_tokens."}}'; Erro = ''; RetryAfter = '' }
+    }
+    $r23 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r23.ExitCode -ne 0 -and $r23.Status -eq 402) 'T23 402 nos dois: ExitCode != 0 e Status 402 (falha dura)'
+    Assert-True ($script:HttpCalls -eq 3) 'T23 402 nos dois: 1 retry reduzido no principal + fallback, sem retry do fallback'
+    Assert-True ($r23.Linhas[0] -eq 'OPENROUTER_FALHA_COD=402') 'T23: linha de erro so com o codigo'
+    Assert-True ($r23.Degradado402 -eq $true) 'T23: degradacao tentada registrada no retorno'
+
+    # ---- T24 (OR402-DEGRADA1): 400/401/403 continuam duros, sem fallback ----
+    foreach ($st in @(400, 401, 403)) {
+        $script:StAtual = [int]$st
+        $script:StBody = ('{"error":{"message":"erro deterministico ' + $st + '"}}')
+        $script:HttpCalls = 0
+        function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+            $script:HttpCalls++
+            return @{ Status = $script:StAtual; Body = $script:StBody; Erro = ''; RetryAfter = '' }
+        }
+        $r24 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+        Assert-True ($script:HttpCalls -eq 1) ('T24 ' + $st + ': 1 chamada (sem retry e sem fallback)')
+        Assert-True ($r24.ExitCode -ne 0 -and $r24.Status -eq $st) ('T24 ' + $st + ': ExitCode != 0 e Status = ' + $st)
+        Assert-True (-not $r24.FallbackUsado -and -not $r24.Degradado402) ('T24 ' + $st + ': sem fallback e sem flag de degradacao')
+    }
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+
+    # ---- T25 (OR402-DEGRADA1): tier LIGHT com fallback FUNCIONAL, das duas pontas ----
+    # LIGHT = principal flash-0731, fallback pro-0813. Sem env nenhuma: e o default do tier.
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-pro-0813'
+    $script:HttpCalls = 0
+    $script:ModelosVistos = @()
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        $script:ModelosVistos += (('' + ($JsonBody | ConvertFrom-Json).model))
+        if ($script:HttpCalls -le 2) {
+            return @{ Status = 402; Body = '{"error":{"message":"This request requires more credits, or fewer max_tokens. You requested up to 131072 tokens, but can only afford 63537."}}'; Erro = ''; RetryAfter = '' }
+        }
+        $body = '{"id":"x","model":"deepseek/deepseek-v4-pro-0813","choices":[{"index":0,"message":{"role":"assistant","content":"RESULTADO|ACME|{\"ok\":1}\nFIM"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $r25 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'LIGHT' -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r25.ExitCode -eq 0) 'T25 LIGHT 402: lote recuperado pelo fallback (ExitCode 0)'
+    Assert-True ($script:HttpCalls -eq 3) 'T25 LIGHT 402: 1 retry reduzido + fallback'
+    Assert-True ($script:ModelosVistos[0] -eq 'deepseek/deepseek-v4-flash-0731') 'T25: 1a chamada no principal do LIGHT (flash-0731)'
+    Assert-True ($script:ModelosVistos[1] -eq 'deepseek/deepseek-v4-flash-0731') 'T25: retry no principal do LIGHT (flash-0731)'
+    Assert-True ($script:ModelosVistos[2] -eq 'deepseek/deepseek-v4-pro-0813') 'T25: 3a chamada no fallback do LIGHT (pro-0813, versionado e distinto)'
+    Assert-True ($r25.Degradado402 -eq $true -and $r25.FallbackUsado -eq $true) 'T25: degradacao registrada (Degradado402 e FallbackUsado)'
+    # Ponta oposta: 402 nos dois modelos do LIGHT = falha dura, sem terceira chamada e sem sucesso falso.
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        return @{ Status = 402; Body = '{"error":{"message":"This request requires more credits, or fewer max_tokens."}}'; Erro = ''; RetryAfter = '' }
+    }
+    $r25b = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'LIGHT' -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r25b.ExitCode -ne 0 -and $r25b.Status -eq 402) 'T25 LIGHT 402 nos dois: falha dura (ExitCode != 0, Status 402)'
+    Assert-True ($script:HttpCalls -eq 3) 'T25 LIGHT 402 nos dois: 1 retry reduzido no principal, sem retry do fallback'
+    Assert-True (-not $r25b.FallbackUsado) 'T25 LIGHT 402 nos dois: nao houve sucesso de fallback'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+
+    # ---- T26 (OR402-MAXTOKENS1): FULL nao pede o teto 131072 e 402 especifico faz fallback ----
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS_FULL -ErrorAction SilentlyContinue
+    Assert-True ((Get-VixOpenRouterMaxTokens 'FULL') -eq 49152) 'T26 FULL: limite default = 49152'
+    $env:VIXRADAR_OPENROUTER_MAX_TOKENS_FULL = '131072'
+    Assert-True ((Get-VixOpenRouterMaxTokens 'FULL') -eq 49152) 'T26 FULL: override 131072 limitado a 49152'
+    $env:VIXRADAR_OPENROUTER_MAX_TOKENS_FULL = '24000'
+    Assert-True ((Get-VixOpenRouterMaxTokens 'FULL') -eq 24000) 'T26 FULL: override menor respeitado'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS_FULL -ErrorAction SilentlyContinue
+    $script:HttpCalls = 0
+    $script:MaxTokensVistos = @()
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'deepseek/deepseek-v4-pro-0813'
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-flash-0731'
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        $script:MaxTokensVistos += [int](('' + ($JsonBody | ConvertFrom-Json).max_tokens))
+        if ($script:HttpCalls -le 2) {
+            return @{ Status = 402; Body = '{"error":{"message":"This request requires more credits, or fewer max_tokens. You requested up to 131072 tokens, but can only afford 63537."}}'; Erro = ''; RetryAfter = '' }
+        }
+        $body = '{"id":"x","model":"deepseek/deepseek-v4-flash-0731","choices":[{"index":0,"message":{"role":"assistant","content":"RESULTADO|ACME|{\"ok\":1}"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $r26 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0) -FallbackRetryDelays @(0)
+    Assert-True ($r26.ExitCode -eq 0 -and $script:HttpCalls -eq 3) 'T26 402 credito: retry reduzido e fallback concluem sem perda silenciosa'
+    Assert-True ((@($script:MaxTokensVistos) -notcontains 131072) -and $script:MaxTokensVistos[0] -eq 49152 -and $script:MaxTokensVistos[1] -eq 24576 -and $script:MaxTokensVistos[2] -eq 49152) 'T26: retry usa 24576 e fallback 49152, nunca 131072'
+
+    # 402 sem evidencia de credito/max_tokens nao autoriza fallback.
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        return @{ Status = 402; Body = '{"error":{"message":"payment required for policy violation"}}'; Erro = ''; RetryAfter = '' }
+    }
+    $r26b = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0) -FallbackRetryDelays @(0)
+    Assert-True ($r26b.ExitCode -ne 0 -and $script:HttpCalls -eq 1) 'T26 402 generico: fail-closed sem fallback inseguro'
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+
 . (Join-Path $root 'lib\vixradar-openrouter.ps1')
 }
 finally {
     Remove-Item Env:\OPENROUTER_API_KEY -ErrorAction SilentlyContinue
     Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS_FULL -ErrorAction SilentlyContinue
     if (Test-Path $promptTmp) { Remove-Item $promptTmp -Force -ErrorAction SilentlyContinue }
 }
 

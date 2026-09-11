@@ -122,7 +122,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada) {
         # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter.
         if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
             $raw = @($__orResp.Linhas)
             $exitCode = $__orResp.ExitCode
             if ($exitCode -ne 0) { Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ')') } else { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()) }
@@ -372,8 +372,12 @@ try {
     }
 
     $emissores = @($stale.emissores)
-    for ($i = 0; $i -lt $emissores.Count; $i += $ChunkSize) {
-        $fim = [Math]::Min($i + $ChunkSize - 1, $emissores.Count - 1)
+# BUSCADEGRADADA2: 3 buscas por empresa e budget OpenRouter de 8 exigem no maximo 2 empresas
+# por lote. O caminho Claude mantem o tamanho historico de 4.
+$chunkSizeEfetivo = if ($script:VixUsaOpenRouter) { [Math]::Min($ChunkSize, [Math]::Floor(8 / 3)) } else { $ChunkSize }
+if ($script:VixUsaOpenRouter) { Write-Log ('WEB_BUDGET: agenda usa 8 buscas/lote, 3 por empresa, emissores_por_lote=' + $chunkSizeEfetivo) }
+for ($i = 0; $i -lt $emissores.Count; $i += $chunkSizeEfetivo) {
+        $fim = [Math]::Min($i + $chunkSizeEfetivo - 1, $emissores.Count - 1)
         $chunk = @($emissores[$i..$fim])
         $stats.lotes++
         $label = 'agendasem-' + $stats.lotes

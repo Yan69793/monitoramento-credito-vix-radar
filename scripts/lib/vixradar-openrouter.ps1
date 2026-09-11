@@ -21,6 +21,12 @@
 #
 # Politica de retry (spec D1): 401/402/403 = falha imediata sem retry; 408/429/500/502/503/
 # 524/529 = retry bounded com backoff. Erro de transporte (status 0) tambem retenta.
+# OR402-DEGRADA1 (2026-09-11): 401/403 seguem duros, sem retry e sem fallback. 402 (saldo
+# insuficiente na conta OpenRouter) tambem NAO retenta o principal e NAO entra na lista de
+# retryable, mas passa UMA vez para o modelo de fallback, que e mais barato. Se o fallback
+# tambem devolver 402, encerra como falha dura (OPENROUTER_FALHA_COD=402). Motivo medido: a
+# matinal de 11/09 perdeu 2 de 6 lotes com "requested up to 131072 tokens, but can only
+# afford 63537" no pro-0813, e o fallback estava montado e nunca era chamado.
 # OR429-FIX (2026-09-09): allow_fallbacks=true no payload reativa o failover NATIVO do
 # OpenRouter entre providers do mesmo modelo; o retry bounded abaixo e a camada unica apos
 # esse failover, respeitando Retry-After (0..120s).
@@ -30,7 +36,17 @@
 $VixOpenRouterBase = 'https://openrouter.ai/api/v1/chat/completions'
 $VixOpenRouterModelDefault = 'deepseek/deepseek-v4-flash-0731'
 $VixOpenRouterModelLightDefault = $VixOpenRouterModelDefault
-$VixOpenRouterFallbackDefault = 'deepseek/deepseek-v4-flash'
+# OR402-DEGRADA1 (2026-09-11): fallback por TIER. Sempre ID VERSIONADO e sempre DIFERENTE do
+# principal do tier - o slug sem versao (deepseek/deepseek-v4-flash) e ponteiro movel de
+# upstream (mesma familia do 429 de 07/09/2026) e esta fora.
+#   FULL  (principal deepseek-v4-pro-0813)   -> deepseek-v4-flash-0731 (mais barato)
+#   LIGHT (principal deepseek-v4-flash-0731) -> deepseek-v4-pro-0813  (segunda malha; custo
+#   maior POR TOKEN, e so na chamada degradada, nunca no caminho normal)
+# Override: VIXRADAR_OPENROUTER_FALLBACK_MODEL_LIGHT / _FULL e o global legado
+# VIXRADAR_OPENROUTER_FALLBACK_MODEL (esse ultimo vale para os dois tiers).
+$VixOpenRouterFallbackFullDefault = 'deepseek/deepseek-v4-flash-0731'
+$VixOpenRouterFallbackLightDefault = 'deepseek/deepseek-v4-pro-0813'
+$VixOpenRouterFallbackDefault = $VixOpenRouterFallbackLightDefault
 $VixOpenRouterRetryable = @(408, 429, 500, 502, 503, 504, 522, 524, 529)
 
 function Get-VixOpenRouterEnv([string]$Name) {
@@ -77,10 +93,16 @@ function Get-VixOpenRouterModel([string]$Tier = '') {
 # si la env es invalida o igual al primario. Las server tools van en la llamada de fallback
 # igual que en la primaria (mismo contrato).
 function Get-VixOpenRouterFallbackModel([string]$Tier = '') {
-    $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_FALLBACK_MODEL'
-    if (-not $m) { $m = $VixOpenRouterFallbackDefault }
+    $tierUpper = ('' + $Tier).Trim().ToUpperInvariant()
+    # Precedencia: override do TIER, depois override global legado, depois o default do tier.
+    $m = $null
+    if ($tierUpper -eq 'LIGHT' -or $tierUpper -eq 'FULL') { $m = Get-VixOpenRouterEnv ('VIXRADAR_OPENROUTER_FALLBACK_MODEL_' + $tierUpper) }
+    if (-not $m) { $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_FALLBACK_MODEL' }
+    if (-not $m) { $m = if ($tierUpper -eq 'FULL') { $VixOpenRouterFallbackFullDefault } else { $VixOpenRouterFallbackLightDefault } }
     $m = ('' + $m).Trim()
     if (-not (Test-VixModeloIdValido $m)) { return $null }
+    # Sem duplicacao: fallback igual ao principal do tier nao e fallback, e degradaria para o
+    # mesmo modelo que acabou de falhar (era o defeito do LIGHT depois de OR402-DEGRADA1).
     if ($m -eq (Get-VixOpenRouterModel $Tier)) { return $null }
     return $m
 }
@@ -349,16 +371,37 @@ function Get-VixOpenRouterRetryAfterSec([string]$Header, [int]$DefaultSec) {
 }
 
 
+# OR402-MAXTOKENS1: limite explicito e conservador para impedir que FULL herde 131072.
+function Get-VixOpenRouterMaxTokens([string]$Tier = '') {
+    $tierUpper = ('' + $Tier).Trim().ToUpperInvariant()
+    $default = if ($tierUpper -eq 'FULL') { 49152 } else { 32768 }
+    $envName = if ($tierUpper -eq 'LIGHT') { 'VIXRADAR_OPENROUTER_MAX_TOKENS_LIGHT' } elseif ($tierUpper -eq 'FULL') { 'VIXRADAR_OPENROUTER_MAX_TOKENS_FULL' } else { '' }
+    $raw = if ($envName) { Get-VixOpenRouterEnv $envName } else { $null }
+    if (-not $raw) { $raw = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MAX_TOKENS' }
+    $n = 0
+    if (-not $raw -or -not [int]::TryParse(('' + $raw).Trim(), [ref]$n) -or $n -lt 1024) { return $default }
+    if ($tierUpper -eq 'FULL' -and $n -gt 49152) { return 49152 }
+    if ($tierUpper -ne 'FULL' -and $n -gt 65536) { return 65536 }
+    return $n
+}
+
+function Test-VixOpenRouter402Credito([string]$Body) {
+    $m = '' + $Body
+    return ($m -match '(?i)(more credits|insufficient credit|insufficient funds|fewer max_tokens|max_tokens)')
+}
+
 # Orquestra un lote completo: lee el prompt, POST con server tools, normaliza el envelope.
 # Retenta bounded en status retryable; agotado el primario, prueba el fallback explicito
 # (DeepSeek validado) con su propia malha de retry. Retorna
 #   @{ Linhas; ExitCode; Msg; Tokens; Parcelas; Modelo; FallbackUsado; Intentos; Status; RetryAfter }
 #   ExitCode 0 = HTTP 2xx parseado (aunque el texto del modelo venga vacio).
 #   ExitCode != 0 = falla tras retries; Linhas lleva linea de error NO-JSON (sin segredo).
-#   400/401/402/403/404: duros, SIN retry y SIN fallback (deterministas).
+#   400/401/403/404: duros, SIN retry y SIN fallback (deterministas).
+#   402: sin retry del principal y sin entrar en la lista retryable, con UNA pasada al modelo
+#        de fallback (mas barato). 402 en el fallback tambien cierra duro.
 #   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
 function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '') {
-    $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = '' }
+    $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = ''; Degradado402 = $false }
     $prompt = ''
     # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
     # PSDrive/PSProvider, y esa decoracion es el ciclo que trabo la noturna de 05/09 en el
@@ -381,6 +424,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     )
     $modeloPrincipal = Get-VixOpenRouterModel $Tier
     $modeloFallback  = Get-VixOpenRouterFallbackModel $Tier
+    $maxTokens = Get-VixOpenRouterMaxTokens $Tier
     $modelos = @()
     if ($modeloPrincipal) { $modelos += ,@{ M = $modeloPrincipal; Delays = $RetryDelays } }
     if ($modeloFallback) { $modelos += ,@{ M = $modeloFallback; Delays = $FallbackRetryDelays } }
@@ -391,12 +435,17 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     $ultimoRetryAfter = ''
     $vacioFinal = $false
     $duro = $false
+    # OR402-DEGRADA1: degradacao por saldo (402) e observavel no retorno, para o motor contar
+    # no resumo operacional em vez de transformar saldo baixo em falso verde.
+    $degradado402 = $false
     $inicioLote = Get-Date
     foreach ($item in $modelos) {
         $modeloUsado = $item.M
         $esFallback = ($item.M -ne $modeloPrincipal)
         $delays = $item.Delays
         if (-not $delays -or $delays.Count -eq 0) { $delays = @(0, 5, 20) }
+        $maxTokensAtual = $maxTokens
+        $reduziu402 = $false
         for ($i = 0; $i -lt $delays.Count; $i++) {
             $intentos++
             if ($i -gt 0) {
@@ -414,6 +463,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
             $bodyObj = [ordered]@{
                 model = $item.M
                 messages = @([ordered]@{ role = 'user'; content = $prompt })
+                max_tokens = $maxTokensAtual
                 tools = $tools
                 stream = $false
                 # Ruteo (spec D1, revisado OR429-FIX 2026-09-09): allow_fallbacks=true reativa o
@@ -472,7 +522,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 $linha = $env | ConvertTo-Json -Depth 8 -Compress
                 $parcelas = @{ input = [int64]$env.usage.input_tokens; output = [int64]$env.usage.output_tokens; cache_creation = [int64]$env.usage.cache_creation_input_tokens; cache_read = [int64]$env.usage.cache_read_input_tokens }
                 $parcelas.trabajo = $parcelas.input + $parcelas.output + $parcelas.cache_creation
-                return @{ Linhas = @($linha); ExitCode = 0; Msg = 'ok http=' + $http.Status + ' model=' + $env.model + ' intentos=' + $intentos + ' fallback=' + $esFallback.ToString().ToLower(); Tokens = [int64]$parcelas.trabajo; Parcelas = $parcelas; Modelo = $item.M; FallbackUsado = $esFallback; Intentos = $intentos; Status = [int]$http.Status; RetryAfter = $ultimoRetryAfter }
+                return @{ Linhas = @($linha); ExitCode = 0; Msg = 'ok http=' + $http.Status + ' model=' + $env.model + ' intentos=' + $intentos + ' fallback=' + $esFallback.ToString().ToLower(); Tokens = [int64]$parcelas.trabajo; Parcelas = $parcelas; Modelo = $item.M; FallbackUsado = $esFallback; Intentos = $intentos; Status = [int]$http.Status; RetryAfter = $ultimoRetryAfter; Degradado402 = $degradado402 }
             }
             # cuerpo de error puede venir con .error.message; extrae sin secreto, corta a 200
             $motivo = ''
@@ -484,8 +534,25 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
             $ultimoMsg = 'OPENROUTER_HTTP_STATUS=' + $http.Status + $motivo + ' modelo=' + $item.M + ' intento=' + $intentos
             $vacioFinal = $false
             if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
+            # OR402-DEGRADA1 (2026-09-11): 402 es falta de SALDO, no de payload. No se retenta el
+            # principal (mismo pedido, misma cuenta, mismo resultado) y 402 NO entra en la lista
+            # retryable; se pasa UNA vez al modelo de fallback, mas barato. Medido en la matinal
+            # de 11/09: "requested up to 131072 tokens, but can only afford 63537" en el
+            # pro-0813, y 2 de 6 lotes murieron con 3 emisores INCONCLUSIVO cada uno mientras el
+            # fallback estaba montado y nunca se llamaba.
+            if ($http.Status -eq 402 -and (Test-VixOpenRouter402Credito $http.Body) -and -not $esFallback) {
+                # No maximo uma nova tentativa no FULL com metade do teto, antes do fallback.
+                # Se o chamador fornecer apenas uma tentativa, cai direto no fallback.
+                if (-not $reduziu402 -and $i -lt ($delays.Count - 1)) {
+                    $reduziu402 = $true
+                    $maxTokensAtual = [Math]::Max(16384, [Math]::Floor($maxTokens / 2))
+                    $ultimoMsg += ' retry_max_tokens=' + $maxTokensAtual
+                    continue
+                }
+                if ($modeloFallback) { $degradado402 = $true; break }
+            }
             $duro = $true
-            break  # 4xx duro: sin retry (401/402/403/400/404/...)
+            break  # 4xx duro: sin retry (401/403/400/404/...) y 402 ya resuelto arriba
         }
         # Fallback SOLO si la ultima falla fue retryable (o transporte, o resultado vacio).
         # 400 de modelo invalido / auth: deterministas, no se enmascaran con otro modelo.
@@ -497,6 +564,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     $falha.Intentos = $intentos
     $falha.Status = $ultimoCod
     $falha.RetryAfter = $ultimoRetryAfter
+    $falha.Degradado402 = $degradado402
     if ($vacioFinal) {
         # Esgotou los retries (y fallback si existia) con resultado vacio: codigo SEMANTICO
         # estable, sin body/prompt/secret, para que el parser del motor no confunda con auth.

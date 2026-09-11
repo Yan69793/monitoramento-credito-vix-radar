@@ -324,6 +324,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # falha controlada no fluxo normal abaixo (FIM/ROTINA_RESUMO + exit != 0).
         if ($script:VixUsaOpenRouter) { $retryDelays = @(0) }
         $retryLog = @()
+        # OR402-DEGRADA1 (2026-09-11): quantas chamadas ao adapter desta invocacao cairam para o
+        # modelo de fallback por saldo insuficiente (HTTP 402) no modelo do tier. Vai no retorno
+        # e no resumo operacional: o lote fecha (nao e erro e nao mexe em silent_fail), mas saldo
+        # baixo nao pode sair do log como se nada tivesse acontecido.
+        $degradado402Lote = 0
         # Limite que volta DEPOIS de ja ter esperado o reset nao se resolve esperando de
         # novo: o plano manda escalar nesse caso. Sem esta memoria, duas esperas seguidas
         # comeriam o teto de parede e a rotina morreria mesmo assim.
@@ -361,6 +366,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                 $raw = @($__orResp.Linhas)
                 $exitCode = $__orResp.ExitCode
                 $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel $Perfil.tier))
+                if ($__orResp.Degradado402) {
+                    $degradado402Lote++
+                    Write-Log ('WARN: DEGRADADO_402: lote ' + (Split-Path $promptPath -Leaf) + ' caiu para o fallback por saldo insuficiente (tier=' + (Get-VixOpenRouterModel $Perfil.tier) + ' fallback=' + $__orResp.Modelo + ') - repor credito OpenRouter')
+                }
                 if ($exitCode -eq 0) { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()); break }
                 Write-Log ('RETRY openrouter: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ': ' + $__orResp.Msg)
                 continue
@@ -442,7 +451,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
     }
     $authFail = Test-ClaudeAuthFailure $textOut
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; AuthFailure = $authFail; Escalou = $escalou }
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote }
 }
 
 function Get-NomeNormalizado([string]$s) {
@@ -874,6 +883,9 @@ $stats = @{
     # descartou tudo no saneamento ou no pre-verificador - ver DESCARTADO| no log).
     eventos_avanco_data = 0; chaves_novas = 0; descartados = 0
     cobertura_deferidos = 0; recheck_resolvidos = 0
+    # OR402-DEGRADA1: chamadas ao adapter que cairam para o fallback por 402 (saldo). Contador
+    # separado de silent_fail de proposito: o lote fechou, mas a degradacao fica visivel.
+    degradados_402 = 0
     criticos = New-Object System.Collections.Generic.List[string]
 }
 $lotesDetalhe = New-Object System.Collections.Generic.List[object]
@@ -1015,6 +1027,7 @@ try {
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
         $result = Invoke-ClaudeBatch $promptPath $job.Model
         $swLote.Stop()
+        $stats.degradados_402 += [int]$result.Degradados402
         $stats.batches_run++
         if ($result.Escalou) {
             $stats.auth_escalou = 'api'
@@ -1066,6 +1079,7 @@ try {
             $retryPath = Join-Path $LogDir ($Perfil.prefix + '_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
             $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
+            $stats.degradados_402 += [int]$retryRes.Degradados402
             if ($retryRes.Escalou) { $stats.auth_escalou = 'api'; Write-Log ($AlertaAuthTag + 'escalou para chave paga no retry ' + $retryLabel) }
             if ($retryRes.AuthFailure) {
                 # RETRYDROP1: preserva o que o lote principal ja parseou, marca abort apos submit.
@@ -1249,6 +1263,7 @@ try {
             tokens_over_target = $stats.tokens_over_target; tokens_hard_hit = $stats.tokens_hard_hit
             analisados = $stats.analisados; skip_ok = $stats.skip_ok; deferred = $stats.deferred; submits_aceitos = $submitsAceitos
             submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total; silent_fail = $stats.silent_fail
+            degradados_402 = $stats.degradados_402
             # DRYRUN-CRASH1: @(List[object]) com [ordered] dentro estoura o binder do 5.1
             # ("Os tipos de argumento nao correspondem"), reproduzido isolado em 02/09. ToArray() nao.
             lotes = $stats.batches_run; batches = $stats.batches_run; lotes_detalhe = $lotesDetalhe.ToArray()
@@ -1271,7 +1286,7 @@ try {
     # outro fato legitimo na mesma data maxima (ver n_chaves_novas ao lado).
     Write-Log ($fimTag + $Rotina + ' concluido. Total do dia ' + $ledgerTotal + '/' + $planoTotal + '. analisados=' + $stats.analisados + ' skip=' + $stats.skip_ok + ' deferidos=' + $stats.deferred + ' submits_aceitos=' + $submitsAceitos +
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' cap_efetivo=' + $TokenHardCap + ' lotes=' + $stats.batches_run +
-        ' buscas=' + $stats.buscas_total + ' silent_fail=' + $stats.silent_fail + ' criticos=' + $stats.criticos.Count + ' auth_escalou=' + $stats.auth_escalou +
+        ' buscas=' + $stats.buscas_total + ' silent_fail=' + $stats.silent_fail + ' degradados_402=' + $stats.degradados_402 + ' criticos=' + $stats.criticos.Count + ' auth_escalou=' + $stats.auth_escalou +
         ' eventos_avanco_data=' + $stats.eventos_avanco_data + ' chaves_novas=' + $stats.chaves_novas + ' descartados=' + $stats.descartados +
         ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
 

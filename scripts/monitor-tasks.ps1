@@ -211,6 +211,9 @@ Write-Log "Whitelist benigna: $($BenignCodes -join ', ')"
 $erros = @()
 $warnings = @()
 $deliberate = @()
+# OR402-DEGRADA1 (2026-09-11): saldo insuficiente no OpenRouter (HTTP 402) com lote recuperado
+# pelo fallback. Fica FORA de $erros por definicao: a rotina entregou, so degradou.
+$degradacoes = @()
 $ok = 0
 $skipped = 0
 
@@ -919,6 +922,25 @@ if ($Escopo -ne 'Site') {
             }
         }
     } catch { Write-Log ("AVISO: custo do dia nao calculado - " + $_.Exception.Message) }
+
+    # OR402-DEGRADA1 (2026-09-11): degradacao por saldo (HTTP 402) e AVISO OPERACIONAL, nunca
+    # erro de rotina - o adapter caiu para o modelo de fallback e o lote fechou. Vai para
+    # $degradacoes/$warnings (nao para $erros), aparece no resumo, no erros_<data>.json e no
+    # e-mail, sem mexer no exit code do monitor. Codigo 9007, distinto de 9004/9005.
+    foreach ($g in @(Get-VixDegradado402 -RotinasLogDir $RotinasLogDir -Dias $diasAuth)) {
+        Write-Log ('AVISO: DEGRADADO_402 em ' + $g.rotina + ' ' + $g.dia + ': ' + $g.degradados + ' chamada(s) cairam para o fallback por saldo insuficiente (log=' + $g.linhas_log + ' metrics=' + $g.campo_metrics + ') - repor credito OpenRouter')
+        $entry = [ordered]@{
+            task    = ($g.rotina + ' (saldo 402)')
+            code    = 9007
+            codeHex = '0x232F'
+            lastRun = $g.dia
+            ageDays = 0
+            script  = $g.fonte
+            reason  = ('DEGRADADO_402: ' + $g.degradados + ' chamada(s) degradada(s) por saldo (lote recuperado pelo fallback, entrega intacta)' + $(if ($g.exemplo) { ' | ' + $g.exemplo } else { '' }))
+        }
+        $degradacoes += $entry
+        $warnings += $entry
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -1089,6 +1111,7 @@ Write-Log "=== SUMARIO ==="
 Write-Log "OK: $ok"
 Write-Log "Erros: $($erros.Count)"
 Write-Log "Warnings: $($warnings.Count)"
+Write-Log "Degradados por 402 (saldo, lote recuperado - NAO e falha): $($degradacoes.Count)"
 Write-Log "Deliberados (Disabled): $($deliberate.Count)"
 Write-Log "Skipped (falso-positivo conhecido): $skipped"
 Write-Log "Rotinas por evidencia de entrega (nao sao tasks do Scheduler, entram nas contagens acima): $($RotinasVigiadas.Count)"
@@ -1101,6 +1124,7 @@ $report = [ordered]@{
     timestamp  = (Get-Date).ToString('yyyy-MM-ddTHH:mm:ssK')
     erros      = $erros
     warnings   = $warnings
+    degradados = $degradacoes
     deliberate = $deliberate
     okCount    = $ok
 }
@@ -1160,8 +1184,14 @@ if ($warnings.Count -gt 0) {
 # mesmo (task, code, lastRun) de um dia anterior e persistente: vai na secao propria, nao
 # dispara envio. Medido: 27 a 30/08 o mesmo 0x40010004 de um unico reboot gerou 4 e-mails.
 $nNovos = @($sel.novos).Count; $nEsc = @($sel.escalados).Count; $nPers = @($sel.persistentes).Count
+# OR402-DEGRADA1: a degradacao por saldo entra no e-mail como assunto proprio e NAO conta como
+# falha. Dedup pela mesma regra dos erros (mesmo task/code/lastRun de um dia anterior nao
+# reenvia), entao credito baixo insistente nao vira enxurrada de e-mail.
+$selDeg = Select-ErrosParaEmail -Erros $degradacoes -EstadoAnterior $estadoAnterior -HojeIso $hojeIso
+$nDeg = @($selDeg.novos).Count + @($selDeg.escalados).Count
 $assuntoEmail = 'VIX Radar [' + $Escopo + '] - ' + $nNovos + ' nova(s), ' + $nEsc + ' escalada(s), ' + $nPers + ' persistente(s)'
-$deveEnviar = ($nNovos -gt 0 -or $nEsc -gt 0 -or $ForcarEmail)
+if ($nDeg -gt 0) { $assuntoEmail += ', ' + $nDeg + ' degradacao(oes) por saldo 402' }
+$deveEnviar = ($nNovos -gt 0 -or $nEsc -gt 0 -or $nDeg -gt 0 -or $ForcarEmail)
 if ($DryRun) {
     Write-Log ('DRYRUN: e-mail ' + $(if ($SendEmail -and $deveEnviar) { 'SERIA enviado' } else { 'NAO seria enviado' }) + ' | assunto=' + $assuntoEmail)
 }
@@ -1183,11 +1213,16 @@ if ($SendEmail -and $deveEnviar -and -not $DryRun) {
         foreach ($e in @($sel.escalados)) { $tabAtiva += (& $linhaTr $e) }
         $tabPers = ''
         foreach ($e in @($sel.persistentes)) { $tabPers += (& $linhaTr $e) }
+        $degraSel = @($selDeg.novos) + @($selDeg.escalados)
+        $tabDeg = ''
+        foreach ($e in $degraSel) { $tabDeg += (& $linhaTr $e) }
         $estiloTab = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">'
-        $html = '<h2>VIX Radar [' + $Escopo + '] - falha em task agendada</h2>' +
+        $tituloEmail = if ($nNovos + $nEsc -gt 0) { 'falha em task agendada' } else { 'degradacao por saldo no provedor (nao e falha de entrega)' }
+        $html = '<h2>VIX Radar [' + $Escopo + '] - ' + $tituloEmail + '</h2>' +
                 '<p>' + $nNovos + ' nova(s) e ' + $nEsc + ' escalada(s) na maquina ' + $env:COMPUTERNAME + ' (motor: ' + $MotorAtual + '). ' + $nPers + ' persistente(s) ja reportada(s) antes.</p>' +
-                $(if ($tabAtiva) { '<h3>Novos e escalados</h3>' + $estiloTab + $cab + $tabAtiva + '</table>' } else { '<p>Sem erro novo nesta rodada (envio forcado).</p>' }) +
+                $(if ($tabAtiva) { '<h3>Novos e escalados</h3>' + $estiloTab + $cab + $tabAtiva + '</table>' } else { '<p>Sem erro novo nesta rodada.</p>' }) +
                 $(if ($tabPers) { '<h3>Persistentes (ja reportados, sem mudanca)</h3>' + $estiloTab + $cab + $tabPers + '</table>' } else { '' }) +
+                $(if ($tabDeg) { '<h3>Degradacao por saldo (HTTP 402): lote recuperado pelo modelo de fallback, entrega intacta</h3>' + $estiloTab + $cab + $tabDeg + '</table>' } else { '' }) +
                 $(if ($custoLinhas.Count -gt 0) { '<p style="font-family:monospace;font-size:12px">' + ($custoLinhas -join '<br>') + '</p>' } else { '' }) +
                 '<p>Warnings nesta rodada: ' + $warnings.Count + '. Relatorio completo em ' + $ErrFile + '</p>'
 

@@ -24,7 +24,8 @@ function Assert-True([bool]$cond, [string]$nome) {
     if ($cond) { $script:pass++ ; Write-Host ('PASS: ' + $nome) }
     else { $script:fail++ ; Write-Host ('FAIL: ' + $nome) }
 }
-function Write-Log([string]$msg) { }
+$script:LogLines = New-Object System.Collections.Generic.List[string]
+function Write-Log([string]$msg) { [void]$script:LogLines.Add(('' + $msg)) }
 # Provas de que o ramo claude NAO foi tocado:
 function Set-VixClaudeAuthEnv { $script:ClaudePathTouched = $true }
 function Get-VixUsageParcelas($json) {
@@ -35,12 +36,17 @@ function Get-VixUsageParcelas($json) {
 function Test-ClaudeAuthFailure([string[]]$outputLines) { return $false }
 function Test-VixClaudeAuthFailure([string[]]$outputLines) { return $false }
 # Adapter mockado: registra a chamada e devolve envelope ou falha conforme $script:MockMode.
-function Invoke-VixOpenRouterLote([string]$PromptPath) {
+# 'degradado402' = lote recuperado pelo fallback por saldo (OR402-DEGRADA1);
+# 'hardfail402' = 402 tambem no fallback, falha dura.
+function Invoke-VixOpenRouterLote([string]$PromptPath, [string]$Tier = '', [int]$TotalTimeoutSec = 0) {
     $script:AdapterCalls++
     if ($script:MockMode -eq 'fail') {
-        return @{ Linhas = @('OPENROUTER_FALHA_COD=429'); ExitCode = 1; Msg = 'mock falha http=429'; Tokens = -1; Parcelas = $null }
+        return @{ Linhas = @('OPENROUTER_FALHA_COD=429'); ExitCode = 1; Msg = 'mock falha http=429'; Tokens = -1; Parcelas = $null; Degradado402 = $false }
     }
-    return @{ Linhas = @($script:MockEnvelope); ExitCode = 0; Msg = 'ok'; Tokens = 42; Parcelas = $null }
+    if ($script:MockMode -eq 'hardfail402') {
+        return @{ Linhas = @('OPENROUTER_FALHA_COD=402'); ExitCode = 1; Msg = 'mock 402 duro nos dois modelos'; Tokens = -1; Parcelas = $null; Degradado402 = $false }
+    }
+    return @{ Linhas = @($script:MockEnvelope); ExitCode = 0; Msg = 'ok'; Tokens = 42; Parcelas = $null; Degradado402 = ($script:MockMode -eq 'degradado402') }
 }
 
 # As funcoes de batch reais contem o ramo do CLI legado no else; gravando o texto extraido num
@@ -115,6 +121,37 @@ $script:MockMode = 'fail'; $script:AdapterCalls = 0
 $resSf = Invoke-ClaudeBatchSentinela $promptPath 'claude-haiku-4-5-20251001' 12
 Assert-True (@($resSf.Output)[0] -eq 'OPENROUTER_FALHA_COD=429') 'S-D5: falha do adapter preserva linha de erro'
 Assert-True (-not $resSf.TimedOut -and $resSf.Tokens -eq -1) 'S-D6: falha vira tokens -1, sem timeout fantasma (fail-closed)'
+
+Write-Host '== Dispatch openrouter: run_vixradar_varredura.ps1 (Invoke-ClaudeBatch + OR402-DEGRADA1) =='
+$VarreduraPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
+# Deps da funcao real que este teste nao exercita no caminho de sucesso.
+function Update-VixLock { }
+function Get-VixOpenRouterEnv([string]$Name) { return $null }
+function Get-VixOpenRouterTimeoutMin { return 1 }
+function Get-VixOpenRouterModel([string]$Tier = '') { return 'mock/model-0001' }
+$Perfil = [pscustomobject]@{ tier = 'FULL'; prefix = 'vixradar-noturno'; id = 'vixradar-noturno' }
+Set-Content -Path $defsFile -Value (Get-RotinaBatchText $VarreduraPath @('Get-NomeNormalizado', 'Get-ParsedResultados', 'Get-ResultadoEmissor', 'Invoke-ClaudeBatch')) -Encoding UTF8
+. $defsFile
+$chunk = @([pscustomobject]@{ empresa = 'ACME' })
+$script:MockEnvelope = '{"result":"RESULTADO|ACME|{\"classificacao_geral\":\"NENHUM\",\"sem_eventos\":true}","is_error":false,"model":"deepseek/deepseek-v4-flash-0731","stop_reason":"end_turn","usage":{"input_tokens":20000,"output_tokens":500,"cache_creation_input_tokens":0,"cache_read_input_tokens":8000}}'
+$script:MockMode = 'degradado402'; $script:AdapterCalls = 0; $script:ClaudePathTouched = $false
+$script:LogLines.Clear()
+$resR = Invoke-ClaudeBatch $promptPath 'claude-sonnet-4-6'
+Assert-True ($script:AdapterCalls -eq 1 -and -not $script:ClaudePathTouched) 'R-D1: varredura despacha pelo adapter, sem tocar claude'
+Assert-True ($resR.ExitCode -eq 0) 'R-D2: lote degradado por 402 fecha com ExitCode 0 (nao e falha)'
+Assert-True ($resR.Degradados402 -eq 1) 'R-D3: Degradados402=1 propagado ao fluxo (vira degradados_402 no resumo)'
+$logJoin = (@($script:LogLines) -join "`n")
+Assert-True ($logJoin.Contains('DEGRADADO_402')) 'R-D4: WARN DEGRADADO_402 emitido no log do lote (degradacao visivel)'
+$parsedOk = Get-ParsedResultados $resR.Output
+$okCount = 0; foreach ($e in $chunk) { if (Get-ResultadoEmissor $parsedOk.Map $e.empresa) { $okCount++ } }
+Assert-True ($okCount -eq 1) 'R-D5: lote recuperado traz RESULTADO real -> parsedCount>0, ramo silent_fail (varredura:1094) NAO e tomado'
+$script:MockMode = 'hardfail402'; $script:AdapterCalls = 0
+$script:LogLines.Clear()
+$resRf = Invoke-ClaudeBatch $promptPath 'claude-sonnet-4-6'
+$parsedFalha = Get-ParsedResultados $resRf.Output
+$failCount = 0; foreach ($e in $chunk) { if (Get-ResultadoEmissor $parsedFalha.Map $e.empresa) { $failCount++ } }
+Assert-True ($resRf.ExitCode -ne 0 -and $resRf.Degradados402 -eq 0) 'R-D6: 402 nos dois modelos = falha dura, sem contador de degradacao'
+Assert-True ($failCount -eq 0) 'R-D7: ponta oposta: sem RESULTADO parseado, o ramo silent_fail (varredura:1094) e o aplicavel'
 
 Remove-Item -Path $LogDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host ''

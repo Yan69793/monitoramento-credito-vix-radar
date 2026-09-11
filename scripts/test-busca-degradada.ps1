@@ -32,7 +32,15 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 }
 
 $MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Test-VixBuscaDegradada', 'Resolve-VixCoberturaWeb'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Split-IntoChunks', 'Test-VixBuscaDegradada', 'Resolve-VixCoberturaWeb', 'Split-IntoWebBudgetChunks'))) { Invoke-Expression $_def }
+
+Write-Host '== Split-IntoWebBudgetChunks: budget deterministico por lote =='
+$webChunks = @(Split-IntoWebBudgetChunks (1..15) 15 3 8)
+Assert-True ($webChunks.Count -eq 8) 'W1: 15 emissores viram 8 lotes no budget 8'
+Assert-True ((@($webChunks | ForEach-Object { @($_).Count } | Measure-Object -Maximum).Maximum) -eq 2) 'W2: nenhum lote excede 2 emissores'
+Assert-True (-not (@($webChunks | Where-Object { @($_).Count * 3 -gt 8 }))) 'W3: emissores x 3 buscas nunca excede budget 8'
+$fullChunks = @(Split-IntoWebBudgetChunks (1..4) 4 3 8)
+Assert-True ($fullChunks.Count -eq 2 -and @($fullChunks[0]).Count -eq 2 -and @($fullChunks[1]).Count -eq 2) 'W4: FULL 4 emissores e subdividido em 2+2'
 
 Write-Host '== Test-VixBuscaDegradada: o que E degradada (evidencia explicita) =='
 Assert-True (Test-VixBuscaDegradada 'sem resultados - limite de busca') 'D1: "sem resultados - limite de busca" (texto real 08/09) = degradada'

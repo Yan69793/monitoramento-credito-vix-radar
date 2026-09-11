@@ -504,7 +504,7 @@ function Stop-ArvoreProcesso([int]$ProcId) {
     } catch { }
 }
 
-function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$TimeoutMin) {
+function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$TimeoutMin, [string]$Tier = '') {
     # SENTINELA-HANG1: timeout de verdade, com morte da arvore de processos.
     #
     # O desenho antigo era `Get-Content | claude -p`, pipeline sem timeout nenhum.
@@ -531,7 +531,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
         # no backlog, mesmo efeito do timeout do claude.
         if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -TotalTimeoutSec ($TimeoutMin * 60)
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Tier -TotalTimeoutSec ($TimeoutMin * 60)
             $raw = @($__orResp.Linhas)
             if ($__orResp.ExitCode -ne 0) {
                 $falhaTransporte = $true
@@ -661,7 +661,7 @@ foreach ($fila in @(@{ N = 'sonnet'; M = 'claude-sonnet-4-6'; S = $SonnetSkill; 
     for ($i = 0; $i -lt $lista.Count; $i += $LoteMax) {
         $idx++
         $chunk = @($lista[$i..([Math]::Min($i + $LoteMax - 1, $lista.Count - 1))])
-        $jobs += @{ Label = ($fila.N + '-' + $idx); Model = $fila.M; Skill = $fila.S; Chunk = $chunk }
+        $jobs += @{ Label = ($fila.N + '-' + $idx); Model = $fila.M; Tier = if ($fila.N -eq 'sonnet') { 'FULL' } else { 'LIGHT' }; Skill = $fila.S; Chunk = $chunk }
     }
 }
 
@@ -679,16 +679,16 @@ foreach ($job in $jobs) {
         continue
     }
     $modeloLote = $job.Model
-    if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel) + ' tier=' + $job.Label }
+    if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel $job.Tier) + ' tier=' + $job.Tier }
     $modeloPrompt = $job.Model
-    if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel }
+    if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $job.Tier }
     $promptPath = Join-Path $LogDir ('sentinela_' + $job.Label + '_' + $DateTag + '_' + $PID + '.txt')
     New-BatchPromptSentinela $job.Chunk $job.Label $modeloPrompt $job.Skill $janelaInicio $janelaFim | Set-Content -Path $promptPath -Encoding UTF8
     Write-Log ('LOTE ' + $job.Label + ': ' + $job.Chunk.Count + ' emissores, modelo ' + $modeloLote)
     # O teto por lote e o que sobra do teto da execucao, nunca mais que isso, com um
     # piso de 4 min para nao nascer expirado quando a janela ja esta quase no fim.
     $restanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
-    $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model $restanteMin
+    $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model $restanteMin $job.Tier
     if ($res.FalhaTransporte) { $lotesFalhaProvider++ }
     if ($res.Tokens -ge 0) { $tokensAcum += $res.Tokens }
     if ($res.TimedOut) {
@@ -728,7 +728,7 @@ foreach ($job in $jobs) {
             continue
         }
         $provRotina = 'claude-sentinela-' + $job.Model
-        if ($script:VixUsaOpenRouter) { $provRotina = 'openrouter-sentinela-' + (Get-VixOpenRouterModel) }
+        if ($script:VixUsaOpenRouter) { $provRotina = 'openrouter-sentinela-' + (Get-VixOpenRouterModel $job.Tier) }
         $resultado = [ordered]@{
             empresa = $emp.empresa; setor = $emp.setor
             classificacao_geral = $obj.classificacao_geral

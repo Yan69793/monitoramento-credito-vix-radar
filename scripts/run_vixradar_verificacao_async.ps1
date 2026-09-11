@@ -176,7 +176,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter; se esgotar,
         # itens ficam na fila (mesmo efeito do fluxo claude, sem tocar em chave paga).
         if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
             $raw = @($__orResp.Linhas)
             $exitCode = $__orResp.ExitCode
             if ($exitCode -ne 0) {
