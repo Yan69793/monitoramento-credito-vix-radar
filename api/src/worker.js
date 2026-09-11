@@ -6256,14 +6256,21 @@ async function handleRegistrar(body, env2222) {
         const emailHash = await hashEmail(existing.email);
         const dedupKey = "cadastro:notif_reenvio:" + emailHash;
         const ultimoReenvio = env2222.RADAR_KV ? await env2222.RADAR_KV.get(dedupKey) : "1";
-        if (!ultimoReenvio && env2222.RESEND_API_KEY) {
+        if (!ultimoReenvio) {
           const tokA = await gerarTokenEmail(env2222, existing.email, "aprovar");
           const tokR = await gerarTokenEmail(env2222, existing.email, "rejeitar");
           const aUrl = `${WORKER_URL}/?action=aprovar_email&email=${encodeURIComponent(existing.email)}&ts=${tokA.ts}&sig=${tokA.sig}`;
           const rUrl = `${WORKER_URL}/?action=rejeitar_email&email=${encodeURIComponent(existing.email)}&ts=${tokR.ts}&sig=${tokR.sig}`;
           const _assuntoReenvio = `[REENVIO] Pendente ha +24h \u2014 ${existing.nome}`;
-          await enviarResend(env2222.RESEND_API_KEY, _assuntoReenvio, emailRegistroAdmin(existing, aUrl, rUrl), [ADMIN_EMAIL], null, null, env2222);
-          await env2222.RADAR_KV.put(dedupKey, "1", { expirationTtl: 86400 });
+          const _envioReenvio = await enviarEmailRastreado(env2222, {
+            evento: "registro_reenvio_admin",
+            destinatario: env2222.ADMIN_EMAIL || ADMIN_EMAIL,
+            assunto: _assuntoReenvio,
+            html: emailRegistroAdmin(existing, aUrl, rUrl)
+          });
+          if (_envioReenvio && _envioReenvio.ok === true && env2222.RADAR_KV) {
+            await env2222.RADAR_KV.put(dedupKey, "1", { expirationTtl: 86400 });
+          }
         }
       } catch (_) { /* dedup ou reenvio falhou, sem impacto na resposta */ }
       return resp({ ok: true, mensagem: "Sua solicita\xE7\xE3o j\xE1 est\xE1 na fila de aprova\xE7\xE3o." });
@@ -6292,21 +6299,33 @@ async function handleRegistrar(body, env2222) {
     } catch (_) {
     }
   }
-  if (env2222.RESEND_API_KEY) {
-    try {
-      const tokA = await gerarTokenEmail(env2222, user.email, "aprovar");
-      const tokR = await gerarTokenEmail(env2222, user.email, "rejeitar");
-      const aUrl = `${WORKER_URL}/?action=aprovar_email&email=${encodeURIComponent(user.email)}&ts=${tokA.ts}&sig=${tokA.sig}`;
-      const rUrl = `${WORKER_URL}/?action=rejeitar_email&email=${encodeURIComponent(user.email)}&ts=${tokR.ts}&sig=${tokR.sig}`;
-      const _assuntoReg = ehReinscricao ? `Reinscricao apos recusa, ${user.nome}` : `Nova solicitacao de acesso ao Radar, ${user.nome}`;
-      await enviarResend(env2222.RESEND_API_KEY, _assuntoReg, emailRegistroAdmin(user, aUrl, rUrl, env2222), [ADMIN_EMAIL], null, null, env2222);
-    } catch (e) {
-      console.log("[registrar] email admin falhou", e && e.message);
-      try {
-        if (env2222.RADAR_USAGE_EVENTS) env2222.RADAR_USAGE_EVENTS.writeDataPoint({ indexes: [emailLc], blobs: ["registrar_email_admin_erro", emailLc, String(e && e.message || "").slice(0, 96), "POST /", "unknown", "", ""], doubles: [Date.now(), 0, 200] });
-      } catch (_) {
+  try {
+    const tokA = await gerarTokenEmail(env2222, user.email, "aprovar");
+    const tokR = await gerarTokenEmail(env2222, user.email, "rejeitar");
+    const aUrl = `${WORKER_URL}/?action=aprovar_email&email=${encodeURIComponent(user.email)}&ts=${tokA.ts}&sig=${tokA.sig}`;
+    const rUrl = `${WORKER_URL}/?action=rejeitar_email&email=${encodeURIComponent(user.email)}&ts=${tokR.ts}&sig=${tokR.sig}`;
+    const _assuntoReg = ehReinscricao ? `Reinscricao apos recusa, ${user.nome}` : `Nova solicitacao de acesso ao Radar, ${user.nome}`;
+    const _envioReg = await enviarEmailRastreado(env2222, {
+      evento: "registro_novo_admin",
+      destinatario: env2222.ADMIN_EMAIL || ADMIN_EMAIL,
+      assunto: _assuntoReg,
+      html: emailRegistroAdmin(user, aUrl, rUrl, env2222)
+    });
+    if (_envioReg && _envioReg.ok === false) {
+      console.log("[registrar] email admin falhou", _envioReg.erro);
+      if (env2222.RADAR_USAGE_EVENTS) {
+        try {
+          env2222.RADAR_USAGE_EVENTS.writeDataPoint({
+            indexes: [emailLc],
+            blobs: ["registrar_email_admin_erro", emailLc, String(_envioReg.erro || "").slice(0, 96), "POST /", "unknown", "", ""],
+            doubles: [Date.now(), 0, 200]
+          });
+        } catch (_) {
+        }
       }
     }
+  } catch (e) {
+    console.log("[registrar] token/envio admin erro inesperado", e && e.message);
   }
   try {
     await enviarWhatsAppAdmin(env2222, user);
