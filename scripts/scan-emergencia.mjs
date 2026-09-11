@@ -3,15 +3,24 @@
 // O QUE FAZ
 //   Fallback da ingestão de notícias quando a varredura PRINCIPAL (Scheduled
 //   Tasks do Claude Code no PC do operador — `routines/`) não roda. Cobre
-//   SOMENTE os top-15 emissores prioritários, via API da Anthropic com a
-//   ferramenta server-side de web search, e SOMENTE quando o feed está
+//   SOMENTE os top-15 emissores prioritários, via provider de LLM com busca
+//   web server-side (Anthropic ou OpenRouter, ver PROVIDER abaixo), e SOMENTE quando o feed está
 //   desatualizado (staleness já validada pelo workflow antes de chamar este
 //   script). O PC continua sendo a varredura principal (grátis via assinatura);
 //   isto é o paraquedas para os nomes críticos.
 //
+// PROVIDER (CLAUDE-FREE-MIGRATION; ANTHROPIC_API_PAYG = NÃO AUTORIZADO)
+//   VIXRADAR_FALLBACK_PROVIDER = anthropic (padrão, compatibilidade) | openrouter
+//   anthropic  -> ANTHROPIC_API_KEY           (Messages API + web search server-side)
+//   openrouter -> VIXRADAR_OPENROUTER_API_KEY (ou OPENROUTER_API_KEY): POST em
+//                 openrouter.ai com o server tool openrouter:web_search, mesmo
+//                 adapter de scripts/lib/vixradar-openrouter.ps1. Sem claude e sem
+//                 chave Anthropic paga.
+//   Provider desconhecido NÃO cai para anthropic: cair gastaria a chave paga por
+//   engano, que é justamente o que a migração proíbe.
+//
 // SECRETS (lidos do ambiente; nunca hardcode)
-//   ANTHROPIC_API_KEY  — chave da API Anthropic (Messages + web search)
-//   ROUTINE_API_KEY    — auth das rotinas no Worker (campo `routine_key`)
+//   ROUTINE_API_KEY    — auth das rotinas no Worker (campo `routine_key`), sempre exigida
 //   (ADMIN_PASSWORD é usado só no workflow, para o gate de staleness)
 //
 // CONTRATO
@@ -21,13 +30,15 @@
 //   Provedor resultante no Worker: claude-sonnet-routine (sem `_matinal`).
 //
 // FALHA VISIVEL
-//   Sem ANTHROPIC_API_KEY ou ROUTINE_API_KEY -> erro + exit 1; o fallback ausente
-//   precisa ficar visivel no workflow.
+//   Sem a chave do provider ativo, ou provider desconhecido, ou sem
+//   ROUTINE_API_KEY -> erro + exit 1; o fallback ausente precisa ficar visivel no
+//   workflow. Chave do provider INATIVO nao bloqueia: e o que permite rodar sem
+//   chave Anthropic paga quando o caminho ativo nao depende dela.
 //
 // Node 20+ (fetch nativo). Sem dependências npm externas.
 // ---------------------------------------------------------------------------
 
-const API_BASE = "https://api.vixradar.com";
+const API_BASE = process.env.VIXRADAR_API_BASE || "https://api.vixradar.com";
 const ANTHROPIC_URL = "https://api.anthropic.com/v1/messages";
 // Mesmo tier do noturno (Sonnet). ID confirmado via skill claude-api.
 const MODEL = "claude-sonnet-4-6";
@@ -35,6 +46,21 @@ const TOP_N = 15;
 const ANTHROPIC_VERSION = "2023-06-01";
 // Variante com dynamic filtering (suportada em Sonnet 4.6).
 const WEB_SEARCH_TOOL = { type: "web_search_20260209", name: "web_search", max_uses: 12 };
+
+// ── Provider do fallback: unica decisao de qual credencial e exigida ────────
+const PROVIDERS = {
+  anthropic: { chaves: ["ANTHROPIC_API_KEY"] },
+  openrouter: { chaves: ["VIXRADAR_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"] },
+};
+const PROVIDER = (process.env.VIXRADAR_FALLBACK_PROVIDER || "anthropic").trim().toLowerCase();
+
+const OPENROUTER_URL = process.env.VIXRADAR_OPENROUTER_URL || "https://openrouter.ai/api/v1/chat/completions";
+// Mesmo default do adapter das rotinas. ID VERSIONADO de proposito: o slug sem
+// versao e ponteiro movel de upstream (mesma familia do 429 de 07/09/2026).
+const OPENROUTER_MODEL_DEFAULT = "deepseek/deepseek-v4-flash-0731";
+// Server tools: o OpenRouter roda o loop de busca server-side, o que dispensa o
+// tratamento de `pause_turn` que a branch Anthropic precisa.
+const OPENROUTER_TOOLS = [{ type: "openrouter:web_search" }];
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
 const ROUTINE_API_KEY = process.env.ROUTINE_API_KEY;
@@ -45,8 +71,25 @@ function failMissingSecret(msg) {
   process.exit(1);
 }
 
-if (!ANTHROPIC_API_KEY) failMissingSecret("ANTHROPIC_API_KEY ausente nos secrets do repo.");
+function chaveDoProvider(nome) {
+  const def = PROVIDERS[nome];
+  if (!def) return null;
+  for (const envName of def.chaves) {
+    const valor = process.env[envName];
+    if (valor) return { env: envName, valor };
+  }
+  return null;
+}
+
 if (!ROUTINE_API_KEY) failMissingSecret("ROUTINE_API_KEY ausente nos secrets do repo.");
+if (!PROVIDERS[PROVIDER]) {
+  failMissingSecret(`VIXRADAR_FALLBACK_PROVIDER desconhecido: "${PROVIDER}". Valores aceitos: ${Object.keys(PROVIDERS).join(", ")}.`);
+}
+const API_KEY_ATIVA = chaveDoProvider(PROVIDER);
+if (!API_KEY_ATIVA) {
+  failMissingSecret(`provider "${PROVIDER}" ativo e nenhuma chave dele esta presente (${PROVIDERS[PROVIDER].chaves.join(" ou ")}).`);
+}
+console.log(`provider de analise: ${PROVIDER} (chave ${API_KEY_ATIVA.env})`);
 
 // ── Chamada ao Worker (endpoints das rotinas, auth via routine_key) ──────────
 async function worker(action, extra = {}) {
@@ -128,7 +171,7 @@ function extrairResultado(message) {
 }
 
 // ── Chamada à API Anthropic com web search (adaptive thinking, sem stream) ───
-async function analisarEmissor(empresa, setor, janelaInicio, janelaFim) {
+async function analisarEmissorAnthropic(empresa, setor, janelaInicio, janelaFim) {
   const system = buildSystemPrompt(janelaInicio, janelaFim);
   const userMsg = `Emissor: ${empresa} (setor: ${setor}). Execute as 9 rodadas de web search para a janela ${janelaInicio}..${janelaFim} e devolva o objeto JSON canônico do campo "resultado". Preencha "empresa" com "${empresa}".`;
 
@@ -187,26 +230,97 @@ async function analisarEmissor(empresa, setor, janelaInicio, janelaFim) {
   return extrairResultado(msg);
 }
 
+// ── Chamada ao OpenRouter (server tool openrouter:web_search) ────────────────
+// Mesmo contrato de saida da branch Anthropic: o objeto sai por `extrairResultado`,
+// entao o parser de JSON e o schema do campo `resultado` continuam sendo um so. O
+// loop de busca roda server-side, o que dispensa o tratamento de `pause_turn`.
+// A chave vem de API_KEY_ATIVA e nunca entra em log, URL ou mensagem de erro.
+async function analisarEmissorOpenRouter(empresa, setor, janelaInicio, janelaFim) {
+  const system = buildSystemPrompt(janelaInicio, janelaFim);
+  const userMsg = `Emissor: ${empresa} (setor: ${setor}). Execute as 9 rodadas de web search para a janela ${janelaInicio}..${janelaFim} e devolva o objeto JSON canônico do campo "resultado". Preencha "empresa" com "${empresa}".`;
+
+  const resp = await fetch(OPENROUTER_URL, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      authorization: `Bearer ${API_KEY_ATIVA.valor}`,
+    },
+    body: JSON.stringify({
+      model: process.env.VIXRADAR_OPENROUTER_MODEL || OPENROUTER_MODEL_DEFAULT,
+      max_tokens: 8000,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: userMsg },
+      ],
+      tools: OPENROUTER_TOOLS,
+      // OR429-FIX: reativa o failover nativo entre providers do mesmo modelo.
+      allow_fallbacks: true,
+    }),
+  });
+
+  const text = await resp.text();
+  if (!resp.ok) throw new Error(`OpenRouter HTTP ${resp.status}: ${text.slice(0, 300)}`);
+  let json;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`OpenRouter: resposta não-JSON: ${text.slice(0, 200)}`);
+  }
+
+  const escolha = (json.choices && json.choices[0]) || {};
+  if (escolha.finish_reason === "content_filter") {
+    throw new Error("OpenRouter recusou a requisição (finish_reason: content_filter).");
+  }
+  const conteudo = escolha.message && escolha.message.content;
+  // Normaliza para o formato de blocos que `extrairResultado` ja consome.
+  const texto = typeof conteudo === "string" ? conteudo : JSON.stringify(conteudo || "");
+  return extrairResultado({ content: [{ type: "text", text: texto }] });
+}
+
+// ── Despacho por provider (nome mantido: o call site nao muda) ───────────────
+async function analisarEmissor(empresa, setor, janelaInicio, janelaFim) {
+  if (PROVIDER === "openrouter") {
+    return analisarEmissorOpenRouter(empresa, setor, janelaInicio, janelaFim);
+  }
+  return analisarEmissorAnthropic(empresa, setor, janelaInicio, janelaFim);
+}
+
 // ── Fluxo principal ──────────────────────────────────────────────────────────
 async function main() {
   console.log(`=== Varredura de emergência (Opção B) — top ${TOP_N} emissores ===`);
 
   const lista = await worker("listar_emissores_prioritarios", { top_n: TOP_N });
   const emissores = Array.isArray(lista.emissores) ? lista.emissores : [];
+  const semSetor = Array.isArray(lista.sem_setor) ? lista.sem_setor : [];
+  if (semSetor.length > 0) {
+    console.log(`::warning::${semSetor.length} emissor(es) prioritario(s) sem setor canonico em SETOR_DE_EMPRESA e nao enviados: ${semSetor.join(", ")}`);
+  }
   if (emissores.length === 0) {
+    if (semSetor.length > 0) {
+      console.log("::error::Fallback sem emissores com setor canonico em SETOR_DE_EMPRESA; nada executado.");
+      process.exitCode = 1;
+      return;
+    }
     console.log("::warning::Nenhum emissor prioritário retornado. Nada a fazer.");
-    process.exit(0);
+    process.exitCode = 0;
+    return;
   }
   console.log(`Emissores prioritários: ${emissores.length} (de ${lista.total ?? "?"})`);
 
   let processados = 0;
   let eventosTotais = 0;
-  let falhas = 0;
+  let falhas = semSetor.length;
 
   for (const emissor of emissores) {
-    const empresa = emissor.nome;
-    const setor = emissor.setor || "";
+    const empresa = emissor.empresa;
+    const setor = emissor.setor;
     try {
+      // SCANFALLBACK-MORTO1: contrato real de `listar_emissores_prioritarios` usa
+      // `empresa`, nao `nome`; `setor` vem do mapa SETOR_DE_EMPRESA do Worker. Se
+      // qualquer um faltar, falha visivel em vez de repetir o HTTP 400 de 08/09.
+      if (!empresa || !setor) {
+        throw new Error("listar_emissores_prioritarios devolveu emissor sem empresa/setor");
+      }
       const dados = await worker("dados_para_analise", { empresa, setor });
       const janelaInicio = dados.janela_inicio;
       const janelaFim = dados.janela_fim;
@@ -230,16 +344,17 @@ async function main() {
   }
 
   console.log("=== Resumo ===");
-  console.log(`Processados: ${processados}/${emissores.length} | eventos somados: ${eventosTotais} | falhas: ${falhas}`);
+  console.log(`Processados: ${processados}/${emissores.length + semSetor.length} | eventos somados: ${eventosTotais} | falhas: ${falhas}`);
   if (falhas > 0) {
     console.log(`::error::Fallback incompleto: ${falhas} emissor(es) falharam.`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
-  process.exit(0);
+  process.exitCode = 0;
 }
 
 main().catch((e) => {
   console.log(`::error::Erro fatal no scan de emergência: ${e.message}`);
   // Falha real (ex.: Worker fora do ar) — sinaliza para o operador.
-  process.exit(1);
+  process.exitCode = 1;
 });

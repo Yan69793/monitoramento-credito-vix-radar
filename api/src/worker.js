@@ -11444,10 +11444,25 @@ async function selecionarEmissoresPrioritarios(env2222, topN, opts) {
     selecionados = _topo;
     _extras = _decl;
   }
-  selecionados._extras_setor = _extras;
-  return selecionados;
-}
-var ROTINA_EWS_FULL = 50;
+    selecionados._extras_setor = _extras;
+    return selecionados;
+  }
+  function _listarPrioritariosComSetor(prioritarios) {
+    var emissores = [];
+    var semSetor = [];
+    for (var i = 0; i < prioritarios.length; i++) {
+      var item = prioritarios[i];
+      var empresa = item && item.empresa;
+      var setor = empresa && SETOR_DE_EMPRESA[empresa];
+      if (!empresa || !setor) {
+        semSetor.push(empresa || "(sem empresa)");
+        continue;
+      }
+      emissores.push(Object.assign({}, item, { setor: setor }));
+    }
+    return { emissores: emissores, sem_setor: semSetor };
+  }
+  var ROTINA_EWS_FULL = 50;
 var ROTINA_EWS_LIGHT = 30;
 var ROTINA_STALE_FULL_H = 120;
 var ROTINA_STALE_LIGHT_H = 48;
@@ -21042,9 +21057,10 @@ async function __coreFetch(request, env2222, ctx) {
     }
     if (body.action === "listar_emissores_prioritarios") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
-      var _topN = body.top_n ? Number(body.top_n) : 30;
-      var _prioritarios = await selecionarEmissoresPrioritarios(env2222, _topN, { estrito: body.top_n_estrito === true });
-      return resp({ ok: true, total: _prioritarios.length, top_n_solicitado: _topN, extras_setor: _prioritarios._extras_setor || [], emissores: _prioritarios }, 200, request);
+        var _topN = body.top_n ? Number(body.top_n) : 30;
+        var _prioritarios = await selecionarEmissoresPrioritarios(env2222, _topN, { estrito: body.top_n_estrito === true });
+        var _prioritariosComSetor = _listarPrioritariosComSetor(_prioritarios);
+        return resp({ ok: true, total: _prioritarios.length, top_n_solicitado: _topN, extras_setor: _prioritarios._extras_setor || [], emissores: _prioritariosComSetor.emissores, sem_setor: _prioritariosComSetor.sem_setor }, 200, request);
     }
     if (body.action === "listar_plano_rotina") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
@@ -22691,6 +22707,7 @@ export {
   dataCustoBRT,
   carregarEstadoMultiSemana,
   SETOR_DE_EMPRESA,
+  _listarPrioritariosComSetor,
   normalizarMojibake,
   enriquecerEvento,
   MATERIALIDADE_POR_TAG,

@@ -29,18 +29,40 @@ jobs:
       - name: Pre-check de secrets (fallback desarmado vira falha)
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VIXRADAR_OPENROUTER_API_KEY: ${{ secrets.VIXRADAR_OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ROUTINE_API_KEY: ${{ secrets.ROUTINE_API_KEY }}
+          VIXRADAR_FALLBACK_PROVIDER: ${{ vars.VIXRADAR_FALLBACK_PROVIDER || 'anthropic' }}
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
-            echo "::error::ANTHROPIC_API_KEY ausente nos secrets do repo. Fallback de emergencia desarmado."
-            exit 1
-          fi
           if [[ -z "${ROUTINE_API_KEY:-}" ]]; then
             echo "::error::ROUTINE_API_KEY ausente nos secrets do repo. Fallback de emergencia desarmado."
             exit 1
           fi
+          # Provider-aware: exige a chave do provider ATIVO, nunca a de um provider inativo.
+          # ANTHROPIC_API_PAYG = NAO AUTORIZADO: com vars.VIXRADAR_FALLBACK_PROVIDER=openrouter
+          # o fallback roda sem chave Anthropic paga.
+          provider="${VIXRADAR_FALLBACK_PROVIDER:-anthropic}"
+          case "$provider" in
+            anthropic)
+              if [[ -z "${ANTHROPIC_API_KEY:-}" ]]; then
+                echo "::error::provider anthropic ativo e ANTHROPIC_API_KEY ausente nos secrets. Fallback de emergencia desarmado. Configure vars.VIXRADAR_FALLBACK_PROVIDER=openrouter para nao depender de chave Anthropic paga."
+                exit 1
+              fi
+              ;;
+            openrouter)
+              if [[ -z "${VIXRADAR_OPENROUTER_API_KEY:-}" && -z "${OPENROUTER_API_KEY:-}" ]]; then
+                echo "::error::provider openrouter ativo e nenhuma chave OpenRouter presente (VIXRADAR_OPENROUTER_API_KEY ou OPENROUTER_API_KEY). Fallback de emergencia desarmado."
+                exit 1
+              fi
+              ;;
+            *)
+              echo "::error::VIXRADAR_FALLBACK_PROVIDER desconhecido: '$provider'. Aceitos: anthropic, openrouter."
+              exit 1
+              ;;
+          esac
+          echo "Pre-check ok: provider=$provider"
 
       - name: Gate de staleness
         id: gate
@@ -83,5 +105,8 @@ jobs:
         if: steps.gate.outputs.prosseguir == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          VIXRADAR_OPENROUTER_API_KEY: ${{ secrets.VIXRADAR_OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ROUTINE_API_KEY: ${{ secrets.ROUTINE_API_KEY }}
+          VIXRADAR_FALLBACK_PROVIDER: ${{ vars.VIXRADAR_FALLBACK_PROVIDER || 'anthropic' }}
         run: node scripts/scan-emergencia.mjs
