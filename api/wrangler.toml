@@ -4,6 +4,12 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.245.js = v4.9.244 + QUARENTENACOB1, EMAILSILENT1 e SCANFALLBACK-MORTO1:
+#   a consulta de quarentena CVM pagina ate cobrir o conjunto completo; o envio de
+#   email em lote preserva os sucessos e torna falha parcial observavel; o contrato
+#   de emissores prioritarios do Scan devolve setor e marca ausencia como sem_setor.
+#   Testes: cvm-atribuicao, email-lote-misto e scan-emergencia-contrato.
+#   Rollback: main = "v4.9.244.js".
 # v4.9.244.js = v4.9.243 + BUSCADEGRADADA1: varredura com busca web degradada deixa de
 #   certificar "sem fato novo". Lote noturno de 08/09 esgotou max_total_results no POST
 #   unico (2 buscas OK, 23 esgotadas); o regex do motor contava "sem resultados - limite de
