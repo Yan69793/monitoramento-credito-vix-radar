@@ -5,17 +5,28 @@ param(
     [switch]$Global
 )
 
-$ErrorActionPreference = 'SilentlyContinue'
+$ErrorActionPreference = 'Continue'
+$script:SkillIndexHadErrors = $false
 
 function Get-SkillEntry {
     param([string]$SkillDir)
 
     $skillMd = Join-Path $SkillDir 'SKILL.md'
-    if (-not (Test-Path $skillMd)) { return $null }
+    if (-not (Test-Path -LiteralPath $skillMd -PathType Leaf)) {
+        return $null
+    }
 
-    $raw = Get-Content $skillMd -Raw -Encoding UTF8
-    $name = Split-Path $SkillDir -Leaf
-    $desc = '(sem description)'
+    try {
+        $raw = Get-Content -LiteralPath $skillMd -Raw -Encoding UTF8 -ErrorAction Stop
+        $name = Split-Path $SkillDir -Leaf
+        $desc = '(sem description)'
+        $sizeKB = [math]::Round((Get-Item -LiteralPath $skillMd -ErrorAction Stop).Length / 1KB, 1)
+    }
+    catch {
+        $script:SkillIndexHadErrors = $true
+        Write-Warning ("Falha ao ler skill '{0}': {1}" -f $skillMd, $_.Exception.Message)
+        return $null
+    }
 
     if ($raw -match '(?ms)^---\s*\r?\n(.*?)\r?\n---') {
         $fm = $Matches[1]
@@ -32,7 +43,7 @@ function Get-SkillEntry {
 
     [PSCustomObject]@{
         Name = $name
-        SizeKB = [math]::Round((Get-Item $skillMd).Length / 1KB, 1)
+        SizeKB = $sizeKB
         Description = $desc
     }
 }
@@ -42,9 +53,18 @@ function Show-SkillsBlock {
 
     if (-not (Test-Path $Root)) { return }
 
-    $entries = Get-ChildItem $Root -Directory | ForEach-Object {
+    try {
+        $skillDirs = @(Get-ChildItem -LiteralPath $Root -Directory -ErrorAction Stop)
+    }
+    catch {
+        $script:SkillIndexHadErrors = $true
+        Write-Warning ("Falha ao enumerar skills em '{0}': {1}" -f $Root, $_.Exception.Message)
+        return
+    }
+
+    $entries = @($skillDirs | ForEach-Object {
         Get-SkillEntry -SkillDir $_.FullName
-    } | Where-Object { $_ -ne $null } | Sort-Object Name
+    } | Where-Object { $_ -ne $null } | Sort-Object Name)
 
     if ($entries.Count -eq 0) { return }
 
@@ -56,7 +76,7 @@ function Show-SkillsBlock {
 }
 
 $projectRoot = Split-Path $PSScriptRoot -Parent
-$projectSkills = Join-Path $projectRoot '.claude' 'skills'
+$projectSkills = Join-Path (Join-Path $projectRoot '.claude') 'skills'
 
 Show-SkillsBlock -Root $projectSkills -Label 'Projeto VIX Radar'
 
@@ -68,3 +88,8 @@ if ($Global) {
 Write-Host ""
 Write-Host "Router: .claude/SKILLS-ROUTER.md"
 Write-Host "Dica: sem -Global = so projeto (~2k tokens). Com -Global = catalogo completo."
+
+if ($script:SkillIndexHadErrors) {
+    Write-Error 'Indice de skills incompleto. Corrija os avisos acima.'
+    exit 1
+}

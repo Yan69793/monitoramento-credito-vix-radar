@@ -1,0 +1,61 @@
+{
+  "$schema": "https://app.kilo.ai/config.json",
+  "default_agent": "code",
+  "instructions": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".claude/SKILLS-ROUTER.md"
+  ],
+  "skills": {
+    "paths": [
+      "./.claude/skills"
+    ]
+  },
+  "permission": {
+    "bash": {
+      "git diff *": "allow",
+      "git status *": "allow",
+      "git log *": "allow",
+      "git show *": "allow",
+      "git rev-parse *": "allow",
+      "git ls-files *": "allow",
+      "git branch *": "allow",
+      "git -C *": "allow",
+      "git cat-file *": "allow",
+      "git diff-tree *": "allow",
+      "git merge-base *": "allow",
+      "git worktree *": "allow",
+      "git stash list *": "allow",
+      "Test-Path *": "allow",
+      "Get-Content *": "allow",
+      "Get-ChildItem *": "allow",
+      "Select-String *": "allow",
+      "Select-Object *": "allow",
+      "ForEach-Object *": "allow",
+      "Measure-Object *": "allow",
+      "node *": "allow",
+      "npx *": "allow",
+      "pwsh *": "allow",
+      "echo *": "allow",
+      "ls *": "allow",
+      "head *": "allow",
+      "tail *": "allow",
+      "cat *": "allow",
+      "wc *": "allow",
+      "grep *": "allow",
+      "rg *": "allow",
+      "python3 *": "allow",
+      "test *": "allow",
+      "command *": "allow",
+      "e *": "allow",
+      "f *": "allow",
+      "l *": "allow",
+      "wt *": "allow",
+      "wt.split *": "allow",
+      "const *": "allow",
+      "console.log *": "allow",
+      " *": "allow",
+      ".claude/skills/ *": "allow"
+    }
+  }
+}
