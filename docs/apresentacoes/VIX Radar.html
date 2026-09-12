@@ -1,0 +1,1692 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VIX Radar — Inteligência de Crédito Privado | Szuchmacher Consultoria</title>
+<meta name="description" content="VIX Radar: inteligência de crédito privado com IA. Monitoramento contínuo de 104 emissores de renda fixa no Brasil, classificação automática de eventos e verificação adversarial.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════════════════════════════════════════
+   VIX RADAR — APRESENTAÇÃO INSTITUCIONAL (peça comercial / filme)
+   Estética: Editorial Financeira / Dark Luxury · Setembro 2026
+   Arquitetura narrativa: O AGORA → O QUE PODE SER → PROVA → AÇÃO
+   ═══════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+:root {
+  --bg:        #070B13;
+  --bg-card:   #0D1524;
+  --bg-card2:  #101B2E;
+  --bg-subtle: #0F1830;
+  --gold:      #C4985A;
+  --gold-soft: #D8B47F;
+  --gold-dim:  #8A6A38;
+  --gold-glow: rgba(196,152,90,0.16);
+  --copper:    #B87333;
+  --navy:      #0A1628;
+  --cream:     #F1ECE1;
+  --text:      #DCD5C8;
+  --text-dim:  #8B99AA;
+  --text-mute: #55647A;
+  --border:    #1B2940;
+  --border-2:  #23344F;
+  --red:       #E85454;
+  --amber:     #E8A33D;
+  --green:     #3ECF8E;
+  --blue:      #5B8DEF;
+  --serif: 'Playfair Display', Georgia, serif;
+  --sans:  'DM Sans', -apple-system, sans-serif;
+  --mono:  'JetBrains Mono', ui-monospace, monospace;
+}
+
+html { font-size: 16px; scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection { background: rgba(196,152,90,.35); color: #fff; }
+
+.deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+
+/* ── Slides ─────────────────────────────────────────────── */
+.slide {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  justify-content: center; align-items: center;
+  padding: 54px 72px 96px;
+  opacity: 0; transform: translateY(22px) scale(.995);
+  transition: opacity .85s cubic-bezier(.22,1,.36,1), transform .85s cubic-bezier(.22,1,.36,1);
+  pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.slide.active { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; z-index: 10; }
+
+.wrap {
+  position: relative; z-index: 2;
+  display: flex; flex-direction: column; gap: 15px;
+  width: min(1120px, 100%);
+}
+.wrap-center { align-items: center; text-align: center; }
+.wrap > .kicker { align-self: flex-start; }
+
+/* Planos de fundo */
+.bg-marble::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 72% 52% at 18% 62%, rgba(184,115,51,0.13) 0%, transparent 52%),
+    radial-gradient(ellipse 52% 62% at 82% 28%, rgba(196,152,90,0.09) 0%, transparent 52%),
+    radial-gradient(ellipse 92% 42% at 50% 96%, rgba(184,115,51,0.07) 0%, transparent 50%),
+    linear-gradient(135deg, transparent 30%, rgba(184,115,51,0.035) 31%, transparent 32%, transparent 60%, rgba(184,115,51,0.045) 61%, transparent 62%);
+}
+.bg-grid::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background-image: linear-gradient(rgba(196,152,90,0.045) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(196,152,90,0.045) 1px, transparent 1px);
+  background-size: 62px 62px;
+  mask-image: radial-gradient(ellipse 90% 80% at 50% 45%, #000 30%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 80% at 50% 45%, #000 30%, transparent 78%);
+}
+.bg-glow::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background: radial-gradient(ellipse 62% 52% at 50% 50%, rgba(196,152,90,0.10) 0%, transparent 70%);
+}
+.bg-accent-left::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background: linear-gradient(90deg, rgba(196,152,90,0.07) 0%, transparent 34%);
+}
+.bg-cold::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background: radial-gradient(ellipse 60% 45% at 50% 42%, rgba(232,84,84,0.06) 0%, transparent 68%);
+}
+.bg-deep::before {
+  content:""; position:absolute; inset:0; z-index:0; pointer-events:none;
+  background: radial-gradient(ellipse 55% 45% at 50% 55%, rgba(91,141,239,0.05) 0%, transparent 70%);
+}
+
+/* Grão sutil */
+.deck::after {
+  content:""; position:fixed; inset:0; z-index:9000; pointer-events:none; opacity:0.028;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── Tipografia ─────────────────────────────────────────── */
+.t-hero {
+  font-family: var(--serif); font-size: clamp(2.6rem, 6.6vw, 5.2rem);
+  font-weight: 700; line-height: 1.02; letter-spacing: -0.01em; color: var(--cream);
+}
+.t-title {
+  font-family: var(--serif); font-size: clamp(1.7rem, 3.5vw, 2.7rem);
+  font-weight: 600; line-height: 1.14; color: var(--cream); letter-spacing: -0.005em;
+}
+.t-subtitle {
+  font-family: var(--sans); font-size: clamp(0.9rem, 1.55vw, 1.06rem);
+  font-weight: 300; line-height: 1.68; color: var(--text-dim); max-width: 700px;
+}
+.t-label {
+  font-family: var(--sans); font-size: .72rem; font-weight: 600;
+  letter-spacing: .22em; text-transform: uppercase; color: var(--gold);
+}
+.t-number {
+  font-family: var(--serif); font-size: clamp(2rem, 4.2vw, 3.2rem);
+  font-weight: 700; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums;
+}
+.t-body {
+  font-family: var(--sans); font-size: clamp(.86rem, 1.32vw, .99rem);
+  font-weight: 400; line-height: 1.72; color: var(--text); max-width: 680px;
+}
+.t-mute { color: var(--text-dim); }
+.t-small { font-family: var(--mono); font-size: .68rem; color: var(--text-mute); letter-spacing: .02em; }
+
+/* Declarações grandes (kinetic type: uma ideia por vez) */
+.stmt {
+  font-family: var(--serif); font-size: clamp(1.65rem, 3.3vw, 2.7rem);
+  font-weight: 600; line-height: 1.16; color: var(--cream); letter-spacing: -.003em;
+  max-width: 900px;
+}
+.stmt .w { display:inline-block; }
+.stmt-accent { color: var(--gold-soft); }
+
+.kicker {
+  display:inline-flex; align-items:center; gap:10px;
+  font-family: var(--mono); font-size: .68rem; font-weight:500;
+  letter-spacing: .24em; text-transform: uppercase; color: var(--gold-soft);
+  border:1px solid var(--border-2); border-radius: 2px;
+  background: rgba(196,152,90,.05);
+  padding: 6px 14px 6px 16px; white-space: nowrap;
+}
+.kicker::before { content:""; width:14px; height:1px; background: var(--gold-dim); }
+
+.gold-line { width: 64px; height: 2px; background: linear-gradient(90deg, var(--gold), transparent); margin: 6px 0; }
+.gold-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); display: inline-block; flex: 0 0 auto; }
+
+/* ── Componentes ────────────────────────────────────────── */
+.tag {
+  display: inline-block; padding: 4px 13px; border: 1px solid var(--border-2);
+  border-radius: 2px; font-family: var(--mono); font-size: .7rem; font-weight:400;
+  color: var(--text-dim); letter-spacing: .05em; white-space: nowrap;
+}
+.tag-gold { border-color: rgba(196,152,90,.5); color: var(--gold-soft); background: rgba(196,152,90,.05); }
+
+.card {
+  background: linear-gradient(180deg, rgba(196,152,90,.022) 0%, transparent 40%), var(--bg-card);
+  border: 1px solid var(--border); border-radius: 4px; padding: 26px 28px;
+  transition: border-color .35s, transform .35s;
+}
+.card:hover { border-color: rgba(196,152,90,.32); }
+.metric-card {
+  background: linear-gradient(180deg, rgba(196,152,90,.04) 0%, transparent 55%), var(--bg-card);
+  border: 1px solid var(--border); border-radius: 4px;
+  padding: 22px 20px; text-align: center; min-width: 150px;
+}
+.metric-card .t-number { display:block; margin-bottom: 9px; }
+
+.two-col { display:grid; grid-template-columns: 1.05fr .95fr; gap: 46px; width:100%; max-width:1140px; align-items: center; }
+.three-col { display:grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width:100%; max-width:1080px; }
+.four-col { display:grid; grid-template-columns: repeat(4, 1fr); gap: 18px; width:100%; max-width:1080px; }
+.cards-grid { display:grid; grid-template-columns: 1fr 1fr; gap: 16px; width: 100%; }
+
+/* Revelação por cena */
+.rv { opacity: 0; transform: translateY(16px); transition: opacity .7s cubic-bezier(.22,1,.36,1), transform .7s cubic-bezier(.22,1,.36,1); }
+.slide.active .rv { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: .10s; } .d2 { transition-delay: .22s; } .d3 { transition-delay: .34s; }
+.d4 { transition-delay: .46s; } .d5 { transition-delay: .58s; } .d6 { transition-delay: .70s; }
+.d7 { transition-delay: .82s; } .d8 { transition-delay: .96s; } .d9 { transition-delay: 1.10s; }
+.d10{ transition-delay: 1.24s; }
+
+/* ── Arte do radar ──────────────────────────────────────── */
+.radar-slot { position:absolute; z-index:1; width:min(54vw, 620px); aspect-ratio:1/1; pointer-events:none; opacity:.42; }
+.radar-slot.pos-center { left:50%; top:56%; transform: translate(-50%,-50%); opacity:.36; }
+.radar-slot.pos-left  { left:-6%;  top:58%; transform: translateY(-50%); opacity:.5; }
+.radar-slot.pos-right { right:-6%; top:56%; transform: translateY(-50%); opacity:.5; }
+.radar-slot.faint { opacity:.2; }
+.radar-svg { width:100%; height:100%; overflow:visible; }
+.radar-svg .ring { fill:none; stroke: rgba(196,152,90,.32); stroke-width:1; }
+.radar-svg .ring-soft { fill:none; stroke: rgba(196,152,90,.16); stroke-width:1; }
+.radar-svg .axis { stroke: rgba(196,152,90,.10); stroke-width:1; }
+.radar-svg .center { fill: var(--gold); opacity:.85; }
+.radar-svg .rsweep { animation: sweep 9s linear infinite; transform-origin:200px 200px; transform-box: view-box; }
+.radar-svg .sweepline { stroke: rgba(196,152,90,.55); stroke-width:1.4; }
+.radar-svg .rblip { fill: var(--gold-soft); opacity:0; animation: blip 6.5s ease-in-out infinite; }
+.radar-svg .rblip::after { }
+@keyframes sweep { to { transform: rotate(360deg); } }
+@keyframes blip { 0%{opacity:0} 3%{opacity:.95} 12%{opacity:.25} 100%{opacity:0} }
+
+/* ── Layouts de conteúdo ────────────────────────────────── */
+.flow { display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center; }
+.flow-box {
+  background: linear-gradient(180deg, rgba(196,152,90,.03), transparent 60%), var(--bg-card);
+  border:1px solid var(--border-2); border-radius:4px; padding: 14px 22px;
+  font-size: .84rem; color: var(--text); text-align:center; min-width: 136px;
+}
+.flow-arrow { color: var(--gold); font-size: 1.15rem; opacity:.65; animation: arrowPulse 2.6s ease-in-out infinite; }
+@keyframes arrowPulse { 0%,100%{opacity:.35; transform:translateX(0)} 50%{opacity:.9; transform:translateX(4px)} }
+
+.lvl {
+  display:flex; align-items:center; gap:18px; width:100%;
+  background: linear-gradient(180deg, rgba(196,152,90,.02), transparent 70%), var(--bg-card);
+  border:1px solid var(--border); border-left-width:3px; border-radius:4px;
+  padding: 13px 20px; transition: border-color .3s;
+}
+.lvl:hover { border-color: rgba(196,152,90,.3); }
+.lvl .lvl-name { font-family: var(--mono); font-weight:600; font-size:.82rem; letter-spacing:.08em; min-width: 108px; white-space:nowrap; }
+.lvl .lvl-desc { font-size:.82rem; color: var(--text-dim); flex:1; line-height:1.5; }
+.lvl .lvl-tag { font-family: var(--mono); font-size:.62rem; color: var(--text-mute); white-space:nowrap; letter-spacing:.04em; }
+
+.eixo { display:flex; align-items:baseline; gap:16px; padding: 9px 2px; border-bottom: 1px solid rgba(27,41,64,.7); }
+.eixo:last-child { border-bottom: 0; }
+.eixo .n { font-family: var(--serif); font-size: 1.5rem; font-weight:700; color: var(--gold); min-width: 46px; }
+.eixo .t { font-size:.9rem; color: var(--text); }
+.eixo .m { font-family: var(--mono); font-size:.6rem; color: var(--text-mute); letter-spacing:.1em; margin-left:auto; white-space:nowrap; }
+
+.gauge { display:flex; height: 12px; border-radius: 6px; overflow:hidden; width:100%; max-width: 560px; background: rgba(255,255,255,.03); }
+.gauge-green { flex: 40; background: var(--green); }
+.gauge-amber { flex: 30; background: var(--amber); }
+.gauge-red   { flex: 30; background: var(--red); }
+.gauge-labels { display:flex; justify-content:space-between; width:100%; max-width:560px; font-family: var(--mono); font-size:.64rem; margin-top:9px; letter-spacing:.03em; }
+.gauge-labels span { display:flex; align-items:center; gap:7px; }
+.gauge-labels i { width:7px; height:7px; border-radius:50%; display:inline-block; }
+
+.skl { display:flex; flex-direction:column; gap:9px; }
+.skl-row { height: 20px; border-radius: 2px; background: linear-gradient(90deg, rgba(196,152,90,.34), rgba(196,152,90,.10)); border:1px solid rgba(196,152,90,.18); position:relative; overflow:hidden; }
+.skl-row::after { content:""; position:absolute; inset:0; background: linear-gradient(90deg, transparent, rgba(255,255,255,.05), transparent); transform: translateX(-100%); animation: shimmer 3.2s ease-in-out infinite; }
+.skl-1 { width:96%; } .skl-2 { width:80%; } .skl-3 { width:64%; } .skl-4 { width:48%; } .skl-5 { width:34%; }
+@keyframes shimmer { 60%,100% { transform: translateX(100%);} }
+
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { font-family: var(--mono); font-size:.64rem; letter-spacing:.05em; color: var(--text-dim); border:1px solid var(--border-2); border-radius: 20px; padding: 5px 13px; background: rgba(13,21,36,.6); }
+.chip-hl { color: var(--gold-soft); border-color: rgba(196,152,90,.4); }
+
+.timeline { display:flex; flex-direction:column; gap: 11px; }
+.timeline-item { padding: 13px 20px 13px 18px; border-left: 2px solid var(--border-2); transition: border-color .3s; background: linear-gradient(90deg, rgba(13,21,36,.6), transparent 85%); }
+.timeline-item:hover { border-left-color: var(--gold); }
+
+.sector-grid { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; max-width: 940px; }
+.sector-pill { padding: 6px 15px; border:1px solid var(--border-2); border-radius:20px; font-size:.76rem; color: var(--text-dim); display:flex; align-items:center; gap:9px; background: rgba(13,21,36,.55); }
+.dot { width:8px; height:8px; border-radius:50%; }
+
+.arch-layer { display:flex; align-items:center; gap:18px; padding: 14px 22px; background: linear-gradient(180deg, rgba(196,152,90,.02), transparent 65%), var(--bg-card); border:1px solid var(--border); border-radius:4px; }
+.arch-layer .icon { font-size:1.25rem; min-width: 34px; text-align:center; }
+.arch-layer .at { font-family: var(--mono); font-size:.7rem; color: var(--gold); letter-spacing:.12em; margin-bottom:3px; }
+
+.quote {
+  padding: 14px 22px; border-left: 2px solid var(--gold); border-radius: 0 4px 4px 0;
+  font-family: var(--serif); font-style: italic; font-size: .94rem; line-height: 1.6; color: var(--text-dim);
+  background: linear-gradient(90deg, rgba(196,152,90,.06), transparent 90%);
+}
+.quote strong { font-weight:600; color: var(--gold-soft); }
+
+.list-check { list-style:none; display:flex; flex-direction:column; gap:8px; }
+.list-check li { position:relative; padding-left: 27px; font-size:.88rem; color: var(--text); line-height:1.5; }
+.list-check li::before { content:"✓"; position:absolute; left:0; top:0; color: var(--gold-soft); font-size:.8rem; }
+
+.case-badge {
+  font-family: var(--mono); font-size:.66rem; letter-spacing:.06em;
+  color: var(--gold-soft); border:1px solid rgba(196,152,90,.35);
+  padding: 3px 10px; border-radius: 2px; white-space: nowrap;
+  background: rgba(196,152,90,.06);
+}
+
+/* Carimbo (S.T.A.R.) */
+.stamp {
+  display:inline-flex; align-items:center; gap:10px;
+  font-family: var(--mono); font-size:.74rem; font-weight:600; letter-spacing:.14em;
+  color: var(--gold-soft); border:2px solid rgba(196,152,90,.75); border-radius:3px;
+  padding: 9px 18px; background: rgba(196,152,90,.08);
+  opacity:0; transform: scale(1.5) rotate(-3deg);
+  transition: opacity .5s ease .35s, transform .6s cubic-bezier(.2,1.4,.4,1) .35s;
+}
+.slide.active .stamp { opacity:1; transform: scale(1) rotate(-2deg); }
+
+/* Botões / CTA */
+.btn {
+  display:inline-flex; align-items:center; justify-content:center; gap:12px;
+  font-family: var(--mono); font-size:.78rem; font-weight:500; letter-spacing:.1em;
+  text-transform: uppercase; text-decoration:none; cursor:pointer;
+  padding: 15px 30px; border-radius: 3px; border: 1px solid transparent;
+  transition: all .3s cubic-bezier(.22,1,.36,1);
+}
+.btn-gold { background: linear-gradient(135deg, #D8B47F 0%, #C4985A 55%, #A07B3F 100%); color: #10141c; box-shadow: 0 6px 24px rgba(196,152,90,.28), inset 0 1px 0 rgba(255,255,255,.25); }
+.btn-gold:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(196,152,90,.4); }
+.btn-ghost { border-color: rgba(196,152,90,.55); color: var(--gold-soft); background: rgba(196,152,90,.05); }
+.btn-ghost:hover { background: rgba(196,152,90,.13); transform: translateY(-2px); }
+.btn-sm { padding: 9px 16px; font-size: .68rem; }
+
+.cta-card {
+  display:flex; align-items:center; gap:18px; text-decoration:none;
+  background: var(--bg-card); border:1px solid var(--border-2); border-radius:4px;
+  padding: 20px 26px; min-width: 330px; transition: all .3s;
+}
+.cta-card:hover { border-color: var(--gold); transform: translateY(-2px); box-shadow: 0 12px 34px rgba(0,0,0,.35); }
+.cta-card .cta-t { font-family: var(--mono); font-size:.78rem; letter-spacing:.14em; color: var(--gold-soft); text-transform: uppercase; }
+.cta-card .cta-s { font-size:.84rem; color: var(--text-dim); margin-top:5px; word-break: break-all; }
+
+/* ── Moldura de cena / rodapés ──────────────────────────── */
+.deep-tag {
+  position:absolute; top: 34px; right: 60px; z-index:3;
+  font-family: var(--mono); font-size:.62rem; letter-spacing:.16em; color: var(--text-mute);
+  border:1px solid var(--border); border-radius:2px; padding: 4px 10px; background: rgba(7,11,19,.55);
+}
+.watermark {
+  position:absolute; bottom: 84px; right: 54px; z-index:3;
+  font-family: var(--mono); font-size:.6rem; color: var(--text-mute); opacity:.55; letter-spacing:.08em;
+}
+.scene-mark {
+  position:absolute; bottom: 84px; left: 54px; z-index:3;
+  font-family: var(--serif); font-style: italic; font-size:.8rem; color: var(--gold-dim);
+  opacity:.85;
+}
+
+/* ── Navegação ──────────────────────────────────────────── */
+.topbar { position: fixed; top:0; left:0; right:0; height:2px; z-index: 8000; background: rgba(255,255,255,.04); }
+.topbar-fill { height:100%; width:0%; background: linear-gradient(90deg, var(--gold-dim), var(--gold-soft)); transition: width .3s linear; }
+
+.nav-bar {
+  position: fixed; bottom: 0; left:0; right:0; z-index: 7000;
+  display:flex; justify-content:space-between; align-items:center; gap:14px;
+  padding: 14px 28px;
+  background: linear-gradient(0deg, rgba(6,9,15,.97) 0%, rgba(6,9,15,.85) 55%, transparent 100%);
+}
+.nav-group { display:flex; align-items:center; gap:10px; min-width: 0; }
+.nav-group.center { position:absolute; left:50%; transform:translateX(-50%); }
+
+.nav-btn {
+  font-family: var(--mono); font-size:.72rem; color: var(--text-dim);
+  background: rgba(13,21,36,.7); border:1px solid var(--border-2); border-radius:3px;
+  padding: 9px 15px; cursor:pointer; transition: all .3s; white-space:nowrap;
+  display:inline-flex; align-items:center; gap:8px;
+}
+.nav-btn:hover { border-color: var(--gold); color: var(--gold-soft); }
+.icon-btn { width: 38px; height: 38px; padding: 0; justify-content:center; font-size: 1rem; }
+.icon-btn svg { width: 17px; height: 17px; }
+
+.btn-primary-nav { border-color: rgba(196,152,90,.55); color: var(--gold-soft); }
+.btn-primary-nav:hover { background: rgba(196,152,90,.15); }
+
+.nav-btn[aria-pressed="true"] { border-color: var(--gold); color: var(--gold-soft); background: rgba(196,152,90,.12); }
+
+.progress-dots { display:flex; gap:7px; align-items:center; flex-wrap:wrap; max-width: 46vw; }
+.progress-dot {
+  width: 8px; height: 8px; border-radius:50%;
+  background: var(--border-2); transition: all .3s; cursor:pointer; border:none; padding:0;
+}
+.progress-dot:hover { background: var(--text-mute); }
+.progress-dot.active { background: var(--gold); box-shadow: 0 0 8px rgba(196,152,90,.55); }
+.progress-dot.deep { background: var(--border-2); }
+.slide-counter { font-family: var(--mono); font-size:.72rem; color: var(--text-mute); letter-spacing:.08em; white-space:nowrap; }
+.slide-counter b { color: var(--gold-soft); font-weight:500; }
+
+/* ── Legendas (roteiro) ─────────────────────────────────── */
+.captions {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 92px; z-index: 7500;
+  width: min(880px, 86vw); text-align:center;
+  pointer-events:none; opacity:0; transition: opacity .5s;
+}
+.captions.show { opacity:1; }
+.cap-label {
+  display:inline-block; font-family: var(--mono); font-size:.56rem; letter-spacing:.3em;
+  color: var(--gold-dim); margin-bottom: 7px; text-transform: uppercase;
+}
+.cap-text {
+  font-family: var(--sans); font-weight:300; font-size: clamp(.86rem, 1.5vw, 1.02rem);
+  line-height: 1.62; color: #CFC8BA;
+  text-shadow: 0 1px 14px rgba(0,0,0,.85), 0 0 2px rgba(0,0,0,.9);
+}
+.cap-text.is-pt { font-style: normal; }
+
+/* Auto progresso (modo cinema) */
+body.is-auto .nav-bar { padding-bottom: 12px; }
+body.is-auto .topbar-fill { transition: width .18s linear; }
+
+/* Clusters manuais vs automáticos */
+#autoCtl { display:none; }
+body.is-auto #manualCtl { display:none; }
+body.is-auto #autoCtl { display:flex; }
+body.is-auto .captions { bottom: 96px; }
+
+/* Ajustes finos */
+.radar-slot { width: min(54vw, 620px, 62vh); }
+.radar-slot.r-lg { width: min(56vw, 680px, 70vh); }
+.radar-slot.r-md { width: min(46vw, 540px, 54vh); }
+.col { display:flex; flex-direction:column; gap:14px; justify-content:center; min-width:0; }
+.col > * { max-width:100%; }
+.wrap:not(.wrap-center) > .kicker { align-self:flex-start; }
+.wrap-center > .kicker { align-self:center; }
+.progress-dot.deep { width:6px; height:6px; background: var(--border); opacity:.85; }
+@media (max-width: 980px) {
+  .captions { bottom: 168px; width: 92vw; }
+  .two-col .col { gap: 10px; }
+}
+@media (max-height: 800px) {
+  .slide { padding: 30px 56px 74px; }
+  .t-title { font-size: clamp(1.45rem, 2.7vw, 2.15rem); }
+  .t-hero  { font-size: clamp(2.1rem, 5.2vw, 4.1rem); }
+  .stmt    { font-size: clamp(1.3rem, 2.4vw, 1.9rem); }
+  .t-subtitle { font-size: .92rem; }
+  .t-body  { font-size: .86rem; }
+  .two-col { gap: 28px; }
+  .three-col { gap: 14px; }
+  .card { padding: 18px 20px; }
+  .metric-card { padding: 16px 14px; }
+  .lvl { padding: 9px 15px; }
+  .lvl .lvl-desc { font-size: .78rem; }
+  .flow-box { padding: 11px 17px; }
+  .arch-layer { padding: 10px 18px; }
+  .arch-layer .icon { font-size: 1.05rem; min-width: 28px; }
+  .arch-layer p { font-size: .78rem; }
+  .slide .wrap { gap: 11px; }
+  .scene-mark, .watermark { bottom: 68px; }
+  .deep-tag { top: 18px; right: 40px; }
+}
+
+/* foco acessível */
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 2px; }
+
+/* ── Responsivo ─────────────────────────────────────────── */
+@media (max-width: 980px) {
+  .slide { padding: 44px 30px 110px; }
+  .two-col, .cards-grid { grid-template-columns: 1fr; gap: 24px; }
+  .four-col, .three-col { grid-template-columns: 1fr 1fr; }
+  .radar-slot { opacity:.14 !important; }
+  .deep-tag { right: 26px; top: 22px; }
+  .watermark { right: 26px; }
+  .nav-group.center { position: static; transform:none; }
+  .nav-bar { flex-wrap: wrap; }
+}
+@media (max-width: 640px) {
+  .slide { overflow-y: auto; justify-content: flex-start; padding-top: 70px; }
+  .four-col, .three-col { grid-template-columns: 1fr; }
+  .lvl { flex-wrap:wrap; gap:8px; }
+  .lvl .lvl-name { min-width: 0; }
+  .watermark, .scene-mark { display:none; }
+  .cta-card { min-width: 0; width:100%; }
+}
+
+/* Acessibilidade: reduz movimento */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001s !important; animation-iteration-count: 1 !important; transition-duration: .001s !important; }
+  .slide { transition: none; }
+  .rv, .stamp { opacity:1; transform:none; }
+}
+</style>
+<noscript><style>
+  body { overflow:auto; }
+  .deck { height:auto; overflow:visible; }
+  .slide { position:relative; opacity:1; transform:none; height:auto; min-height:100vh; justify-content:flex-start; padding:80px 30px; pointer-events:auto; }
+  .nav-bar { position:static; }
+</style></noscript>
+</head>
+<body>
+
+<template id="radarTpl">
+  <svg class="radar-svg" viewBox="0 0 400 400" aria-hidden="true" focusable="false">
+    <circle class="ring" cx="200" cy="200" r="192"/>
+    <circle class="ring-soft" cx="200" cy="200" r="150"/>
+    <circle class="ring" cx="200" cy="200" r="106"/>
+    <circle class="ring-soft" cx="200" cy="200" r="62"/>
+    <line class="axis" x1="8"  y1="200" x2="392" y2="200"/>
+    <line class="axis" x1="200" y1="8"  x2="200" y2="392"/>
+    <line class="axis" x1="64" y1="64" x2="336" y2="336"/>
+    <line class="axis" x1="336" y1="64" x2="64" y2="336"/>
+    <circle class="rblip" cx="256" cy="132" r="3.4" style="animation-delay:.2s"/>
+    <circle class="rblip" cx="300" cy="232" r="2.6" style="animation-delay:1.6s"/>
+    <circle class="rblip" cx="152" cy="292" r="3.8" style="animation-delay:3.1s"/>
+    <circle class="rblip" cx="106" cy="120" r="2.4" style="animation-delay:4.4s"/>
+    <circle class="rblip" cx="228" cy="84"  r="2.2" style="animation-delay:5.3s"/>
+    <g class="rsweep">
+      <line class="sweepline" x1="200" y1="200" x2="200" y2="8"/>
+    </g>
+    <circle class="center" cx="200" cy="200" r="4"/>
+  </svg>
+</template>
+
+<div class="deck" id="deck">
+
+<!-- ═══════════ CENA 01 · COLD OPEN — O CUSTO DO ATRASO ═══════════ -->
+<div class="slide bg-cold" data-slide="0" data-auto data-mood="intenso" data-dur="15.5">
+  <div class="radar-slot pos-center faint r-md"></div>
+  <div class="wrap wrap-center">
+    <span class="kicker rv d1">O agora · o custo do atraso</span>
+    <p class="stmt rv d2" style="font-size:clamp(1.5rem,3vw,2.4rem);">Rebaixamento de rating.</p>
+    <p class="stmt rv d3" style="font-size:clamp(1.5rem,3vw,2.4rem);">Recuperação judicial.</p>
+    <p class="stmt rv d4" style="font-size:clamp(1.5rem,3vw,2.4rem);">Spread dois vírgula três desvios fora da curva.</p>
+    <div class="gold-line rv d5" style="margin:6px auto;"></div>
+    <p class="t-subtitle rv d6" style="max-width:720px;">
+      Quando um desses acontece, o mercado inteiro fica sabendo <strong style="font-weight:600;color:var(--cream);">no mesmo dia</strong>.
+      A pergunta é: quando o seu time fica sabendo?
+    </p>
+    <div class="three-col rv d7" style="max-width:940px;margin-top:14px;">
+      <div class="metric-card">
+        <div class="t-number" style="font-size:2.1rem;color:var(--red);">3–5</div>
+        <div class="t-label" style="font-size:.6rem;">dias de atraso médio</div>
+        <p class="t-small" style="margin-top:8px;">entre o evento e a reação manual</p>
+      </div>
+      <div class="metric-card">
+        <div class="t-number" style="font-size:2.1rem;color:var(--amber);">6+</div>
+        <div class="t-label" style="font-size:.6rem;">fontes por dia</div>
+        <p class="t-small" style="margin-top:8px;">consultadas individualmente, por emissor</p>
+      </div>
+      <div class="metric-card">
+        <div class="t-number" style="font-size:2.1rem;">0</div>
+        <div class="t-label" style="font-size:.6rem;">plataformas integradas</div>
+        <p class="t-small" style="margin-top:8px;">de monitoramento de crédito privado no Brasil</p>
+      </div>
+    </div>
+  </div>
+  <span class="scene-mark">O custo do atraso</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 02 · CAPA — O RADAR ═══════════ -->
+<div class="slide bg-marble" data-slide="1" data-auto data-mood="calor" data-dur="6.5">
+  <div class="radar-slot pos-center r-lg"></div>
+  <div class="wrap wrap-center">
+    <span class="kicker rv d1">Szuchmacher Consultoria · Setembro 2026</span>
+    <h1 class="t-hero rv d2">VIX Radar</h1>
+    <div class="gold-line rv d3" style="margin:6px auto;"></div>
+    <p class="t-subtitle rv d4" style="max-width:640px;">
+      Inteligência de crédito privado com IA. Monitoramento contínuo de <strong style="font-weight:500;color:var(--cream);">104 emissores</strong>
+      de renda fixa no Brasil, classificação automática de eventos e verificação adversarial —
+      para a sua mesa decidir informada, e a tempo.
+    </p>
+    <div class="rv d5" style="display:flex;gap:12px;margin-top:18px;flex-wrap:wrap;justify-content:center;">
+      <span class="tag tag-gold">vixradar.com</span>
+      <span class="tag">104 emissores</span>
+      <span class="tag">13 setores</span>
+      <span class="tag">verificação adversarial</span>
+    </div>
+    <p class="t-small rv d6" style="margin-top:26px;">Material de apoio institucional · demonstração sob demanda</p>
+  </div>
+  <span class="scene-mark">O radar</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 03 · A RESPOSTA — O QUE PODE SER ═══════════ -->
+<div class="slide bg-glow" data-slide="2" data-auto data-mood="calor" data-dur="8.5">
+  <div class="wrap">
+    <span class="kicker rv d1">O que pode ser</span>
+  </div>
+  <div class="two-col" style="margin-top:6px;">
+    <div class="col">
+      <h2 class="t-title rv d2" style="font-size:clamp(1.8rem,3.5vw,2.8rem);">Dez minutos por dia bastam para saber o que mudou no crédito privado brasileiro.</h2>
+      <div class="gold-line rv d3"></div>
+      <p class="t-body rv d4">
+        O VIX Radar transforma dados públicos dispersos em <strong style="font-weight:500;color:var(--cream);">sinal pronto para agir</strong> —
+        e entrega onde a mesa já trabalha.
+      </p>
+    </div>
+    <div class="col" style="gap:6px;justify-content:center;">
+      <div class="eixo rv d3"><span class="n">01</span><span class="t"><strong style="font-weight:600;">Varredura automática</strong> das fontes oficiais e de mercado, duas vezes ao dia, sem intervenção manual.</span><span class="m">2x/dia</span></div>
+      <div class="eixo rv d4"><span class="n">02</span><span class="t"><strong style="font-weight:600;">Confiança em camadas</strong> — classificação por IA e verificação adversarial antes de qualquer publicação.</span><span class="m">antes de publicar</span></div>
+      <div class="eixo rv d5"><span class="n">03</span><span class="t"><strong style="font-weight:600;">Entrega no fluxo</strong> — painel, newsletter diária e alertas no e-mail da equipe.</span><span class="m">onde a mesa trabalha</span></div>
+    </div>
+  </div>
+  <span class="scene-mark">A resposta</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 04 · COBERTURA ═══════════ -->
+<div class="slide bg-grid" data-slide="3" data-auto data-mood="neutral" data-dur="7">
+  <div class="radar-slot pos-center faint r-md"></div>
+  <div class="wrap wrap-center">
+    <span class="kicker rv d1">Cobertura</span>
+    <h2 class="t-title rv d2">104 emissores. 13 setores. O pulso da dívida corporativa brasileira.</h2>
+    <p class="t-subtitle rv d3" style="max-width:720px;">Os principais emissores de renda fixa do país — de energia a saneamento, de saúde a agronegócio.</p>
+    <div class="sector-grid rv d4" style="margin-top:10px;">
+      <span class="sector-pill"><span class="dot" style="background:#F59E0B;"></span>Energia Elétrica</span>
+      <span class="sector-pill"><span class="dot" style="background:#C9A96E;"></span>Transportes e Logística</span>
+      <span class="sector-pill"><span class="dot" style="background:#34D399;"></span>Saneamento</span>
+      <span class="sector-pill"><span class="dot" style="background:#F87171;"></span>Petróleo, Gás e Combustíveis</span>
+      <span class="sector-pill"><span class="dot" style="background:#94A3B8;"></span>Mineração e Siderurgia</span>
+      <span class="sector-pill"><span class="dot" style="background:#A78BFA;"></span>Financeiro</span>
+      <span class="sector-pill"><span class="dot" style="background:#818CF8;"></span>Locação e Mobilidade</span>
+      <span class="sector-pill"><span class="dot" style="background:#6EE7B7;"></span>Papel e Celulose</span>
+      <span class="sector-pill"><span class="dot" style="background:#FCD34D;"></span>Agronegócio</span>
+      <span class="sector-pill"><span class="dot" style="background:#F9A8D4;"></span>Saúde</span>
+      <span class="sector-pill"><span class="dot" style="background:#93C5FD;"></span>Telecom e Tecnologia</span>
+      <span class="sector-pill"><span class="dot" style="background:#FDBA74;"></span>Real Estate e Construção</span>
+      <span class="sector-pill"><span class="dot" style="background:#FB923C;"></span>Varejo e Consumo</span>
+    </div>
+    <div class="rv d6" style="display:flex;gap:22px;margin-top:22px;flex-wrap:wrap;justify-content:center;">
+      <div class="metric-card"><div class="t-number" data-count="104">0</div><div class="t-label" style="font-size:.6rem;">Emissores</div></div>
+      <div class="metric-card"><div class="t-number" data-count="13">0</div><div class="t-label" style="font-size:.6rem;">Setores</div></div>
+      <div class="metric-card"><div class="t-number" style="font-size:2rem;">2×</div><div class="t-label" style="font-size:.6rem;">Ciclos de varredura por dia</div></div>
+    </div>
+  </div>
+  <span class="scene-mark">O universo monitorado</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 05 · COMO NASCE UM ALERTA ═══════════ -->
+<div class="slide bg-marble" data-slide="4" data-auto data-mood="neutral" data-dur="8.5">
+  <div class="wrap wrap-center">
+    <span class="kicker rv d1">O caminho</span>
+    <h2 class="t-title rv d2">Como nasce um alerta confiável</h2>
+    <div class="gold-line rv d3" style="margin:4px auto;"></div>
+    <p class="t-subtitle rv d4" style="max-width:660px;">
+      Em cada ciclo, para cada emissor, três camadas de inteligência separam o fato do barulho.
+    </p>
+    <div class="flow rv d5" style="margin-top:20px;">
+      <div class="flow-box" style="border-color:var(--blue);">
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--blue);letter-spacing:.12em;">01 · COLETA</div>
+        <div style="font-size:.92rem;margin-top:5px;color:var(--cream);">Fontes públicas</div>
+        <div style="font-size:.7rem;color:var(--text-mute);margin-top:3px;">oficiais e de mercado</div>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box" style="border-color:var(--amber);">
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--amber);letter-spacing:.12em;">02 · CLASSIFICAÇÃO</div>
+        <div style="font-size:.92rem;margin-top:5px;color:var(--cream);">Motor de IA</div>
+        <div style="font-size:.7rem;color:var(--text-mute);margin-top:3px;">crítico · relevante · eco · ruído</div>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box" style="border-color:var(--red);">
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--red);letter-spacing:.12em;">03 · VERIFICAÇÃO</div>
+        <div style="font-size:.92rem;margin-top:5px;color:var(--cream);">Auditor adversarial</div>
+        <div style="font-size:.7rem;color:var(--text-mute);margin-top:3px;">aprova · corrige · rejeita</div>
+      </div>
+      <span class="flow-arrow">→</span>
+      <div class="flow-box" style="border-color:var(--gold);">
+        <div style="font-family:var(--mono);font-size:.7rem;color:var(--gold-soft);letter-spacing:.12em;">04 · PAINEL</div>
+        <div style="font-size:.92rem;margin-top:5px;color:var(--cream);">Publicação automática</div>
+        <div style="font-size:.7rem;color:var(--text-mute);margin-top:3px;">sinal pronto para agir</div>
+      </div>
+    </div>
+    <p class="quote rv d6" style="margin-top:30px;max-width:720px;text-align:left;">
+      Nenhum evento chega ao painel sem passar pela verificação. Todo evento publicado carrega
+      <strong>fonte, data e veredicto</strong> — rastreável do início ao fim.
+    </p>
+  </div>
+  <span class="scene-mark">O caminho do sinal</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 06 · CLASSIFICAÇÃO ═══════════ -->
+<div class="slide bg-accent-left" data-slide="5" data-auto data-mood="neutral" data-dur="9">
+  <div class="wrap" style="max-width:960px;">
+    <span class="kicker rv d1">Classificação</span>
+    <h2 class="t-title rv d2">Quatro níveis. Zero ruído na sua tela.</h2>
+    <p class="t-body rv d3">Todo evento é classificado por materialidade. Só o que importa chega à primeira tela.</p>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px;">
+      <div class="lvl rv d4" style="border-left-color:var(--red);">
+        <span class="lvl-name" style="color:var(--red);">CRÍTICO</span>
+        <span class="lvl-desc">Rebaixamento, default, recuperação judicial, reestruturação, evento regulatório grave.</span>
+        <span class="lvl-tag">verificação obrigatória · 15 dias no painel</span>
+      </div>
+      <div class="lvl rv d5" style="border-left-color:var(--amber);">
+        <span class="lvl-name" style="color:var(--amber);">RELEVANTE</span>
+        <span class="lvl-desc">Emissão relevante, resultado fora do esperado, mudança de outlook, spread atípico.</span>
+        <span class="lvl-tag">amostra verificada · 7 dias</span>
+      </div>
+      <div class="lvl rv d6" style="border-left-color:var(--green);">
+        <span class="lvl-name" style="color:var(--green);">ECO</span>
+        <span class="lvl-desc">Rotina: pagamento de juros, balanço dentro do esperado, fatos padrão.</span>
+        <span class="lvl-tag">detalhe do emissor · 3 dias</span>
+      </div>
+      <div class="lvl rv d7" style="border-left-color:var(--text-mute);">
+        <span class="lvl-name" style="color:var(--text-mute);">RUÍDO</span>
+        <span class="lvl-desc">Notícia genérica, comentário de mercado, republicação sem fato novo.</span>
+        <span class="lvl-tag">filtrado automaticamente</span>
+      </div>
+    </div>
+  </div>
+  <span class="scene-mark">A régua da materialidade</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 07 · S.T.A.R. — A VERIFICAÇÃO ADVERSARIAL ═══════════ -->
+<div class="slide bg-glow" data-slide="6" data-auto data-mood="intenso" data-dur="13">
+  <div class="wrap"><span class="kicker rv d1">A garantia · o diferencial</span></div>
+  <div class="two-col" style="margin-top:4px;align-items:center;">
+    <div class="col">
+      <h2 class="t-title rv d2" style="font-size:clamp(1.9rem,3.6vw,3rem);">Um segundo par de olhos em todo evento que importa.</h2>
+      <div class="gold-line rv d3"></div>
+      <p class="t-body rv d4">
+        O maior risco de IA generativa é a alucinação. Por isso, antes de um evento crítico chegar ao painel,
+        um <strong style="font-weight:500;color:var(--cream);">segundo modelo, independente do classificador</strong>,
+        reavalia tudo partindo de uma premissa: <em style="font-family:var(--serif);">é falso, até provar que é verdadeiro.</em>
+      </p>
+      <p class="t-body rv d5" style="color:var(--text-dim);font-size:clamp(.8rem,1.2vw,.9rem);">
+        O veredicto — aprovar, corrigir ou rejeitar — é registrado com confiança e fontes. Rastreável, auditável, automático.
+      </p>
+    </div>
+    <div class="col rv d3" style="gap:9px;align-items:stretch;">
+      <div class="card" style="padding:14px 20px;display:flex;align-items:center;gap:14px;border-color:var(--border-2);">
+        <span class="gold-dot" style="background:var(--amber);"></span>
+        <span style="font-family:var(--mono);font-size:.68rem;color:var(--amber);letter-spacing:.1em;">CLASSIFICADOR</span>
+        <span style="font-size:.8rem;color:var(--text-dim);margin-left:auto;text-align:right;">evento lido como<br>crítico</span>
+      </div>
+      <div style="text-align:center;color:var(--text-mute);font-size:1rem;line-height:1;">↓</div>
+      <div class="card" style="padding:16px 20px;border-color:rgba(196,152,90,.35);">
+        <div style="font-family:var(--mono);font-size:.68rem;color:var(--gold-soft);letter-spacing:.1em;margin-bottom:10px;">AUDITOR ADVERSARIAL</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span class="chip chip-hl" style="color:var(--green);border-color:rgba(62,207,142,.5);">aprova · com fonte</span>
+          <span class="chip" style="color:var(--amber);">corrige · dado ou classe</span>
+          <span class="chip" style="color:var(--red);">rejeita · sem fonte</span>
+        </div>
+      </div>
+      <div style="text-align:center;"><span class="stamp">✓ aprovado · com fonte</span></div>
+    </div>
+  </div>
+  <span class="scene-mark">O segundo par de olhos</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 08 · O SINAL — EWS ═══════════ -->
+<div class="slide bg-accent-left" data-slide="7" data-auto data-mood="neutral" data-dur="9.5">
+  <div class="two-col">
+    <div class="col">
+      <span class="kicker rv d1">O sinal · EWS ranking</span>
+      <h2 class="t-title rv d2">Antes da notícia, o número.</h2>
+      <div class="gold-line rv d3"></div>
+      <p class="t-body rv d4">
+        O Early Warning Score devolve, para cada emissor, um número de 0 a 100, atualizado a cada ciclo.
+        Quando ele sobe, você olha antes do título do jornal.
+      </p>
+      <div style="margin-top:8px;">
+        <div class="eixo rv d5"><span class="n">45</span><span class="t">Eventos de crédito classificados por IA</span><span class="m">até 45 pts</span></div>
+        <div class="eixo rv d6"><span class="n">40</span><span class="t">Anomalias quantitativas de mercado</span><span class="m">até 40 pts</span></div>
+        <div class="eixo rv d7"><span class="n">15</span><span class="t">Sinais qualitativos e contexto</span><span class="m">até 15 pts</span></div>
+      </div>
+    </div>
+    <div class="col" style="gap:16px;">
+      <div class="card rv d3" style="padding:22px 24px;">
+        <div class="t-label" style="font-size:.62rem;margin-bottom:14px;">Faixas do score</div>
+        <div class="gauge"><div class="gauge-green"></div><div class="gauge-amber"></div><div class="gauge-red"></div></div>
+        <div class="gauge-labels">
+          <span style="color:var(--green);"><i style="background:var(--green);"></i>0–39 · risco baixo</span>
+          <span style="color:var(--amber);"><i style="background:var(--amber);"></i>40–69 · atenção</span>
+          <span style="color:var(--red);"><i style="background:var(--red);"></i>70–100 · alerta</span>
+        </div>
+        <div class="chips" style="margin-top:16px;">
+          <span class="chip chip-hl">Z-scores ANBIMA</span>
+          <span class="chip chip-hl">Altman Z''-EM</span>
+          <span class="chip chip-hl">Merton DD</span>
+        </div>
+      </div>
+      <div class="card rv d5" style="padding:18px 22px;">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+          <span class="t-label" style="font-size:.62rem;">Top EWS · ranking relativo</span>
+          <span class="t-small">esquema ilustrativo</span>
+        </div>
+        <div class="skl">
+          <div class="skl-row skl-1"></div>
+          <div class="skl-row skl-2"></div>
+          <div class="skl-row skl-3"></div>
+          <div class="skl-row skl-4"></div>
+          <div class="skl-row skl-5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <span class="scene-mark">O número antes do título</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 09 · EVIDÊNCIA — CASOS REAIS ═══════════ -->
+<div class="slide bg-glow" data-slide="8" data-auto data-mood="neutral" data-dur="14">
+  <div class="wrap" style="max-width:1060px;">
+    <span class="kicker rv d1">Evidência · 2026</span>
+    <h2 class="t-title rv d2">Onde o sinal chegou antes do mercado</h2>
+    <p class="t-body rv d3">Casos reais, extraídos dos eventos monitorados pelo VIX Radar. Dados anonimizados por confidencialidade.</p>
+    <div class="three-col rv d5" style="max-width:1060px;gap:18px;margin-top:10px;">
+      <div class="card" style="border-left:3px solid var(--red);display:flex;flex-direction:column;gap:11px;padding:22px 22px;">
+        <div style="font-family:var(--mono);font-size:.68rem;color:var(--red);letter-spacing:.1em;">CASO 01 · RECUPERAÇÃO JUDICIAL</div>
+        <p style="font-size:.82rem;color:var(--text-dim);line-height:1.65;flex:1;">Emissor de saúde. Eventos relevantes acumularam-se <strong style="color:var(--cream);font-weight:600;">12 dias antes</strong> do pedido formal de RJ; o EWS cruzou o limiar de alerta 8 dias antes da confirmação oficial.</p>
+        <div><span class="case-badge">12 dias antes</span></div>
+      </div>
+      <div class="card" style="border-left:3px solid var(--amber);display:flex;flex-direction:column;gap:11px;padding:22px 22px;">
+        <div style="font-family:var(--mono);font-size:.68rem;color:var(--amber);letter-spacing:.1em;">CASO 02 · REBAIXAMENTO DE RATING</div>
+        <p style="font-size:.82rem;color:var(--text-dim);line-height:1.65;flex:1;">Emissor de energia. Atraso de publicação e mudança de guidance antecederam em <strong style="color:var(--cream);font-weight:600;">5 dias</strong> o rebaixamento pela agência.</p>
+        <div><span class="case-badge">5 dias antes</span></div>
+      </div>
+      <div class="card" style="border-left:3px solid var(--blue);display:flex;flex-direction:column;gap:11px;padding:22px 22px;">
+        <div style="font-family:var(--mono);font-size:.68rem;color:var(--blue);letter-spacing:.1em;">CASO 03 · ANOMALIA DE MERCADO</div>
+        <p style="font-size:.82rem;color:var(--text-dim);line-height:1.65;flex:1;">Emissor de logística. Spread <strong style="color:var(--cream);font-weight:600;">2,3 desvios</strong> acima da média do setor por 6 dias — sem nenhuma notícia sobre o nome.</p>
+        <div><span class="case-badge">2,3 desvios · sem notícia</span></div>
+      </div>
+    </div>
+  </div>
+  <span class="scene-mark">O sinal na prática</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 10 · O DIA A DIA DA MESA ═══════════ -->
+<div class="slide bg-marble" data-slide="9" data-auto data-mood="calor" data-dur="11.5">
+  <div class="two-col">
+    <div class="col">
+      <span class="kicker rv d1">O dia a dia</span>
+      <h2 class="t-title rv d2">Um dia na mesa de crédito, com o VIX Radar.</h2>
+      <div class="gold-line rv d3"></div>
+      <p class="t-body rv d4">
+        Sem instalação, sem integração de TI, sem treinamento. O radar entra na rotina em menos de um dia.
+      </p>
+      <ul class="list-check rv d5" style="margin-top:6px;">
+        <li>Briefing executivo lido em 2 minutos</li>
+        <li>Painel e exportação PDF prontos para o comitê</li>
+        <li>Alerta crítico verificado, direto no e-mail</li>
+        <li>Relatório semanal sem trabalho manual</li>
+      </ul>
+    </div>
+    <div class="col">
+      <div class="timeline">
+        <div class="timeline-item rv d3">
+          <div class="t-label" style="font-size:.62rem;">10h15</div>
+          <p style="color:var(--text);font-size:.9rem;margin-top:3px;">A newsletter chega</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">O que mudou nas últimas 24h, em duas páginas.</p>
+        </div>
+        <div class="timeline-item rv d4">
+          <div class="t-label" style="font-size:.62rem;">11h00</div>
+          <p style="color:var(--text);font-size:.9rem;margin-top:3px;">Comitê de crédito</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Painel filtrado pela carteira + PDF para a mesa.</p>
+        </div>
+        <div class="timeline-item rv d5">
+          <div class="t-label" style="font-size:.62rem;">16h30</div>
+          <p style="color:var(--text);font-size:.9rem;margin-top:3px;">Alerta crítico no e-mail</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Rebaixamento de emissor da carteira — já verificado, com fonte.</p>
+        </div>
+        <div class="timeline-item rv d6">
+          <div class="t-label" style="font-size:.62rem;">Sexta</div>
+          <p style="color:var(--text);font-size:.9rem;margin-top:3px;">Relatório semanal</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Heatmap setorial e comparação com o mercado.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <span class="scene-mark">O novo normal</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 11 · CALL TO ACTION ═══════════ -->
+<div class="slide bg-marble" data-slide="10" data-auto data-mood="calor" data-dur="10.5">
+  <div class="radar-slot pos-center faint r-md"></div>
+  <div class="wrap wrap-center">
+    <span class="kicker rv d1">Próximo passo</span>
+    <h2 class="t-title rv d2" style="font-size:clamp(1.9rem,3.8vw,3.1rem);">Veja o VIX Radar com a sua carteira.</h2>
+    <div class="gold-line rv d3" style="margin:6px auto;"></div>
+    <p class="t-subtitle rv d4" style="max-width:660px;">
+      Demonstração guiada de 30 minutos sobre a <strong style="font-weight:500;color:var(--cream);">base de produção</strong> —
+      os 104 emissores e os eventos reais do dia. Nada de ambiente de teste com dado fabricado.
+    </p>
+    <div class="rv d5" style="display:flex;gap:14px;margin-top:22px;flex-wrap:wrap;justify-content:center;align-items:stretch;">
+      <a class="cta-card" href="mailto:yan@szuchmacher.com.br?subject=Demonstra%C3%A7%C3%A3o%20VIX%20Radar&body=Ol%C3%A1%2C%20gostaria%20de%20agendar%20uma%20demonstra%C3%A7%C3%A3o%20do%20VIX%20Radar.">
+        <div style="flex:1;text-align:left;">
+          <div class="cta-t">Agendar demonstração</div>
+          <div class="cta-s">yan@szuchmacher.com.br</div>
+        </div>
+        <span style="color:var(--gold-soft);font-size:1.2rem;">→</span>
+      </a>
+      <a class="btn btn-ghost" style="flex-direction:column;justify-content:center;min-width:200px;" href="https://vixradar.com" target="_blank" rel="noopener">
+        <span>visitar</span>
+        <span style="font-size:.7rem;opacity:.8;">vixradar.com</span>
+      </a>
+    </div>
+    <div class="chips rv d6" style="margin-top:18px;justify-content:center;">
+      <span class="chip chip-hl">30 minutos</span>
+      <span class="chip chip-hl">base de produção</span>
+      <span class="chip chip-hl">eventos reais do dia</span>
+      <span class="chip">sua carteira, se quiser</span>
+    </div>
+    <p class="t-small rv d7" style="margin-top:14px;">Acesso de avaliação liberado individualmente, com credencial nominal.</p>
+  </div>
+  <span class="scene-mark">O convite</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     APROFUNDAMENTO — detalhe para a sessão guiada
+     (fora do modo filme; navegação manual)                    -->
+<!-- ═══════════ CENA 12 · O PAINEL ═══════════ -->
+<div class="slide bg-grid" data-slide="11" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · O PAINEL</span>
+  <div class="two-col" style="max-width:1140px;">
+    <div class="col">
+      <h2 class="t-title rv d1">O painel, desenhado para o gestor de crédito</h2>
+      <div class="gold-line rv d2"></div>
+      <p class="t-body rv d3">Do resumo do dia ao detalhe do emissor — alertas visuais, drill-down e comparações na mesma tela.</p>
+      <div style="display:flex;flex-direction:column;gap:9px;margin-top:8px;">
+        <div class="card rv d4" style="padding:10px 16px;display:flex;align-items:center;gap:12px;"><span class="gold-dot" style="background:var(--red);"></span><span style="font-size:.82rem;color:var(--text);">Ponto vermelho = evento CRÍTICO ativo · verificado</span></div>
+        <div class="card rv d5" style="padding:10px 16px;display:flex;align-items:center;gap:12px;"><span class="gold-dot" style="background:var(--amber);"></span><span style="font-size:.82rem;color:var(--text);">Ponto amarelo = evento RELEVANTE ativo · amostra verificada</span></div>
+        <div class="card rv d6" style="padding:10px 16px;display:flex;align-items:center;gap:12px;"><span class="gold-dot" style="background:var(--green);"></span><span style="font-size:.82rem;color:var(--text);">Ponto verde = situação normal, sem eventos ativos</span></div>
+        <div class="card rv d7" style="padding:10px 16px;display:flex;align-items:center;gap:12px;"><span style="font-size:.9rem;color:var(--gold-soft);">▲</span><span style="font-size:.82rem;color:var(--text);">Triângulo = anomalia de mercado (spread, volume, liquidez)</span></div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="t-label rv d2" style="font-size:.62rem;margin-bottom:4px;">Módulos do painel</div>
+      <div class="chips rv d3" style="gap:8px;">
+        <span class="chip">Visão Geral</span>
+        <span class="chip">Eventos de Crédito</span>
+        <span class="chip">Alertas de Mercado</span>
+        <span class="chip">EWS Ranking</span>
+        <span class="chip">Briefing Executivo</span>
+        <span class="chip">Comparação de Emissores</span>
+        <span class="chip">Agenda de Divulgação · ITR/DFP</span>
+        <span class="chip">Carteira Própria · gap de cobertura</span>
+        <span class="chip">Histórico</span>
+        <span class="chip">Exportação PDF</span>
+        <span class="chip">Newsletter</span>
+      </div>
+      <p class="t-body rv d4" style="margin-top:14px;font-size:clamp(.8rem,1.15vw,.88rem);">Agenda de divulgação com vencimentos, assembleias e datas de resultados — sempre confrontadas com a fonte oficial.</p>
+    </div>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 13 · NEWSLETTER E ALERTAS ═══════════ -->
+<div class="slide bg-accent-left" data-slide="12" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · DISTRIBUIÇÃO</span>
+  <div class="two-col" style="max-width:1140px;align-items:start;">
+    <div class="col">
+      <h2 class="t-title rv d1">Inteligência no e-mail da equipe</h2>
+      <div class="gold-line rv d2"></div>
+      <div class="card rv d3" style="margin-top:6px;">
+        <div class="t-label" style="font-size:.62rem;margin-bottom:10px;">O boletim diário</div>
+        <ul class="list-check">
+          <li>Briefing executivo do dia</li>
+          <li>Eventos CRÍTICO e RELEVANTE</li>
+          <li>Top 5 do EWS ranking</li>
+          <li>Heatmap setorial</li>
+          <li>Agenda da semana · eventos esperados</li>
+          <li>Destaques do mercado de crédito</li>
+        </ul>
+      </div>
+    </div>
+    <div class="col" style="gap:14px;">
+      <div class="card rv d3">
+        <div class="t-label" style="font-size:.62rem;margin-bottom:10px;">Personalização</div>
+        <ul class="list-check">
+          <li>Frequência configurável — diária, semanal ou sem alertas</li>
+          <li>Filtro por setores e emissores de interesse</li>
+          <li>White-label com a identidade visual do cliente</li>
+          <li>Cancelamento em um clique, com gestão de preferências</li>
+        </ul>
+      </div>
+      <div class="card rv d4" style="background:rgba(196,152,90,.05);border-color:rgba(196,152,90,.25);">
+        <div class="t-label" style="font-size:.62rem;margin-bottom:8px;">Alertas críticos</div>
+        <p style="font-size:.85rem;color:var(--text-dim);line-height:1.6;">Disparados imediatamente após a verificação adversarial de um evento CRÍTICO em emissor favoritado pela sua equipe.</p>
+      </div>
+    </div>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 14 · ARQUITETURA ═══════════ -->
+<div class="slide bg-grid" data-slide="13" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · ARQUITETURA</span>
+  <div class="wrap wrap-center">
+    <span class="kicker rv d1">Arquitetura</span>
+    <h2 class="t-title rv d2">Stack Cloudflare-native</h2>
+    <div class="gold-line rv d3" style="margin:6px auto;"></div>
+    <p class="t-subtitle rv d4" style="max-width:680px;">Infraestrutura 100% serverless na edge — sem servidor próprio, sem banco de dados para gerenciar, sem manutenção de SO, com latência mínima no Brasil.</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px;width:100%;max-width:760px;">
+      <div class="arch-layer rv d4"><div class="icon">🌐</div><div style="flex:1;"><div class="at">FRONTEND</div><p style="font-size:.82rem;color:var(--text-dim);">Cloudflare Pages · SPA puro (HTML/CSS/JS, sem framework) · cache global · HTTPS nativo</p></div></div>
+      <div style="text-align:center;color:var(--text-mute);font-size:.85rem;">↓</div>
+      <div class="arch-layer rv d5"><div class="icon">⚡</div><div style="flex:1;"><div class="at">API · WORKER</div><p style="font-size:.82rem;color:var(--text-dim);">JavaScript (~22 mil linhas) · KV · Durable Objects com SQLite · Analytics Engine</p></div></div>
+      <div style="text-align:center;color:var(--text-mute);font-size:.85rem;">↓</div>
+      <div class="arch-layer rv d6"><div class="icon">🧠</div><div style="flex:1;"><div class="at">INTELIGÊNCIA</div><p style="font-size:.82rem;color:var(--text-dim);">Motor de classificação + verificador adversarial · scores quantitativos (z-scores ANBIMA, Altman Z''-EM, Merton DD)</p></div></div>
+      <div style="text-align:center;color:var(--text-mute);font-size:.85rem;">↓</div>
+      <div class="arch-layer rv d7"><div class="icon">✉</div><div style="flex:1;"><div class="at">DISTRIBUIÇÃO</div><p style="font-size:.82rem;color:var(--text-dim);">Newsletter diária e alertas · SPF/DKIM/DMARC · rastreio de entrega por destinatário</p></div></div>
+    </div>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 15 · SEGURANÇA ═══════════ -->
+<div class="slide bg-accent-left" data-slide="14" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · SEGURANÇA</span>
+  <div class="wrap" style="max-width:1040px;">
+    <span class="kicker rv d1">Segurança e governança</span>
+    <h2 class="t-title rv d2">Proteção em múltiplas camadas</h2>
+    <div class="gold-line rv d3"></div>
+    <div class="cards-grid rv d4" style="margin-top:8px;">
+      <div class="card">
+        <div class="t-label" style="font-size:.6rem;margin-bottom:8px;">AUTENTICAÇÃO</div>
+        <p style="font-size:.83rem;color:var(--text-dim);line-height:1.6;">JWT com expiração controlada. Senhas com PBKDF2. Registro com aprovação manual do administrador — sem self-service de contas.</p>
+      </div>
+      <div class="card">
+        <div class="t-label" style="font-size:.6rem;margin-bottom:8px;">INFRAESTRUTURA</div>
+        <p style="font-size:.83rem;color:var(--text-dim);line-height:1.6;">Edge-native na Cloudflare, com proteção DDoS nativa. Captura de exceção e observabilidade contínua, com validação de saúde no próprio deploy.</p>
+      </div>
+      <div class="card">
+        <div class="t-label" style="font-size:.6rem;margin-bottom:8px;">RATE LIMITING</div>
+        <p style="font-size:.83rem;color:var(--text-dim);line-height:1.6;">Controle de taxa por IP com Durable Object — proteção contra força bruta em login e em endpoints administrativos.</p>
+      </div>
+      <div class="card">
+        <div class="t-label" style="font-size:.6rem;margin-bottom:8px;">GOVERNANÇA DE IA</div>
+        <p style="font-size:.83rem;color:var(--text-dim);line-height:1.6;">O verificador adversarial audita a saída do classificador. Todo evento carrega fonte, data e veredicto — rastreabilidade completa.</p>
+      </div>
+    </div>
+    <div class="card rv d5" style="margin-top:14px;">
+      <div class="t-label" style="font-size:.6rem;margin-bottom:8px;">COMPLIANCE E REGISTRO</div>
+      <p style="font-size:.83rem;color:var(--text-dim);line-height:1.6;">Software registrado no INPI. Telemetria anonimizada. Conformidade com a LGPD: dados pessoais limitados a nome, e-mail e empresa do usuário. Sem dados de terceiros, sem venda de informação.</p>
+    </div>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 16 · TRAJETÓRIA ═══════════ -->
+<div class="slide bg-marble" data-slide="15" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · TRAJETÓRIA</span>
+  <div class="wrap" style="max-width:1060px;">
+    <span class="kicker rv d1">Trajetória</span>
+    <h2 class="t-title rv d2">Em produção desde 2026, sob auditoria contínua</h2>
+    <div class="four-col rv d3" style="margin-top:16px;">
+      <div class="metric-card"><div class="t-number" data-count="104">0</div><div class="t-label" style="font-size:.58rem;">Emissores monitorados</div></div>
+      <div class="metric-card"><div class="t-number" data-count="13">0</div><div class="t-label" style="font-size:.58rem;">Setores</div></div>
+      <div class="metric-card"><div class="t-number" style="font-size:2rem;">2×</div><div class="t-label" style="font-size:.58rem;">Varreduras por dia</div></div>
+      <div class="metric-card"><div class="t-number" style="font-size:1.9rem;">INPI</div><div class="t-label" style="font-size:.58rem;">Registro de software</div></div>
+    </div>
+    <div class="four-col rv d4" style="margin-top:16px;">
+      <div class="metric-card"><div class="t-number" style="font-size:1.7rem;">v4.9.243</div><div class="t-label" style="font-size:.58rem;">Worker em produção</div></div>
+      <div class="metric-card"><div class="t-number" style="font-size:1.7rem;">v202.42</div><div class="t-label" style="font-size:.58rem;">Frontend em produção</div></div>
+      <div class="metric-card"><div class="t-number" data-count="323">0</div><div class="t-label" style="font-size:.58rem;">Testes automatizados</div></div>
+      <div class="metric-card"><div class="t-number" style="font-size:1.7rem;">6h</div><div class="t-label" style="font-size:.58rem;">CI de saúde em produção</div></div>
+    </div>
+    <ul class="list-check rv d5" style="margin-top:18px;max-width:820px;">
+      <li>Dois ciclos completos de auditoria em julho e hardening estrutural em agosto de 2026 — auditoria independente concluída em setembro.</li>
+      <li>Cada deploy é validado em produção antes do commit — sem drift entre repositório e produção.</li>
+      <li>O CI confere a saúde da plataforma a cada 6 horas e o frescor das fontes diariamente.</li>
+    </ul>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 17 · POSICIONAMENTO ═══════════ -->
+<div class="slide bg-accent-left" data-slide="16" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · POSICIONAMENTO</span>
+  <div class="wrap" style="max-width:1000px;">
+    <span class="kicker rv d1">Onde o VIX Radar se encaixa</span>
+    <h2 class="t-title rv d2">Não substitui as fontes. Soma a elas a camada que faltava.</h2>
+    <div class="gold-line rv d3"></div>
+    <p class="t-body rv d4" style="max-width:760px;">O mercado brasileiro já é bem servido de dados. O que falta é a camada entre o dado e a decisão — que lê o que saiu, separa o que importa do que é barulho e confere antes de avisar.</p>
+    <div style="display:flex;flex-direction:column;gap:9px;margin-top:12px;">
+      <div class="card rv d4" style="display:flex;align-items:center;gap:20px;padding:14px 22px;">
+        <div style="min-width:150px;font-family:var(--mono);font-size:.76rem;color:var(--gold-soft);">Fontes oficiais</div>
+        <div style="flex:1;font-size:.8rem;color:var(--text-dim);line-height:1.55;">CVM, ANBIMA e B3 publicam o dado primário, com a autoridade de quem o origina. Cabe ao analista cruzar e interpretar.</div>
+        <span class="tag" style="white-space:nowrap;">dado primário</span>
+      </div>
+      <div class="card rv d5" style="display:flex;align-items:center;gap:20px;padding:14px 22px;">
+        <div style="min-width:150px;font-family:var(--mono);font-size:.76rem;color:var(--gold-soft);">Bases e terminais</div>
+        <div style="flex:1;font-size:.8rem;color:var(--text-dim);line-height:1.55;">Histórico longo e séries padronizadas — profundidade de acervo é o forte da categoria.</div>
+        <span class="tag" style="white-space:nowrap;">acervo e consulta</span>
+      </div>
+      <div class="card rv d6" style="display:flex;align-items:center;gap:20px;padding:14px 22px;">
+        <div style="min-width:150px;font-family:var(--mono);font-size:.76rem;color:var(--gold-soft);">Agências de rating</div>
+        <div style="flex:1;font-size:.8rem;color:var(--text-dim);line-height:1.55;">Opinião de crédito formal e metodologicamente auditável — com ciclo de revisão periódico, por natureza.</div>
+        <span class="tag" style="white-space:nowrap;">opinião formal</span>
+      </div>
+      <div class="card rv d7" style="display:flex;align-items:center;gap:20px;padding:14px 22px;border-color:rgba(196,152,90,.4);background:rgba(196,152,90,.05);">
+        <div style="min-width:150px;font-family:var(--mono);font-size:.76rem;color:var(--gold-soft);">VIX Radar</div>
+        <div style="flex:1;font-size:.8rem;color:var(--text);line-height:1.55;">Varre essas fontes duas vezes ao dia, classifica cada evento por materialidade e submete o resultado à verificação adversarial antes de publicar. Entrega sinal pronto para agir, com fonte e veredicto rastreáveis.</div>
+        <span class="tag tag-gold" style="white-space:nowrap;">sinal acionável</span>
+      </div>
+    </div>
+    <p style="font-family:var(--mono);font-size:.66rem;color:var(--text-mute);margin-top:10px;">A pergunta não é onde encontrar o dado. É quem avisa a tempo quando ele muda.</p>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 18 · RUMO ═══════════ -->
+<div class="slide bg-grid" data-slide="17" data-mood="neutral">
+  <span class="deep-tag">APROFUNDAMENTO · RUMO</span>
+  <div class="two-col" style="max-width:1140px;">
+    <div class="col">
+      <span class="kicker rv d1">Rumo</span>
+      <h2 class="t-title rv d2">Base sólida. Próximas evoluções em três frentes.</h2>
+      <div class="gold-line rv d3"></div>
+      <p class="t-body rv d4">Cobertura expandida, dados de mercado em tempo real e funcionalidades enterprise.</p>
+      <div class="card rv d5" style="background:rgba(196,152,90,.05);border-color:rgba(196,152,90,.25);margin-top:6px;">
+        <p style="font-size:.8rem;color:var(--text-dim);line-height:1.6;"><strong style="font-weight:600;color:var(--gold-soft);">Customização enterprise:</strong> white-label completo, integração com sistemas internos via API, SLAs de suporte e onboarding dedicado.</p>
+      </div>
+    </div>
+    <div class="col">
+      <div class="timeline">
+        <div class="timeline-item rv d3">
+          <div class="t-label" style="font-size:.62rem;">Q3 2026</div>
+          <p style="color:var(--text);font-size:.88rem;margin-top:3px;">Dados de mercado mais granulares</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Spreads, volumes e preços ANBIMA/B3 com atualização mais frequente.</p>
+        </div>
+        <div class="timeline-item rv d4">
+          <div class="t-label" style="font-size:.62rem;">Q3–Q4 2026</div>
+          <p style="color:var(--text);font-size:.88rem;margin-top:3px;">Universo em expansão</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Rumo a 150+ emissores, incluindo mid-caps e FIDCs.</p>
+        </div>
+        <div class="timeline-item rv d5">
+          <div class="t-label" style="font-size:.62rem;">Q4 2026</div>
+          <p style="color:var(--text);font-size:.88rem;margin-top:3px;">Pipeline preditivo público</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Scores quantitativos disponíveis para os usuários finais.</p>
+        </div>
+        <div class="timeline-item rv d6">
+          <div class="t-label" style="font-size:.62rem;">2027</div>
+          <p style="color:var(--text);font-size:.88rem;margin-top:3px;">Multi-carteira e risco agregado</p>
+          <p style="color:var(--text-dim);font-size:.76rem;margin-top:2px;">Exposição consolidada por grupo e cenários de stress.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+<!-- ═══════════ CENA 19 · ENCERRAMENTO ═══════════ -->
+<div class="slide bg-marble" data-slide="18" data-mood="calor">
+  <div class="radar-slot pos-center faint r-lg"></div>
+  <div class="wrap wrap-center">
+    <div class="gold-line rv d1" style="margin:0 auto;"></div>
+    <h2 class="t-hero rv d2" style="font-size:clamp(2rem,4.4vw,3.6rem);">VIX Radar</h2>
+    <p class="t-subtitle rv d3" style="max-width:560px;">
+      104 emissores. 13 setores. Classificação por IA com verificação adversarial. Newsletter diária. Zero manutenção.
+    </p>
+    <p class="rv d4" style="font-family:var(--mono);font-size:.8rem;color:var(--text-dim);margin-top:10px;">Obrigado.</p>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-direction:column;align-items:center;">
+      <span class="tag tag-gold rv d5">vixradar.com</span>
+      <a href="mailto:yan@szuchmacher.com.br" style="font-family:var(--mono);font-size:.72rem;color:var(--text-dim);text-decoration:none;border-bottom:1px solid var(--border-2);padding-bottom:2px;">yan@szuchmacher.com.br</a>
+    </div>
+    <p class="t-small rv d6" style="margin-top:18px;">Szuchmacher Consultoria Ltda. · Setembro 2026</p>
+  </div>
+  <span class="scene-mark">Até breve</span>
+  <span class="watermark">Szuchmacher Consultoria Ltda.</span>
+</div>
+
+</div><!-- /deck -->
+
+<!-- Trilha sonora: Mascagni, "Cavalleria rusticana" – Intermezzo (EMI 1940, regência do compositor).
+     Domínio público. Fonte: archive.org/details/cav-interm-mascagni-1940.
+     Se o arquivo não estiver junto do HTML, o deck toca a trilha gerada como reserva. -->
+<audio id="operaAudio" src="trilha-opera-foco.mp3" preload="auto" loop></audio>
+
+<!-- Progresso (modo cinema) -->
+<div class="topbar" aria-hidden="true"><div class="topbar-fill" id="topFill"></div></div>
+
+<!-- Legendas / roteiro -->
+<div class="captions" id="captions" aria-live="polite">
+  <div class="cap-label" id="capLabel">Roteiro</div>
+  <div class="cap-text" id="capText"></div>
+</div>
+
+<!-- Barra de navegação -->
+<div class="nav-bar" role="toolbar" aria-label="Controles da apresentação">
+  <div class="nav-group">
+    <button class="nav-btn" id="prevBtn" aria-label="Anterior">←</button>
+    <button class="nav-btn" id="nextBtn" aria-label="Próximo">→</button>
+  </div>
+
+  <div class="nav-group center" id="manualCtl">
+    <div class="progress-dots" id="dots" role="tablist" aria-label="Slides"></div>
+    <span class="slide-counter" id="counter">01 / 19</span>
+  </div>
+
+  <div class="nav-group center" id="autoCtl">
+    <button class="nav-btn icon-btn" id="pauseBtn" aria-label="Pausar" title="Pausar / continuar">❚❚</button>
+    <span class="slide-counter"><b id="autoCounter">01</b> / <span id="autoTotal">11</span></span>
+    <button class="nav-btn icon-btn" id="exitAutoBtn" aria-label="Sair do modo cinema" title="Voltar ao modo manual">✕</button>
+  </div>
+
+  <div class="nav-group" id="toolsGroup">
+    <button class="nav-btn" id="ccBtn" aria-pressed="false" title="Mostrar roteiro (legendas)">Roteiro</button>
+    <button class="nav-btn icon-btn" id="soundBtn" aria-pressed="false" aria-label="Som" title="Trilha sonora">♪</button>
+    <button class="nav-btn btn-primary-nav" id="cinemaBtn" aria-label="Modo cinema" title="Tocar como vídeo">▶ Assistir</button>
+    <button class="nav-btn icon-btn" id="fsBtn" aria-label="Tela cheia" title="Tela cheia">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 6V3h3M13 6V3h-3M3 10v3h3M13 10v3h-3" stroke="currentColor" fill="none" stroke-width="1.7" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ══════════ ROTEIRO POR CENA (legendas) ══════════ */
+  var ROTEIRO = [
+    "Em crédito privado, o risco não avisa: ele acontece. Rebaixamento de rating, recuperação judicial, spread fora da curva. O mercado inteiro fica sabendo no mesmo dia. A pergunta é: quando a sua mesa fica sabendo? Hoje, entre o evento e a reação manual, passam-se, em média, de três a cinco dias.",
+    "Apresentamos o VIX Radar: inteligência de crédito privado com IA. Monitoramos 104 emissores de renda fixa no Brasil, classificamos cada evento e conferimos o resultado com um segundo modelo antes de publicar. O seu papel continua sendo decidir. O nosso é garantir que você decida informado — e a tempo.",
+    "A proposta é direta: dez minutos por dia bastam para saber o que mudou no crédito privado brasileiro. O radar varre as fontes duas vezes ao dia, classifica cada evento por materialidade e confere antes de publicar. O que chega até você é sinal pronto para agir — no painel, na newsletter e nos alertas.",
+    "Cobertura completa: 104 emissores, 13 setores. Energia, saneamento, transportes, saúde, agronegócio, bancos — o pulso da dívida corporativa brasileira, num único lugar.",
+    "Como nasce um alerta confiável: a coleta varre as fontes públicas; o motor de IA lê o que saiu e separa o que importa; o auditor adversarial confere antes de publicar; e o painel entrega o sinal. Cada evento carrega fonte, data e veredicto — do início ao fim.",
+    "Cada evento recebe um de quatro níveis. Crítico é o que exige ação imediata, com verificação obrigatória. Relevante merece atenção e passa por amostragem de verificação. Eco é rotina e fica no detalhe do emissor. Ruído é filtrado antes de chegar à sua tela.",
+    "Aqui está o nosso diferencial. IA generativa pode inventar. Por isso, antes de um evento crítico chegar ao painel, um segundo modelo — independente do classificador — reavalia tudo com uma premissa: é falso, até provar que é verdadeiro. Ele aprova com fonte, corrige o que veio errado ou rejeita o que não se sustenta.",
+    "E o número que antecede a notícia: o Early Warning Score. Cada emissor recebe uma nota de zero a cem, que combina os eventos classificados pela IA, as anomalias de mercado e os sinais qualitativos. Quando o score sobe, você olha antes do título do jornal.",
+    "Resultados reais: num emissor de saúde, os sinais começaram doze dias antes do pedido de recuperação judicial. Num emissor de energia, cinco dias antes do rebaixamento de rating. Num emissor de logística, o spread acusou dois vírgula três desvios fora da curva — sem nenhuma notícia.",
+    "Na prática, o dia fica assim. Às dez e quinze, a newsletter chega pronta, com o briefing em dois minutos de leitura. Às onze, o painel e o PDF abastecem o comitê. À tarde, se um emissor da carteira for rebaixado, o alerta já chega verificado, com a fonte. Sexta-feira, o relatório semanal sai sozinho.",
+    "O próximo passo é uma demonstração guiada de trinta minutos, sobre a base de produção, com os eventos reais do dia — e, se quiser, com a sua carteira em mãos. Agende pelo e-mail na tela, ou visite o site. O acesso de avaliação é individual e nominal.",
+    "Aprofundamento: o painel foi desenhado para o gestor de crédito. Pontos vermelhos e amarelos mostram eventos ativos verificados, triângulos marcam anomalias de mercado — e cada módulo leva do resumo do dia ao detalhe do emissor.",
+    "Além do painel, a inteligência chega por e-mail: boletim diário com briefing executivo, agenda da semana e destaques — com frequência, filtros e identidade visual configuráveis. Alertas críticos saem imediatamente após a verificação.",
+    "A arquitetura é cem por cento serverless, na edge da Cloudflare: frontend em Pages, API em Worker com KV e Durable Objects, e o motor de inteligência com verificação adversarial. Sem servidor para manter, sem banco para administrar.",
+    "Segurança em camadas: autenticação com aprovação manual, proteção contra força bruta, observabilidade contínua e governança de IA — cada evento é auditado pelo verificador. Software registrado no INPI e conformidade com a LGPD.",
+    "Trajetória: em produção desde 2026, com dois ciclos de auditoria em julho, hardening estrutural em agosto e auditoria independente em setembro. Cada deploy é validado em produção antes do commit, e o CI confere a saúde a cada seis horas.",
+    "O VIX Radar não substitui as fontes — ele soma a elas a camada que faltava: ler o que saiu, separar o que importa do que é barulho e conferir antes de avisar.",
+    "Rumo: dados de mercado mais granulares ainda este trimestre, universo em expansão rumo a 150 emissores, pipeline preditivo público e, em 2027, gestão multi-carteira com risco agregado.",
+    "Obrigado. Se quiser ver o radar em ação com a sua carteira, é só chamar."
+  ];
+
+  var REDUCED = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var $ = function (id) { return document.getElementById(id); };
+
+  var SLIDES = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var N = SLIDES.length;
+  var FILM = SLIDES.filter(function (s) { return s.hasAttribute('data-auto'); });
+  var dotsBox = $('dots'), counterEl = $('counter');
+  var ccBtn = $('ccBtn'), soundBtn = $('soundBtn'), cinemaBtn = $('cinemaBtn');
+  var captions = $('captions'), capText = $('capText');
+
+  var idx = 0, mode = 'manual', playing = false;
+  var sceneTimer = null, sceneStart = 0, sceneDur = 0;
+  var preSum = [], filmTotalMs = 0;
+  var ccOn = false;
+
+  /* ── Radar decorativo: clonar template nos slots ── */
+  try {
+    var tpl = document.getElementById('radarTpl');
+    var slots = document.querySelectorAll('.radar-slot');
+    for (var k = 0; k < slots.length; k++) {
+      slots[k].appendChild(tpl.content.cloneNode(true));
+    }
+  } catch (e) {}
+
+  /* ── Trilha sonora generativa (Web Audio) ── */
+  var FX = (function () {
+    var ctx = null, master = null, filt = null, ready = false, muted = false;
+    var voices = [], noiseGain = null, curMood = 'neutral';
+    var chordTimer = null, revIn = null, revOut = null;
+    /* drone do manto: por humor (baixo e quente, nunca estridente) */
+    var PADCH = {
+      neutral: [55, 82.41, 110, 164.81],
+      intenso: [55, 65.41, 82.41, 110],
+      calor:   [55, 82.41, 123.47, 164.81]
+    };
+    /* progressão clássica de foco: Am → F → C → G (sutil, cíclica) */
+    var PLAY = [
+      [110, 130.81, 164.81, 220],
+      [87.31, 110, 130.81, 174.61],
+      [130.81, 164.81, 196, 261.63],
+      [98, 123.47, 146.83, 196]
+    ];
+    var STEP = [0, 1, 2, 3, 2, 1];
+
+    function build() {
+      ctx = new (window.AudioContext || window.webkitAudioContext)();
+      master = ctx.createGain(); master.gain.value = 0.0; master.connect(ctx.destination);
+      filt = ctx.createBiquadFilter();
+      filt.type = 'lowpass'; filt.frequency.value = 380; filt.Q.value = 0.5;
+      filt.connect(master);
+      var i;
+      for (i = 0; i < 4; i++) {
+        var o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+        o1.type = 'sawtooth'; o2.type = 'sawtooth';
+        o1.frequency.value = 55; o2.frequency.value = 55;
+        o1.detune.value = -6; o2.detune.value = 6;
+        var g = ctx.createGain(); g.gain.value = 0.0001;
+        o1.connect(g); o2.connect(g); g.connect(filt);
+        o1.start(); o2.start();
+        voices.push({ o1: o1, o2: o2, g: g });
+      }
+      /* ar: ruído filtrado bem discreto */
+      var len = ctx.sampleRate * 2, buf = ctx.createBuffer(1, len, ctx.sampleRate);
+      var d = buf.getChannelData(0);
+      for (i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      var src = ctx.createBufferSource(); src.buffer = buf; src.loop = true;
+      var bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 2600; bp.Q.value = 0.6;
+      noiseGain = ctx.createGain(); noiseGain.gain.value = 0.004;
+      src.connect(bp); bp.connect(noiseGain); noiseGain.connect(master); src.start();
+      /* espaço (delay difuso) para o piano */
+      revIn = ctx.createGain(); revIn.gain.value = 1.0;
+      revOut = ctx.createGain(); revOut.gain.value = 0.5;
+      var taps = [[0.213, 0.36], [0.327, 0.28]];
+      for (i = 0; i < taps.length; i++) {
+        var dL = ctx.createDelay(1.2); dL.delayTime.value = taps[i][0];
+        var fL = ctx.createBiquadFilter(); fL.type = 'lowpass'; fL.frequency.value = 2400;
+        var fb = ctx.createGain(); fb.gain.value = taps[i][1];
+        dL.connect(fL); fL.connect(fb); fb.connect(dL); fL.connect(revOut);
+        revIn.connect(dL);
+      }
+      revOut.connect(master);
+      ready = true;
+      setMood(curMood, true);
+      master.gain.setTargetAtTime(muted ? 0 : 0.42, ctx.currentTime, 1.4);
+    }
+    function setMood(name, instant) {
+      curMood = name || 'neutral';
+      if (!ctx) return;
+      var freqs = PADCH[curMood] || PADCH.neutral;
+      for (var i = 0; i < voices.length; i++) {
+        var f = freqs[i] || freqs[0] * Math.pow(2, 0);
+        voices[i].o1.frequency.setTargetAtTime(f, ctx.currentTime, instant ? 0.01 : 1.8);
+        voices[i].o2.frequency.setTargetAtTime(f, ctx.currentTime, instant ? 0.01 : 1.8);
+        voices[i].g.gain.setTargetAtTime(freqs[i] ? 0.013 : 0.0001, ctx.currentTime, instant ? 0.02 : 1.2);
+      }
+    }
+    /* piano clássico de foco: nota curta e difusa */
+    function piano(freq, t, vel) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'triangle'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vel, t + 0.014);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.1);
+      var o2 = ctx.createOscillator(), g2 = ctx.createGain();
+      o2.type = 'sine'; o2.frequency.value = freq * 2;
+      g2.gain.setValueAtTime(vel * 0.32, t);
+      g2.gain.exponentialRampToValueAtTime(0.0001, t + 0.7);
+      o.connect(g); g.connect(revIn); g.connect(master);
+      o2.connect(g2); g2.connect(revIn);
+      o.start(t); o.stop(t + 2.3);
+      o2.start(t); o2.stop(t + 0.9);
+    }
+    function bass(freq, t, vel) {
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = 'sine'; o.frequency.value = freq;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vel, t + 0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 2.7);
+      o.connect(g); g.connect(master);
+      o.start(t); o.stop(t + 3);
+    }
+    /* progressão cíclica: cada acorde dura ~6,3s, arpejo em duas oitavas */
+    function chordLoop(i) {
+      chordTimer = setTimeout(function () { chordLoop(i + 1); }, 6300);
+      if (!ctx || ctx.state !== 'running' || muted) return;
+      var ch = PLAY[i % PLAY.length];
+      var t0 = ctx.currentTime + 0.06;
+      var j;
+      for (j = 0; j < 12; j++) {
+        var oct = (j >= 6) ? 2 : 1;
+        piano(ch[STEP[j % STEP.length]] * oct, t0 + j * 0.5, j % 6 === 0 ? 0.05 : 0.035);
+      }
+      bass(ch[0] / 2, t0, 0.055);
+    }
+    function start() {
+      if (!ctx) build();
+      if (ctx.state === 'suspended') ctx.resume();
+      if (!chordTimer) chordTimer = setTimeout(function () { chordLoop(0); }, 700);
+    }
+    function setMuted(m) {
+      muted = m;
+      if (ctx) master.gain.setTargetAtTime(m ? 0 : 0.42, ctx.currentTime, 0.25);
+    }
+    function pulse(strength) {
+      if (!ctx || ctx.state !== 'running') return;
+      var thump = function (freq, when, vol) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'sine'; o.frequency.value = freq;
+        g.gain.setValueAtTime(0.0001, ctx.currentTime + when);
+        g.gain.exponentialRampToValueAtTime(vol, ctx.currentTime + when + 0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + when + 1.4);
+        o.connect(g); g.connect(master); o.start(ctx.currentTime + when);
+        o.stop(ctx.currentTime + when + 1.6);
+      };
+      var v = strength > 1 ? 0.16 : 0.1;
+      thump(52, 0, v); thump(52, 0.16, v * 0.7);
+      if (strength > 1) { thump(63, 0.32, v * 0.5); }
+    }
+    function rise() {
+      if (!ctx || ctx.state !== 'running') return;
+      var f = filt.frequency;
+      f.setValueAtTime(f.value, ctx.currentTime);
+      f.exponentialRampToValueAtTime(1150, ctx.currentTime + 3.2);
+      f.exponentialRampToValueAtTime(420, ctx.currentTime + 7.5);
+    }
+    return {
+      start: start, setMood: setMood, pulse: pulse, rise: rise,
+      isOn: function () { return !!ctx; },
+      setMuted: setMuted, isMuted: function () { return muted; }
+    };
+  })();
+
+  var soundUserMuted = false;
+  var operaAudio = document.getElementById('operaAudio');
+  var soundOn = false, soundMuted = false, fileFailed = false, genStarted = false, musicStarted = false;
+
+  if (operaAudio) {
+    operaAudio.volume = 0;               /* o volume só sobe quando o som é pedido */
+    operaAudio.addEventListener('error', function () {
+      fileFailed = true;
+      if (soundOn && !soundMuted) startGen();
+    }, false);
+  }
+
+  function startGen() {
+    if (genStarted) return;
+    genStarted = true;
+    FX.start();
+    FX.setMuted(soundMuted);
+  }
+
+  function applyVol() {
+    if (operaAudio) operaAudio.volume = (soundOn && !soundMuted && !fileFailed) ? 0.5 : 0;
+    if (genStarted) FX.setMuted(!soundOn || soundMuted);
+  }
+
+  function startMusic() {
+    musicStarted = true;
+    if (operaAudio && !fileFailed) {
+      if (!operaAudio.paused) return;   /* já tocando: só ajusta o volume */
+      var p;
+      try { operaAudio.currentTime = 0; p = operaAudio.play(); }
+      catch (e) { p = Promise.reject(e); }
+      if (p && p.catch) {
+        p.catch(function () { fileFailed = true; startGen(); });
+      }
+      /* falha de carregamento/disponibilidade cai no evento 'error' acima */
+    } else {
+      startGen();
+    }
+  }
+
+  function setSoundUI() {
+    var on = soundOn && !soundMuted;
+    soundBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    soundBtn.style.color = on ? 'var(--gold-soft)' : '';
+    soundBtn.title = on ? 'Desligar trilha sonora (m)' : 'Ligar trilha sonora (m)';
+  }
+
+  function toggleSound(forceOn) {
+    if (forceOn === true) { soundOn = true; soundMuted = false; }
+    else if (forceOn === false) { if (soundOn) { soundMuted = true; } }
+    else {
+      if (!soundOn) { soundOn = true; soundMuted = false; }
+      else if (!soundMuted) { soundMuted = true; }
+      else { soundMuted = false; }
+    }
+    if (soundOn && !soundMuted && !musicStarted) startMusic();
+    applyVol();
+    setSoundUI();
+  }
+
+  /* ── Navegação manual ── */
+  var dots = [];
+  for (var di = 0; di < N; di++) {
+    (function (i) {
+      var b = document.createElement('button');
+      b.className = 'progress-dot' + (SLIDES[i].hasAttribute('data-auto') ? '' : ' deep');
+      b.setAttribute('role', 'tab');
+      b.title = 'Cena ' + (i + 1) + (SLIDES[i].hasAttribute('data-auto') ? '' : ' · aprofundamento');
+      b.addEventListener('click', function () { go(i); });
+      dotsBox.appendChild(b); dots.push(b);
+    })(di);
+  }
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function filmPos(i) { return FILM.indexOf(SLIDES[i]); }
+
+  function updateDots() {
+    for (var i = 0; i < N; i++) dots[i].classList.toggle('active', i === idx);
+  }
+
+  function updateCounter() {
+    var isDeep = filmPos(idx) < 0;
+    if (mode === 'auto') {
+      $('autoCounter').textContent = pad(filmPos(idx) + 1);
+      return;
+    }
+    counterEl.textContent = pad(idx + 1) + ' / ' + N + (isDeep ? ' · aprofundamento' : '');
+  }
+
+  function updateCaptions() {
+    capText.textContent = ROTEIRO[idx] || '';
+    var show = (mode === 'auto') || ccOn;
+    captions.classList.toggle('show', show && ROTEIRO[idx]);
+  }
+
+  function applyCountUp() {
+    var els = document.querySelectorAll('.slide.active [data-count]');
+    for (var i = 0; i < els.length; i++) {
+      (function (el) {
+        if (el.getAttribute('data-counted') === '1') return;
+        el.setAttribute('data-counted', '1');
+        var target = parseInt(el.getAttribute('data-count'), 10) || 0;
+        if (REDUCED) { el.textContent = target; return; }
+        var t0 = null;
+        function frame(ts) {
+          if (!t0) t0 = ts;
+          var p = Math.min((ts - t0) / 1200, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = Math.round(target * eased);
+          if (p < 1) requestAnimationFrame(frame);
+        }
+        requestAnimationFrame(frame);
+      })(els[i]);
+    }
+  }
+
+  function setMoodForSlide(s) {
+    FX.setMood(s.getAttribute('data-mood') || 'neutral');
+  }
+
+  function go(i, opts) {
+    opts = opts || {};
+    if (typeof i !== 'number') { i = SLIDES.indexOf(i); }
+    if (i < 0 || i >= N) return;
+    var prev = SLIDES[idx];
+    if (prev) prev.classList.remove('active');
+    idx = i;
+    var cur = SLIDES[idx];
+    cur.classList.add('active');
+    updateDots(); updateCounter(); updateCaptions(); applyCountUp();
+    setMoodForSlide(cur);
+
+    if (mode === 'auto') {
+      sceneStart = Date.now();
+      if (opts.pulse && !REDUCED) FX.pulse(cur.getAttribute('data-mood') === 'intenso' ? 2 : 1);
+      if (idx === 10 && FX.isOn()) FX.rise();
+      scheduleNext();
+    }
+  }
+
+  /* ── Modo cinema ── */
+  function durationOf(s) {
+    var d = parseFloat(s.getAttribute('data-dur'));
+    if (d > 0) return d * 1000;
+    var words = (s.textContent || '').trim().split(/\s+/).length;
+    return Math.max(6000, Math.min(16000, 3400 + words * 190));
+  }
+
+  (function buildFilmTimes() {
+    for (var i = 0; i < FILM.length; i++) {
+      preSum[i] = filmTotalMs;
+      filmTotalMs += durationOf(FILM[i]);
+    }
+  })();
+
+  function scheduleNext() {
+    clearSceneTimer();
+    sceneDur = durationOf(SLIDES[idx]);
+    sceneTimer = setTimeout(function () { stepFilm(1); }, sceneDur);
+  }
+  function clearSceneTimer() { if (sceneTimer) { clearTimeout(sceneTimer); sceneTimer = null; } }
+
+  function stepFilm(delta) {
+    var pos = filmPos(idx);
+    if (pos < 0) { go(FILM[0]); return; }
+    var np = pos + delta;
+    if (np >= FILM.length) { endAuto(); return; }
+    go(FILM[np]);
+  }
+
+  function enterAuto() {
+    if (mode === 'auto') return;
+    mode = 'auto'; playing = true;
+    document.body.classList.add('is-auto');
+    cinemaBtn.style.display = 'none';
+    ccBtn.style.display = 'none';
+    var p = filmPos(idx);
+    if (p < 0) { go(FILM[0]); }
+    else { go(SLIDES[idx], { pulse: true }); }
+    updateCounter();
+    if (!soundUserMuted) toggleSound(true);
+    updateProgressInterval();
+  }
+
+  function endAuto() {
+    if (mode !== 'auto') return;
+    clearSceneTimer();
+    clearInterval(progInt);
+    $('topFill').style.width = '0%';
+    mode = 'manual'; playing = false;
+    document.body.classList.remove('is-auto');
+    cinemaBtn.style.display = '';
+    ccBtn.style.display = '';
+    $('pauseBtn').textContent = '❚❚';
+    $('pauseBtn').setAttribute('aria-label', 'Pausar');
+    updateCounter(); updateCaptions();
+  }
+
+  function pauseAuto() {
+    if (mode !== 'auto' || !playing) return;
+    playing = false; clearSceneTimer();
+    $('pauseBtn').textContent = '▶';
+    $('pauseBtn').setAttribute('aria-label', 'Continuar');
+  }
+  function resumeAuto() {
+    if (mode !== 'auto' || playing) return;
+    playing = true;
+    $('pauseBtn').textContent = '❚❚';
+    $('pauseBtn').setAttribute('aria-label', 'Pausar');
+    scheduleNext();
+  }
+
+  var progInt = null;
+  function updateProgressInterval() {
+    clearInterval(progInt);
+    if (mode !== 'auto') return;
+    progInt = setInterval(function () {
+      if (!playing) return;
+      var pos = Math.max(filmPos(idx), 0);
+      var el = Date.now() - sceneStart;
+      var pct = ((preSum[pos] || 0) + Math.min(el, sceneDur)) / filmTotalMs * 100;
+      $('topFill').style.width = Math.min(pct, 100) + '%';
+    }, 120);
+  }
+
+  /* ── Botões ── */
+  $('prevBtn').addEventListener('click', function () {
+    if (mode === 'auto') stepFilm(-1); else go(idx - 1);
+  });
+  $('nextBtn').addEventListener('click', function () {
+    if (mode === 'auto') stepFilm(1); else go(idx + 1);
+  });
+  cinemaBtn.addEventListener('click', enterAuto);
+  $('exitAutoBtn').addEventListener('click', endAuto);
+  $('pauseBtn').addEventListener('click', function () { playing ? pauseAuto() : resumeAuto(); });
+  ccBtn.addEventListener('click', function () {
+    ccOn = !ccOn;
+    ccBtn.setAttribute('aria-pressed', ccOn ? 'true' : 'false');
+    updateCaptions();
+  });
+  soundBtn.addEventListener('click', function () {
+    toggleSound();
+    soundUserMuted = soundOn ? soundMuted : true;
+  });
+  $('fsBtn').addEventListener('click', function () {
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (document.documentElement.requestFullscreen && document.documentElement.requestFullscreen()).catch(function () {});
+  });
+
+  /* ── Teclado ── */
+  document.addEventListener('keydown', function (e) {
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); mode === 'auto' ? stepFilm(1) : go(idx + 1); }
+    else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); mode === 'auto' ? stepFilm(-1) : go(idx - 1); }
+    else if (e.key === 'Home') { e.preventDefault(); mode === 'auto' ? go(FILM[0]) : go(0); }
+    else if (e.key === 'End') { e.preventDefault(); mode === 'auto' ? stepFilm(FILM.length) : go(N - 1); }
+    else if (e.key === ' ') {
+      e.preventDefault();
+      if (mode === 'auto') { playing ? pauseAuto() : resumeAuto(); }
+      else go(idx + 1);
+    }
+    else if (e.key === 'Escape' && mode === 'auto') { endAuto(); }
+    else if (e.key === 'm' || e.key === 'M') { soundBtn.click(); }
+    else if (e.key === 'c' || e.key === 'C') { ccBtn.click(); }
+    else if (e.key === 'f' || e.key === 'F') { $('fsBtn').click(); }
+  });
+
+  /* ── Toque ── */
+  var tStart = 0;
+  document.addEventListener('touchstart', function (e) { tStart = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    var dx = e.changedTouches[0].clientX - tStart;
+    if (Math.abs(dx) > 60) { dx < 0 ? (mode === 'auto' ? stepFilm(1) : go(idx + 1)) : (mode === 'auto' ? stepFilm(-1) : go(idx - 1)); }
+  }, { passive: true });
+
+  /* ── Pausa ao esconder aba ── */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && mode === 'auto' && playing) pauseAuto();
+  });
+
+  setSoundUI();
+  var h0 = parseInt((window.location.hash || '').replace('#slide-', ''), 10);
+  if (!isNaN(h0) && h0 >= 0 && h0 < N) { go(h0); }
+  else { go(0); }
+})();
+</script>
+
+</body>
+</html>

@@ -278,6 +278,18 @@ Obsidian VIX Radar/Sem t*.canvas
 docs/archived/
 
 # ---------- Artefatos de agentes/terminais Claude Code (nao versionar) ----------
+.ai/mcp/mcp.json
+.kilo/
+.worktree-clean/
+Python/_cache/
+open-cowork/
+q1-patches/
+skill-observations/
+_audit_inspect.js
+_t.js
+WhatsApp Video 2026-08-19 at 12.54.20.mp4
+WhatsApp Video 2026-08-22 at 15.57.46 (1).mp4
+WhatsApp Video 2026-08-22 at 15.57.46 (2).mp4
 agent-tools/
 terminals/
 workspace.code-workspace
