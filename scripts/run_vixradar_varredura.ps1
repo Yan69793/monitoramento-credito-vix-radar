@@ -306,12 +306,85 @@ function Update-VixLock {
     try { (Get-Item $LockFile -ErrorAction Stop).LastWriteTime = Get-Date } catch { }
 }
 
+# D1: lock so bloqueia quando o processo que o escreveu continua vivo COM o mesmo
+# inicio. PID sozinho pode ser reutilizado pelo Windows depois de um crash.
+function Get-VixLockState([string]$Path, [int]$AbandonoMin) {
+    $out = [pscustomobject]@{ bloqueia = $false; motivo = 'LOCK_ORFAO_AUSENTE'; pid = $null; inicio_utc = $null }
+    if (-not (Test-Path -LiteralPath $Path)) { return $out }
+    $dados = @{}
+    try {
+        foreach ($linha in @(Get-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop)) {
+            if ($linha -match '^([^=]+)=(.*)$') { $dados[$Matches[1].Trim().ToLowerInvariant()] = $Matches[2].Trim() }
+        }
+    } catch { $out.motivo = 'LOCK_ORFAO_ILEGIVEL'; return $out }
+    $pidLock = 0
+    if (-not $dados.ContainsKey('pid') -or -not [int]::TryParse($dados['pid'], [ref]$pidLock) -or $pidLock -le 0) {
+        $out.motivo = 'LOCK_ORFAO_PID_INVALIDO'; return $out
+    }
+    $inicioTxt = ''
+    if ($dados.ContainsKey('inicio_utc')) { $inicioTxt = $dados['inicio_utc'] }
+    elseif ($dados.ContainsKey('inicio')) { $inicioTxt = $dados['inicio'] }
+    $inicioLock = [datetime]::MinValue
+    if (-not $inicioTxt -or -not [datetime]::TryParse($inicioTxt, [ref]$inicioLock)) {
+        $out.motivo = 'LOCK_ORFAO_INICIO_INVALIDO'; $out.pid = $pidLock; return $out
+    }
+    $out.pid = $pidLock
+    $out.inicio_utc = $inicioLock.ToUniversalTime()
+    try { $proc = Get-Process -Id $pidLock -ErrorAction Stop }
+    catch { $out.motivo = 'LOCK_ORFAO_PID_MORTO'; return $out }
+    try { $inicioProc = $proc.StartTime.ToUniversalTime() }
+    catch { $out.motivo = 'LOCK_ORFAO_PROCESSO_INACESSIVEL'; return $out }
+    if ([math]::Abs(($inicioProc - $out.inicio_utc).TotalSeconds) -gt 2) {
+        $out.motivo = 'LOCK_ORFAO_PID_REUTILIZADO'; return $out
+    }
+    $out.bloqueia = $true
+    $out.motivo = 'LOCK_VIVO'
+    return $out
+}
+
+# D4: o total final e a leitura do ledger do dia. Contadores da execucao atual
+# nao representam um reinicio e podem divergir de linhas ja persistidas.
+function Get-VixResumoLedger([string]$Path) {
+    $vistos = @{}
+    if (Test-Path -LiteralPath $Path) {
+        foreach ($linha in @(Get-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+            if ($linha -match '^(?:[\d-]+\s+[\d:]+\s+)?(?:OK|DRYRUN)\|([^|]+)\|[^|]*\|[^|]*\|[^|]*\|[^|]*\|(SKIP|ANALISADO|DEFERIDO)\|') {
+                $vistos[(Get-NomeNormalizado $Matches[1])] = $Matches[2]
+            }
+        }
+    }
+    $analisados = 0; $skips = 0; $deferidos = 0
+    foreach ($status in @($vistos.Values)) {
+        if ($status -eq 'ANALISADO') { $analisados++ }
+        elseif ($status -eq 'SKIP') { $skips++ }
+        elseif ($status -eq 'DEFERIDO') { $deferidos++ }
+    }
+    return [pscustomobject]@{ total = $vistos.Count; analisados = $analisados; skips = $skips; deferidos = $deferidos }
+}
+
+# D3: codex exec --json pode nao publicar usage. Sem evento de usage, a ausencia
+# e declarada, nunca convertida em quatro zeros inventados.
+function Get-VixCodexUsageProbe($Linhas) {
+    foreach ($linha in @($Linhas)) {
+        try {
+            $obj = ('' + $linha).Trim() | ConvertFrom-Json
+            if ($obj.usage -and $null -ne $obj.usage.input_tokens -and $null -ne $obj.usage.output_tokens) {
+                return [pscustomobject]@{
+                    mensuravel = $true
+                    parcelas = @{ input = [int64]$obj.usage.input_tokens; output = [int64]$obj.usage.output_tokens; cache_creation = [int64]$obj.usage.cache_creation_input_tokens; cache_read = [int64]$obj.usage.cache_read_input_tokens }
+                }
+            }
+        } catch { }
+    }
+    return [pscustomobject]@{ mensuravel = $false; parcelas = $null }
+}
+
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     # Flags de economia (medidas 2026-07-03): boot 33.9k -> ~13.6k tokens/invocacao.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $LogDir ($Perfil.prefix + '_stderr_' + $DateTag + '_' + $PID + '.txt')
-    $raw = $null; $exitCode = 1; $escalou = $false
+    $raw = $null; $exitCode = 1; $escalou = $false; $usoMensuravel = $true
     try {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -347,16 +420,21 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             if ($script:VixUsaCodex) {
                 $codexOutFile = Join-Path $LogDir ($Perfil.prefix + '_codex_' + $DateTag + '_' + $PID + '.txt')
                 $promptText = Get-Content $promptPath -Raw -Encoding UTF8
-                $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
+                $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
                 $exitCode = $LASTEXITCODE
                 if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
                     $codexText = Get-Content $codexOutFile -Raw -Encoding UTF8
+                    $codexUsage = Get-VixCodexUsageProbe @($codexRaw)
+                    $usoMensuravel = [bool]$codexUsage.mensuravel
                     $envelope = [ordered]@{
                         result = $codexText
                         is_error = $false
                         model = 'codex-subscription'
-                        usage = [ordered]@{ input_tokens = 0; output_tokens = 0; cache_creation_input_tokens = 0; cache_read_input_tokens = 0 }
                     }
+                    if ($usoMensuravel) {
+                        $envelope.usage = [ordered]@{ input_tokens = $codexUsage.parcelas.input; output_tokens = $codexUsage.parcelas.output; cache_creation_input_tokens = $codexUsage.parcelas.cache_creation; cache_read_input_tokens = $codexUsage.parcelas.cache_read }
+                    }
+                    else { Write-Log 'USAGE_CODEX=NAO_MENSURAVEL: codex exec --json nao emitiu usage; cap fecha apos este lote.' }
                     $raw = @($envelope | ConvertTo-Json -Compress)
                 } else { $raw = @($codexRaw) }
                 $retryLog += ('t' + ($attempt + 1) + ':codex:exit=' + $exitCode)
@@ -472,7 +550,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
     }
     $authFail = Test-ClaudeAuthFailure $textOut
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote }
+    if (-not $usoMensuravel) {
+        $tokens = $null
+        $parcelas = @{ input = 'NAO_MENSURAVEL'; output = 'NAO_MENSURAVEL'; cache_creation = 'NAO_MENSURAVEL'; cache_read = 'NAO_MENSURAVEL'; trabalho = 'NAO_MENSURAVEL' }
+    }
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; UsoMensuravel = $usoMensuravel; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote }
 }
 
 function Get-NomeNormalizado([string]$s) {
@@ -555,6 +637,17 @@ function Resolve-VixCoberturaWeb($res) {
 # limit, limite backend, sem retorno) ou resposta vazia anomalia => RECHECK_PENDENTE com
 # faltantes e reanalise na proxima execucao (faltantes antes de itens novos), idempotente e
 # sem duplicar, mantido na frente da fila ate ser resolvido (sem janela de 2 dias).
+function Get-VixCoberturaProviderCapability([string]$Provedor) {
+    # D2: allowlist de capability, nao uma excecao generica para campo HTTP nulo.
+    $allowlist = @{
+        'openrouter' = [pscustomobject]@{ requer_http = $true; contrato = 'cobertura_http_provider_openrouter' }
+        'codex' = [pscustomobject]@{ requer_http = $false; contrato = 'cobertura_parcial_provider_codex' }
+    }
+    $base = ('' + $Provedor).Trim().ToLowerInvariant().Split(':')[0]
+    if (-not $allowlist.ContainsKey($base)) { return $null }
+    return $allowlist[$base]
+}
+
 function ConvertTo-VixFonteEstrutural($f) {
     # Normaliza UMA fonte em @{ familia; ok; motivo }. Falha estrutural = sem_prova (nao conta).
     $out = [pscustomobject]@{ familia = 'desconhecida'; ok = $false; motivo = 'sem_prova' }
@@ -564,21 +657,33 @@ function ConvertTo-VixFonteEstrutural($f) {
     $q = ('' + $f.query).Trim()
     $ts = ('' + $f.timestamp).Trim()
     $prov = ('' + $f.provedor).Trim()
+    $capability = Get-VixCoberturaProviderCapability $prov
+    if ($null -eq $capability) { $out.motivo = 'sem_prova_provedor_desconhecido'; return $out }
+    if ($null -eq $f.PSObject.Properties['status_http']) { $out.motivo = 'sem_prova_sem_status_http'; return $out }
     $httpRaw = '' + $f.status_http
     $http = 0
-    if (-not [int]::TryParse($httpRaw, [ref]$http)) { $out.motivo = 'sem_prova_sem_status_http'; return $out }
+    $semHttpPermitido = (-not $capability.requer_http -and $null -eq $f.status_http)
+    if (-not $semHttpPermitido -and -not [int]::TryParse($httpRaw, [ref]$http)) { $out.motivo = 'sem_prova_sem_status_http'; return $out }
     $res = ('' + $f.resultado).Trim()
     $cl = ('' + $f.classificacao).Trim().ToLowerInvariant()
     if (-not $q -or -not $ts -or -not $prov -or -not $res) { $out.motivo = 'sem_prova_campo_vazio'; return $out }
     if ($res -eq 'vazio') { $out.motivo = 'resposta_vazia_anomalia'; return $out }
-    $okHttp = ($http -ge 200 -and $http -lt 300)
+    $okHttp = ($semHttpPermitido -or ($http -ge 200 -and $http -lt 300))
     $okCl = ($cl -in @('ok', 'efetiva', 'sucesso', 'valida'))
     if (-not $okHttp) { $out.motivo = ('degradada_http_' + $http); return $out }
     if (-not $okCl) { $out.motivo = ('degradada_classificacao_' + $cl); return $out }
     if (Test-VixBuscaDegradada $res) { $out.motivo = 'degradada_conteudo'; return $out }
     $out.familia = $fam
     $out.ok = $true
-    $out.motivo = 'ok'
+    if ($semHttpPermitido) {
+        $out.motivo = 'ok_sem_http_provider'
+        $out | Add-Member -NotePropertyName cobertura_parcial -NotePropertyValue $true
+        $out | Add-Member -NotePropertyName contrato_provedor -NotePropertyValue $capability.contrato
+    } else {
+        $out.motivo = 'ok'
+        $out | Add-Member -NotePropertyName cobertura_parcial -NotePropertyValue $false
+        $out | Add-Member -NotePropertyName contrato_provedor -NotePropertyValue $capability.contrato
+    }
     return $out
 }
 
@@ -586,14 +691,17 @@ function Resolve-VixCoberturaFamilias($res) {
     # F1 emissor, F2 divida (divida|debentures|emissao|captacao), F3 fato (CVM/RI/fonte primaria).
     # Retorna @{ ok; faltantes = [string[]]; n_provas = int }.
     $okFam = @{ 'emissor' = $false; 'divida' = $false; 'fato' = $false }
-    $nProvas = 0
+    $nProvas = 0; $contratosParciais = @()
     foreach ($f in @($res.fontes_consultadas)) {
         $e = ConvertTo-VixFonteEstrutural $f
-        if ($e.ok) { $okFam[$e.familia] = $true; $nProvas++ }
+        if ($e.ok) {
+            $okFam[$e.familia] = $true; $nProvas++
+            if ($e.cobertura_parcial -and $e.contrato_provedor -notin $contratosParciais) { $contratosParciais += $e.contrato_provedor }
+        }
     }
     $faltantes = @()
     foreach ($fam in @('emissor', 'divida', 'fato')) { if (-not $okFam[$fam]) { $faltantes += $fam } }
-    return [pscustomobject]@{ ok = ($faltantes.Count -eq 0); faltantes = $faltantes; n_provas = $nProvas }
+    return [pscustomobject]@{ ok = ($faltantes.Count -eq 0); faltantes = $faltantes; n_provas = $nProvas; cobertura_parcial = ($contratosParciais.Count -gt 0); contratos_provedor = $contratosParciais }
 }
 
 # BUSCADEGRADADA1-FIX (2026-09-09, decisao do operador): sem_eventos NUNCA pode sair quando
@@ -658,7 +766,7 @@ function Merge-VixContratoCobertura($alvo, [string]$empresa, [string]$status, [s
     }
 }
 
-function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [switch]$Ultra) {
+function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [string]$FonteProvedor = 'openrouter', [switch]$Ultra) {
     $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Ultra:$Ultra })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
     $skill = (Get-Content $skillPath -Raw -Encoding UTF8).Trim()
@@ -669,7 +777,7 @@ DELTA - nao recrie fato conhecido (FEEDRETRO1): cada emissor no JSON abaixo tem 
 
 DATA - sai da fonte, nunca da busca (FONTEDIVERG1): data_evento e a data em que o fato ocorreu ou foi publicado pela fonte que voce esta citando, lida no proprio conteudo (data no topo da materia, data no path da URL, protocolo CVM). Encontrar a materia numa busca ancorada no mes corrente NAO a torna do mes corrente: a ancora estreita a busca, nao data o resultado. Sem conseguir confirmar a data de publicacao, trate como fato conhecido (eventos=[]) em vez de carimbar hoje. Medido em 04/09/2026: a Kora Saude voltou com data_evento=2026-09-04 citando materia cujo article:published_time no HTML era 2026-05-05.
 PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
-COBERTURA (OBRIGATORIO, COBERTURA1): para CADA emissor execute ao menos 1 busca por familia, nesta ordem: F1-emissor (nome + contexto/fato conhecido), F2-divida (divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria na janela). Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato", "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"openrouter:web_search|web_fetch", "status_http":200, "resultado":"<resposta textual da busca>", "classificacao":"ok". PROIBIDO (PROVAFALSA1): registrar busca que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou (ex.: "nada na janela apos X"); "nao pesquisada" = familia ausente.
+COBERTURA (OBRIGATORIO, COBERTURA1): para CADA emissor execute ao menos 1 busca por familia, nesta ordem: F1-emissor (nome + contexto/fato conhecido), F2-divida (divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria na janela). Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato", "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"$FonteProvedor:web_search|web_fetch", "status_http":200, "resultado":"<resposta textual da busca>", "classificacao":"ok". EXCECAO DE CAPABILITY DECLARADA: somente provedor "codex" pode emitir "status_http":null porque o Codex CLI nao publica HTTP; nesse caso mantenha todos os outros campos e classificacao "ok", e a cobertura sera marcada parcial sob o contrato provider_codex_sem_http. Todo outro provedor exige status_http inteiro 2xx. PROIBIDO (PROVAFALSA1): registrar busca que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou (ex.: "nada na janela apos X"); "nao pesquisada" = familia ausente.
 SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
 Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
@@ -764,31 +872,30 @@ if ($__esperou -gt 0) { Write-Log ('sentinela livre apos ' + ($__esperou * 30) +
 # nao consulta lock de probe em momento nenhum.
 if ($DryRun) {
     $LockReal = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $DateTag + '.lock')
-    if (Test-Path $LockReal) {
-        $__realAgeMin = ((Get-Date) - (Get-Item $LockReal).LastWriteTime).TotalMinutes
-        if ($__realAgeMin -lt $LockAbandonoMin) {
-            Write-Log ('ABORT: lock real ' + (Split-Path $LockReal -Leaf) + ' tocado ha ' + [math]::Round($__realAgeMin, 1) + ' min (execucao real viva) - probe sai antes de provider/network/tokens')
-            $__mutex.ReleaseMutex()
-            exit 0
-        }
+    $__lockReal = Get-VixLockState $LockReal $LockAbandonoMin
+    if ($__lockReal.bloqueia) {
+        Write-Log ('ABORT: lock real ' + (Split-Path $LockReal -Leaf) + ' pid=' + $__lockReal.pid + ' ' + $__lockReal.motivo + ' (execucao real viva) - probe sai antes de provider/network/tokens')
+        $__mutex.ReleaseMutex()
+        exit 0
+    }
+    if ($__lockReal.motivo -like 'LOCK_ORFAO_*' -and $__lockReal.motivo -ne 'LOCK_ORFAO_AUSENTE') {
+        Write-Log ('LOCK_ORFAO: lock real ' + (Split-Path $LockReal -Leaf) + ' pid=' + $__lockReal.pid + ' motivo=' + $__lockReal.motivo + ' - probe assume')
     }
 }
 
-# Lock de arquivo: outra instancia (sessao Claude Desktop, Cowork, manual) escreve o mesmo
-# arquivo. Vivo = tocado nos ultimos $LockAbandonoMin minutos; alem disso e abandono.
-if (Test-Path $LockFile) {
-    $__lockAgeMin = ((Get-Date) - (Get-Item $LockFile).LastWriteTime).TotalMinutes
-    if ($__lockAgeMin -lt $LockAbandonoMin) {
-        Write-Log ('ABORT: lock ' + (Split-Path $LockFile -Leaf) + ' tocado ha ' + [math]::Round($__lockAgeMin, 1) + ' min (outra execucao viva) - saindo limpo em 0 tokens')
-        $__mutex.ReleaseMutex()
-        exit 0
-    } else {
-        Write-Log ('LOCK_ABANDONADO: ' + (Split-Path $LockFile -Leaf) + ' sem toque ha ' + [math]::Round($__lockAgeMin, 1) + ' min - assumindo')
-    }
+# D1: somente PID vivo com StartTime igual bloqueia. Idade do arquivo nao prova vida.
+$__lockAtual = Get-VixLockState $LockFile $LockAbandonoMin
+if ($__lockAtual.bloqueia) {
+    Write-Log ('ABORT: lock ' + (Split-Path $LockFile -Leaf) + ' pid=' + $__lockAtual.pid + ' ' + $__lockAtual.motivo + ' (outra execucao viva) - saindo limpo em 0 tokens')
+    $__mutex.ReleaseMutex()
+    exit 0
+}
+if ($__lockAtual.motivo -like 'LOCK_ORFAO_*' -and $__lockAtual.motivo -ne 'LOCK_ORFAO_AUSENTE') {
+    Write-Log ('LOCK_ORFAO: ' + (Split-Path $LockFile -Leaf) + ' pid=' + $__lockAtual.pid + ' motivo=' + $__lockAtual.motivo + ' - assumindo lock')
 }
 try {
-    ("source=run_vixradar_varredura.ps1`nrotina=$Rotina`npid=$PID`ninicio=" + (Get-Date -Format 'yyyy-MM-dd HH:mm:ss') + "`ndryrun=$DryRun") | Set-Content -Path $LockFile -Encoding UTF8 -ErrorAction Stop
-    Write-Log ('LOCK_OK: ' + (Split-Path $LockFile -Leaf) + ' criado, toque a cada lote, abandono em ' + $LockAbandonoMin + ' min')
+    ("source=run_vixradar_varredura.ps1`nrotina=$Rotina`npid=$PID`ninicio_utc=" + (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o') + "`ndryrun=$DryRun") | Set-Content -Path $LockFile -Encoding UTF8 -ErrorAction Stop
+    Write-Log ('LOCK_OK: ' + (Split-Path $LockFile -Leaf) + ' criado com pid e inicio_utc, toque a cada lote')
 } catch {
     Write-Log ('AVISO: nao consegui escrever o lock ' + $LockFile + ' - ' + $_.Exception.Message)
 }
@@ -841,6 +948,11 @@ if ($script:VixUsaOpenRouter) {
         Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
         # DRYRUN-CRASH1: tambem aqui a tag decide (02/09 16:00 um dry-run sem credencial virou 9004 real).
         Write-Log ($AlertaAuthTag + 'sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
+        exit 5
+    }
+    if ($authModoInicial -eq 'api' -and (Get-VixLlmProvider) -eq 'claude-subscription') {
+        Write-Log 'ERRO FATAL: assinatura Claude Code Pro indisponivel e fallback para Anthropic API paga bloqueado.'
+        Write-Log ($AlertaAuthTag + 'assinatura Claude Code Pro indisponivel na ' + $Rotina + ' (nenhum custo sera gerado)')
         exit 5
     }
     if ($authModoInicial -eq 'api') {
@@ -900,8 +1012,8 @@ if ($custoDia.circuito_aberto) {
 $sw = [System.Diagnostics.Stopwatch]::StartNew()
 $stats = @{
     skip_ok = 0; skip_fail = 0; batch_ok = 0; batch_fail = 0; silent_fail = 0
-    tokens_total = [int64]0; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0; deferred_fail = 0
-    batches_run = 0; analisados = 0; submit_ok = 0; submit_fail = 0; buscas_total = 0
+    tokens_total = [int64]0; tokens_mensuraveis = $true; tokens_over_target = $false; tokens_hard_hit = $false; deferred = 0; deferred_fail = 0
+    batches_run = 0; analisados = 0; submit_ok = 0; submit_fail = 0; buscas_total = 0; lotes_com_trabalho = 0
     input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0
     auth_escalou = 'nenhum'
     # FEEDRETRO1 FASE2 (2026-09-04): eventos_avanco_data soma o campo homonimo que o
@@ -1041,8 +1153,10 @@ try {
         $batchSeq++
         $label = $job.Name + '-' + $ji
         $modeloPrompt = $job.Model
+        $fonteProvedor = 'openrouter'
         if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $Perfil.tier }
-        $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim -Ultra:$job.Ultra
+        elseif ($script:VixUsaCodex) { $modeloPrompt = 'codex-subscription'; $fonteProvedor = 'codex' }
+        $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra
         $promptPath = Join-Path $LogDir ($Perfil.prefix + '_' + $label + '_' + $DateTag + '.txt')
         Set-Content $promptPath -Value $prompt -Encoding UTF8
 
@@ -1050,6 +1164,7 @@ try {
         # modelo executado. $job.Model so descreve o TIER do plano (rapido x aprofundado).
         $modeloLote = $job.Model
         if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel $Perfil.tier) + ' tier=' + $job.Name }
+        elseif ($script:VixUsaCodex) { $modeloLote = 'codex:codex-subscription tier=' + $job.Name }
         Write-Log ('Lote ' + $label + ' [' + $modeloLote + ']: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', '))
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
         $result = Invoke-ClaudeBatch $promptPath $job.Model
@@ -1081,7 +1196,14 @@ try {
         if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
 
         $bt = $result.Tokens
-        if ($bt -gt 0) {
+        if (-not $result.UsoMensuravel) {
+            $stats.tokens_mensuraveis = $false
+            $stats.tokens_hard_hit = $true
+            $capAtingido = $true
+            $bt = 'NAO_MENSURAVEL'
+            Write-Log 'Tokens lote=NAO_MENSURAVEL (codex nao emitiu usage) - cap fechado para lotes seguintes, sem diagnostico de parse'
+        }
+        elseif ($bt -ge 0) {
             $stats.tokens_total += $bt
             $stats.input += $result.Parcelas.input; $stats.output += $result.Parcelas.output
             $stats.cache_creation += $result.Parcelas.cache_creation; $stats.cache_read += $result.Parcelas.cache_read
@@ -1099,10 +1221,10 @@ try {
         $buscasLote = $parsed.Buscas
 
         $missing = @($job.Chunk | Where-Object { -not (Get-ResultadoEmissor $parsed.Map $_.empresa) })
-        if ($missing.Count -gt 0) {
+        if ($missing.Count -gt 0 -and $result.UsoMensuravel) {
             Write-Log ('WARN: ' + $missing.Count + ' sem RESULTADO no lote ' + $label + ' - retry parcial: ' + (($missing | ForEach-Object { $_.empresa }) -join ', '))
             $retryLabel = $label + '-retry'
-            $retryPrompt = New-BatchPrompt $missing $retryLabel $modeloPrompt $job.Skill $janIni $janFim -Ultra:$job.Ultra
+            $retryPrompt = New-BatchPrompt $missing $retryLabel $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra
             $retryPath = Join-Path $LogDir ($Perfil.prefix + '_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
             $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
@@ -1117,7 +1239,13 @@ try {
                 Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
             } else {
                 if ($retryRes.Output) { $retryRes.Output | ForEach-Object { Write-Log ('OUT-RETRY: ' + $_) } }
-                if ($retryRes.Tokens -gt 0) {
+                if (-not $retryRes.UsoMensuravel) {
+                    $stats.tokens_mensuraveis = $false
+                    $stats.tokens_hard_hit = $true
+                    $capAtingido = $true
+                    Write-Log 'Tokens retry=NAO_MENSURAVEL (codex nao emitiu usage) - cap fechado para lotes seguintes'
+                }
+                elseif ($retryRes.Tokens -ge 0) {
                     $stats.tokens_total += $retryRes.Tokens
                     $stats.input += $retryRes.Parcelas.input; $stats.output += $retryRes.Parcelas.output
                     $stats.cache_creation += $retryRes.Parcelas.cache_creation; $stats.cache_read += $retryRes.Parcelas.cache_read
@@ -1129,6 +1257,9 @@ try {
                 Remove-Item $retryPath -Force -ErrorAction SilentlyContinue
             }
         }
+        elseif ($missing.Count -gt 0) {
+            Write-Log ('USAGE_CODEX=NAO_MENSURAVEL: retry parcial suprimido para nao derrotar o cap (' + $missing.Count + ' emissor(es))')
+        }
 
         $parsedCount = 0
         foreach ($emp in $job.Chunk) { if (Get-ResultadoEmissor $parsed.Map $emp.empresa) { $parsedCount++ } }
@@ -1136,6 +1267,7 @@ try {
             $stats.silent_fail++
             Write-Log ('ERRO: lote ' + $label + ' sem RESULTADO| - falha silenciosa (0/' + $job.Chunk.Count + ' emissores com analise real)')
         }
+        if ($parsedCount -gt 0) { $stats.lotes_com_trabalho++ }
 
         $loteOk = 0; $loteFail = 0; $loteCrit = 0; $loteDry = 0
         $buscasReaisLote = 0
@@ -1271,8 +1403,22 @@ try {
 
     $sw.Stop()
     $submitsAceitos = $stats.skip_ok + $stats.submit_ok + $stats.deferred
-    $ledgerTotal = $stats.skip_ok + $stats.skip_fail + $stats.analisados + $stats.deferred + $stats.deferred_fail
+    $ledgerResumo = Get-VixResumoLedger $LogFile
+    $ledgerTotal = $ledgerResumo.total
+    $tokensPublicados = if ($stats.tokens_mensuraveis) { $stats.tokens_total } else { 'NAO_MENSURAVEL' }
 
+    # FIMFALSO1 (2026-09-12): analisados>0 com buscas=0 significa que nenhum lote
+    # devolveu RESULTADO real; cada emissor recebeu stub fabricado e o ledger marcou
+    # ANALISADO sem analise (contador de sucesso saiu da tentativa, nao do efeito).
+    # Medido 11/09 e 12/09: FIM "concluido 104/104" com tokens=0 e buscas=0, provider
+    # 402/credencial ausente em todos os lotes e o motor fechou como se tivesse varrido.
+    # Regra: marca FIM_INVALIDO, forca exit 9 (disparou, nao processou nenhum lote com
+    # analise real) e nao sobrescreve metrics de uma execucao real do mesmo dia.
+    $trabalhoZero = $false
+    if (-not $DryRun -and $stats.analisados -gt 0 -and $stats.buscas_total -eq 0) {
+        $trabalhoZero = $true
+        Write-Log ('FIMFALSO1: analisados=' + $stats.analisados + ' com buscas=0 e lotes_com_trabalho=' + $stats.lotes_com_trabalho + ' - trabalho/busca ausente, independente de medicao_tokens=' + $tokensPublicados + '. FIM marcado INVALIDO.')
+    }
     # METRICSZERO1: reinicio idempotente nao sobrescreve metrics de execucao real com zeros.
     $gravarMetrics = $true
     if (-not $DryRun -and $stats.analisados -eq 0 -and $stats.skip_ok -eq 0 -and (Test-Path $MetricsFile)) {
@@ -1281,19 +1427,31 @@ try {
             if ($existente.analisados -gt 0 -or $existente.submit_ok -gt 0) { Write-Log 'METRICSZERO1: metrics preservado (execucao atual zerada por idempotencia)'; $gravarMetrics = $false }
         } catch {}
     }
+    # FIMFALSO1: execucao com trabalho zero nao sobrescreve metrics de execucao real do
+    # mesmo dia (a chave do arquivo e por data, nao por execucao - proveniencia).
+    if ($gravarMetrics -and $trabalhoZero -and (Test-Path $MetricsFile)) {
+        try {
+            $existente = Get-Content $MetricsFile -Raw -Encoding UTF8 | ConvertFrom-Json
+            if ($existente.buscas_total -gt 0 -or $existente.tokens_total_est -gt 0) {
+                Write-Log 'FIMFALSO1: metrics preservado (execucao atual com trabalho zero nao sobrescreve execucao real do dia)'
+                $gravarMetrics = $false
+            }
+        } catch {}
+    }
     if ($gravarMetrics) {
         [ordered]@{
             data = $DateTag; rotina = $Rotina; dryrun = [bool]$DryRun; motor = 'task-scheduler'
             token_target = $TokenTarget; token_hard_cap = $TokenHardCap; cap_proprio = $Perfil.capProprio; circuito_aberto = [bool]$custoDia.circuito_aberto
-            tokens_total_est = $stats.tokens_total; tokens_trabalho = $stats.tokens_total
-            tokens_input = $stats.input; tokens_output = $stats.output; tokens_cache_creation = $stats.cache_creation; tokens_cache_read = $stats.cache_read
+            tokens_mensuraveis = [bool]$stats.tokens_mensuraveis
+            tokens_total_est = $tokensPublicados; tokens_trabalho = $tokensPublicados
+            tokens_input = $(if ($stats.tokens_mensuraveis) { $stats.input } else { 'NAO_MENSURAVEL' }); tokens_output = $(if ($stats.tokens_mensuraveis) { $stats.output } else { 'NAO_MENSURAVEL' }); tokens_cache_creation = $(if ($stats.tokens_mensuraveis) { $stats.cache_creation } else { 'NAO_MENSURAVEL' }); tokens_cache_read = $(if ($stats.tokens_mensuraveis) { $stats.cache_read } else { 'NAO_MENSURAVEL' })
             tokens_over_target = $stats.tokens_over_target; tokens_hard_hit = $stats.tokens_hard_hit
             analisados = $stats.analisados; skip_ok = $stats.skip_ok; deferred = $stats.deferred; submits_aceitos = $submitsAceitos
             submit_ok = $stats.submit_ok; submit_fail = $stats.submit_fail; buscas_total = $stats.buscas_total; silent_fail = $stats.silent_fail
             degradados_402 = $stats.degradados_402
             # DRYRUN-CRASH1: @(List[object]) com [ordered] dentro estoura o binder do 5.1
             # ("Os tipos de argumento nao correspondem"), reproduzido isolado em 02/09. ToArray() nao.
-            lotes = $stats.batches_run; batches = $stats.batches_run; lotes_detalhe = $lotesDetalhe.ToArray()
+            lotes = $stats.batches_run; batches = $stats.batches_run; lotes_com_trabalho = $stats.lotes_com_trabalho; lotes_detalhe = $lotesDetalhe.ToArray()
             criticos = $stats.criticos.ToArray(); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
             auth_modo_inicial = $authModoInicial; auth_escalou = $stats.auth_escalou
         } | ConvertTo-Json -Depth 6 | Set-Content $MetricsFile -Encoding UTF8
@@ -1307,19 +1465,20 @@ try {
         Write-Log ('COBERTURA1: contrato persistido com ' + $contratoCobertura.Count + ' emissor(es) por cobertura (recheck_pendente=' + $stats.cobertura_deferidos + ' resolvidos=' + $stats.recheck_resolvidos + ')')
     }
 
-    $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
+    $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } elseif ($trabalhoZero) { 'FIM_INVALIDO: ' } else { 'FIM: ' }
+    $fimVerbo = if ($trabalhoZero) { 'INVALIDO (trabalho zero)' } else { 'concluido' }
     # FEEDRETRO1 FASE2 (2026-09-04): eventos_avanco_data pode ser 0 legitimamente num dia
     # quieto - nao e criterio de falha. Mede avanco TEMPORAL, nunca prova ausencia de
     # outro fato legitimo na mesma data maxima (ver n_chaves_novas ao lado).
-    Write-Log ($fimTag + $Rotina + ' concluido. Total do dia ' + $ledgerTotal + '/' + $planoTotal + '. analisados=' + $stats.analisados + ' skip=' + $stats.skip_ok + ' deferidos=' + $stats.deferred + ' submits_aceitos=' + $submitsAceitos +
-        ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' cap_efetivo=' + $TokenHardCap + ' lotes=' + $stats.batches_run +
+    Write-Log ($fimTag + $Rotina + ' ' + $fimVerbo + '. Total do dia ' + $ledgerTotal + '/' + $planoTotal + ' (ledger analisados=' + $ledgerResumo.analisados + ' skip=' + $ledgerResumo.skips + ' deferidos=' + $ledgerResumo.deferidos + '). analisados_execucao=' + $stats.analisados + ' skip_execucao=' + $stats.skip_ok + ' deferidos_execucao=' + $stats.deferred + ' submits_aceitos=' + $submitsAceitos +
+        ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' tokens=' + $tokensPublicados + ' cache_read=' + $(if ($stats.tokens_mensuraveis) { $stats.cache_read } else { 'NAO_MENSURAVEL' }) + ' cap_efetivo=' + $TokenHardCap + ' lotes=' + $stats.batches_run + ' lotes_com_trabalho=' + $stats.lotes_com_trabalho +
         ' buscas=' + $stats.buscas_total + ' silent_fail=' + $stats.silent_fail + ' degradados_402=' + $stats.degradados_402 + ' criticos=' + $stats.criticos.Count + ' auth_escalou=' + $stats.auth_escalou +
         ' eventos_avanco_data=' + $stats.eventos_avanco_data + ' chaves_novas=' + $stats.chaves_novas + ' descartados=' + $stats.descartados +
         ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail
-    $resultadoTxt = if ($DryRun) { 'DRYRUN' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
+    $resultadoTxt = if ($DryRun) { 'DRYRUN' } elseif ($trabalhoZero) { 'INVALIDO' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
     Write-Log ('ROTINA_RESUMO|' + $Perfil.id + '|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
     # Dreno da fila de verificacao logo apos a varredura (v4.9.150): evento CRITICO nao fica
@@ -1335,6 +1494,7 @@ try {
         }
     }
 
+    if ($trabalhoZero) { $exitCode = 9 }
     if (-not $DryRun -and ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0)) { if ($exitCode -eq 0) { $exitCode = 6 } }
 } catch {
     $errMsg = 'ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message

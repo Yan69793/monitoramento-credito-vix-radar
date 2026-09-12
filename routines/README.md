@@ -1,16 +1,15 @@
 # Rotinas Operacionais — VIX Radar (fonte canônica versionada)
 
-> **CLAUDE-FREE-MIGRATION, Fase A (2026-09-04). Leia antes de mexer em task.**
+> **CLAUDE-SUBSCRIPTION-PRO (2026-09-12). Leia antes de mexer em task.**
 >
-> **Governança registrada nesta data:** `CLAUDE_SUBSCRIPTION = FREE`, `CLAUDE_CODE =
-> OPCIONAL/NÃO GARANTIDO`, `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`, dependência
-> operacional de Claude Code = proibida. Claude Code deixou de ser infraestrutura
-> do VIX Radar; Claude Web Free segue como ferramenta manual/advisory.
+> **Governança atual:** `CLAUDE_SUBSCRIPTION = PRO`, `CLAUDE_CODE = OPERACIONAL`,
+> `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`. O VIX Radar usa o Claude CLI com a assinatura
+> Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
 >
 > **Provider único de LLM nas rotinas: env User `VIXRADAR_LLM_PROVIDER`.** Ausente
-> ou `none` = bloqueado; `claude-manual` = Claude só com `-ForceClaude` (manual do
-> operador, fora do scheduler); `deepseek`/`openrouter` = reservados à Fase B,
-> ainda bloqueados até o motor migrar. Sem provider habilitado, toda rotina LLM
+> ou `none` = bloqueado; `claude-subscription` = assinatura Claude Code Pro;
+> `claude-manual` = Claude só com `-ForceClaude` (manual do operador); `deepseek`/
+> `openrouter` = não utilizados. Sem provider habilitado, toda rotina LLM
 > grava a linha canônica `BLOQUEADO_SEM_PROVIDER` e sai com exit **86**. O gate
 > vive em `scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada
 > rotina, antes de qualquer auth, sonda ou claude.

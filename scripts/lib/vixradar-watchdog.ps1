@@ -99,6 +99,7 @@ function Test-VixLedgerEntregueNaJanela {
     $limite = Get-Date -Year $DataLog.Year -Month $DataLog.Month -Day $DataLog.Day -Hour $JanelaHora -Minute 0 -Second 0
     $vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $fimComContagemSuficiente = $false
+    $ultimoFimInvalido = $false
     $linhaRegex = [regex]'^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) (.*)$'
     foreach ($linhaRaw in ($Conteudo -split "`r?`n")) {
         $lm = $linhaRegex.Match($linhaRaw)
@@ -112,7 +113,9 @@ function Test-VixLedgerEntregueNaJanela {
         $resto = $lm.Groups[3].Value
         $okM = [regex]::Match($resto, '^OK\|([^|]+)\|')
         if ($okM.Success) { [void]$vistos.Add($okM.Groups[1].Value.Trim()); continue }
+        if ($resto -match '(?<!SHADOW_)FIM_INVALIDO:') { $ultimoFimInvalido = $true; continue }
         if ($resto -match '(?<!SHADOW_)(?:RUNNER_)?FIM:') {
+            $ultimoFimInvalido = $false
             $n = -1
             if ($resto -match 'submit_ok=(\d+)') { $n = [int]$Matches[1] }
             elseif ($resto -match 'Total do dia (\d+)/\d+') { $n = [int]$Matches[1] }
@@ -121,7 +124,13 @@ function Test-VixLedgerEntregueNaJanela {
             if ($n -ge $MinimoLedger) { $fimComContagemSuficiente = $true }
         }
     }
+    # FIMFALSO1 (2026-09-12): a ULTIMA linha FIM do dia marcou trabalho zero
+    # (analisados>0 com buscas=0). O ledger daquela execucao e stub fabricado e nao
+    # prova entrega, mesmo somando >= MinimoLedger. Uma FIM normal posterior reseta a
+    # flag, entao a ultima marcacao vence (proveniencia), nao a primeira.
+    if ($ultimoFimInvalido) { $fimComContagemSuficiente = $false }
     $entregue = ($vistos.Count -ge $MinimoLedger) -or $fimComContagemSuficiente
+    if ($ultimoFimInvalido) { $entregue = $false }
     return [PSCustomObject]@{
         Entregue                 = $entregue
         LedgerNaJanela            = $vistos.Count
@@ -228,6 +237,25 @@ function Get-VixLedgerEmissoresNaJanela {
     $dentro    = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $fora      = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $deferidos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    # FIMFALSO1 (2026-09-12): se a ULTIMA marcacao FIM da janela foi INVALIDO
+    # (analisados>0 com buscas=0), o ledger da janela e stub fabricado e nenhum emissor
+    # deve ser tratado como ja processado. Devolve conjunto vazio para reprocessar tudo.
+    $ultimoFimInvalido = $false
+    foreach ($fimScanLine in ($Conteudo -split "`r?`n")) {
+        $fm = [regex]::Match($fimScanLine, '^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) (.*)$')
+        if (-not $fm.Success) { continue }
+        $fts = [datetime]::MinValue
+        if (-not [datetime]::TryParseExact($fm.Groups[1].Value + ' ' + $fm.Groups[2].Value, 'yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$fts)) { continue }
+        if ($fts -lt $JanelaInicio) { continue }
+        $fresto = $fm.Groups[3].Value
+        if ($fresto -match '(?<!SHADOW_)FIM_INVALIDO:') { $ultimoFimInvalido = $true; continue }
+        if ($fresto -match '(?<!SHADOW_)(?:RUNNER_)?FIM:') { $ultimoFimInvalido = $false }
+    }
+    if ($ultimoFimInvalido) {
+        return [PSCustomObject]@{
+            Emissores = @(); NaJanela = 0; ForaDaJanela = 0; Deferidos = @(); DeferidosNaJanela = 0; LinhasOK = 0; JanelaInicio = $JanelaInicio
+        }
+    }
     $linhas = 0
     $linhaRegex = [regex]'^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) OK\|([^|]+)\|'
     foreach ($linhaRaw in ($Conteudo -split "`r?`n")) {

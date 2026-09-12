@@ -769,16 +769,38 @@ foreach ($rot in $RotinasVigiadas) {
             $detalheR = 'sem linha FIM:, execucao nao chegou ao fim'
             if ($conteudoR -match 'ABORT')      { $detalheR = $detalheR + ', ABORT registrado' }
             if ($conteudoR -match 'ERRO FATAL') { $detalheR = $detalheR + ', ERRO FATAL registrado' }
-            # ROTINACEGA2: antes de declarar 9001, conferir o ledger OK| (ver nota da
-            # funcao acima). ABORT/ERRO FATAL no log nao anulam a contagem: o que decide
-            # e quantos emissores tem submit confirmado, nao se houve susto no meio.
-            $unicosR = Get-VixEmissoresUnicos $conteudoR
-            if ($unicosR -ge $rot.minSubmit) {
-                $submitOk  = $unicosR
-                $fallbackR = "$detalheR, PORQUE o ledger OK| tem $unicosR emissores distintos com submit confirmado (minimo $($rot.minSubmit)): dia entregue, a rotina so nao escreveu a linha de fecho"
-                $motivoR   = $null
+            # FIMFALSO1 (2026-09-12): FIM_INVALIDO: marca trabalho zero (analisados>0 com
+            # buscas=0, ledger fabricado). O fallback de ledger OK| logo abaixo (ROTINACEGA2)
+            # nao pode validar esse ledger como entrega, e exatamente o stub que o FIMFALSO1
+            # criou. Sem esta checagem um dia fabricado com ledger >= minSubmit passava OK/
+            # warning aqui enquanto retry-vixradar.ps1 (via Test-VixLedgerEntregueNaJanela,
+            # mesma lib, dot-source na linha 24) recusa o mesmo dia como sem entrega - dois
+            # juizes divergindo sobre o mesmo dia.
+            # Varre em ordem e guarda so a ULTIMA marcacao (mesmo padrao de
+            # vixradar-watchdog.ps1:116-125): FIM_INVALIDO: liga, um FIM: real desliga.
+            # $fims (calculado no arquivo inteiro, acima) ja e 0 neste ramo, entao hoje nao
+            # ha FIM: real em lugar nenhum do log do dia pra resetar a flag - o scan em
+            # ordem e defesa contra mudanca futura na particao fims.Count==0/senao acima,
+            # nao porque o reset dispare no cenario atual.
+            $ultimaMarcaInvalida = $false
+            foreach ($linhaR in ($conteudoR -split "`r?`n")) {
+                if ($linhaR -match '(?<!SHADOW_)FIM_INVALIDO:') { $ultimaMarcaInvalida = $true }
+                elseif ($linhaR -match '(?<!SHADOW_)FIM:') { $ultimaMarcaInvalida = $false }
+            }
+            if ($ultimaMarcaInvalida) {
+                $motivoR = "$alvoTxt FIM_INVALIDO (trabalho zero, ledger fabricado): execucao disparou mas nao analisou nada de verdade, ver FIMFALSO1"
             } else {
-                $motivoR = "$alvoTxt $detalheR, e o ledger OK| confirma: so $unicosR emissores distintos com submit (minimo $($rot.minSubmit))"
+                # ROTINACEGA2: antes de declarar 9001, conferir o ledger OK| (ver nota da
+                # funcao acima). ABORT/ERRO FATAL no log nao anulam a contagem: o que decide
+                # e quantos emissores tem submit confirmado, nao se houve susto no meio.
+                $unicosR = Get-VixEmissoresUnicos $conteudoR
+                if ($unicosR -ge $rot.minSubmit) {
+                    $submitOk  = $unicosR
+                    $fallbackR = "$detalheR, PORQUE o ledger OK| tem $unicosR emissores distintos com submit confirmado (minimo $($rot.minSubmit)): dia entregue, a rotina so nao escreveu a linha de fecho"
+                    $motivoR   = $null
+                } else {
+                    $motivoR = "$alvoTxt $detalheR, e o ledger OK| confirma: so $unicosR emissores distintos com submit (minimo $($rot.minSubmit))"
+                }
             }
         } else {
             # FIMRUN21 (2026-08-17): o dia pode ter mais de uma execucao e so a

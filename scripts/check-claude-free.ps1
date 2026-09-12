@@ -1,12 +1,16 @@
-﻿# check-claude-free.ps1 - gate anti-regressao da CLAUDE-FREE-MIGRATION (Fase A, 2026-09-04).
+﻿# check-claude-free.ps1 - gate anti-regressao de invocacao ungated de claude (origem:
+# CLAUDE-FREE-MIGRATION, Fase A, 2026-09-04; a partir de 12/09/2026 o provider ativo e
+# claude-subscription, Claude Code Pro, e este gate continua valendo do mesmo jeito).
 # Garante que nenhum arquivo vivo de scripts/routines volte a invocar o `claude -p` sem passar
-# pelo gate de provider (BLOQUEADO_SEM_PROVIDER, exit 86). Nao edita nada. Exit code real.
+# pelo gate de provider (BLOQUEADO_SEM_PROVIDER, exit 86, ou liberado por
+# Test-VixLlmPermiteClaude). Nao edita nada. Exit code real.
 #
-# Contexto: o operador nao tem mais Claude Pro/Max, Claude = plano FREE, PAYG nao autorizado.
-# Claude Code deixou de ser infraestrutura operacional. Toda rotina LLM do VIX carrega a lib
-# scripts/lib/vixradar-llm-provider.ps1 e sai bloqueada sem provider (none/claude-manual sem
-# forca manual / provider de Fase B reservado com motor nao migrado). Este checker e o outro
-# lado da mesma regra, no git: reintroduzir chamada a claude sem gate e erro de commit/CI.
+# Contexto: VIXRADAR_LLM_PROVIDER (env User) decide se claude roda. Toda rotina LLM do VIX
+# carrega scripts/lib/vixradar-llm-provider.ps1 e so chama claude quando o gate libera
+# (claude-subscription direto, ou claude-manual com -ForceClaude do operador); qualquer outro
+# valor (none/openrouter/codex sem adapter/deepseek) bloqueia com exit 86. Este checker e o
+# outro lado da mesma regra, no git: reintroduzir chamada a claude sem passar pelo gate e erro
+# de commit/CI, independente de qual provider estiver ativo no momento.
 #
 # Dois modos:
 #   -Path a,b,c   arquivos-alvo (pre-commit Gate 8 materializa os blobs EM STAGING e passa os

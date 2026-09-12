@@ -66,7 +66,7 @@ Os scripts do Task Scheduler rodam no `powershell.exe` 5.1. O hook Gate 1 reprov
 
 ## Rotinas agendadas (fonte da verdade: `routines/README.md`)
 
-- Provider único de LLM nas rotinas: env User `VIXRADAR_LLM_PROVIDER`. Ausente/`none` = bloqueado (exit 86, `BLOQUEADO_SEM_PROVIDER`); `openrouter` = ativo (Fase B D1); `claude-manual` = só com `-ForceClaude` manual.
+- Provider de LLM das rotinas: ver `CLAUDE.md` seção "Rotinas agendadas" (`VIXRADAR_LLM_PROVIDER`, fonte única, não duplicar aqui).
 - 5 rotinas LLM no Task Scheduler nativo: Matinal (diário 10h), Noturno (seg-sex 18h, 104 emissores), Verificacao-Async (11h03 e 19h15), Sentinela (:25/:55, 09h25–17h55), AgendaSemanal (Dom e Qua 22h).
 - `VIXRadar-Health-Watch` está DESATIVADO (decisão 21/08). `VIXRadar-Ranking-Mensal` é OBSOLETO.
 - Mudar horário de rotina exige atualizar `_painelSlaAtivo` no `api/src/worker.js` junto, senão o health passa a cobrar pontualidade de horário inexistente.

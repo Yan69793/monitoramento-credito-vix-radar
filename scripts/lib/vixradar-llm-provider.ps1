@@ -7,6 +7,7 @@
 #
 # Variavel de ambiente (escopo User, nunca versionada):
 #   VIXRADAR_LLM_PROVIDER = none           (padrao) rotinas LLM BLOQUEADO_SEM_PROVIDER
+#                          | claude-subscription assinatura Claude Code Pro, sem API paga
 #                          | claude-manual Claude so com -ForceClaude explicito (operador)
 #                          | openrouter            permitido com adapter habilitado
 #                          | codex                 permitido com Codex CLI autenticado
@@ -17,7 +18,7 @@
 #   BLOQUEADO_SEM_PROVIDER provider=<v> exit=86 gatilho=<script> motivo=<por que>
 #
 # Contrato das funcoes:
-#   Get-VixLlmProvider                -> 'none'|'claude-manual'|'deepseek'|'openrouter'|'codex'
+#   Get-VixLlmProvider                -> 'none'|'claude-subscription'|'claude-manual'|'deepseek'|'openrouter'|'codex'
 #   Set-VixLlmForceClaude [switch]    -> registra forca manual no escopo do script
 #   Test-VixLlmPermiteClaude [-ForceClaude] -> bool; caminho Claude manual
 #   Test-VixLlmProviderPermiteRotina        -> bool; decisao canonica do motor
@@ -61,6 +62,10 @@ function Test-VixLlmPermiteClaude {
     param([switch]$ForceClaude)
     if ($ForceClaude) { $script:VixLlmForceClaude = $true }
     $provider = Get-VixLlmProvider
+    if ($provider -eq 'claude-subscription') {
+        $script:VixLlmMotivo = $null
+        return $true
+    }
     if ($provider -eq 'claude-manual' -and $script:VixLlmForceClaude) {
         $script:VixLlmMotivo = $null
         return $true

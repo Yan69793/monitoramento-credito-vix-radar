@@ -54,7 +54,7 @@ if ($Sim) {
 $Tasks = @('VIXRadar-Matinal', 'VIXRadar-Noturno', 'VIXRadar-Verificacao-Async', 'Szuchmacher-RetryVixMatinal', 'Szuchmacher-RetryVixNoturno')
 # DaysOfWeek 62 = seg(2)+ter(4)+qua(8)+qui(16)+sex(32). Retries: Triggers nulo = so o Enabled muda.
 $Desejado = @{
-    'VIXRadar-Matinal'            = @{ Enabled = $true;  Triggers = @(@{ Tipo = 'Daily';  Hora = '10:06'; DaysOfWeek = $null }); ExecutionTimeLimit = 'PT4H' }
+    'VIXRadar-Matinal'            = @{ Enabled = $false; Triggers = @(@{ Tipo = 'Daily';  Hora = '10:06'; DaysOfWeek = $null }); ExecutionTimeLimit = 'PT4H' }
     'VIXRadar-Noturno'            = @{ Enabled = $true;  Triggers = @(@{ Tipo = 'Weekly'; Hora = '18:05'; DaysOfWeek = 62 });   ExecutionTimeLimit = 'PT4H' }
     'VIXRadar-Verificacao-Async'  = @{ Enabled = $true;  Triggers = @(@{ Tipo = 'Daily';  Hora = '11:03'; DaysOfWeek = $null }, @{ Tipo = 'Daily'; Hora = '19:15'; DaysOfWeek = $null }); ExecutionTimeLimit = 'PT45M' }
     'Szuchmacher-RetryVixMatinal' = @{ Enabled = $false; Triggers = $null; ExecutionTimeLimit = $null }

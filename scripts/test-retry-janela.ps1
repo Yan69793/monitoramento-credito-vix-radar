@@ -52,6 +52,21 @@ try {
     $r6 = Test-VixLedgerEntregueNaJanela -Conteudo $c6 -DataLog $dataLog -JanelaHora 10 -MinimoLedger 12
     Assert ($r6.Entregue -eq $true) ('1f: matinal 12/19 as 10:30 confirma (obtido ' + $r6.Entregue + ')')
 
+    Write-Host '--- 1g: FIM_INVALIDO (trabalho zero) como ultima marcacao -> nao entregue, mesmo com ledger >= 90 ---'
+    $sbg = New-Object System.Text.StringBuilder
+    for ($i = 1; $i -le 91; $i++) { [void]$sbg.AppendLine('2026-09-03 18:1' + ($i % 10) + ':00 OK|Emissor' + $i + '|LIGHT|INCONCLUSIVO|0|true|ANALISADO') }
+    [void]$sbg.AppendLine('2026-09-03 18:59:00 FIM_INVALIDO: noturno INVALIDO (trabalho zero). Total do dia 104/104. analisados=87 buscas=0 tokens=0')
+    $rg = Test-VixLedgerEntregueNaJanela -Conteudo $sbg.ToString() -DataLog $dataLog -JanelaHora 18 -MinimoLedger 90
+    Assert ($rg.Entregue -eq $false) ('1g: Entregue=false, FIM_INVALIDO invalida ledger fabricado (obtido ' + $rg.Entregue + ', ledger=' + $rg.LedgerNaJanela + ')')
+
+    Write-Host '--- 1h: FIM_INVALIDO seguido de FIM real -> entregue (ultima marcacao vence) ---'
+    $sbh = New-Object System.Text.StringBuilder
+    for ($i = 1; $i -le 91; $i++) { [void]$sbh.AppendLine('2026-09-03 18:1' + ($i % 10) + ':00 OK|Emissor' + $i + '|FULL|ECO|0|True') }
+    [void]$sbh.AppendLine('2026-09-03 18:30:00 FIM_INVALIDO: noturno INVALIDO (trabalho zero). Total do dia 104/104. analisados=87 buscas=0 tokens=0')
+    [void]$sbh.AppendLine('2026-09-03 19:00:00 FIM: noturno concluido. Total do dia 103/103. submits_aceitos=103')
+    $rh = Test-VixLedgerEntregueNaJanela -Conteudo $sbh.ToString() -DataLog $dataLog -JanelaHora 18 -MinimoLedger 90
+    Assert ($rh.Entregue -eq $true) ('1h: Entregue=true, FIM real posterior reseta a marcacao INVALIDO (obtido ' + $rh.Entregue + ')')
+
     # ============================================================
     Write-Host '=== Parte 2: retry-vixradar.ps1 fim a fim (stub, sem rede, sem token) ==='
     $retryScript = Join-Path $PSScriptRoot 'retry-vixradar.ps1'

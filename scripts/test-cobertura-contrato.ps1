@@ -26,7 +26,7 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 }
 
 $MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Resolve-VixCoberturaWeb', 'Test-VixAusenciaCertificavel', 'Get-NomeNormalizado', 'Merge-VixContratoCobertura', 'Read-VixContratoCoberturaArquivo', 'Get-VixRecheckPendentes'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Test-VixBuscaDegradada', 'Get-VixCoberturaProviderCapability', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Resolve-VixCoberturaWeb', 'Test-VixAusenciaCertificavel', 'Get-NomeNormalizado', 'Merge-VixContratoCobertura', 'Read-VixContratoCoberturaArquivo', 'Get-VixRecheckPendentes'))) { Invoke-Expression $_def }
 
 function New-FonteOk([string]$fam, [string]$q, [string]$res = 'sem fato novo na janela apos consulta') {
     return [pscustomobject]@{ familia = $fam; query = $q; timestamp = '2026-09-09T18:00:00Z'; provedor = 'openrouter:web_search'; status_http = 200; resultado = $res; classificacao = 'ok' }

@@ -215,11 +215,11 @@ servido direto, validado manualmente ou pelo `Portão de verificação`.
 Estes scripts PowerShell chamam o Claude CLI localmente. Todos usam `routine_key` para
 autenticar contra o Worker. A chave nunca está versionada.
 
-**Claude deixou de ser infraestrutura operacional (CLAUDE-FREE-MIGRATION, Fase A,
-04/09/2026).** Governança registrada: `CLAUDE_SUBSCRIPTION = FREE`, `CLAUDE_CODE =
-OPCIONAL/NÃO GARANTIDO`, `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`, dependência
-operacional de Claude Code proibida. Claude Web Free segue como ferramenta
-manual/advisory. O agendamento das rotinas LLM voltou ao **Task Scheduler nativo**,
+**Claude Code Pro voltou a ser a infraestrutura operacional, sem API paga.** Governança
+atualizada em 12/09/2026: `CLAUDE_SUBSCRIPTION = PRO`, `CLAUDE_CODE = OPERACIONAL`,
+`ANTHROPIC_API_PAYG = NÃO AUTORIZADO`. O provider operacional é
+`claude-subscription`, usando o Claude CLI e a autenticação da assinatura. O
+agendamento das rotinas LLM permanece no **Task Scheduler nativo**,
 reconstruído por `scripts/cutover-motor.ps1` (registro canônico de Matinal,
 Noturno, Verificacao-Async, Sentinela e AgendaSemanal; retries
 `Szuchmacher-RetryVixMatinal/Noturno` ficam Disabled) e anotado em
@@ -229,24 +229,24 @@ Claude Desktop e as duas Remote Routines saíram de cena. O
 task, sem retries): para reconstruir, rodar o cutover.
 
 **Provider único de LLM: env User `VIXRADAR_LLM_PROVIDER`.** Ausente ou `none` =
-bloqueado; `claude-manual` = Claude só com `-ForceClaude` (manual do operador);
-`openrouter` = **ATIVO desde a Fase B D1 (05/09/2026)**: as 4 rotinas LLM (motor
-`run_vixradar_varredura.ps1` = matinal+noturno, `verificacao_async`, `sentinela`,
-`agenda_semanal`) despacham pelo adapter `scripts/lib/vixradar-openrouter.ps1`
-(POST em `openrouter.ai`, modelo `~deepseek/deepseek-v4-flash-latest`, server tools
-`openrouter:web_search`/`web_fetch`, retry bounded, envelope `.result`/`.usage`
-normalizado). O ramo claude/Anthropic virou `else` alcançável só sob `claude-manual`
-+ `-ForceClaude` manual, nunca pelo scheduler. `deepseek` = reservado, ainda sem
-adapter. Sem provider habilitado, a rotina grava a linha canônica
-`BLOQUEADO_SEM_PROVIDER` e
-sai com **exit 86** antes de mutex, sonda, auth ou claude. O gate vive em
+bloqueado. `claude-subscription` = **ATIVO desde 12/09/2026** (medido: valor
+setado no escopo User): `Test-VixLlmPermiteClaude` libera este valor direto, sem
+exigir `-ForceClaude`, e as 5 rotinas LLM chamam o Claude CLI nativo, autenticado
+pela assinatura Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
+`claude-manual` = Claude só com `-ForceClaude` explícito do operador, nunca pelo
+scheduler. `openrouter` e `codex` continuam implementados como caminhos gated
+(exigem `OpenRouterAdapterHabilitado`/`CodexAdapterHabilitado` no chamador), mas
+nenhum dos dois é o valor ativo hoje. `deepseek` = reservado, ainda bloqueado.
+Sem provider habilitado, a rotina grava a linha canônica `BLOQUEADO_SEM_PROVIDER`
+e sai com **exit 86** antes de mutex, sonda, auth ou claude. O gate vive em
 `scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada rotina. As 5
-tasks ficam Enabled rodando o gate: executor visível, bloqueio observável, e na
-Fase B a rotina volta sem tocar no scheduler. `monitor-tasks.ps1` trata exit 86
-como estado esperado (não alerta) e gera **9006** se uma rotina bloqueada rodar com
-resultado ≠ 86 (violação do gate). Gate anti-regressão no commit e no CI:
-`scripts/check-claude-free.ps1` (R1-R5). Na Fase B D1 o boot de cada rotina loga
-`AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)`.
+tasks ficam Enabled rodando o gate: executor visível, bloqueio observável.
+`monitor-tasks.ps1` trata exit 86 como estado esperado (não alerta) e gera
+**9006** se uma rotina do conjunto bloqueado rodar com resultado ≠ 86 (violação
+do gate). Gate anti-regressão no commit e no CI: `scripts/check-claude-free.ps1`
+(R1-R5), estrutural, vale para qualquer provider ativo. No ramo claude, a rotina
+loga `AUTH_MODO: <modo>` (`assinatura`, `assinatura-token`, `api` ou `nenhum`,
+conforme `Get-VixClaudeAuthModo`).
 
 Registro histórico do regime CCD (tasks nativas Disabled como guarda anti-duplicata,
 sessões agendadas do Claude Desktop, `GUARD_OK` no log, edição do CCD store exigir

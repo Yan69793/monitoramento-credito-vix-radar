@@ -139,8 +139,12 @@ function Set-VixClaudeAuthEnv {
     [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
     [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', '', 'Process')
     [Environment]::SetEnvironmentVariable('CLAUDE_CODE_OAUTH_TOKEN', '', 'Process')
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
-    [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+    try {
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+        [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+    } catch {
+        Write-VixAuthLog 'AVISO AUTH: sem permissao para limpar aliases Anthropic no registro User, ambiente do processo foi limpo.'
+    }
     # Vars de alias de modelo saem do bloco de ambiente DESTE processo, para que o
     # claude.exe filho nao as herde. Defesa em profundidade: as rotinas ja passam
     # --model com o ID completo (nao alias), entao a tabela de alias nao deveria ser
