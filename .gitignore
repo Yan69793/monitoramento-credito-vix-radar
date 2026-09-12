@@ -40,6 +40,11 @@ recovery-codes.txt
 !.claude/SKILLS-ROUTER.md
 !.claude/skills/
 !.claude/skills/**
+# ---------- Biblioteca local de skills ----------
+# .agents/skills e a biblioteca local do operador, cerca de 28 MB e majoritariamente
+# de terceiros, sem autoria de projeto. NAO versionar. O canonico versionado e
+# .claude/skills, e o skills.paths do kilo.json aponta para ./.claude/skills.
+.agents/skills/
 .claude.json
 .claude.json.backup
 .copilot/

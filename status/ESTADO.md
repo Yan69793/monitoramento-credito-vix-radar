@@ -1,10 +1,10 @@
 # Estado do projeto — VIX Radar
 
-Última atualização: 2026-09-11. Medido ao vivo: Worker v4.9.244, frontend v202.43, repo e produção na mesma versão (o `app/index.html` do repo bate por hash com o do `deploy_zip`), `ok:true`, `feed_fresco:true`, `painel_fresco:true`. **`origin/main=7acb5c874b3b44edeb6fce894b1b83101f37bfe3`.** **OR402-DEGRADADA1, QUARENTENACOB1, FALLBACKTTL1 e EMAILSILENT1 residual de lote estão FECHADOS no repositório.** **SCANFALLBACK-MORTO1 tem o código fechado, mas segue aberto até a prova runtime real do passo Scan de emergencia.** Sem deploy.
+Última atualização: 2026-09-12. Medido ao vivo: Worker v4.9.245, frontend v202.43, repo e produção na mesma versão (o `app/index.html` do repo bate por hash com o do `deploy_zip`), `ok:true`, `feed_fresco:true`, `painel_fresco:true`. **`HEAD == origin/main == 1fd8eda`.** **OR402-DEGRADADA1, QUARENTENACOB1, FALLBACKTTL1, EMAILSILENT1 residual de lote e o código de SCANFALLBACK-MORTO1 estão FECHADOS no repositório e em produção na v4.9.245.** **SCANFALLBACK-MORTO1 segue aberto apenas pela prova runtime real do passo Scan de emergencia.** **Sessão de 12/09: `main` sincronizado depois de 8 commits de atraso, gate de ancestralidade em `deploy-worker.ps1` (`3209aac`) e reidratação de sessão no `AGENTS.md` (`1fd8eda`), sem deploy.** **Biblioteca de skills: `.claude/skills/` é o canonico versionado, `.agents/skills/` é local e não versionada, e o `skills.paths` do `kilo.json` aponta para `./.claude/skills`.**
 
-> [!success] 11/09 — **Estado canônico do `main` em `7acb5c8`, sem deploy.**
+> [!success] 11/09 a 12/09. **Estado canônico do `main` em `1fd8eda`, sem deploy.**
 > **Fechados no repositório:** OR402-DEGRADADA1 em `ab87aaf`; QUARENTENACOB1 em `160733b`; FALLBACKTTL1 em `bf1bb0e`; EMAILSILENT1 residual de lote em `4871eb1`; SCANFALLBACK-MORTO1, código, em `7acb5c8`.
-> **CI do commit final `7acb5c8`:** Cadastro dos Emissores, claude-free e Worker Tests concluíram com sucesso. Worker Tests cobriu também o job com relógio adiantado.
+> **CI:** Cadastro dos Emissores, claude-free e Worker Tests concluíram com sucesso no empurrão de 11/09, e o claude-free do empurrão de 12/09 também. O Worker Tests cobre o job com relógio adiantado.
 > **SCANFALLBACK-MORTO1 permanece ABERTO apenas pela prova runtime real:** o passo `Scan de emergencia` precisa executar com `prosseguir=true`, concluir todos os emissores processados e não registrar `Fallback incompleto`. Não executar a rotina para esta atualização documental.
 
 > [!success] 10/09 (tarde) — **Actions Node 20→v6, Case F e drift Pampa Sul resolvidos. Commits `8b26d74` e `112ffbe` pushados, CI 100% verde, sem deploy.**

@@ -4,6 +4,14 @@ Roteamento leve. Ler **só este arquivo** na descoberta de skills. Carregar `SKI
 
 Gerar índice local: `pwsh scripts/skills-index.ps1`
 
+> **Onde vivem as skills.** O canonico versionado do projeto e `.claude/skills/`, e e o
+> que um clone novo recebe. O `.agents/skills/` e a biblioteca local do operador, cerca
+> de 28 MB e majoritariamente de terceiros, **nao versionada** e coberta pelo `.gitignore`.
+> Dos 35 nomes presentes nas duas arvores, 12 aparecem em `.agents/skills/` como symlink
+> para `.claude/skills/`, ou seja, o sistema depende de `.claude/skills/` existir. O
+> `skills.paths` do `kilo.json` aponta para `./.claude/skills`, e nenhum caminho de skill
+> depende de `.agents/skills/` existir num clone.
+
 ## Regras
 
 1. Default = skill mais barata em tokens
@@ -45,6 +53,9 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | `repor-varredura` | Reposição de varredura de dias perdidos, caçada dirigida com data real de fonte e regra anti-ancoragem (REPOSIC1) |
 | `vixradar-varredura` | Executar e validar a varredura matinal/noturno do dia com segurança: pre-flight, locks/mutex, FIM, painel_fresco/feed_fresco |
 | `vix-radar-next-steps` | P0/P1/P2 + quick wins |
+| `vix-radar-predictive` | Scores preditivos de crédito, z-scores ANBIMA, Merton e pipeline rule+logistic |
+| `vix-radar-session-briefing` | Briefing rápido de sessão |
+| `vix-radar-system-council` | Conselho de sistema, sete lentes para falha recorrente e melhoria sistemica |
 | `wrangler` | CLI Cloudflare |
 | `workers-best-practices` | Anti-patterns Worker |
 | `ODDA` | Decisão sob pressão |
@@ -55,6 +66,10 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | `writing-plans` / `executing-plans` | Plano + execução superpowers |
 | `systematic-debugging` | Debug estruturado |
 | `using-superpowers` | Meta — roteamento obrigatório de skills |
+
+As cerca de 100 skills genericas que existem so na biblioteca local aparecem com
+`pwsh scripts/skills-index.ps1 -Global`, porque o bloco do projeto le apenas
+`.claude/skills/`.
 
 ## Ordem de descoberta (rotina /skills)
 
