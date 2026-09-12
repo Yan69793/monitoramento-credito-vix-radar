@@ -5,6 +5,7 @@
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
 # v4.9.245.js = v4.9.244 + QUARENTENACOB1, EMAILSILENT1 e SCANFALLBACK-MORTO1:
+# v4.9.246.js = v4.9.245 + feed_fresco reprova no limite de 2 dias uteis, evitando falso verde quando o feed esta estagnado.
 #   a consulta de quarentena CVM pagina ate cobrir o conjunto completo; o envio de
 #   email em lote preserva os sucessos e torna falha parcial observavel; o contrato
 #   de emissores prioritarios do Scan devolve setor e marca ausencia como sem_setor.
