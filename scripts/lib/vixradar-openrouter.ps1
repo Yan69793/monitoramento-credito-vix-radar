@@ -390,48 +390,6 @@ function Test-VixOpenRouter402Credito([string]$Body) {
     return ($m -match '(?i)(more credits|insufficient credit|insufficient funds|fewer max_tokens|max_tokens)')
 }
 
-function Get-VixOpenRouterSaldo {
-    # PROVIDER-SPLIT1 (12/09/2026): mede o saldo da conta ANTES de escolher o provider.
-    # Motivo medido: a conta OpenRouter ficou com restante negativo (total_credits=299,
-    # total_usage=299.1988) e cada lote virou DEGRADADO_402 sem creditos nem para 47 tokens.
-    # O motor ja DETECTA o 402 (OR402-DEGRADA1), mas so depois de gastar o lote inteiro, e a
-    # noite fecha INCONCLUSIVO - pior que consumir a cota da assinatura. Este guarda move a
-    # decisao para o boot.
-    # Contrato:
-    #   ok      = ha saldo para a proxima carga (restante >= MinimoUsd)
-    #   medido  = a consulta respondeu algo; false significa que NAO deu para medir
-    #   restante_usd = restante medido, ou $null quando nao medido
-    #   motivo  = texto curto para o log, nunca com a chave
-    # Nao lanca e nunca loga/imprime a chave. Le a chave de Process e depois User, como o adapter.
-    param([double]$MinimoUsd = 0.0)
-    $out = [pscustomobject]@{ ok = $false; medido = $false; restante_usd = $null; motivo = '' }
-    if ($MinimoUsd -le 0) {
-        $envMin = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_SALDO_MINIMO_USD'
-        $MinimoUsd = 1.0
-        if ($envMin) { $parsed = 0.0; if ([double]::TryParse($envMin, [ref]$parsed)) { if ($parsed -gt 0) { $MinimoUsd = $parsed } } }
-    }
-    $chave = ''
-    try { $chave = Get-VixOpenRouterApiKey } catch { $chave = '' }
-    if (-not $chave) { $out.motivo = 'OPENROUTER_API_KEY ausente'; return $out }
-    try {
-        $resp = Invoke-RestMethod -Uri 'https://openrouter.ai/api/v1/credits' -Headers @{ Authorization = ('Bearer ' + $chave) } -Method Get -TimeoutSec 30 -ErrorAction Stop
-        $total = [double]$resp.data.total_credits
-        $usado = [double]$resp.data.total_usage
-        $restante = $total - $usado
-        $out.medido = $true
-        $out.restante_usd = $restante
-        if ($restante -ge $MinimoUsd) {
-            $out.ok = $true
-            $out.motivo = ('saldo ok restante_usd=' + [math]::Round($restante, 2))
-        } else {
-            $out.motivo = ('saldo insuficiente restante_usd=' + [math]::Round($restante, 2) + ' minimo_usd=' + [math]::Round($MinimoUsd, 2))
-        }
-    } catch {
-        $out.motivo = ('medicao de saldo falhou: ' + $_.Exception.Message)
-    }
-    return $out
-}
-
 # Orquestra un lote completo: lee el prompt, POST con server tools, normaliza el envelope.
 # Retenta bounded en status retryable; agotado el primario, prueba el fallback explicito
 # (DeepSeek validado) con su propia malha de retry. Retorna

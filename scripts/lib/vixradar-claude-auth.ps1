@@ -63,6 +63,21 @@ function Get-VixAnthropicApiKey {
     # com -ForceClaude explicito do operador. Scheduler nunca passa -ForceClaude, entao
     # a escalada automatica para chave paga morre aqui com exit 86.
     if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-auth-Get-VixAnthropicApiKey' }
+    # GATE PAYG (2026-09-12): o gate acima deixou de bastar. Ao reativar
+    # 'claude-subscription' em 0cbfd6a, Test-VixLlmPermiteClaude passou a devolver $true
+    # tambem para a ASSINATURA (correto para invocar o CLI), e esta funcao, que usava o
+    # MESMO gate, voltou a liberar a chave paga sem ninguem ter autorizado pay-per-token.
+    # Consequencia medida em 12/09: token de assinatura recusado -> fallback mudo para a
+    # chave paga sem credito -> Set-VixClaudeAuthEnv injetou ANTHROPIC_API_KEY -> o CLI
+    # desabilitou o login claude.ai ("ANTHROPIC_API_KEY ... takes precedence over your
+    # claude.ai login") -> AUTH_MODO: nenhum -> exit 5 sem um unico lote, na noturna 05:01
+    # e na matinal 10:06. Governanca: ANTHROPIC_API_PAYG = NAO AUTORIZADO.
+    # Devolver $null (e nao Stop-VixLlmBloqueado) e de proposito: a assinatura continua
+    # sendo o caminho normal, so a escalada paga fica desarmada.
+    if ((Get-VixLlmProvider) -ne 'claude-manual' -or -not $script:VixLlmForceClaude) {
+        Write-VixAuthLog ('AVISO AUTH: chave paga Anthropic NAO autorizada (provider=' + (Get-VixLlmProvider) + ', exige claude-manual + -ForceClaude; ANTHROPIC_API_PAYG=NAO AUTORIZADO). Escalada paga desarmada.')
+        return $null
+    }
     # So aceita chave no formato Anthropic. Chave de agregador e recusada e registrada:
     # em 30/07 uma base URL de agregador servia deepseek-v4-flash para pedido de
     # claude-sonnet-4-6, e o log carimbava Claude.
@@ -90,6 +105,28 @@ function Test-VixClaudeAuthFailure([string]$Saida) {
     # NENHUMA, e 'OAuth session expired' so quando havia uma e venceu. Sem cobrir as duas, um
     # logout classificava como falha generica e a escalada de meio de execucao nao disparava.
     return ($Saida -match 'OAuth session expired|Failed to authenticate|not authenticated|Not logged in|Please run /login|Invalid API key|authentication_error|invalid_api_key')
+}
+
+function Test-VixClaudeSessionLimit([string]$Saida) {
+    # SESSIONLIMIT1 (2026-09-12): o limite de uso da ASSINATURA e transiente e se parece com
+    # falha de credencial no exit code (sonda devolve exit=1 nos dois casos). Sem separar os
+    # dois, o operador recebe "regenere o token" durante um incidente de cota e regenera um
+    # token que estava bom - foi o que aconteceu em 12/09, quando a sonda devolveu
+    # api_error_status 429 com "You've hit your session limit - resets 9:10pm".
+    # Nao confundir com Test-VixClaudeAuthFailure: aquele decide TROCAR de credencial, este
+    # so nomeia o motivo no log. Nao mexer no primeiro para tratar limite.
+    if (-not $Saida) { return $false }
+    return ($Saida -match '(?i)session limit|usage limit|hit your .*limit|rate_limit_error|api_error_status"?\s*:\s*429')
+}
+
+function Test-VixClaudeSaldoPagoZerado([string]$Saida) {
+    # SALDOZERO1 (2026-09-12): a sonda sem credencial no ambiente resolve o credential store do
+    # CLI e volta 400 "Credit balance is too low" (medido nas duas pontas: com a chave paga e
+    # com o ambiente limpo). Isso NAO e a assinatura indisponivel: e o CLI cobrando por API numa
+    # conta Console sem saldo. Sem nomear isso, o operador le "assinatura expirada" durante um
+    # problema de cobranca e regenera token bom. Nao autoriza nada: serve so para o log.
+    if (-not $Saida) { return $false }
+    return ($Saida -match '(?i)credit balance is too low|insufficient credit|plans & billing|add credits')
 }
 
 function Get-VixAnthropicAuthToken {
@@ -223,15 +260,26 @@ function Initialize-VixClaudeAuth {
     if ($script:VixAuthToken) {
         $script:VixAuthModo = 'assinatura-token'
         Set-VixClaudeAuthEnv
-        $r = Test-VixClaudeSonda $ModeloSonda $McpConfigFile
-        if ($r.Ok) {
+        $rToken = Test-VixClaudeSonda $ModeloSonda $McpConfigFile
+        if ($rToken.Ok) {
             Write-VixAuthLog 'AUTH: token longevo de assinatura aceito - rodando sem custo por token.'
             $script:VixAuthDecidido = $true
             return $script:VixAuthModo
         }
-        # Token configurado e recusado e sintoma, nao detalhe: alguem colocou ali de
-        # proposito e ele parou de valer. Nomear no log em vez de degradar em silencio.
-        Write-VixAuthLog 'AVISO AUTH: VIXRADAR_ANTHROPIC_AUTH_TOKEN esta configurado mas foi recusado. Regerar com `claude setup-token`.'
+        # MOTIVO-REAL1 (2026-09-12): cota e credencial invalida dao exit=1 nos dois casos, entao
+        # o exit nao distingue. Nomear o motivo aqui, na sonda DO TOKEN, e o que o operador le.
+        # Antes, esta linha dizia apenas "foi recusado. Regerar com setup-token", e em 12/09 isso
+        # mandou regenerar um token que estava bom, enquanto o real era limite de sessao.
+        if (Test-VixClaudeSessionLimit $rToken.Saida) {
+            $motivoAssinatura = 'LIMITE DE SESSAO da assinatura (cota). NAO e credencial invalida e NAO se resolve regerando token'
+            Write-VixAuthLog ('AVISO AUTH: token de assinatura recusado por ' + $motivoAssinatura + '. Aguardar o reset da cota.')
+        } elseif (Test-VixClaudeAuthFailure $rToken.Saida) {
+            $motivoAssinatura = 'credencial do token recusada'
+            Write-VixAuthLog 'AVISO AUTH: VIXRADAR_ANTHROPIC_AUTH_TOKEN recusado por credencial. Regerar com `claude setup-token`.'
+        } else {
+            $motivoAssinatura = ('sonda do token falhou exit=' + $rToken.Code)
+            Write-VixAuthLog ('AVISO AUTH: token de assinatura nao respondeu (' + $motivoAssinatura + ').')
+        }
     }
 
     $script:VixAuthModo = 'assinatura'
@@ -242,10 +290,17 @@ function Initialize-VixClaudeAuth {
         $script:VixAuthDecidido = $true
         return $script:VixAuthModo
     }
+    # CREDSTORE-PAGO1 (2026-09-12): medido nesta maquina, a sonda com o ambiente limpo NAO cai na
+    # assinatura: resolve o credential store do CLI e volta 400 "Credit balance is too low". Ou
+    # seja, este segundo caminho nao e um caminho de assinatura aqui, e cobranca por API sem
+    # saldo. Nomear para o operador nao tratar o 400 como "OAuth expirado".
+    if (Test-VixClaudeSaldoPagoZerado $r.Saida) {
+        Write-VixAuthLog 'AVISO AUTH: o caminho de credencial do CLI (sem env) resolveu cobranca por API com saldo zerado, nao a assinatura. Nao ha assinatura nesse caminho nesta maquina.'
+    }
 
     if ($script:VixAuthChave) {
         $script:VixAuthModo = 'api'
-        $motivo = if (Test-VixClaudeAuthFailure $r.Saida) { 'sessao OAuth expirada ou deslogada' } else { ('sonda falhou exit=' + $r.Code) }
+        $motivo = if (Test-VixClaudeSessionLimit $r.Saida) { 'LIMITE DE SESSAO da assinatura (transiente, aguardar o reset - NAO regerar token)' } elseif (Test-VixClaudeAuthFailure $r.Saida) { 'sessao OAuth expirada ou deslogada' } else { 'sonda falhou exit=' + $r.Code }
         Write-VixAuthLog ('AUTH: assinatura indisponivel (' + $motivo + '). Caindo para chave paga (pay-per-token).')
         Write-VixAuthLog 'AUTH: para voltar a assinatura, rodar `claude setup-token` (token longevo, sobrevive ao Task Scheduler) ou `claude login`.'
 
@@ -265,8 +320,16 @@ function Initialize-VixClaudeAuth {
         }
     } else {
         $script:VixAuthModo = 'nenhum'
-        Write-VixAuthLog 'ERRO AUTH: assinatura indisponivel e nenhuma chave sk-ant- configurada.'
-        Write-VixAuthLog 'ERRO AUTH: rodar `claude setup-token`, ou definir VIXRADAR_ANTHROPIC_API_KEY. A rotina vai falhar nos lotes.'
+        # MOTIVO-REAL1 (2026-09-12): o motivo vem da sonda DO TOKEN de assinatura ($motivoAssinatura),
+        # nao da sonda do credential store. Antes esta linha lia $r.Saida, que e a sonda do store e
+        # voltava 400 "Credit balance is too low" nesta maquina, entao um limite de cota da assinatura
+        # era reportado como problema de credencial e o operador regenerava um token que estava bom.
+        if ($motivoAssinatura) {
+            Write-VixAuthLog ('ERRO AUTH: assinatura indisponivel por ' + $motivoAssinatura + '.')
+        } else {
+            Write-VixAuthLog 'ERRO AUTH: assinatura indisponivel e nenhuma chave paga autorizada (ANTHROPIC_API_PAYG=NAO AUTORIZADO).'
+            Write-VixAuthLog 'ERRO AUTH: rodar `claude setup-token` (token longevo) ou `claude login`.'
+        }
     }
 
     $script:VixAuthDecidido = $true

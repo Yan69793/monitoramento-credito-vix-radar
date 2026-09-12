@@ -232,18 +232,11 @@ task, sem retries): para reconstruir, rodar o cutover.
 bloqueado. `claude-subscription` = **ATIVO desde 12/09/2026** (medido: valor
 setado no escopo User): `Test-VixLlmPermiteClaude` libera este valor direto, sem
 exigir `-ForceClaude`, e as 5 rotinas LLM chamam o Claude CLI nativo, autenticado
-pela assinatura Claude Code Pro, sem chave Anthropic paga. **A noturna é a exceção:
-`PROVIDER-SPLIT1` (12/09/2026) faz o wrapper `run_vixradar_noturno_claude.ps1` setar
-`VIXRADAR_LLM_PROVIDER=openrouter` no escopo Process, porque ele vence o escopo User.
-Motivo medido: a noturna é o trabalho bruto e não assistido (104 emissores), e consumir
-a cota da assinatura nela derruba a matinal por `session limit` no mesmo dia. O desvio
-só ocorre com saldo medido em `Get-VixOpenRouterSaldo` (a conta é pré-paga e ficou zerada
-em 12/09, restante −0,20 USD), então sem crédito a noturna volta para a assinatura em vez
-de fechar a noite INCONCLUSIVO. Matinal, sentinela, verificação e agenda seguem no escopo
-User, e `-ForceClaude` na noturna preserva o escape manual. `claude-manual` = Claude só
-com `-ForceClaude` explícito do operador, nunca pelo scheduler. `codex` continua
-implementado como caminho gated (exige `CodexAdapterHabilitado` no chamador).
-`deepseek` = reservado, ainda bloqueado.
+pela assinatura Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
+`claude-manual` = Claude só com `-ForceClaude` explícito do operador, nunca pelo
+scheduler. `openrouter` e `codex` continuam implementados como caminhos gated
+(exigem `OpenRouterAdapterHabilitado`/`CodexAdapterHabilitado` no chamador), mas
+nenhum dos dois é o valor ativo hoje. `deepseek` = reservado, ainda bloqueado.
 Sem provider habilitado, a rotina grava a linha canônica `BLOQUEADO_SEM_PROVIDER`
 e sai com **exit 86** antes de mutex, sonda, auth ou claude. O gate vive em
 `scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada rotina. As 5
