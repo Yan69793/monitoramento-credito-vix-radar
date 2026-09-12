@@ -4,12 +4,21 @@
 >
 > **Governança atual:** `CLAUDE_SUBSCRIPTION = PRO`, `CLAUDE_CODE = OPERACIONAL`,
 > `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`. O VIX Radar usa o Claude CLI com a assinatura
-> Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
+> Claude Code Pro, sem chave Anthropic paga.
 >
-> **Provider único de LLM nas rotinas: env User `VIXRADAR_LLM_PROVIDER`.** Ausente
+> **Exceção medida (`PROVIDER-SPLIT1`, 12/09/2026):** a noturna sai pelo OpenRouter. O
+> wrapper `run_vixradar_noturno_claude.ps1` seta `VIXRADAR_LLM_PROVIDER=openrouter` no
+> escopo Process, que vence o User. A noturna é a carga bruta e não assistida (104
+> emissores) e consumir a cota da assinatura nela derruba a matinal por `session limit`
+> no mesmo dia. O desvio exige saldo medido em `Get-VixOpenRouterSaldo`; a conta ficou
+> zerada em 12/09 (restante −0,20 USD) e, sem crédito, a noturna volta para a assinatura
+> em vez de perder a noite. Matinal, sentinela, verificação e agenda seguem no escopo User.
+>
+> **Provider de LLM nas rotinas: env User `VIXRADAR_LLM_PROVIDER`.** Ausente
 > ou `none` = bloqueado; `claude-subscription` = assinatura Claude Code Pro;
-> `claude-manual` = Claude só com `-ForceClaude` (manual do operador); `deepseek`/
-> `openrouter` = não utilizados. Sem provider habilitado, toda rotina LLM
+> `claude-manual` = Claude só com `-ForceClaude` (manual do operador); `openrouter` =
+> usado pela noturna sob guarda de saldo; `deepseek` = não utilizado. Sem provider
+> habilitado, toda rotina LLM
 > grava a linha canônica `BLOQUEADO_SEM_PROVIDER` e sai com exit **86**. O gate
 > vive em `scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada
 > rotina, antes de qualquer auth, sonda ou claude.
