@@ -347,7 +347,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             if ($script:VixUsaCodex) {
                 $codexOutFile = Join-Path $LogDir ($Perfil.prefix + '_codex_' + $DateTag + '_' + $PID + '.txt')
                 $promptText = Get-Content $promptPath -Raw -Encoding UTF8
-                $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config -C $ProjectRoot -o $codexOutFile - 2>>$stderrFile
+                $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
                 $exitCode = $LASTEXITCODE
                 if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
                     $codexText = Get-Content $codexOutFile -Raw -Encoding UTF8
