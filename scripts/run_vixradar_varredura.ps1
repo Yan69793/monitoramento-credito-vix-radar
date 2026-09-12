@@ -316,6 +316,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
         $retryDelays = @(0, 30, 60)
+        if ($script:VixUsaCodex) { $retryDelays = @(0) }
         # OR429-CAMADAUNICA (2026-09-09): com allow_fallbacks=true no adapter, o failover entre
         # providers do MESMO modelo e nativo do OpenRouter e o retry de 429/transporte e bounded
         # DENTRO do adapter (respeitando Retry-After). Re-disparar o lote inteiro aqui (30s/60s)
@@ -343,6 +344,26 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             # Fase B D1: provider openrouter despacha para o adapter HTTP proprio
             # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch.
             # Mesmo prompt, mesmo protocolo textual; envelope normalizado no parser abaixo.
+            if ($script:VixUsaCodex) {
+                $codexOutFile = Join-Path $LogDir ($Perfil.prefix + '_codex_' + $DateTag + '_' + $PID + '.txt')
+                $promptText = Get-Content $promptPath -Raw -Encoding UTF8
+                $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config -C $ProjectRoot -o $codexOutFile - 2>>$stderrFile
+                $exitCode = $LASTEXITCODE
+                if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
+                    $codexText = Get-Content $codexOutFile -Raw -Encoding UTF8
+                    $envelope = [ordered]@{
+                        result = $codexText
+                        is_error = $false
+                        model = 'codex-subscription'
+                        usage = [ordered]@{ input_tokens = 0; output_tokens = 0; cache_creation_input_tokens = 0; cache_read_input_tokens = 0 }
+                    }
+                    $raw = @($envelope | ConvertTo-Json -Compress)
+                } else { $raw = @($codexRaw) }
+                $retryLog += ('t' + ($attempt + 1) + ':codex:exit=' + $exitCode)
+                if ($exitCode -eq 0) { break }
+                Write-Log ('RETRY codex: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ' falhou')
+                continue
+            }
             if ($script:VixUsaOpenRouter) {
                 # OR429-TETO (2026-09-09): teto de parede TOTAL do lote passado ao adapter, para o
                 # ciclo retry+fallback+Retry-After nunca estourar o orcamento (09/09 morreu no meio
@@ -691,8 +712,10 @@ function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, 
 # Fase B D1 (2026-09-04): provider 'openrouter' libera a execucao pelo adapter HTTP proprio
 # (lib\vixradar-openrouter.ps1), sem claude, sem auth Anthropic, sem escalacao paga.
 $script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+$script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
 $openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
-if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado)) {
+$codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
+if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado -CodexAdapterHabilitado:$codexAdapterHabilitado)) {
     if ($script:VixUsaOpenRouter) {
         Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
     }

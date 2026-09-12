@@ -9,6 +9,7 @@
 #   VIXRADAR_LLM_PROVIDER = none           (padrao) rotinas LLM BLOQUEADO_SEM_PROVIDER
 #                          | claude-manual Claude so com -ForceClaude explicito (operador)
 #                          | openrouter            permitido com adapter habilitado
+#                          | codex                 permitido com Codex CLI autenticado
 #                          | deepseek              reservado, bloqueado
 #
 # Exit canonico do bloqueio: 86 ($VixLlmBloqueadoExit). Nao colide com o mapa 0-8 do
@@ -16,7 +17,7 @@
 #   BLOQUEADO_SEM_PROVIDER provider=<v> exit=86 gatilho=<script> motivo=<por que>
 #
 # Contrato das funcoes:
-#   Get-VixLlmProvider                -> 'none'|'claude-manual'|'deepseek'|'openrouter'
+#   Get-VixLlmProvider                -> 'none'|'claude-manual'|'deepseek'|'openrouter'|'codex'
 #   Set-VixLlmForceClaude [switch]    -> registra forca manual no escopo do script
 #   Test-VixLlmPermiteClaude [-ForceClaude] -> bool; caminho Claude manual
 #   Test-VixLlmProviderPermiteRotina        -> bool; decisao canonica do motor
@@ -80,7 +81,8 @@ function Test-VixLlmProviderPermiteRotina {
     # sem reinterpretar provider como se fosse o caminho Claude legado.
     param(
         [switch]$ForceClaude,
-        [bool]$OpenRouterAdapterHabilitado = $false
+        [bool]$OpenRouterAdapterHabilitado = $false,
+        [bool]$CodexAdapterHabilitado = $false
     )
     $provider = Get-VixLlmProvider
     if ($provider -eq 'openrouter') {
@@ -89,6 +91,14 @@ function Test-VixLlmProviderPermiteRotina {
             return $true
         }
         $script:VixLlmMotivo = 'provider openrouter configurado sem adapter habilitado'
+        return $false
+    }
+    if ($provider -eq 'codex') {
+        if ($CodexAdapterHabilitado) {
+            $script:VixLlmMotivo = $null
+            return $true
+        }
+        $script:VixLlmMotivo = 'provider codex configurado sem Codex CLI habilitado'
         return $false
     }
     return (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)

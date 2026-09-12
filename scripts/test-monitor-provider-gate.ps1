@@ -31,6 +31,10 @@ try {
         Assert (-not $openRouterBloqueado) 'openrouter com adapter habilitado e permitido'
         Assert (-not (Test-VixLlmGateViolacao -ProviderBloqueado $openRouterBloqueado -ExitCode 7 -BenignCodes @(0))) 'openrouter permitido com exit normal diferente de 86 nao gera 9006'
 
+        $env:VIXRADAR_LLM_PROVIDER = 'codex'
+        $codexBloqueado = -not (Test-VixLlmProviderPermiteRotina -CodexAdapterHabilitado $true)
+        Assert (-not $codexBloqueado) 'codex com adapter habilitado e permitido'
+
         $env:VIXRADAR_LLM_PROVIDER = 'none'
         $bloqueado = -not (Test-VixLlmProviderPermiteRotina -OpenRouterAdapterHabilitado $true)
         Assert ($bloqueado) 'provider ausente e bloqueado'
