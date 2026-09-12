@@ -6,9 +6,9 @@ status: saudavel-com-achado
 ---
 
 
-> [!info] 08/09 BRT — **OPENROUTER-429-SENTINELA fechado com prova de execução real; PRs #23/#24 resolvidas.** Causa raiz do 429 de 07/09 (17/17 lotes): alias `~deepseek/deepseek-v4-flash-latest` em upstream saturado + `allow_fallbacks=false` + retry curto. Fix (commit `e155d57`, pendente push): modelo fixo `deepseek/deepseek-v4-flash-0731`, fallback explícito `deepseek/deepseek-v4-flash`, `Retry-After` respeitado, exit 9 em falha total de provider, logs com modelo real. **Sentinela controlada 08/09: resultado=OK, 8/8 emissores, 45 docs CVM marcados, submit_fail=0, lotes_ok=2, 0 timeouts/429, backlog=True, excedente_worker=41.** PR #23: correção do registrador já em main (`c6411d5`) — fechada sem merge; PR #24: bloco morto de 12 linhas removido em commit separado. Produção intocada. Detalhe completo em `status/ESTADO.md`.
-> **Status:** vigente · **Data:** 2026-09-08 · **Origem do Registro:** fechamento da investigação 429 + validação real.
-> **Condição de Obsolescência:** cai quando o fix chegar à Produção (push + deploy) ou se a sentinela voltar a falhar em lote integral.
+> [!success] 12/09 BRT — **Biblioteca de skills fechada no repositório.** `.claude/skills/` é a fonte canônica versionada, os 9 skills VIX carregam, os 5 junctions globais resolvem diretamente para seus destinos canônicos, e `kilo.json` versionado aponta para `./.claude/skills`. `scripts/skills-index.ps1` passou em Windows PowerShell 5.1 e pwsh 7, com diagnóstico explícito em falhas de leitura ou enumeração. Produção permanece v4.9.245, saudável e sem alteração.
+> **Status:** fechado no repositório · **Data:** 2026-09-12 · **Origem do Registro:** validação da configuração de skills e do estado de produção.
+> **Condição de Obsolescência:** revisar se o diretório canônico, os junctions globais, o contrato do índice ou o caminho de skills do `kilo.json` mudar.
 
 # Estado Atual — VIX Radar
 
