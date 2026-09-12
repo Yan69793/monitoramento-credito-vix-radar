@@ -32,15 +32,28 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 }
 
 $MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Split-IntoChunks', 'Test-VixBuscaDegradada', 'Resolve-VixCoberturaWeb', 'Split-IntoWebBudgetChunks'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Test-VixBuscaDegradada', 'Resolve-VixCoberturaWeb'))) { Invoke-Expression $_def }
 
-Write-Host '== Split-IntoWebBudgetChunks: budget deterministico por lote =='
-$webChunks = @(Split-IntoWebBudgetChunks (1..15) 15 3 8)
-Assert-True ($webChunks.Count -eq 8) 'W1: 15 emissores viram 8 lotes no budget 8'
-Assert-True ((@($webChunks | ForEach-Object { @($_).Count } | Measure-Object -Maximum).Maximum) -eq 2) 'W2: nenhum lote excede 2 emissores'
-Assert-True (-not (@($webChunks | Where-Object { @($_).Count * 3 -gt 8 }))) 'W3: emissores x 3 buscas nunca excede budget 8'
-$fullChunks = @(Split-IntoWebBudgetChunks (1..4) 4 3 8)
-Assert-True ($fullChunks.Count -eq 2 -and @($fullChunks[0]).Count -eq 2 -and @($fullChunks[1]).Count -eq 2) 'W4: FULL 4 emissores e subdividido em 2+2'
+# SPLITWEB-REJEITADO (12/09/2026) - bloco W removido, com motivo, para ninguem reimplementar.
+# O commit ab87aaf (11/09) acrescentou aqui 4 asserts (W1-W4) sobre uma funcao
+# `Split-IntoWebBudgetChunks` que NUNCA foi escrita no motor. Como Get-MotorFuncDefs lanca
+# `throw` quando nao acha o nome, esta suite morria na linha de extracao e as ~40 asserts
+# reais abaixo (D1-D14, N1-N7, A1-A2, B1-B2, C1-C2, E1-E2) tambem nunca rodavam. Suite
+# vermelha esconde tudo que ela contem, nao so o bloco quebrado.
+#
+# O bloco pedia lotes de floor(budget/buscasPorEmissor) = floor(8/3) = 2 emissores. Isso NAO
+# deve ser implementado nem ligado no motor, e a razao e medida, nao estetica:
+#   - `max_total_results = 8` por POST (vixradar-openrouter.ps1) e o chunk e 15 (noturna) / 4 (matinal);
+#   - 15 emissores por lote e o cenario do incidente de 08/09 (23 buscas degredadas no mesmo POST);
+#   - com 2 emissores por lote, a noturna sairia de 7 lotes para 52 (104/2), ou seja ~7,4x mais
+#     POSTs e ~7,4x mais cache_creation (medido: ~36 mil tokens por lote LIGHT), com o preambulo
+#     de 13 KB repetido em cada um. O ganho seria evitar degradacao de busca; o custo seria uma
+#     regressao grande de tempo e token numa rotina que hoje ja leva 85 min nos 104 emissores.
+# O fix que de fato foi aceito para 08/09 e a DETECCAO, testada abaixo: busca degredada passa a
+# contar, emissor sem busca efetiva vira pendente e nao certifica `sem_eventos`. Prevencao por
+# lotes menores foi avaliada e rejeitada por custo.
+# Se um dia a degradacao de busca voltar a ocorrer em volume, a alavanca correta e revisar
+# `max_total_results` no adapter, com medicao propria, e nao subdividir o lote.
 
 Write-Host '== Test-VixBuscaDegradada: o que E degradada (evidencia explicita) =='
 Assert-True (Test-VixBuscaDegradada 'sem resultados - limite de busca') 'D1: "sem resultados - limite de busca" (texto real 08/09) = degradada'

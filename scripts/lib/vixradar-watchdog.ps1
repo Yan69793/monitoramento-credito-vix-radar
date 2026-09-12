@@ -289,3 +289,88 @@ function Get-VixLedgerEmissoresNaJanela {
         JanelaInicio      = $JanelaInicio
     }
 }
+
+function Get-VixDegradado402([string]$RotinasLogDir, [datetime[]]$Dias) {
+    # OR402-DEGRADA1 (2026-09-11), implementada em 2026-09-12.
+    #
+    # O monitor-tasks.ps1 passou a CHAMAR esta funcao em 2026-09-11, mas ela nunca foi escrita
+    # em lugar nenhum do repositorio. Com $ErrorActionPreference = 'Continue' o cmdlet
+    # inexistente apenas registra CommandNotFoundException e devolve vazio, entao o foreach
+    # iterava zero vezes: o aviso 9007 de degradacao por saldo NUNCA foi emitido e o monitor
+    # erro na linha 958 a cada execucao. O defeito era invisivel porque nada roda
+    # test-monitor-degradado402.ps1 automaticamente (nao ha agregador, nem gate no CI).
+    #
+    # Contrato (provado por scripts/test-monitor-degradado402.ps1):
+    #   - varre log e metrics do dia e devolve UM achado por rotina com degradacao;
+    #   - `degradados` e o MAIOR valor entre as duas fontes, nunca a soma: log e metrics
+    #     descrevem a MESMA chamada degradada, somar dobraria o numero;
+    #   - `fonte` aponta o metrics quando ele existe, senao o log, para o alerta nunca citar
+    #     arquivo inexistente;
+    #   - `exemplo` carrega a linha real do log para o operador achar o lote degradado;
+    #   - diretorio inexistente devolve 0 achado, sem excecao.
+    #
+    # Nome do metrics: o curto (`noturno_metrics_<tag>.json`) e o primeiro; se nao existir, cai
+    # para o nome longo (`vixradar-sentinela_metrics_<tag>.json`), porque motor novo pode gravar
+    # com o prefixo inteiro. Sem o fallback, sentinela nunca seria vista.
+    #
+    # ASCII puro, PS 5.1, sem escrita de estado.
+    $achados = @()
+    $rotinas = @('vixradar-noturno', 'vixradar-matinal', 'vixradar-verificacao-async', 'vixradar-sentinela', 'vixradar-agenda-semanal')
+    foreach ($d in @($Dias)) {
+        $tag = $d.ToString('yyyyMMdd')
+        $diaIso = $d.ToString('yyyy-MM-dd')
+        foreach ($rot in $rotinas) {
+            $log = Join-Path $RotinasLogDir ($rot + '_' + $tag + '.log')
+            $curto = ($rot -replace '^vixradar-', '')
+            $met = Join-Path $RotinasLogDir ($curto + '_metrics_' + $tag + '.json')
+            if (-not (Test-Path $met)) {
+                $metLongo = Join-Path $RotinasLogDir ($rot + '_metrics_' + $tag + '.json')
+                if (Test-Path $metLongo) { $met = $metLongo }
+            }
+            $temLog = Test-Path $log
+            $temMet = Test-Path $met
+            if (-not $temLog -and -not $temMet) { continue }
+
+            $linhasLog = 0
+            $exemplo = ''
+            if ($temLog) {
+                foreach ($l in @(Get-Content $log -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+                    if (('' + $l) -match 'DEGRADADO_402') {
+                        $linhasLog++
+                        if (-not $exemplo) {
+                            $exemplo = '' + $l
+                            if ($exemplo.Length -gt 220) { $exemplo = $exemplo.Substring(0, 220) }
+                        }
+                    }
+                }
+            }
+
+            $campoMet = 0
+            if ($temMet) {
+                try {
+                    $j = Get-Content $met -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+                    if ($null -ne $j.degradados_402) { $campoMet = [int]$j.degradados_402 }
+                } catch { $campoMet = 0 }
+            }
+
+            $deg = [Math]::Max($linhasLog, $campoMet)
+            if ($deg -le 0) { continue }
+
+            $fonte = $log
+            if ($temMet) { $fonte = $met }
+
+            $achados += @{
+                rotina        = $rot
+                dia           = $diaIso
+                degradados    = $deg
+                linhas_log    = $linhasLog
+                campo_metrics = $campoMet
+                exemplo       = $exemplo
+                fonte         = $fonte
+                log           = $log
+            }
+        }
+    }
+    return $achados
+}
+
