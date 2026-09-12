@@ -1,5 +1,21 @@
 # VIX Radar — noturno cloud (Remote Routine)
 
+> **ORFAO/ESPECULATIVO (2026-08-18, FASE 2 de governanca das rotinas).** Este documento
+> descreve uma Claude Code Routine remota que **nunca foi criada**. `RemoteTrigger list`
+> confirmado em 18/08 mostra so 2 Remote Routines VIX reais em producao: a de verificacao
+> assincrona (`trig_01QeqBF3sSjuqUYE51a58RtA`) e a de frescor diario
+> (`trig_01B4dbLeSg8NpnMLjkBUXs1N`, ver `routines/README.md`). Nenhuma remote de noturno
+> existe. O texto abaixo tambem instrui usar `ROUTINE_API_KEY` (a chave de privilegio total)
+> num ambiente remoto hipotetico — se esta rotina virar real algum dia, ela precisa de
+> credencial dedicada e escopo minimo, mesmo padrao que `REMOTE_VERIFICACAO_KEY` ja estabeleceu
+> para a verificacao (CHAVEESCOPO1, 18/08/2026), nao reusar a chave de privilegio total.
+> Mecanismo real desde 02/09/2026 (MOTOR1): o motor e o Task Scheduler nativo,
+> `VIXRadar-Noturno` -> `scripts\run_vixradar_noturno_claude.ps1` -> `run_vixradar_varredura.ps1`,
+> na assinatura Claude Code Pro. A sessao agendada do Claude Desktop (`vixradar-noturno`,
+> cron `0 18 * * *`) foi aposentada em 12/09/2026 e as 4 sessoes VIX do CCD estao
+> `enabled: false`; os SKILL.md delas agora recusam execucao.
+> Mantido sem apagar, pode virar plano real no futuro.
+
 Execução autônoma em nuvem. **PROIBIDO Task/subagentes paralelos. PROIBIDO 1 agente por emissor.**
 
 ## Config

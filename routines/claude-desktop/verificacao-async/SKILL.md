@@ -61,6 +61,8 @@ Se `ok` nao for true, aborte. Se a fila vier vazia, registre `FILA_VAZIA` no log
 
 Guarde o horario deste passo (ISO), vai como `inicio` no Passo 7. O campo `origem` alimenta um heartbeat automatico no Worker (`heartbeat:verificacao_async`, mesmo mecanismo dos outros agentes vigiados pelo watchdog), voce nao precisa fazer nada alem de mandar o campo, a gravacao e do lado do Worker.
 
+**Reaproveitamento de veredicto via `cache_hits` (VERIFCACHE1, confirmado 18/08/2026).** A resposta tambem traz `cache_hits`, um objeto chaveado pelo `id` de cada item que ja tem veredicto de um ciclo anterior (aprovado ou rejeitado). A noturna regenera o mesmo evento em ciclos seguintes mesmo depois de verificado, entao e normal boa parte da fila vir com `cache_hits` preenchido, isso nao e reincidencia de erro, e o mecanismo funcionando. Para todo item selecionado que tiver `cache_hits[id]`, NAO gaste busca nele: no Passo 6, reenvie o veredicto exatamente como veio em `cache_hits[id]` (`veredicto`, `confianca`, `motivo`, `fontes_validas`), sem reverificar. Verificar de novo um item com cache e desperdicio puro de busca web e tempo. Em 18/08/2026, 10 dos 26 itens da fila vieram com `cache_hits` (a maioria `APROVADO` de ciclos anteriores), e reenviar 4 deles sem tocar em busca fechou parte do lote a custo zero. Itens SEM `cache_hits` sao os unicos que passam pela checagem adversarial completa do Passo 5.
+
 Dos itens retornados, selecione ate 20 (a fila pode ter mais, o resto fica pra proxima execucao).
 
 ## Passo 3.5 - Reservar antes de verificar (protecao de concorrencia real, 18/08/2026)
@@ -85,7 +87,7 @@ A fila e a propria idempotencia: item aprovado ou rejeitado sai dela via `confir
 
 ## Passo 5 - Lotes e verificacao adversarial
 
-Processe em lotes de 4 eventos, **maximo 5 lotes por execucao (20 eventos)** — subiu de 12 (3 lotes) em 18/08/2026, cap recalculado contra fila real de 25 itens vista no mesmo dia (ver `ROUTINES-CLOUD.md` Passo 0 pra evidencia completa). Processe so os itens que vieram em `reservados` no Passo 3.5. Se sobrar fila depois disso, registre quantos ficaram e encerre, a proxima execucao (local ou Remote, o que rodar primeiro) continua.
+Processe em lotes de 4 eventos, **maximo 5 lotes por execucao (20 eventos)** — subiu de 12 (3 lotes) em 18/08/2026, cap recalculado contra fila real de 25 itens vista no mesmo dia (ver `ROUTINES-CLOUD.md` Passo 0 pra evidencia completa). Processe so os itens que vieram em `reservados` no Passo 3.5. Item com `cache_hits` (Passo 3) pula a checagem adversarial abaixo inteira e vai direto pro reenvio do veredicto no Passo 6. Se sobrar fila depois disso, registre quantos ficaram e encerre, a proxima execucao (local ou Remote, o que rodar primeiro) continua.
 
 Por evento, voce e o auditor factual adversarial, nao o autor original do evento. Ceticismo e o padrao:
 1. Confira `fonte_primaria` do evento. Precisa ser URL profunda especifica (documento CVM com parametros, pagina de rating action, materia com slug). Dominio raiz, homepage ou link generico reprova direto.
@@ -130,6 +132,8 @@ O campo do array chama-se `itens`, nao `veredictos`. Cada item precisa ecoar de 
 ```
 
 Se `id`, `empresa`, `semana`, `data_fila` ou `veredicto` faltarem em um item, o Worker so incrementa `erros` e segue sem processar aquele item, sem detalhar qual campo faltou. A resposta so devolve contagens agregadas (`processados/aprovados/rejeitados/retratados/erros`), nunca por item, entao monte o payload com cuidado antes de enviar, nao va tentando por eliminacao.
+
+**Atencao (corrigido 18/08/2026): as contagens vem ANINHADAS em `resultado{}`, nao na raiz.** O formato real da resposta e `{"ok":true,"resultado":{"processados":N,"aprovados":N,"rejeitados":N,"retratados":N,"erros":N}}`. Ler a raiz (`resposta.processados`, `resposta.aprovados`) devolve vazio, nao erro, com `ok:true` do lado, o que parece sucesso mas nao confirma nada. Aconteceu na execucao de 18/08/2026: o log registrou `processados= aprovados= erros=` vazios ate a releitura do JSON bruto mostrar que os 4 itens do lote tinham sido processados normalmente (`resultado.processados:4, resultado.aprovados:4, resultado.erros:0`). Leia sempre `resposta.resultado.processados` etc, nunca `resposta.processados`.
 
 **Se `protecao_ativa` veio `false` no Passo 3.5**, reconfira cada id antes deste submit: POST `{"action":"listar_fila_verificacao","routine_key":"<chave>","ids":[<ids do lote>]}` e remova do lote qualquer id que nao aparecer mais em `itens` (ja foi processado por outra execucao). Se `protecao_ativa` veio `true`, pode confiar na reserva e pular esse recheck extra.
 
