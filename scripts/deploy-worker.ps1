@@ -170,6 +170,25 @@ if ($stagedDirty) {
 }
 Write-Host "Gate working tree: limpo" -ForegroundColor Green
 
+# --- 0.2b GATE ANCESTRALIDADE: o repo contem origin/main? -------------------
+# DEPLOYLAG1 (2026-09-12): o gate 0.1 compara NUMERO de versao. Producao em
+# v4.9.245 e deploy de v4.9.246 passam nesse gate mesmo com o conteudo varios
+# commits atras. Foi o que aconteceu nesta data: api/src/worker.js local nao
+# tinha sem_setor nem QUARENTENACOB1, os dois ja em producao, entao um build
+# daqui geraria bundle sem os consertos e o push do passo 5 morreria por
+# non-fast-forward, deixando producao a frente de origin/main. Numero de versao
+# nao ve defasagem de conteudo, grafo de commit ve. Roda antes do build.
+git fetch --quiet origin 2>$null
+if ($LASTEXITCODE -ne 0) {
+  Warn "git fetch origin falhou (exit $LASTEXITCODE). O gate segue com o origin/main que ja esta no disco."
+}
+git merge-base --is-ancestor origin/main HEAD 2>$null
+if ($LASTEXITCODE -ne 0) {
+  $atras = (git rev-list --count HEAD..origin/main 2>$null)
+  Fail "Repo atrasado em relacao a origin/main ($atras commit(s)). O build sairia sem o que ja esta no remoto e o deploy poderia regredir producao. Rode 'git pull --rebase' antes de deployar."
+}
+Write-Host "Gate ancestralidade: repo contem origin/main" -ForegroundColor Green
+
 # --- 0.3 GATE SENTRY_DSN: secret existe antes de o health passar a exigi-lo --
 # SENTRY1 (v4.9.184): sentry_ok entrou no _okHealth do Worker, mesma logica do
 # admin_email_ok (SECRETMISS1). Sem o secret, producao volta ok:false e a
