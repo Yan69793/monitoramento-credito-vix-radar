@@ -1,4 +1,4 @@
-# test-locks-overlap.ps1 - prova de duas pontas do item 3 da Fase 4 (MOTOR1).
+﻿# test-locks-overlap.ps1 - prova de duas pontas do item 3 da Fase 4 (MOTOR1).
 # ASCII puro (parse no powershell.exe 5.1). Nao submete nada ao Worker.
 #
 # O que este teste prova, com saida crua:
@@ -97,7 +97,7 @@ function Assert-Contem([string[]]$Linhas, [string]$Padrao, [string]$Rotulo) {
         Write-Output ('  FALHA  ' + $Rotulo + ' (padrao nao encontrado: ' + $Padrao + ')')
         $script:Falhas++
     }
-    return $achou
+    [void]$achou
 }
 
 function Assert-NaoContem([string[]]$Linhas, [string]$Padrao, [string]$Rotulo) {
@@ -110,7 +110,7 @@ function Assert-NaoContem([string[]]$Linhas, [string]$Padrao, [string]$Rotulo) {
         Write-Output ('  FALHA  ' + $Rotulo + ' (padrao apareceu e nao devia: ' + $Padrao + ')')
         $script:Falhas++
     }
-    return (-not $achou)
+    [void](-not $achou)
 }
 
 function Start-SeguraMutex([string]$Nome, [int]$Segundos) {
@@ -146,7 +146,12 @@ function Remove-LockDeTeste {
 }
 
 function New-LockDeTeste([int]$IdadeMin) {
-    "source=test-locks-overlap.ps1`npid=$PID`nidade_simulada_min=$IdadeMin" |
+    # D1 (12/09): Get-VixLockState exige pid vivo E inicio_utc igual ao StartTime do processo.
+    # Sem o campo, o lock de teste vira LOCK_ORFAO_INICIO_INVALIDO, o runner prossegue e apaga
+    # o lock alheio - que e exatamente o que este caso prova que nao pode acontecer. O lock
+    # real escreve o mesmo campo, entao a fixture tem que reproduzir o formato real.
+    $inicioUtc = (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o')
+    "source=test-locks-overlap.ps1`npid=$PID`ninicio_utc=$inicioUtc`nidade_simulada_min=$IdadeMin" |
         Set-Content -Path $LockNoturno -Encoding UTF8
     if ($IdadeMin -gt 0) {
         (Get-Item $LockNoturno).LastWriteTime = (Get-Date).AddMinutes(-1 * $IdadeMin)
@@ -276,8 +281,8 @@ if (-not (Wait-MutexOcupado 'Global\vixradar-noturno-v2' 20)) {
     $tailA = Get-LogTail $LogNoturno $t0
     Write-Output ('  exit=' + $exitA)
     foreach ($l in $tailA) { Write-Output ('  | ' + $l) }
-    Assert-Contem $tailA 'ABORT: outra instancia da noturno ja esta em execucao \(mutex ocupado\)' 'runner abortou pelo mutex proprio' | Out-Null
-    Assert-NaoContem $tailA 'LOCK_OK|INICIO:' 'nao chegou a criar lock nem a iniciar (0 token)' | Out-Null
+    Assert-Contem $tailA 'ABORT: outra instancia da noturno ja esta em execucao \(mutex ocupado\)' 'runner abortou pelo mutex proprio'
+    Assert-NaoContem $tailA 'LOCK_OK|INICIO:' 'nao chegou a criar lock nem a iniciar (0 token)'
     $script:Casos++
     if ($exitA -eq 0) { Write-Output '  OK  exit 0 (abort limpo, nao e erro de task)' } else { Write-Output ('  FALHA  exit ' + $exitA + ' (esperado 0)'); $script:Falhas++ }
 }
@@ -294,8 +299,8 @@ try {
     $tailB = Get-LogTail $LogNoturno $t0
     Write-Output ('  exit=' + $exitB)
     foreach ($l in $tailB) { Write-Output ('  | ' + $l) }
-    Assert-Contem $tailB 'ABORT: lock vixradar-noturno_.*\.lock tocado ha .* min \(outra execucao viva\)' 'execucao real abortou pelo lock vivo' | Out-Null
-    Assert-NaoContem $tailB 'LOCK_OK' 'nao sobrescreveu o lock alheio' | Out-Null
+    Assert-Contem $tailB 'ABORT: lock vixradar-noturno_.*\.lock pid=\d+ LOCK_VIVO \(outra execucao viva\)' 'execucao real abortou pelo lock vivo'
+    Assert-NaoContem $tailB 'LOCK_OK' 'nao sobrescreveu o lock alheio'
     $script:Casos++
     if (Test-Path $LockNoturno) {
         Write-Output '  OK  lock alheio continua no lugar (execucao real nao apaga lock vivo de terceiro)'
@@ -326,9 +331,9 @@ if (-not (Wait-MutexOcupado 'Global\vixradar-sentinela-v1' 20)) {
         $tailC = Get-LogTail $LogNoturno $t0
         Write-Output ('  exit=' + $exitC)
         foreach ($l in $tailC) { Write-Output ('  | ' + $l) }
-        Assert-Contem $tailC 'AGUARDANDO sentinela: mutex Global\\vixradar-sentinela-v1 ocupado' 'runner esperou pela sentinela' | Out-Null
-        Assert-Contem $tailC 'sentinela livre apos \d+s' 'runner registrou a liberacao' | Out-Null
-        Assert-Contem $tailC 'ABORT: lock vixradar-noturno_.*\.lock tocado ha' 'so depois avaliou o lock (ordem correta)' | Out-Null
+        Assert-Contem $tailC 'AGUARDANDO sentinela: mutex Global\\vixradar-sentinela-v1 ocupado' 'runner esperou pela sentinela'
+        Assert-Contem $tailC 'sentinela livre apos \d+s' 'runner registrou a liberacao'
+        Assert-Contem $tailC 'ABORT: lock vixradar-noturno_.*\.lock pid=\d+ LOCK_VIVO' 'so depois avaliou o lock (ordem correta)'
     } finally {
         Remove-LockDeTeste
         Stop-Job $jobC -ErrorAction SilentlyContinue | Out-Null
@@ -346,8 +351,8 @@ try {
     $tailD = Get-LogTail $LogSentinela $t0
     Write-Output ('  exit=' + $exitD)
     foreach ($l in $tailD) { Write-Output ('  | ' + $l) }
-    Assert-Contem $tailD 'ABORT_COLISAO: lock de sessao vixradar-noturno ativo ha' 'sentinela recuou pelo lock vivo' | Out-Null
-    Assert-Contem $tailD 'FIM: sentinela sem gatilho. tokens=0' 'saiu em 0 token' | Out-Null
+    Assert-Contem $tailD 'ABORT_COLISAO: lock de sessao vixradar-noturno ativo ha' 'sentinela recuou pelo lock vivo'
+    Assert-Contem $tailD 'FIM: sentinela sem gatilho. tokens=0' 'saiu em 0 token'
 } finally {
     Remove-LockDeTeste
 }
@@ -362,8 +367,8 @@ try {
     $tailE = Get-LogTail $LogSentinela $t0
     Write-Output ('  exit=' + $exitE)
     foreach ($l in $tailE) { Write-Output ('  | ' + $l) }
-    Assert-Contem $tailE 'LOCK_ABANDONADO: vixradar-noturno sem toque ha' 'sentinela ignorou o lock abandonado' | Out-Null
-    Assert-NaoContem $tailE 'ABORT_COLISAO: lock de sessao' 'nao abortou por colisao' | Out-Null
+    Assert-Contem $tailE 'LOCK_ABANDONADO: vixradar-noturno sem toque ha' 'sentinela ignorou o lock abandonado'
+    Assert-NaoContem $tailE 'ABORT_COLISAO: lock de sessao' 'nao abortou por colisao'
 } finally {
     Remove-LockDeTeste
 }
@@ -384,8 +389,8 @@ if ($ComTokens) {
         $tailF = Get-LogTail $logProbeF 0
         Write-Output ('  exit=' + $exitF + '  probe_pid=' + $procF.Id)
         foreach ($l in $tailF) { Write-Output ('  | ' + $l) }
-        Assert-Contem $tailF ('LOCK_OK: vixradar-noturno_' + $DateTag + '_dryrun_' + $procF.Id + '\.lock criado') 'probe criou o proprio lock (sufixo _dryrun_<PID>)' | Out-Null
-        Assert-NaoContem $tailF 'LOCK_ABANDONADO' 'probe nao avalia nem consome o lock real' | Out-Null
+        Assert-Contem $tailF ('LOCK_OK: vixradar-noturno_' + $DateTag + '_dryrun_' + $procF.Id + '\.lock criado') 'probe criou o proprio lock (sufixo _dryrun_<PID>)'
+        Assert-NaoContem $tailF 'LOCK_ABANDONADO' 'probe nao avalia nem consome o lock real'
         # Ordem: LOCK_OK tem que vir ANTES da primeira linha de plano.
         $idxLock = -1; $idxPlano = -1
         for ($i = 0; $i -lt $tailF.Count; $i++) {
@@ -441,7 +446,7 @@ if (-not (Wait-MutexOcupado 'Global\vixradar-sentinela-v1' 20)) {
         $logProbeG  = Get-LogDoProbe $procG.Id
         $lockProbeG = Get-LockDoProbe $procG.Id
         Start-Sleep -Seconds 4
-        "source=test-locks-overlap.ps1`nrotina=noturno`npid=$PID`nidade_simulada_min=0" | Set-Content -Path $lockProbeG -Encoding UTF8
+        "source=test-locks-overlap.ps1`nrotina=noturno`npid=$PID`ninicio_utc=$((Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o'))`nidade_simulada_min=0" | Set-Content -Path $lockProbeG -Encoding UTF8
         # So DEPOIS do lock existir a sentinela e liberada: o filho nao pode passar dela antes.
         Stop-Job $jobG -ErrorAction SilentlyContinue | Out-Null
         Remove-Job $jobG -Force -ErrorAction SilentlyContinue | Out-Null
@@ -450,8 +455,8 @@ if (-not (Wait-MutexOcupado 'Global\vixradar-sentinela-v1' 20)) {
         $tailG = Get-LogTail $logProbeG 0
         Write-Output ('  exit=' + $exitG + '  probe_pid=' + $procG.Id)
         foreach ($l in $tailG) { Write-Output ('  | ' + $l) }
-        Assert-Contem $tailG ('ABORT: lock vixradar-noturno_' + $DateTag + '_dryrun_' + $procG.Id + '\.lock tocado ha') 'probe consultou o lock DELE (sufixo _dryrun_<PID>)' | Out-Null
-        Assert-NaoContem $tailG 'LOCK_OK|INICIO:' 'probe saiu no lock, antes do boot do provider (0 token)' | Out-Null
+        Assert-Contem $tailG ('ABORT: lock vixradar-noturno_' + $DateTag + '_dryrun_' + $procG.Id + '\.lock pid=\d+ LOCK_VIVO') 'probe consultou o lock DELE (sufixo _dryrun_<PID>)'
+        Assert-NaoContem $tailG 'LOCK_OK|INICIO:' 'probe saiu no lock, antes do boot do provider (0 token)'
         $script:Casos++
         $linhasDia = (Get-LogTail $LogNoturno $t0).Count
         if ($linhasDia -eq 0) {
@@ -500,8 +505,8 @@ try {
     $tailH = Get-LogTail $logProbeH 0
     Write-Output ('  exit=' + $exitH + '  probe_pid=' + $procH.Id)
     foreach ($l in $tailH) { Write-Output ('  | ' + $l) }
-    Assert-Contem $tailH ('ABORT: lock real vixradar-noturno_' + $DateTag + '\.lock tocado ha .* \(execucao real viva\) - probe sai antes de provider/network/tokens') 'probe recuou pelo lock real, antes de provider/rede/token' | Out-Null
-    Assert-NaoContem $tailH 'LOCK_OK|INICIO:|AUTH_MODO|MODELO_EFETIVO' 'probe nao chegou a boot de provider nem a criar lock' | Out-Null
+    Assert-Contem $tailH ('ABORT: lock real vixradar-noturno_' + $DateTag + '\.lock pid=\d+ LOCK_VIVO \(execucao real viva\) - probe sai antes de provider/network/tokens') 'probe recuou pelo lock real, antes de provider/rede/token'
+    Assert-NaoContem $tailH 'LOCK_OK|INICIO:|AUTH_MODO|MODELO_EFETIVO' 'probe nao chegou a boot de provider nem a criar lock'
     $script:Casos++
     if ((Test-Path $LockNoturno) -and ((Get-Item $LockNoturno).LastWriteTime -eq $realAntesH)) {
         Write-Output '  OK  lock real fresco intacto (probe nao tocou o arquivo)'
@@ -531,10 +536,10 @@ try {
     $tailI = Get-LogTail $LogNoturno $t0
     Write-Output ('  exit=' + $exitI)
     foreach ($l in $tailI) { Write-Output ('  | ' + $l) }
-    Assert-NaoContem $tailI ('ABORT: lock vixradar-noturno_' + $DateTag + '(_dryrun_\d+)?\.lock') 'lock de probe fresco NAO bloqueou a execucao real' | Out-Null
-    Assert-Contem $tailI ('LOCK_OK: vixradar-noturno_' + $DateTag + '\.lock criado') 'execucao real prosseguiu e criou o PROPRIO lock' | Out-Null
-    Assert-Contem $tailI 'ERRO: -SimularTokenVencido so e aceito com -DryRun' 'corte deterministico depois do lock (guarda anti-submissao real)' | Out-Null
-    Assert-NaoContem $tailI 'AUTH_MODO|MODELO_EFETIVO|Health v4' 'sem boot de provider e sem rede (0 token)' | Out-Null
+    Assert-NaoContem $tailI ('ABORT: lock vixradar-noturno_' + $DateTag + '(_dryrun_\d+)?\.lock') 'lock de probe fresco NAO bloqueou a execucao real'
+    Assert-Contem $tailI ('LOCK_OK: vixradar-noturno_' + $DateTag + '\.lock criado') 'execucao real prosseguiu e criou o PROPRIO lock'
+    Assert-Contem $tailI 'ERRO: -SimularTokenVencido so e aceito com -DryRun' 'corte deterministico depois do lock (guarda anti-submissao real)'
+    Assert-NaoContem $tailI 'AUTH_MODO|MODELO_EFETIVO|Health v4' 'sem boot de provider e sem rede (0 token)'
     $script:Casos++
     if ($exitI -eq 1) { Write-Output '  OK  exit 1 (guarda do -SimularTokenVencido, nao erro de task)' } else { Write-Output ('  FALHA  exit ' + $exitI + ' (esperado 1)'); $script:Falhas++ }
     Write-Output '  NOTA: a execucao real desta rodada passa pelo lock e para no guarda acima; o log do dia e o lock sao restaurados no finally da suite, sem rastro.'

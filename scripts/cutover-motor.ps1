@@ -53,8 +53,14 @@ if ($Sim) {
 
 $Tasks = @('VIXRadar-Matinal', 'VIXRadar-Noturno', 'VIXRadar-Verificacao-Async', 'Szuchmacher-RetryVixMatinal', 'Szuchmacher-RetryVixNoturno')
 # DaysOfWeek 62 = seg(2)+ter(4)+qua(8)+qui(16)+sex(32). Retries: Triggers nulo = so o Enabled muda.
+# PROVIDER-SPLIT1 (12/09/2026): as DUAS rotinas de produto ficam Enabled, porque elas sao cargas
+# diferentes e nao se substituem. A noturna (104 emissores, seg-sex 18h05) roda pelo OpenRouter e
+# nao depende da assinatura. A matinal (23 emissores, diaria 10h06) segue na assinatura Claude Code
+# Pro e pode morrer por "session limit" quando a cota do dia acabou - isso e ACEITO por decisao de
+# custo do operador, nao e defeito a corrigir. O que nao era aceitavel era este mapa discordar do
+# scheduler vivo em silencio: o monitor entao acusa 9002 todo dia e o alerta vira ruido.
 $Desejado = @{
-    'VIXRadar-Matinal'            = @{ Enabled = $false; Triggers = @(@{ Tipo = 'Daily';  Hora = '10:06'; DaysOfWeek = $null }); ExecutionTimeLimit = 'PT4H' }
+    'VIXRadar-Matinal'            = @{ Enabled = $true;  Triggers = @(@{ Tipo = 'Daily';  Hora = '10:06'; DaysOfWeek = $null }); ExecutionTimeLimit = 'PT4H' }
     'VIXRadar-Noturno'            = @{ Enabled = $true;  Triggers = @(@{ Tipo = 'Weekly'; Hora = '18:05'; DaysOfWeek = 62 });   ExecutionTimeLimit = 'PT4H' }
     'VIXRadar-Verificacao-Async'  = @{ Enabled = $true;  Triggers = @(@{ Tipo = 'Daily';  Hora = '11:03'; DaysOfWeek = $null }, @{ Tipo = 'Daily'; Hora = '19:15'; DaysOfWeek = $null }); ExecutionTimeLimit = 'PT45M' }
     'Szuchmacher-RetryVixMatinal' = @{ Enabled = $false; Triggers = $null; ExecutionTimeLimit = $null }
