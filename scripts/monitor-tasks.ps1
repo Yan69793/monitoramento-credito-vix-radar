@@ -192,15 +192,21 @@ if ($MotorAtual -eq 'task-scheduler') {
         $GuardedDisabled.Remove($t)
         $MustBeEnabled[$t] = 'MOTOR1: motor Task Scheduler ativo (logs\monitor-tasks\motor.json). Esta task e o motor real da rotina e precisa estar Enabled.'
     }
-    # CLAUDE-FREE-MIGRATION (2026-09-04): os 2 retries sao desligados de proposito na Fase A.
+    # CLAUDE-FREE-MIGRATION (2026-09-04): o retry da matinal segue desligado de proposito na Fase A.
     # Com a rotina base bloqueada por provider (BLOQUEADO_SEM_PROVIDER, exit 86), relancar nao
     # entrega e o retry-vixradar.ps1 ja vira no-op exit 0. Task Enabled aqui e guard quebrado.
-    foreach ($t in @('Szuchmacher-RetryVixMatinal', 'Szuchmacher-RetryVixNoturno')) {
-        $GuardedDisabled[$t] = @{
-            reason = 'Retry desligado na Fase A (CLAUDE-FREE-MIGRATION 2026-09-04): rotina base bloqueada por provider, relancamento nao entrega e viraria falso SEM ENTREGA. Reativar na Fase B quando houver provider de LLM.'
-            since  = '2026-09-04'
-        }
+    $GuardedDisabled['Szuchmacher-RetryVixMatinal'] = @{
+        reason = 'Retry desligado na Fase A (CLAUDE-FREE-MIGRATION 2026-09-04): rotina base bloqueada por provider, relancamento nao entrega e viraria falso SEM ENTREGA. Reativar quando houver decisao para a matinal.'
+        since  = '2026-09-04'
     }
+    # QUOTARETRY1 (2026-09-12): o retry da NOTURNA passou a ser parte da entrega, nao um extra.
+    # A noturna roda seg-sex 18:05 com ExecutionTimeLimit PT4H (morre 22:05) e leva ~85 min nos
+    # 104 emissores. Quando a assinatura Claude Code Pro bate o limite de sessao durante o dia, o
+    # reset cai perto das 21h e nao cabe no prazo de parede da task: sem relancamento a noite
+    # fecharia vazia em silencio. O retry tem gatilhos 21:30 e 23:20, os DOIS depois do reset, e
+    # sai no-op quando o ledger ja confirma a entrega, entao so gasta cota quando a cota falhou.
+    # Estar Enabled e o esperado agora; Disabled volta a ser erro.
+    $MustBeEnabled['Szuchmacher-RetryVixNoturno'] = 'QUOTARETRY1: rede de seguranca da cota da assinatura. Relanca a noturna depois do reset do limite de sessao (gatilhos 21:30 e 23:20) e sai no-op se o ledger ja confirma entrega. Desabilitar so com decisao explicita do operador.'
 }
 
 Write-Log '=== MONITOR TASK SCHEDULER ==='

@@ -133,6 +133,34 @@ exit 0
     $conteudoRet2b = Get-Content -LiteralPath $retLog2b -Raw -Encoding UTF8
     Assert ($conteudoRet2b -match 'ENTREGA CONFIRMADA apos relancamento') '2b: log do retry registra ENTREGA CONFIRMADA'
     Assert (-not ($conteudoRet2b -match 'ALERTA \(SemAlerta')) '2b: nenhum alerta acionado (entrega confirmada)'
+
+    # ============================================================
+    # Parte 3: MOTORRETRY1 - o retry relanca o MOTOR, por rotina.
+    # Antes relancava run_claude_routine.ps1 (SKILL do Claude Desktop), que e o
+    # caminho legado morto desde o MOTOR1. Prova extraida por AST para nao
+    # executar o script (executar de verdade relancaria a rotina).
+    Write-Host '=== Parte 3: MOTORRETRY1 - destino do relancamento por rotina ==='
+    $tokensR = $null; $errorsR = $null
+    $astR = [System.Management.Automation.Language.Parser]::ParseFile($retryScript, [ref]$tokensR, [ref]$errorsR)
+    Assert ($errorsR.Count -eq 0) ('3a: retry-vixradar.ps1 faz parse sem erro (obtido ' + $errorsR.Count + ')')
+    $defRunner = $astR.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Get-VixRetryRunner' }, $true) | Select-Object -First 1
+    Assert ($null -ne $defRunner) '3b: funcao Get-VixRetryRunner existe'
+    if ($defRunner) {
+        # A funcao extraida depende de $VixRoot, que vive no escopo do script; o teste
+        # fornece o mesmo valor (raiz do repo) para poder chama-la isolada.
+        $VixRoot = Split-Path $PSScriptRoot -Parent
+        Invoke-Expression $defRunner.Extent.Text
+        $dNot = Get-VixRetryRunner 'vixradar-noturno' $null
+        $dMat = Get-VixRetryRunner 'vixradar-matinal' $null
+        $dStub = Get-VixRetryRunner 'vixradar-noturno' 'C:\tmp\stub.ps1'
+        Assert ((Split-Path $dNot.Path -Leaf) -eq 'run_vixradar_noturno_claude.ps1') ('3c: noturno relanca o wrapper do motor (obtido ' + $dNot.Path + ')')
+        Assert ((Split-Path $dMat.Path -Leaf) -eq 'run_vixradar_matinal_claude.ps1') ('3d: matinal relanca o wrapper do motor (obtido ' + $dMat.Path + ')')
+        Assert ($dNot.PassaRoutineId -eq $false -and $dMat.PassaRoutineId -eq $false) '3e: wrapper do motor nao recebe -RoutineId (a rotina esta fixada nele)'
+        Assert ($dStub.Path -eq 'C:\tmp\stub.ps1' -and $dStub.PassaRoutineId -eq $true) '3f: -RunnerOverride vence o mapa e mantem -RoutineId (compativel com o stub desta suite)'
+        Assert ((Test-Path -LiteralPath $dNot.Path) -and (Test-Path -LiteralPath $dMat.Path)) '3g: os dois wrappers apontados existem no repo'
+    }
+    $chamadaRunner = $astR.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] -and $n.CommandElements.Count -gt 0 -and $n.CommandElements[0].Extent.Text -eq 'powershell.exe' }, $true)
+    Assert ($chamadaRunner.Count -ge 1) '3h: o retry invoca powershell.exe em algum ponto'
 }
 finally {
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

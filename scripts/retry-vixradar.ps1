@@ -41,11 +41,31 @@ param(
 $ErrorActionPreference = 'Continue'
 
 $VixRoot     = 'E:\Diretorio\Claude\Monitoramento de Credito'
-$Runner      = if ($RunnerOverride) { $RunnerOverride } else { Join-Path $VixRoot 'scripts\run_claude_routine.ps1' }
 $LogDir      = if ($LogDirOverride) { $LogDirOverride } else { Join-Path $VixRoot 'logs\routines' }
 $LibDir      = Join-Path $VixRoot 'scripts\lib'
 $Watchdog    = Join-Path $LibDir 'vixradar-watchdog.ps1'
 $ClaudeAuth  = Join-Path $LibDir 'vixradar-claude-auth.ps1'
+# MOTORRETRY1 (2026-09-12): o retry relancava por run_claude_routine.ps1, que executa a SKILL do
+# Claude Desktop. Esse e o caminho legado, morto desde o MOTOR1 (02/09): a propria SKILL registra
+# "NAO chame run_vixradar_noturno_claude.ps1, ele depende do CLI quebrado", que e exatamente o
+# motor de hoje. Com a assinatura como unico provider, relancar o legado nao entrega a noite e
+# ainda reabre o risco do incidente de 08/08 (segunda analise leu fonte mais velha e sobrescreveu
+# 3 emissores). O retry passa a relancar o MOTOR, por rotina.
+# PassaRoutineId existe porque os wrappers do motor fixam -Rotina dentro deles; passar -RoutineId
+# ali seria parametro invalido. O runner legado continua aceitando -RoutineId.
+function Get-VixRetryRunner([string]$Id, [string]$Override) {
+    if ($Override) { return [pscustomobject]@{ Path = $Override; PassaRoutineId = $true } }
+    $porRotina = @{
+        'vixradar-noturno' = 'run_vixradar_noturno_claude.ps1'
+        'vixradar-matinal' = 'run_vixradar_matinal_claude.ps1'
+    }
+    if ($porRotina.ContainsKey($Id)) {
+        return [pscustomobject]@{ Path = (Join-Path $VixRoot ('scripts\' + $porRotina[$Id])); PassaRoutineId = $false }
+    }
+    return [pscustomobject]@{ Path = (Join-Path $VixRoot 'scripts\run_claude_routine.ps1'); PassaRoutineId = $true }
+}
+$destinoRunner = Get-VixRetryRunner $RoutineId $RunnerOverride
+$Runner       = $destinoRunner.Path
 $DateTag     = Get-Date -Format 'yyyyMMdd'
 $RotLog      = Join-Path $LogDir ($RoutineId + '_' + $DateTag + '.log')
 $RetLog      = Join-Path $LogDir ('retry-' + $RoutineId + '_' + $DateTag + '.log')
@@ -143,14 +163,16 @@ if ($idadeMin -lt 15) {
     exit 0
 }
 
-Write-Log "SEM ENTREGA: log parado ha $([int]$idadeMin) min. Relancando $RoutineId via claude CLI."
+Write-Log "SEM ENTREGA: log parado ha $([int]$idadeMin) min. Relancando $RoutineId via motor ($(Split-Path $Runner -Leaf))."
 # Nao passa -TaskInicio pela linha de comando de proposito: DateTime
 # serializado/reparseado atraves de processo filho e sensivel a locale (esta
 # maquina usa pt-BR). O runner usa o proprio default (inicio dele mesmo), que
 # ja cobre o caso real - o trabalho deste script antes daqui e de segundos,
 # nao minutos, entao a diferenca contra o inicio real da task e desprezivel
 # perto do teto de 220 min (INCIDENTE-FRESHNESS2, A3).
-& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Runner -RoutineId $RoutineId
+$argRunner = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Runner)
+if ($destinoRunner.PassaRoutineId) { $argRunner += @('-RoutineId', $RoutineId) }
+& powershell.exe @argRunner
 $exit = $LASTEXITCODE
 Write-Log "RETRY EXIT: $exit"
 
