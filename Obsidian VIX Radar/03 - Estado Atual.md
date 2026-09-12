@@ -1,8 +1,8 @@
 ---
-data: 2026-08-24
+data: 2026-09-12
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
-status: saudavel-com-achado
+status: saudavel
 ---
 
 
