@@ -9148,7 +9148,10 @@ async function _calcularEventoMaisNovoFeed(env2222) {
   } catch { }
   const _feedHoje = obterAgoraBRT().toISOString().slice(0, 10);
   const _feedIdade = _evMax ? _cvmDiasUteisApos(_evMax, _feedHoje) : null;
-  return { data: _evMax, idade_du: _feedIdade, fresco: _feedIdade !== null && _feedIdade <= EVENTO_MAX_DU };
+  // No limite, o feed ja esta atrasado para o ciclo seguinte. Manter o mesmo
+  // criterio estrito do workflow frescor-check evita falso verde exatamente no
+  // segundo dia util sem fato novo.
+  return { data: _evMax, idade_du: _feedIdade, fresco: _feedIdade !== null && _feedIdade < EVENTO_MAX_DU };
 }
 __name(_calcularEventoMaisNovoFeed, "_calcularEventoMaisNovoFeed");
 async function _lerFeedFrontierEstado(env2222, agoraBRT) {

@@ -213,6 +213,14 @@ describe("GET / feed_fresco (evento mais novo do feed, nao a rotina)", () => {
     expect(body.feed_idade_du).toBe(0);
     expect(body.feed_fresco).toBe(true);
   });
+
+  it("evento no limite de 2 dias uteis -> feed_fresco false", async () => {
+    const body = await medirComEventos("2026-09-03T04:40:00Z", [
+      { classificacao: "RELEVANTE", titulo: "t", data_evento: "2026-09-01", fonte_primaria: "https://x.com/a", tags: [] }
+    ]);
+    expect(body.feed_idade_du).toBe(2);
+    expect(body.feed_fresco).toBe(false);
+  });
 });
 
 // Casos A/B/C do operador (04/09, correcao 2): a semantica e avanco da
