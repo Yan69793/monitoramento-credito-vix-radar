@@ -1,0 +1,11 @@
+{
+  "_doc": "Falhas conhecidas da suite de scripts/, cada uma com motivo e data. O runner (run-all-tests.ps1) trata estas como esperadas: verde hoje, vermelho em qualquer regressao NOVA. Baseline so encolhe, por edicao explicita, e uma entrada que ficar verde e reportada como obsoleta. Nunca usar para esconder defeito sem motivo escrito.",
+  "test-preflight-429.ps1": {
+    "motivo": "7 asserts do caso A/C (limite de sessao com reset dentro do teto). Classificador e parser provados corretos isoladamente (Motivo=session_limit, ResetAt=22:40, waitMin=27); a espera nao acontece no caminho do preflight e o motivo nao foi estabelecido. Investigar com instrumentacao no ramo de session_limit, nao por deducao.",
+    "desde": "2026-09-12"
+  },
+  "test-headless-tools.ps1": {
+    "motivo": "4 asserts (J1/J2) sobre ferramenta headless disponivel ao subagente. Falha pre-existente, nao relacionada ao provider nem ao monitor.",
+    "desde": "2026-09-12"
+  }
+}

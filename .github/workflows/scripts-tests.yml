@@ -1,0 +1,56 @@
+name: scripts-tests
+
+# Gate da suite de scripts/ (2026-09-12).
+#
+# Motivo: nenhum gate rodava os scripts/test-*.ps1. Nem o pre-commit (que julga o blob em
+# staging) nem o CI. Consequencia medida: quatro suites ficaram vermelhas em main por dias, e
+# uma delas (test-busca-degradada) morria na extracao de funcao por AST e escondia ~40 asserts
+# verdadeiros. Tambem passou batido um defeito de PRODUCAO: monitor-tasks.ps1 chamava
+# Get-VixDegradado402 desde 11/09 e a funcao nunca existiu, entao o monitor errava a cada
+# execucao e o alerta 9007 de degradacao por saldo nunca foi emitido.
+#
+# Desenho do gate: o runner compara com scripts/tests-baseline.json, que lista falhas conhecidas
+# com motivo escrito. Assim o CI fica VERDE hoje e fica VERMELHO em qualquer regressao nova, sem
+# depender de alguem lembrar do estado atual. Baseline que ficar verde e reportado como obsoleto.
+#
+# Escopo: scripts/** dispara. O runner roda em windows-latest porque as rotinas sao PowerShell 5.1
+# e a suite exercita powershell.exe de verdade.
+#
+# O agendamento diario existe porque a suite depende de estado da maquina do jeito que ela testa
+# (fixtures em TEMP, catalogo de scripts), e porque hoje nada mais olha para ela.
+
+on:
+  push:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/scripts-tests.yml'
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - '.github/workflows/scripts-tests.yml'
+  schedule:
+    # 09:20 UTC = 06:20 BRT, antes do monitor das 07:00.
+    - cron: '20 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  suite:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Rodar a suite de scripts/
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          & powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File 'scripts/run-all-tests.ps1' -TimeoutSec 180
+          $rc = $LASTEXITCODE
+          if ($rc -ne 0) {
+            Write-Host '::error::suite de scripts/ reprovada: existe suite VERMELHA fora do baseline (regressao nova).'
+          }
+          exit $rc

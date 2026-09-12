@@ -86,6 +86,20 @@ Assert (@(Get-ChildItem $tmp -Filter 'cutover-snapshot_*.json').Count -eq 1) 'sn
 Assert ($r.out -match 'PASSO MANUAL \(MCP scheduled-tasks\): update_scheduled_task enabled:false') 'checklist do CCD impresso (enabled:false)'
 $aposA1 = Canon ((Get-Content $state -Raw -Encoding UTF8 | ConvertFrom-Json).tasks)
 
+# SNAP-ORIGEM1 (12/09/2026): o Reverter SEM -Snapshot pega o snapshot MAIS NOVO. Como este teste
+# roda Ativar duas vezes (A1 e A2, para provar idempotencia), o snapshot de A2 ja foi capturado
+# com o estado ATIVADO por A1, entao reverter contra ele devolve o estado pos-Ativar e nao o
+# original - era exatamente a causa dos dois asserts vermelhos aqui (medido: DEPOIS == pos-Ativar).
+# O snapshot de A1 e o unico que representa o "antes" de verdade. Guardar o nome dele e passar
+# explicito no A3 e o que faz o teste afirmar o que diz afirmar.
+$snapOriginal = @(Get-ChildItem $tmp -Filter 'cutover-snapshot_*.json' -File | Sort-Object Name | Select-Object -First 1).FullName
+Assert (-not [string]::IsNullOrEmpty($snapOriginal)) 'snapshot de origem (A1) localizado para o Reverter do A3'
+
+# HAZARD OPERACIONAL (registrado, nao corrigido aqui): o mesmo efeito morde operador real. Quem
+# roda `Ativar` duas vezes e depois `Reverter` sem -Snapshot volta para o estado da 2a ativacao,
+# nao para o pre-cutover. O snapshot original continua no disco (o mais ANTIGO); usar
+# `-Snapshot <caminho>` para desfazer o cutover de verdade. O log imprime qual snapshot foi usado.
+
 Write-Host '=== A2 - Ativar de novo (idempotente) ==='
 Start-Sleep -Seconds 1
 $r = Invoke-Cut @('-Acao', 'Ativar', '-SimStateFile', $state, '-SemPreCondicoes')
@@ -95,7 +109,7 @@ Assert ($aposA2 -eq $aposA1) 'estado identico apos o segundo Ativar'
 Assert (@(Get-ChildItem $tmp -Filter 'cutover-snapshot_*.json').Count -eq 2) 'segundo snapshot gravado (2)'
 
 Write-Host '=== A3 - Reverter simulado ==='
-$r = Invoke-Cut @('-Acao', 'Reverter', '-SimStateFile', $state, '-SemPreCondicoes')
+$r = Invoke-Cut @('-Acao', 'Reverter', '-SimStateFile', $state, '-SemPreCondicoes', '-Snapshot', $snapOriginal)
 Assert ($r.exit -eq 0) ('Reverter sim exit=' + $r.exit)
 $depoisTasks = Canon ((Get-Content $state -Raw -Encoding UTF8 | ConvertFrom-Json).tasks)
 Assert ($depoisTasks -eq $antesTasks) 'as 5 tasks voltaram byte a byte ao estado anterior (inclusive os retries)'
