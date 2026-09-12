@@ -7,7 +7,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 > **Onde vivem as skills.** O canonico versionado do projeto e `.claude/skills/`, e e o
 > que um clone novo recebe. O `.agents/skills/` e a biblioteca local do operador, cerca
 > de 28 MB e majoritariamente de terceiros, **nao versionada** e coberta pelo `.gitignore`.
-> Dos 35 nomes presentes nas duas arvores, 12 aparecem em `.agents/skills/` como symlink
+> Dos 37 nomes presentes nas duas arvores, 12 aparecem em `.agents/skills/` como symlink
 > para `.claude/skills/`, ou seja, o sistema depende de `.claude/skills/` existir. O
 > `skills.paths` do `kilo.json` aponta para `./.claude/skills`, e nenhum caminho de skill
 > depende de `.agents/skills/` existir num clone.
