@@ -63,10 +63,6 @@ if ($Rotina -eq 'noturno') {
         capProprio = 700000; meta = 500000; bootTok = 15000; unitTok = 3800
         mutex = 'Global\vixradar-noturno-v2'; prefix = 'noturno'; reservaOutrasKey = 'RESERVA_VERIFICACAO'
     }
-} elseif ($script:VixUsaCodex) {
-    # CODEx-ADAPTER1: o Codex CLI ja gerencia a autenticacao da assinatura e a busca web.
-    # Nao chamar nenhuma rotina de auth Claude neste caminho.
-    Write-Log 'AUTH_MODO: codex (assinatura Codex CLI, sem OpenRouter e sem auth Anthropic)'
 } else {
     $Perfil = @{
         id = 'vixradar-matinal'; modo = 'matinal'; top_n = 20
@@ -832,6 +828,10 @@ if ($script:VixUsaOpenRouter) {
     $__orModelo = Get-VixOpenRouterModel $Perfil.tier
     $__orOrigem = if (Get-VixOpenRouterEnv ('VIXRADAR_OPENROUTER_MODEL_' + $Perfil.tier)) { 'env VIXRADAR_OPENROUTER_MODEL_' + $Perfil.tier } elseif (Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL') { 'env VIXRADAR_OPENROUTER_MODEL' } else { 'default do adapter' }
     Write-Log ('MODELO_EFETIVO: ' + $__orModelo + ' (origem: ' + $__orOrigem + ')')
+} elseif ($script:VixUsaCodex) {
+    # CODEx-ADAPTER1: o Codex CLI ja gerencia a autenticacao da assinatura e a busca web.
+    # Nao chamar nenhuma rotina de auth Claude neste caminho.
+    Write-Log 'AUTH_MODO: codex (assinatura Codex CLI, sem OpenRouter e sem auth Anthropic)'
 } else {
     Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
     $authModoInicial = Get-VixClaudeAuthModo
