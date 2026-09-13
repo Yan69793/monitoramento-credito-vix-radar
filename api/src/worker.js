@@ -8331,7 +8331,9 @@ async function syncCVMZipHistorico(env2222) {
     const trintaDiasAtras = new Date(Date.now() - 35 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
     const hoje = obterAgoraBRT().toISOString().split("T")[0];
     const docs = [];
-    // CVMFRESCOR1: maior Data_Entrega do arquivo INTEIRO, antes de qualquer
+    const descartadosAllowlistCategoria = {};
+    let descartadosAllowlist = 0;
+    // A mesma allowlist do leitor, aplicada antes da escrita nas duas fontes.
     // filtro. Se medisse so os 103 emissores, um dia em que a CVM publicou
     // normalmente mas nenhum emissor nosso protocolou pareceria fonte parada.
     let maxEntregaFonte = null;
@@ -8372,7 +8374,9 @@ async function syncCVMZipHistorico(env2222) {
       // revisao. E a diferenca entre "nao sei de quem e" e "nunca vi".
       const dataRef = (cols[iData] || "").trim();
       if (dataRef > hoje || dataRef < trintaDiasAtras) continue;
-      docs.push({ e: (cols[iNome] || "").trim(), j: iCnpj >= 0 ? (cols[iCnpj] || "").trim() : "", d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim().replace(/\r/g, ""), l: (cols[iLink] || "").trim().replace(/\r/g, "") });
+      const allow = _atribuirDocumentoCVM((cols[iCnpj] || "").trim(), (cols[iNome] || "").trim());
+      if (!allow.emissor) { descartadosAllowlist++; descartadosAllowlistCategoria[cat] = (descartadosAllowlistCategoria[cat] || 0) + 1; continue; }
+      docs.push({ e: (cols[iNome] || "").trim(), j: iCnpj >= 0 ? (cols[iCnpj] || "").trim() : "", d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim(), l: (cols[iLink] || "").trim() });
     }
     docs.sort((a, b) => b.d.localeCompare(a.d));
     // TETO DE VOLUME, com numero medido e nao com "deveria caber".
@@ -8385,7 +8389,7 @@ async function syncCVMZipHistorico(env2222) {
     // porque quarentena vale menos que documento de emissor da carteira. E a
     // contagem descartada vai para o log e para o meta: truncamento silencioso e
     // exatamente a classe de falha que esta mudanca existe para matar.
-    const TETO_DOCS = 4e3;
+    const TETO_DOCS = 16000;
     let descartadosPorTeto = 0;
     if (docs.length > TETO_DOCS) {
       const comDono = [], semDono = [];
@@ -8512,14 +8516,15 @@ async function syncCVMAutomatico(env2222) {
   var baseExpirada = !Array.isArray(base) || !base.length;
   if (baseExpirada) await gravarFonteCVMMeta(env2222, { ok: false, motivo: "base_expirada_ttl", base_presente: false, sincronizado_em: agora, origem: "enetweb" });
   try {
-    var cadastro = await _enetCadastro(), cur = new Date(inicio + "T00:00:00Z"), fim = new Date(hoje + "T00:00:00Z"), lotes = [], docs = [], protocolos = {};
+    var cadastro = await _enetCadastro(), cur = new Date(inicio + "T00:00:00Z"), fim = new Date(hoje + "T00:00:00Z"), lotes = [], docs = [], protocolos = {}, descartadosAllowlist = 0, descartadosAllowlistCategoria = {};
     while (cur <= fim) {
       var de = cur.toISOString().slice(0, 10); cur.setUTCDate(cur.getUTCDate() + 9); var ate = cur > fim ? hoje : cur.toISOString().slice(0, 10); cur.setUTCDate(cur.getUTCDate() + 1);
       var payload = { dataDe: de.split("-").reverse().join("/"), dataAte: ate.split("-").reverse().join("/"), empresa: "", setorAtividade: "", categoriaEmissor: "", situacaoEmissor: "", tipoParticipante: "", dataReferencia: "", categoria: "IPE_-1_-1_-1", periodo: "2", horaIni: "0", horaFim: "23", palavraChave: "", ultimaDtRef: "false", tipoEmpresa: "", token: "", versaoCaptcha: "" };
       var texto = await _enetConsultaRetry(payload), linhas = _enetExtrairLinhas(texto), validos = linhas.map(function(c) { return _enetLinhaNormalizada(c, cadastro); }).filter(Boolean);
       if (!validos.length) throw new Error("enet_layout_invalido");
-      validos.forEach(function(d) { docs.push(d); if (d._protocolo) { if (!protocolos[d._protocolo]) protocolos[d._protocolo] = []; protocolos[d._protocolo].push(d.l); } });
-      lotes.push({ de: de, ate: ate, documentos: validos.length });
+      var filtrados = validos.filter(function(d) { var allow = _atribuirDocumentoCVM(d.j, d.e); if (allow.emissor) return true; descartadosAllowlist++; descartadosAllowlistCategoria[d.c] = (descartadosAllowlistCategoria[d.c] || 0) + 1; return false; });
+      filtrados.forEach(function(d) { docs.push(d); if (d._protocolo) { if (!protocolos[d._protocolo]) protocolos[d._protocolo] = []; protocolos[d._protocolo].push(d.l); } });
+      lotes.push({ de: de, ate: ate, documentos: filtrados.length, documentos_brutos: validos.length, descartados_allowlist: validos.length - filtrados.length });
     }
     var zipOk = false, zipDocs = [], rec = anterior && anterior.reconciliacao_zip_ultimo_ok_em;
     var idadeRec = rec ? Math.floor((Date.now() - Date.parse(rec)) / 864e5) : 999;
@@ -8539,14 +8544,21 @@ async function syncCVMAutomatico(env2222) {
     var candidatos = merged;
     var piso = Math.max(1522, Math.floor((Array.isArray(base) ? base.length : 0) * 0.7));
     if (candidatos.length < piso) throw new Error("enet_encolhimento_bloqueado");
-    if (candidatos.length > 4000) candidatos = candidatos.slice(0, 4000);
+    var TETO_DOCS = 16000, descartadosTeto = 0;
+    if (candidatos.length > TETO_DOCS) {
+      candidatos = candidatos.slice().sort(function(a, b) { return (b.de || "").localeCompare(a.de || "") || (b.d || "").localeCompare(a.d || "") || String(a.l || "").localeCompare(String(b.l || "")); });
+      var removidos = candidatos.slice(TETO_DOCS);
+      var limite14 = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
+      if (removidos.some(function(d) { return (d.de || d.d || "") >= limite14 || zipOnly.some(function(z) { return _cvmChaveDoc({ link: z.l, categoria: z.c, data: z.d, assunto: z.a }) === _cvmChaveDoc({ link: d.l, categoria: d.c, data: d.d, assunto: d.a }); }); })) throw new Error("enet_teto_corte_protegido");
+      descartadosTeto = removidos.length; candidatos = candidatos.slice(0, TETO_DOCS);
+    }
     var hashInput = JSON.stringify(candidatos.map(function(d) { return { e: d.e, j: d.j, d: d.d, de: d.de, c: d.c, a: d.a, l: d.l }; }).sort(function(a, b) { return a.l.localeCompare(b.l); }));
     var digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
     var hash = Array.from(new Uint8Array(digest)).map(function(x) { return x.toString(16).padStart(2, "0"); }).join("");
     await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(candidatos), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
     var origemMeta = zipAnoCorrenteOk ? "enetweb+zip" : "enetweb_sem_zip_corrente";
     var gateMeta = zipAnoCorrenteOk ? "aprovado" : "bloqueado";
-    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
+    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, descartados_allowlist: descartadosAllowlist, descartados_allowlist_categoria: descartadosAllowlistCategoria, descartados_teto: descartadosTeto, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
     return { ok: true, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, gate_reconciliacao: gateMeta, log: { lotes: lotes } };
   } catch (e) {
     var motivo = baseExpirada ? "base_expirada_ttl" : String(e && e.message || e).slice(0, 80); await gravarFonteCVMMeta(env2222, { ok: false, motivo: motivo, base_presente: !baseExpirada, sincronizado_em: agora, origem: "enetweb" }); return { ok: false, erro: motivo, log: { etapas: [{ etapa: "erro", motivo: motivo }] } };

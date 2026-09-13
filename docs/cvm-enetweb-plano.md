@@ -439,7 +439,7 @@ Reconciliação em dois níveis
 
 Proteção cumulativa da escrita ENETWeb
 
-A escrita ENETWeb sem ZIP corrente exige quatro lotes válidos, layout de 13 campos, identidade `_cvmChaveDoc`, carry forward dos `zip_only` da última base convergida sem remoção silenciosa, zero colisão de protocolo, piso anti-encolhimento e teto de 4000. O resultado recebe `origem='enetweb_sem_zip_corrente'`, `gate_reconciliacao='bloqueado'`, `reconciliacao_zip_ano_corrente_ok=false` e `reconciliacao_zip_gate_motivo='zip_reconciliacao_vencida'`. O sucesso ENETWeb não zera a vencida do ZIP, mas a escrita válida ocorre.
+A escrita ENETWeb sem ZIP corrente exige quatro lotes válidos, layout de 13 campos, identidade `_cvmChaveDoc`, allowlist comum, carry forward dos `zip_only` da última base convergida sem remoção silenciosa, zero colisão de protocolo, piso anti-encolhimento e teto de 16000. O resultado recebe `origem='enetweb_sem_zip_corrente'`, `gate_reconciliacao='bloqueado'`, `reconciliacao_zip_ano_corrente_ok=false` e `reconciliacao_zip_gate_motivo='zip_reconciliacao_vencida'`. O sucesso ENETWeb não zera a vencida do ZIP, mas a escrita válida ocorre.
 
 ## 9. Guarda anti-encolhimento
 
@@ -633,12 +633,14 @@ Efeito no KV
 ```text
 referencia serializada=859829 bytes para 2175 docs
 media=395.3 bytes por doc
-estimativa em TETO_DOCS=4000, 1581295 bytes
-uso estimado do limite de 25 MiB=6.03%
-folga no teto=16.6x
+estimativa em TETO_DOCS=16000, 6324800 bytes
+uso estimado do limite de 25 MiB=24.12%
+folga no teto=3.9x
 ```
 
-O `TETO_DOCS=4000` permanece. A mudança de fonte não justifica elevá-lo. Se o portal normalizado exceder 4000, aplicar a política já existente, preservando documentos com dono e descartando primeiro quarentena antiga, com contagem visível.
+A medição integral do ENETWeb com a allowlist comum ainda é pendente. `13039` é somente a contagem bruta sem filtro, e `6000` a `7000` é estimativa. O ciclo real deve registrar quantidade aceita, descartados por allowlist em cada categoria, tempo de parede, CPU efetiva e bytes serializados antes de qualquer publicação.
+
+Política de teto. Ordenar por `de` descendente, depois `d` descendente e depois `l` ascendente. Só então cortar os mais antigos até `TETO_DOCS=16000`. Se qualquer registro removido tiver entrega nos últimos 14 dias ou for `zip_only`, bloquear a escrita com motivo explícito. Todo descarte abre revisão de teto, mesmo quando o corte for permitido. Nunca depender da ordem dos lotes nem cortar silenciosamente.
 
 ## 12. Plano de implementação e ordem de deploy
 
