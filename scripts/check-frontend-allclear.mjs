@@ -46,8 +46,17 @@ const RE_LITERAL = /(['"`])((?:(?!\1)[^\\]|\\.){8,200}?)\1/g;
 const GATILHO = /(nenhum|nenhuma|sem\s+\w|todos os|dentro dos par|estabilidade|nada\s+\w|n[aã]o h[aá])/i;
 const LIXO = /(function|=>|querySelector|getElementById|className=|style="[^"]*$)/;
 
+// MANIFESTOFRAGIL1 (PENDENCIAS, achado 20/08): a chave era tirada do literal
+// bruto inteiro, tag e estilo inline inclusos. Trocar so a cor de um texto (ex:
+// #6b7280 -> #94A3B8, A11YCONTRASTE1) mudava a chave e a frase reaparecia como
+// "NOVA" apesar do texto visivel ser identico. Chave agora vem so do texto
+// visivel: tag HTML removida antes de normalizar.
+function textoVisivel(s) {
+  return s.replace(/<[^>]*>/g, " ");
+}
+
 function normaliza(s) {
-  return s.replace(/\s+/g, " ").trim()
+  return textoVisivel(s).replace(/\s+/g, " ").trim()
     .normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase()
     .replace(/[^a-z0-9 ]/g, "").slice(0, 90);
 }

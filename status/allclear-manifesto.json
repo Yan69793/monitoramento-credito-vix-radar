@@ -27,37 +27,43 @@
       "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
     },
     {
-      "chave": "informacional sem impacto direto de creditospanspann divforconsteaof xconst tsetordee",
+      "chave": "informacional sem impacto direto de credito n forconsteaof xconst tsetordee",
       "texto": ">Informacional, sem impacto direto de crédito</span></span>\\n </div>';for(const[e,a]of x){const t=SETOR_DE[e]|",
       "classificacao": "demo",
       "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
     },
     {
-      "chave": "nenhum comentario aindadivn div style",
+      "chave": "sem metrica de balanco curada para este emissor n div class",
+      "texto": ">Sem métrica de balanço curada para este emissor</div>\\n <div class=",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico (METRICAS_CURADAS[selecionada]), com o item ja carregado na tela."
+    },
+    {
+      "chave": "nenhum comentario ainda n div style",
       "texto": ">Nenhum comentário ainda</div>\\n <div style=",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "divn nenhum evento arquivado para esta empresa aindan divifa",
+      "chave": " n nenhum evento arquivado para esta empresa aindan ifa",
       "texto": "></div>\\n Nenhum evento arquivado para esta empresa ainda.\\n </div>')}if(!a&&",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "nenhum registro de buscas disponiveldivif",
+      "chave": "nenhum registro de buscas disponivel if",
       "texto": ">Nenhum registro de buscas disponível.</div>')}if(",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "divn nenhum evento arquivado aindabrn span style",
+      "chave": " n nenhum evento arquivado ainda n span style",
       "texto": "></div>\\n Nenhum evento arquivado ainda.<br>\\n <span style=",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "nenhum evento relevante identificado nos ultimos 90 diasdivn ajanelabuscadiv style",
+      "chave": "nenhum evento relevante identificado nos ultimos 90 dias n ajanelabuscadiv style",
       "texto": ">Nenhum evento relevante identificado nos últimos 90 dias</div>\\n ${a.janela_busca?`<div style=",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM emissor ja carregado na tela, nao all-clear de carteira."
@@ -87,7 +93,7 @@
       "nota": ""
     },
     {
-      "chave": "setores monitoradosdivn divn divndivnnx3c tabela de metricas de risco todos os emissores a",
+      "chave": "setores monitorados n n n nnx3c tabela de metricas de risco todos os emissores agrupados p",
       "texto": ">Setores Monitorados</div>\\n </div>\\n </div>\\n</div>\\n\\n\\x3c!-- TABELA DE MÉTRICAS DE RISCO (todos os emissore",
       "classificacao": "rotulo",
       "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
@@ -99,7 +105,7 @@
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "conta todos os eventos classificados como bcriticob  por analise de inteligencia artificia",
+      "chave": "conta todos os eventos classificados como critico  por analise de inteligencia artificial ",
       "texto": "Conta todos os eventos classificados como <b>CRÍTICO</b> — por análise de inteligência artificial ou por docum",
       "classificacao": "rotulo",
       "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
@@ -111,19 +117,19 @@
       "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
     },
     {
-      "chave": "mesmo sem eventos recentesdivdivdiv class",
+      "chave": "mesmo sem eventos recentes div class",
       "texto": "mesmo sem eventos recentes.</div></div><div class=",
       "classificacao": "rotulo",
       "nota": "Texto de ajuda ou cabecalho de tabela, nao e leitura de estado."
     },
     {
-      "chave": "div classusoemptynenhum evento registrado nos ultimos 30 diasbros dados aparecem apos logi",
+      "chave": "nenhum evento registrado nos ultimos 30 dias os dados aparecem apos logins e consultas via",
       "texto": "<div class=\"uso-empty\">Nenhum evento registrado nos últimos 30 dias.<br>Os dados aparecem após logins e consul",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "nenhum usuario identificado aindabrdados aparecem apos logins reais via frontenddivreturnd",
+      "chave": "nenhum usuario identificado ainda dados aparecem apos logins reais via frontend returndiv ",
       "texto": ">Nenhum usuário identificado ainda.<br>Dados aparecem após logins reais via frontend.</div>';return`<div class",
       "classificacao": "escopo_registro",
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
@@ -135,13 +141,13 @@
       "nota": ""
     },
     {
-      "chave": "div styletextaligncenterpadding20pxcolor34d399fontsize12px nenhuma anomalia passou os limi",
+      "chave": " nenhuma anomalia passou os limiares entre as",
       "texto": "<div style=\"text-align:center;padding:20px;color:#34D399;font-size:12px\">✓ Nenhuma anomalia passou os limiares",
       "classificacao": "guardada",
       "nota": ""
     },
     {
-      "chave": "div styletextaligncenterpadding20pxcolor8899aafontsize12pxsem base analisada nesta janela ",
+      "chave": "sem base analisada nesta janela entao nao ha leitura de anomalia para reportar isto nao si",
       "texto": "<div style=\"text-align:center;padding:20px;color:#8899AA;font-size:12px\">Sem base analisada nesta janela, entã",
       "classificacao": "guardada",
       "nota": ""
@@ -153,7 +159,7 @@
       "nota": "Vazio de UM registro (um emissor, um usuario, uma aba), nao all-clear de carteira. A ausencia aqui e medida sobre item unico, com o item ja carregado na tela."
     },
     {
-      "chave": "sem negociospann span class",
+      "chave": "sem negocio n span class",
       "texto": ">Sem negócio</span>\\n <span class=",
       "classificacao": "rotulo",
       "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
@@ -165,7 +171,7 @@
       "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
     },
     {
-      "chave": " sem linhagemspanspan style",
+      "chave": " sem linhagem span style",
       "texto": ">● Sem linhagem</span><span style=",
       "classificacao": "rotulo",
       "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
@@ -201,13 +207,13 @@
       "nota": ""
     },
     {
-      "chave": "nenhumspanaerelevantesativos0span class",
+      "chave": "nenhum aerelevantesativos0span class",
       "texto": ">nenhum</span>',a=e.relevantesAtivos>0?'<span class=",
       "classificacao": "rotulo",
       "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
     },
     {
-      "chave": "nenhumspan mocardfalso1 auditoria 20260820 p0 mesma familia do zeroindisponivel1 o pulso l",
+      "chave": "nenhum  mocardfalso1 auditoria 20260820 p0 mesma familia do zeroindisponivel1 o pulso logo",
       "texto": ">nenhum</span>';/* MOCARDFALSO1 (auditoria 2026-08-20), P0, mesma familia do ZEROINDISPONIVEL1. O pulso logo a",
       "classificacao": "guardada",
       "nota": ""
@@ -219,13 +225,7 @@
       "nota": ""
     },
     {
-      "chave": "span classmocardchip mocardchipwarnsem leituraspan",
-      "texto": "<span class=\"mo-card-chip mo-card-chip-warn\">sem leitura</span>",
-      "classificacao": "guardada",
-      "nota": ""
-    },
-    {
-      "chave": "sem alertasdivdiv class",
+      "chave": "sem alertas div class",
       "texto": ">Sem alertas</div><div class=",
       "classificacao": "rotulo",
       "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
@@ -243,13 +243,13 @@
       "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
     },
     {
-      "chave": "div styletextaligncentercolor94a3b8padding40px 20pxfontsize12pxsem leitura de eventos nest",
+      "chave": "sem leitura de eventos nesta sessao isto nao e ausencia de alerta",
       "texto": "<div style=\"text-align:center;color:#94A3B8;padding:40px 20px;font-size:12px\">Sem leitura de eventos nesta ses",
       "classificacao": "guardada",
       "nota": "Cor atualizada de #6b7280 para #94A3B8 em 20/08/2026 (A11YCONTRASTE1, contraste 3,66:1 reprovava WCAG). A frase e o gatilho nao mudaram, so o estilo. Ver MANIFESTOFRAGIL1 no PENDENCIAS."
     },
     {
-      "chave": "div styletextaligncentercolor94a3b8padding40px 20pxfontsize12pxnenhum evento nos filtros a",
+      "chave": "nenhum evento nos filtros atuais ajuste janela ou severidade",
       "texto": "<div style=\"text-align:center;color:#94A3B8;padding:40px 20px;font-size:12px\">Nenhum evento nos filtros atuais",
       "classificacao": "guardada",
       "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true. Cor atualizada de #6b7280 para #94A3B8 em 20/08/2026 (A11YCONTRASTE1), frase e gatilho inalterados."
@@ -315,13 +315,13 @@
       "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
     },
     {
-      "chave": "div classp14emptysem seriediv",
+      "chave": "sem serie",
       "texto": "<div class=\"p14-empty\">Sem série</div>",
       "classificacao": "rotulo",
       "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
     },
     {
-      "chave": "mutednenhum destaque narrativo no periodop",
+      "chave": "mutednenhum destaque narrativo no periodo",
       "texto": "muted\\\">Nenhum destaque narrativo no período.</p>",
       "classificacao": "guardada",
       "nota": "Dentro de buildHtml(), so invocada por window.exportar apos o guard if(!eventos.length). eventos.length>0 garantido; a frase cobre um recorte interno vazio (ex: sem criticos), nao ausencia de leitura."
@@ -333,7 +333,7 @@
       "nota": "Dentro de buildHtml(), so invocada por window.exportar apos o guard if(!eventos.length). eventos.length>0 garantido; a frase cobre um recorte interno vazio (ex: sem criticos), nao ausencia de leitura."
     },
     {
-      "chave": "sem eventos no periodop ",
+      "chave": "sem eventos no periodo  ",
       "texto": ">Sem eventos no período.</p>') +",
       "classificacao": "guardada",
       "nota": "Dentro de buildHtml(), so invocada por window.exportar apos o guard if(!eventos.length). eventos.length>0 garantido; a frase cobre um recorte interno vazio (ex: sem criticos), nao ausencia de leitura."
