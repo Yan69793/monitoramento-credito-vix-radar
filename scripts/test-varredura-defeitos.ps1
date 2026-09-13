@@ -24,7 +24,7 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 }
 
 $MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto'))) { Invoke-Expression $_def }
 
 Write-Host '== D1 lock: PID vivo bloqueia, morto ou reutilizado e orfao =='
 $tmp = Join-Path $env:TEMP ('vix-d1-' + $PID)
@@ -94,6 +94,16 @@ Assert-True (($retryCalls.Count -eq 1) -and ($retryCalls[0].Extent.Text -match '
 $promptDef = $motorAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'New-BatchPrompt' }, $true) | Select-Object -First 1
 $promptText = if ($promptDef) { $promptDef.Extent.Text } else { '' }
 Assert-True (($promptText -match '"provedor":"\$FonteProvedor:web_search\|web_fetch"') -and ($promptText -match 'somente provedor "codex" pode emitir "status_http":null') -and ($promptText -match 'Todo outro provedor exige status_http inteiro 2xx')) 'D2f: prompt do retry Codex declara codex:web_search|web_fetch e excecao sem HTTP'
+
+Write-Host '== D5 dreno pos-rotina: exit != 0 nunca sai como "concluido" =='
+# DRENOMUDO1 (2026-09-13): em 13/09 o log do motor disse "POS-MATINAL: dreno concluido (exit=5)"
+# com a fila de verificacao NAO drenada. Prova de duas pontas do texto real que vai ao log.
+$d5ok = Get-VixDrenoTexto -Rotina 'matinal' -ExitCode 0
+$d5falha = Get-VixDrenoTexto -Rotina 'matinal' -ExitCode 5
+Assert-True (($d5ok -eq 'POS-MATINAL: dreno concluido (exit=0)')) ('D5a: exit 0 mantem a palavra concluido (' + $d5ok + ')')
+Assert-True (($d5falha -match 'FALHOU') -and ($d5falha -match 'exit=5') -and ($d5falha -match 'NAO foi drenada')) ('D5b: exit 5 diz FALHOU com o codigo (' + $d5falha + ')')
+Assert-True (-not ($d5falha -match 'concluido')) 'D5c: exit 5 nao carrega a palavra concluido (ponta ruim do comportamento antigo)'
+Assert-True ((Get-VixDrenoTexto -Rotina 'noturno' -ExitCode 1) -eq 'POS-NOTURNO: dreno FALHOU (exit=1) - a fila de verificacao NAO foi drenada') 'D5d: rotulo acompanha a rotina e o codigo'
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host ''

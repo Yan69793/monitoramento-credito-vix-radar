@@ -602,6 +602,20 @@ function Get-ResultadoEmissor($parsedMap, [string]$empresaPlano) { return $parse
 # nao execut, timeout, sem retorno, limite backend, rate limit, 429). "sem resultados"
 # generico (busca valida com zero achados) NAO e degradada: buscar e nao achar nada e
 # resultado legitimo de busca efetiva.
+# DRENOMUDO1 (2026-09-13): o dreno pos-rotina registrava "dreno concluido (exit=N)" com
+# qualquer N. Em 13/09 saiu `POS-MATINAL: dreno concluido (exit=5)` depois de a verificacao
+# assincrona morrer sem credencial, ou seja, palavra de sucesso carimbando fila NAO drenada.
+# Quem le o log e quem procura falha passa a ver FALHOU com o codigo ao lado.
+function Get-VixDrenoTexto {
+    param(
+        [Parameter(Mandatory)][string]$Rotina,
+        [Parameter(Mandatory)][int]$ExitCode
+    )
+    $prefixo = 'POS-' + $Rotina.ToUpper() + ': dreno '
+    if ($ExitCode -eq 0) { return ($prefixo + 'concluido (exit=0)') }
+    return ($prefixo + 'FALHOU (exit=' + $ExitCode + ') - a fila de verificacao NAO foi drenada')
+}
+
 function Test-VixBuscaDegradada([string]$resultadoTxt) {
     $iA = [char]0x00ED  # i com acento agudo
     $aT = [char]0x00E3  # a com til
@@ -1489,8 +1503,18 @@ try {
             Write-Log ('POS-' + $Rotina.ToUpper() + ': drenando fila de verificacao...')
             try {
                 $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$verifScript`"" -PassThru -Wait -NoNewWindow
-                Write-Log ('POS-' + $Rotina.ToUpper() + ': dreno concluido (exit=' + $verifProc.ExitCode + ')')
-            } catch { Write-Log ('POS-' + $Rotina.ToUpper() + ': ERRO ao executar dreno - ' + $_.Exception.Message) }
+                # DRENOMUDO1 (2026-09-13): o codigo de saida do dreno passa a ser AVALIADO, nunca
+                # apenas citado. Antes, exit=5 (dreno sem credencial) saia no log como
+                # "dreno concluido (exit=5)", ou seja, falha com cara de sucesso.
+                $stats.dreno_exit = [int]$verifProc.ExitCode
+                Write-Log (Get-VixDrenoTexto -Rotina $Rotina -ExitCode $stats.dreno_exit)
+                if ($stats.dreno_exit -ne 0) {
+                    Write-Log ('ERRO DRENO: a fila de verificacao NAO foi drenada por esta rotina (exit=' + $stats.dreno_exit + '). Log do dreno: logs/routines/vixradar-verificacao-async_' + $DateTag + '.log')
+                }
+            } catch {
+                $stats.dreno_exit = -1
+                Write-Log ('POS-' + $Rotina.ToUpper() + ': ERRO ao executar dreno - ' + $_.Exception.Message)
+            }
         }
     }
 

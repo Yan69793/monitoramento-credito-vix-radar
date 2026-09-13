@@ -425,6 +425,17 @@ if ($script:VixUsaOpenRouter) {
     if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
         Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
         Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
+        # DRENOMUDO1 (2026-09-13): este ramo saia calado, ao contrario do ramo irmao de
+        # escalada paga, que ja levanta ALERTA_AUTH. E ele e o caminho mais provavel de
+        # todos, porque cota de assinatura estourada deixa o modo em 'nenhum'. Medido em
+        # 13/09: o dreno pos-matinal das 16:46 morreu aqui, sem ALERTA_AUTH e sem nada que
+        # o vigia diario lesse. O motor, que chamou o dreno, ainda escreveu no proprio log
+        # "dreno concluido (exit=5)".
+        $alertaTag = 'ALERTA_AUTH: '
+        if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
+        Write-Log ($alertaTag + 'nenhuma credencial Claude na verificacao-async antes do primeiro lote - a fila de verificacao NAO foi drenada neste ciclo (exit 5).')
+        if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+        else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo ('ALERTA_AUTH: nenhuma credencial Claude na verificacao-async (cota de assinatura estourada ou token ausente) - fila de verificacao nao drenada') -RoutineKey $script:routineKey }
         exit 5
     }
     # Alinhado com 2b025b0: a guarda perdeu o parametro -ModeloFixadoNaChamada e a funcao

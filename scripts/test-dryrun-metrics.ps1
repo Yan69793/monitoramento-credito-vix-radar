@@ -60,6 +60,14 @@ foreach ($f in $alvos) {
 }
 $srcV = Get-Content (Join-Path $PSScriptRoot 'run_vixradar_verificacao_async.ps1') -Raw -Encoding UTF8
 Assert ($srcV -match "if \(\`$DryRun\) \{ Write-Log 'DRYRUN: alerta NAO enviado") 'verificacao: notificar_rotina suprimido em dry-run'
+# DRENOMUDO1 (2026-09-13): o ramo "sem credencial nenhuma" abortava com exit 5 sem ALERTA_AUTH,
+# e foi por ali que o dreno pos-matinal de 13/09 morreu calado (o motor chamador ainda escrevia
+# "dreno concluido (exit=5)"). Contrato: o ramo levanta ALERTA_AUTH e notifica o admin, igual ao
+# ramo irmao de escalada paga. Prova reversa: contra o codigo anterior o ramo nao tinha nenhum dos dois.
+$ramoSemCred = [regex]::Match($srcV, "(?s)Get-VixClaudeAuthModo\) -eq 'nenhum'\) \{.*?\r?\n\s*exit 5")
+Assert ($ramoSemCred.Success) 'verificacao: ramo do modo nenhum localizado no fonte'
+Assert ($ramoSemCred.Success -and ($ramoSemCred.Value -match 'ALERTA_AUTH')) 'verificacao: ramo sem credencial levanta ALERTA_AUTH'
+Assert ($ramoSemCred.Success -and ($ramoSemCred.Value -match 'Send-VixRoutineAlert')) 'verificacao: ramo sem credencial notifica o admin'
 Assert ($srcV -match '_dryrun_' -and -not ($srcV -match "'_dryrun\.json'")) 'verificacao: metrics de dry-run com hora no nome'
 $srcR = Get-Content (Join-Path $PSScriptRoot 'run_vixradar_varredura.ps1') -Raw -Encoding UTF8
 Assert ($srcR -match "'_dryrun_' \+ \(Get-Date -Format 'HHmmss'\)") 'runner: metrics de dry-run com hora no nome'
