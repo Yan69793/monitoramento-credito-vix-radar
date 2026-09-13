@@ -7934,6 +7934,8 @@ async function avaliarFrescorCVM(env2222) {
   out.lotes_ok = meta.lotes_ok != null ? meta.lotes_ok : null;
   out.reconciliacao_zip_ultimo_ok_em = meta.reconciliacao_zip_ultimo_ok_em || null;
   out.reconciliacao_zip_idade_dias = meta.reconciliacao_zip_idade_dias != null ? meta.reconciliacao_zip_idade_dias : null;
+  out.reconciliacao_zip_ano_corrente_ok = meta.reconciliacao_zip_ano_corrente_ok === true;
+  out.reconciliacao_zip_gate_motivo = meta.reconciliacao_zip_gate_motivo || null;
   out.portal_only = meta.portal_only != null ? meta.portal_only : null;
   out.zip_only = meta.zip_only != null ? meta.zip_only : null;
   out.comuns = meta.comuns != null ? meta.comuns : null;
@@ -7998,6 +8000,13 @@ async function avaliarFrescorCVM(env2222) {
   out.proxima_prevista = _cvmProximaPublicacaoPrevista(ref);
   if (ciclos >= CVM_FONTE_MAX_CICLOS) {
     out.motivo = "fonte_sem_publicar_ha_" + ciclos + "_ciclos_semanais_" + dias + "_dias";
+    return out;
+  }
+  if (meta.gate_reconciliacao === "bloqueado") {
+    out.ok = false;
+    out.motivo = meta.gate_reconciliacao_motivo || "zip_reconciliacao_vencida";
+    out.falha_dura = true;
+    out.degrada_servico = false;
     return out;
   }
   out.ok = true;
@@ -8514,7 +8523,8 @@ async function syncCVMAutomatico(env2222) {
     }
     var zipOk = false, zipDocs = [], rec = anterior && anterior.reconciliacao_zip_ultimo_ok_em;
     var idadeRec = rec ? Math.floor((Date.now() - Date.parse(rec)) / 864e5) : 999;
-    if (idadeRec >= 7 || !rec) { var zr = await syncCVMZipHistorico(env2222); zipOk = !!(zr && zr.ok); if (zipOk) { zipDocs = await env2222.RADAR_KV.get("cvm:documentos", "json") || []; rec = agora; } }
+    var zipAnoCorrenteOk = !!(rec && idadeRec < 7), zipGateMotivo = zipAnoCorrenteOk ? null : "zip_reconciliacao_vencida";
+    if (idadeRec >= 7 || !rec) { var zr = await syncCVMZipHistorico(env2222); zipOk = !!(zr && zr.ok); if (zipOk) { zipDocs = await env2222.RADAR_KV.get("cvm:documentos", "json") || []; rec = agora; idadeRec = 0; zipAnoCorrenteOk = true; zipGateMotivo = null; } }
     if (!zipDocs.length && anterior && rec && idadeRec < 7) zipDocs = Array.isArray(base) ? base : [];
     var merged = [], seen = {}, zipOnly = [], portalOnly = [];
     zipDocs.concat(docs).forEach(function(d) { var ex = { link: d.l, categoria: d.c, data: d.d, assunto: d.a }, k = _cvmChaveDoc(ex); if (!seen[k]) { seen[k] = true; merged.push(d); } else if (d._protocolo && merged.some(function(x) { return x._protocolo === d._protocolo && x.l !== d.l; })) d.colisao_protocolo_para_revisao = [merged.find(function(x) { return x._protocolo === d._protocolo; }).l, d.l]; });
@@ -8526,8 +8536,7 @@ async function syncCVMAutomatico(env2222) {
     var colisaoLista = Object.keys(protocolos).filter(function(p) { return protocolos[p].length > 1; }).map(function(p) { return { protocolo: p, links: protocolos[p] }; });
     merged.forEach(function(d) { var k = _cvmChaveDoc({ link: d.l, categoria: d.c, data: d.d, assunto: d.a }); if (zipKeys[k] && !portalKeys[k]) zipOnly.push(d); if (portalKeys[k] && !zipKeys[k]) portalOnly.push(d); });
     if (colisaoLista.length) throw new Error("zip_reconciliacao_gate_bloqueado");
-    if (!zipOk && (!rec || idadeRec >= 7)) throw new Error("zip_reconciliacao_vencida");
-    var candidatos = merged.filter(function(d) { return !d.colisao_protocolo_para_revisao; });
+    var candidatos = merged;
     var piso = Math.max(1522, Math.floor((Array.isArray(base) ? base.length : 0) * 0.7));
     if (candidatos.length < piso) throw new Error("enet_encolhimento_bloqueado");
     if (candidatos.length > 4000) candidatos = candidatos.slice(0, 4000);
@@ -8535,8 +8544,10 @@ async function syncCVMAutomatico(env2222) {
     var digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
     var hash = Array.from(new Uint8Array(digest)).map(function(x) { return x.toString(16).padStart(2, "0"); }).join("");
     await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(candidatos), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
-    await gravarFonteCVMMeta(env2222, { ok: true, origem: "enetweb+zip", base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: 0, gate_reconciliacao: "aprovado", gate_reconciliacao_motivo: null });
-    return { ok: true, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, log: { lotes: lotes } };
+    var origemMeta = zipAnoCorrenteOk ? "enetweb+zip" : "enetweb_sem_zip_corrente";
+    var gateMeta = zipAnoCorrenteOk ? "aprovado" : "bloqueado";
+    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
+    return { ok: true, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, gate_reconciliacao: gateMeta, log: { lotes: lotes } };
   } catch (e) {
     var motivo = baseExpirada ? "base_expirada_ttl" : String(e && e.message || e).slice(0, 80); await gravarFonteCVMMeta(env2222, { ok: false, motivo: motivo, base_presente: !baseExpirada, sincronizado_em: agora, origem: "enetweb" }); return { ok: false, erro: motivo, log: { etapas: [{ etapa: "erro", motivo: motivo }] } };
   }

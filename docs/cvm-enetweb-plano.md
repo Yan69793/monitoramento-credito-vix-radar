@@ -352,7 +352,7 @@ Critério para liberar o caminho primário e declarar a janela convergida
 10. Os 24 exclusivos da referência entram como `zip_only`. Os 24 são fixtures obrigatórias. Os cinco ausentes do payload bruto também precisam de fixtures dirigidas próprias.
 11. Um protocolo `zip_only` nunca é removido apenas por não aparecer no ENETWeb. Remoção exige evidência documentada de cancelamento, expiração da janela monitorada ou outra condição explícita aprovada em teste.
 12. A janela só recebe `gate_reconciliacao='aprovado'` quando o merge termina com zero diferença estrutural nos comuns e cada exceção remanescente está classificada e reproduzida por fixture.
-13. Enquanto esse gate não passar, conservar a última janela convergida confiável, limitada ao TTL descrito na seção 9, e não substituir `cvm:documentos`.
+13. Enquanto o gate estrutural não passar, conservar a última janela convergida confiável, limitada ao TTL descrito na seção 9, e não substituir o acervo por merge inválido. Uma escrita ENETWeb pura continua permitida quando os quatro lotes passarem e a guarda aceitar o candidato, mesmo com ZIP corrente vencido. O gate bloqueado impede apenas declarar reconciliação composta ou rebaixar o 404, nunca a gravação ENETWeb válida.
 
 ## 7. Retry e semântica de sucesso
 
@@ -407,7 +407,7 @@ Motivos novos
 | `enet_encolhimento_bloqueado` | array candidato cai abaixo do piso da guarda | sim | não escreve `cvm:documentos`, expõe contagem anterior, candidata e piso |
 | `cadastro_cvm_indisponivel` | cadastro Código CVM para CNPJ falhou após retry e não há cópia confiável | sim | não publica array com semântica degradada de `j` |
 | `zip_reconciliacao_ausente` | nunca houve reconciliação ZIP bem-sucedida para a janela | sim | bloqueia gate e conserva último convergido confiável |
-| `zip_reconciliacao_vencida` | última reconciliação ZIP bem-sucedida ocorreu há mais de sete dias | sim | bloqueia gate, não permite neutralizar 404 pelo sucesso ENETWeb |
+| `zip_reconciliacao_vencida` | última reconciliação ZIP corrente bem-sucedida ocorreu há mais de sete dias ou nunca ocorreu | sim | bloqueia gate de reconciliação e rebaixamento de 404, mas não bloqueia escrita ENETWeb válida |
 | `zip_reconciliacao_gate_bloqueado` | existem diferenças estruturais não classificadas ou fixtures obrigatórias falharam | sim | não escreve array candidato e expõe motivo do gate |
 | `zip_only_nao_preservado` | merge candidato removeu protocolo exclusivo do ZIP sem condição explícita | sim | rejeita merge e conserva último convergido confiável |
 | `base_expirada_ttl` | `cvm:documentos` expirou após 30 dias sem escrita válida | sim | base ausente, gate bloqueado e fonte indisponível até reconciliação integral aprovada |
@@ -428,7 +428,18 @@ O 404 do ZIP só deixa de ser falha dura quando todas estas condições estivere
 3. Os registros `zip_only` da janela permanecem comprovadamente presentes no array convergido.
 4. A meta preserva o timestamp e a impressão da última reconciliação ZIP válida.
 
-Sucesso isolado do ENETWeb não satisfaz essas condições.
+Sucesso isolado do ENETWeb não satisfaz essas condições. Isso bloqueia somente o rebaixamento do 404 e a declaração de origem composta, não a escrita de um lote ENETWeb válido protegido pelas guardas cumulativas.
+
+Reconciliação em dois níveis
+
+1. O ZIP do ano corrente é a única fonte que pode limpar `zip_reconciliacao_vencida`, atualizar `reconciliacao_zip_ultimo_ok_em` corrente e autorizar a discussão do rebaixamento do 404 corrente.
+2. Um ZIP de ano fechado, 2025 ou anterior, pode comprovar que o pipeline de leitura e o normalizador funcionam, além de preservar Calendário e cauda longa. Ele usa `reconciliacao_zip_historica_ultimo_ok_em` separado e não limpa a vencida corrente.
+3. Não foi medido nesta rodada se o ZIP de 2025 entrega documentos dentro da janela corrente de 35 dias. Essa cobertura permanece uma incerteza explícita.
+4. A meta deve expor `reconciliacao_zip_ano_corrente_ok`, `reconciliacao_zip_historica_ultimo_ok_em` e o motivo de ausência ou vencimento corrente.
+
+Proteção cumulativa da escrita ENETWeb
+
+A escrita ENETWeb sem ZIP corrente exige quatro lotes válidos, layout de 13 campos, identidade `_cvmChaveDoc`, carry forward dos `zip_only` da última base convergida sem remoção silenciosa, zero colisão de protocolo, piso anti-encolhimento e teto de 4000. O resultado recebe `origem='enetweb_sem_zip_corrente'`, `gate_reconciliacao='bloqueado'`, `reconciliacao_zip_ano_corrente_ok=false` e `reconciliacao_zip_gate_motivo='zip_reconciliacao_vencida'`. O sucesso ENETWeb não zera a vencida do ZIP, mas a escrita válida ocorre.
 
 ## 9. Guarda anti-encolhimento
 
@@ -538,8 +549,11 @@ Meta de sucesso proposta para origem composta
   reconciliacao_zip_ultimo_ok_em: reconciliacaoZipIso,
   reconciliacao_zip_conteudo_sha256: hashZip,
   reconciliacao_zip_idade_dias: idadeZipDias,
-  gate_reconciliacao: 'aprovado',
-  gate_reconciliacao_motivo: null
+  reconciliacao_zip_ano_corrente_ok: anoCorrenteOk,
+  reconciliacao_zip_historica_ultimo_ok_em: historicaIso,
+  reconciliacao_zip_gate_motivo: gateMotivo,
+  gate_reconciliacao: gate,
+  gate_reconciliacao_motivo: gateMotivo
 }
 ```
 
@@ -670,7 +684,7 @@ O `TETO_DOCS=4000` permanece. A mudança de fonte não justifica elevá-lo. Se o
 6. Preservar `portal_only` e `zip_only` dentro da janela monitorada.
 7. Aplicar o atribuidor único somente depois do merge canônico.
 8. Aplicar filtro, cobertura, guarda e teto sobre o array convergido.
-9. Escrever `cvm:documentos` uma vez, de forma integral, apenas com gate aprovado.
+9. Escrever `cvm:documentos` uma vez, de forma integral, apenas depois dos gates cumulativos da escrita. O gate de reconciliação ZIP corrente pode permanecer bloqueado sem impedir essa escrita válida.
 10. Gravar meta composta com `origem='enetweb+zip'`, `max_data_entrega`, impressão, última reconciliação ZIP, contagens de diferenças e resultado do gate.
 11. Nos ciclos entre reconciliações, fazer merge do ENETWeb corrente com os `zip_only` preservados da última janela convergida confiável.
 
@@ -683,7 +697,7 @@ O `TETO_DOCS=4000` permanece. A mudança de fonte não justifica elevá-lo. Se o
 5. Remoção exige cancelamento documentado, expiração da janela monitorada ou outra regra explícita coberta por fixture.
 6. Se o ZIP retornar 404, consultar o catálogo e tentar URL alternativa válida.
 7. Rebaixar o 404 somente se a última reconciliação ZIP bem-sucedida tiver no máximo sete dias, o gate estrutural estiver aprovado e os `zip_only` estiverem preservados.
-8. Se qualquer condição do item anterior falhar, manter o 404 como falha dura e bloquear o gate, mesmo com ENETWeb verde.
+8. Se qualquer condição do item anterior falhar, manter o 404 como falha dura e bloquear somente o gate de reconciliação e o rebaixamento do 404, sem bloquear a escrita ENETWeb válida.
 9. `enet_indisponivel` permanece não duro somente para indisponibilidade transitória do portal. Não altera o estado da reconciliação ZIP.
 10. Em qualquer falha, conservar o último array convergido confiável somente até o TTL de 30 dias de `cvm:documentos`, aplicado na linha 8385. Após a expiração, gravar `base_expirada_ttl`, bloquear o gate e não fazer escrita parcial.
 
@@ -725,6 +739,7 @@ Nunca usar `wrangler deploy` direto.
 | Etapa | Origem escritora | `cvm_fonte_ok` | Motivo esperado |
 |---|---|---:|---|
 | shadow verde | ZIP | depende do ZIP atual | ENET aparece apenas em telemetria shadow, com diferenças contabilizadas |
+| origem ENETWeb sem ZIP corrente | ENETWeb | true para escrita, false para reconciliação | `ok`, `origem=enetweb_sem_zip_corrente`, `gate_reconciliacao=bloqueado`, `reconciliacao_zip_ano_corrente_ok=false`, 404 corrente visível |
 | origem composta verde | ENETWeb + ZIP reconciliado | true | `ok`, gate aprovado e reconciliação ZIP até sete dias |
 | ENET recuperado por retry | origem composta preservada | true | `ok`, com tentativas no log |
 | ENET indisponível, ZIP válido e acervo preservado | último convergido bom | false | `ultimo_sync_falhou:enet_indisponivel`, sem apagar saúde ZIP |
