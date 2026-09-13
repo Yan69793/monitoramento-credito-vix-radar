@@ -14,6 +14,9 @@
 # v4.9.247.js = v4.9.246 + ingestao ENETWeb com reconciliacao ZIP permanente, retry, merge canonico, guarda anti-encolhimento e TTL explicito.
 #   Testes: cvm-enetweb, suite vitest 347 testes.
 #   Rollback: main = "v4.9.246.js".
+# v4.9.248.js = v4.9.247 + correção do envelope d do ENETWeb, distinção de sucesso vazio e tratamento de SolicitarCaptcha.
+#   Testes: cvm-enetweb, suite vitest completa.
+#   Rollback: main = "v4.9.247.js".
 # v4.9.244.js = v4.9.243 + BUSCADEGRADADA1: varredura com busca web degradada deixa de
 #   certificar "sem fato novo". Lote noturno de 08/09 esgotou max_total_results no POST
 #   unico (2 buscas OK, 23 esgotadas); o regex do motor contava "sem resultados - limite de
