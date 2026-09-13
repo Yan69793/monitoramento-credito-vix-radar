@@ -7801,7 +7801,7 @@ var CVM_FONTE_MAX_CICLOS = 2;
 // CVM_FONTE_MAX_FALHAS sincronizacoes falhas seguidas escala para o `ok`
 // agregado. Com crons matinal e noturno, 4 falhas sao 2 dias.
 var CVM_FONTE_MAX_FALHAS = 4;
-var CVM_FONTE_MOTIVOS_DUROS = /^(http_\d{3}|excecao:|fonte_ausente_no_catalogo|nao_e_zip|nao_e_deflate)/;
+var CVM_FONTE_MOTIVOS_DUROS = /^(http_\d{3}|excecao:|fonte_ausente_no_catalogo|nao_e_zip|nao_e_deflate|enet_sucesso_vazio|enet_payload_invalido|enet_layout_invalido|enet_encolhimento_bloqueado|cadastro_cvm_indisponivel|zip_reconciliacao_ausente|zip_reconciliacao_vencida|zip_reconciliacao_gate_bloqueado|zip_only_nao_preservado|base_expirada_ttl)/;
 // Dia da semana em que o lote CIA_ABERTA/DOC roda (0 = domingo), usado so para
 // projetar a proxima publicacao prevista no aviso de frescor do painel.
 var CVM_FONTE_DOW_PUBLICACAO = 0;
@@ -7928,6 +7928,18 @@ async function avaliarFrescorCVM(env2222) {
   // SUBSTRINGDONO1 e escondendo se a ingestao de documentos rodou.
   out.cobertura = meta.cobertura && typeof meta.cobertura === "object" ? meta.cobertura : null;
   out.descartados_teto = meta.descartados_teto != null ? meta.descartados_teto : null;
+  out.origem = meta.origem || null;
+  out.conteudo_sha256 = meta.conteudo_sha256 || null;
+  out.documentos = meta.documentos != null ? meta.documentos : null;
+  out.lotes_ok = meta.lotes_ok != null ? meta.lotes_ok : null;
+  out.reconciliacao_zip_ultimo_ok_em = meta.reconciliacao_zip_ultimo_ok_em || null;
+  out.reconciliacao_zip_idade_dias = meta.reconciliacao_zip_idade_dias != null ? meta.reconciliacao_zip_idade_dias : null;
+  out.portal_only = meta.portal_only != null ? meta.portal_only : null;
+  out.zip_only = meta.zip_only != null ? meta.zip_only : null;
+  out.comuns = meta.comuns != null ? meta.comuns : null;
+  out.gate_reconciliacao = meta.gate_reconciliacao || null;
+  out.gate_reconciliacao_motivo = meta.gate_reconciliacao_motivo || null;
+  out.base_presente = meta.base_presente !== false;
   out.ultimo_sync_ok_em = meta.ultimo_sync_ok_em || meta.sincronizado_em || null;
   if (meta.ok === false) {
     var _motRaw = String(meta.motivo || "desconhecido");
@@ -8218,7 +8230,7 @@ function avaliarAvancoFeed(e) {
   return out;
 }
 
-async function syncCVMAutomatico(env2222) {
+async function syncCVMZipHistorico(env2222) {
   if (!env2222.RADAR_KV) return { ok: false, erro: "KV indispon\xEDvel" };
   const log = { etapas: [] };
   const _agoraIso = (/* @__PURE__ */ new Date()).toISOString();
@@ -8410,6 +8422,117 @@ async function syncCVMAutomatico(env2222) {
     log.etapas.push({ etapa: "erro", motivo: e.message });
     await gravarFonteCVMMeta(env2222, { ok: false, motivo: "excecao:" + String(e && e.message || e).slice(0, 80), sincronizado_em: _agoraIso, last_modified: _lastModRaw, last_modified_iso: _lastModIso, origem: "sync_automatico" });
     return { ok: false, erro: e.message, log };
+  }
+}
+__name(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name2(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name22(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name222(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name2222(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name22222(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name222222(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name2222222(syncCVMZipHistorico, "syncCVMZipHistorico");
+__name22222222(syncCVMZipHistorico, "syncCVMZipHistorico");
+function _enetIsoData(v) {
+  var s = String(v == null ? "" : v).trim();
+  var m = s.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+  return m ? m[3] + "-" + m[2] + "-" + m[1] : /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : "";
+}
+function _enetTextoLimpo(v) {
+  return String(v == null ? "" : v).replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/\s+/g, " ").trim();
+}
+function _enetLinhaNormalizada(cols, cadastro) {
+  if (!Array.isArray(cols) || cols.length !== 13) return null;
+  var codigo = String(cols[0] || "").replace(/\D/g, "").replace(/^0+/, "") || "0";
+  var cad = cadastro && cadastro[codigo] || null;
+  var categoria = _enetTextoLimpo(cols[2]);
+  var assunto = _enetTextoLimpo(cols[4]);
+  var data = _enetIsoData(cols[5]);
+  var entrega = _enetIsoData(cols[6]);
+  var html = String(cols[10] || "");
+  var m = html.match(/OpenDownloadDocumentos\s*\(\s*['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]\s*,\s*['"]([^'"]*)['"]/i);
+  var protocolo = (html.match(/NumeroProtocoloEntrega\s*['"]?\s*[:=]\s*['"]?([0-9]+)/i) || [null, ""])[1] || (m && m[3]) || "";
+  var link = m ? "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=" + encodeURIComponent(m[4]) + "&CodigoInstituicao=1&numProtocolo=" + encodeURIComponent(m[3]) + "&numSequencia=" + encodeURIComponent(m[1]) + "&numVersao=" + encodeURIComponent(m[2]) : "";
+  if (!data || !entrega || !categoria || !link) return null;
+  return { e: cad ? cad.e : _enetTextoLimpo(cols[1]), j: cad ? cad.j : "", d: data, de: entrega, c: categoria, a: assunto, l: link, _protocolo: protocolo };
+}
+function _enetExtrairLinhas(dados) {
+  var texto = String(dados == null ? "" : dados);
+  if (!texto) return [];
+  var partes = texto.split(/&\*(?=\d{5}-\d\$&)/);
+  if (partes.length === 1 && /^\d{5}-\d\$&/.test(texto)) partes = [texto];
+  return partes.map(function(p) { return p.replace(/^\s+|\s+$/g, "").split("$&"); }).filter(function(c) { return c.length === 13; });
+}
+async function _enetCadastro() {
+  var r = await fetch("https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv", { cf: { cacheTtl: 86400 }, signal: AbortSignal.timeout(2e4) });
+  if (!r.ok) throw new Error("cadastro_http_" + r.status);
+  var t = new TextDecoder("windows-1252").decode(await r.arrayBuffer());
+  var ls = t.split(/\r?\n/); var h = ls.shift().split(";").map(function(x) { return x.replace(/^\"|\"$/g, "").trim(); });
+  var ic = h.indexOf("CD_CVM"), ij = h.indexOf("CNPJ_CIA"), ie = h.indexOf("DENOM_SOCIAL"), out = {};
+  if (ic < 0) throw new Error("cadastro_sem_cd_cvm");
+  ls.forEach(function(line) { var c = line.split(";"); var k = String(c[ic] || "").replace(/\D/g, "").replace(/^0+/, "") || "0"; if (k !== "0") out[k] = { j: String(c[ij] || "").trim(), e: _enetTextoLimpo(c[ie]) }; });
+  return out;
+}
+async function _enetConsulta(payload) {
+  var res = await fetch("https://www.rad.cvm.gov.br/ENETWeb/frmConsultaExternaCVM.aspx/ListarDocumentos", { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(2e4) });
+  var body = await res.json();
+  var dados = body && body.d && typeof body.d === "object" ? body.d.dados || body.d.data || body.d.resultado || "" : body && body.d || "";
+  if (!res.ok || !body || body.temErro !== false || !dados) throw new Error(body && body.msgErro ? "enet_indisponivel" : "enet_payload_invalido");
+  return String(dados);
+}
+async function _enetConsultaRetry(payload) {
+  var waits = [0, 250, 1000];
+  var last = null;
+  for (var i = 0; i < waits.length; i++) {
+    if (waits[i]) await new Promise(function(resolve) { setTimeout(resolve, waits[i]); });
+    try { var d = await _enetConsulta(payload); if (d) return d; } catch (e) { last = e; }
+  }
+  throw last || new Error("enet_indisponivel");
+}
+async function syncCVMAutomatico(env2222) {
+  if (!env2222 || !env2222.RADAR_KV) return { ok: false, erro: "KV indisponível" };
+  var agora = new Date().toISOString(), hoje = obterAgoraBRT().toISOString().slice(0, 10), inicio = new Date(Date.now() - 35 * 864e5).toISOString().slice(0, 10);
+  var anterior = await env2222.RADAR_KV.get("cvm:fonte_meta", "json");
+  var base = await env2222.RADAR_KV.get("cvm:documentos", "json");
+  var baseExpirada = !Array.isArray(base) || !base.length;
+  if (baseExpirada) await gravarFonteCVMMeta(env2222, { ok: false, motivo: "base_expirada_ttl", base_presente: false, sincronizado_em: agora, origem: "enetweb" });
+  try {
+    var cadastro = await _enetCadastro(), cur = new Date(inicio + "T00:00:00Z"), fim = new Date(hoje + "T00:00:00Z"), lotes = [], docs = [], protocolos = {};
+    while (cur <= fim) {
+      var de = cur.toISOString().slice(0, 10); cur.setUTCDate(cur.getUTCDate() + 9); var ate = cur > fim ? hoje : cur.toISOString().slice(0, 10); cur.setUTCDate(cur.getUTCDate() + 1);
+      var payload = { dataDe: de.split("-").reverse().join("/"), dataAte: ate.split("-").reverse().join("/"), empresa: "", setorAtividade: "", categoriaEmissor: "", situacaoEmissor: "", tipoParticipante: "", dataReferencia: "", categoria: "IPE_-1_-1_-1", periodo: "2", horaIni: "0", horaFim: "23", palavraChave: "", ultimaDtRef: "false", tipoEmpresa: "", token: "", versaoCaptcha: "" };
+      var texto = await _enetConsultaRetry(payload), linhas = _enetExtrairLinhas(texto), validos = linhas.map(function(c) { return _enetLinhaNormalizada(c, cadastro); }).filter(Boolean);
+      if (!validos.length) throw new Error("enet_layout_invalido");
+      validos.forEach(function(d) { docs.push(d); if (d._protocolo) { if (!protocolos[d._protocolo]) protocolos[d._protocolo] = []; protocolos[d._protocolo].push(d.l); } });
+      lotes.push({ de: de, ate: ate, documentos: validos.length });
+    }
+    var zipOk = false, zipDocs = [], rec = anterior && anterior.reconciliacao_zip_ultimo_ok_em;
+    var idadeRec = rec ? Math.floor((Date.now() - Date.parse(rec)) / 864e5) : 999;
+    if (idadeRec >= 7 || !rec) { var zr = await syncCVMZipHistorico(env2222); zipOk = !!(zr && zr.ok); if (zipOk) { zipDocs = await env2222.RADAR_KV.get("cvm:documentos", "json") || []; rec = agora; } }
+    if (!zipDocs.length && anterior && rec && idadeRec < 7) zipDocs = Array.isArray(base) ? base : [];
+    var merged = [], seen = {}, zipOnly = [], portalOnly = [];
+    zipDocs.concat(docs).forEach(function(d) { var ex = { link: d.l, categoria: d.c, data: d.d, assunto: d.a }, k = _cvmChaveDoc(ex); if (!seen[k]) { seen[k] = true; merged.push(d); } else if (d._protocolo && merged.some(function(x) { return x._protocolo === d._protocolo && x.l !== d.l; })) d.colisao_protocolo_para_revisao = [merged.find(function(x) { return x._protocolo === d._protocolo; }).l, d.l]; });
+    var zipKeys = {}; zipDocs.forEach(function(d) { zipKeys[_cvmChaveDoc({ link: d.l, categoria: d.c, data: d.d, assunto: d.a })] = true; });
+    var portalKeys = {}; docs.forEach(function(d) { portalKeys[_cvmChaveDoc({ link: d.l, categoria: d.c, data: d.d, assunto: d.a })] = true; });
+    var colisaoProtocolos = {};
+    zipDocs.concat(docs).forEach(function(d) { if (!d._protocolo) return; if (!colisaoProtocolos[d._protocolo]) colisaoProtocolos[d._protocolo] = {}; colisaoProtocolos[d._protocolo][d.l] = true; });
+    Object.keys(colisaoProtocolos).forEach(function(p) { var links = Object.keys(colisaoProtocolos[p]); if (links.length > 1) { if (!protocolos[p]) protocolos[p] = []; protocolos[p] = links; } });
+    var colisaoLista = Object.keys(protocolos).filter(function(p) { return protocolos[p].length > 1; }).map(function(p) { return { protocolo: p, links: protocolos[p] }; });
+    merged.forEach(function(d) { var k = _cvmChaveDoc({ link: d.l, categoria: d.c, data: d.d, assunto: d.a }); if (zipKeys[k] && !portalKeys[k]) zipOnly.push(d); if (portalKeys[k] && !zipKeys[k]) portalOnly.push(d); });
+    if (colisaoLista.length) throw new Error("zip_reconciliacao_gate_bloqueado");
+    if (!zipOk && (!rec || idadeRec >= 7)) throw new Error("zip_reconciliacao_vencida");
+    var candidatos = merged.filter(function(d) { return !d.colisao_protocolo_para_revisao; });
+    var piso = Math.max(1522, Math.floor((Array.isArray(base) ? base.length : 0) * 0.7));
+    if (candidatos.length < piso) throw new Error("enet_encolhimento_bloqueado");
+    if (candidatos.length > 4000) candidatos = candidatos.slice(0, 4000);
+    var hashInput = JSON.stringify(candidatos.map(function(d) { return { e: d.e, j: d.j, d: d.d, de: d.de, c: d.c, a: d.a, l: d.l }; }).sort(function(a, b) { return a.l.localeCompare(b.l); }));
+    var digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
+    var hash = Array.from(new Uint8Array(digest)).map(function(x) { return x.toString(16).padStart(2, "0"); }).join("");
+    await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(candidatos), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
+    await gravarFonteCVMMeta(env2222, { ok: true, origem: "enetweb+zip", base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: 0, gate_reconciliacao: "aprovado", gate_reconciliacao_motivo: null });
+    return { ok: true, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, log: { lotes: lotes } };
+  } catch (e) {
+    var motivo = baseExpirada ? "base_expirada_ttl" : String(e && e.message || e).slice(0, 80); await gravarFonteCVMMeta(env2222, { ok: false, motivo: motivo, base_presente: !baseExpirada, sincronizado_em: agora, origem: "enetweb" }); return { ok: false, erro: motivo, log: { etapas: [{ etapa: "erro", motivo: motivo }] } };
   }
 }
 __name(syncCVMAutomatico, "syncCVMAutomatico");
@@ -22700,6 +22823,9 @@ export {
   DOMINIOS_FONTE_OFICIAL_DOCUMENTOS,
   _ehFonteConfitavelBloqueada,
   _atribuirDocumentoCVM,
+  _cvmChaveDoc,
+  _enetExtrairLinhas,
+  _enetLinhaNormalizada,
   CNPJ_FAMILIA_CVM,
   EMISSORES_LISTA,
   CNPJ_PRIMARIO_EMISSOR,
