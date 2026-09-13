@@ -38,6 +38,15 @@ describe("CVM ENETWeb", () => {
     expect(() => _enetInterpretarResposta({ d: { temErro: false, SolicitarCaptcha: "S", dados: "x" } }, true)).toThrow("enet_payload_invalido");
   });
 
+  it("nunca usa o código 05010 como cadastro e preserva CITIGROUP por nome", () => {
+    const cols = linha().split("$&");
+    cols[0] = "05010-5";
+    cols[1] = "CITIGROUP INC.";
+    const doc = _enetLinhaNormalizada(cols, { "5010": { e: "CURTUMES" , j: "00.000.000/0001-00" } });
+    expect(doc.e).toBe("CITIGROUP INC.");
+    expect(doc.j).toBe("");
+    expect(doc.e).not.toBe("CURTUMES");
+  });
   it("usa l como identidade e mantém colisão de protocolo com links distintos", () => {
     const a = _enetLinhaNormalizada(_enetExtrairLinhas(linha())[0], {});
     const b = _enetLinhaNormalizada(_enetExtrairLinhas(linha("'9','2','123','IPE'") )[0], {});
