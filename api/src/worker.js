@@ -8473,19 +8473,25 @@ async function _enetCadastro() {
   ls.forEach(function(line) { var c = line.split(";"); var k = String(c[ic] || "").replace(/\D/g, "").replace(/^0+/, "") || "0"; if (k !== "0") out[k] = { j: String(c[ij] || "").trim(), e: _enetTextoLimpo(c[ie]) }; });
   return out;
 }
+function _enetInterpretarResposta(body, httpOk) {
+  var inner = body && body.d;
+  if (!httpOk || !inner || typeof inner !== "object") throw new Error("enet_payload_invalido");
+  if (String(inner.SolicitarCaptcha || "N").toUpperCase() === "S") throw new Error("enet_payload_invalido");
+  if (inner.temErro !== false) throw new Error("enet_indisponivel");
+  if (typeof inner.dados !== "string") throw new Error("enet_payload_invalido");
+  return { dados: inner.dados, vazio: inner.dados.length === 0, expirouSessao: inner.expirouSessao === true, msgErro: String(inner.msgErro || "") };
+}
 async function _enetConsulta(payload) {
   var res = await fetch("https://www.rad.cvm.gov.br/ENETWeb/frmConsultaExternaCVM.aspx/ListarDocumentos", { method: "POST", headers: { "Content-Type": "application/json; charset=utf-8" }, body: JSON.stringify(payload), signal: AbortSignal.timeout(2e4) });
   var body = await res.json();
-  var dados = body && body.d && typeof body.d === "object" ? body.d.dados || body.d.data || body.d.resultado || "" : body && body.d || "";
-  if (!res.ok || !body || body.temErro !== false || !dados) throw new Error(body && body.msgErro ? "enet_indisponivel" : "enet_payload_invalido");
-  return String(dados);
+  return _enetInterpretarResposta(body, res.ok);
 }
 async function _enetConsultaRetry(payload) {
   var waits = [0, 250, 1000];
   var last = null;
   for (var i = 0; i < waits.length; i++) {
     if (waits[i]) await new Promise(function(resolve) { setTimeout(resolve, waits[i]); });
-    try { var d = await _enetConsulta(payload); if (d) return d; } catch (e) { last = e; }
+    try { var r = await _enetConsulta(payload); if (r.vazio) throw new Error("enet_sucesso_vazio"); return r.dados; } catch (e) { last = e; }
   }
   throw last || new Error("enet_indisponivel");
 }
@@ -22826,6 +22832,7 @@ export {
   _cvmChaveDoc,
   _enetExtrairLinhas,
   _enetLinhaNormalizada,
+  _enetInterpretarResposta,
   CNPJ_FAMILIA_CVM,
   EMISSORES_LISTA,
   CNPJ_PRIMARIO_EMISSOR,

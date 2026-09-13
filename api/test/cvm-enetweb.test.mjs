@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { _cvmChaveDoc, _enetExtrairLinhas, _enetLinhaNormalizada } from "../src/worker.js";
+import { _cvmChaveDoc, _enetExtrairLinhas, _enetInterpretarResposta, _enetLinhaNormalizada } from "../src/worker.js";
 
 function linha(linkArgs = "'1','2','123','IPE'") {
   return [
@@ -27,6 +27,15 @@ describe("CVM ENETWeb", () => {
     const doc = _enetLinhaNormalizada(linhas[0], { "4170": { e: "Vale S.A.", j: "00.000.000/0001-00" } });
     expect(doc).toMatchObject({ e: "Vale S.A.", d: "2026-09-10", de: "2026-09-11", c: "Fato Relevante" });
     expect(doc.l).toContain("numProtocolo=123");
+  });
+
+  it("lê temErro e dados dentro do envelope d", () => {
+    const ok = _enetInterpretarResposta({ d: { temErro: false, expirouSessao: false, msgErro: "", dados: "05010-5$&CITIGROUP INC." } }, true);
+    expect(ok.dados).toContain("05010-5");
+    expect(ok.vazio).toBe(false);
+    expect(_enetInterpretarResposta({ d: { temErro: false, expirouSessao: false, msgErro: "", dados: "" } }, true).vazio).toBe(true);
+    expect(() => _enetInterpretarResposta({ d: { temErro: true, msgErro: "indisponivel", dados: "" } }, true)).toThrow("enet_indisponivel");
+    expect(() => _enetInterpretarResposta({ d: { temErro: false, SolicitarCaptcha: "S", dados: "x" } }, true)).toThrow("enet_payload_invalido");
   });
 
   it("usa l como identidade e mantém colisão de protocolo com links distintos", () => {
