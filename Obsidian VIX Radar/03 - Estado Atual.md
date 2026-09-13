@@ -6,6 +6,10 @@ status: saudavel
 ---
 
 
+> [!success] 13/09 BRT: **DRENOMUDO1 fechado no repositório (commit `c8ab9f9`), sem deploy.** O dreno da fila de verificação chamado no fim da varredura registrava sempre `dreno concluido (exit=N)`. Medido em 13/09: `POS-MATINAL: dreno concluido (exit=5)` com a fila NÃO drenada, porque a verificação assíncrona abortou sem credencial (cota de assinatura estourada às 16:46) e esse ramo do aborto era o único de auth que não levantava `ALERTA_AUTH`, então o vigia diário não tinha o que ler. Agora o motor avalia o código de saída (exit 0 mantém `concluido`, qualquer outro vira `FALHOU` com o código) e o ramo sem credencial levanta `ALERTA_AUTH` e notifica o admin, igual ao ramo irmão de escalada paga. Provas: `test-varredura-defeitos` 18/18, `test-dryrun-metrics` 21/21 em PS 5.1 e pwsh 7, suíte agregada 22 verdes com as 2 vermelhas do baseline de 12/09, `lint-encoding` RISCO 0, parse 5.1 limpo.
+> **Status:** fechado no repositório, sem deploy · **Data:** 2026-09-13 · **Origem do Registro:** incidente do dia, dreno sem credencial das 16:46 registrado como concluído.
+> **Condição de Obsolescência:** cai se o dreno voltar a registrar sucesso com exit diferente de zero, ou se o ramo sem credencial deixar de levantar `ALERTA_AUTH`.
+
 > [!success] 12/09 BRT — **Biblioteca de skills fechada no repositório.** `.claude/skills/` é a fonte canônica versionada, os 9 skills VIX carregam, os 5 junctions globais resolvem diretamente para seus destinos canônicos, e `kilo.json` versionado aponta para `./.claude/skills`. `scripts/skills-index.ps1` passou em Windows PowerShell 5.1 e pwsh 7, com diagnóstico explícito em falhas de leitura ou enumeração. Produção permanece v4.9.245, saudável e sem alteração.
 > **Status:** fechado no repositório · **Data:** 2026-09-12 · **Origem do Registro:** validação da configuração de skills e do estado de produção.
 > **Condição de Obsolescência:** revisar se o diretório canônico, os junctions globais, o contrato do índice ou o caminho de skills do `kilo.json` mudar.
