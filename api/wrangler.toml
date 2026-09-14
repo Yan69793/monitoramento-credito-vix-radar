@@ -26,6 +26,9 @@
 # v4.9.251.js = v4.9.250 + piso por metodologia_id e identidade ENETWeb nominal sem lookup pelo código da grade.
 #   Testes: cvm-enetweb, suite vitest completa.
 #   Rollback: main = "v4.9.250.js".
+# v4.9.252.js = v4.9.251 + bootstrap derivado do universo ENETWeb medido (1374, bootstrap 961) e telemetria de atribuição nominal.
+#   Testes: cvm-enetweb dirigido passou; suite vitest apresentou 4 falhas preexistentes em reprovado-failclosed-quarentena.
+#   Rollback: main = "v4.9.251.js".
 # v4.9.244.js = v4.9.243 + BUSCADEGRADADA1: varredura com busca web degradada deixa de
 #   certificar "sem fato novo". Lote noturno de 08/09 esgotou max_total_results no POST
 #   unico (2 buscas OK, 23 esgotadas); o regex do motor contava "sem resultados - limite de

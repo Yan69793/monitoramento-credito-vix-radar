@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { _cvmChaveDoc, _enetExtrairLinhas, _enetInterpretarResposta, _enetLinhaNormalizada } from "../src/worker.js";
+import { _cvmChaveDoc, _cvmPisoMetodologia, _enetExtrairLinhas, _enetInterpretarResposta, _enetLinhaNormalizada } from "../src/worker.js";
 
 function linha(linkArgs = "'1','2','123','IPE'") {
   return [
@@ -38,6 +38,10 @@ describe("CVM ENETWeb", () => {
     expect(() => _enetInterpretarResposta({ d: { temErro: false, SolicitarCaptcha: "S", dados: "x" } }, true)).toThrow("enet_payload_invalido");
   });
 
+  it("calcula bootstrap próprio e reativa relativo só após metodologia igual", () => {
+    expect(_cvmPisoMetodologia({ metodologia_id: "antiga" }, 4000, 1374)).toMatchObject({ piso: 961, bootstrap: 961, dinamico: 0, rebase: true });
+    expect(_cvmPisoMetodologia({ metodologia_id: "enetweb_allowlist_v2" }, 1374, 1374)).toMatchObject({ piso: 961, dinamico: 961, rebase: false });
+  });
   it("nunca usa o código 05010 como cadastro e preserva CITIGROUP por nome", () => {
     const cols = linha().split("$&");
     cols[0] = "05010-5";

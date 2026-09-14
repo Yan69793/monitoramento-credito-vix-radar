@@ -202,14 +202,29 @@ Content-Length=1493217
 cadastroCodes=2566
 ```
 
-Normalização do Código CVM
+Normalização do identificador do portal
 
-1. Remover caracteres não numéricos.
-2. Remover zeros à esquerda.
-3. Usar o resultado como chave contra `CD_CVM` normalizado da mesma forma.
-4. O cadastro devolve `CNPJ_CIA` e `DENOM_SOCIAL`.
-5. Se o código não existir no cadastro, conservar o nome do portal, deixar `j=''` e permitir que o atribuidor único use o fallback nominal existente.
-6. Nunca colocar o Código CVM em `j`. `_atribuirDocumentoCVM` trata qualquer sequência numérica não zerada como CNPJ e mandaria praticamente todo o portal para quarentena.
+1. A coluna 0 é apenas o identificador interno da grade ENETWeb, não é `CD_CVM` e não pode ser usada para lookup no cadastro.
+2. O portal grava `e` com o nome limpo da grade e `j=''` em qualquer hipótese.
+3. A atribuição do portal usa somente o ramo nominal de `_atribuirDocumentoCVM`, o mesmo árbitro usado no fallback do ZIP.
+4. O ZIP pode preencher `j` por CNPJ quando presente, mas as duas fontes usam o mesmo schema e o mesmo atribuidor depois da normalização.
+5. A cobertura deve ser exposta por origem, com taxa de resolução nominal, não resolvidos por grupo e emissor, e descartados por allowlist. Contagem bruta não declara convergência.
+6. A colisão medida `05010` não pode voltar a ocorrer como lookup. O fixture deve provar `CITIGROUP INC.` resolvendo por nome e nunca atribuindo `CURTUMES` por prefixo ou código.
+
+Medição real da janela filtrada, 35 dias, metodologia ENETWeb allowlist v2
+
+```text
+brutos=13039
+resolvidos_por_nome=1374
+bootstrap=961
+resolucao_nominal_pct=10.54
+nao_resolvidos=11665
+lacuna_de_atribuicao_contra_ZIP=801
+```
+
+Os 1374 são o universo próprio medido após atribuição nominal. Os 11665 não resolvidos são contabilizados separadamente, com predominância de emissores estrangeiros BDR fora do acervo monitorado, incluindo JPMORGAN, CITIGROUP, BANK OF AMERICA, GOLDMAN SACHS e WELLS FARGO. Eles ficam fora do numerador e do array final. Os cerca de 800 de diferença contra o ZIP são lacuna de atribuição, não ausência de documento.
+
+Paridade plena é métrica acompanhada com backlog, não bloqueador de escrita. O bloqueio da escrita permanece restrito a piso, layout, colisão e teto. A taxa nominal e a lista de não resolvidos por grupo e emissor devem continuar no meta. Uma divergência acima de 15% ou bloqueio de piso dispara recalibração do universo, sem ampliar escopo de produto automaticamente.
 
 ## 5. Mapa do portal para o array canônico
 
@@ -452,15 +467,36 @@ portal_normalizado=2229
 70% de 2229=1560
 ```
 
-Piso proposto
+Piso metodologia-consciente
+
+O termo relativo só pode ser aplicado quando a base anterior e a janela candidata têm a mesma metodologia, fonte e filtro, identificados por `metodologia_id` na meta.
 
 ```javascript
-pisoBootstrap = 1522
-pisoDinamico = Math.floor(documentosConfiaveisAnteriores * 0.70)
+pisoBootstrap = 961
+mesmaMetodologia = meta.metodologia_id === METODOLOGIA_ENET_ALLOWLIST_V2
+pisoDinamico = mesmaMetodologia ? Math.floor(documentosConfiaveisAnteriores * 0.70) : 0
 pisoEfetivo = Math.max(pisoBootstrap, pisoDinamico)
 ```
 
-Aplicar a guarda depois de normalizar, deduplicar pela identidade única de `_cvmChaveDoc`, filtrar janela e categorias, e antes do `TETO_DOCS` e do `RADAR_KV.put`. O campo de protocolo não participa da deduplicação.
+Na primeira janela após a troca de fonte ou filtro, usar somente o piso absoluto de 1522, além dos gates cumulativos de quatro lotes válidos, layout, colisão, `max_data_entrega` fresco e carry de `zip_only`. A primeira escrita bem-sucedida carimba a nova metodologia e o comprimento novo na meta. Só a segunda janela da mesma metodologia reativa o termo relativo.
+
+Rebase é evento único por troca de metodologia e deve registrar `documentos_anteriores`, `metodologia_anterior`, `metodologia_nova`, `piso_documentos` e `motivo_rebase`, expondo esses campos no health.
+
+Simulação obrigatória
+
+```text
+base=4000
+candidato=2175
+metodologia_base=antiga
+metodologia_candidata=ENET_ALLOWLIST_V2
+piso_absoluto=961
+resultado=passa no piso absoluto, grava com rebase explícito
+segunda_base=2175
+segunda_candidata=<medir>
+piso_relativo=70% da segunda_base, somente após metodologia igual
+```
+
+O caso precisa ser reproduzido em teste. A base antiga de 4000 não pode prender o candidato legítimo de 2175 em piso 2800.
 
 Razão da régua de 70%
 
