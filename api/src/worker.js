@@ -7954,6 +7954,10 @@ async function avaliarFrescorCVM(env2222) {
   out.descartados_allowlist_categoria = meta.descartados_allowlist_categoria || null;
   out.base_presente = meta.base_presente !== false;
   out.ultimo_sync_ok_em = meta.ultimo_sync_ok_em || meta.sincronizado_em || null;
+  out.ok = meta.ok === true;
+  out.reconciliacao_zip_ok = meta.reconciliacao_zip_ano_corrente_ok === true;
+  out.reconciliacao_zip_motivo = meta.reconciliacao_zip_gate_motivo || null;
+  out.reconciliacao_zip_idade_dias = meta.reconciliacao_zip_idade_dias != null ? meta.reconciliacao_zip_idade_dias : null;
   if (meta.ok === false) {
     var _motRaw = String(meta.motivo || "desconhecido");
     out.motivo = "ultimo_sync_falhou:" + _motRaw.slice(0, 60);
@@ -8014,8 +8018,8 @@ async function avaliarFrescorCVM(env2222) {
     return out;
   }
   if (meta.gate_reconciliacao === "bloqueado") {
-    out.ok = false;
     out.motivo = meta.gate_reconciliacao_motivo || "zip_reconciliacao_vencida";
+    out.reconciliacao_zip_ok = false;
     out.falha_dura = true;
     out.degrada_servico = false;
     return out;
@@ -20279,8 +20283,9 @@ async function __coreFetch(request, env2222, ctx) {
       // O canal proprio e a guarda scripts/check-cnpj-familia.mjs e a action
       // admin_cvm_quarentena.
       var _cvmCob = (_cvmFrescor.cobertura && typeof _cvmFrescor.cobertura === "object")
-        ? _cvmFrescor.cobertura
-        : { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
+            ? _cvmFrescor.cobertura
+            : { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
+          if (_cvmCob.portal) _cvmCob = { cnpj: _cvmCob.zip && _cvmCob.zip.resolvidos || 0, nome: _cvmCob.portal.resolvidos || 0, quarentena: Math.max(0, (_cvmCob.portal.total || 0) - (_cvmCob.portal.resolvidos || 0)), sem_dono: 0 };
       var _cvmCobTotal = (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0);
       var _cvmCobPct = _cvmCobTotal > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotal * 1e3) / 10 : null;
       // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): ate aqui NENHUM campo
@@ -20334,7 +20339,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
