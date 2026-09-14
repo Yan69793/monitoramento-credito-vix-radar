@@ -8552,9 +8552,11 @@ async function syncCVMAutomatico(env2222) {
       lotes.push({ de: de, ate: ate, documentos: filtrados.length, documentos_brutos: validos.length, descartados_allowlist: validos.length - filtrados.length });
     }
     var zipOk = false, zipDocs = [], rec = anterior && anterior.reconciliacao_zip_ultimo_ok_em;
-    var idadeRec = rec ? Math.floor((Date.now() - Date.parse(rec)) / 864e5) : 999;
+    // Sem reconciliacao anterior nao existe idade mensuravel. 999 era um
+    // sentinela que vazava para o health como se fossem dias reais.
+    var idadeRec = rec ? Math.floor((Date.now() - Date.parse(rec)) / 864e5) : null;
     var zipAnoCorrenteOk = !!(rec && idadeRec < 7), zipGateMotivo = zipAnoCorrenteOk ? null : "zip_reconciliacao_vencida";
-    if (idadeRec >= 7 || !rec) { var zr = await syncCVMZipHistorico(env2222); zipOk = !!(zr && zr.ok); if (zipOk) { zipDocs = await env2222.RADAR_KV.get("cvm:documentos", "json") || []; rec = agora; idadeRec = 0; zipAnoCorrenteOk = true; zipGateMotivo = null; } }
+    if (idadeRec === null || idadeRec >= 7) { var zr = await syncCVMZipHistorico(env2222); zipOk = !!(zr && zr.ok); if (zipOk) { zipDocs = await env2222.RADAR_KV.get("cvm:documentos", "json") || []; rec = agora; idadeRec = 0; zipAnoCorrenteOk = true; zipGateMotivo = null; } }
     if (!zipDocs.length && anterior && rec && idadeRec < 7) zipDocs = Array.isArray(base) ? base : [];
     var merged = [], seen = {}, zipOnly = [], portalOnly = [];
     zipDocs.concat(docs).forEach(function(d) { var ex = { link: d.l, categoria: d.c, data: d.d, assunto: d.a }, k = _cvmChaveDoc(ex); if (!seen[k]) { seen[k] = true; merged.push(d); } else if (d._protocolo && merged.some(function(x) { return x._protocolo === d._protocolo && x.l !== d.l; })) d.colisao_protocolo_para_revisao = [merged.find(function(x) { return x._protocolo === d._protocolo; }).l, d.l]; });
