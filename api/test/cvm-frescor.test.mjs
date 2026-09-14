@@ -142,8 +142,9 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
     });
     const b = await health();
     expect(b.cvm_fonte_ciclos_perdidos).toBe(2);
-    expect(b.cvm_fonte_ok).toBe(false);
-    expect(b.fonte_externa_ok).toBe(false);
+    // DECISAO A: escrita válida mantém o agregado verde. A idade e o ZIP são dimensões próprias.
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
     expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_sem_publicar_ha_\d+_ciclos_semanais_\d+_dias$/);
     // Servico continua de pe. Este e o coracao do HEALTHSPLIT1.
     expect(b.ok).toBe(true);
@@ -159,9 +160,9 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
       origem: "teste"
     });
     const b = await health();
-    expect(b.cvm_fonte_ok).toBe(false);
-    expect(b.fonte_externa_ok).toBe(false);
-    expect(b.cvm_fonte_ciclos_perdidos).toBeGreaterThanOrEqual(4);
+    // DECISAO A: escrita válida mantém o agregado verde mesmo com idade alta.
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
     expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_sem_publicar_ha_\d+_ciclos_semanais_\d+_dias$/);
     expect(b.ok).toBe(true);
   });
@@ -187,9 +188,9 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
   it("meta sem nenhuma data utilizavel nao passa por omissao", async () => {
     await seedMeta({ ok: true, sincronizado_em: new Date().toISOString(), documentos: 5, origem: "teste" });
     const b = await health();
-    expect(b.cvm_fonte_ok).toBe(false);
-    expect(b.fonte_externa_ok).toBe(false);
-    expect(b.cvm_fonte_motivo).toBe("sem_data_de_referencia");
+    // DECISAO A: meta de escrita bem-sucedida mantém cvm_fonte_ok. Sem data, a idade segue inválida.
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
     expect(b.ok).toBe(true);
   });
 
@@ -215,9 +216,9 @@ describe("CVMFRESCOR1 - idade da fonte CVM no health", () => {
       { e: "TESTE S.A.", d: diasAtrasISO(30), de: diasAtrasISO(30), c: "Fato Relevante", a: "x", l: "https://exemplo" }
     ]));
     const b = await health();
-    expect(b.cvm_fonte_ok).toBe(false);
-    expect(b.fonte_externa_ok).toBe(false);
-    expect(String(b.cvm_fonte_motivo)).toMatch(/^fonte_sem_publicar_ha_\d+_ciclos_semanais_\d+_dias$/);
+    // DECISAO A: escrita válida mantém o agregado verde, embora a idade esteja vencida.
+    expect(b.cvm_fonte_ok).toBe(true);
+    expect(b.fonte_externa_ok).toBe(true);
     expect(b.ok).toBe(true);
   });
 
@@ -289,7 +290,8 @@ describe("CVMFRESCOR1 - endpoints admin de frescor", () => {
     expect(res.status).toBe(200);
     const b = await res.json();
     expect(b.ok).toBe(true);
-    expect(b.frescor.ok).toBe(false);
+    // DECISAO A: o endpoint preserva diagnóstico de idade, mas escrita válida é verde.
+    expect(b.frescor.ok).toBe(true);
     expect(b.frescor.idade_du).toBeGreaterThan(2);
     // CVMCADENCIA1: o endpoint admin passa a expor ciclo perdido, que e o campo
     // pelo qual a decisao e tomada. idade_du fica so como informacao.

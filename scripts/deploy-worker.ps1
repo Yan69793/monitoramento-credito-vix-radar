@@ -40,7 +40,8 @@ param(
   [switch]$SkipGit,
   [switch]$SkipValidation,
   # Ignora CLOUDFLARE_API_TOKEN e usa a sessao OAuth do wrangler direto.
-  [switch]$ForcarOAuth
+  [switch]$ForcarOAuth,
+  [switch]$SuiteWaiver
 )
 
 $ErrorActionPreference = "Stop"
@@ -250,6 +251,27 @@ if ((Get-Content $toml -Raw) -notmatch [regex]::Escape($chgNeedle)) {
   Fail "Entrada de changelog ausente para $ver no cabecalho do $toml (WRCGL1). Escreva a linha '$chgNeedle ...' descrevendo a mudanca antes de deployar. Historial do que subiu sem registro: commits de git a partir do v4.9.196."
 }
 Write-Host "Gate changelog: entrada '$ver.js' presente no cabecalho do wrangler.toml" -ForegroundColor Green
+
+# --- 1.2 GATE DE SUITE (SUITEGREEN1) ---------------------------------------
+# A suite inteira e obrigatoria antes de publicar. Waiver so vale com registro
+# explicito no changelog contendo responsavel, motivo e validade.
+$tomlHead = Get-Content $toml -Raw
+$waiverNeedle = "SUITE WAIVER $ver"
+if ($SuiteWaiver) {
+  if ($tomlHead -notmatch [regex]::Escape($waiverNeedle)) { Fail "Waiver solicitado sem registro '$waiverNeedle' no changelog (SUITEGREEN1)." }
+  Write-Host "Gate suite: waiver explicito presente para $ver" -ForegroundColor Yellow
+} else {
+  Write-Host "`nExecutando suite completa antes do deploy..." -ForegroundColor Yellow
+  Push-Location $apiDir
+  try {
+    npm ci --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) { Fail "npm ci da suite falhou (exit $LASTEXITCODE)." }
+    npm test
+    $suiteExit = $LASTEXITCODE
+  } finally { Pop-Location }
+  if ($suiteExit -ne 0) { Fail "Suite completa reprovada (exit $suiteExit). Sem waiver, deploy bloqueado (SUITEGREEN1)." }
+  Write-Host "Gate suite: suite completa verde" -ForegroundColor Green
+}
 
 # --- 2. Aponta wrangler.toml main ------------------------------------------
 $tomlRaw = Get-Content $toml -Raw
