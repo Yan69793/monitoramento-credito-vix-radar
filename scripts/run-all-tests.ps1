@@ -71,6 +71,15 @@ function Read-Baseline {
 function Invoke-Suite {
     # Roda a suite em processo separado com timeout real. Nao deixa o runner pendurar numa suite
     # travada, nem herda exit code de outra.
+    #
+    # Leitura ASSINCRONA (nao negociar): a suite escreve em stdout E stderr, cada um com buffer
+    # proprio de ~4 KB no Windows. Ler um fluxo ate o fim (ReadToEnd) antes de esperar o outro e
+    # deadlock classico: o filho enche o buffer do segundo fluxo, bloqueia na escrita, o primeiro
+    # fluxo nunca fecha e o WaitForExit com timeout NUNCA chega a ser avaliado. Foi o que matou o
+    # gate: test-retry-janela.ps1 escreve ~10 KB em stderr (medido em 14/09/2026, ambiente do CI
+    # simulado) e o job ficou 30 min parado ate o teto do workflow cancelar - 5/5 execucoes, sem
+    # nenhuma linha de suite depois de test-preflight-429.ps1. Ler os dois em paralelo resolve o
+    # deadlock e faz o timeout valer de verdade.
     param([System.IO.FileInfo]$Arquivo, [int]$Segundos)
 
     $psi = New-Object System.Diagnostics.ProcessStartInfo
@@ -91,16 +100,25 @@ function Invoke-Suite {
     if (-not $iniciou) {
         return [pscustomobject]@{ Nome = $Arquivo.Name; Exit = -1; Saida = 'processo nao iniciou'; Timeout = $false }
     }
-    $stdout = $proc.StandardOutput.ReadToEnd()
-    $stderr = $proc.StandardError.ReadToEnd()
+    $tarefaOut = $proc.StandardOutput.ReadToEndAsync()
+    $tarefaErr = $proc.StandardError.ReadToEndAsync()
     $estourou = -not $proc.WaitForExit($Segundos * 1000)
     if ($estourou) {
+        # Arvore inteira: suite travada pode ter neto segurando o pipe, e neto sobrevivente
+        # mantem o job do CI vivo (e o runner lendo) mesmo depois do kill do processo direto.
+        try { & taskkill.exe /F /T /PID $proc.Id 2>&1 | Out-Null } catch { }
         try { $proc.Kill() } catch { }
         try { $proc.WaitForExit(5000) | Out-Null } catch { }
     }
+    # Drenagem com teto: depois do kill um neto pode continuar segurando o pipe. Nunca bloquear
+    # aqui de novo - o que foi capturado ate o teto e o que vai para o resumo.
+    $textoOut = '(leitura de stdout nao fechou apos o kill)'
+    $textoErr = '(leitura de stderr nao fechou apos o kill)'
+    if ($tarefaOut.Wait(10000)) { $textoOut = [string]$tarefaOut.Result }
+    if ($tarefaErr.Wait(10000)) { $textoErr = [string]$tarefaErr.Result }
     $exit = -1
     if (-not $estourou) { $exit = $proc.ExitCode }
-    $texto = ([string]$stdout + "`n" + [string]$stderr)
+    $texto = ($textoOut + "`n" + $textoErr)
     return [pscustomobject]@{ Nome = $Arquivo.Name; Exit = $exit; Saida = $texto; Timeout = $estourou }
 }
 
@@ -158,6 +176,11 @@ foreach ($s in $suites) {
         $cor = 'FAIL'
     }
     Write-Host ($cor + ' ' + $s.Name.PadRight(38) + ' ' + $resumo + '  [' + $dur + 's exit=' + $r.Exit + ']')
+    if ($r.Timeout) {
+        # Timeout e FAIL, mas e FAIL de OUTRO tipo: a suite nao terminou, entao nao ha veredito
+        # sobre o codigo. Dizer isso aqui evita ler "travou" como "quebrou".
+        Write-Host ('       TRAVOU: nao terminou em ' + $TimeoutSec + 's; processo e arvore mortos pelo runner.')
+    }
 
     $noBaseline = $baseline.ContainsKey($s.Name)
     if ($rotulo -eq 'ok') {

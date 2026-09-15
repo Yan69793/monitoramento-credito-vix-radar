@@ -4,6 +4,15 @@
 # (nenhum pedido real, nenhum token gasto). A lib chama '& claude', entao o stub entra no topo do PATH
 # de um processo filho pwsh isolado. ASCII puro, PowerShell 5.1. Exit 0 = todos os asserts OK.
 $ErrorActionPreference = 'Continue'
+# Fixture de provider: Test-VixWebSearchProbe (assunto desta suite, via vixradar-ambient-check.ps1
+# L139) bloqueia com exit 86 quando VIXRADAR_LLM_PROVIDER nao esta configurado. Maquina sem a
+# variavel - o windows-latest do CI, por exemplo - morre no primeiro probe e a suite nunca chega
+# aos asserts que ela existe para provar (medido: exit=86 sem nenhuma linha de assert). Fixa o
+# caminho Claude (o do operador) apenas no escopo DESTE processo; registro nenhum e tocado e o
+# valor original volta no finally. Mesma pratica de test-monitor-provider-gate.ps1 e
+# test-retry-janela.ps1.
+$providerOriginal = $env:VIXRADAR_LLM_PROVIDER
+$env:VIXRADAR_LLM_PROVIDER = 'claude-subscription'
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 
 $script:okN = 0; $script:fal = 0
@@ -77,6 +86,7 @@ exit /b 0
     Assert (-not ($conteudo -match 'Bearer abcd1234')) 'Bearer redigido (nao vaza literal)'
 }
 finally {
+    $env:VIXRADAR_LLM_PROVIDER = $providerOriginal
     Remove-Item Env:\TEST_MODE -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
     # Limpa artefatos legitimamente criados pelo run (stderr temp e diag do caso 429)

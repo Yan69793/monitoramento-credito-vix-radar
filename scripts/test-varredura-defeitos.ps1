@@ -23,7 +23,10 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
     return ,$out
 }
 
-$MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
+# Caminho do motor derivado do PROPRIO checkout. Era 'E:\Diretorio\Claude\...' (maquina do
+# operador): no runner do CI o ParseFile lancava antes do primeiro assert e a suite morria com
+# exit=1 sem imprimir nada (medido em 5/5 execucoes do gate, 12 a 14/09/2026).
+$MotorPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts\run_vixradar_varredura.ps1'
 foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto'))) { Invoke-Expression $_def }
 
 Write-Host '== D1 lock: PID vivo bloqueia, morto ou reutilizado e orfao =='

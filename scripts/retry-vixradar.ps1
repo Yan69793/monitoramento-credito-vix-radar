@@ -40,7 +40,12 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
-$VixRoot     = 'E:\Diretorio\Claude\Monitoramento de Credito'
+# Raiz derivada do PROPRIO script (scripts\ -> raiz do projeto), nunca um caminho de maquina:
+# era 'E:\Diretorio\Claude\Monitoramento de Credito' hardcoded, e em qualquer outro clone (o
+# runner do windows-latest, por exemplo) as libs de lib\ nao eram carregadas - o script entao
+# julgava entrega SEM o watchdog/janela, e a suite test-retry-janela.ps1 ia junto. Em producao
+# o script vive em <raiz>\scripts, entao o valor resolvido continua identico.
+$VixRoot     = Split-Path $PSScriptRoot -Parent
 $LogDir      = if ($LogDirOverride) { $LogDirOverride } else { Join-Path $VixRoot 'logs\routines' }
 $LibDir      = Join-Path $VixRoot 'scripts\lib'
 $Watchdog    = Join-Path $LibDir 'vixradar-watchdog.ps1'
