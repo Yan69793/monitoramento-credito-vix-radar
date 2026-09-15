@@ -92,6 +92,18 @@ function extrairEmissores(src) {
 // CNPJ. Por isso fica fora da conta de "exatamente um bloco".
 const BLOCOS = { EMISSOR_CNPJ, SEM_ITR_CVM, A_DECIDIR };
 
+// Ordem de impressao das falhas, nao a lista do que pode falhar: regra que nao
+// esteja aqui e impressa do mesmo jeito, no fim (FALHANOMINADA1, 2026-09-15).
+// Antes disto a lista era fixa e curta (14 das 18 regras), e o run agendado de 14/09
+// saiu com "REPROVADO: 1 problema(s)." sem uma linha de detalhe, porque a regra que
+// reprovou (`snapshot_desatualizado`) era uma das quatro de fora. Quem leu pegou a
+// unica linha vizinha como causa, e a causa era outra. Guarda que reprova sem nomear
+// a regra nao vale mais que guarda nenhuma: exit 1 sem dizer o que consertar.
+const ORDEM_REGRAS = ["nao_declarado", "duplo_bloco", "orfa", "deslocado_sem_cnpj", "cnpj_formato", "cnpj_duplicado",
+  "fora_do_snapshot", "snapshot_vazio", "snapshot_orfao", "snapshot_desatualizado", "cnpj_ausente_cvm",
+  "worker_sem_primario", "worker_sem_familia", "predictiva_ilegivel",
+  "primario_worker_diverge", "familia_vaza_primario", "predictiva_diverge", "predictiva_orfa"];
+
 function main() {
   const emissores = extrairEmissores(readFileSync(WORKER, "utf8"));
   if (emissores.length < 50) { console.error("ERRO: so " + emissores.length + " emissores extraidos, parser quebrou."); process.exit(2); }
@@ -247,7 +259,18 @@ function main() {
   console.log("  exercicio deslocado:     " + resumo.exercicio_deslocado + (resumo.exercicio_deslocado ? "  (" + Object.keys(EXERCICIO_DESLOCADO).join(", ") + ")" : ""));
   console.log("  snapshot da CVM:         " + Object.keys(SNAPSHOT_CVM).length + " razoes sociais congeladas em " + SNAPSHOT_CVM_EM);
   console.log("  conferidos no indice CVM: " + (semItrDir ? "nao conferido offline. O snapshot ja pega digitacao errada; rode com ITR_DIR para pegar renomeacao societaria" : conferidosNaCvm + "/" + resumo.com_cnpj + ", razao social conferida contra o indice vivo"));
-  console.log("  reconciliacao (SUBSTRINGDONO1): worker.js primario=" + resumo.reconciliacao.primario_worker + " familia=" + resumo.reconciliacao.familia_worker + " | predictiva=" + resumo.reconciliacao.predictiva + " entradas");
+  // Os dois numeros desta linha ja foram lidos como desencontro (run 34865310830,
+  // 14/09): primario=100 ao lado de predictiva=104 nao e divergencia. Eles fecham
+  // por construcao: a regra 1 garante que todo emissor da carteira esta em
+  // exatamente um dos blocos, entao EMISSOR_CNPJ + SEM_ITR_CVM + A_DECIDIR e a
+  // carteira, e a predictiva traz a carteira inteira (os 4 sem ITR entram pela
+  // tolerancia da regra 7c). A conta vai escrita aqui para o proximo vermelho nao
+  // ser atribuido a esta linha de novo.
+  console.log("  reconciliacao (SUBSTRINGDONO1): worker.js primario=" + resumo.reconciliacao.primario_worker
+    + " familia=" + resumo.reconciliacao.familia_worker
+    + " | predictiva=" + resumo.reconciliacao.predictiva + " entradas"
+    + " (" + resumo.com_cnpj + " com CNPJ primario + " + resumo.sem_itr + " sem ITR na CVM + "
+    + resumo.a_decidir + " a decidir = " + emissores.length + " da carteira)");
 
   if (resumo.a_decidir) {
     console.log("\nFora da recuracao ate alguem decidir:");
@@ -256,10 +279,17 @@ function main() {
 
   if (!falhas.length) { console.log("\nOK: toda a carteira esta declarada, sem orfa, sem CNPJ repetido."); process.exit(0); }
 
-  console.error("\nREPROVADO: " + falhas.length + " problema(s).");
-  for (const r of ["nao_declarado", "duplo_bloco", "orfa", "deslocado_sem_cnpj", "cnpj_formato", "cnpj_duplicado", "cnpj_ausente_cvm",
-                   "worker_sem_primario", "worker_sem_familia", "predictiva_ilegivel",
-                   "primario_worker_diverge", "familia_vaza_primario", "predictiva_diverge", "predictiva_orfa"]) {
+  // FALHANOMINADA1 (2026-09-15). A regra vai no cabecalho e toda regra que reprovou
+  // ganha bloco, inclusive a que ninguem lembrou de listar. Antes o cabecalho so
+  // contava, e a lista fixa deixava as QUATRO regras da familia snapshot fora da
+  // saida (fora_do_snapshot, snapshot_vazio, snapshot_orfao, snapshot_desatualizado):
+  // o run de 14/09 saiu com "REPROVADO: 1 problema(s)." e nenhuma linha de detalhe,
+  // porque a regra que reprovou era justamente uma delas.
+  const regrasImpressas = ORDEM_REGRAS.slice();
+  for (const f of falhas) if (!regrasImpressas.includes(f.regra)) regrasImpressas.push(f.regra);
+  const regrasQueReprovaram = [...new Set(falhas.map((f) => f.regra))];
+  console.error("\nREPROVADO: " + falhas.length + " problema(s) em [" + regrasQueReprovaram.join(", ") + "].");
+  for (const r of regrasImpressas) {
     const doTipo = falhas.filter((f) => f.regra === r);
     if (!doTipo.length) continue;
     console.error("\n  [" + r + "] " + doTipo.length);
