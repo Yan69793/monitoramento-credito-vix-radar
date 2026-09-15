@@ -4,6 +4,19 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.254.js = v4.9.253 + CVMSTITCH1: o caminho da ROTINA (receber_analise) passa a
+#   costurar o documento oficial da CVM em evento, como os outros 4 caminhos que
+#   persistem payload ja faziam. Era o unico sem `costurarCvmEmEventos` desde que a
+#   varredura de IA saiu do cron do Worker para as rotinas locais
+#   (VARREDURA_CRON_AI_ENABLED=false, v4.9.143): documento com dono na carteira,
+#   dentro da janela de 30 dias e material - a MESMA regua que o gate de avanco do
+#   frescor-check usa como teto ELEGIVEL - era anexado em `cvm_documentos`, gravado, e
+#   nunca virava evento. Medido: `_cobertura_cvm`/`_sintetico` com zero ocorrencias em
+#   W28..W38 contra 58/118 em W19/W18; em 14/09 o feed ficou parado em 2026-09-11 com a
+#   fonte entregando documento ate 14/09 e o gate reprovando "FONTE ANDOU E O FEED NAO".
+#   Testes: cvm-stitch-receber-analise (2 pontas: material com dono vira evento datado;
+#   nao material, sem dono e fora da janela nao viram) + suite vitest completa.
+#   Rollback: main = "v4.9.253.js".
 # v4.9.245.js = v4.9.244 + QUARENTENACOB1, EMAILSILENT1 e SCANFALLBACK-MORTO1:
 # v4.9.246.js = v4.9.245 + feed_fresco reprova no limite de 2 dias uteis, evitando falso verde quando o feed esta estagnado.
 #   a consulta de quarentena CVM pagina ate cobrir o conjunto completo; o envio de

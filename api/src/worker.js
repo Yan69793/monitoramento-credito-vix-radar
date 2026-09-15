@@ -21368,6 +21368,23 @@ async function __coreFetch(request, env2222, ctx) {
         _raSaneado._last_scanned_at = (/* @__PURE__ */ new Date()).toISOString();
         var _dpaCvmDocs = await buscarDocumentosCVM(env2222, _raEmp, _raJanelaInicio, _raHoje).catch(function() { return []; });
         _raSaneado.cvm_documentos = _dpaCvmDocs;
+        // CVMSTITCH1 (2026-09-15): costura do documento oficial no caminho da ROTINA.
+        // receber_analise e o unico dos 5 caminhos que persistem payload que NAO chamava
+        // costurarCvmEmEventos (os outros 4 sao executarVarreduraBatch, ...ComFila,
+        // executarVarreduraMatinal e consulta_empresa). Desde que a varredura de IA saiu do
+        // cron do Worker para as rotinas locais (VARREDURA_CRON_AI_ENABLED=false, v4.9.143),
+        // este e o caminho por onde passa TODA analise de producao, e ele anexava
+        // `cvm_documentos` e gravava sem transformar documento em evento. Documento com dono
+        // na carteira, dentro da janela e material - exatamente a regua que o gate de avanco
+        // do frescor-check usa como teto ELEGIVEL - morria dentro do payload e so virava
+        // evento se o LLM resolvesse narra-lo. Medido nos estados de producao:
+        // _cobertura_cvm e _sintetico com ZERO ocorrencias em W28..W38, contra 58/118 em
+        // W18/W19, quando a varredura ainda rodava dentro do Worker. Consequencia medida em
+        // 14/09: fonte CVM com documento de 12..14/09 entregue e atribuido, rotina gravando
+        // estado depois do lote, feed parado em 2026-09-11 e o gate reprovando com
+        // "FONTE ANDOU E O FEED NAO (pipeline_nao_persistiu)". Mesma janela e mesmos
+        // parametros das outras chamadas: nada de regua nova.
+        costurarCvmEmEventos(_raSaneado, _raEmp, _raSaneado.setor, _raHoje, _raJanelaInicio);
         var _raMetricas = await persistirResultadoCompartilhado(env2222, _raSemana, _raEmp, _raSaneado);
         if (!_raMetricas) _raMetricas = { n_eventos_avanco_data: 0, n_chaves_novas: 0, n_eventos_conhecidos: 0, max_data_evento_antes: null, max_data_evento_depois: null };
         // SENTINELA1 (2026-08-25): so aqui, DEPOIS da persistencia dar certo, os
