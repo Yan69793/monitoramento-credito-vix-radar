@@ -653,6 +653,36 @@ function Get-VixDrenoTexto {
     return ($prefixo + 'FALHOU (exit=' + $ExitCode + ') - a fila de verificacao NAO foi drenada')
 }
 
+# DRENOMUDO1-FIX2 (2026-09-16): o dreno pos-rotina passa a ser uma funcao testavel, com o mesmo
+# padrao das demais funcoes do motor extraidas por AST nos testes (test-varredura-defeitos.ps1 D5/D6,
+# test-monitor-drenofalha.ps1). Antes, subir o filho, LER o exit code e escrever o desfecho existiam
+# so inline no corpo do motor: nenhum teste offline conseguia provar o caminho do incidente de 13/09
+# (dreno que morreu sem credencial saindo no log como "dreno concluido (exit=5)").
+# Contrato: sobe o filho de verdade, devolve o exit code dele (-1 quando o processo nem sobe),
+# escreve no log o desfecho por Get-VixDrenoTexto e a linha ERRO DRENO que o vigia le quando falha.
+function Invoke-VixDrenoPosRotina {
+    param(
+        [Parameter(Mandatory)][string]$ScriptPath,
+        [Parameter(Mandatory)][string]$Rotina
+    )
+    Write-Log ('POS-' + $Rotina.ToUpper() + ': drenando fila de verificacao...')
+    try {
+        $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$ScriptPath`"" -PassThru -Wait -NoNewWindow
+        # DRENOMUDO1 (2026-09-13): o codigo de saida do dreno e AVALIADO, nunca apenas citado.
+        # Antes, exit=5 (dreno sem credencial) saia no log como "dreno concluido (exit=5)", ou
+        # seja, falha com cara de sucesso.
+        $exitCode = [int]$verifProc.ExitCode
+    } catch {
+        Write-Log ('POS-' + $Rotina.ToUpper() + ': ERRO ao executar dreno - ' + $_.Exception.Message)
+        return -1
+    }
+    Write-Log (Get-VixDrenoTexto -Rotina $Rotina -ExitCode $exitCode)
+    if ($exitCode -ne 0) {
+        Write-Log ('ERRO DRENO: a fila de verificacao NAO foi drenada por esta rotina (exit=' + $exitCode + '). Log do dreno: logs/routines/vixradar-verificacao-async_' + $DateTag + '.log')
+    }
+    return $exitCode
+}
+
 # COBERTURAAUTH1 (2026-09-15): motivo do deferimento. Duas causas MUITO diferentes saem pela
 # mesma porta do motor e ate hoje saiam com o mesmo rotulo, o que fazia um aborto por limite de
 # sessao da assinatura ser lido como planejamento de cap de tokens.
@@ -1602,21 +1632,12 @@ try {
     if ($stats.submit_ok -gt 0 -and -not $DryRun) {
         $verifScript = Join-Path $ScriptsDir 'run_vixradar_verificacao_async.ps1'
         if (Test-Path $verifScript) {
-            Write-Log ('POS-' + $Rotina.ToUpper() + ': drenando fila de verificacao...')
-            try {
-                $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$verifScript`"" -PassThru -Wait -NoNewWindow
-                # DRENOMUDO1 (2026-09-13): o codigo de saida do dreno passa a ser AVALIADO, nunca
-                # apenas citado. Antes, exit=5 (dreno sem credencial) saia no log como
-                # "dreno concluido (exit=5)", ou seja, falha com cara de sucesso.
-                $stats.dreno_exit = [int]$verifProc.ExitCode
-                Write-Log (Get-VixDrenoTexto -Rotina $Rotina -ExitCode $stats.dreno_exit)
-                if ($stats.dreno_exit -ne 0) {
-                    Write-Log ('ERRO DRENO: a fila de verificacao NAO foi drenada por esta rotina (exit=' + $stats.dreno_exit + '). Log do dreno: logs/routines/vixradar-verificacao-async_' + $DateTag + '.log')
-                }
-            } catch {
-                $stats.dreno_exit = -1
-                Write-Log ('POS-' + $Rotina.ToUpper() + ': ERRO ao executar dreno - ' + $_.Exception.Message)
-            }
+            # DRENOMUDO1-FIX2 (2026-09-16): subir o filho, LER o exit code e escrever o desfecho
+            # saiu daqui para Invoke-VixDrenoPosRotina, funcao testavel provada offline por
+            # test-varredura-defeitos.ps1 (D6) e exigida por test-monitor-drenofalha.ps1. O
+            # comportamento e o mesmo: exit code AVALIADO (nunca citado como sucesso) e -1 quando
+            # o processo nem sobe.
+            $stats.dreno_exit = Invoke-VixDrenoPosRotina -ScriptPath $verifScript -Rotina $Rotina
             # DRENOMUDO1-FIX: alerta pelo PROPRIO desfecho. Antes o unico alerta possivel era o da
             # rotina de verificacao (ALERTA_AUTH dela), que so existe quando a causa e credencial;
             # dreno que morre por crash (exit 1) ou que nem sobe (-1) nao alertava ninguem.
