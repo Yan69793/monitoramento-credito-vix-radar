@@ -398,6 +398,11 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $LogDir ($Perfil.prefix + '_stderr_' + $DateTag + '_' + $PID + '.txt')
     $raw = $null; $exitCode = 1; $escalou = $false; $usoMensuravel = $true
+    # COTAESGOTADA1 (2026-09-16): cota da assinatura esgotada CONFIRMADA (limite de sessao
+    # classificado + reset que nao cabe no teto de parede) e sem chave paga para assumir.
+    # Zera por invocacao: e o sinal de fail-closed entregue ao chamador.
+    $cotaEsgotadaSemFallback = $false
+    $cotaEsgotadaMotivo = ''
     try {
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
@@ -530,7 +535,22 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                 else {
                     Write-Log ('RETRY: ' + $acao.Motivo + '. Escalando em vez de esperar.')
                     if (Invoke-VixClaudeAuthEscalateForcado $acao.Motivo) { $retryLog += ('auth:forcado:' + $acao.Acao); $escalou = $true }
-                    else { Write-Log ($AlertaAuthTag + $acao.Motivo + ', e sem chave paga para assumir. A rotina vai morrer neste lote.') }
+                    else {
+                        # COTAESGOTADA1 (2026-09-16): sem chave paga a escalada nao existe, e a partir
+                        # daqui a cota esta CONFIRMADAMENTE esgotada. Repetir `claude -p` com a MESMA
+                        # credencial nao muda o desfecho: so queima teto de parede. Medido no dry-run da
+                        # noturna de 15/09 (log ..._20260915_dryrun_39464.log:219/223/227): TRES
+                        # escaladas forcadas inuteis (03:18:16, 03:18:59, 03:20:11) e zero lote entregue.
+                        # Sai do laco com UMA chamada e entrega o lote ao aborto/deferimento que ja
+                        # existe (AuthFailure -> exit 7 -> motivo=limite_sessao_assinatura), sem
+                        # inventar disponibilidade e sem fallback pago (Get-VixAnthropicApiKey devolve
+                        # $null sob claude-subscription; ANTHROPIC_API_PAYG=NAO AUTORIZADO).
+                        $cotaEsgotadaSemFallback = $true
+                        $cotaEsgotadaMotivo = ($acao.Motivo + '; sem chave paga para assumir; sem retry e sem fallback autorizado')
+                        Write-Log ($AlertaAuthTag + $acao.Motivo + ', e sem chave paga para assumir. Cota da assinatura esgotada confirmada: sem retry (a mesma credencial nao muda) e sem fallback pago autorizado. A rotina vai morrer neste lote.')
+                        $retryLog += ('cota:esgotada:sem-fallback:' + $acao.Acao)
+                        break
+                    }
                 }
             }
             # Credencial que venceu no meio da rotina: escala para a chave paga e repete.
@@ -563,11 +583,15 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         Write-Log ('AVISO: parse do envelope JSON falhou (' + $_.Exception.Message + ') - tokens DESCONHECIDO')
     }
     $authFail = Test-ClaudeAuthFailure $textOut
+    # COTAESGOTADA1 (2026-09-16): cota esgotada CONFIRMADA e fail-closed aqui de proposito. A
+    # classificacao le stdout E stderr; a regex do motor roda so no stdout ja parseado, entao sem
+    # esta linha um reset declarado apenas no stderr nao chegaria ao aborto/deferimento.
+    if ($cotaEsgotadaSemFallback) { $authFail = $true }
     if (-not $usoMensuravel) {
         $tokens = $null
         $parcelas = @{ input = 'NAO_MENSURAVEL'; output = 'NAO_MENSURAVEL'; cache_creation = 'NAO_MENSURAVEL'; cache_read = 'NAO_MENSURAVEL'; trabalho = 'NAO_MENSURAVEL' }
     }
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; UsoMensuravel = $usoMensuravel; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote }
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; UsoMensuravel = $usoMensuravel; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote; CotaEsgotada = $cotaEsgotadaSemFallback; CotaEsgotadaMotivo = $cotaEsgotadaMotivo }
 }
 
 function Get-NomeNormalizado([string]$s) {
@@ -1313,6 +1337,11 @@ try {
                 }
                         if ($result.AuthFailure) {
                             $motivoAuth = Get-ClaudeAuthMotivo $result.Output
+                            # COTAESGOTADA1 (2026-09-16): com a cota esgotada confirmada, o motivo real e a
+                            # classificacao (ex.: reset fora do teto de parede), nao o fragmento que a
+                            # regex do motor achou. O texto vai para o ERRO CRITICO, o ALERTA_AUTH e o
+                            # detalhe do deferimento.
+                            if ($result.CotaEsgotadaMotivo) { $motivoAuth = $result.CotaEsgotadaMotivo }
                             $jIdx = Get-JobIndex $jobs $job
                             Write-Log ('ERRO CRITICO: claude -p recusou o lote ' + $label + ' - ' + $motivoAuth + ' - abortando lotes restantes (' + ($jobs.Count - $jIdx - 1) + ' lote(s) NAO processado(s)).')
                             Write-Log ($AlertaAuthTag +$Rotina + ' abortada no lote ' + $label + ' - ' + $motivoAuth)
@@ -1378,6 +1407,9 @@ try {
                 # (limite de sessao da assinatura) substitui o rotulo fixo de cap de tokens.
                 $motivoDeferido = Get-VixDeferidoMotivo $true
                 $abortoAuthDetalhe = Get-ClaudeAuthMotivo $retryRes.Output
+                # COTAESGOTADA1: mesma regra do aborto direto - a causa real (reset fora do teto)
+                # substitui o fragmento da regex no detalhe do deferimento.
+                if ($retryRes.CotaEsgotadaMotivo) { $abortoAuthDetalhe = $retryRes.CotaEsgotadaMotivo }
                 $exitCode = 7
                 $stats.batch_fail++
                 $abortAfterSubmit = $true
