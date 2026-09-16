@@ -365,9 +365,20 @@ try {
 
     # RETRY1 (2026-07-27): retry com backoff + fallback Haiku na ultima tentativa.
     # Mesmo padrao do Invoke-ClaudeBatch nos scripts noturno/matinal.
+    # COTAESGOTADA1-GENERICO (2026-09-16): este laco NAO classificava a falha. Com a cota da
+    # assinatura esgotada ele gastava as 3 tentativas em ~2 min e resumia tudo como "esgotadas
+    # 3 tentativas com backoff", sem nomear a causa nem o reset. Medido na recuperacao de
+    # 03/09 01:44 (Obsidian VIX Radar/PENDENCIAS.md, pendencia P2): 3 tentativas, todas com
+    # "You've hit your session limit - resets 3:50am", e "ERRO: claude exit 1". A classificacao
+    # e a tabela de decisao usadas abaixo ja existem (Get-VixWsProbeClassificacao na lib de
+    # ambiente, Get-VixSessionLimitAcao na lib de auth, ambas dot-sourced mais acima): nenhuma
+    # regex nova e nenhum parser tocado.
     $retryModel = if ($cfg.Model) { $cfg.Model } else { $null }
     $retryDelays = @(0, 30, 60)
     $out = $null; $exit = 1
+    $jaEsperouReset = $false
+    $cotaEsgotada = $false
+    $cotaEsgotadaMotivo = ''
     for ($attempt = 0; $attempt -lt $retryDelays.Count; $attempt++) {
         if ($attempt -gt 0) {
             $delay = $retryDelays[$attempt]
@@ -392,10 +403,49 @@ try {
             $ErrorActionPreference = $previousEap
         }
         if ($exit -eq 0) { break }
+
+        # COTAESGOTADA1-GENERICO (2026-09-16): falhou. Classificar ANTES de repetir. Limite de
+        # sessao da assinatura nao e credencial invalida nem congestionamento: repetir com a
+        # MESMA credencial nao muda o desfecho, so queima o teto de parede da task.
+        $saidaTxt = [string]($out -join "`n")
+        if ($temAmbientCheck -and $temClaudeAuth -and $saidaTxt) {
+            $cls = Get-VixWsProbeClassificacao -Saida $saidaTxt -StderrTxt ''
+            if ($cls.Motivo -eq 'session_limit') {
+                # Teto de parede desta invocacao: mesma margem do PT4H ja usada antes do
+                # primeiro lote (MargemTaskMin), descontado o que ja decorreu - inclusive
+                # espera de reset feita aqui dentro.
+                $esperaDisponivelMin = $MargemTaskMin - ((Get-Date) - $TaskInicio).TotalMinutes
+                $podeRepetir = ($attempt -lt ($retryDelays.Count - 1))
+                $acao = Get-VixSessionLimitAcao -Agora (Get-Date) -ResetAt $cls.ResetAt -EsperaDisponivelMin $esperaDisponivelMin -JaEsperou $jaEsperouReset
+                if ($acao.Acao -eq 'esperar' -and $podeRepetir) {
+                    Write-Log ('RETRY: limite de sessao da assinatura. ' + $acao.Motivo + ' (' + [Math]::Round($acao.EsperaMin, 1) + ' min).')
+                    Start-Sleep -Seconds ([int]($acao.EsperaMin * 60))
+                    $jaEsperouReset = $true
+                } else {
+                    $motivoAcao = $acao.Motivo
+                    if ($acao.Acao -eq 'esperar') { $motivoAcao = $motivoAcao + ', mas esta e a ultima tentativa do laco: esperar nao teria tentativa seguinte' }
+                    Write-Log ('RETRY: ' + $motivoAcao + '. Escalando em vez de esperar.')
+                    if ((Get-Command Invoke-VixClaudeAuthEscalateForcado -ErrorAction SilentlyContinue) -and (Invoke-VixClaudeAuthEscalateForcado $acao.Motivo)) { continue }
+                    # Sem chave paga para assumir a escalada: a partir daqui a cota esta
+                    # CONFIRMADAMENTE esgotada. Sai do laco com UMA chamada ao CLI, fail-closed
+                    # no exit code que o runner ja tinha, sem inventar disponibilidade e sem
+                    # fallback pago (ANTHROPIC_API_PAYG=NAO AUTORIZADO).
+                    $cotaEsgotada = $true
+                    if ($cls.ResetAt) { $resetTxt = (' reset=' + ([datetime]$cls.ResetAt).ToString('HH:mm')) } else { $resetTxt = ' reset=ILEGIVEL (provavel limite semanal)' }
+                    $cotaEsgotadaMotivo = ('limite de sessao da assinatura (cota esgotada);' + $resetTxt + '; sem chave paga para assumir; sem retry e sem fallback autorizado')
+                    Write-Log ('COTA_ESGOTADA: ' + $acao.Motivo + '.' + $resetTxt + '. Cota da assinatura esgotada confirmada: sem retry (a mesma credencial nao muda o desfecho) e sem fallback pago autorizado (ANTHROPIC_API_PAYG=NAO AUTORIZADO). Teto de parede disponivel: ' + [Math]::Round($esperaDisponivelMin, 1) + ' min. Abortando com exit ' + $exit + '.')
+                    break
+                }
+            }
+        }
     }
     if ($out) { $out | ForEach-Object { Write-Log ('CLAUDE: ' + $_) } }
     if ($exit -ne 0) {
-        Write-Log ('ERRO: claude exit ' + $exit + ' (esgotadas ' + $retryDelays.Count + ' tentativas com backoff)')
+        if ($cotaEsgotada) {
+            Write-Log ('ERRO: claude exit ' + $exit + ' (' + ($attempt + 1) + ' de ' + $retryDelays.Count + ' tentativas: ' + $cotaEsgotadaMotivo + ')')
+        } else {
+            Write-Log ('ERRO: claude exit ' + $exit + ' (esgotadas ' + $retryDelays.Count + ' tentativas com backoff)')
+        }
         exit $exit
     }
     # INCIDENTE-FRESHNESS2 (A3, condicao do COO): exit 0 do claude NAO prova que a
