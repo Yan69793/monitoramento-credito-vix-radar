@@ -106,22 +106,38 @@ if (Test-Path -LiteralPath $ProviderLibRetry) {
     Write-Log "AVISO: $ProviderLibRetry ausente - retry segue sem gate de provider"
 }
 
-function Send-VixRetryAlerta([string]$Motivo) {
-    if ($SemAlerta) { Write-Log ('ALERTA (SemAlerta, POST suprimido): ' + $Motivo); return }
+function Send-VixRetryAlerta([string]$Motivo, [string]$Causa, [string]$Severidade) {
+    # C4/NOTIFYDEDUP2 (16/09/2026): o dedup do Worker e por rotina+dia (chave
+    # rotina_alerta:<body.rotina>:<dia>, worker.js:21134/21140). Este era o ULTIMO canal de
+    # alerta que ainda mandava o nome cru 'retry-<RoutineId>'. O Szuchmacher-RetryVixNoturno
+    # tem DOIS gatilhos por dia (21:30 e 23:20 - register-retry-tasks.ps1:83-86, citado em
+    # monitor-tasks.ps1:209), entao duas passadas de retry podem falhar por causas diferentes
+    # no mesmo dia e a segunda era engolida pela chave gravada pela primeira - inclusive
+    # quando a causa da segunda era credencial/cota (o alerta que mais precisa chegar).
+    # Nome composto <retry-rotina>:<causa>:<severidade> separa as causas no mesmo dia.
+    # O nome e montado UMA vez aqui porque o mesmo valor tem de valer no POST direto do
+    # fallback, quando a lib de auth nao esta carregada.
+    $rotinaAlerta = 'retry-' + $RoutineId
+    if ($Causa -and $Severidade) { $rotinaAlerta = $rotinaAlerta + ':' + $Causa + ':' + $Severidade }
+    if ($SemAlerta) { Write-Log ('ALERTA (SemAlerta, POST suprimido) [rotina=' + $rotinaAlerta + ']: ' + $Motivo); return }
     $rk = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
     if (-not $rk) { $rk = $env:ROUTINE_API_KEY }
     if (-not $rk) { Write-Log 'AVISO: ROUTINE_API_KEY ausente do escopo User, alerta nao enviado'; return }
+    # Orcamento do Worker: body.rotina e cortado em 40 chars (worker.js:21134) e 'retry-' +
+    # RoutineId gasta 21-22. Causa de ate 9 chars sai com a severidade inteira; 'sem_entrega'
+    # (11) perde 2 chars do fim na matinal e continua distinto dos demais nomes (prova no
+    # caso 6 de scripts/test-dedup-causa-severidade.ps1).
     if ($temClaudeAuth -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-        $ok = Send-VixRoutineAlert -Rotina ('retry-' + $RoutineId) -Motivo $Motivo -RoutineKey $rk -WorkerUrl $WorkerUrl
-        if ($ok) { Write-Log 'ALERTA ROTINA enviado (dedup do Worker limita a 1/dia por rotina)' }
+        $ok = Send-VixRoutineAlert -Rotina $rotinaAlerta -Motivo $Motivo -RoutineKey $rk -WorkerUrl $WorkerUrl
+        if ($ok) { Write-Log ('ALERTA ROTINA enviado [rotina=' + $rotinaAlerta + '] (dedup do Worker limita a 1/dia por rotina+causa+severidade)') }
         return
     }
     # Fallback sem a lib de auth (POST direto, mesmo formato de sempre).
     try {
-        $p = @{ action = 'notificar_rotina'; routine_key = $rk; rotina = ('retry-' + $RoutineId); motivo = $Motivo }
+        $p = @{ action = 'notificar_rotina'; routine_key = $rk; rotina = $rotinaAlerta; motivo = $Motivo }
         $bytes = [System.Text.Encoding]::UTF8.GetBytes(($p | ConvertTo-Json -Compress))
         Invoke-WebRequest -Uri $WorkerUrl -Method Post -ContentType 'application/json; charset=utf-8' -Body $bytes -TimeoutSec 30 -UseBasicParsing | Out-Null
-        Write-Log 'ALERTA ROTINA enviado (dedup do Worker limita a 1/dia por rotina)'
+        Write-Log ('ALERTA ROTINA enviado [rotina=' + $rotinaAlerta + '] (dedup do Worker limita a 1/dia por rotina+causa+severidade)')
     } catch {
         Write-Log ('AVISO: falha ao alertar rotina: ' + $_.Exception.Message)
     }
@@ -137,7 +153,7 @@ function Send-VixRetryAlerta([string]$Motivo) {
 if (-not (Test-Path $RotLog)) {
     $motivo = 'Rotina ' + $RoutineId + ' nao deixou log ate ' + (Get-Date -Format 'HH:mm') + ' BRT (janela do dia ja passou). Sessao Claude Desktop pode nao ter disparado (app fechado ou cron perdido).'
     Write-Log "SEM LOG: $RotLog nao existe, rotina nao iniciou. ALERTA."
-    Send-VixRetryAlerta $motivo
+    Send-VixRetryAlerta -Motivo $motivo -Causa 'sem_log' -Severidade 'critico'
     exit 1
 }
 
@@ -196,5 +212,5 @@ if ($julgamentoPos.Entregue) {
 $ultimaLinha = (($conteudoPos -split "`r?`n") | Where-Object { $_ -match 'ERRO|RUNNER_FIM|ABORTANDO' } | Select-Object -Last 1)
 $motivoFalha = 'Relancamento de ' + $RoutineId + ' nao confirmou entrega (exit=' + $exit + ', ledger=' + $julgamentoPos.LedgerNaJanela + '/' + $MinimoLedger + '). Ultima linha relevante: ' + $ultimaLinha
 Write-Log ('SEM ENTREGA APOS RELANCAMENTO: ' + $motivoFalha)
-Send-VixRetryAlerta $motivoFalha
+Send-VixRetryAlerta -Motivo $motivoFalha -Causa 'sem_entrega' -Severidade 'critico'
 exit 1
