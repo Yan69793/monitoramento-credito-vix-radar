@@ -198,6 +198,13 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
+# MVA-WIRING1 (2026-09-16): import EXPLICITO da lib de provider. O motor JA consome funcoes
+# dela direto (Get-VixLlmProvider nas linhas 995/996/1126, Test-VixLlmProviderPermiteRotina na
+# 999, Get-VixLlmBloqueadoMsg na 1004) e ate hoje so a carregava de carona pelo dot-source de
+# vixradar-claude-auth.ps1/vixradar-ambient-check.ps1: dependencia implicita, que some sem aviso
+# se a lib encolher. E o padrao que test-mva-failover-quota-backlog.ps1 chama de lib orfa.
+# Mesmo formato dos outros consumidores (monitor-tasks.ps1:33, run_vixradar_sentinela.ps1:373).
+. (Join-Path $PSScriptRoot 'lib\vixradar-llm-provider.ps1')
 # Fase B D1 (2026-09-04): adapter OpenRouter e opcional. Ausencia do arquivo nao derruba
 # os outros providers (none/claude-manual seguem intactos); so o provider 'openrouter'
 # exige o adapter e o gate abaixo aborta 86 se ele nao existir.
@@ -207,7 +214,11 @@ if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
 } else {
     $script:VixLibOpenRouterOk = $false
 }
-Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Invoke-VixClaudeAuthEscalate', 'Invoke-VixClaudeAuthEscalateForcado', 'Get-VixSessionLimitAcao', 'Get-VixWsProbeClassificacao', 'ConvertTo-VixWsProbeResetAt', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo')
+# MVA-WIRING1 (2026-09-16): o boot passa a travar tambem pelo bloco MVA da lib, e nao so pelas
+# funcoes do provider gate. Get-VixFailoverClasse e chamada no ramo de falha de Invoke-ClaudeBatch
+# e Test-VixBacklogPodeFechar e a regra que o dreno de DEFERIDO aplica. Lib truncada
+# quebra no boot com o nome da funcao faltante, em vez de morrer no meio do lote.
+Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Invoke-VixClaudeAuthEscalate', 'Invoke-VixClaudeAuthEscalateForcado', 'Get-VixSessionLimitAcao', 'Get-VixWsProbeClassificacao', 'ConvertTo-VixWsProbeResetAt', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo', 'Get-VixFailoverClasse', 'Test-VixBacklogPodeFechar')
 foreach ($fn in @('Get-VixCustoConfig', 'Get-VixCustoDia', 'Get-VixCapEfetivo', 'Get-VixUsageParcelas')) {
     if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-custo.ps1'); exit 1 }
 }
@@ -509,6 +520,16 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             $stderrTxt = ''
             if (Test-Path $stderrFile) { $stderrTxt = ('' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
             $saidaFalha += (' ' + $stderrTxt)
+            # MVA_FAILOVER (2026-09-16): classe provider-agnostic da falha do lote, para a taxonomia
+            # ficar no proprio log da rotina (no dry-run de 15/09 a causa real de um lote morto era
+            # invisivel no log). Neste caminho NAO existe status HTTP - o CLI devolve exit code e
+            # texto - entao o status vai 0 (transporte/desconhecido) e quem decide a classe e o TEXTO
+            # do stdout+stderr: session-limit/quota/saldo => quota-exhausted, 2xx vazio/malformado =>
+            # parse-content, resto => transient. Isto e DIAGNOSTICO: nao altera roteamento nenhum.
+            # Quem decide seguir/abortar continua sendo Get-VixWsProbeClassificacao +
+            # Get-VixSessionLimitAcao logo abaixo, com o fail-closed do COTAESGOTADA1.
+            $mvaClasse = Get-VixFailoverClasse -Status 0 -Corpo $saidaFalha -RespostaOk $false
+            Write-Log ('MVA_FAILOVER: classe=' + $mvaClasse + ' exit=' + $exitCode + ' tentativa=' + ($attempt + 1) + '/' + $retryDelays.Count + ' (diagnostico provider-agnostic; roteamento de retry/failover inalterado)')
 
             # SESSIONLIMIT1 (04/09/2026): limite de uso da assinatura NAO e credencial
             # invalida, e ate hoje caia no mesmo balde. O motor classificava como falha de
@@ -1601,7 +1622,10 @@ try {
     foreach ($emp in $pendingDeferred) {
         $subOk = $false
         try { $r = Submit-CapDeferred $routineKey $emp $motivoDeferido; $subOk = ($r.ok -eq $true) } catch { $subOk = $false }
-        if ($subOk) {
+        # MVA-BACKLOG1 (2026-09-16): a regra "backlog so fecha com submit confirmado" passa a vir da
+        # lib (Test-VixBacklogPodeFechar), nao de um if inline. O valor e o MESMO - prova de aceite e
+        # $r.ok, nunca presenca de tentativa - e a regra fica testavel e travada no boot.
+        if (Test-VixBacklogPodeFechar -SubmitConfirmado $subOk) {
             $stats.deferred++
             if ($motivoDeferido -ne 'cap_efetivo') { $stats.deferred_auth++ }
         } else { $stats.deferred_fail++ }
