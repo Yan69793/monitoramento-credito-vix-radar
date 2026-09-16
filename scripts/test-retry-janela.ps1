@@ -7,6 +7,15 @@ $ErrorActionPreference = 'Continue'
 $LibDir = Join-Path $PSScriptRoot 'lib'
 . (Join-Path $LibDir 'vixradar-watchdog.ps1')
 
+# Fixture de provider: o retry tem o gate de provider ANTES do julgamento por janela
+# (lib/vixradar-llm-provider.ps1). Maquina sem VIXRADAR_LLM_PROVIDER - o windows-latest do CI,
+# por exemplo - cai no no-op BLOQUEADO_SEM_PROVIDER exit 0, e esta suite mediria o gate em vez
+# do julgamento que ela existe para provar. Fixa o caminho Claude (o do operador) apenas no
+# escopo DESTE processo, herdado pelos processos filhos; registro nenhum e tocado, e o valor
+# original volta no finally. Mesma pratica de test-monitor-provider-gate.ps1.
+$providerOriginal = $env:VIXRADAR_LLM_PROVIDER
+$env:VIXRADAR_LLM_PROVIDER = 'claude-subscription'
+
 $script:okN = 0; $script:fal = 0
 function Assert([bool]$cond, [string]$msg) { if ($cond) { $script:okN++; Write-Host ('  OK    ' + $msg) } else { $script:fal++; Write-Host ('  FALHA ' + $msg) } }
 
@@ -163,6 +172,7 @@ exit 0
     Assert ($chamadaRunner.Count -ge 1) '3h: o retry invoca powershell.exe em algum ponto'
 }
 finally {
+    $env:VIXRADAR_LLM_PROVIDER = $providerOriginal
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 }
 

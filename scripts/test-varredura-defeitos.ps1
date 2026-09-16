@@ -23,8 +23,11 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
     return ,$out
 }
 
-$MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina'))) { Invoke-Expression $_def }
+# Caminho do motor derivado do PROPRIO checkout. Era 'E:\Diretorio\Claude\...' (maquina do
+# operador): no runner do CI o ParseFile lancava antes do primeiro assert e a suite morria com
+# exit=1 sem imprimir nada (medido em 5/5 execucoes do gate, 12 a 14/09/2026).
+$MotorPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts\run_vixradar_varredura.ps1'
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina', 'Get-VixDeferidoMotivo', 'Get-VixDeferidosTexto', 'Get-VixCoberturaIncompletaTexto', 'Get-VixDrenoAlerta', 'Set-VixMetricsDrenoExit'))) { Invoke-Expression $_def }
 
 # Stub de log: as funcoes do motor escrevem por Write-Log, que os testes trocam pela coleta.
 $script:LinhasLog = @()
@@ -131,6 +134,55 @@ Assert-True (-not (($script:LinhasLog -join "`n") -match 'concluido')) 'D6b4: ex
 $script:LinhasLog = @()
 $exitAusente = Invoke-VixDrenoPosRotina -ScriptPath (Join-Path $tmp 'nao-existe.ps1') -Rotina 'matinal'
 Assert-True ($exitAusente -ne 0) ('D6c: script ausente nao devolve sucesso (recebido=' + $exitAusente + ')')
+
+Write-Host '== D7 COBERTURAAUTH1: motivo do deferimento - duas causas, duas rotulagens =='
+# 14/09/2026: a noturna analisou 45/104, deferiu 24 e fechou com
+# `DEFERIDOS: ok=24 falha=0 total=24 motivo=cap_efetivo (378424/700000 realizados)`. O cap de
+# tokens NUNCA foi alcancado - o corte veio do limite de sessao da assinatura no lote light-4.
+# Prova de duas pontas do texto real que vai ao log.
+Assert-True ((Get-VixDeferidoMotivo -AbortoAuth $false) -eq 'cap_efetivo') 'D7a: sem aborto de auth o motivo e cap_efetivo (corte planejado)'
+Assert-True ((Get-VixDeferidoMotivo -AbortoAuth $true) -eq 'limite_sessao_assinatura') 'D7b: aborto de auth vira limite_sessao_assinatura'
+$d7cap = Get-VixDeferidosTexto -Motivo 'cap_efetivo' -Ok 24 -Falha 0 -Total 24 -TokensRealizados 378424 -CapEfetivo 700000
+Assert-True ($d7cap -eq 'DEFERIDOS: ok=24 falha=0 total=24 motivo=cap_efetivo (378424/700000 realizados)') ('D7c: corte planejado mantem o texto historico byte a byte (' + $d7cap + ')')
+$d7auth = Get-VixDeferidosTexto -Motivo 'limite_sessao_assinatura' -Ok 24 -Falha 0 -Total 24 -TokensRealizados 378424 -CapEfetivo 700000 -LotesNaoProcessados 1
+Assert-True (($d7auth -match 'motivo=limite_sessao_assinatura') -and ($d7auth -match 'o cap NAO foi a causa') -and ($d7auth -match 'lotes_nao_processados=1')) ('D7d: corte por assinatura nomeia a causa e os lotes nao processados (' + $d7auth + ')')
+Assert-True (-not ($d7auth -match 'motivo=cap_efetivo')) 'D7e: corte por assinatura NAO carrega o rotulo cap_efetivo (ponta ruim do comportamento antigo)'
+
+Write-Host '== D8 COBERTURAAUTH1: declaracao observavel e acionavel da cobertura incompleta =='
+$d8cap = Get-VixCoberturaIncompletaTexto -Rotina 'noturno' -Motivo 'cap_efetivo' -Deferidos 24 -Plano 104 -LotesNaoProcessados 0
+Assert-True ($d8cap -eq '') 'D8a: cauda planejada por cap NAO vira COBERTURA_INCOMPLETA (nao fabrica alarme diario)'
+$d8auth = Get-VixCoberturaIncompletaTexto -Rotina 'noturno' -Motivo 'limite_sessao_assinatura' -Deferidos 24 -Plano 104 -LotesNaoProcessados 1 -DetalheAuth 'limite de uso da assinatura atingido'
+Assert-True (($d8auth -match 'COBERTURA_INCOMPLETA') -and ($d8auth -match '24/104') -and ($d8auth -match 'motivo=limite_sessao_assinatura') -and ($d8auth -match 'lotes_nao_processados=1')) ('D8b: cobertura incompleta diz quantos, por que e quantos lotes (' + $d8auth + ')')
+Assert-True (($d8auth -match 'DECISAO:') -and ($d8auth -match 'prioridade garantida na proxima execucao') -and ($d8auth -match '_token_cap_deferred=true') -and ($d8auth -match 'deferred_prioritario') -and ($d8auth -match 'nao esperar o reset') -and ($d8auth -match 'nao inventar cota')) 'D8c: a decisao registrada vai escrita na linha (deferir com prioridade, sem esperar reset, sem inventar cota)'
+Assert-True ((Get-VixCoberturaIncompletaTexto -Rotina 'noturno' -Motivo 'limite_sessao_assinatura' -Deferidos 0 -Plano 104) -eq '') 'D8d: sem deferido nao ha declaracao'
+
+Write-Host '== D9 DRENOMUDO1: desfecho do dreno no contrato do dia (arquivo real) =='
+# Ponta ruim medida em 14/09: o metrics do dia dizia dreno_exit=null (matinal e noturno) com
+# `POS-NOTURNO: dreno FALHOU (exit=5)` no log, porque o contrato era escrito antes do dreno rodar.
+$met = Join-Path $tmp 'metrics-dreno.json'
+'{"data":"20260914","rotina":"noturno","analisados":45,"dreno_exit":null}' | Set-Content -LiteralPath $met -Encoding UTF8
+$okSet = Set-VixMetricsDrenoExit -MetricsPath $met -ExitCode 5
+$depois = Get-Content -LiteralPath $met -Raw -Encoding UTF8 | ConvertFrom-Json
+Assert-True ($okSet -and ([int]$depois.dreno_exit -eq 5)) ('D9a: exit 5 entra no metrics do dia (dreno_exit=' + $depois.dreno_exit + ')')
+Assert-True (([int]$depois.analisados -eq 45) -and ($depois.rotina -eq 'noturno')) 'D9b: a correcao preserva os outros campos do contrato do dia'
+$null = Set-VixMetricsDrenoExit -MetricsPath $met -ExitCode 0
+Assert-True (([int](Get-Content -LiteralPath $met -Raw -Encoding UTF8 | ConvertFrom-Json).dreno_exit) -eq 0) 'D9c: dreno que drenou grava 0, nunca null'
+$antesTxt = Get-Content -LiteralPath $met -Raw -Encoding UTF8
+$rNull = Set-VixMetricsDrenoExit -MetricsPath $met -ExitCode $null
+$depoisTxt = Get-Content -LiteralPath $met -Raw -Encoding UTF8
+Assert-True ((-not $rNull) -and ($antesTxt -eq $depoisTxt)) 'D9d: execucao que nao tentou o dreno ($null) nao toca no arquivo'
+Assert-True (-not (Set-VixMetricsDrenoExit -MetricsPath (Join-Path $tmp 'nao-existe.json') -ExitCode 5)) 'D9e: arquivo ausente devolve false e nunca lanca'
+Assert-True (((Get-VixDrenoAlerta $null) -eq '') -and ((Get-VixDrenoAlerta 0) -eq '')) 'D9f: dreno nao tentado ou bem sucedido nao gera alerta'
+$al = Get-VixDrenoAlerta 5
+Assert-True (($al -match 'ALERTA_DRENO') -and ($al -match 'exit=5') -and ($al -match 'NAO foi drenada')) ('D9g: exit 5 levanta ALERTA_DRENO proprio do motor (' + $al + ')')
+
+Write-Host '== D10 DRENOMUDO1: ordem no fonte - o dreno roda ANTES do contrato do dia =='
+$motorTxt = Get-Content -LiteralPath $MotorPath -Raw -Encoding UTF8
+$posDreno = $motorTxt.IndexOf('drenando fila de verificacao')
+$posMet = $motorTxt.IndexOf('} | ConvertTo-Json -Depth 6 | Set-Content $MetricsFile')
+$posFim = $motorTxt.IndexOf("' duracao_sec=' + [Math]::Round")
+Assert-True (($posDreno -gt 0) -and ($posMet -gt 0) -and ($posFim -gt 0)) 'D10a: os tres marcos existem no fonte (bloco do dreno, metrics, linha FIM)'
+Assert-True (($posDreno -lt $posMet) -and ($posDreno -lt $posFim)) ('D10b: dreno ANTES do metrics e do FIM (dreno@' + $posDreno + ' metrics@' + $posMet + ' fim@' + $posFim + ')')
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host ''

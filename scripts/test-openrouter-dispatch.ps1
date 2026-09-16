@@ -67,9 +67,13 @@ function Get-RotinaBatchText([string]$Path, [string[]]$Names) {
     return ,($texto -join "`r`n")
 }
 
-$VerifPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_verificacao_async.ps1'
-$AgendaPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_agenda_semanal.ps1'
-$SentPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_sentinela.ps1'
+# Caminhos das rotinas derivados do PROPRIO checkout. Eram 'E:\Diretorio\Claude\...' (maquina
+# do operador): no runner do CI o ParseFile lancava antes do primeiro assert e a suite morria
+# com exit=1 sem imprimir nada (medido em 5/5 execucoes do gate, 12 a 14/09/2026).
+$ScriptsDir = $PSScriptRoot
+$VerifPath = Join-Path $ScriptsDir 'run_vixradar_verificacao_async.ps1'
+$AgendaPath = Join-Path $ScriptsDir 'run_vixradar_agenda_semanal.ps1'
+$SentPath = Join-Path $ScriptsDir 'run_vixradar_sentinela.ps1'
 $defsFile = Join-Path $LogDir 'rotina-batch-defs.ps1'
 
 $promptPath = Join-Path $LogDir 'prompt.txt'
@@ -123,7 +127,7 @@ Assert-True (@($resSf.Output)[0] -eq 'OPENROUTER_FALHA_COD=429') 'S-D5: falha do
 Assert-True (-not $resSf.TimedOut -and $resSf.Tokens -eq -1) 'S-D6: falha vira tokens -1, sem timeout fantasma (fail-closed)'
 
 Write-Host '== Dispatch openrouter: run_vixradar_varredura.ps1 (Invoke-ClaudeBatch + OR402-DEGRADA1) =='
-$VarreduraPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
+$VarreduraPath = Join-Path $ScriptsDir 'run_vixradar_varredura.ps1'
 # Deps da funcao real que este teste nao exercita no caminho de sucesso.
 function Update-VixLock { }
 function Get-VixOpenRouterEnv([string]$Name) { return $null }

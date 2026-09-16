@@ -281,12 +281,25 @@ function Submit-SkipEmissor($key, $emp) {
     return $resp
 }
 
-function Submit-CapDeferred($key, $emp) {
+function Submit-CapDeferred($key, $emp, [string]$Motivo = 'cap_efetivo') {
+    # COBERTURAAUTH1 (2026-09-15): a nota de cobertura passa a nomear a causa REAL do
+    # deferimento. Antes ela era fixa ("Cap efetivo <N> tokens") e ia para o estado de producao
+    # descrevendo cap de tokens numa execucao que morreu por limite de sessao da assinatura -
+    # medido em 14/09: 24 emissores DEFERIDO com motivo=cap_efetivo e apenas 378424/700000
+    # tokens gastos. `_token_cap_deferred` continua true de proposito: e a chave que o Worker le
+    # (DEFERREDREC1, worker.js:11938/11965) para devolver o emissor no plano seguinte como FULL
+    # motivo deferred_prioritario; renomear exigiria mexer no Worker, fora do escopo deste card.
+    $causa = if ($Motivo -eq 'cap_efetivo') {
+        'Cap efetivo ' + $TokenHardCap + ' tokens - ledger minimo.'
+    } else {
+        'Limite de sessao da assinatura no meio da execucao (NAO e cap de tokens: ' + $Motivo + ') - lote nao processado.'
+    }
     $resultado = [ordered]@{
         empresa = $emp.empresa; setor = $emp.setor; sem_eventos = $true
-        cobertura_nota = "Tier $($Perfil.tier). Cap efetivo $TokenHardCap tokens - ledger minimo. EWS=$($emp.ews_score). Priorizar amanha."
+        cobertura_nota = "Tier $($Perfil.tier). $causa EWS=$($emp.ews_score). Priorizar amanha."
         fontes_consultadas = @([ordered]@{ rodada = '0'; query = 'token_cap'; resultado = 'deferred' })
         eventos = @(); _tier = $Perfil.tier; _rotina_v2 = $true; _token_cap_deferred = $true
+        _defer_motivo = $Motivo
     }
     return Submit-Analise $key $emp.empresa $emp.setor $resultado 'claude-cap-deferred' $Perfil.tier @()
 }
@@ -614,6 +627,98 @@ function Get-VixDrenoTexto {
     $prefixo = 'POS-' + $Rotina.ToUpper() + ': dreno '
     if ($ExitCode -eq 0) { return ($prefixo + 'concluido (exit=0)') }
     return ($prefixo + 'FALHOU (exit=' + $ExitCode + ') - a fila de verificacao NAO foi drenada')
+}
+
+# COBERTURAAUTH1 (2026-09-15): motivo do deferimento. Duas causas MUITO diferentes saem pela
+# mesma porta do motor e ate hoje saiam com o mesmo rotulo, o que fazia um aborto por limite de
+# sessao da assinatura ser lido como planejamento de cap de tokens.
+#   cap_efetivo              -> planejado: o cap de tokens do dia (Get-VixCapEfetivo) foi
+#                               alcancado e a cauda de menor EWS vai para a proxima execucao.
+#   limite_sessao_assinatura -> NAO planejado: a assinatura estourou o limite de sessao no meio
+#                               da execucao, o reset nao cabe no teto de parede e nao ha chave
+#                               paga (Get-VixSessionLimitAcao, acao escalar_reset_longe). Os
+#                               lotes que faltavam NAO foram chamados.
+function Get-VixDeferidoMotivo([bool]$AbortoAuth) {
+    if ($AbortoAuth) { return 'limite_sessao_assinatura' }
+    return 'cap_efetivo'
+}
+
+# Linha DEFERIDOS do log. Mantem byte a byte o texto historico quando o motivo e cap_efetivo
+# (ha leitura humana e historico de log dependendo dele) e acrescenta os dois campos que faltavam
+# quando o corte veio da assinatura: o aviso de que o cap NAO foi a causa e o numero de lotes que
+# o aborto deixou sem chamada.
+function Get-VixDeferidosTexto {
+    param(
+        [Parameter(Mandatory)][string]$Motivo,
+        [Parameter(Mandatory)][int]$Ok,
+        [Parameter(Mandatory)][int]$Falha,
+        [Parameter(Mandatory)][int]$Total,
+        $TokensRealizados = 0,
+        [int]$CapEfetivo = 0,
+        [int]$LotesNaoProcessados = 0
+    )
+    $linha = 'DEFERIDOS: ok=' + $Ok + ' falha=' + $Falha + ' total=' + $Total + ' motivo=' + $Motivo + ' (' + $TokensRealizados + '/' + $CapEfetivo + ' realizados'
+    if ($Motivo -ne 'cap_efetivo') { $linha += ' - o cap NAO foi a causa' }
+    $linha += ')'
+    if ($LotesNaoProcessados -gt 0) { $linha += ' lotes_nao_processados=' + $LotesNaoProcessados }
+    return $linha
+}
+
+# COBERTURAAUTH1: declaracao observavel e acionavel de cobertura incompleta, com a DECISAO
+# registrada por escrito (regra do operador, 15/09/2026): quando a assinatura estoura o limite de
+# sessao, o reset nao cabe no teto de parede e nao ha chave paga, o motor DEFERE os emissores que
+# sobraram COM PRIORIDADE GARANTIDA para a proxima execucao - nunca espera o reset dentro da
+# mesma execucao (nao cabe no teto de parede) e nunca inventa cota. A garantia nao e promessa: o
+# submit de deferido grava _token_cap_deferred=true e o Worker (DEFERREDREC1) devolve o emissor
+# no plano seguinte como tier FULL motivo deferred_prioritario.
+# Devolve '' quando o corte e planejado (cap_efetivo): a cauda por cap ja e esperada e anunciar
+# isso como 'incompleto' fabricaria alarme diario.
+function Get-VixCoberturaIncompletaTexto {
+    param(
+        [Parameter(Mandatory)][string]$Rotina,
+        [Parameter(Mandatory)][string]$Motivo,
+        [int]$Deferidos = 0,
+        [int]$Plano = 0,
+        [int]$LotesNaoProcessados = 0,
+        [string]$DetalheAuth = ''
+    )
+    if ($Deferidos -le 0) { return '' }
+    if ($Motivo -eq 'cap_efetivo') { return '' }
+    $txt = 'COBERTURA_INCOMPLETA: ' + $Rotina + ' nao varreu ' + $Deferidos + '/' + $Plano + ' emissores - motivo=' + $Motivo
+    if ($DetalheAuth) { $txt += ' (' + $DetalheAuth + ')' }
+    if ($LotesNaoProcessados -gt 0) { $txt += ' - lotes_nao_processados=' + $LotesNaoProcessados }
+    $txt += '. DECISAO: deferidos com prioridade garantida na proxima execucao (nao esperar o reset dentro desta, nao inventar cota)' +
+        ' - o submit de deferido marca _token_cap_deferred=true e o Worker devolve o emissor como FULL/deferred_prioritario.' +
+        ' Nenhum lote fica sem desfecho: os ' + $Deferidos + ' constam no ledger como DEFERIDO.'
+    return $txt
+}
+
+# DRENOMUDO1-FIX (2026-09-15): o desfecho do dreno tem de existir no contrato do dia, nao so numa
+# linha de log. Duas falhas medidas em 14/09: (1) quando o metrics ganhou o campo dreno_exit ele
+# era serializado ANTES do dreno rodar, entao nascia null - os dois unicos metrics com o campo
+# (matinal e noturno de 14/09) estao null com `dreno FALHOU (exit=5)` no log do mesmo dia;
+# (2) o motor nao levantava alerta proprio nenhum pelo dreno - o e-mail de 14/09 veio da rotina
+# de verificacao (ALERTA_AUTH dela), o que so acontece quando a causa do dreno e credencial.
+# Esta funcao devolve o texto do alerta ('' quando nao ha o que alertar) e nunca lanca.
+function Get-VixDrenoAlerta($ExitCode) {
+    if ($null -eq $ExitCode) { return '' }
+    if ([int]$ExitCode -eq 0) { return '' }
+    return 'ALERTA_DRENO: dreno pos-rotina da fila de verificacao FALHOU (exit=' + [int]$ExitCode + ') - a fila NAO foi drenada por esta rotina; o proximo dreno agendado e a rede de seguranca'
+}
+
+# Escreve o desfecho do dreno no metrics do dia, depois de o dreno ter rodado. Nunca inventa
+# campo em execucao que nao tentou o dreno ($null nao escreve) e nunca lanca: falha de escrita
+# aqui nao pode derrubar o fechamento da rotina.
+function Set-VixMetricsDrenoExit([string]$MetricsPath, $ExitCode) {
+    if ($null -eq $ExitCode) { return $false }
+    if (-not $MetricsPath) { return $false }
+    if (-not (Test-Path -LiteralPath $MetricsPath)) { return $false }
+    try {
+        $j = Get-Content -LiteralPath $MetricsPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $j.dreno_exit = [int]$ExitCode
+        ($j | ConvertTo-Json -Depth 6) | Set-Content -LiteralPath $MetricsPath -Encoding UTF8 -ErrorAction Stop
+        return $true
+    } catch { return $false }
 }
 
 function Test-VixBuscaDegradada([string]$resultadoTxt) {
@@ -1030,6 +1135,15 @@ $stats = @{
     batches_run = 0; analisados = 0; submit_ok = 0; submit_fail = 0; buscas_total = 0; lotes_com_trabalho = 0
     input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0
     auth_escalou = 'nenhum'
+    # COBERTURAAUTH1 (2026-09-15): o deferimento tem DUAS causas e elas passam a ficar separadas.
+    # `deferred` segue sendo o TOTAL (ledger, FIM, ROTINA_RESUMO e metrics nao mudam de formato);
+    # `deferred_auth` conta so quem ficou de fora porque a assinatura estourou o limite de sessao
+    # no meio da execucao; `lotes_nao_processados` conta os lotes que o aborto deixou sem chamada.
+    deferred_auth = 0; lotes_nao_processados = 0
+    # DRENOMUDO1-FIX (2026-09-15): desfecho do dreno pos-rotina. $null = nao tentado (sem submit
+    # ou em dry-run), 0 = drenou, outro valor = falhou. Nunca 0 por omissao: "nao rodou" nao pode
+    # se ler como "rodou e deu certo".
+    dreno_exit = $null
     # FEEDRETRO1 FASE2 (2026-09-04): eventos_avanco_data soma o campo homonimo que o
     # Worker devolve por emissor (avanco TEMPORAL, nao contagem de fatos); descartados
     # conta submit com evento enviado mas n_eventos=0 (Worker aceitou o transporte e
@@ -1043,6 +1157,11 @@ $stats = @{
 }
 $lotesDetalhe = New-Object System.Collections.Generic.List[object]
 $pendingDeferred = New-Object System.Collections.Generic.List[object]
+# COBERTURAAUTH1 (2026-09-15): causa do deferimento DESTA execucao. Comeca no planejado
+# (cap_efetivo) e so muda para limite_sessao_assinatura se o aborto de auth acontecer no meio dos
+# lotes. Ver Get-VixDeferidoMotivo/Get-VixCoberturaIncompletaTexto.
+$motivoDeferido = Get-VixDeferidoMotivo $false
+$abortoAuthDetalhe = ''
 $contratoCobertura = @{}
 $exitCode = 0
 $batchSeq = 0
@@ -1192,22 +1311,30 @@ try {
                     if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
                     else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: escalou para chave paga no lote ' + $label + ' - assinatura recusada no meio da execucao; regerar token com claude setup-token') -RoutineKey $routineKey -Causa 'escalacao_chave_paga' -Severidade 'aviso' }
                 }
-        if ($result.AuthFailure) {
-                    $motivoAuth = Get-ClaudeAuthMotivo $result.Output
-                    $jIdx = Get-JobIndex $jobs $job
-                    Write-Log ('ERRO CRITICO: claude -p recusou o lote ' + $label + ' - ' + $motivoAuth + ' - abortando lotes restantes (' + ($jobs.Count - $jIdx - 1) + ' lote(s) NAO processado(s)).')
-                    Write-Log ($AlertaAuthTag +$Rotina + ' abortada no lote ' + $label + ' - ' + $motivoAuth)
-                    if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
-                    else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: ' + $motivoAuth + ' - lotes restantes abortados (' + $label + ')') -RoutineKey $routineKey -Causa 'falha_auth' -Severidade 'critico' }
-                    $exitCode = 7
-                    $stats.batch_fail++
-                    Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-                    # Lote atual (nada submetido) e todos os seguintes vao para DEFERIDO.
-                    if ($jIdx -ge 0) { for ($k = $jIdx; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
-                    break
-                }
+                        if ($result.AuthFailure) {
+                            $motivoAuth = Get-ClaudeAuthMotivo $result.Output
+                            $jIdx = Get-JobIndex $jobs $job
+                            Write-Log ('ERRO CRITICO: claude -p recusou o lote ' + $label + ' - ' + $motivoAuth + ' - abortando lotes restantes (' + ($jobs.Count - $jIdx - 1) + ' lote(s) NAO processado(s)).')
+                            Write-Log ($AlertaAuthTag +$Rotina + ' abortada no lote ' + $label + ' - ' + $motivoAuth)
+                            if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                            else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: ' + $motivoAuth + ' - lotes restantes abortados (' + $label + ')') -RoutineKey $routineKey -Causa 'falha_auth' -Severidade 'critico' }
+                            $exitCode = 7
+                            $stats.batch_fail++
+                            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                            # COBERTURAAUTH1 (2026-09-15): o motivo do deferimento passa a ser o REAL. Antes, os
+                            # emissores deste lote e dos seguintes saiam todos como motivo=cap_efetivo, com
+                            # cobertura_nota "Cap efetivo 700000 tokens" em producao, mesmo com o cap longe de ser
+                            # alcancado (14/09: 378424/700000 e 24 DEFERIDO por limite de sessao da assinatura).
+                            # lotes_nao_processados fica explicito: o numero que aparecia so no ERRO CRITICO.
+                            $motivoDeferido = Get-VixDeferidoMotivo $true
+                            $abortoAuthDetalhe = $motivoAuth
+                            $stats.lotes_nao_processados = ($jobs.Count - $jIdx - 1)
+                            # Lote atual (nada submetido) e todos os seguintes vao para DEFERIDO.
+                            if ($jIdx -ge 0) { for ($k = $jIdx; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
+                            break
+                        }
 
-        if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
+                        if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
 
         $bt = $result.Tokens
         if (-not $result.UsoMensuravel) {
@@ -1247,6 +1374,10 @@ try {
             if ($retryRes.AuthFailure) {
                 # RETRYDROP1: preserva o que o lote principal ja parseou, marca abort apos submit.
                 Write-Log ('ERRO CRITICO: claude -p recusou o retry do lote ' + $label + ' - ' + (Get-ClaudeAuthMotivo $retryRes.Output) + ' - ' + $missing.Count + ' faltantes recebem fallback; lotes restantes NAO serao processados.')
+                # COBERTURAAUTH1 (2026-09-15): mesma correcao do aborto direto - a causa real
+                # (limite de sessao da assinatura) substitui o rotulo fixo de cap de tokens.
+                $motivoDeferido = Get-VixDeferidoMotivo $true
+                $abortoAuthDetalhe = Get-ClaudeAuthMotivo $retryRes.Output
                 $exitCode = 7
                 $stats.batch_fail++
                 $abortAfterSubmit = $true
@@ -1399,6 +1530,7 @@ try {
             Write-Log 'ABORT: retry AuthFailure - resultados deste lote submetidos, lotes restantes NAO processados'
             # Lote atual ja submetido: so os seguintes vao para DEFERIDO.
             $jIdx = Get-JobIndex $jobs $job
+            if ($jIdx -ge 0) { $stats.lotes_nao_processados = ($jobs.Count - $jIdx - 1) }
             if ($jIdx -ge 0) { for ($k = $jIdx + 1; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
             break
         }
@@ -1406,13 +1538,19 @@ try {
 
     foreach ($emp in $pendingDeferred) {
         $subOk = $false
-        try { $r = Submit-CapDeferred $routineKey $emp; $subOk = ($r.ok -eq $true) } catch { $subOk = $false }
-        if ($subOk) { $stats.deferred++ } else { $stats.deferred_fail++ }
+        try { $r = Submit-CapDeferred $routineKey $emp $motivoDeferido; $subOk = ($r.ok -eq $true) } catch { $subOk = $false }
+        if ($subOk) {
+            $stats.deferred++
+            if ($motivoDeferido -ne 'cap_efetivo') { $stats.deferred_auth++ }
+        } else { $stats.deferred_fail++ }
         Write-Ledger $emp.empresa $emp.tier '-' 0 $subOk 'DEFERIDO'
         if (-not $DryRun) { Start-Sleep -Milliseconds 400 }
     }
     if ($pendingDeferred.Count -gt 0) {
-        Write-Log ('DEFERIDOS: ok=' + $stats.deferred + ' falha=' + $stats.deferred_fail + ' total=' + $pendingDeferred.Count + ' motivo=cap_efetivo (' + $stats.tokens_total + '/' + $TokenHardCap + ' realizados)')
+        Write-Log (Get-VixDeferidosTexto -Motivo $motivoDeferido -Ok $stats.deferred -Falha $stats.deferred_fail -Total $pendingDeferred.Count -TokensRealizados $stats.tokens_total -CapEfetivo $TokenHardCap -LotesNaoProcessados $stats.lotes_nao_processados)
+        # COBERTURAAUTH1: declaracao + DECISAO registrada. So sai quando o corte nao foi planejado.
+        $__declCobertura = Get-VixCoberturaIncompletaTexto -Rotina $Rotina -Motivo $motivoDeferido -Deferidos $stats.deferred -Plano $planoTotal -LotesNaoProcessados $stats.lotes_nao_processados -DetalheAuth $abortoAuthDetalhe
+        if ($__declCobertura) { Write-Log $__declCobertura }
     }
 
     $sw.Stop()
@@ -1420,6 +1558,43 @@ try {
     $ledgerResumo = Get-VixResumoLedger $LogFile
     $ledgerTotal = $ledgerResumo.total
     $tokensPublicados = if ($stats.tokens_mensuraveis) { $stats.tokens_total } else { 'NAO_MENSURAVEL' }
+
+    # Dreno da fila de verificacao logo apos a varredura (v4.9.150): evento CRITICO nao fica
+    # preso ate o proximo dreno agendado. Nunca em dry-run.
+    # DRENOMUDO1-FIX (2026-09-15): este bloco passou para ANTES do contrato do dia (metrics e
+    # linha FIM). Motivo medido: o desfecho do dreno existia SO como linha de log. Em 14/09 o log
+    # dizia `POS-NOTURNO: dreno FALHOU (exit=5)` + `ERRO DRENO: ...` e o metrics do dia, escrito
+    # antes de o dreno rodar, dizia dreno_exit=null (idem matinal do mesmo dia) - quem le o
+    # contrato do dia nao via fila nao drenada nenhuma. E o motor nao levantava alerta proprio: o
+    # e-mail de 14/09 veio da rotina de verificacao, o que so acontece quando a causa e credencial.
+    if ($stats.submit_ok -gt 0 -and -not $DryRun) {
+        $verifScript = Join-Path $ScriptsDir 'run_vixradar_verificacao_async.ps1'
+        if (Test-Path $verifScript) {
+            Write-Log ('POS-' + $Rotina.ToUpper() + ': drenando fila de verificacao...')
+            try {
+                $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$verifScript`"" -PassThru -Wait -NoNewWindow
+                # DRENOMUDO1 (2026-09-13): o codigo de saida do dreno passa a ser AVALIADO, nunca
+                # apenas citado. Antes, exit=5 (dreno sem credencial) saia no log como
+                # "dreno concluido (exit=5)", ou seja, falha com cara de sucesso.
+                $stats.dreno_exit = [int]$verifProc.ExitCode
+                Write-Log (Get-VixDrenoTexto -Rotina $Rotina -ExitCode $stats.dreno_exit)
+                if ($stats.dreno_exit -ne 0) {
+                    Write-Log ('ERRO DRENO: a fila de verificacao NAO foi drenada por esta rotina (exit=' + $stats.dreno_exit + '). Log do dreno: logs/routines/vixradar-verificacao-async_' + $DateTag + '.log')
+                }
+            } catch {
+                $stats.dreno_exit = -1
+                Write-Log ('POS-' + $Rotina.ToUpper() + ': ERRO ao executar dreno - ' + $_.Exception.Message)
+            }
+            # DRENOMUDO1-FIX: alerta pelo PROPRIO desfecho. Antes o unico alerta possivel era o da
+            # rotina de verificacao (ALERTA_AUTH dela), que so existe quando a causa e credencial;
+            # dreno que morre por crash (exit 1) ou que nem sobe (-1) nao alertava ninguem.
+            $__alertaDreno = Get-VixDrenoAlerta $stats.dreno_exit
+            if ($__alertaDreno) {
+                Write-Log $__alertaDreno
+                try { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo $__alertaDreno -RoutineKey $routineKey } catch { Write-Log ('AVISO: alerta de dreno nao enviado - ' + $_.Exception.Message) }
+            }
+        }
+    }
 
     # FIMFALSO1 (2026-09-12): analisados>0 com buscas=0 significa que nenhum lote
     # devolveu RESULTADO real; cada emissor recebeu stub fabricado e o ledger marcou
@@ -1468,6 +1643,17 @@ try {
             lotes = $stats.batches_run; batches = $stats.batches_run; lotes_com_trabalho = $stats.lotes_com_trabalho; lotes_detalhe = $lotesDetalhe.ToArray()
             criticos = $stats.criticos.ToArray(); duracao_sec = [Math]::Round($sw.Elapsed.TotalSeconds, 1)
             auth_modo_inicial = $authModoInicial; auth_escalou = $stats.auth_escalou
+            # COBERTURAAUTH1 (2026-09-15): o contrato do dia passa a dizer POR QUE os deferidos
+            # sairam de fora. `deferidos_cap` = cauda planejada pelo cap de tokens;
+            # `deferidos_auth` = emissores que o limite de sessao da assinatura deixou sem lote;
+            # `lotes_nao_processados` = lotes que o aborto deixou sem chamada (nada silencioso).
+            deferidos_cap = ($stats.deferred - $stats.deferred_auth)
+            deferidos_auth = $stats.deferred_auth
+            motivo_deferimento = $motivoDeferido
+            lotes_nao_processados = $stats.lotes_nao_processados
+            # DRENOMUDO1-FIX: desfecho do dreno pos-rotina. $null quando nao houve dreno (sem
+            # submit ou dry-run), 0 quando drenou, outro valor quando falhou.
+            dreno_exit = $stats.dreno_exit
         } | ConvertTo-Json -Depth 6 | Set-Content $MetricsFile -Encoding UTF8
     }
 
@@ -1488,6 +1674,14 @@ try {
         ' submit_ok=' + $stats.submit_ok + ' submit_fail=' + $stats.submit_fail + ' tokens=' + $tokensPublicados + ' cache_read=' + $(if ($stats.tokens_mensuraveis) { $stats.cache_read } else { 'NAO_MENSURAVEL' }) + ' cap_efetivo=' + $TokenHardCap + ' lotes=' + $stats.batches_run + ' lotes_com_trabalho=' + $stats.lotes_com_trabalho +
         ' buscas=' + $stats.buscas_total + ' silent_fail=' + $stats.silent_fail + ' degradados_402=' + $stats.degradados_402 + ' criticos=' + $stats.criticos.Count + ' auth_escalou=' + $stats.auth_escalou +
         ' eventos_avanco_data=' + $stats.eventos_avanco_data + ' chaves_novas=' + $stats.chaves_novas + ' descartados=' + $stats.descartados +
+        # COBERTURAAUTH1 / DRENOMUDO1-FIX (2026-09-15): campos NOVOS vao no fim, depois dos
+        # historicos. Toda leitura existente deste resumo e por regex de campo, entao acrescentar
+        # no fim nao muda leitor nenhum; inserir no meio mudaria quem le posicionalmente.
+        ' deferidos_cap=' + ($stats.deferred - $stats.deferred_auth) +
+        ' deferidos_auth=' + $stats.deferred_auth +
+        ' motivo_deferimento=' + $motivoDeferido +
+        ' lotes_nao_processados=' + $stats.lotes_nao_processados +
+        $(if ($null -eq $stats.dreno_exit) { '' } else { ' dreno_exit=' + $stats.dreno_exit }) +
         ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
@@ -1495,28 +1689,11 @@ try {
     $resultadoTxt = if ($DryRun) { 'DRYRUN' } elseif ($trabalhoZero) { 'INVALIDO' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
     Write-Log ('ROTINA_RESUMO|' + $Perfil.id + '|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
-    # Dreno da fila de verificacao logo apos a varredura (v4.9.150): evento CRITICO nao fica
-    # preso ate o proximo dreno agendado. Nunca em dry-run.
-    if ($stats.submit_ok -gt 0 -and -not $DryRun) {
-        $verifScript = Join-Path $ScriptsDir 'run_vixradar_verificacao_async.ps1'
-        if (Test-Path $verifScript) {
-            Write-Log ('POS-' + $Rotina.ToUpper() + ': drenando fila de verificacao...')
-            try {
-                $verifProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$verifScript`"" -PassThru -Wait -NoNewWindow
-                # DRENOMUDO1 (2026-09-13): o codigo de saida do dreno passa a ser AVALIADO, nunca
-                # apenas citado. Antes, exit=5 (dreno sem credencial) saia no log como
-                # "dreno concluido (exit=5)", ou seja, falha com cara de sucesso.
-                $stats.dreno_exit = [int]$verifProc.ExitCode
-                Write-Log (Get-VixDrenoTexto -Rotina $Rotina -ExitCode $stats.dreno_exit)
-                if ($stats.dreno_exit -ne 0) {
-                    Write-Log ('ERRO DRENO: a fila de verificacao NAO foi drenada por esta rotina (exit=' + $stats.dreno_exit + '). Log do dreno: logs/routines/vixradar-verificacao-async_' + $DateTag + '.log')
-                }
-            } catch {
-                $stats.dreno_exit = -1
-                Write-Log ('POS-' + $Rotina.ToUpper() + ': ERRO ao executar dreno - ' + $_.Exception.Message)
-            }
-        }
-    }
+    # DRENOMUDO1-FIX: o dreno roda ANTES deste ponto agora (ver bloco acima). Aqui o desfecho ja
+    # esta em $stats.dreno_exit e entra no metrics do dia pelo arquivo, inclusive no caso em que o
+    # metrics foi PRESERVADO (METRICSZERO1/FIMFALSO1): nesse caminho o arquivo do dia nao e
+    # reescrito, e o desfecho do dreno desta execucao se perderia.
+    if (-not $DryRun) { $null = Set-VixMetricsDrenoExit -MetricsPath $MetricsFile -ExitCode $stats.dreno_exit }
 
     if ($trabalhoZero) { $exitCode = 9 }
     if (-not $DryRun -and ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0)) { if ($exitCode -eq 0) { $exitCode = 6 } }

@@ -52,7 +52,7 @@ export const EMISSOR_CNPJ = {
   "Comerc Energia": "25.369.840/0001-57",
   "Light": "03.378.521/0001-75",              // LIGHT S.A. - EM RECUPERACAO JUDICIAL, nao Light Energia/Servicos
 
-  "Usina Pampa Sul": "04.739.720/0001-24",    // USINA TERMELETRICA PAMPA SUL S.A., usina a carvao (104o emissor)
+  "Usina Pampa Sul": "04.739.720/0001-24",    // USINA TERMELÉTRICA PAMPA SUL S.A., usina a carvao (104o emissor)
 
   // --- Transportes e Logistica ---
   "CCR": "02.846.056/0001-97",                // MOTIVA INFRAESTRUTURA DE MOBILIDADE, renomeada
@@ -238,7 +238,12 @@ export const SNAPSHOT_CVM = {
   "42.500.384/0001-51": "SERENA ENERGIA S.A.",  // Omega Energia
   "25.369.840/0001-57": "COMERC ENERGIA S.A.",  // Comerc Energia
   "03.378.521/0001-75": "LIGHT S.A. - EM RECUPERAÇÃO JUDICIAL",  // Light
-  "04.739.720/0001-24": "USINA TERMELETRICA PAMPA SUL S.A.",  // Usina Pampa Sul
+  // O acento de TERMELÉTRICA foi conferido byte a byte contra o indice do ITR
+  // (0xC9 em latin1) e contra a copia do cadastro da CVM versionada em
+  // data/cvm/cad_cia_aberta.csv. A comparacao aqui e literal de proposito: e ela
+  // que enxerga renomeacao societaria (Eletrobras -> AXIA), entao acento faltando
+  // no snapshot e divergencia, nao ruido.
+  "04.739.720/0001-24": "USINA TERMELÉTRICA PAMPA SUL S.A.",  // Usina Pampa Sul
   "02.846.056/0001-97": "MOTIVA INFRAESTRUTURA DE MOBILIDADE S.A.",  // CCR
   "02.387.241/0001-60": "RUMO S.A.",  // Rumo
   "07.415.333/0001-20": "SIMPAR S.A.",  // Simpar
