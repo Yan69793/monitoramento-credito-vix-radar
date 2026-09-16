@@ -9652,9 +9652,68 @@ function _carimbarAnaliseReal(alvo, payload, agora) {
   alvo._ultimo_tier = t;
   alvo._ultima_origem = payload._origem_rotina || (payload._matinal === true ? "matinal" : "noturno");
   alvo._ultima_analise_at = agora;
-  return true;
-}
-__name(_carimbarAnaliseReal, "_carimbarAnaliseReal");
+    return true;
+  }
+  __name(_carimbarAnaliseReal, "_carimbarAnaliseReal");
+  // CVMSTITCH1/C1 (2026-09-15): o ramo `sem_eventos` de persistirResultadoCompartilhadoInterno
+  // gravava APENAS campos de agendamento (_last_scanned_at, timestamp, _ultima_checagem_vazia_*,
+  // _token_cap_deferred, _versao) e descartava o `payload._cobertura_cvm` / `cvm_documentos` /
+  // `_exclusoes_auditadas` que `costurarCvmEmEventos` ja tinha produzido antes da persistencia.
+  // Resultado: emissor com documento CVM na janela e busca considerada VALIDA pelo proprio
+  // contrato (RESOLVIDO) terminava o ciclo sem nenhum registro de cobertura no estado — caso
+  // real medido na Multiplan (3 docs na janela, DEFERIDO, sem registro). O caminho com eventos
+  // gravava o payload inteiro (worker.js:9898-9911); so o caminho sem evento o descartava.
+  //
+  // ESTA funcao preserva o registro de cobertura no proprio alvo que o ramo ja grava, sem
+  // tocar em _last_scanned_at / _status / _motivo / _versao (a logica de FIN1-REV em
+  // worker.js:9754-9762 e BUSCADEGRADADA1 em 9724-9733 continua intacta) e sem reintroduzir
+  // o risco que motivou o caminho atual: o payload sem_eventos tem 0 eventos, portanto nada
+  // de "clobber de eventos reais por analise vazia" — a cobertura e puramente aditiva sobre
+  // um registro que, no pior caso, ja carrega os eventos antigos (ex.: Multiplan, 1 evento de
+  // 2026-08-20, que segue intacto). Contra-prova do desenho: worker.js:18750-18764 ja grava
+  // `_cobertura_cvm` com meta "sem_docs_cvm_na_janela" quando nao ha doc na janela; o que
+  // faltava era gravar tambem quando HAVIA doc e a analise saiu sem evento.
+  function _preservarCoberturaCvmSemEventos(alvo, payload) {
+      if (!alvo || !payload) return;
+      // SALVAGUARDA CONTRA REGRESSAO (2026-09-15): este payload veio de uma analise
+      // sem_eventos, portanto TEM 0 eventos — nada pode clobber eventos reais no estado
+      // (o risco FIN1-REV / BUSCADEGRADA1 era exatamente uma analise vazia reescrevendo
+      // um registro que carregava eventos; aqui o payload nao traz eventos, então os
+      // eventos de `alvo` seguem intactos). O que pode variar e o proprio registro de
+      // cobertura: uma passada com evento pode ter costurado uma janela MAIOR (mais docs
+      // auditados) do que esta passada sem evento. Sobrescrever nesse caso encolheria a
+      // cobertura auditada de um emissor que ja tem evento — regiao dos 65 emissores com
+      // _cobertura_cvm (cobertura_total=1, bloqueio_publicacao=false) que nao pode regredir.
+      // Regra: o registro de cobertura so e substituido quando o novo cobre MAIS docs na
+      // janela (ou e inexistente no alvo). Empatagem mantém o mais antigo (nao perde info).
+      if (payload._cobertura_cvm) {
+        const novo = payload._cobertura_cvm;
+        const velho = alvo._cobertura_cvm;
+        if (!velho || (novo.total_docs_janela || 0) > (velho.total_docs_janela || 0)) {
+          alvo._cobertura_cvm = novo;
+        }
+      }
+      // cvm_documentos / _exclusoes_auditadas sao listas de docs ja processados pela costura:
+      // manter o que ja havia (nao apagar a auditoria de uma passada anterior) e completar
+      // com o que esta passada trouxe, sem duplicar por link.
+      if (Array.isArray(payload.cvm_documentos) && payload.cvm_documentos.length) {
+        if (!Array.isArray(alvo.cvm_documentos) || !alvo.cvm_documentos.length) {
+          alvo.cvm_documentos = payload.cvm_documentos;
+        } else {
+          const _vistos = new Set(alvo.cvm_documentos.map(function(d) { return d && d.link; }));
+          payload.cvm_documentos.forEach(function(d) { if (d && d.link && !_vistos.has(d.link)) alvo.cvm_documentos.push(d); });
+        }
+      }
+      if (Array.isArray(payload._exclusoes_auditadas) && payload._exclusoes_auditadas.length) {
+        if (!Array.isArray(alvo._exclusoes_auditadas) || !alvo._exclusoes_auditadas.length) {
+          alvo._exclusoes_auditadas = payload._exclusoes_auditadas;
+        } else {
+          const _vistos2 = new Set(alvo._exclusoes_auditadas.map(function(d) { return d && (d.link || d.protocolo); }));
+          payload._exclusoes_auditadas.forEach(function(d) { if (d && (d.link || d.protocolo) && !_vistos2.has(d.link || d.protocolo)) alvo._exclusoes_auditadas.push(d); });
+        }
+      }
+    }
+  __name(_preservarCoberturaCvmSemEventos, "_preservarCoberturaCvmSemEventos");
 async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, payload) {
   if (!env2222.RADAR_KV || !empresa) return null;
   const estado = await carregarEstadoCompartilhado(env2222, semana);
@@ -9743,11 +9802,12 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       // NAO atualiza _last_scanned_at/_ultima_analise_at/_ultima_checagem_vazia_*: varredura
       // degradada nao vale como frescor nem como analise valida.
       estado.results[empresa] = _estDeg;
-      estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-      await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-      return _metricas;
-    }
-    if (!_coberturaCompleta) {
+            estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+            _preservarCoberturaCvmSemEventos(_estDeg, payload);
+            await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+            return _metricas;
+          }
+          if (!_coberturaCompleta) {
       console.log(`[cobertura][INCONCLUSIVO] emp=${empresa ? empresa.slice(0, 25) : "?"} rodadas=${_cobertura}/9 sem_eventos nao salvo como ausencia comprovada`);
       if (anterior && !anterior.sem_eventos && Array.isArray(anterior.eventos) && anterior.eventos.length > 0) {
         console.log(`[cobertura][PRESERVADO] emp=${empresa ? empresa.slice(0, 25) : "?"} tipo=eventos_validos rodadas=${_cobertura}/9`);
@@ -9775,12 +9835,13 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
         else delete anterior._token_cap_deferred;
         _carimbarAnaliseReal(anterior, payload, agora);
-        estado.results[empresa] = anterior;
-        estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-        await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-        return _metricas;
-      }
-      if (anterior && anterior.sem_eventos && anterior._status !== "INCONCLUSIVO") {
+                estado.results[empresa] = anterior;
+                _preservarCoberturaCvmSemEventos(anterior, payload);
+                estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+                await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+                return _metricas;
+              }
+              if (anterior && anterior.sem_eventos && anterior._status !== "INCONCLUSIVO") {
         console.log(`[cobertura][PRESERVADO] emp=${empresa ? empresa.slice(0, 25) : "?"} tipo=sem_eventos_comprovado rodadas=${_cobertura}/9`);
         // FIX(FIN1-REV, v4.9.163): idem — o emissor foi varrido, o relogio registra isso.
         anterior._last_scanned_at = agora;
@@ -9798,12 +9859,13 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
         if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
         else delete anterior._token_cap_deferred;
         _carimbarAnaliseReal(anterior, payload, agora);
-        estado.results[empresa] = anterior;
-        estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-        await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-        return _metricas;
-      }
-      const estadoInc = anterior || {};
+                estado.results[empresa] = anterior;
+                _preservarCoberturaCvmSemEventos(anterior, payload);
+                estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+                await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+                return _metricas;
+              }
+              const estadoInc = anterior || {};
       // FIX(FIN1-REV, v4.9.163): idem — varredura rasa e varredura. O _status abaixo carrega a
       // qualidade e o planner (:8353) usa ele, nao o relogio, para negar SKIP e reprocessar.
       estadoInc._last_scanned_at = agora;
@@ -9833,12 +9895,13 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
       if (payload._token_cap_deferred === true) anterior._token_cap_deferred = true;
       else delete anterior._token_cap_deferred;
       _carimbarAnaliseReal(anterior, payload, agora);
-      estado.results[empresa] = anterior;
-      estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
-      await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-      return _metricas;
-    }
-    const estadoAtual = anterior || {};
+            estado.results[empresa] = anterior;
+            _preservarCoberturaCvmSemEventos(anterior, payload);
+            estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+            await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
+            return _metricas;
+          }
+          const estadoAtual = anterior || {};
     estadoAtual._last_scanned_at = agora;
     estadoAtual.timestamp = _tsVarredura;
     estadoAtual._ultima_checagem_vazia_fim = _fimJanela;
@@ -9851,11 +9914,12 @@ async function persistirResultadoCompartilhadoInterno(env2222, semana, empresa, 
     estadoAtual._status = "OK";
     delete estadoAtual._motivo;
     estadoAtual._versao = (estadoAtual._versao || 0) + 1;
-    estado.results[empresa] = estadoAtual;
-    estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
+        estado.results[empresa] = estadoAtual;
+        _preservarCoberturaCvmSemEventos(estadoAtual, payload);
+        estado.updated_at = (/* @__PURE__ */ new Date()).toISOString();
         await env2222.RADAR_KV.put(chaveEstadoCompartilhado(semana), JSON.stringify(estado), { expirationTtl: 60 * 60 * 24 * 35 });
-    return _metricas;
-  }
+        return _metricas;
+      }
   if (anterior) {
     if (!payload.sem_eventos && Array.isArray(anterior.eventos) && anterior.eventos.length > 0 && (!Array.isArray(payload.eventos) || payload.eventos.length === 0)) {
       payload.eventos = anterior.eventos;
