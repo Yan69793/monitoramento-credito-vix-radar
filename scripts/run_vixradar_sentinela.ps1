@@ -701,12 +701,12 @@ foreach ($job in $jobs) {
         continue
     }
     if ($res.AuthFailure) {
-        Write-Log 'ERRO: falha de autenticacao do claude no lote. Interrompendo, backlog preservado.'
-        $null = Send-VixRoutineAlert -Rotina 'sentinela' -Motivo 'claude CLI nao autenticado ou limite atingido - emissores com gatilho nao foram analisados' -RoutineKey $routineKey
-        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
-        Write-Log ('FIM: sentinela abortada. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' motivo=auth_falhou')
-        exit 7
-    }
+            Write-Log 'ERRO: falha de autenticacao do claude no lote. Interrompendo, backlog preservado.'
+            $null = Send-VixRoutineAlert -Rotina 'sentinela' -Motivo 'claude CLI nao autenticado ou limite atingido - emissores com gatilho nao foram analisados' -RoutineKey $routineKey -Causa 'falha_auth' -Severidade 'critico'
+            Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+            Write-Log ('FIM: sentinela abortada. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' motivo=auth_falhou')
+            exit 7
+        }
     $parsed = Get-ParsedResultadosSentinela $res.Output
     if ($parsed.Buscas -ge 0) { $buscasTotal += $parsed.Buscas }
     if ($parsed.Map.Count -eq 0) {

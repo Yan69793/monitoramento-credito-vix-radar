@@ -94,7 +94,10 @@ Assert ($mont -match 'AVISO: DEGRADADO_402') 'monitor-tasks loga AVISO: DEGRADAD
 Assert ($mont -match "code\s*=\s*9007") 'monitor-tasks marca codigo 9007 (distinto de 9004/9005)'
 Assert ($mont -match '\$degradacoes \+= \$entry') 'entrada entra em $degradacoes'
 Assert ($mont -match '\$warnings \+= \$entry') 'entrada entra em $warnings'
-$bloco = [regex]::Match($mont, 'OR402-DEGRADA1 \(2026-09-11\): degradacao por saldo \(HTTP 402\) e AVISO OPERACIONAL[\s\S]{0,2200}?\n\}').Value
+# Fim do bloco ancorado na propria linha de fechamento do foreach, nunca em `\n}` (coluna 0):
+# com contexto de 2200 caracteres, qualquer bloco novo inserido depois estourava a janela e o
+# assert virava "bloco nao localizado" sem que nada tivesse quebrado no monitor.
+$bloco = [regex]::Match($mont, 'OR402-DEGRADA1 \(2026-09-11\): degradacao por saldo \(HTTP 402\) e AVISO OPERACIONAL[\s\S]{0,4000}?\$warnings \+= \$entry\r?\n    \}').Value
 Assert ($bloco.Length -gt 100) 'bloco de deteccao localizado no monitor-tasks.ps1'
 Assert (-not ($bloco -match '\$erros \+=')) 'ponta ruim: o bloco NAO escreve em $erros (nao vira falha nem muda o exit code)'
 Assert ($mont -match 'Degradados por 402 \(saldo, lote recuperado - NAO e falha\)') 'resumo do monitor publica a contagem separada'

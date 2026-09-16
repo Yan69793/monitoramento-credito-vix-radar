@@ -969,6 +969,27 @@ if ($Escopo -ne 'Site') {
         $degradacoes += $entry
         $warnings += $entry
     }
+
+    # DRENOMUDO1 (2026-09-13): o dreno pos-varredura pode falhar sem que a rotina que o
+    # chamou falhe - medido em 13/09, `POS-MATINAL: dreno concluido (exit=5)` com a fila de
+    # verificacao NAO drenada. O exit code da rotina continua descrevendo o trabalho dela
+    # (analisou e submeteu) e o retry julga por ledger, nao por exit code, entao o dreno
+    # falho entra como AVISO OPERACIONAL, igual a degradacao por saldo, e NAO vira $erros.
+    # Codigo 9008, distinto de 9004 (auth) e 9007 (saldo).
+    foreach ($dn in @(Get-VixDrenoFalha -RotinasLogDir $RotinasLogDir -Dias $diasAuth)) {
+        Write-Log ('AVISO: DRENO_FALHOU em ' + $dn.rotina + ' ' + $dn.dia + ': exit=' + $dn.exit + ' (log=' + $dn.linhas_log + ' metrics=' + $dn.exit_metrics + ') - a fila de verificacao NAO foi drenada por esta rotina')
+        $entry = [ordered]@{
+            task    = ($dn.rotina + ' (dreno)')
+            code    = 9008
+            codeHex = '0x2330'
+            lastRun = $dn.dia
+            ageDays = 0
+            script  = $dn.fonte
+            reason  = ('DRENO_FALHOU: dreno da fila de verificacao saiu exit=' + $dn.exit + ' (rotina concluiu o proprio trabalho, fila NAO drenada)' + $(if ($dn.exemplo) { ' | ' + $dn.exemplo } else { '' }))
+        }
+        $degradacoes += $entry
+        $warnings += $entry
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -1140,6 +1161,9 @@ Write-Log "OK: $ok"
 Write-Log "Erros: $($erros.Count)"
 Write-Log "Warnings: $($warnings.Count)"
 Write-Log "Degradados por 402 (saldo, lote recuperado - NAO e falha): $($degradacoes.Count)"
+# DRENOMUDO1: contador proprio, para o resumo do monitor nao somar dreno falho com saldo 402.
+$nDrenoFalha = @($degradacoes | Where-Object { [long]$_.code -eq 9008 }).Count
+Write-Log "Drenos de verificacao falhos (fila NAO drenada - NAO e falha da rotina): $nDrenoFalha"
 Write-Log "Deliberados (Disabled): $($deliberate.Count)"
 Write-Log "Skipped (falso-positivo conhecido): $skipped"
 Write-Log "Rotinas por evidencia de entrega (nao sao tasks do Scheduler, entram nas contagens acima): $($RotinasVigiadas.Count)"
@@ -1217,8 +1241,15 @@ $nNovos = @($sel.novos).Count; $nEsc = @($sel.escalados).Count; $nPers = @($sel.
 # reenvia), entao credito baixo insistente nao vira enxurrada de e-mail.
 $selDeg = Select-ErrosParaEmail -Erros $degradacoes -EstadoAnterior $estadoAnterior -HojeIso $hojeIso
 $nDeg = @($selDeg.novos).Count + @($selDeg.escalados).Count
+# DRENOMUDO1: os avisos de saldo 402 (9007) e de dreno falho (9008) dividem $degradacoes. Cada
+# um tem contador e rotulo proprios, senao o assunto do e-mail chamaria dreno falho de "saldo".
+$degraSel = @(@($selDeg.novos) + @($selDeg.escalados) | Where-Object { [long]$_.code -eq 9007 })
+$drenoDegSel = @(@($selDeg.novos) + @($selDeg.escalados) | Where-Object { [long]$_.code -eq 9008 })
+$n402 = $degraSel.Count
+$nDreno = $drenoDegSel.Count
 $assuntoEmail = 'VIX Radar [' + $Escopo + '] - ' + $nNovos + ' nova(s), ' + $nEsc + ' escalada(s), ' + $nPers + ' persistente(s)'
-if ($nDeg -gt 0) { $assuntoEmail += ', ' + $nDeg + ' degradacao(oes) por saldo 402' }
+if ($n402 -gt 0) { $assuntoEmail += ', ' + $n402 + ' degradacao(oes) por saldo 402' }
+if ($nDreno -gt 0) { $assuntoEmail += ', ' + $nDreno + ' dreno(s) de verificacao falho(s)' }
 $deveEnviar = ($nNovos -gt 0 -or $nEsc -gt 0 -or $nDeg -gt 0 -or $ForcarEmail)
 if ($DryRun) {
     Write-Log ('DRYRUN: e-mail ' + $(if ($SendEmail -and $deveEnviar) { 'SERIA enviado' } else { 'NAO seria enviado' }) + ' | assunto=' + $assuntoEmail)
@@ -1241,16 +1272,24 @@ if ($SendEmail -and $deveEnviar -and -not $DryRun) {
         foreach ($e in @($sel.escalados)) { $tabAtiva += (& $linhaTr $e) }
         $tabPers = ''
         foreach ($e in @($sel.persistentes)) { $tabPers += (& $linhaTr $e) }
-        $degraSel = @($selDeg.novos) + @($selDeg.escalados)
+        $degraSelHtml = @($degraSel)
         $tabDeg = ''
-        foreach ($e in $degraSel) { $tabDeg += (& $linhaTr $e) }
+        foreach ($e in $degraSelHtml) { $tabDeg += (& $linhaTr $e) }
+        $tabDreno = ''
+        foreach ($e in @($drenoDegSel)) { $tabDreno += (& $linhaTr $e) }
         $estiloTab = '<table border="1" cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-family:sans-serif;font-size:13px">'
-        $tituloEmail = if ($nNovos + $nEsc -gt 0) { 'falha em task agendada' } else { 'degradacao por saldo no provedor (nao e falha de entrega)' }
+        # DRENOMUDO1: tres causas distintas, tres titulos. O dreno falho nao e falha da rotina
+        # (ela analisou e submeteu) nem degradacao de provedor, e o e-mail nao pode dizer que e.
+        $tituloEmail = if ($nNovos + $nEsc -gt 0) { 'falha em task agendada' }
+                       elseif ($n402 -gt 0) { 'degradacao por saldo no provedor (nao e falha de entrega)' }
+                       elseif ($nDreno -gt 0) { 'dreno da fila de verificacao nao executado (rotina concluiu o proprio trabalho)' }
+                       else { 'sem novidade em task agendada' }
         $html = '<h2>VIX Radar [' + $Escopo + '] - ' + $tituloEmail + '</h2>' +
                 '<p>' + $nNovos + ' nova(s) e ' + $nEsc + ' escalada(s) na maquina ' + $env:COMPUTERNAME + ' (motor: ' + $MotorAtual + '). ' + $nPers + ' persistente(s) ja reportada(s) antes.</p>' +
                 $(if ($tabAtiva) { '<h3>Novos e escalados</h3>' + $estiloTab + $cab + $tabAtiva + '</table>' } else { '<p>Sem erro novo nesta rodada.</p>' }) +
                 $(if ($tabPers) { '<h3>Persistentes (ja reportados, sem mudanca)</h3>' + $estiloTab + $cab + $tabPers + '</table>' } else { '' }) +
                 $(if ($tabDeg) { '<h3>Degradacao por saldo (HTTP 402): lote recuperado pelo modelo de fallback, entrega intacta</h3>' + $estiloTab + $cab + $tabDeg + '</table>' } else { '' }) +
+                $(if ($tabDreno) { '<h3>Dreno da fila de verificacao nao executado: a rotina concluiu o proprio trabalho, a fila ficou para o proximo dreno</h3>' + $estiloTab + $cab + $tabDreno + '</table>' } else { '' }) +
                 $(if ($custoLinhas.Count -gt 0) { '<p style="font-family:monospace;font-size:12px">' + ($custoLinhas -join '<br>') + '</p>' } else { '' }) +
                 '<p>Warnings nesta rodada: ' + $warnings.Count + '. Relatorio completo em ' + $ErrFile + '</p>'
 

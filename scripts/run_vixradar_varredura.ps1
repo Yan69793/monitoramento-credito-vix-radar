@@ -1186,26 +1186,26 @@ try {
         $stats.degradados_402 += [int]$result.Degradados402
         $stats.batches_run++
         if ($result.Escalou) {
-            $stats.auth_escalou = 'api'
-            Write-Log ($AlertaAuthTag +$Rotina + ' escalou para chave paga no lote ' + $label + ' (credencial de assinatura recusada no meio da execucao). Lotes seguintes custam dolar.')
-            # DRYRUN-CRASH1: dry-run nunca dispara notificar_rotina (02/09 02:45 mandou e-mail real de um teste).
-            if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
-            else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: escalou para chave paga no lote ' + $label + ' - assinatura recusada no meio da execucao; regerar token com claude setup-token') -RoutineKey $routineKey }
-        }
+                    $stats.auth_escalou = 'api'
+                    Write-Log ($AlertaAuthTag +$Rotina + ' escalou para chave paga no lote ' + $label + ' (credencial de assinatura recusada no meio da execucao). Lotes seguintes custam dolar.')
+                    # DRYRUN-CRASH1: dry-run nunca dispara notificar_rotina (02/09 02:45 mandou e-mail real de um teste).
+                    if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                    else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: escalou para chave paga no lote ' + $label + ' - assinatura recusada no meio da execucao; regerar token com claude setup-token') -RoutineKey $routineKey -Causa 'escalacao_chave_paga' -Severidade 'aviso' }
+                }
         if ($result.AuthFailure) {
-            $motivoAuth = Get-ClaudeAuthMotivo $result.Output
-            $jIdx = Get-JobIndex $jobs $job
-            Write-Log ('ERRO CRITICO: claude -p recusou o lote ' + $label + ' - ' + $motivoAuth + ' - abortando lotes restantes (' + ($jobs.Count - $jIdx - 1) + ' lote(s) NAO processado(s)).')
-            Write-Log ($AlertaAuthTag +$Rotina + ' abortada no lote ' + $label + ' - ' + $motivoAuth)
-            if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
-            else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: ' + $motivoAuth + ' - lotes restantes abortados (' + $label + ')') -RoutineKey $routineKey }
-            $exitCode = 7
-            $stats.batch_fail++
-            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-            # Lote atual (nada submetido) e todos os seguintes vao para DEFERIDO.
-            if ($jIdx -ge 0) { for ($k = $jIdx; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
-            break
-        }
+                    $motivoAuth = Get-ClaudeAuthMotivo $result.Output
+                    $jIdx = Get-JobIndex $jobs $job
+                    Write-Log ('ERRO CRITICO: claude -p recusou o lote ' + $label + ' - ' + $motivoAuth + ' - abortando lotes restantes (' + ($jobs.Count - $jIdx - 1) + ' lote(s) NAO processado(s)).')
+                    Write-Log ($AlertaAuthTag +$Rotina + ' abortada no lote ' + $label + ' - ' + $motivoAuth)
+                    if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                    else { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: ' + $motivoAuth + ' - lotes restantes abortados (' + $label + ')') -RoutineKey $routineKey -Causa 'falha_auth' -Severidade 'critico' }
+                    $exitCode = 7
+                    $stats.batch_fail++
+                    Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                    # Lote atual (nada submetido) e todos os seguintes vao para DEFERIDO.
+                    if ($jIdx -ge 0) { for ($k = $jIdx; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
+                    break
+                }
 
         if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
 

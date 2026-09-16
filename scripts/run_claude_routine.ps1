@@ -185,7 +185,7 @@ $MargemTaskMin = 220
 if ($decorridoMin -gt $MargemTaskMin) {
     Write-Log ('ERRO PRE-FLIGHT: task rodando ha ' + [Math]::Round($decorridoMin, 1) + ' min, perto do limite PT4H. Abortando antes de comecar.')
     if ($routineKeyAlerta -and $temClaudeAuth -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-        $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: task com ' + [Math]::Round($decorridoMin, 1) + ' min de execucao, perto do limite PT4H - abortado antes de comecar') -RoutineKey $routineKeyAlerta
+        $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: task com ' + [Math]::Round($decorridoMin, 1) + ' min de execucao, perto do limite PT4H - abortado antes de comecar') -RoutineKey $routineKeyAlerta -Causa 'preflight_timeout' -Severidade 'critico'
     }
     exit 8
 }
@@ -257,17 +257,17 @@ if (-not $SkipPreFlight) {
             $streamArgs = Get-VixRunnerClaudeArgs -Cfg $cfg -McpConfigFile $McpConfig -OutputFormat 'stream-json'
             $headlessResult = Test-VixHeadlessTools -ClaudeArgsStreamJson $streamArgs -ProjectRoot $cfg.ProjectRoot
             if (-not $headlessResult.Ok) {
-                $motivoFalha = if ($headlessResult.Erro) { $headlessResult.Erro }
-                    elseif ($headlessResult.ToolsFaltando.Count -gt 0) { 'ferramentas indisponiveis: ' + ($headlessResult.ToolsFaltando -join ', ') }
-                    elseif ($headlessResult.PermissionDenials.Count -gt 0) { 'ferramentas negadas: ' + (($headlessResult.PermissionDenials | ConvertTo-Json -Compress)) }
-                    else { 'prova incompleta (PS=' + $headlessResult.ProvaPS + ' Leitura=' + $headlessResult.ProvaLeitura + ' Escrita=' + $headlessResult.ProvaEscrita + ' Busca=' + $headlessResult.ProvaBusca + ')' }
-                Write-Log ('ERRO PRE-FLIGHT: ferramentas headless indisponiveis ou negadas - ' + $motivoFalha)
-                Write-Log 'ABORTANDO: sonda headless reprovada (risco de rodar a skill sem shell/subagente/busca)'
-                if ($routineKeyAlerta -and $temClaudeAuth -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-                    $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: ferramentas headless indisponiveis ou negadas - ' + $motivoFalha) -RoutineKey $routineKeyAlerta
-                }
-                exit 6
-            }
+                            $motivoFalha = if ($headlessResult.Erro) { $headlessResult.Erro }
+                                elseif ($headlessResult.ToolsFaltando.Count -gt 0) { 'ferramentas indisponiveis: ' + ($headlessResult.ToolsFaltando -join ', ') }
+                                elseif ($headlessResult.PermissionDenials.Count -gt 0) { 'ferramentas negadas: ' + (($headlessResult.PermissionDenials | ConvertTo-Json -Compress)) }
+                                else { 'prova incompleta (PS=' + $headlessResult.ProvaPS + ' Leitura=' + $headlessResult.ProvaLeitura + ' Escrita=' + $headlessResult.ProvaEscrita + ' Busca=' + $headlessResult.ProvaBusca + ')' }
+                            Write-Log ('ERRO PRE-FLIGHT: ferramentas headless indisponiveis ou negadas - ' + $motivoFalha)
+                            Write-Log 'ABORTANDO: sonda headless reprovada (risco de rodar a skill sem shell/subagente/busca)'
+                            if ($routineKeyAlerta -and $temClaudeAuth -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
+                                $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: ferramentas headless indisponiveis ou negadas - ' + $motivoFalha) -RoutineKey $routineKeyAlerta -Causa 'preflight_ferramentas' -Severidade 'critico'
+                            }
+                            exit 6
+                        }
             Write-Log 'PRE-FLIGHT: ferramentas headless confirmadas (shell, leitura, escrita, subagente, busca)'
         } catch {
             Write-Log "AVISO: sonda de ferramentas headless falhou (nao abortando): $_"
@@ -321,7 +321,7 @@ $decorridoAgoraMin = ((Get-Date) - $TaskInicio).TotalMinutes
 if ($decorridoAgoraMin -gt $MargemTaskMin) {
     Write-Log ('ERRO PRE-FLIGHT: apos o pre-flight ja se passaram ' + [Math]::Round($decorridoAgoraMin, 1) + ' min (teto ' + $MargemTaskMin + '). Abortando antes do primeiro lote para nao ser morto no meio pelo PT4H da task.')
     if ($routineKeyAlerta -and $temClaudeAuth -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-        $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: ' + [Math]::Round($decorridoAgoraMin, 1) + ' min gastos antes do primeiro lote (espera de 429 + sondas), sem margem para o PT4H da task') -RoutineKey $routineKeyAlerta
+        $null = Send-VixRoutineAlert -Rotina $RoutineId -Motivo ('ERRO PRE-FLIGHT: ' + [Math]::Round($decorridoAgoraMin, 1) + ' min gastos antes do primeiro lote (espera de 429 + sondas), sem margem para o PT4H da task') -RoutineKey $routineKeyAlerta -Causa 'preflight_timeout' -Severidade 'critico'
     }
     exit 8
 }

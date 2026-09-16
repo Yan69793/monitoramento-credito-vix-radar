@@ -404,13 +404,13 @@ for ($i = 0; $i -lt $emissores.Count; $i += $chunkSizeEfetivo) {
         }
 
         if ($result.AuthFailure) {
-            Write-Log ('ERRO CRITICO: claude CLI nao autenticado no lote ' + $label + ' - abortando lotes restantes. ' + ($chunk.Count) + ' emissor(es) deste lote e os restantes ficam stale.')
-            $null = Send-VixRoutineAlert -Rotina 'agenda-semanal' -Motivo 'claude CLI nao autenticado ou limite semanal atingido - calendario nao atualizado' -RoutineKey $routineKey
-            $stats.pulados += ($emissores.Count - $i)
-            $exitCode = 7
-            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-            break
-        }
+                    Write-Log ('ERRO CRITICO: claude CLI nao autenticado no lote ' + $label + ' - abortando lotes restantes. ' + ($chunk.Count) + ' emissor(es) deste lote e os restantes ficam stale.')
+                    $null = Send-VixRoutineAlert -Rotina 'agenda-semanal' -Motivo 'claude CLI nao autenticado ou limite semanal atingido - calendario nao atualizado' -RoutineKey $routineKey -Causa 'falha_auth' -Severidade 'critico'
+                    $stats.pulados += ($emissores.Count - $i)
+                    $exitCode = 7
+                    Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                    break
+                }
 
         $itens = Get-CalendarioArray $result.Output
         if (-not $itens -or $itens.Count -eq 0) {

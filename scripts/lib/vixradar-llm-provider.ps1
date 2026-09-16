@@ -147,3 +147,183 @@ function Stop-VixLlmBloqueado {
     [Environment]::SetEnvironmentVariable('CLAUDE_CODE_OAUTH_TOKEN', '', 'Process')
     exit $VixLlmBloqueadoExit
 }
+
+# MVA-FAILOVER1: classificacao provider-agnostic de falha de lote, sem rede e sem segredo.
+#
+# Contrato (provado por scripts/test-mva-failover.ps1):
+#   Get-VixFailoverClasse -> 'quota-exhausted' | 'transient' | 'parse-content' | 'duro'
+#   1. quota-exhausted (session-limit, quota, credito esgotado) = failover IMEDIATO,
+#      zero retry no mesmo recurso. Corpo manda sobre o status: 429 com texto de
+#      limite de sessao e quota, nao transient.
+#   2. transient (timeout, 5xx retryable, erro de transporte status 0, 408/429 sem
+#      texto de quota) = retry bounded, no maximo 3 tentativas no mesmo recurso,
+#      com backoff. Get-VixMvaBackoffSegundos devolve 0/5/20 e trava em 3.
+#   3. parse-content (2xx vazio/malformado, 400/422, erro de parse) = NUNCA failover
+#      automatico. Vira falha dura registrada com motivo, sem trocar de modelo.
+#   4. duro (401/403/404 e demais 4xx sem texto de quota) = sem retry, sem failover.
+#
+# PowerShell 5.1, ASCII puro, $ErrorActionPreference Continue.
+$VixFailoverMaxTransientTentativas = 3
+$VixFailoverQuotaRegex = '(?i)(session.?limit|hit your.*limit|weekly limit|quota|quota.?exhausted|exhausted|insufficient|credit balance|credit.*too low|out of credit|billing.*limit|rate.?limit.*exceed.*quota|quota.*exceed)'
+$VixFailoverParseRegex = '(?i)(empty.?result|sem choices|malformad|parse|invalid.?json|unexpected token|empty response|sem conteudo|no content)'
+
+function Get-VixFailoverClasse {
+    param(
+        [int]$Status = 0,
+        [string]$Corpo = '',
+        [bool]$RespostaOk = $false
+    )
+    $texto = '' + $Corpo
+    if ($texto -match $VixFailoverQuotaRegex) { return 'quota-exhausted' }
+    if ($Status -eq 402) {
+        if ($texto -match '(?i)(credit|quota|saldo|afford|max_tokens)') { return 'quota-exhausted' }
+        return 'duro'
+    }
+    if ($RespostaOk) {
+        if ($texto -match $VixFailoverParseRegex) { return 'parse-content' }
+        if ([string]::IsNullOrWhiteSpace($texto)) { return 'parse-content' }
+        return 'duro'
+    }
+    if ($Status -eq 0) { return 'transient' }
+    if ($Status -eq 408 -or $Status -eq 429) { return 'transient' }
+    if ($Status -ge 500 -and $Status -le 599) { return 'transient' }
+    if ($Status -eq 400 -or $Status -eq 422) { return 'parse-content' }
+    return 'duro'
+}
+
+function Get-VixMvaBackoffSegundos {
+    # Backoff bounded do MVA: tentativa 1 = 0s, 2 = 5s, 3 = 20s. Acima de 3, trava
+    # no ultimo (o chamador nao deve passar de 3 tentativas no mesmo recurso).
+    param([int]$Tentativa = 1)
+    if ($Tentativa -le 1) { return 0 }
+    if ($Tentativa -eq 2) { return 5 }
+    return 20
+}
+
+function Get-VixFailoverDecisao {
+    # Decisao unica de roteamento pos-falha. TemFallbackElegivel = fallback JA
+    # configurado e autorizado (nunca inventado aqui). PaygTetoEstourado = teto
+    # diario atingido ou ausente (fail-closed). Retorna 'failover' | 'retry' |
+    # 'fail-closed'. Parse-content e duro NUNCA viram 'failover'.
+    param(
+        [Parameter(Mandatory)][string]$Classe,
+        [int]$TentativasMesmoRecurso = 1,
+        [bool]$TemFallbackElegivel = $false,
+        [bool]$PaygTetoEstourado = $true
+    )
+    if ($Classe -eq 'parse-content') { return 'fail-closed' }
+    if ($Classe -eq 'duro') { return 'fail-closed' }
+    if ($PaygTetoEstourado) { return 'fail-closed' }
+    if ($Classe -eq 'quota-exhausted') {
+        if ($TemFallbackElegivel) { return 'failover' }
+        return 'fail-closed'
+    }
+    if ($Classe -eq 'transient') {
+        if ($TentativasMesmoRecurso -lt $VixFailoverMaxTransientTentativas) { return 'retry' }
+        if ($TemFallbackElegivel) { return 'failover' }
+        return 'fail-closed'
+    }
+    return 'fail-closed'
+}
+
+# MVA-PRIORIDADE1: MATINAL sobre NOTURNA sobre SENTINELA, provider-agnostic.
+# Numeros fixos: matinal=1, noturna=2, sentinela=3, resto=99. A rotina de menor
+# numero preempta a de maior; empate nunca preempta.
+function Get-VixRotinaPrioridade {
+    param([string]$Rotina = '')
+    $r = ('' + $Rotina).Trim().ToLowerInvariant()
+    if ($r -eq 'matinal' -or $r -like 'vixradar-matinal*') { return 1 }
+    if ($r -eq 'noturna' -or $r -eq 'noturno' -or $r -like 'vixradar-noturno*') { return 2 }
+    if ($r -eq 'sentinela' -or $r -like 'vixradar-sentinela*') { return 3 }
+    return 99
+}
+
+function Test-VixRotinaPreemptiva {
+    param([string]$A = '', [string]$B = '')
+    return ((Get-VixRotinaPrioridade $A) -lt (Get-VixRotinaPrioridade $B))
+}
+
+# MVA-PAYG1: teto diario PAYG env-only, fail-closed, sem default permissivo.
+# VIXRADAR_TETO_PAYG_DIARIO vive so em ambiente (Process/User/Machine), nunca em
+# arquivo versionado e nunca no wrangler.toml. Ausente ou invalido = estourado
+# (bloqueia continuidade PAYG em vez de liberar sem teto).
+function Get-VixPaygTetoDiario {
+    $v = [Environment]::GetEnvironmentVariable('VIXRADAR_TETO_PAYG_DIARIO', 'Process')
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_TETO_PAYG_DIARIO', 'User') }
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_TETO_PAYG_DIARIO', 'Machine') }
+    $n = [int64]0
+    if ($v -and [int64]::TryParse(('' + $v).Trim(), [ref]$n) -and $n -gt 0) { return $n }
+    return [int64]0
+}
+
+function Test-VixPaygTetoEstourado {
+    param([int64]$GastoDia = 0)
+    $teto = Get-VixPaygTetoDiario
+    if ($teto -le 0) { return $true }
+    return ($GastoDia -ge $teto)
+}
+
+# MVA-SAFETY1 (gate de continuidade): continuidade so com fallback JA configurado
+# e autorizado E teto PAYG integro. Sem fallback elegivel, FAIL CLOSED: itens ficam
+# no backlog, motivo operacional exato registrado, zero retry artificial. Nunca
+# criar credencial, habilitar billing, furar o teto ou fabricar disponibilidade.
+function Test-VixContinuidadePermitida {
+    param(
+        [bool]$TemFallbackElegivel = $false,
+        [bool]$PaygTetoEstourado = $true
+    )
+    if (-not $TemFallbackElegivel) { return $false }
+    if ($PaygTetoEstourado) { return $false }
+    return $true
+}
+
+function Get-VixBacklogMotivo {
+    param(
+        [bool]$TemFallbackElegivel = $false,
+        [bool]$PaygTetoEstourado = $false,
+        [string]$Classe = ''
+    )
+    if ($PaygTetoEstourado) { return 'teto_payg_diario' }
+    if (-not $TemFallbackElegivel) { return 'sem_fallback_elegivel' }
+    if ($Classe -eq 'quota-exhausted') { return 'quota_exhausted_no_fallback' }
+    if ($Classe -eq 'parse-content') { return 'parse_sem_failover' }
+    return 'falha_sem_continuidade'
+}
+
+# MVA-SENTINELA1: auto-pause da sentinela abaixo de 20% SOMENTE com metrica de
+# quota verificavel. Sem percentual verificavel, vale o sinal de exaustao ja
+# confirmado (quota-exhausted classificado); sem nenhum dos dois, sem auto-pause.
+# QuotaPercentRestante = $null quando nao ha metrica verificavel.
+function Test-VixSentinelaPausada {
+    param(
+        $QuotaPercentRestante = $null,
+        [bool]$ExaustaoVerificada = $false
+    )
+    $r = [pscustomobject]@{ pausada = $false; motivo = ''; limitacao = '' }
+    if ($null -ne $QuotaPercentRestante) {
+        $p = 0.0
+        try { $p = [double]$QuotaPercentRestante } catch { $p = 0.0 }
+        if ($p -lt 20.0) {
+            $r.pausada = $true
+            $r.motivo = 'quota_percentual_abaixo_20'
+            return $r
+        }
+        return $r
+    }
+    if ($ExaustaoVerificada) {
+        $r.pausada = $true
+        $r.motivo = 'exaustao_verificada_sem_percentual'
+        $r.limitacao = 'percentual de quota indisponivel no provedor; pausa por sinal de exaustao confirmado (session-limit/quota), nao por numero'
+        return $r
+    }
+    $r.limitacao = 'sem metrica de quota verificavel e sem exaustao confirmada; sentinela segue sem auto-pause'
+    return $r
+}
+
+# MVA-BACKLOG1: backlog so fecha com submit confirmado. SubmitConfirmado = prova
+# de aceite (submit_ok gravado/relido), nunca presenca de tentativa, FIM: solto
+# ou exit 0 do lote.
+function Test-VixBacklogPodeFechar {
+    param([bool]$SubmitConfirmado = $false)
+    return ([bool]$SubmitConfirmado)
+}

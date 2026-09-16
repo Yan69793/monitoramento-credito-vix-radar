@@ -24,7 +24,7 @@
       "git cat-file *": "allow",
       "git diff-tree *": "allow",
       "git merge-base *": "allow",
-      "git worktree *": "allow",
+      "git worktree list *": "allow",
       "git stash list *": "allow",
       "Test-Path *": "allow",
       "Get-Content *": "allow",
@@ -33,9 +33,15 @@
       "Select-Object *": "allow",
       "ForEach-Object *": "allow",
       "Measure-Object *": "allow",
+      "Get-Command *": "allow",
+      "Write-Host *": "allow",
+      "Write-Output *": "allow",
+      "Write-Log *": "allow",
       "node *": "allow",
       "npx *": "allow",
       "pwsh *": "allow",
+      "curl *": "allow",
+      "curl.exe *": "allow",
       "echo *": "allow",
       "ls *": "allow",
       "head *": "allow",
@@ -54,8 +60,27 @@
       "wt.split *": "allow",
       "const *": "allow",
       "console.log *": "allow",
-      " *": "allow",
-      ".claude/skills/ *": "allow"
-    }
+      ".claude/skills/ *": "allow",
+      "*": "ask"
+    },
+    "read": "allow",
+    "glob": "allow",
+    "grep": "allow",
+    "list": "allow",
+    "edit": "deny",
+    "task": "ask",
+    "webfetch": "allow",
+    "websearch": "allow",
+    "semantic_search": "allow",
+    "lsp": "allow",
+    "skill": "allow",
+    "kilo_memory_recall": "allow",
+    "kilo_memory_save": "deny",
+    "external_directory": {
+      "E:\\Diretorio\\Claude\\FREQUENTE\\ATLAS\\*": "allow"
+    },
+    "todowrite": "allow",
+    "todoread": "allow",
+    "question": "allow"
   }
 }

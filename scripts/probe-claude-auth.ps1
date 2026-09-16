@@ -154,7 +154,7 @@ try {
             if ($SemAlerta) { Write-Log 'ALERTA NAO enviado (-SemAlerta)' }
             else {
                 $rk = Get-RoutineKey
-                $ok = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: sonda G4 escalou para chave paga (token longevo ausente/recusado e OAuth isolado) - regerar token com claude setup-token e gravar em VIXRADAR_ANTHROPIC_AUTH_TOKEN') -RoutineKey $rk
+                $ok = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: sonda G4 escalou para chave paga (token longevo ausente/recusado e OAuth isolado) - regerar token com claude setup-token e gravar em VIXRADAR_ANTHROPIC_AUTH_TOKEN') -RoutineKey $rk -Causa 'escalacao_chave_paga' -Severidade 'aviso'
                 Write-Log ('NOTIFICAR_ROTINA retorno=' + $ok)
             }
         }

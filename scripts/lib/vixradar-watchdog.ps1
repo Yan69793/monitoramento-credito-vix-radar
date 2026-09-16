@@ -374,3 +374,89 @@ function Get-VixDegradado402([string]$RotinasLogDir, [datetime[]]$Dias) {
     return $achados
 }
 
+function Get-VixDrenoFalha([string]$RotinasLogDir, [datetime[]]$Dias) {
+    # DRENOMUDO1 (2026-09-13), implementada junto do fix no mesmo dia.
+    #
+    # A varredura chama o dreno da fila de verificacao no fim e, a partir de 13/09, registra
+    # o desfecho com honestidade (exit 0 = concluido, qualquer outro = FALHOU). A rotina
+    # continua saindo com o codigo de saida do PROPRIO trabalho (analisou e submeteu), entao
+    # dreno falho nao vira $erros aqui: e aviso operacional, igual a degradacao por saldo.
+    # Existe porque a fila de verificacao parada so aparece em outro lugar, o
+    # `verificador_ok` do health, que leva horas de fila envelhecida para virar vermelho.
+    #
+    # Contrato (provado por scripts/test-monitor-drenofalha.ps1):
+    #   - le a linha do log E o campo do metrics, e considera falha se QUALQUER um dos dois
+    #     apontar falha (o log prova o texto que o operador le, o metrics prova a intencao
+    #     do motor mesmo se a linha do log for reescrita);
+    #   - `linhas_log` e `exit_metrics` vao separados no achado, para o alerta nunca somar
+    #     duas leituras da MESMA falha;
+    #   - `fonte` aponta o metrics quando ele existe, senao o log;
+    #   - `exemplo` carrega a linha ERRO DRENO real;
+    #   - diretorio inexistente devolve 0 achado, sem excecao.
+    #
+    # ASCII puro, PS 5.1, sem escrita de estado.
+    $achados = @()
+    foreach ($d in @($Dias)) {
+        $tag = $d.ToString('yyyyMMdd')
+        $diaIso = $d.ToString('yyyy-MM-dd')
+        foreach ($rot in @('vixradar-matinal', 'vixradar-noturno')) {
+            $log = Join-Path $RotinasLogDir ($rot + '_' + $tag + '.log')
+            $curto = ($rot -replace '^vixradar-', '')
+            $met = Join-Path $RotinasLogDir ($curto + '_metrics_' + $tag + '.json')
+            if (-not (Test-Path $met)) {
+                $metLongo = Join-Path $RotinasLogDir ($rot + '_metrics_' + $tag + '.json')
+                if (Test-Path $metLongo) { $met = $metLongo }
+            }
+            $temLog = Test-Path $log
+            $temMet = Test-Path $met
+            if (-not $temLog -and -not $temMet) { continue }
+
+            $linhasLog = 0
+            $exitLog = 0
+            $exemplo = ''
+            if ($temLog) {
+                foreach ($l in @(Get-Content $log -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+                    $txt = '' + $l
+                    if ($txt -match 'dreno FALHOU \(exit=(-?\d+)\)') {
+                        $linhasLog++
+                        if ($exitLog -eq 0) { $exitLog = [int]$Matches[1] }
+                    }
+                    if ($txt -match 'ERRO DRENO' -and -not $exemplo) {
+                        $exemplo = $txt
+                        if ($exemplo.Length -gt 220) { $exemplo = $exemplo.Substring(0, 220) }
+                    }
+                }
+            }
+
+            $exitMet = 0
+            if ($temMet) {
+                try {
+                    $j = Get-Content $met -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json
+                    if ($null -ne $j.dreno_exit) { $exitMet = [int]$j.dreno_exit }
+                } catch { $exitMet = 0 }
+            }
+
+            # exit negativo (dreno que nem subiu, Start-Process lancou) tambem e falha.
+            $falhou = ($linhasLog -gt 0) -or ($exitMet -ne 0)
+            if (-not $falhou) { continue }
+            $exitEfetivo = $exitLog
+            if ($exitEfetivo -eq 0) { $exitEfetivo = $exitMet }
+
+            $fonte = $log
+            if ($temMet) { $fonte = $met }
+
+            $achados += @{
+                rotina       = $rot
+                dia          = $diaIso
+                exit         = $exitEfetivo
+                linhas_log   = $linhasLog
+                exit_metrics = $exitMet
+                exemplo      = $exemplo
+                fonte        = $fonte
+                log          = $log
+            }
+        }
+    }
+    return $achados
+}
+

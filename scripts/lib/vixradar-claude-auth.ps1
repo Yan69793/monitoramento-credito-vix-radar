@@ -427,35 +427,50 @@ function Send-VixRoutineAlert {
     # o Monitor-Tasks nao as enxerga. Quando a sonda de auth detecta limite semanal ou
     # credencial invalida, a propria rotina avisa o admin via action=notificar_rotina
     # do Worker no momento do abort. Falha aqui nao derruba a rotina, so registra aviso.
+    #
+    # NOTIFYDEDUP2 (2026-09-16): o Worker deduplica por rotina+dia (chave
+    # rotina_alerta:<rotina>:<data> onde <rotina> = body.rotina). Para que falhas de
+    # causas diferentes no mesmo dia nao sejam suprimidas, passamos Causa+Severidade
+    # e construimos rotina composta: <Rotina>:<Causa>:<Severidade>. Padrao ja provado
+    # em watch-vixradar-health.ps1:191 (watch-health-<rotina>).
     param(
         [string]$Rotina,
         [string]$Motivo,
         [string]$RoutineKey,
-        [string]$WorkerUrl = 'https://api.vixradar.com/'
+        [string]$WorkerUrl = 'https://api.vixradar.com/',
+        [string]$Causa,
+        [string]$Severidade
     )
     if (-not $RoutineKey) {
         Write-VixAuthLog 'AVISO: alerta de rotina nao enviado (rotina sem routine_key).'
         return $false
     }
+    # NOTIFYDEDUP2: se Causa e Severidade fornecidos, compoe nome de rotina distinto
+    # para que o dedup do Worker (por rotina+dia) separe causas diferentes no mesmo dia.
+    $rotinaEfetiva = $Rotina
+    if ($Causa -and $Severidade) {
+        $rotinaEfetiva = "${Rotina}:${Causa}:${Severidade}"
+    }
     try {
         $body = @{
             action = 'notificar_rotina'
             routine_key = $RoutineKey
-            rotina = $Rotina
+            rotina = $rotinaEfetiva
             motivo = $Motivo
         } | ConvertTo-Json -Compress
         $r = Invoke-RestMethod -Uri $WorkerUrl -Method Post -ContentType 'application/json' -Body $body -TimeoutSec 30
         if ($r -and $r.ok -eq $true) {
-            # NOTIFYDEDUP-LOG1 (02/09): o Worker deduplica 1/dia por rotina e responde
-            # {ok:true, enviado:false, dedup:true}; a lib dizia "admin notificado" mesmo assim.
-            # Enviado de verdade e so enviado:true. Sem o campo (Worker antigo), assume enviado.
-            if ($r.PSObject.Properties['enviado'] -and $r.enviado -ne $true) {
-                Write-VixAuthLog ('ALERTA: NAO enviado, dedup do Worker (rotina=' + $Rotina + ' ja avisada hoje).')
-                return $false
-            }
-            Write-VixAuthLog ('ALERTA: admin notificado (notificar_rotina, rotina=' + $Rotina + ').')
-            return $true
-        }
+                    # NOTIFYDEDUP-LOG1 (02/09): o Worker deduplica 1/dia por rotina e responde
+                    # {ok:true, enviado:false, dedup:true}; a lib dizia "admin notificado" mesmo assim.
+                    # Enviado de verdade e so enviado:true. Sem o campo (Worker antigo), assume enviado.
+                    # NOTIFYDEDUP2: log usa rotinaEfetiva para refletir a chave real do dedup.
+                    if ($r.PSObject.Properties['enviado'] -and $r.enviado -ne $true) {
+                        Write-VixAuthLog ('ALERTA: NAO enviado, dedup do Worker (rotina=' + $rotinaEfetiva + ' ja avisada hoje).')
+                        return $false
+                    }
+                    Write-VixAuthLog ('ALERTA: admin notificado (notificar_rotina, rotina=' + $rotinaEfetiva + ').')
+                    return $true
+                }
         Write-VixAuthLog ('AVISO: notificar_rotina respondeu ok:false. ' + ($r.erro | Out-String))
         return $false
     } catch {

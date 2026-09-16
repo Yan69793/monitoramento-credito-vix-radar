@@ -24,7 +24,11 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 }
 
 $MotorPath = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina'))) { Invoke-Expression $_def }
+
+# Stub de log: as funcoes do motor escrevem por Write-Log, que os testes trocam pela coleta.
+$script:LinhasLog = @()
+function Write-Log([string]$m) { $script:LinhasLog += $m }
 
 Write-Host '== D1 lock: PID vivo bloqueia, morto ou reutilizado e orfao =='
 $tmp = Join-Path $env:TEMP ('vix-d1-' + $PID)
@@ -104,6 +108,29 @@ Assert-True (($d5ok -eq 'POS-MATINAL: dreno concluido (exit=0)')) ('D5a: exit 0 
 Assert-True (($d5falha -match 'FALHOU') -and ($d5falha -match 'exit=5') -and ($d5falha -match 'NAO foi drenada')) ('D5b: exit 5 diz FALHOU com o codigo (' + $d5falha + ')')
 Assert-True (-not ($d5falha -match 'concluido')) 'D5c: exit 5 nao carrega a palavra concluido (ponta ruim do comportamento antigo)'
 Assert-True ((Get-VixDrenoTexto -Rotina 'noturno' -ExitCode 1) -eq 'POS-NOTURNO: dreno FALHOU (exit=1) - a fila de verificacao NAO foi drenada') 'D5d: rotulo acompanha a rotina e o codigo'
+
+Write-Host '== D6 dreno pos-rotina: processo filho de verdade, exit code lido =='
+# DRENOMUDO1: teste de texto nao prova Start-Process nem o exit code do filho. Aqui sobe um
+# script de apoio que sai com codigo conhecido e confere o que a funcao devolve e o que ela
+# escreve no log. Sem rede, sem token, sem tocar a fila real.
+$stubOk = Join-Path $tmp 'stub-dreno-ok.ps1'
+$stubFalha = Join-Path $tmp 'stub-dreno-falha.ps1'
+Set-Content -LiteralPath $stubOk -Value 'exit 0' -Encoding ASCII
+Set-Content -LiteralPath $stubFalha -Value 'exit 5' -Encoding ASCII
+$script:LinhasLog = @()
+$exitOk = Invoke-VixDrenoPosRotina -ScriptPath $stubOk -Rotina 'matinal'
+Assert-True ($exitOk -eq 0) ('D6a: filho com exit 0 devolve 0 (recebido=' + $exitOk + ')')
+Assert-True (($script:LinhasLog -join "`n") -match 'POS-MATINAL: dreno concluido \(exit=0\)') 'D6a2: log do exit 0 diz concluido'
+Assert-True (-not (($script:LinhasLog -join "`n") -match 'ERRO DRENO')) 'D6a3: exit 0 nao escreve ERRO DRENO'
+$script:LinhasLog = @()
+$exitFalha = Invoke-VixDrenoPosRotina -ScriptPath $stubFalha -Rotina 'matinal'
+Assert-True ($exitFalha -eq 5) ('D6b: filho com exit 5 devolve 5 (recebido=' + $exitFalha + ')')
+Assert-True (($script:LinhasLog -join "`n") -match 'POS-MATINAL: dreno FALHOU \(exit=5\)') 'D6b2: log do exit 5 diz FALHOU'
+Assert-True (($script:LinhasLog -join "`n") -match 'ERRO DRENO') 'D6b3: exit 5 escreve a linha ERRO DRENO que o vigia le'
+Assert-True (-not (($script:LinhasLog -join "`n") -match 'concluido')) 'D6b4: exit 5 nao escreve a palavra concluido'
+$script:LinhasLog = @()
+$exitAusente = Invoke-VixDrenoPosRotina -ScriptPath (Join-Path $tmp 'nao-existe.ps1') -Rotina 'matinal'
+Assert-True ($exitAusente -ne 0) ('D6c: script ausente nao devolve sucesso (recebido=' + $exitAusente + ')')
 
 Remove-Item $tmp -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host ''

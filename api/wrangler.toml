@@ -5,6 +5,9 @@
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
 # v4.9.254.js = v4.9.253 + CVMSTITCH1: o caminho da ROTINA (receber_analise) passa a
+# v4.9.255.js = v4.9.254 + FIN1-REV/BUSCADEGRADA1: funcao _preservarCoberturaCvmSemEventos preserva _cobertura_cvm (so substitui se novo cobre MAIS docs na janela) e faz merge aditivo de cvm_documentos/_exclusoes_auditadas por link/protocolo unico. Impede regredir os 65 emissores com cobertura_total=1/bloqueio_publicacao=false quando analise sem_eventos traz janela menor. Corrige Multiplan FULL com 3 docs + sem_eventos=true.
+#   Testes: validacao manual + suite vitest completa.
+#   Rollback: main = "v4.9.254.js".
 #   costurar o documento oficial da CVM em evento, como os outros 4 caminhos que
 #   persistem payload ja faziam. Era o unico sem `costurarCvmEmEventos` desde que a
 #   varredura de IA saiu do cron do Worker para as rotinas locais

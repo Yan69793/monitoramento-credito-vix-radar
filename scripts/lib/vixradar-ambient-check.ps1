@@ -314,34 +314,34 @@ function Invoke-VixWebSearchPreflight {
         if ($resetAt) { $resetTxt = $resetAt.ToString('HH:mm') }
 
         if ($Fallback429 -eq 'ChavePaga') {
-            $chave = $null
-            if (Get-Command Get-VixAnthropicApiKey -ErrorAction SilentlyContinue) { $chave = Get-VixAnthropicApiKey }
-            if ($chave) {
-                # Chave paga vive so no ambiente deste PROCESSO (Set-VixClaudeAuthEnv
-                # abaixo), nunca em escopo User - o proprio Set-VixClaudeAuthEnv ja
-                # apaga ANTHROPIC_API_KEY do registro User antes de aplicar o modo.
-                Write-Log ('ALERTA_AUTH: 429 session limit da assinatura (reset ' + $resetTxt + '), escalando para chave paga.')
-                $script:VixAuthModo = 'api'
-                $script:VixAuthChave = $chave
-                if (Get-Command Set-VixClaudeAuthEnv -ErrorAction SilentlyContinue) { Set-VixClaudeAuthEnv }
-                if ($RoutineKey -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-                    $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: 429 session limit da assinatura (reset ' + $resetTxt + '), escalado para chave paga') -RoutineKey $RoutineKey
+                    $chave = $null
+                    if (Get-Command Get-VixAnthropicApiKey -ErrorAction SilentlyContinue) { $chave = Get-VixAnthropicApiKey }
+                    if ($chave) {
+                        # Chave paga vive so no ambiente deste PROCESSO (Set-VixClaudeAuthEnv
+                        # abaixo), nunca em escopo User - o proprio Set-VixClaudeAuthEnv ja
+                        # apaga ANTHROPIC_API_KEY do registro User antes de aplicar o modo.
+                        Write-Log ('ALERTA_AUTH: 429 session limit da assinatura (reset ' + $resetTxt + '), escalando para chave paga.')
+                        $script:VixAuthModo = 'api'
+                        $script:VixAuthChave = $chave
+                        if (Get-Command Set-VixClaudeAuthEnv -ErrorAction SilentlyContinue) { Set-VixClaudeAuthEnv }
+                        if ($RoutineKey -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
+                            $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ALERTA_AUTH: 429 session limit da assinatura (reset ' + $resetTxt + '), escalado para chave paga') -RoutineKey $RoutineKey -Causa 'limite_sessao' -Severidade 'aviso'
+                        }
+                        return [PSCustomObject]@{ Ok = $true; Motivo = 'session_limit'; Escalou = $true; ExitCode = 0; EsperouMin = $esperouMin }
+                    }
+                    Write-Log ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') sem contingencia (nenhuma chave paga configurada).')
+                    if ($RoutineKey -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
+                        $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') sem chave paga configurada') -RoutineKey $RoutineKey -Causa 'limite_sessao_sem_contingencia' -Severidade 'critico'
+                    }
+                    return [PSCustomObject]@{ Ok = $false; Motivo = 'session_limit_sem_contingencia'; Escalou = $false; ExitCode = 5; EsperouMin = $esperouMin }
                 }
-                return [PSCustomObject]@{ Ok = $true; Motivo = 'session_limit'; Escalou = $true; ExitCode = 0; EsperouMin = $esperouMin }
-            }
-            Write-Log ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') sem contingencia (nenhuma chave paga configurada).')
-            if ($RoutineKey -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-                $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') sem chave paga configurada') -RoutineKey $RoutineKey
-            }
-            return [PSCustomObject]@{ Ok = $false; Motivo = 'session_limit_sem_contingencia'; Escalou = $false; ExitCode = 5; EsperouMin = $esperouMin }
-        }
 
-        Write-Log ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') - fallback desativado (-Fallback429 Nenhum).')
-        if ($RoutineKey -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
-            $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') - fallback desativado') -RoutineKey $RoutineKey
-        }
-        return [PSCustomObject]@{ Ok = $false; Motivo = 'session_limit_sem_contingencia'; Escalou = $false; ExitCode = 5; EsperouMin = $esperouMin }
-    }
+                Write-Log ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') - fallback desativado (-Fallback429 Nenhum).')
+                if ($RoutineKey -and (Get-Command Send-VixRoutineAlert -ErrorAction SilentlyContinue)) {
+                    $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo ('ERRO PRE-FLIGHT: 429 session limit (reset ' + $resetTxt + ') - fallback desativado') -RoutineKey $RoutineKey -Causa 'limite_sessao_fallback_desativado' -Severidade 'critico'
+                }
+                return [PSCustomObject]@{ Ok = $false; Motivo = 'session_limit_sem_contingencia'; Escalou = $false; ExitCode = 5; EsperouMin = 0 }
+            }
 
     Write-Log ('ERRO PRE-FLIGHT: falha nao classificada na sonda WebSearch (motivo=' + $motivo + ')')
     return [PSCustomObject]@{ Ok = $false; Motivo = 'erro_desconhecido'; Escalou = $false; ExitCode = 5; EsperouMin = 0 }

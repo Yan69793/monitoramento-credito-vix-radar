@@ -213,16 +213,16 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                 $saidaFalha = ('' + $raw)
                 if (Test-Path $stderrFile) { $saidaFalha += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
                 if (Invoke-VixClaudeAuthEscalate $saidaFalha) {
-                    # MOTOR1: escalada nunca e silenciosa. Log, alerta ao admin e carimbo na FIM.
-                    $script:AuthEscalou = 'api'
-                    # DRYRUN-CRASH1: em dry-run a linha vira DRYRUN_ALERTA_AUTH (monitor nao trata teste como
-                    # 9004) e notificar_rotina nunca dispara (02/09 02:45 um teste mandou e-mail real).
-                    $alertaTag = 'ALERTA_AUTH: '
-                    if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
-                    Write-Log ($alertaTag + 'verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.')
-                    if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
-                    else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey }
-                }
+                                    # MOTOR1: escalada nunca e silenciosa. Log, alerta ao admin e carimbo na FIM.
+                                    $script:AuthEscalou = 'api'
+                                    # DRYRUN-CRASH1: em dry-run a linha vira DRYRUN_ALERTA_AUTH (monitor nao trata teste como
+                                    # 9004) e notificar_rotina nunca dispara (02/09 02:45 um teste mandou e-mail real).
+                                    $alertaTag = 'ALERTA_AUTH: '
+                                    if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
+                                    Write-Log ($alertaTag + 'verificacao-async escalou para chave paga (assinatura recusada no meio do dreno). Lotes seguintes custam dolar.')
+                                    if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                                    else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'ALERTA_AUTH: escalou para chave paga no meio do dreno - assinatura recusada; regerar token com claude setup-token' -RoutineKey $script:routineKey -Causa 'escalacao_chave_paga' -Severidade 'aviso' }
+                                }
             }
         }
     } catch {
@@ -428,15 +428,15 @@ if ($script:VixUsaOpenRouter) {
         # DRENOMUDO1 (2026-09-13): este ramo saia calado, ao contrario do ramo irmao de
         # escalada paga, que ja levanta ALERTA_AUTH. E ele e o caminho mais provavel de
         # todos, porque cota de assinatura estourada deixa o modo em 'nenhum'. Medido em
-        # 13/09: o dreno pos-matinal das 16:46 morreu aqui, sem ALERTA_AUTH e sem nada que
-        # o vigia diario lesse. O motor, que chamou o dreno, ainda escreveu no proprio log
-        # "dreno concluido (exit=5)".
-        $alertaTag = 'ALERTA_AUTH: '
-        if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
-        Write-Log ($alertaTag + 'nenhuma credencial Claude na verificacao-async antes do primeiro lote - a fila de verificacao NAO foi drenada neste ciclo (exit 5).')
-        if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
-        else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo ('ALERTA_AUTH: nenhuma credencial Claude na verificacao-async (cota de assinatura estourada ou token ausente) - fila de verificacao nao drenada') -RoutineKey $script:routineKey }
-        exit 5
+                # 13/09: o dreno pos-matinal das 16:46 morreu aqui, sem ALERTA_AUTH e sem nada que
+                # o vigia diario lesse. O motor, que chamou o dreno, ainda escreveu no proprio log
+                # "dreno concluido (exit=5)".
+                $alertaTag = 'ALERTA_AUTH: '
+                if ($DryRun) { $alertaTag = 'DRYRUN_ALERTA_AUTH: ' }
+                Write-Log ($alertaTag + 'nenhuma credencial Claude na verificacao-async antes do primeiro lote - a fila de verificacao NAO foi drenada neste ciclo (exit 5).')
+                if ($DryRun) { Write-Log 'DRYRUN: alerta NAO enviado (notificar_rotina suprimido em dry-run)' }
+                else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo ('ALERTA_AUTH: nenhuma credencial Claude na verificacao-async (cota de assinatura estourada ou token ausente) - fila de verificacao nao drenada') -RoutineKey $script:routineKey -Causa 'sem_credencial' -Severidade 'critico' }
+                exit 5
     }
     # Alinhado com 2b025b0: a guarda perdeu o parametro -ModeloFixadoNaChamada e a funcao
     # Get-VixModeloEnvInfo, mas as duas chamadas continuaram aqui. Sob $ErrorActionPreference
@@ -614,15 +614,15 @@ try {
             }
 
             if ($result.AuthFailure) {
-                Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
-                # AUTHWEEK1 (2026-08-14): avisa o admin no momento do abort (limite semanal,
-                # OAuth vencido etc). O Monitor-Tasks nao enxerga esta rotina.
-                $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'claude CLI nao autenticado ou limite semanal atingido - itens permanecem na fila' -RoutineKey $routineKey
-                $stats.erros_parse++
-                $exitCode = 7
-                Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
-                break
-            }
+                            Write-Log ('ERRO CRITICO: claude CLI nao autenticado (sessao OAuth expirada/deslogada) no lote ' + $label + ' - reautentique com "claude /login". Abortando lotes restantes - itens ficam na fila.')
+                            # AUTHWEEK1 (2026-08-14): avisa o admin no momento do abort (limite semanal,
+                            # OAuth vencido etc). O Monitor-Tasks nao enxerga esta rotina.
+                            $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo 'claude CLI nao autenticado ou limite semanal atingido - itens permanecem na fila' -RoutineKey $routineKey -Causa 'falha_auth' -Severidade 'critico'
+                            $stats.erros_parse++
+                            $exitCode = 7
+                            Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                            break
+                        }
 
             if ($result.Refusal) {
                 $categoria = if ($result.RefusalCategory) { $result.RefusalCategory } else { 'desconhecida (stop_details ausente no envelope)' }
