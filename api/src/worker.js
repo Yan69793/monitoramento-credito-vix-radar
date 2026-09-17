@@ -14197,7 +14197,15 @@ __name22222(verificarEventosBatch, "verificarEventosBatch");
 __name222222(verificarEventosBatch, "verificarEventosBatch");
 __name2222222(verificarEventosBatch, "verificarEventosBatch");
 async function validarEVerificar(eventos, trintaDiasAtras, env2222) {
-  const filtrados = await validarDatasFontes(eventos, trintaDiasAtras);
+  // FONTEINACESSIVEL-SILENCIOSO1: este e o outro ponto (alem de receber_analise) que consome
+  // validarDatasFontes. Sem contador nem log, o mesmo descarte silencioso do lote de 16/09
+  // valeria aqui pela varredura interna. Mantem o aceite identico; so o descarte fica visivel.
+  const _motivosDescarte = {};
+  const filtrados = await validarDatasFontes(eventos, trintaDiasAtras, void 0, _motivosDescarte);
+  const _descartados = Object.keys(_motivosDescarte).reduce(function(s, k) { return s + _motivosDescarte[k]; }, 0);
+  if (_descartados > 0) {
+    console.log(`[validarEVerificar][DESCARTE_MATERIAL] enviados=${(eventos || []).length} aceitos=${(filtrados || []).length} descartados=${_descartados} por_causa=${JSON.stringify(_motivosDescarte)}`);
+  }
   if (!filtrados || !filtrados.length) return filtrados;
   if (!env2222 || !env2222.ANTHROPIC_API_KEY) {
     await quarentenarBatch(filtrados, "ANTHROPIC_API_KEY ausente no validarEVerificar", env2222);
@@ -14267,9 +14275,25 @@ async function rodarSweepRevalidacao(env2222) {
   return await rodarSweepRevalidacaoInterno(env2222);
 }
 __name(rodarSweepRevalidacao, "rodarSweepRevalidacao");
-async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride) {
+// FONTEINACESSIVEL-SILENCIOSO1 (2026-09-16): este validador descarta por QUATRO ramos
+// distintos (data antiga na URL, data antiga no HTML, divergencia >60d, fetch falhou) e,
+// ate aqui, so o quarto imprimia log. Os outros tres saiam por `continue` mudo, e o
+// agregado `descartes.fonte_inacessivel` (worker.js:21410) somava os quatro sob um nome
+// unico — nem o console do Worker nem a resposta do POST diziam QUAL ramo disparou.
+// Medido em 16/09: BRF (agfeed.com.br, data 2026-04-13) foi descartada em producao sem
+// nenhuma linha de log; Braskem (URL .ghtm corrompida, HTTP 404) descartou com uma linha
+// que nao distinguia "fonte bloqueada" de "data da fonte antiga".
+// Agora cada ramo: (a) imprime a propria linha com motivo= e os campos que decidem, e
+// (b) incrementa `_motivosDescarte[motivo]` quando o chamador passa o contador.
+// O aceite NAO mudou: contador e log sao observabilidade, nada aqui aceita ou rejeita
+// diferente do que aceitava antes (ver teste/fonte-inacessivel-causa.test.mjs).
+async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride, _motivosDescarte) {
   if (!eventos || !eventos.length) return eventos;
   const validados = [];
+  const _mot = _motivosDescarte && typeof _motivosDescarte === "object" ? _motivosDescarte : null;
+  const _contar = function(motivo) {
+    if (_mot) _mot[motivo] = (_mot[motivo] || 0) + 1;
+  };
   const hoje = obterAgoraBRT().toISOString().split("T")[0];
   for (const ev of eventos) {
     const url = ev.fonte_primaria;
@@ -14279,6 +14303,8 @@ async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride) {
     }
     const dataURL = extrairDataDaURL(url);
     if (dataURL && dataURL < trintaDiasAtras) {
+      console.log(`[validarDatas][DESCARTADO_DATA_URL_ANTIGA] motivo=data_url_antiga emp=${(ev.empresa || "").slice(0, 25)} fonte=${(url || "").slice(0, 80)} dataURL=${dataURL} janela=${trintaDiasAtras}`);
+      _contar("data_url_antiga");
       continue;
     }
     if (dataURL && dataURL >= trintaDiasAtras && dataURL <= hoje) {
@@ -14325,6 +14351,8 @@ async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride) {
           validados.push(ev);
           continue;
         }
+        console.log(`[validarDatas][DESCARTADO_DATA_FONTE_ANTIGA] motivo=data_fonte_antiga emp=${(ev.empresa || "").slice(0, 25)} host=${_hostBloq2 || "?"} dataFonte=${dataFonte} janela=${trintaDiasAtras} data_evento=${_dtEv2 || "?"} fonte=${(url || "").slice(0, 80)}`);
+        _contar("data_fonte_antiga");
         continue;
       }
       const dtEvento = ev.data_evento;
@@ -14340,6 +14368,8 @@ async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride) {
             validados.push(ev);
             continue;
           }
+          console.log(`[validarDatas][DESCARTADO_DATA_DIVERGENTE] motivo=data_fonte_divergente emp=${(ev.empresa || "").slice(0, 25)} host=${_hostBloq2 || "?"} dataFonte=${dataFonte} data_evento=${dtEvento} diff=${Math.round(diffDias)}d fonte=${(url || "").slice(0, 80)}`);
+          _contar("data_fonte_divergente");
           continue;
         }
       }
@@ -14364,7 +14394,8 @@ async function validarDatasFontes(eventos, trintaDiasAtras, _fetchOverride) {
         ev._verif_forcar = true;
         validados.push(ev);
       } else {
-        console.log(`[validarDatas][DESCARTADO_FONTE_INACESSIVEL] emp=${(ev.empresa || "").slice(0, 25)} fonte=${(url || "").slice(0, 80)} host=${_hostBloq || "?"}`);
+        console.log(`[validarDatas][DESCARTADO_FONTE_INACESSIVEL] motivo=fonte_inacessivel_fetch emp=${(ev.empresa || "").slice(0, 25)} fonte=${(url || "").slice(0, 80)} host=${_hostBloq || "?"} rating_ou_oficial=${_ehRating === true} data_evento=${_dtEv || "?"} janela=${trintaDiasAtras}`);
+        _contar("fonte_inacessivel_fetch");
         continue;
       }
     }
@@ -21361,7 +21392,7 @@ async function __coreFetch(request, env2222, ctx) {
       try {
         // FEEDRETRO1 FASE2: contador de descarte por referencia, exposto na resposta
         // como `descartes` (ver return resp() no fim deste handler).
-        var _raDescartes = { ruido: 0, sem_data: 0, fora_janela: 0, data_futura: 0, data_aproximada: 0, fonte_inacessivel: 0 };
+        var _raDescartes = { ruido: 0, sem_data: 0, fora_janela: 0, data_futura: 0, data_aproximada: 0, fonte_inacessivel: 0, fonte_inacessivel_por_causa: {} };
         var _raSaneado = sanitizarPayloadRadar(_raRes, _raHoje, _raJanelaInicio, env2222, _raDescartes);
         _raSaneado.empresa = _raEmp;
         _raSaneado.setor = body.setor || _raSaneado.setor || (SETOR_DE_EMPRESA[_raEmp] || "Outros");
@@ -21385,7 +21416,10 @@ async function __coreFetch(request, env2222, ctx) {
         var _raVerificacao = { total: 0, verificados: 0, cache_hits: 0, aprovados: 0, rejeitados: 0, quarentenados: 0, pendente_verificacao_async: 0 };
         var _raRejeicoes = [];
         if (Array.isArray(_raSaneado.eventos) && _raSaneado.eventos.length > 0) {
-          var _raDatasOk = await validarDatasFontes(_raSaneado.eventos.map(function(e) { return Object.assign({}, e, { empresa: _raEmp }); }), _raJanelaInicio);
+          // FONTEINACESSIVEL-SILENCIOSO1: contador decomposto por causa, preenchido dentro de
+          // validarDatasFontes (4o argumento). Somente observabilidade.
+          var _raDescartesValidacao = {};
+          var _raDatasOk = await validarDatasFontes(_raSaneado.eventos.map(function(e) { return Object.assign({}, e, { empresa: _raEmp }); }), _raJanelaInicio, void 0, _raDescartesValidacao);
           var _raAutoAprovados = [];
           var _raParaFila = [];
           _raDatasOk.forEach(function(ev) {
@@ -21404,10 +21438,21 @@ async function __coreFetch(request, env2222, ctx) {
             if (_raIndiceErro) console.error("[verif][indice-quarentena][portao-A][receber_analise] enfileiramento bloqueado:", _raIndiceErro);
           }
           // fonte_inacessivel aqui e o AGREGADO de tudo que validarDatasFontes rejeita
-          // (fetch bloqueado, data da fonte fora da janela, divergencia >60d), nao
-          // decomposto por motivo interno - removidos_pre_verificador ja media isso,
-          // este campo so o espelha dentro de `descartes` para leitura num lugar so.
+          // (fetch falhou, data da URL antiga, data da fonte antiga, divergencia >60d).
+          // FONTEINACESSIVEL-SILENCIOSO1 (2026-09-16): o agregado e o numero que a rotina le,
+          // mas nao existe agregado informativo — mantenho o campo (compatibilidade com
+          // scripts/run_vixradar_varredura.ps1:1574) e acrescento ao lado a decomposicao por
+          // causa (`fonte_inacessivel_por_causa`) com a linha de log DESCARTE_MATERIAL, para
+          // que "2 descartes" deixe de ser indistinguivel de "fonte bloqueada" quando na
+          // verdade era URL 404 / data antiga da fonte. A soma das causas e invariante e igual
+          // ao agregado: toda rejeicao de validarDatasFontes passa por um dos 4 ramos.
           _raDescartes.fonte_inacessivel = _raSaneado.eventos.length - _raDatasOk.length;
+          _raDescartes.fonte_inacessivel_por_causa = _raDescartesValidacao;
+          var _raDescSomados = 0;
+          Object.keys(_raDescartesValidacao).forEach(function(k) { _raDescSomados += _raDescartesValidacao[k]; });
+          if (_raDescSomados > 0) {
+            console.log(`[receber_analise][DESCARTE_MATERIAL] emp=${_raEmp} enviados=${_raSaneado.eventos.length} persistidos=${_raDatasOk.length} descartados=${_raDescSomados} por_causa=${JSON.stringify(_raDescartesValidacao)}`);
+          }
           _raVerificacao = { total: _raDatasOk.length, verificados: 0, cache_hits: 0, aprovados: _raAutoAprovados.length, rejeitados: 0, quarentenados: 0, pendente_verificacao_async: _raFilaAdicionados, quarentena_indice_indisponivel: !!_raIndiceErro, removidos_pre_verificador: _raSaneado.eventos.length - _raDatasOk.length };
           _raParaFila.forEach(function(ev) { ev._pendente_verificacao = true; });
           _raSaneado.eventos = _raAutoAprovados.concat(_raParaFila);
