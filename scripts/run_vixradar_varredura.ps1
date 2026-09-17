@@ -1223,7 +1223,7 @@ $stats = @{
     # Worker devolve por emissor (avanco TEMPORAL, nao contagem de fatos); descartados
     # conta submit com evento enviado mas n_eventos=0 (Worker aceitou o transporte e
     # descartou tudo no saneamento ou no pre-verificador - ver DESCARTADO| no log).
-    eventos_avanco_data = 0; chaves_novas = 0; descartados = 0
+    eventos_avanco_data = 0; chaves_novas = 0; descartados = 0; descartes_inesperados = 0
     cobertura_deferidos = 0; recheck_resolvidos = 0
     # OR402-DEGRADA1: chamadas ao adapter que cairam para o fallback por 402 (saldo). Contador
     # separado de silent_fail de proposito: o lote fechou, mas a degradacao fica visivel.
@@ -1568,17 +1568,38 @@ try {
                     # dry-run de 04/09: Kora Saude, 1 evento real de 04/09, logou
                     # 'DESCARTADO|Kora Saude|enviados=1|persistidos=0|motivo_nao_detalhado'
                     # e somou descartados=1 no FIM_DRYRUN sem nenhum descarte ter existido.
-                    if (-not $DryRun -and @($res.eventos).Count -ge 1 -and $nEv -eq 0) {
-                        $descMotivos = @()
-                        if ($resp.descartes) {
-                            foreach ($k in @('ruido', 'sem_data', 'fora_janela', 'data_futura', 'data_aproximada', 'fonte_inacessivel')) {
-                                if ($resp.descartes.$k -gt 0) { $descMotivos += ($k + '=' + $resp.descartes.$k) }
-                            }
-                        }
-                        $motivoTxt = if ($descMotivos.Count -gt 0) { $descMotivos -join ',' } else { 'motivo_nao_detalhado' }
-                        Write-Log ('DESCARTADO|' + $emp.empresa + '|enviados=' + @($res.eventos).Count + '|persistidos=0|' + $motivoTxt)
-                        $stats.descartados++
-                    }
+                    if (-not $DryRun -and @($res.eventos).Count -ge 1) {
+                                            if ($nEv -eq 0) {
+                                                # Caso esperado: nenhum evento persistido
+                                                $descMotivos = @()
+                                                if ($resp.descartes) {
+                                                    foreach ($k in @('ruido', 'sem_data', 'fora_janela', 'data_futura', 'data_aproximada', 'fonte_inacessivel')) {
+                                                        if ($resp.descartes.$k -gt 0) { $descMotivos += ($k + '=' + $resp.descartes.$k) }
+                                                    }
+                                                }
+                                                $motivoTxt = if ($descMotivos.Count -gt 0) { $descMotivos -join ',' } else { 'motivo_nao_detalhado' }
+                                                Write-Log ('DESCARTADO|' + $emp.empresa + '|enviados=' + @($res.eventos).Count + '|persistidos=0|' + $motivoTxt)
+                                                $stats.descartados++
+                                            } elseif ($nEv -lt $enviados) {
+                                                # Caso inesperado: alguns eventos persistidos, mas não todos
+                                                $descMotivosInesperados = @()
+                                                $descMotivosEsperados = @()
+                                                if ($resp.descartes) {
+                                                    foreach ($k in @('ruido', 'sem_data', 'fora_janela', 'data_futura', 'data_aproximada', 'data_url_antiga', 'data_fonte_antiga')) {
+                                                        if ($resp.descartes.$k -gt 0) { $descMotivosEsperados += ($k + '=' + $resp.descartes.$k) }
+                                                    }
+                                                    foreach ($k in @('fonte_inacessivel_fetch', 'data_fonte_divergente')) {
+                                                        if ($resp.descartes.$k -gt 0) { $descMotivosInesperados += ($k + '=' + $resp.descartes.$k) }
+                                                    }
+                                                }
+                                                $motivoEsperado = if ($descMotivosEsperados.Count -gt 0) { $descMotivosEsperados -join ',' } else { 'ruido' }
+                                                $motivoInesperado = if ($descMotivosInesperados.Count -gt 0) { $descMotivosInesperados -join ',' } else { 'motivo_nao_detalhado' }
+                                                Write-Log ('DESCARTE_PARCIAL|' + $emp.empresa + '|enviados=' + @($res.eventos).Count + '|persistidos=' + $nEv + '|' + $motivoEsperado + '|' + $motivoInesperado)
+                                                # Contador de descartes inesperados: somados a errosTotal fazem a rotina fechar PARCIAL
+                                                if ($descMotivosInesperados.Count -gt 0) { $stats.descartes_inesperados += $descMotivosInesperados.Count }
+                                                $stats.descartados++
+                                            }
+                                        }
                 }
                 elseif ($resp.erro) { Write-Log ('SUBMIT_ERRO|' + $emp.empresa + '|' + $resp.erro) }
             } catch {
@@ -1762,7 +1783,7 @@ try {
         ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail
+    $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail + $stats.descartes_inesperados
     $resultadoTxt = if ($DryRun) { 'DRYRUN' } elseif ($trabalhoZero) { 'INVALIDO' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
     Write-Log ('ROTINA_RESUMO|' + $Perfil.id + '|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
