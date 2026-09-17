@@ -1689,7 +1689,7 @@ try {
             $__alertaDreno = Get-VixDrenoAlerta $stats.dreno_exit
             if ($__alertaDreno) {
                 Write-Log $__alertaDreno
-                try { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo $__alertaDreno -RoutineKey $routineKey } catch { Write-Log ('AVISO: alerta de dreno nao enviado - ' + $_.Exception.Message) }
+                try { $null = Send-VixRoutineAlert -Rotina $Rotina -Motivo $__alertaDreno -RoutineKey $routineKey -Causa ('dreno_exit' + $stats.dreno_exit) -Severidade 'critico' } catch { Write-Log ('AVISO: alerta de dreno nao enviado - ' + $_.Exception.Message) }
             }
         }
     }

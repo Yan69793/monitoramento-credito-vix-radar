@@ -121,6 +121,8 @@ $nomes = @(
     'vixradar-matinal:limite_sessao_fallback_desativado:critico',
     'retry-vixradar-noturno:sem_log:critico', 'retry-vixradar-noturno:sem_entrega:critico',
     'retry-vixradar-matinal:sem_log:critico', 'retry-vixradar-matinal:sem_entrega:critico',
+    'noturno:dreno_exit1:critico', 'noturno:dreno_exit5:critico', 'noturno:dreno_exit-1:critico',
+    'matinal:dreno_exit1:critico', 'matinal:dreno_exit5:critico', 'matinal:dreno_exit-1:critico',
     'noturno', 'matinal', 'verificacao-async', 'sentinela', 'agenda-semanal',
     'watch-health-noturno', 'watch-health-matinal', 'frescor-ingestao'
 )
@@ -153,6 +155,44 @@ Assert ($e.Count -eq 0) ('7h: retry-vixradar.ps1 segue com parse limpo no PS 5.1
 $t2 = $null; $e2 = $null
 [System.Management.Automation.Language.Parser]::ParseFile((Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1'), [ref]$t2, [ref]$e2) | Out-Null
 Assert ($e2.Count -eq 0) ('7i: lib/vixradar-claude-auth.ps1 segue com parse limpo (erros=' + $e2.Count + ')')
+
+# ================================================================
+Write-Host '=== 8. Borda C4: ALERTA_DRENO (run_vixradar_varredura.ps1) - o ultimo produtor do nome CRU ==='
+$varreduraPath = Join-Path $PSScriptRoot 'run_vixradar_varredura.ps1'
+$srcVarredura = Get-Content -LiteralPath $varreduraPath -Raw -Encoding UTF8
+$alvoDreno = 'Send-VixRoutineAlert -Rotina $Rotina -Motivo $__alertaDreno -RoutineKey $routineKey -Causa (''dreno_exit'' + $stats.dreno_exit) -Severidade ''critico'''
+Assert ($srcVarredura.Contains($alvoDreno)) '8a: o alerta de dreno passa causa (dreno_exit<codigo>) + severidade critico'
+Assert (-not $srcVarredura.Contains('Send-VixRoutineAlert -Rotina $Rotina -Motivo $__alertaDreno -RoutineKey $routineKey }')) '8b: nao sobrou chamada de dreno com o nome cru'
+$linhasAlertaVarredura = @($srcVarredura -split "`r?`n" | Where-Object { $_ -match 'Send-VixRoutineAlert -Rotina' })
+$semCausaVarredura = @($linhasAlertaVarredura | Where-Object { $_ -notmatch '-Causa' })
+Assert ($linhasAlertaVarredura.Count -ge 3) ('8c: chamadas de alerta em run_vixradar_varredura.ps1 (obtido ' + $linhasAlertaVarredura.Count + ')')
+Assert ($semCausaVarredura.Count -eq 0) ('8d: nenhuma delas sem causa+severidade (sem causa: ' + $semCausaVarredura.Count + ')')
+$t3 = $null; $e3 = $null
+[System.Management.Automation.Language.Parser]::ParseFile($varreduraPath, [ref]$t3, [ref]$e3) | Out-Null
+Assert ($e3.Count -eq 0) ('8e: run_vixradar_varredura.ps1 segue com parse limpo no PS 5.1 (erros=' + $e3.Count + ')')
+
+# ================================================================
+Write-Host '=== 9. Alerta de DRENO no mesmo dia de outro alerta da rotina: nao e suprimido ==='
+Reset-Caso
+$q1 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'ALERTA_AUTH: limite de sessao da assinatura no lote light-6' -RoutineKey 'k-de-teste' -Causa 'falha_auth' -Severidade 'critico'
+$q2 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'ALERTA_DRENO: dreno pos-rotina da fila de verificacao FALHOU (exit=5) - a fila NAO foi drenada por esta rotina' -RoutineKey 'k-de-teste' -Causa ('dreno_exit' + 5) -Severidade 'critico'
+Assert ($q1 -eq $true -and $q2 -eq $true) ('9a: rotina ja avisada no dia NAO suprime o dreno (retornos=' + $q1 + ',' + $q2 + ')')
+Assert ($script:KV.ContainsKey('rotina_alerta:noturno:dreno_exit5:critico:2026-09-15')) ('9b: chave do dreno = rotina_alerta:noturno:dreno_exit5:critico:<dia> (' + (Chaves) + ')')
+$q3 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'ALERTA_DRENO: 2a ocorrencia no mesmo dia' -RoutineKey 'k-de-teste' -Causa ('dreno_exit' + 5) -Severidade 'critico'
+Assert ($q3 -eq $false) ('9c: mesmo exit (5) repetido no dia segue dedupado (retorno=' + $q3 + ')')
+$q4 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'ALERTA_DRENO: saida diferente no mesmo dia' -RoutineKey 'k-de-teste' -Causa ('dreno_exit' + 1) -Severidade 'critico'
+Assert ($q4 -eq $true) ('9d: exit diferente (dreno_exit1) e evento distinto no mesmo dia (retorno=' + $q4 + ')')
+Assert ($script:Emails.Count -eq 3) ('9e: 3 e-mails no dia (obtido ' + $script:Emails.Count + ')')
+Write-Host '--- 9f/9g: o cenario de 16/09 (aviso benigno antes, dreno depois), com o modelo PRE-fix ---'
+Reset-Caso
+$script:SemCausa = $true
+$b1 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'aviso benigno da rotina no mesmo dia (nome CRU)' -RoutineKey 'k-de-teste'
+$b2 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'ALERTA_DRENO: dreno pos-rotina FALHOU (exit=5) - a fila NAO foi drenada' -RoutineKey 'k-de-teste' -Causa ('dreno_exit' + 5) -Severidade 'critico'
+Assert (($b1 -eq $true) -and ($b2 -eq $false) -and ($script:Emails.Count -eq 1)) ('9f: com o nome CRU o dreno e engolido pelo aviso benigno do mesmo dia (retornos=' + $b1 + ',' + $b2 + ' emails=' + $script:Emails.Count + ')')
+Reset-Caso
+$c1 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'aviso benigno da rotina no mesmo dia' -RoutineKey 'k-de-teste' -Causa 'falha_auth' -Severidade 'critico'
+$c2 = Send-VixRoutineAlert -Rotina 'noturno' -Motivo 'ALERTA_DRENO: dreno pos-rotina FALHOU (exit=5) - a fila NAO foi drenada' -RoutineKey 'k-de-teste' -Causa ('dreno_exit' + 5) -Severidade 'critico'
+Assert (($c1 -eq $true) -and ($c2 -eq $true) -and ($script:Emails.Count -eq 2)) ('9g: depois do fix os dois saem no mesmo dia (retornos=' + $c1 + ',' + $c2 + ' emails=' + $script:Emails.Count + ')')
 
 # ================================================================
 Write-Host ''
