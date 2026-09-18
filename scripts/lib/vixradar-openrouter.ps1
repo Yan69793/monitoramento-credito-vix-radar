@@ -124,6 +124,32 @@ function Get-VixOpenRouterTimeoutMin {
     return 12
 }
 
+# SEARCHBUDGET1 (2026-09-18, t_45d1303c): o teto de resultados de busca deixa de ser o literal 8
+# e passa a ser derivado do TAMANHO DO LOTE.
+#
+# Medicao que fecha o caso (dry-run noturno de 18/09 03:34, 15 emissores, log
+# logs/routines/vixradar-noturno_20260918_dryrun_25196.log): com max_total_results=8 o POST
+# entregou 2 buscas uteis e os outros 13 emissores fecharam com o proprio modelo declarando
+# "limite total de 8 atingido na sessao" -> 13 linhas RECHECK_PENDENTE e LOTE_FECHADO com
+# buscas=2 para 15 emissores. O limite e GLOBAL DO POST (nao por busca): com max_results=5,
+# 8 resultados acabam na segunda busca.
+#
+# O contrato COBERTURA1 (prompt do lote) exige, por emissor, 3 familias (F1-emissor, F2-divida,
+# F3-fato) e admite 1 busca de fallback quando o fetch da F3 nao serve: 4 buscas por emissor.
+# Sem esse teto proporcional, todo lote com mais de ~2 emissores nasce degradado.
+#
+# O valor e TETO, nunca quota: o modelo busca o que o prompt manda, nao o que o teto permite.
+# Chamador que nao informa o tamanho do lote (agenda, verificacao, sentinela) mantem o
+# comportamento historico (8), para esta mudanca nao alterar rotina fora do escopo.
+function Get-VixOpenRouterMaxTotalResults([int]$Emissores = 0, [int]$MaxResults = 5) {
+    if ($MaxResults -le 0) { $MaxResults = 5 }
+    if ($Emissores -le 0) { return 8 }
+    $buscasPorEmissor = 4   # F1 + F2 + F3 + fallback de busca da F3 (COBERTURA1)
+    $teto = $MaxResults * $buscasPorEmissor * $Emissores
+    if ($teto -lt 8) { $teto = 8 }
+    return $teto
+}
+
 # Teto CURTO e explicito da serializacao pre-HTTP. Serializar este corpo e trabalho de
 # milissegundos; qualquer coisa em segundos ja e patologia. Ver JSONCICLO1 abaixo.
 function Get-VixOpenRouterJsonTimeoutSec {
@@ -324,7 +350,13 @@ function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
     try {
         Add-Type -AssemblyName System.Net.Http -ErrorAction SilentlyContinue
         $client = New-Object System.Net.Http.HttpClient
-        $client.Timeout = [TimeSpan]::FromMinutes((Get-VixOpenRouterTimeoutMin))
+        # PAREDE-TENTATIVA1: teto por tentativa = min(VIXRADAR_OPENROUTER_TIMEOUT_MIN, o que
+        # sobrou do orcamento do lote). Vem por variavel de escopo (compatibilidade com os
+        # stubs de teste que sobrescrevem esta funcao com 2 parametros); 0 = teto padrao.
+        $tetoSeg = 0
+        try { $tetoSeg = [int]$script:VixOpenRouterTimeoutSecAtual } catch { $tetoSeg = 0 }
+        if ($tetoSeg -le 0) { $tetoSeg = (Get-VixOpenRouterTimeoutMin) * 60 }
+        $client.Timeout = [TimeSpan]::FromSeconds($tetoSeg)
         $client.DefaultRequestHeaders.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $ApiKey)
         foreach ($h in (Get-VixOpenRouterHttpHeaders).GetEnumerator()) {
             try { [void]$client.DefaultRequestHeaders.Add([string]$h.Key, [string]$h.Value) } catch { }
@@ -400,7 +432,7 @@ function Test-VixOpenRouter402Credito([string]$Body) {
 #   402: sin retry del principal y sin entrar en la lista retryable, con UNA pasada al modelo
 #        de fallback (mas barato). 402 en el fallback tambien cierra duro.
 #   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
-function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '') {
+function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '', [int]$Emissores = 0) {
     $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = ''; Degradado402 = $false }
     $prompt = ''
     # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
@@ -424,8 +456,14 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     # US$ 0,001 por busca com ~200ms (decisao do operador, confirmada no cartao). max_results e
     # max_total_results preservados: mesmo volume de resultados, motor mais rapido e 7-15x mais
     # barato. web_fetch continua gratuito (engine openrouter).
+    # SEARCHBUDGET1: teto de resultados proporcional ao TAMANHO DO LOTE (ver
+    # Get-VixOpenRouterMaxTotalResults). O literal 8 degradava todo lote com mais de ~2
+    # emissores: 15 emissores / 3 familias por emissor nao cabem em 8 resultados por POST.
+    $maxResultsBusca = 5
+    $maxTotalResults = Get-VixOpenRouterMaxTotalResults $Emissores $maxResultsBusca
+    $script:VixOpenRouterUltimoMaxTotalResults = $maxTotalResults
     $tools = @(
-        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'parallel'; mode = 'turbo'; max_results = 5; max_total_results = 8 } },
+        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'parallel'; mode = 'turbo'; max_results = $maxResultsBusca; max_total_results = $maxTotalResults } },
         [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 4000 } }
     )
     $modeloPrincipal = Get-VixOpenRouterModel $Tier
@@ -460,12 +498,29 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 if ($sleepSec -gt 0) { Start-Sleep -Seconds $sleepSec }
             }
             # SENTINELA-TIMEOUT1: teto de parede por lote (respeita TempoMaxMin da sentinela).
-            if ($TotalTimeoutSec -gt 0 -and ([int](((Get-Date) - $inicioLote).TotalSeconds)) -ge $TotalTimeoutSec) {
-                $ultimoMsg = 'OPENROUTER_TIMEOUT_TOTAL (excedeu ' + $TotalTimeoutSec + 's)'
-                $vacioFinal = $false
-                $duro = $false
-                break
+            # PAREDE-TENTATIVA1 (2026-09-18, t_45d1303c): o teto do lote era checado SO na
+            # entrada da tentativa, entao a ultima tentativa podia COMECAR a 1559s e rodar
+            # outros 12 min: medido no dry-run noturno de 02:00 (log
+            # ..._dryrun_11004.log): PAYLOAD as 02:37:07 com teto_lote_s=1560, ou seja 2186s
+            # de parede contra um orcamento de 1560s (3 tentativas de 12 min). A partir daqui
+            # a tentativa tambem e limitada pelo que SOBROU do orcamento, e o POST nao e
+            # disparado quando o restante ja e curto demais para servir para algo.
+            if ($TotalTimeoutSec -gt 0) {
+                $decorridoSeg = [int](((Get-Date) - $inicioLote).TotalSeconds)
+                if (($TotalTimeoutSec - $decorridoSeg) -lt 30) {
+                    $ultimoMsg = 'OPENROUTER_TIMEOUT_TOTAL (excedeu ' + $TotalTimeoutSec + 's)'
+                    $vacioFinal = $false
+                    $duro = $false
+                    break
+                }
+                $restanteSeg = $TotalTimeoutSec - $decorridoSeg
+                # A tentativa pode consumir o que SOBROU do orcamento do lote inteiro: um POST
+                # longo e uma passada legitima (mais buscas = mais tempo de loop server-side),
+                # nao um travamento. O teto por tentativa continua existindo quando NAO ha
+                # orcamento de lote declarado (chamador sem -TotalTimeoutSec).
+                $script:VixOpenRouterTimeoutSecAtual = $restanteSeg
             }
+            else { $script:VixOpenRouterTimeoutSecAtual = 0 }
             $bodyObj = [ordered]@{
                 model = $item.M
                 messages = @([ordered]@{ role = 'user'; content = $prompt })

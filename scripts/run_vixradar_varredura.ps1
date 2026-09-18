@@ -403,7 +403,7 @@ function Get-VixCodexUsageProbe($Linhas) {
     return [pscustomobject]@{ mensuravel = $false; parcelas = $null }
 }
 
-function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
+function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores = 0) {
     # Flags de economia (medidas 2026-07-03): boot 33.9k -> ~13.6k tokens/invocacao.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -484,13 +484,18 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
                     if ([int]::TryParse(('' + $__loteMinEnv).Trim(), [ref]$__loteMin) -and $__loteMin -gt 0) { $__loteTimeoutSec = $__loteMin * 60 }
                 }
                 if ($__loteTimeoutSec -le 0) { $__loteTimeoutSec = (Get-VixOpenRouterTimeoutMin) * 120 + 120 }
-                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Perfil.tier -TotalTimeoutSec $__loteTimeoutSec
+                # SEARCHBUDGET1: o tamanho do lote vai ao adapter porque o teto de resultados de
+                # busca (max_total_results) e GLOBAL do POST: sem ele o lote de 15 emissores
+                # entrega 2 buscas e 13 RECHECK_PENDENTE (medido no dry-run de 03:34).
+                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Perfil.tier -TotalTimeoutSec $__loteTimeoutSec -Emissores $Emissores
                 # JSONCICLO1: serializacao pre-HTTP passa a ser observavel. Sem isto, os 55 min
                 # presos de 05/09 nao apareceram em log nenhum.
                 Write-Log ('PAYLOAD: serializacao=' + ([double]$script:VixOpenRouterUltimaSerializacaoSeg).ToString('F3') +
                            's bytes=' + $script:VixOpenRouterUltimoPayloadBytes +
                            ' modelo=' + (Get-VixOpenRouterModel $Perfil.tier) +
-                           ' teto_lote_s=' + $__loteTimeoutSec)
+                           ' teto_lote_s=' + $__loteTimeoutSec +
+                           ' emissores=' + $Emissores +
+                           ' busca_teto=' + $script:VixOpenRouterUltimoMaxTotalResults)
                 $raw = @($__orResp.Linhas)
                 $exitCode = $__orResp.ExitCode
                 $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel $Perfil.tier))
@@ -1375,7 +1380,7 @@ try {
         elseif ($script:VixUsaCodex) { $modeloLote = 'codex:codex-subscription tier=' + $job.Name }
         Write-Log ('Lote ' + $label + ' [' + $modeloLote + ']: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', '))
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
-        $result = Invoke-ClaudeBatch $promptPath $job.Model
+        $result = Invoke-ClaudeBatch $promptPath $job.Model $job.Chunk.Count
         $swLote.Stop()
         $stats.degradados_402 += [int]$result.Degradados402
         $stats.batches_run++
@@ -1448,7 +1453,7 @@ try {
             $retryPrompt = New-BatchPrompt $missing $retryLabel $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra
             $retryPath = Join-Path $LogDir ($Perfil.prefix + '_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
-            $retryRes = Invoke-ClaudeBatch $retryPath $job.Model
+            $retryRes = Invoke-ClaudeBatch $retryPath $job.Model $missing.Count
             $stats.degradados_402 += [int]$retryRes.Degradados402
             if ($retryRes.Escalou) { $stats.auth_escalou = 'api'; Write-Log ($AlertaAuthTag + 'escalou para chave paga no retry ' + $retryLabel) }
             if ($retryRes.AuthFailure) {

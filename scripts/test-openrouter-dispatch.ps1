@@ -38,8 +38,13 @@ function Test-VixClaudeAuthFailure([string[]]$outputLines) { return $false }
 # Adapter mockado: registra a chamada e devolve envelope ou falha conforme $script:MockMode.
 # 'degradado402' = lote recuperado pelo fallback por saldo (OR402-DEGRADA1);
 # 'hardfail402' = 402 tambem no fallback, falha dura.
-function Invoke-VixOpenRouterLote([string]$PromptPath, [string]$Tier = '', [int]$TotalTimeoutSec = 0) {
+function Invoke-VixOpenRouterLote([string]$PromptPath, [string]$Tier = '', [int]$TotalTimeoutSec = 0, [int]$Emissores = 0) {
     $script:AdapterCalls++
+    # SEARCHBUDGET1: o tamanho do lote precisa CHEGAR aqui pelo motor - o teto de resultados de
+    # busca (max_total_results) e global do POST, entao o adapter nao tem como dimensiona-lo
+    # sozinho. O mock falha de binding se o motor nao mandar o parametro, e o valor capturado
+    # e a prova de que o conserto alcanca o caminho que a rotina agendada usa.
+    $script:EmissoresUltimoLote = $Emissores
     if ($script:MockMode -eq 'fail') {
         return @{ Linhas = @('OPENROUTER_FALHA_COD=429'); ExitCode = 1; Msg = 'mock falha http=429'; Tokens = -1; Parcelas = $null; Degradado402 = $false }
     }
@@ -156,6 +161,16 @@ $parsedFalha = Get-ParsedResultados $resRf.Output
 $failCount = 0; foreach ($e in $chunk) { if (Get-ResultadoEmissor $parsedFalha.Map $e.empresa) { $failCount++ } }
 Assert-True ($resRf.ExitCode -ne 0 -and $resRf.Degradados402 -eq 0) 'R-D6: 402 nos dois modelos = falha dura, sem contador de degradacao'
 Assert-True ($failCount -eq 0) 'R-D7: ponta oposta: sem RESULTADO parseado, o ramo silent_fail (varredura:1094) e o aplicavel'
+
+# ---- SEARCHBUDGET1: o motor entrega o TAMANHO DO LOTE ao adapter ----
+# Prova de que o conserto alcanca o caminho que a rotina agendada usa (o wrapper chama este
+# motor), e nao so o parametro de um teste. O mock quebra de binding se o parametro faltar.
+$script:EmissoresUltimoLote = -1
+$resR15 = Invoke-ClaudeBatch $promptPath 'claude-sonnet-4-6' 15
+Assert-True ($script:EmissoresUltimoLote -eq 15) 'R-D8: varredura entrega o tamanho do lote ao adapter (Emissores=15)'
+$script:EmissoresUltimoLote = -1
+$resR0 = Invoke-ClaudeBatch $promptPath 'claude-sonnet-4-6'
+Assert-True ($script:EmissoresUltimoLote -eq 0) 'R-D9: chamada sem tamanho de lote continua valida (Emissores=0, teto historico)'
 
 Remove-Item -Path $LogDir -Recurse -Force -ErrorAction SilentlyContinue
 Write-Host ''

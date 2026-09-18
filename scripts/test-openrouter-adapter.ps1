@@ -105,6 +105,36 @@ try {
     Assert-True ($e6.result -like 'RESULTADO|ACME*') 'T6 envelope: result do texto preservado'
     Assert-True ($e6.usage.input_tokens -eq 70 -and $e6.usage.cache_read_input_tokens -eq 30) 'T6 envelope: parcelas 4 via converter'
 
+    # ---- T6b: SEARCHBUDGET1 - teto de resultados de busca proporcional ao TAMANHO DO LOTE ----
+    # Caso medido que fecha o defeito: dry-run noturno de 18/09 03:34 com 15 emissores e
+    # max_total_results=8 entregou 2 buscas uteis e deixou 13 emissores em RECHECK_PENDENTE
+    # (o proprio modelo escreveu "limite total de 8 atingido na sessao").
+    Assert-True ((Get-VixOpenRouterMaxTotalResults 0) -eq 8) 'T6b teto busca: sem tamanho de lote mantem o historico (8)'
+    Assert-True ((Get-VixOpenRouterMaxTotalResults 1) -eq 20) 'T6b teto busca: lote 1 = 5 resultados x 4 buscas = 20'
+    Assert-True ((Get-VixOpenRouterMaxTotalResults 4) -eq 80) 'T6b teto busca: lote 4 (FULL) = 80'
+    Assert-True ((Get-VixOpenRouterMaxTotalResults 15) -eq 300) 'T6b teto busca: lote 15 (LIGHT) = 300'
+    $script:CapturedBody = ''
+    $r6b = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -Emissores 15
+    Assert-True ($r6b.ExitCode -eq 0) 'T6b lote 15: fecha ok com o stub'
+    Assert-True ($script:CapturedBody -match '"max_total_results":300') 'T6b body: max_total_results=300 no POST de 15 emissores'
+    Assert-True ($script:VixOpenRouterUltimoMaxTotalResults -eq 300) 'T6b: teto fica observavel para o log do motor'
+    $r6b1 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0)
+    Assert-True ($script:CapturedBody -match '"max_total_results":8') 'T6b body: chamador sem tamanho de lote nao muda de comportamento (8)'
+
+    # ---- T6c: PAREDE-TENTATIVA1 - orcamento de lote curto nao dispara POST ----
+    # Antes o teto do lote so era checado na ENTRADA da tentativa: a ultima podia comecar a
+    # 1559s e rodar mais 12 min (medido 2186s de parede contra orcamento de 1560s no dry-run
+    # de 02:00). Agora orcamento restante abaixo de 30s encerra sem POST.
+    $script:HttpCalls = 0
+    $r6c = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0) -TotalTimeoutSec 1
+    Assert-True ($r6c.ExitCode -ne 0) 'T6c teto de lote curto: falha, nunca ok'
+    Assert-True ($r6c.Msg -match 'OPENROUTER_TIMEOUT_TOTAL') 'T6c teto de lote curto: motivo declarado no Msg'
+    Assert-True ($script:HttpCalls -eq 0) 'T6c teto de lote curto: zero POST (nao gasta credito em tentativa natimorta)'
+    $script:VixOpenRouterTimeoutSecAtual = 0
+    $r6d = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -TotalTimeoutSec 600
+    Assert-True ($script:HttpCalls -ge 1 -and $r6d.ExitCode -eq 0) 'T6c teto de lote folgado: POST normal segue acontecendo'
+    Assert-True ($script:VixOpenRouterTimeoutSecAtual -gt 0 -and $script:VixOpenRouterTimeoutSecAtual -le 600) 'T6c teto por tentativa: limitado pelo orcamento restante do lote'
+
     # ---- T7: 401 duro -> sem retry, linha de erro SEM corpo (sem falso positivo de auth Anthropic) ----
     function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
         $script:HttpCalls++
@@ -302,7 +332,14 @@ try {
     $r20 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0) -TotalTimeoutSec 1
     Assert-True ($r20.ExitCode -ne 0) 'T20 timeout total: ExitCode != 0'
     Assert-True ($r20.Msg -match 'OPENROUTER_TIMEOUT_TOTAL') 'T20 timeout total: Msg = OPENROUTER_TIMEOUT_TOTAL'
-    Assert-True ($script:HttpCalls -ge 1 -and $script:HttpCalls -le 2) ('T20 timeout total: parou cedo (calls=' + $script:HttpCalls + ', nao 6)')
+    # PAREDE-TENTATIVA1 (18/09): o orcamento do lote tambem limita a TENTATIVA. Com o que sobrou
+    # abaixo de 30s nenhum POST e disparado - antes a ultima tentativa podia comecar no limite e
+    # rodar mais 12 min (2186s de parede contra orcamento de 1560s, medido no dry-run de 02:00).
+    Assert-True ($script:HttpCalls -eq 0) ('T20 timeout total: orcamento abaixo de 30s nao dispara POST (calls=' + $script:HttpCalls + ', nao 6)')
+    # Ponta oposta: com orcamento folgado o lote esgota a malha normal (3 principal + 3 fallback).
+    $script:HttpCalls = 0
+    $r20b = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0) -TotalTimeoutSec 600
+    Assert-True ($script:HttpCalls -eq 6) ('T20 orcamento folgado: as 6 tentativas acontecem (calls=' + $script:HttpCalls + ')')
 
     # ---- T21 (OR429-FIX): 2xx com corpo nao-JSON nao cruza como sucesso ----
     $script:HttpCalls = 0
