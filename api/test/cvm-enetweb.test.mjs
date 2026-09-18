@@ -55,6 +55,18 @@ describe("CVM ENETWeb", () => {
     // Sem base comparavel (primeira execucao ou troca de metodologia), segue o bootstrap.
     expect(_cvmPisoMetodologia(null, 0, 1374)).toMatchObject({ piso: 961, modo: "bootstrap" });
   });
+  // PISOORFAO1 segunda ponta, medida em producao pos-deploy de 18/09: o meta de
+  // FALHA nao gravava `metodologia_id`, entao a execucao seguinte lia
+  // `mesma_metodologia=false`, zerava o piso dinamico e caia no bootstrap de 961
+  // (candidatos 759 contra piso 961, `piso_dinamico: 0`). Base com documento e base
+  // nossa, comparavel, mesmo sem o id guardado. Metodologia registrada e DIFERENTE
+  // continua sendo nao comparavel.
+  it("PISOORFAO1b: meta de falha sem metodologia nao zera o piso dinamico", () => {
+    const metaFalha = { ok: false, motivo: "enet_encolhimento_bloqueado", documentos: 441 };
+    expect(_cvmPisoMetodologia(metaFalha, 441, 1374)).toMatchObject({ piso: 308, dinamico: 308, modo: "dinamico" });
+    expect(_cvmPisoMetodologia(null, 441, 1374)).toMatchObject({ piso: 308, modo: "dinamico" });
+    expect(_cvmPisoMetodologia({ metodologia_id: "outra_coisa" }, 441, 1374)).toMatchObject({ piso: 961, dinamico: 0, modo: "bootstrap" });
+  });
   it("nunca usa o código 05010 como cadastro e preserva CITIGROUP por nome", () => {
     const cols = linha().split("$&");
     cols[0] = "05010-5";

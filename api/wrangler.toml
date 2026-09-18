@@ -1,9 +1,21 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.256)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.257)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.257.js = v4.9.256 + PISOORFAO1b: a metodologia sobrevive a falha e `mesma` nao exige o id
+#   guardado. Medido em producao logo depois do deploy da v4.9.256: candidatos 759, base 441,
+#   `piso: 961` com `piso_modo: bootstrap` e `piso_dinamico: 0`, porque o meta de FALHA era
+#   gravado sem `metodologia_id`, a leitura seguinte concluia `mesma=false` e o piso caia no
+#   bootstrap de 0,7 x 1374 = 961, inalcancavel. O bloqueio se realimentava pelo proprio meta,
+#   entao o sync nunca mais destravava sozinho. Agora `gravarFonteCVMMeta` preserva
+#   `metodologia_id` da meta anterior em falha, e `mesma` e verdadeiro quando a meta nao registra
+#   id mas existe base com documento, que e base nossa e comparavel. Metodologia registrada e
+#   diferente continua nao comparavel, que e a protecao contra comparar base incomparavel.
+#   Testes: cvm-enetweb.test.mjs com PISOORFAO1b usando os numeros medidos em producao, mais
+#   suite vitest completa, 39 arquivos e 373 testes.
+#   Rollback: main = "v4.9.256.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de
@@ -1397,7 +1409,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.256.js"
+main       = "v4.9.257.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
