@@ -1,4 +1,4 @@
 interface:
   display_name: "Auditoria VIX Radar"
-  short_description: "Audita produção, drift e datas dos 103 emissores"
-  default_prompt: "Use $vix-radar-audit para auditar a produção com evidências, drift e cobertura recente dos 103 emissores."
+  short_description: "Audita produção, drift e datas dos 104 emissores"
+  default_prompt: "Use $vix-radar-audit para auditar a produção com evidências, drift e cobertura recente dos 104 emissores."

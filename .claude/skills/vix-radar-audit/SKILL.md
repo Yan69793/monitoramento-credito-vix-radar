@@ -8,7 +8,7 @@ description: >
   operacional, auditar sistema, pos-deploy, pos-incidente, validar producao, checar drift,
   loop de health, verificacao em 40 segundos, readonly audit, ou antes de encerrar sessao
   com mudanca de codigo/deploy. Tambem use quando a data de atualizacao estiver antiga,
-  presa ou divergente, ou quando for preciso provar cobertura recente dos 103 emissores.
+  presa ou divergente, ou quando for preciso provar cobertura recente dos 104 emissores.
   Nao usar para carteiras nem briefing rapido.
 ---
 
@@ -34,7 +34,7 @@ Vistoria operacional multi-camada do VIX Radar. Protocolo canônico: `Obsidian V
 4. **Lacunas explícitas** — se não coletou prova, registrar por quê (escopo, credencial, custo).
 5. **Não inventar** — sem suposição de versão, deploy ou estado KV.
 6. **Registrar no vault** — ao final, criar/atualizar nota `Obsidian VIX Radar/NN - Auditoria Completa YYYY-MM-DD.md` (nunca sobrescrever nota 13).
-7. **ACK não prova atualização** — `ok:true`/`submit_ok:true` não prova que `_last_scanned_at` avançou; medir os 103 emissores após toda rotina.
+7. **ACK não prova atualização** — `ok:true`/`submit_ok:true` não prova que `_last_scanned_at` avançou; medir os 104 emissores após toda rotina.
 
 ---
 
@@ -152,7 +152,7 @@ Testes em ordem de risco (preferir readonly):
 
 - ACK `ok:true` + `n_eventos:0` + `sem_eventos:true` com eventos no JSON → bug ingestão ou verificador rejeitou tudo
 - Python `urllib` → 403 WAF; usar `curl.exe`
-- `listar_emissores_prioritarios top_n=103` retorna menos que 103 quando staleness baixo — não é gap de cobertura
+- `listar_emissores_prioritarios top_n=104` retorna menos que 104 quando staleness baixo — não é gap de cobertura
 
 ---
 
@@ -166,9 +166,9 @@ Testes em ordem de risco (preferir readonly):
 
 ## Bloco F — Rotinas e cobertura emissores
 
-- Rotina noturna: `vixradar-noturno` — 103 emissores (`EMISSORES_LISTA` no Worker)
-- Executar `scripts/audit-routine-staleness.ps1` desta skill. Gate saudável: `total=103`, `stale_24h_real=0`, `presos_data=0` e timestamp máximo dentro do SLA. `stale_24h_inconclusivo` (emissor com `_status:"INCONCLUSIVO"`, clock pausado de propósito pelo mecanismo FIN1 até promoção a tier FULL — desde v4.9.159) **não** conta para o gate nem para severidade ALTO; é staleness intencional, não achado.
-- Cruzar: `listar_todos_emissores` (103) vs plano completo; amostra de `dados_para_analise` é evidência complementar, nunca substitui o gate dos 103.
+- Rotina noturna: `vixradar-noturno` — 104 emissores (`EMISSORES_LISTA` no Worker)
+- Executar `scripts/audit-routine-staleness.ps1` desta skill. Gate saudável: `total=104`, `stale_24h_real=0`, `presos_data=0` e timestamp máximo dentro do SLA. `stale_24h_inconclusivo` (emissor com `_status:"INCONCLUSIVO"`, clock pausado de propósito pelo mecanismo FIN1 até promoção a tier FULL — desde v4.9.159) **não** conta para o gate nem para severidade ALTO; é staleness intencional, não achado.
+- Cruzar: `listar_todos_emissores` (104) vs plano completo; amostra de `dados_para_analise` é evidência complementar, nunca substitui o gate dos 104.
 - Semana KV atual (`semanaISO`) e janela 30 dias
 
 ### Data antiga ou presa
@@ -187,7 +187,7 @@ Testes em ordem de risco (preferir readonly):
 |---|---|
 | **CRÍTICO** | Ingestão cega, perda de dados, credencial inválida, drift prod/repo no bundle ativo |
 | **ALTO** | Telemetria off, verificador off, auth fail-open, cron quebrado |
-| **ALTO** | Data de análise presa, qualquer emissor `stale_24h_real` (exclui `stale_24h_inconclusivo`), ou relatório 103/103 sem prova de `_last_scanned_at` |
+| **ALTO** | Data de análise presa, qualquer emissor `stale_24h_real` (exclui `stale_24h_inconclusivo`), ou relatório 104/104 sem prova de `_last_scanned_at` |
 | **MÉDIO** | Documentação desatualizada, untracked sem impacto em prod |
 | **BAIXO** | Débito técnico, legado em `producao/` |
 

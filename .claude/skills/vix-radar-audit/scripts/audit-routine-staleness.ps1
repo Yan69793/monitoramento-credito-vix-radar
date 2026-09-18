@@ -8,11 +8,16 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Fonte real da chave hoje e a variavel de ambiente ROUTINE_API_KEY, herdada pelo
+# processo. O fallback abaixo e legado da epoca em que a chave era escrita na SKILL da
+# scheduled task: medido em 2026-09-18, o arquivo existe e nao casa ROUTINE_KEY nenhuma
+# vez, entao quem nao tiver a variavel no ambiente vai falhar aqui, alto e claro, que e
+# o comportamento correto. Nao transformar em silencio.
 if (-not $RoutineKey -and (Test-Path -LiteralPath $RoutineSkill)) {
     $raw = Get-Content -LiteralPath $RoutineSkill -Raw -Encoding UTF8
     if ($raw -match 'ROUTINE_KEY\s*=\s*(\S+)') { $RoutineKey = $Matches[1] }
 }
-if (-not $RoutineKey) { throw 'ROUTINE_API_KEY ausente no ambiente e na scheduled task.' }
+if (-not $RoutineKey) { throw 'ROUTINE_API_KEY ausente no ambiente (a SKILL da scheduled task nao carrega mais a chave).' }
 
 $body = @{
     action = 'listar_plano_rotina'
@@ -36,7 +41,12 @@ $stuck = if ($StuckDate) {
 $max = if ($items.Count) { ($items | Measure-Object horas_stale -Maximum).Maximum } else { $null }
 $oldestReal = @($staleReal | Sort-Object horas_stale -Descending | Select-Object -First 10 empresa, horas_stale, contexto_historico, status)
 $oldestInconclusivo = @($staleInconclusivo | Sort-Object horas_stale -Descending | Select-Object -First 10 empresa, horas_stale, contexto_historico, status)
-$healthy = ($items.Count -eq 103 -and $staleReal.Count -eq 0 -and $stuck.Count -eq 0)
+# EMISSORES104 (2026-09-18): o gate tinha 103 fixo e a carteira passou a ter 104
+# emissores, entao ele nunca fechava verde, nem com zero stale. O numero tem que
+# acompanhar EMISSORES_LISTA do Worker. Quando a carteira mudar de tamanho, muda
+# aqui e no plano esperado, senao o gate volta a mentir.
+$EmissoresEsperados = 104
+$healthy = ($items.Count -eq $EmissoresEsperados -and $staleReal.Count -eq 0 -and $stuck.Count -eq 0)
 
 [ordered]@{
     ok = $healthy
