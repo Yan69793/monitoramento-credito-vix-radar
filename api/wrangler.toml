@@ -1,9 +1,24 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.232)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.256)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
+#   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
+#   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de
+#   metodologia. Medido em 18/09: base de 441 documentos, piso de max(961, 308) = 961, e o
+#   sync ficou bloqueado de 14/09 a 18/09 sem a fonte ter problema (ZIP do ano HTTP 200 com
+#   1,6 MB atualizado em 14/09 e portal devolvendo 7.616 registros na janela de 35 dias
+#   antes do filtro de carteira). A protecao contra encolhimento segue identica: candidatos
+#   abaixo de 0,7 x base anterior continuam bloqueando. O meta de FALHA passa a gravar
+#   `diagnostico` com documentos anteriores, candidatos, piso, modo, bootstrap, dinamico,
+#   universo, validos do portal e tamanhos do ZIP e do portal, e o meta de sucesso grava
+#   `piso_modo`.
+#   Testes: cvm-enetweb.test.mjs com PISOORFAO1, prova reversa medida (com a formula antiga
+#   o caso da base de 441 reprova com piso 961, com a correcao passa com 308) + suite vitest
+#   completa, 39 arquivos e 371 testes.
+#   Rollback: main = "v4.9.255.js".
 # v4.9.254.js = v4.9.253 + CVMSTITCH1: o caminho da ROTINA (receber_analise) passa a
 # v4.9.255.js = v4.9.254 + FIN1-REV/BUSCADEGRADA1: funcao _preservarCoberturaCvmSemEventos preserva _cobertura_cvm (so substitui se novo cobre MAIS docs na janela) e faz merge aditivo de cvm_documentos/_exclusoes_auditadas por link/protocolo unico. Impede regredir os 65 emissores com cobertura_total=1/bloqueio_publicacao=false quando analise sem_eventos traz janela menor. Corrige Multiplan FULL com 3 docs + sem_eventos=true.
 #   Testes: validacao manual + suite vitest completa.
@@ -1382,7 +1397,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.255.js"
+main       = "v4.9.256.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true

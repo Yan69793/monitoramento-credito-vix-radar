@@ -42,6 +42,19 @@ describe("CVM ENETWeb", () => {
     expect(_cvmPisoMetodologia({ metodologia_id: "antiga" }, 4000, 1374)).toMatchObject({ piso: 961, bootstrap: 961, dinamico: 0, rebase: true });
     expect(_cvmPisoMetodologia({ metodologia_id: "enetweb_allowlist_v2" }, 1374, 1374)).toMatchObject({ piso: 961, dinamico: 961, rebase: false });
   });
+  // PISOORFAO1 (2026-09-18). Com base anterior na mesma metodologia, o piso e o
+  // dinamico. Antes, uma base de 441 recebia piso 961 (bootstrap de 0.7 x 1374) e o
+  // sync ficava bloqueado por construcao, porque o universo real da carteira estava
+  // bem abaixo da constante. Medido em producao: 441 candidatos contra piso 961,
+  // bloqueio de 14/09 a 18/09, feed sem evento novo. A prova reversa e o primeiro
+  // caso: antes da correcao ele dava piso 961 e bloqueava, agora da 308 e passa.
+  it("PISOORFAO1: base menor que o bootstrap nao cria piso inalcancavel", () => {
+    expect(_cvmPisoMetodologia({ metodologia_id: "enetweb_allowlist_v2" }, 441, 1374)).toMatchObject({ piso: 308, dinamico: 308, bootstrap: 961, modo: "dinamico" });
+    // A protecao contra encolhimento continua: 0.7 x base anterior ainda e o chao.
+    expect(_cvmPisoMetodologia({ metodologia_id: "enetweb_allowlist_v2" }, 1000, 1374)).toMatchObject({ piso: 700, modo: "dinamico" });
+    // Sem base comparavel (primeira execucao ou troca de metodologia), segue o bootstrap.
+    expect(_cvmPisoMetodologia(null, 0, 1374)).toMatchObject({ piso: 961, modo: "bootstrap" });
+  });
   it("nunca usa o código 05010 como cadastro e preserva CITIGROUP por nome", () => {
     const cols = linha().split("$&");
     cols[0] = "05010-5";
