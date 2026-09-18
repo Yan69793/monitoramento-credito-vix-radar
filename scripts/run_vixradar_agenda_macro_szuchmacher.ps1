@@ -109,7 +109,10 @@ function Get-EventosArray($outputLines) {
     return $null
 }
 
-. (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
+# CORTE DA DEPENDENCIA DO CLAUDE (18/09/2026). A lib de auth do Claude nao e carregada aqui.
+# Medido: este driver nao chama nenhuma funcao dela, e Get-VixLlmProvider /
+# Test-VixLlmProviderPermiteRotina vem da lib neutra, que o ambient-check carrega abaixo.
+# Manter o dot-source obrigava uma rotina migrada a exigir a lib do Claude viva para subir.
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 # Adapter OpenRouter e opcional na lib; ausencia nao derruba o carregamento, mas o gate abaixo
 # recusa a rotina quando o provider e 'openrouter' sem adapter.
@@ -119,7 +122,7 @@ if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
 } else {
     $script:VixLibOpenRouterOk = $false
 }
-Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo', 'Invoke-VixClaudeAuthEscalate')
+Assert-VixLibFunctions @('Assert-VixLibFunctions', 'Get-VixLlmProvider', 'Test-VixLlmProviderPermiteRotina')
 
 # GATE provedor-agnostico. Nenhum claude e invocado neste caminho: a pesquisa vai pelo
 # adapter OpenRouter. Provider diferente de 'openrouter' para a rotina com exit 86.
@@ -181,6 +184,16 @@ if ($temArquivoVivo) {
 }
 
 # Passo 2 do SKILL.md: pesquisa em fontes oficiais pelo adapter OpenRouter.
+# Mapa de dias da janela, sem acento (este arquivo e ASCII por design). Tira do modelo a
+# tarefa de calcular o dia da semana, que foi onde ele errou em 18/09/2026 ao emitir
+# "Boletim Focus" em duas sextas.
+$__nomesDia = @('domingo','segunda','terca','quarta','quinta','sexta','sabado')
+$__mapaDias = @()
+for ($__i = 0; $__i -le 7; $__i++) {
+    $__d = (Get-Date).Date.AddDays($__i)
+    $__mapaDias += ($__d.ToString('yyyy-MM-dd') + '=' + $__nomesDia[[int]$__d.DayOfWeek])
+}
+$__mapaDiasTexto = ($__mapaDias -join ', ')
 $promptTexto = @"
 Voce mantem o calendario macroeconomico semanal publicado em szuchmacher.com.br.
 
@@ -193,8 +206,9 @@ Fontes oficiais, por prioridade:
 
 Regras:
 - Apenas eventos com DATA e FONTE PRIMARIA confirmadas dentro da janela. Nunca antecipar resultado.
-- Boletim Focus = toda segunda-feira 08:25 BRT.
-- Confira o dia da semana de cada data antes de responder.
+- Boletim Focus = toda segunda-feira 08:25 BRT. Somente segunda: nao emita Focus em outro dia.
+- Dia da semana de cada data da janela, ja calculado. Use este mapa e nao recalcule: $__mapaDiasTexto
+- Nao emita evento cuja data caia em dia incoerente com a regra do proprio evento.
 - Converter horarios de EUA, Europa e Asia para BRT (America/Sao_Paulo).
 - Minimo 5 eventos. O campo evento_en e obrigatorio em todos.
 - Textos em portugues com acentuacao correta; descricao de 1 a 2 linhas.
@@ -267,6 +281,16 @@ Write-Log ('Adapter devolveu ' + @($itens).Count + ' item(ns).')
 $eventos = New-Object System.Collections.ArrayList
 $descartados = 0
 $foraDaJanela = 0
+$descartadosDia = 0
+
+# REGRA DE DIA, validacao determinista. Regra semanal conhecida exige dia da semana
+# especifico, e o gate nao pode depender de o modelo ter obedecido o prompt: medido em
+# 18/09/2026, "Boletim Focus" saiu em 18/09 e 25/09 (ambas sextas) com a regra escrita no
+# prompt e no SKILL.md:29, e nenhuma validacao pegou. Evento que viola a regra e descartado
+# com rastro no log, e a contagem minima do Passo 5 continua valendo.
+$__regraDia = @(
+    @{ Padrao = 'focus'; Dia = [System.DayOfWeek]::Monday; Rotulo = 'segunda-feira' }
+)
 foreach ($item in $itens) {
     $data      = ('' + $item.data).Trim()
     $evento    = ('' + $item.evento).Trim()
@@ -282,6 +306,22 @@ foreach ($item in $itens) {
         Write-Log ('AVISO: evento fora da janela ' + $Inicio + '..' + $Fim + ' - ' + $data + ' ' + $evento)
         $foraDaJanela++
     }
+    $__diaOk = $true
+    foreach ($__r in $__regraDia) {
+        if ($evento -match $__r.Padrao -or $eventoEn -match $__r.Padrao) {
+            $__dow = $null
+            try {
+                $__dow = ([datetime]::ParseExact($data, 'yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture)).DayOfWeek
+            } catch { }
+            if ($null -ne $__dow -and $__dow -ne $__r.Dia) {
+                Write-Log ('DESCARTE_DIA: "' + $evento + '" em ' + $data + ' cai em ' + ('' + $__dow) + '; a regra exige ' + $__r.Rotulo + ' - descartado antes de gravar')
+                $descartadosDia++
+                $__diaOk = $false
+            }
+            break
+        }
+    }
+    if (-not $__diaOk) { continue }
     $evt = [ordered]@{
         data         = $data
         hora_brt     = ('' + $item.hora_brt).Trim()
@@ -297,7 +337,7 @@ foreach ($item in $itens) {
 }
 
 $nEventos = @($eventos).Count
-Write-Log ('Eventos validos: ' + $nEventos + ' (descartados=' + $descartados + ', fora_da_janela=' + $foraDaJanela + ')')
+Write-Log ('Eventos validos: ' + $nEventos + ' (descartados=' + $descartados + ', fora_da_janela=' + $foraDaJanela + ', descartados_dia=' + $descartadosDia + ')')
 
 # Passo 5 do SKILL.md: validacao ANTES de gravar. Arquivo vivo nunca recebe agenda invalida.
 $falhas = 0
