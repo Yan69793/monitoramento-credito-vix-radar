@@ -1665,6 +1665,15 @@ try {
         if ($__declCobertura) { Write-Log $__declCobertura }
     }
 
+    # DEFERIDOZERO1 (2026-09-18): execucao que nao deferiu nada nao tem causa de
+    # deferimento, e repetir o valor de partida (cap_efetivo) faz a linha afirmar um
+    # corte que nao houve. Medido na matinal de 18/09, execucao ociosa por
+    # idempotencia: `deferidos_cap=0 deferidos_auth=0 motivo_deferimento=cap_efetivo`.
+    # O rotulo do FIM e do metrics passa a ser `nenhum` quando deferred=0; o texto do
+    # corte (Get-VixDeferidosTexto) segue usando a causa real, porque so sai quando ha
+    # deferido de verdade.
+    $motivoDeferimentoEfetivo = if ($stats.deferred -le 0) { 'nenhum' } else { $motivoDeferido }
+
     $sw.Stop()
     $submitsAceitos = $stats.skip_ok + $stats.submit_ok + $stats.deferred
     $ledgerResumo = Get-VixResumoLedger $LogFile
@@ -1752,7 +1761,7 @@ try {
             # `lotes_nao_processados` = lotes que o aborto deixou sem chamada (nada silencioso).
             deferidos_cap = ($stats.deferred - $stats.deferred_auth)
             deferidos_auth = $stats.deferred_auth
-            motivo_deferimento = $motivoDeferido
+            motivo_deferimento = $motivoDeferimentoEfetivo
             lotes_nao_processados = $stats.lotes_nao_processados
             # DRENOMUDO1-FIX: desfecho do dreno pos-rotina. $null quando nao houve dreno (sem
             # submit ou dry-run), 0 quando drenou, outro valor quando falhou.
@@ -1782,7 +1791,7 @@ try {
         # no fim nao muda leitor nenhum; inserir no meio mudaria quem le posicionalmente.
         ' deferidos_cap=' + ($stats.deferred - $stats.deferred_auth) +
         ' deferidos_auth=' + $stats.deferred_auth +
-        ' motivo_deferimento=' + $motivoDeferido +
+        ' motivo_deferimento=' + $motivoDeferimentoEfetivo +
         ' lotes_nao_processados=' + $stats.lotes_nao_processados +
         $(if ($null -eq $stats.dreno_exit) { '' } else { ' dreno_exit=' + $stats.dreno_exit }) +
         ' duracao_sec=' + [Math]::Round($sw.Elapsed.TotalSeconds, 1))
