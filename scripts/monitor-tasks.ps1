@@ -54,10 +54,10 @@ $LogFile   = Join-Path $LogDir ('monitor' + $SufixoEscopo + "_$DateTag.log")
 $ErrFile   = Join-Path $LogDir ('erros' + $SufixoEscopo + "_$DateTag.json")
 $EstadoFile = Join-Path $LogDir ('estado' + $SufixoEscopo + '.json')
 $MotorFile = Join-Path $LogDir 'motor.json'
-# AIOSEXTRACT1 (2026-08-20): o AI_OPERATING_SYSTEM saiu de dentro do repo do
-# Jarvis (01_PROJETOS\Jarvis\) e virou repo proprio na raiz do workspace. Era
-# infra compartilhada morando dentro de um projeto especifico, o que impedia
-# mover ou apagar o Jarvis sem quebrar esta rotina. Ver CLAUDE.md la.
+# AIOSEXTRACT1 (2026-08-20): o AI_OPERATING_SYSTEM saiu de dentro do repo de
+# outro projeto e virou repo proprio na raiz do workspace. Era infra
+# compartilhada morando dentro de um projeto especifico, o que impedia mover ou
+# apagar aquele projeto sem quebrar esta rotina. Ver CLAUDE.md la.
 $BacklogFile = 'E:\Diretorio\Claude\AI_OPERATING_SYSTEM\05_BACKLOG_E_PRIORIDADES.md'
 
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
