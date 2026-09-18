@@ -89,9 +89,9 @@ $Tasks = @(
     },
     @{
         Name        = 'Szuchmacher-AgendaMacro-Claude'
-        Description = 'Agenda macro szuchmacher.com.br via Claude SKILL'
-        Script      = Join-Path $Scripts 'run_claude_routine.ps1'
-        ArgList     = @('-RoutineId', 'atualizar-agenda-macro-szuchmacher')
+        Description = 'Agenda macro szuchmacher.com.br via adapter OpenRouter'
+        Script      = Join-Path $Scripts 'run_vixradar_agenda_macro_szuchmacher.ps1'
+        ArgList     = @()
         DaysOfWeek  = 'Friday'
         At          = '07:07'
         Daily       = $false

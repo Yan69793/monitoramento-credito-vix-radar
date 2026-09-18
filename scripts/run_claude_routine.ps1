@@ -64,15 +64,18 @@ if (-not (Test-Path -LiteralPath $McpConfig)) {
 # scripts/run_vixradar_verificacao_async.ps1, o PowerShell faz toda a I/O com o Worker e o
 # claude -p so pesquisa e devolve JSON), invocado direto pela task VIXRadar-AgendaSemanal.
 # Nao reative esta entrada no catalogo generico sem decisao explicita.
+# AGENDAMACRO-MIGRACAO1 (2026-09-18): 'atualizar-agenda-macro-szuchmacher' REMOVIDA deste
+# catalogo. Mesmo diagnostico de fundo da AGENDASEM-CAUSA1 acima, com final diferente: o
+# RequiresWebSearch=$false desta entrada nunca verificava a dependencia central da rotina
+# (pesquisa em fontes oficiais) e a rotina executava por fora do gate de provider de
+# vixradar-*. Quando o provider virou 'openrouter', o caminho claude -p morreu no
+# Set-VixClaudeAuthEnv com exit 86, sem entregar nada desde 04/09/2026.
+# A rotina tem agora wrapper dedicado em scripts/run_vixradar_agenda_macro_szuchmacher.ps1
+# (mesmo desenho da agenda-semanal: o PowerShell faz a I/O - backup, gravacao do
+# agenda-data.json e validacao local - e o adapter OpenRouter so pesquisa), invocado direto
+# pela task Szuchmacher-AgendaMacro-Claude. Nao reative esta entrada no catalogo generico
+# sem decisao explicita.
 $Catalog = @{
-    'atualizar-agenda-macro-szuchmacher' = @{
-        Skill             = Join-Path $ScheduledRoot 'atualizar-agenda-macro-szuchmacher\SKILL.md'
-        ProjectRoot       = $SiteRoot
-        AddDirs           = @($SiteRoot, $ScheduledRoot)
-        LogPrefix         = 'agenda-macro-szuchmacher'
-        Model             = $null
-        RequiresWebSearch = $false
-    }
     # RETRY-VIX (2026-08-17): as rotinas noturna e matinal migraram para sessoes
     # agendadas do Claude Desktop, que entram em idle no meio do cascade e matam
     # a rotina sem rastro. O retry via retry-vixradar.ps1 relanca a skill por

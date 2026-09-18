@@ -38,7 +38,7 @@ $ErrorActionPreference = 'Stop'
 
 $Tarefas = @(
     @{ Nome = 'Monitor-Tasks';                  Script = 'scripts\monitor-tasks.ps1';                        Log = 'logs\monitor-tasks\monitor_{yyyyMMdd}.log';                        Args = @('-Quiet', '-SendEmail') }
-    @{ Nome = 'Szuchmacher-AgendaMacro-Claude'; Script = 'scripts\run_claude_routine.ps1';                   Log = 'logs\routines\agenda-macro-szuchmacher_{yyyyMMdd}.log';            Args = @('-RoutineId', 'atualizar-agenda-macro-szuchmacher') }
+    @{ Nome = 'Szuchmacher-AgendaMacro-Claude'; Script = 'scripts\run_vixradar_agenda_macro_szuchmacher.ps1';                   Log = 'logs\routines\agenda-macro-szuchmacher_{yyyyMMdd}.log';            Args = @() }
     @{ Nome = 'Szuchmacher-RetryVixMatinal';    Script = 'scripts\retry-vixradar.ps1';                       Log = 'logs\routines\vixradar-matinal_{yyyyMMdd}.log';                    Args = @('-RoutineId', 'vixradar-matinal') }
     @{ Nome = 'Szuchmacher-RetryVixNoturno';    Script = 'scripts\retry-vixradar.ps1';                       Log = 'logs\routines\vixradar-noturno_{yyyyMMdd}.log';                    Args = @('-RoutineId', 'vixradar-noturno') }
     @{ Nome = 'VIXRadar-AgendaSemanal';         Script = 'scripts\run_vixradar_agenda_semanal.ps1';          Log = 'logs\routines\vixradar-agenda-semanal_{yyyyMMdd}.log';             Args = @() }
