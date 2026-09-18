@@ -109,6 +109,91 @@ function Get-EventosArray($outputLines) {
     return $null
 }
 
+function Test-VixFonteData {
+    # Confere se a data do evento aparece na pagina oficial que o proprio evento declara.
+    # Nao prova atribuicao nem substitui curadoria, mas mata data inventada: medido em
+    # 18/09/2026 o modelo escreveu "Beige Book 24/09 confirmado pelo Fed", e o Fed publica
+    # 02/09 e 14/10. Aceita as formas em que calendario oficial costuma escrever a data.
+    param(
+        [string]$Data,
+        [string]$Url,
+        [int]$TimeoutSec = 20
+    )
+    $res = [ordered]@{ Ok = $false; Inconclusivo = $false; Onde = ''; Motivo = '' }
+    if ([string]::IsNullOrWhiteSpace($Url) -or $Url -notmatch '^https?://') {
+        $res.Motivo = 'fonte_url ausente ou invalida'
+        return [PSCustomObject]$res
+    }
+    if ($Data -notmatch '^\d{4}-\d{2}-\d{2}$') {
+        $res.Motivo = 'data fora do formato YYYY-MM-DD'
+        return [PSCustomObject]$res
+    }
+    try {
+        [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+        # Cabecalhos de navegador: medido em 18/09/2026, o IBGE devolve 403 para requisicao sem
+        # eles, e 403 nao e prova de que o evento seja falso.
+        $hdrs = @{
+            'Accept'          = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+            'Accept-Language' = 'pt-BR,pt;q=0.9,en;q=0.8'
+        }
+        $resp = Invoke-WebRequest -Uri $Url -UseBasicParsing -TimeoutSec $TimeoutSec -Headers $hdrs -UserAgent 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+        $txt = '' + $resp.Content
+    } catch {
+        # Pagina bloqueada, fora do ar ou lenta nao prova invencao. Fica inconclusiva e marcada
+        # no arquivo, para a curadoria conferir a mao, em vez de derrubar evento verdadeiro.
+        $res.Inconclusivo = $true
+        $res.Motivo = 'a pagina nao respondeu (' + $_.Exception.Message + ')'
+        return [PSCustomObject]$res
+    }
+    $txt = [System.Text.RegularExpressions.Regex]::Replace($txt, '<[^>]+>', ' ')
+    $txt = [System.Net.WebUtility]::HtmlDecode($txt)
+    $txt = [System.Text.RegularExpressions.Regex]::Replace($txt, '\s+', ' ')
+    $txt = $txt.ToLowerInvariant()
+    $d = [datetime]::ParseExact($Data, 'yyyy-MM-dd', [System.Globalization.CultureInfo]::InvariantCulture)
+    # Mes de marco aceita c-cedilha sem escrever o caractere neste arquivo ASCII.
+    $mesPt = @('janeiro', 'fevereiro', 'mar\p{L}o', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro')[$d.Month - 1]
+    $mesEn = @('january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december')[$d.Month - 1]
+    $curtoEn = @('jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec')[$d.Month - 1]
+    $ano = $d.Year
+    $m2 = ('{0:00}' -f $d.Month)
+    $d2 = ('{0:00}' -f $d.Day)
+    # O (?![0-9]) impede casar o dia 2 quando a pagina traz o dia 24: sem ele, "september 2"
+    # casa dentro de "september 24" e o gate daria falso positivo.
+    $padroes = [ordered]@{
+        'iso'        = ('{0}-{1}-{2}(?![0-9])' -f $ano, $m2, $d2)
+        'isoBarra'   = ('{0}/{1}/{2}(?![0-9])' -f $ano, $m2, $d2)
+        'brBarra'    = ('{0}/{1}/{2}(?![0-9])' -f $d2, $m2, $ano)
+        'brPonto'    = ('{0}\.{1}\.{2}(?![0-9])' -f $d2, $m2, $ano)
+        'ptExtenso'  = ('(^|[^0-9])' + $d2 + '\s+de\s+' + $mesPt)
+        'ptExtenso1' = ('(^|[^0-9])' + $d.Day + '\s+de\s+' + $mesPt)
+        'enMesDia'   = ($mesEn + '\s+' + $d2 + '(?![0-9])')
+        'enMesDia1'  = ($mesEn + '\s+' + $d.Day + '(?![0-9])')
+        'enDiaMes'   = ('(^|[^0-9])' + $d2 + '\s+' + $mesEn)
+        'enCurto'    = ($curtoEn + '\.?\s+' + $d2 + '(?![0-9])')
+    }
+    foreach ($k in $padroes.Keys) {
+        if ($txt -match $padroes[$k]) {
+            $res.Ok = $true
+            $res.Onde = $k
+            return [PSCustomObject]$res
+        }
+    }
+    # A data nao apareceu. Antes de acusar invencao, medir se a pagina expoe datas. Calendario
+    # oficial lista uma data por mes, entao exigir varios dias do mesmo mes reprovaria pagina
+    # que e calendario de verdade. Contar data de qualquer mes resolve os dois formatos, e
+    # pagina que nao expoe data nenhuma e hub ou JavaScript, onde a checagem fica inconclusiva.
+    # Nao conseguir provar nao e prova de que o evento seja falso.
+    $rxData = '\b(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2}(?![0-9])|\b\d{1,2}\s+de\s+(janeiro|fevereiro|mar\p{L}o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)|(?<![0-9])\d{2}/\d{2}/\d{4}(?![0-9])|(?<![0-9])\d{4}-\d{2}-\d{2}(?![0-9])'
+    $datasNaPagina = ([regex]::Matches($txt, $rxData)).Count
+    if ($datasNaPagina -ge 4) {
+        $res.Motivo = 'a pagina expoe ' + $datasNaPagina + ' datas e a data do evento nao esta entre elas'
+    } else {
+        $res.Inconclusivo = $true
+        $res.Motivo = 'a pagina respondeu mas expoe apenas ' + $datasNaPagina + ' data(s) (hub ou JavaScript), checagem inconclusiva'
+    }
+    return [PSCustomObject]$res
+}
+
 # CORTE DA DEPENDENCIA DO CLAUDE (18/09/2026). A lib de auth do Claude nao e carregada aqui.
 # Medido: este driver nao chama nenhuma funcao dela, e Get-VixLlmProvider /
 # Test-VixLlmProviderPermiteRotina vem da lib neutra, que o ambient-check carrega abaixo.
@@ -209,6 +294,9 @@ Regras:
 - Boletim Focus = toda segunda-feira 08:25 BRT. Somente segunda: nao emita Focus em outro dia.
 - Dia da semana de cada data da janela, ja calculado. Use este mapa e nao recalcule: $__mapaDiasTexto
 - Nao emita evento cuja data caia em dia incoerente com a regra do proprio evento.
+- fonte_url e obrigatoria em todo evento: a URL da pagina oficial que sustenta a data. A rotina
+  baixa essa pagina e marca o evento como conferido ou nao conferido para a curadoria. O minimo
+  de 5 eventos continua valendo, entao nao deixe de incluir evento confirmado por duvida na URL.
 - Converter horarios de EUA, Europa e Asia para BRT (America/Sao_Paulo).
 - Minimo 5 eventos. O campo evento_en e obrigatorio em todos.
 - Textos em portugues com acentuacao correta; descricao de 1 a 2 linhas.
@@ -226,6 +314,7 @@ Responda SOMENTE com um array JSON, um objeto por evento, em ordem cronologica. 
     "descricao": "Descricao em portugues",
     "descricao_en": "Description in English",
     "fonte": "BCB",
+    "fonte_url": "https://pagina-oficial-exata-onde-a-data-aparece",
     "relevancia": "alta"
   }
 ]
@@ -331,13 +420,40 @@ foreach ($item in $itens) {
         descricao    = ('' + $item.descricao).Trim()
         descricao_en = ('' + $item.descricao_en).Trim()
         fonte        = ('' + $item.fonte).Trim()
+        fonte_url    = ('' + $item.fonte_url).Trim()
+        fonte_conferida = $false
         relevancia   = ('' + $item.relevancia).Trim()
     }
     [void]$eventos.Add([PSCustomObject]$evt)
 }
 
+# VERIFICACAO DE FONTE: a data de cada evento tem de aparecer na pagina oficial que o proprio
+# evento declara. E o que sobra de protecao contra data inventada depois das checagens de forma.
+$descartadosFonte = 0
+$naoVerificaveis = 0
+$confirmados = New-Object System.Collections.ArrayList
+foreach ($ev in $eventos) {
+    $cf = Test-VixFonteData -Data $ev.data -Url $ev.fonte_url
+    if ($cf.Ok) {
+        $ev.fonte_conferida = $true
+        Write-Log ('FONTE_OK: ' + $ev.data + ' ' + $ev.evento + ' (forma ' + $cf.Onde + ' em ' + $ev.fonte_url + ')')
+        [void]$confirmados.Add($ev)
+    } elseif ($cf.Inconclusivo) {
+        $naoVerificaveis++
+        Write-Log ('FONTE_NAO_VERIFICAVEL: ' + $ev.data + ' ' + $ev.evento + ' - ' + $cf.Motivo + ' (' + $ev.fonte_url + ')')
+        [void]$confirmados.Add($ev)
+    } else {
+        Write-Log ('DESCARTE_FONTE: "' + $ev.evento + '" em ' + $ev.data + ' nao confirma em ' + $ev.fonte_url + ' - ' + $cf.Motivo)
+        $descartadosFonte++
+    }
+}
+$eventos = $confirmados
+
 $nEventos = @($eventos).Count
-Write-Log ('Eventos validos: ' + $nEventos + ' (descartados=' + $descartados + ', fora_da_janela=' + $foraDaJanela + ', descartados_dia=' + $descartadosDia + ')')
+Write-Log ('Eventos validos: ' + $nEventos + ' (descartados=' + $descartados + ', fora_da_janela=' + $foraDaJanela + ', descartados_dia=' + $descartadosDia + ', descartados_fonte=' + $descartadosFonte + ')')
+if ($naoVerificaveis -gt 0) {
+    Write-Log ('AVISO PARA A CURADORIA: ' + $naoVerificaveis + ' evento(s) com fonte nao verificavel por maquina (fonte_conferida=false no agenda-data.json). Confira contra a fonte antes de publicar.')
+}
 
 # Passo 5 do SKILL.md: validacao ANTES de gravar. Arquivo vivo nunca recebe agenda invalida.
 $falhas = 0
