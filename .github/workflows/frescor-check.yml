@@ -26,6 +26,7 @@ jobs:
         env:
           SECRET_PWD: ${{ secrets.ADMIN_PASSWORD }}
           INPUT_PWD: ${{ inputs.admin_senha }}
+          ROUTINE_KEY: ${{ secrets.ROUTINE_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
@@ -119,7 +120,7 @@ jobs:
           av_lote=$(echo "$hc" | jq -r '.checks.avanco_feed.referencia_lote // "null"')
           av_prox=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_proxima_prevista // "null"')
           # Acervo x elegivel. O teto que decide e o ELEGIVEL (documento com dono
-          # entre os 103 e com data de referencia ja passada), porque e a mesma
+          # entre os 104 e com data de referencia ja passada), porque e a mesma
           # regua que costurarCvmEmEventos usa. Os numeros do acervo bruto saem
           # junto porque quarentena alta aparece aqui antes de virar card vazio.
           av_docs=$(echo "$hc" | jq -r '.checks.avanco_feed.fonte_documentos_total // "null"')
@@ -169,7 +170,46 @@ jobs:
             echo "::warning::Fonte CVM com falha dura recente. cvm_fonte_motivo=${cvm_motivo} falhas_consecutivas=${cvm_falhas} idade_dias=${cvm_idade}. Ainda abaixo do limite de escalada, mas se repetir a ingestao de fato relevante para."
           fi
 
-          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_elegivel=$av_teto teto_acervo=$av_acervo elegiveis=$av_eleg sem_dono=$av_sdono cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas"
+          # EMISSORSTALE1 (2026-09-18, auditoria operacional). Todos os gates acima
+          # medem o ESCRITOR (updated_at, companies), o FATO MAIS NOVO (evento_mais_novo)
+          # e a FONTE (cvm_fonte_*). Nenhum mede a analise POR EMISSOR, e foi por isso
+          # que a semana de 14 a 18/09 passou verde com o pipeline faminto: em 18/09 o
+          # run estava success com 75 dos 104 emissores sem analise ha mais de 24h (o
+          # mais antigo com ultima analise em 16/09 21:10), enquanto a noturna nao
+          # completava desde 16/09 e a matinal deferia a maior parte do plano por cap e
+          # por limite de sessao da assinatura. Feed fresco nao implica carteira
+          # analisada, e era essa a metade cega.
+          # Fonte: acao listar_plano_rotina, a mesma que a skill de auditoria usa.
+          # INCONCLUSIVO nao conta (clock pausado de proposito pelo FIN1, desde
+          # v4.9.159), igual ao gate da skill.
+          emp_total=nao_medido
+          emp_stale=nao_medido
+          emp_max=nao_medido
+          if [[ -z "${ROUTINE_KEY:-}" ]]; then
+            echo "::error::ROUTINE_API_KEY ausente nos secrets; staleness por emissor nao medido neste run."
+          else
+            body_plano=$(jq -n --arg rk "$ROUTINE_KEY" '{action:"listar_plano_rotina",routine_key:$rk,modo:"noturno"}')
+            plano=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' \
+              -H 'Content-Type: application/json' -d "$body_plano" --max-time 180)
+            echo "$plano" | jq -e '.ok == true' >/dev/null
+            emp_total=$(echo "$plano" | jq '.emissores | length')
+            emp_stale=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo != true) | select(((.horas_stale // 0)|tonumber) >= 24)] | length')
+            emp_inconc=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo == true) | select(((.horas_stale // 0)|tonumber) >= 24)] | length')
+            emp_max=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo != true) | ((.horas_stale // 0)|tonumber)] | max // 0')
+            emp_mais_antigo=$(echo "$plano" | jq -r '[.emissores[] | select(.inconclusivo != true)] | sort_by((.horas_stale // 0)|tonumber) | reverse | .[0] | ((.empresa // "?") + " " + ((.horas_stale // 0)|tostring) + "h " + (.contexto_historico // "sem contexto"))' 2>/dev/null || echo "indisponivel")
+            emp_pct=0
+            if (( emp_total > 0 )); then emp_pct=$(( emp_stale * 100 / emp_total )); fi
+            echo "EMISSORES_STALE real=${emp_stale}/${emp_total} (${emp_pct}%) inconclusivo_acima_24h=${emp_inconc} max_horas=${emp_max} mais_antigo=${emp_mais_antigo}"
+            if (( emp_stale > 0 )); then
+              echo "::warning::${emp_stale} de ${emp_total} emissores sem analise ha mais de 24h (mais antigo: ${emp_mais_antigo}). SLA da carteira estourado, o feed pode seguir fresco enquanto a cobertura atrasa."
+            fi
+            if (( emp_pct > 50 )); then
+              echo "::error::CARTEIRA FAMINTA: ${emp_stale}/${emp_total} emissores (${emp_pct}%) sem analise ha mais de 24h, maximo ${emp_max}h, mais antigo em ${emp_mais_antigo}. Conferir os motivos de deferimento da ultima noturna e da matinal (cap_efetivo, limite_sessao_assinatura), se a noturna completou e se houve aborto de auth. Frescor de feed nao cobre isto."
+              exit 1
+            fi
+          fi
+
+          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_elegivel=$av_teto teto_acervo=$av_acervo elegiveis=$av_eleg sem_dono=$av_sdono cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas emissores_stale_real=${emp_stale}/${emp_total} emissores_max_horas=${emp_max}"
 
       # FRESCORNOTIFY1 (auditoria 2026-08-29): ate aqui o gate reprovava mas o
       # aviso morria dentro do GitHub, sem canal nenhum (28/08 e 29/08 o operador
@@ -199,6 +239,15 @@ jobs:
             # diz se a fonte tinha algo para dar, que e a metade acionavel.
             det=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' -H 'Content-Type: application/json' -d "$body" --max-time 60 \
               | jq -r '"avanco_feed=" + (.checks.avanco_feed.estado // "ausente") + " feed_max=" + (.checks.avanco_feed.feed_max_data_evento // "null") + " teto_fonte=" + (.checks.avanco_feed.teto_comparavel // "null") + " dentro_da_cadencia=" + (.checks.avanco_feed.fonte_dentro_da_cadencia|tostring) + " escreveu_apos_lote=" + (.checks.avanco_feed.pipeline_escreveu_apos_lote|tostring) + " | evento_mais_novo=" + (.checks.evento_mais_novo.data // "null") + " idade_du=" + (.checks.evento_mais_novo.idade_du|tostring) + " | " + (.checks.avanco_feed.diagnostico // "")' 2>/dev/null || echo "sem campo avanco_feed na resposta")
+          fi
+          # EMISSORSTALE1: o alerta tambem nomeia a carteira, porque o gate novo
+          # reprova por ela e um e-mail que so fala de feed manda procurar no lugar
+          # errado. Mesma acao que o gate usa, com a chave que este passo ja tem.
+          if [[ -n "${ROUTINE_KEY:-}" ]]; then
+            bp=$(jq -n --arg rk "$ROUTINE_KEY" '{action:"listar_plano_rotina",routine_key:$rk,modo:"noturno"}')
+            pl=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' -H 'Content-Type: application/json' -d "$bp" --max-time 120 2>/dev/null || echo '{}')
+            det_stale=$(echo "$pl" | jq -r 'if (.emissores|type)=="array" and (.emissores|length)>0 then (.emissores as $e | ([$e[]|select(.inconclusivo != true)|select(((.horas_stale // 0)|tonumber) >= 24)]|length|tostring) + " de " + ($e|length|tostring) + " emissores sem analise ha mais de 24h") else "" end' 2>/dev/null || echo "")
+            if [[ -n "$det_stale" ]]; then det="${det} | ${det_stale}"; fi
           fi
           run_url="https://github.com/Yan69793/monitoramento-credito-vix-radar/actions/runs/${GITHUB_RUN_ID}"
           motivo="Frescor da ingestao reprovou as $(date -u +%H:%MZ) UTC. Detalhe: ${det}. Log: ${run_url}"
