@@ -2,7 +2,13 @@
 # (INCIDENTE-FRESHNESS2, A4/H). Parte 1: Test-VixLedgerEntregueNaJanela isolada
 # (lib/vixradar-watchdog.ps1). Parte 2: retry-vixradar.ps1 fim a fim, com
 # -RunnerOverride/-LogDirOverride/-SemAlerta (nenhum toca producao, nenhum POST
-# real, nenhum token gasto - o "relancamento" e um stub .ps1). ASCII puro, PS 5.1.
+# real, nenhum token gasto - o "relancamento" e um stub .ps1). Parte 3: destino do
+# relancamento por rotina (prova por AST, sem executar). Parte 4 (PROVIDERRETRY1,
+# 17/09): o gate de provider do retry nas duas pontas - openrouter segue adiante
+# ate o julgamento de ledger/janela, none continua no-op canonico exit 0 - e o
+# gate legado so-Claude fica proibido de voltar a decidir o retry (incidente: a
+# varredura de 17/09 ficou sem recuperacao porque ele no-opou com exit 0).
+# ASCII puro, PS 5.1.
 $ErrorActionPreference = 'Continue'
 $LibDir = Join-Path $PSScriptRoot 'lib'
 . (Join-Path $LibDir 'vixradar-watchdog.ps1')
@@ -10,9 +16,12 @@ $LibDir = Join-Path $PSScriptRoot 'lib'
 # Fixture de provider: o retry tem o gate de provider ANTES do julgamento por janela
 # (lib/vixradar-llm-provider.ps1). Maquina sem VIXRADAR_LLM_PROVIDER - o windows-latest do CI,
 # por exemplo - cai no no-op BLOQUEADO_SEM_PROVIDER exit 0, e esta suite mediria o gate em vez
-# do julgamento que ela existe para provar. Fixa o caminho Claude (o do operador) apenas no
-# escopo DESTE processo, herdado pelos processos filhos; registro nenhum e tocado, e o valor
-# original volta no finally. Mesma pratica de test-monitor-provider-gate.ps1.
+# do julgamento que ela existe para provar. Fixa claude-subscription apenas no
+# escopo DESTE processo, herdado pelos processos filhos; registro nenhum e tocado,
+# e o valor original volta no finally. Claude permanece o fixture das Partes 1 a 3
+# porque e o unico provider que passa tanto pelo gate legado quanto pelo canonico,
+# e o objeto destas partes e o JULGAMENTO de janela, nao o gate (o gate tem prova
+# propria na Parte 4). Mesma pratica de test-monitor-provider-gate.ps1.
 $providerOriginal = $env:VIXRADAR_LLM_PROVIDER
 $env:VIXRADAR_LLM_PROVIDER = 'claude-subscription'
 
@@ -170,6 +179,61 @@ exit 0
     }
     $chamadaRunner = $astR.FindAll({ param($n) $n -is [System.Management.Automation.Language.CommandAst] -and $n.CommandElements.Count -gt 0 -and $n.CommandElements[0].Extent.Text -eq 'powershell.exe' }, $true)
     Assert ($chamadaRunner.Count -ge 1) '3h: o retry invoca powershell.exe em algum ponto'
+
+    # ============================================================
+    # Parte 4: PROVIDERRETRY1 (17/09) - gate de provider do retry, duas pontas.
+    # Incidente: com provider openrouter (o efetivo do operador desde 17/09), o gate
+    # legado so-Claude devolvia $false e o retry virava no-op silencioso exit 0 - a
+    # varredura do dia ficava sem recuperacao e nenhuma linha acusava (o exit 0
+    # enganava o monitor). O retry tem que decidir pelo gate canonico
+    # Test-VixLlmProviderPermiteRotina, o mesmo do motor e do monitor. Cada ponta roda
+    # o retry REAL com stub inerte (so exit 0, nao escreve nada) e -SemAlerta: nenhum
+    # POST, nenhum token, nenhum relancamento real. Diretorio proprio por provider
+    # porque o log do retry e por Append-Content (rodadas anteriores somariam).
+    Write-Host '=== Parte 4: PROVIDERRETRY1 - gate de provider do retry (duas pontas) ==='
+    $stubInerteP4 = Join-Path $tmp 'stub_runner_inerte.ps1'
+    Set-Content -LiteralPath $stubInerteP4 -Value "param([string]`$RoutineId, [string]`$Fallback429 = 'ChavePega')`nexit 0" -Encoding UTF8
+    function Invoke-RetryP4([string]$Provider) {
+        # Roda o retry real de novo com o provider da vez; log da rotina parado ha
+        # 30 min (SEM ENTREGA), como na Parte 2. Devolve exit + log do retry.
+        $env:VIXRADAR_LLM_PROVIDER = $Provider
+        $dirRun = Join-Path $tmp ('p4_' + $Provider)
+        New-Item -ItemType Directory -Force -Path $dirRun | Out-Null
+        $logRotRun = Join-Path $dirRun ('vixradar-noturno_' + $dataTag + '.log')
+        Set-Content -LiteralPath $logRotRun -Value ($tsAntigo + ' INICIO: noturno 103 emissores (fixture Parte 4)') -Encoding UTF8
+        (Get-Item $logRotRun).LastWriteTime = (Get-Date).AddMinutes(-30)
+        & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $retryScript -RoutineId vixradar-noturno -RunnerOverride $stubInerteP4 -LogDirOverride $dirRun -SemAlerta | Out-Null
+        $retLogRun = Join-Path $dirRun ('retry-vixradar-noturno_' + $dataTag + '.log')
+        $saida = [pscustomobject]@{ Exit = $LASTEXITCODE; Log = (Get-Content -LiteralPath $retLogRun -Raw -Encoding UTF8) }
+        return $saida
+    }
+
+    Write-Host '--- 4a: provider openrouter -> gate passa, segue ate o julgamento e o relancamento ---'
+    $r4a = Invoke-RetryP4 'openrouter'
+    Assert ($r4a.Exit -eq 1) ('4a: openrouter sai exit 1 quando o relancamento nao entrega (obtido ' + $r4a.Exit + ')')
+    Assert (-not ($r4a.Log -match 'BLOQUEADO_SEM_PROVIDER')) '4a: openrouter NAO emite BLOQUEADO_SEM_PROVIDER (a linha do incidente 17/09)'
+    Assert (-not ($r4a.Log -match 'no-op, nao relanca')) '4a: openrouter NAO sai pelo no-op de provider'
+    Assert ($r4a.Log -match 'RETRY EXIT:') '4a: openrouter chegou ao relancamento de verdade'
+    Assert ($r4a.Log -match 'SEM ENTREGA APOS RELANCAMENTO') '4a: re-verificacao pos-relancamento rodou (julgamento por janela, nao por exit)'
+
+    Write-Host '--- 4b: provider none -> no-op canonico, exit 0, sem regressao ---'
+    $r4b = Invoke-RetryP4 'none'
+    Assert ($r4b.Exit -eq 0) ('4b: none sai exit 0 (no-op limpo, obtido ' + $r4b.Exit + ')')
+    Assert ($r4b.Log -match 'BLOQUEADO_SEM_PROVIDER provider=none') '4b: linha canonica BLOQUEADO_SEM_PROVIDER com provider=none'
+    Assert ($r4b.Log -match 'no-op, nao relanca') '4b: motivo registra o no-op'
+    Assert ($r4b.Log -match 'provider nao configurado') '4b: motivo e o canonico do provider ausente'
+    Assert (-not ($r4b.Log -match 'RETRY EXIT:')) '4b: nenhum relancamento sob provider none'
+
+    Write-Host '--- 4c: provider claude-manual sem -ForceClaude -> no-op canonico (Fase A preservada) ---'
+    $r4c = Invoke-RetryP4 'claude-manual'
+    Assert ($r4c.Exit -eq 0) ('4c: claude-manual sai exit 0 (no-op, obtido ' + $r4c.Exit + ')')
+    Assert ($r4c.Log -match 'Claude manual exige -ForceClaude') '4c: motivo exige forca manual explicita (scheduler nunca passa)'
+
+    Write-Host '--- 4d: estatico - o gate legado nao decide mais o retry ---'
+    $srcRetry = Get-Content -LiteralPath $retryScript -Raw -Encoding UTF8
+    Assert (-not ($srcRetry -match 'Test-VixLlmPermiteClaude')) '4d: gate legado so-Claude removido da decisao do retry (reprova o defeito de 17/09)'
+    Assert ($srcRetry -match 'Test-VixLlmProviderPermiteRotina') '4d: retry usa o gate canonico (mesma decisao do motor e do monitor)'
+    Assert ($srcRetry -match 'vixradar-openrouter\.ps1') '4d: retry carrega o adapter OpenRouter antes do gate (openrouter exige adapter presente)'
 }
 finally {
     $env:VIXRADAR_LLM_PROVIDER = $providerOriginal

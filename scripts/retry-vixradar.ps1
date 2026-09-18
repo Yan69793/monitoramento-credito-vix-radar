@@ -91,14 +91,29 @@ if (Test-Path -LiteralPath $ClaudeAuth) {
     try { . $ClaudeAuth; $temClaudeAuth = $true } catch { Write-Log "AVISO: dot-source $ClaudeAuth falhou: $_" }
 } else { Write-Log "AVISO: $ClaudeAuth ausente" }
 
-# CLAUDE-FREE-MIGRATION (2026-09-04): com provider none (ou claude-manual sem forca manual),
-# a rotina base ja sai exit 86 e nao deixa ledger no dia. Relancar aqui so geraria email de
-# falso "SEM ENTREGA". Retry vira no-op limpo: linha canonica + exit 0, sem relancar, sem
-# alerta. (Quando a Fase B migrar o runner para provider novo, este no-op e revisto.)
+# PROVIDERRETRY1 (2026-09-17): o gate era o legado so-Claude da Fase A e devolvia $false
+# para openrouter com o motivo "reservado para Fase B, motor ainda nao migrado" - mas a
+# Fase B D1 (04/09) ja tinha migrado o motor para o adapter proprio. O retry virou no-op
+# silencioso com exit 0 e a varredura de 17/09 ficou sem recuperacao
+# (retry-vixradar-noturno_20260917.log, 23:20). Gate passa a ser o canonico
+# Test-VixLlmProviderPermiteRotina, com o adapter OpenRouter carregado antes -
+# mesmo padrao do boot do motor (run_vixradar_varredura.ps1) e do monitor (monitor-tasks.ps1).
+# O no-op de provider none (ou claude-manual sem forca manual) permanece: a rotina base sai
+# 86 sem deixar ledger no dia, relancar so geraria email de falso "SEM ENTREGA". A suite
+# test-retry-janela.ps1 (Parte 4) reprova qualquer retorno do gate legado a este arquivo.
 $ProviderLibRetry = Join-Path $LibDir 'vixradar-llm-provider.ps1'
 if (Test-Path -LiteralPath $ProviderLibRetry) {
     . $ProviderLibRetry
-    if (-not (Test-VixLlmPermiteClaude)) {
+    # Adapter OpenRouter e opcional (mesma regra do motor): arquivo ausente nao derruba os
+    # outros providers, so o provider 'openrouter' exige o adapter.
+    $openRouterAdapterHabilitado = $false
+    $OpenRouterLibRetry = Join-Path $LibDir 'vixradar-openrouter.ps1'
+    if (Test-Path -LiteralPath $OpenRouterLibRetry) {
+        . $OpenRouterLibRetry
+        $openRouterAdapterHabilitado = ((Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
+    }
+    $codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
+    if (-not (Test-VixLlmProviderPermiteRotina -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado -CodexAdapterHabilitado:$codexAdapterHabilitado)) {
         Write-Log ((Get-VixLlmBloqueadoMsg ('retry-vixradar.ps1 ' + $RoutineId)) + ' - no-op, nao relanca')
         exit 0
     }
