@@ -1,10 +1,14 @@
 ---
-data: 2026-09-12
+data: 2026-09-18
 tipo: referencia
 tags: [vix-radar, producao, estado-atual]
-status: saudavel
+status: degradado
 ---
 
+
+> [!warning] 18/09 BRT — **Auditoria operacional readonly: superfície saudável, pipeline degradado.** Produção `v4.9.255` com o bundle do repo igual ao de produção (sem drift) e frontend `v202.43` nas duas pontas. Portão `ok:true`, auth anônimo 401 fail-closed, bindings e observabilidade ok, zero secret hardcoded no bundle. **Achados abertos:** (1) ALTO, `75/104` emissores sem análise há mais de 24h, o mais antigo com `Ultima analise: 2026-09-16T21:10`, medido pelo gate `audit-routine-staleness.ps1` (`total:104`, `stale_24h_real:75`, `max_stale_hours:43.3`); (2) ALTO, sync da CVM bloqueado, `cvm_fonte_motivo="ultimo_sync_falhou:enet_encolhimento_bloqueado"` com `cvm_fonte_falha_dura=true` e acervo inalterado desde 14/09, então o feed não ganha evento novo desde 16/09; (3) ALTO, noturna escalada há 7 dias, a de 17/09 abortou em `AUTH_MODO: nenhum` antes do primeiro lote; (4) MÉDIO, `painel_fresco:false` porque a matinal das 10:06 pulou os 23 por idempotência e não reescreveu o painel. **Achados de instrumento:** o gate da skill de auditoria tem `103` fixo e são 104 emissores, então nunca fecha verde; e a matinal de 18/09 fechou com `motivo_deferimento=cap_efetivo` com `deferidos_cap=0`, rótulo contradizendo os contadores. Branch de trabalho `mva-provider-agnostic`, 31 commits à frente de `origin/main` e 11 não pushados. Evidência completa em [[102 - Auditoria Operacional 2026-09-18]].
+> **Status:** aberto · **Data:** 2026-09-18 · **Origem do Registro:** `/vix-radar-audit` readonly a pedido do operador, blocos A a F.
+> **Condição de Obsolescência:** cai quando os 104 emissores voltarem ao SLA de 24h e o sync da CVM destravar.
 
 > [!success] 13/09 BRT: **DRENOMUDO1 fechado no repositório (commit `c8ab9f9`), sem deploy.** O dreno da fila de verificação chamado no fim da varredura registrava sempre `dreno concluido (exit=N)`. Medido em 13/09: `POS-MATINAL: dreno concluido (exit=5)` com a fila NÃO drenada, porque a verificação assíncrona abortou sem credencial (cota de assinatura estourada às 16:46) e esse ramo do aborto era o único de auth que não levantava `ALERTA_AUTH`, então o vigia diário não tinha o que ler. Agora o motor avalia o código de saída (exit 0 mantém `concluido`, qualquer outro vira `FALHOU` com o código) e o ramo sem credencial levanta `ALERTA_AUTH` e notifica o admin, igual ao ramo irmão de escalada paga. Provas: `test-varredura-defeitos` 18/18, `test-dryrun-metrics` 21/21 em PS 5.1 e pwsh 7, suíte agregada 22 verdes com as 2 vermelhas do baseline de 12/09, `lint-encoding` RISCO 0, parse 5.1 limpo.
 > **Status:** fechado no repositório, sem deploy · **Data:** 2026-09-13 · **Origem do Registro:** incidente do dia, dreno sem credencial das 16:46 registrado como concluído.
