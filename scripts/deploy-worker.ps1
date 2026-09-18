@@ -52,6 +52,10 @@ $toml   = Join-Path $apiDir "wrangler.toml"
 function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
 function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
 
+# CFG-01 (2026-09-18): guarda da versao do wrangler, compartilhada com
+# scripts/test-wrangler-pin.ps1 (que roda o codigo real nas duas pontas).
+. (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-wrangler-pin.ps1")
+
 # Compara duas versoes de Worker (v4.9.NNN). Retorna -1, 0 ou 1.
 function Compare-WorkerVersion($a, $b) {
   $na = [int]($a -replace '^v4\.9\.', '')
@@ -63,6 +67,36 @@ function Compare-WorkerVersion($a, $b) {
 
 # --- 0. Pre-requisitos e credencial ----------------------------------------
 if (-not (Test-Path $toml)) { Fail "Nao achei $toml" }
+
+# --- 0.0 GATE WRANGLER: a ferramenta e a declarada, e ela existe ------------
+# CFG-01 (2026-09-18). Roda ANTES de qualquer chamada ao wrangler, inclusive das
+# duas sondas de credencial (passos 0 e 0.3), que ate esta data passavam pelo
+# `npx`. O `npx`, quando `node_modules/wrangler` nao existe, baixa o pacote da
+# rede e executa uma versao que ninguem escolheu - e a sonda do passo 0 decide se
+# o deploy usa token ou OAuth, entao resolver a ferramenta errado muda o caminho
+# do deploy inteiro. Aqui nao ha `npx`: ou o binario declarado esta instalado, ou
+# ele e instalado agora a partir do lock, ou o deploy para antes de comecar.
+$wranglerBin = Get-VixWranglerBin -ApiDir $apiDir
+if (-not $wranglerBin) {
+  Write-Host "wrangler declarado ainda nao instalado; instalando pelo lock antes das sondas (CFG-01)..." -ForegroundColor Yellow
+  Push-Location $apiDir
+  try {
+    npm ci --omit=dev --no-audit --no-fund
+    $instalacaoExit = $LASTEXITCODE
+  } finally {
+    Pop-Location
+  }
+  if ($instalacaoExit -ne 0) {
+    Fail "npm ci --omit=dev falhou (exit $instalacaoExit). Sem node_modules o deploy nao tem o wrangler declarado, e resolver a ferramenta pela rede e exatamente o que o CFG-01 fecha."
+  }
+  $wranglerBin = Get-VixWranglerBin -ApiDir $apiDir
+}
+if (-not $wranglerBin) {
+  Fail "wrangler continua ausente de api/node_modules apos npm ci --omit=dev (CFG-01). A declaracao existe, mas a instalacao nao produziu o binario."
+}
+$pinWrangler = Test-VixWranglerPin -ApiDir $apiDir
+if (-not $pinWrangler.Ok) { Fail $pinWrangler.Motivo }
+Write-Host "Gate wrangler: $($pinWrangler.Declarado) declarado, instalado e respondendo (CFG-01)" -ForegroundColor Green
 
 # CREDOAUTH1 (2026-08-04): mesmo problema achado no deploy-pages. O
 # CLOUDFLARE_API_TOKEN do registro foi trocado em 02/08 por um com permissao de
@@ -79,12 +113,16 @@ if (-not (Test-Path $toml)) { Fail "Nao achei $toml" }
 $usandoOAuth = $false
 
 function Test-CredencialWorkers {
+  # CFG-01: recebe o binario por parametro em vez de procurar sozinho. Nao ha
+  # `npx` aqui de proposito - ele resolveria a ferramenta pela rede quando o
+  # pacote nao estivesse instalado.
+  param([Parameter(Mandatory = $true)][string]$WranglerBin)
   # try/catch porque com $ErrorActionPreference='Stop' o pwsh 7.3+ pode promover
   # exit code nao-zero de comando nativo a excecao terminante. Aqui exit != 0 e
   # resposta esperada da sonda.
   Push-Location $apiDir
   try {
-    $null = & npx wrangler secret list --config wrangler.toml --name $WorkerName --format json 2>&1
+    $null = & node $WranglerBin secret list --config wrangler.toml --name $WorkerName --format json 2>&1
     return ($LASTEXITCODE -eq 0)
   } catch {
     return $false
@@ -101,7 +139,7 @@ if ($ForcarOAuth) {
   Write-Host "Credencial: CLOUDFLARE_API_TOKEN ausente, tentando sessao OAuth do wrangler" -ForegroundColor Yellow
   $usandoOAuth = $true
 } else {
-  if (Test-CredencialWorkers) {
+  if (Test-CredencialWorkers -WranglerBin $wranglerBin) {
     Write-Host "Credencial: CLOUDFLARE_API_TOKEN com acesso a Workers OK" -ForegroundColor Green
   } else {
     Warn "CLOUDFLARE_API_TOKEN existe mas NAO alcanca a API de Workers (falta 'Workers Scripts: Edit')."
@@ -111,8 +149,8 @@ if ($ForcarOAuth) {
   }
 }
 
-if ($usandoOAuth -and -not (Test-CredencialWorkers)) {
-  Fail "Nem o token nem a sessao OAuth alcancam a API de Workers. Rode 'npx wrangler login' ou adicione 'Workers Scripts: Edit' ao token em https://dash.cloudflare.com/profile/api-tokens"
+if ($usandoOAuth -and -not (Test-CredencialWorkers -WranglerBin $wranglerBin)) {
+  Fail "Nem o token nem a sessao OAuth alcancam a API de Workers. Rode 'cd api; node node_modules/wrangler/bin/wrangler.js login' ou adicione 'Workers Scripts: Edit' ao token em https://dash.cloudflare.com/profile/api-tokens"
 }
 if ($usandoOAuth) { Write-Host "Credencial: sessao OAuth do wrangler validada contra Workers" -ForegroundColor Green }
 
@@ -156,7 +194,13 @@ $trackedFiles = @(
   "api/src/worker.js",
   "api/wrangler.toml",
   "scripts/build-worker.ps1",
-  "scripts/deploy-worker.ps1"
+  "scripts/deploy-worker.ps1",
+  # CFG-01 (2026-09-18): a guarda que decide se este deploy pode rodar. Sem ela
+  # na lista, uma edicao nao commitada da lib passava pelo gate 0.2 como "working
+  # tree limpo", o deploy rodava a versao do disco e o commit do passo 6 nao a
+  # levava junto - o repo ficaria com um deploy-worker.ps1 que faz dot-source de
+  # um arquivo que nao existe no GitHub.
+  "scripts/lib/vixradar-wrangler-pin.ps1"
 )
 $dirty = git diff --name-only -- $trackedFiles 2>$null
 if ($dirty) {
@@ -200,7 +244,7 @@ Write-Host "Gate ancestralidade: repo contem origin/main" -ForegroundColor Green
 # `wrangler secret list` devolve so os NOMES dos secrets, nunca os valores.
 Push-Location $apiDir
 try {
-  $secretsRaw  = (npx wrangler secret list --config wrangler.toml --name $WorkerName --format json 2>&1 | Out-String)
+  $secretsRaw  = (& node $wranglerBin secret list --config wrangler.toml --name $WorkerName --format json 2>&1 | Out-String)
   $secretsExit = $LASTEXITCODE
 } finally {
   Pop-Location
@@ -209,7 +253,7 @@ if ($secretsExit -ne 0) {
   Fail "Nao consegui listar os secrets do Worker $WorkerName (exit $secretsExit). O health agora exige SENTRY_DSN; deployar sem confirmar o secret deixaria producao em ok:false e o repo dessincronizado.`n$secretsRaw"
 }
 if ($secretsRaw -notmatch 'SENTRY_DSN') {
-  Fail "Secret SENTRY_DSN ausente no Worker $WorkerName. Desde SENTRY1 (v4.9.184) o health exige, e producao voltaria ok:false. Crie o secret antes de deployar:`n  cd api`n  npx wrangler secret put SENTRY_DSN --config wrangler.toml --name $WorkerName"
+  Fail "Secret SENTRY_DSN ausente no Worker $WorkerName. Desde SENTRY1 (v4.9.184) o health exige, e producao voltaria ok:false. Crie o secret antes de deployar:`n  cd api`n  node node_modules/wrangler/bin/wrangler.js secret put SENTRY_DSN --config wrangler.toml --name $WorkerName"
 }
 Write-Host "Gate SENTRY_DSN: secret presente" -ForegroundColor Green
 
@@ -311,13 +355,35 @@ $sentryDir = Join-Path $apiDir "node_modules\@sentry\cloudflare"
 if (-not (Test-Path $sentryDir)) { Fail "@sentry/cloudflare ausente em node_modules apos npm ci. O import no bundle nao vai resolver." }
 Write-Host "  node_modules OK (@sentry/cloudflare presente)" -ForegroundColor Green
 
+# --- 3.1 GATE WRANGLER DETERMINISTICO (CFG-01, 2026-09-18) ------------------
+# A ferramenta que faz o deploy nao pode ser resolvida na hora. Ate 18/09/2026 o
+# wrangler nao estava declarado em api/package.json: entrava na arvore pela
+# devDependency @cloudflare/vitest-pool-workers e pelo peer OPCIONAL declarado
+# por @sentry/cloudflare (medido: `npm ls wrangler` mostrava os dois caminhos, e
+# `npm ci --omit=dev` ainda o deixava instalado, mas so por essa aresta de
+# terceiro). Enquanto isso fosse verdade, bastava o @sentry/cloudflare parar de
+# declarar esse peer para o wrangler sumir da arvore e o npx baixar outra versao
+# da rede no meio do deploy, sem ninguem escolher qual. Agora ele e dependencia
+# de producao declarada com versao exata, e este gate confere as tres pontas:
+# o que o package.json declara, o que o npm ci instalou, e o que o binario
+# responde quando executado direto.
+$pinWrangler = Test-VixWranglerPin -ApiDir $apiDir
+if (-not $pinWrangler.Ok) { Fail $pinWrangler.Motivo }
+Write-Host "Gate wrangler: $($pinWrangler.Declarado) declarado, instalado e respondendo (CFG-01)" -ForegroundColor Green
+
+# O binario que o passo 4 executa e o mesmo que o gate acabou de aprovar.
+$wranglerBin = Join-Path $apiDir "node_modules\wrangler\bin\wrangler.js"
+
 # --- 4. Deploy -------------------------------------------------------------
 # --no-autoconfig obrigatorio: sem ele o Wrangler 4.x detecta outro diretorio
 # como projeto e ignora este wrangler.toml.
+# CFG-01: o binario local e chamado direto em vez de `npx wrangler`. O gate 3.1
+# acabou de provar que ele existe e responde a versao declarada, entao passar
+# pelo npx so acrescentaria uma camada de resolucao que pode tentar a rede.
 Write-Host "`nDeployando Worker ($WorkerName / $bundle)..." -ForegroundColor Yellow
 Push-Location $apiDir
 try {
-  npx wrangler deploy $bundle --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name $WorkerName
+  & node $wranglerBin deploy $bundle --config wrangler.toml --no-autoconfig --compatibility-flags nodejs_compat --name $WorkerName
   $deployExit = $LASTEXITCODE
 } finally {
   Pop-Location
@@ -458,7 +524,7 @@ try {
   # aqui, depois do deploy validado. Producao nova, repo declarando a versao
   # velha, que e o drift descrito no cabecalho deste arquivo. Vale o resultado
   # no indice, nao o codigo de saida.
-  git add "api/$bundle" "api/src/worker.js" "api/wrangler.toml" "scripts/build-worker.ps1" "scripts/deploy-worker.ps1" "CLAUDE.md" "README.md"
+  git add "api/$bundle" "api/src/worker.js" "api/wrangler.toml" "scripts/build-worker.ps1" "scripts/deploy-worker.ps1" "scripts/lib/vixradar-wrangler-pin.ps1" "CLAUDE.md" "README.md"
   $addExit = $LASTEXITCODE
 
   # Condicao anti-drift de verdade: o bundle que acabou de ir para producao tem

@@ -16,6 +16,25 @@
 #   Testes: cvm-enetweb.test.mjs com PISOORFAO1b usando os numeros medidos em producao, mais
 #   suite vitest completa, 39 arquivos e 373 testes.
 #   Rollback: main = "v4.9.256.js".
+# v4.9.258.js = v4.9.257 + AUDITORIA-FASE1+3: (a) LLM: politica unica de retry para
+#   analise e verificador (backoff exponencial com jitter, teto de 3 tentativas,
+#   orcamento de 120s por chamada e timeout de cada tentativa truncado ao que sobra
+#   dele) no lugar de duas reguas diferentes - a analise tentava 2x com espera fixa
+#   de 2s e nao retentava 429, o verificador tentava 1x e nao tratava 429 nem 5xx;
+#   resposta HTTP 200 sem bloco de texto passa a ser erro explicito de provedor
+#   (PROVEDOR_RESPOSTA_VAZIA, com stop_reason preservado e contador proprio no KV e
+#   no Analytics Engine) em vez de string vazia seguindo como sucesso; essa marca
+#   NAO alimenta o disjuntor de provedor, porque e falha de conteudo e nao de
+#   disponibilidade - sem essa distincao, 3 respostas vazias em 5 min abriam o
+#   circuito por 600s e derrubavam o provider para todas as empresas seguintes;
+#   corpo malformado vira PROVEDOR_RESPOSTA_INVALIDA normalizado em vez de
+#   SyntaxError cru; (b) FE-10 no servidor: o relatorio compartilhado escapava
+#   todos os campos irmaos e deixava logo_data_url cru no atributo src, e a
+#   validacao de gravacao aceitava `data:image/png;base64,x" onerror="alert(1)` por
+#   falta de ancora de fim - XSS que dispara ao abrir o documento, sem clique;
+#   agora a regex e ancorada e o render escapa; (c) cadastro: validacao de e-mail
+#   com forma de endereco (ancora de inicio e fim, TLD de 2+ letras, teto de 254)
+#   e telemetria email_invalido.
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de

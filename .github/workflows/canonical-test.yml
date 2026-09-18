@@ -237,3 +237,20 @@ jobs:
             exit 1
           fi
           echo "Produção saudável."
+
+  # CFG-04 (2026-09-18): drift entre a versao canonica do repo e a que a
+  # documentacao declara. Job separado de proposito: uma divergencia de
+  # documentacao nao pode impedir o sinal de saude da producao de ser coletado e
+  # reportado, nem o contrario. Nao depende de rede, so le api/wrangler.toml
+  # (chave main, que e o bundle que sobe) e as linhas de versao do Worker no
+  # README.md. O achado de origem: entre 16/09 e 18/09/2026 o README parou no
+  # v4.9.255 enquanto o wrangler.toml andava para v4.9.257, e nada percebeu.
+  drift-documentacao:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Conferir a versao declarada na documentacao (CFG-04)
+        run: node scripts/check-version-drift.mjs

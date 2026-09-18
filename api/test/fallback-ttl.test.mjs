@@ -5,6 +5,24 @@ import { beforeEach, describe, expect, it } from "vitest";
 // REPROVADO-FAILCLOSED1 (2026-09-06): gates sao fail-closed; indice ausente = erro.
 beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 
+// TIMEOUT EXPLICITO (2026-09-18). Estes dois testes dependem de a chamada ao
+// provedor FALHAR para que `_baseResA` fique nulo e o caminho de fallback seja
+// exercitado. Ate 18/09 esse caminho de falha era rapido: `chamarClaudeAnalise`
+// tentava duas vezes com espera fixa de 2s e desistia. Com a politica unica de
+// retry (LLM-RETRY1), o mesmo cenario passa a gastar tres tentativas com backoff
+// exponencial (1s e 2s, mais jitter), ou seja ~2s a mais antes de desistir.
+//
+// Medido nesta maquina em 18/09/2026: cada teste foi de menos de 5s para ~8s.
+// Nao houve mudanca de comportamento funcional, so de latencia no caminho de
+// falha. O timeout implicito de 5s do Vitest nao comportava, e ficava escondido:
+// este numero agora esta declarado aqui, e o motivo tambem.
+//
+// O ambiente local desta maquina intercepta toda saida HTTP e devolve 500 em
+// ~3ms, entao o ramo exercitado aqui e o de 5xx. Num ambiente com rede real a
+// chave dummy do wrangler.test.jsonc devolve 401, que nao e retentavel, e o
+// teste volta a ser rapido.
+const TIMEOUT_FALHA_PROVEDOR_MS = 2e4;
+
 // FALLBACKTTL1 (auditoria 29/08/2026, fix 30/08, deploy v4.9.225) — a LACUNA que
 // PENDENCIAS.md:439 registra como nao fechada: nenhum teste automatizado cobria o par
 // `salvarCacheUltimoResorte` / `buscarCacheUltimoResorte`. Este arquivo fecha a lacuna.
@@ -79,7 +97,7 @@ describe("FALLBACKTTL1: cache de ultimo recurso sobrevive a 1 dia sem varredura"
     expect(String(corpo._aviso || "")).toContain("h atras");
     // O corte de 48h deixou passar 36h: com o gate antigo de 24h este 200 era 503.
     expect(r.status).not.toBe(503);
-  });
+  }, TIMEOUT_FALHA_PROVEDOR_MS);
 
   it("ponta negativa: cache de 60h esta no KV e MESMO ASSIM nao e servido", async () => {
     await semearFallback(60);
@@ -92,5 +110,5 @@ describe("FALLBACKTTL1: cache de ultimo recurso sobrevive a 1 dia sem varredura"
     expect(corpo.ok).toBe(false);
     expect(corpo._de_cache).toBeUndefined();
     expect(String(corpo.erro || "")).toContain("temporariamente indisponivel");
-  });
+  }, TIMEOUT_FALHA_PROVEDOR_MS);
 });

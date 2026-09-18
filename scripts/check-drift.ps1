@@ -134,6 +134,34 @@ try {
   Fail "Falha ao consultar HTML de producao: $_"
 }
 
+# ── Documentacao (CFG-04) ─────────────────────────────────────────────────
+
+# 6. Versao declarada na documentacao x versao canonica do repo.
+# Este check e local e nao depende de rede: le a chave `main` de
+# api/wrangler.toml (o bundle que sobe) e compara com as linhas de versao do
+# Worker no README.md. Existe porque o drift ficou invisivel entre 16/09 e
+# 18/09/2026 — o README parou no v4.9.255 enquanto o wrangler.toml andava para
+# v4.9.257 por um commit que nao passou pelo deploy-worker.ps1, que e o unico
+# lugar que roda o sync-version-docs.ps1. Quem consertava a doc era o deploy;
+# contornado o deploy, nada percebia.
+$checkVer = Join-Path $PSScriptRoot "check-version-drift.mjs"
+if (-not (Test-Path $checkVer)) {
+  Fail "check-version-drift.mjs ausente: $checkVer"
+} else {
+  try {
+    $saidaVer = (& node $checkVer 2>&1 | Out-String).Trim()
+    $exitVer  = $LASTEXITCODE
+  } catch {
+    $saidaVer = "$_"
+    $exitVer  = 1
+  }
+  if ($exitVer -ne 0) {
+    Fail $saidaVer
+  } else {
+    Write-Status 'OK' $saidaVer
+  }
+}
+
 # ── Resultado ─────────────────────────────────────────────────────────────
 
 if ($fail -eq 0) {
