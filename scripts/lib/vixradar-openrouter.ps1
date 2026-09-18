@@ -418,8 +418,14 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     # 4 emissores jamas completo con timeout de 12 min por intento (5 x 12 min al 00:43). El costo
     # NO esta en la inferencia base, esta en el bucle de server tools con volumen pesado. Se vuelve
     # a paridad con el flujo claude (fetch recortado) para que 12 min alcancen a una pasada.
+    # SEARCHENGINE-PARALLEL1 (2026-09-18, t_56b5670f): engine cravado exa custava US$ 0,007-0,015
+    # por busca com latencia ~3s (doc web-search) e o limite max_total_results_reached degradou
+    # 6-8 buscas por emissor (medido no dry-run de 01:43, Kora). parallel + mode turbo custa
+    # US$ 0,001 por busca com ~200ms (decisao do operador, confirmada no cartao). max_results e
+    # max_total_results preservados: mesmo volume de resultados, motor mais rapido e 7-15x mais
+    # barato. web_fetch continua gratuito (engine openrouter).
     $tools = @(
-        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'exa'; max_results = 5; max_total_results = 8 } },
+        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'parallel'; mode = 'turbo'; max_results = 5; max_total_results = 8 } },
         [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 4000 } }
     )
     $modeloPrincipal = Get-VixOpenRouterModel $Tier
@@ -464,6 +470,15 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 model = $item.M
                 messages = @([ordered]@{ role = 'user'; content = $prompt })
                 max_tokens = $maxTokensAtual
+                # REASONING-OFF1 (2026-09-18, t_56b5670f): o catalogo declara
+                # deepseek-v4-flash-0731 com default_enabled=true e default_effort=high
+                # (GET /api/v1/models medido em 18/09): sem este campo o modelo pensa em
+                # effort alto POR PADRAO e queima max_tokens em raciocinio antes do
+                # conteudo (armadilha medida no M3: 200 + content vazio + finish=length).
+                # effort none desliga o thinking onde suportado; modelos sem reasoning
+                # ignoram o campo (mandatory=false). Lote de volume (LIGHT/FULL) nao
+                # precisa de raciocinio profundo: o prompt e protocolo textual fechado.
+                reasoning = [ordered]@{ effort = 'none' }
                 tools = $tools
                 stream = $false
                 # Ruteo (spec D1, revisado OR429-FIX 2026-09-09): allow_fallbacks=true reativa o
