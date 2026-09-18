@@ -82,7 +82,7 @@ research/            ← pesquisa e referências externas
 | Componente | Versão | Confirmada |
 |---|---|---|
 | Worker `radar-credito-api` | v4.9.258 | 2026-09-18 |
-| Frontend `vixradar.com` | v202.43 | 2026-09-08 |
+| Frontend `vixradar.com` | v202.43 | 2026-09-18 |
 | Emissores monitorados | 104 empresas / 13 setores | — |
 
 ---
