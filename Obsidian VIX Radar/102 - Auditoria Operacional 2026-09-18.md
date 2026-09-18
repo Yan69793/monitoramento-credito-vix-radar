@@ -87,6 +87,22 @@ Nenhum. Superfície HTTP 200, auth fail-closed, sem secret hardcoded, sem drift 
 - **Gate de CI por emissor.** `frescor-check.yml` ganhou o bloco EMISSORSTALE1, que consulta `listar_plano_rotina`, ignora `INCONCLUSIVO` e dispara warning com qualquer emissor acima de 24h e erro com mais de metade da carteira. As cinco expressões `jq` foram rodadas contra a resposta real de produção: 104 emissores, 75 acima de 24h, 6 inconclusivos, máximo 43,6h, mais antigo Ultrapar com última análise em 16/09 21:10. O passo de alerta passou a nomear a carteira no e-mail. **Só entra em vigor quando chegar em `main`, porque o agendado roda lá.**
 - **Diagnóstico do bloqueio da CVM.** `api/src/worker.js` passou a gravar `diagnostico` no meta de FALHA do sync (documentos anteriores, candidatos, piso, piso bootstrap e dinâmico, universo, válidos do portal, tamanho do ZIP e do portal). O bloqueio de hoje saiu sem número nenhum e por isso exigiu arqueologia. Aceite: suíte do Worker 371/371. **Precisa de build e deploy para valer, e não foi deployado.**
 
+## Resolução do bloqueio da CVM, medida em produção
+
+Duas tentativas, a segunda só existiu porque a primeira instrumentou. O `v4.9.256` subiu com o `PISOORFAO1` e o diagnóstico novo no meta de falha, e o sync **continuou bloqueado**. O diagnóstico gravado respondeu na hora:
+
+```
+documentos_anteriores = 441   candidatos = 759   validos_portal = 10510
+piso = 961   piso_modo = bootstrap   piso_dinamico = 0
+metodologia_id presente na meta? False
+```
+
+O meta de FALHA era gravado sem `metodologia_id`, então a leitura seguinte concluía `mesma=false`, zerava o piso relativo e caía no bootstrap de 961. O bloqueio se realimentava pelo próprio meta e nunca destravava sozinho. Corrigido no `v4.9.257` com duas partes, `gravarFonteCVMMeta` preserva a metodologia em falha e `mesma` vale quando a meta não registra id mas existe base com documento. Metodologia registrada e diferente continua não comparável.
+
+**Confirmado em produção depois do deploy do `v4.9.257`, sync disparado pelo cofre DPAPI em 18/09 17:50Z:** `sync.ok:true`, `documentos:759`, `lotes_ok:4`, `portal_only:318`, `zip_only:24`, `gate_reconciliacao:aprovado`, `max_data_entrega:2026-09-18`. Meta no KV: `ok:true`, `piso_documentos:308`, `piso_modo:"dinamico"`, `piso_bootstrap:961`, `piso_dinamico:308`. Health: `cvm_fonte_ok:true`, `cvm_fonte_motivo:"ok"`, `cvm_fonte_falha_dura:false`, `cvm_fonte_idade_du:0`.
+
+O feed em si (`feed_evento_mais_novo` em 16/09) avança quando as rotinas processarem os documentos novos, o que é a noturna de hoje e a sentinela.
+
 ## O que a medição do CVM mostrou
 
 O piso que reprovou é `max(961, 0.7 × 441) = 961`, porque `CVM_ENET_UNIVERSO_MEDIDO = 1374`. A base guardada tem 441 documentos com datas de 14/08 a 14/09, e a tentativa de hoje produziu 441 candidatos, abaixo do piso por construção. A fonte está sã: o ZIP do ano responde 200 com 1.612.874 bytes e `Last-Modified` de 14/09, listado no catálogo CKAN, e o portal devolve 7.616 registros válidos nos 35 dias da janela antes do filtro de carteira. O que não fecha é como o sync passou em 14/09 com um piso de 961 e deixou uma base de 441. As hipóteses vivas são o ZIP sobrescrevendo `cvm:documentos` com um subconjunto menor e a janela de 35 dias encolhendo com fonte quieta. A instrumentação acima existe para que a próxima ocorrência responda isso em uma leitura de KV, sem arqueologia.
