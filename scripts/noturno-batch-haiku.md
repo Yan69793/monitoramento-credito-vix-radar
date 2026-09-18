@@ -43,12 +43,23 @@
 # SAIDA: somente linhas RESULTADO| / LOTE_RESUMO| / ANOTA| no formato do cabecalho do prompt.
 # Sem markdown, sem tabelas, sem backticks, sem narrativa. NAO executar curl nem qualquer submit HTTP - o orquestrador grava.#
 # COBERTURA1 (2026-09-09) - OBRIGATORIO, sobrepoe "buscas condicionais" acima: para CADA emissor,
-# no minimo 1 busca por familia, nesta ordem: F1-emissor (nome + contexto/fato conhecido), F2-divida
-# (divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria).
+# no minimo 1 consulta por familia, nesta ordem: F1-emissor (web_search: nome + contexto/fato conhecido),
+# F2-divida (web_search: divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria).
+# F3FETCH1 - MECANISMO DA F3: fetch-first com fallback obrigatorio. Emissor com link em cvm_documentos[]:
+# web_fetch no documento mais relevante da janela (fonte primaria, sem custo de busca) - 1 (UM) fetch nesta
+# familia. Sem link no JSON, OU fetch que falha / devolve erro / conteudo vazio / PDF binario ilegivel:
+# web_search na F3 imediatamente - a familia F3 NUNCA fica sem consulta executada. PROIBIDO substituir o
+# fetch falho por fetch de OUTRA URL (homepage RI, site institucional): o fallback da F3 e SEMPRE web_search.
+# Item de web_fetch em fontes_consultadas: query = a URL primaria fetchada,
+# status_http 200 somente quando a tool devolveu conteudo (status completed), resultado = o que o documento
+# diz na janela (data_evento sai dele). Fetch que falhou NAO vira item e NUNCA sustenta a familia: a F3 fica
+# com a busca de fallback que rodou de verdade. Item de web_fetch: provedor = "openrouter:web_fetch"
+# (prefixo completo, NUNCA so "web_fetch"). Linha RESULTADO| sempre com JSON compacto de linha unica,
+# sem quebra de linha interna (quebra interna faz o parser perder o emissor inteiro).
 # Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato",
 # "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"openrouter:web_search|web_fetch",
 # "status_http":200, "resultado":"<resposta textual>", "classificacao":"ok". PROIBIDO (PROVAFALSA1):
-# registrar busca que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca
+# registrar consulta que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca
 # que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e
 # classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou;
 # "nao pesquisada" = familia ausente. NENHUM/ECO so vale com as 3 familias ok.
