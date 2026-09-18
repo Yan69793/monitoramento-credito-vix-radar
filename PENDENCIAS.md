@@ -11,32 +11,32 @@ Repo: `E:\Diretorio\Claude\Monitoramento de Credito`.
 
 Esta seção descreve o **presente**. Tudo abaixo dela é o registro da varredura como ela foi escrita, e não foi reescrito.
 
-Branch `mva-provider-agnostic`, HEAD `3c15fa8`. **Nada foi deployado e nada foi commitado.** Produção segue em **v4.9.257**, que é o código **anterior** a todas as correções descritas aqui.
+Branch `mva-provider-agnostic`. **Tudo deployado e commitado em 18/09.** Produção em **v4.9.258** no Worker e **v202.43** no frontend, ambas com as correções. Commits `13f5573` (correções), `f2eff04` (bundle do Worker) e `a44da04` (frontend), todos empurrados para o origin.
 
-### Fase 3, segurança de frontend — corrigida localmente
+### Fase 3, segurança de frontend — EM PRODUÇÃO desde 18/09
 
 | Achado | Situação | Onde |
 |---|---|---|
-| FE-01 | CORRIGIDO LOCALMENTE | `app/index.html` — e-mail do operador fora do HTML, gate por `role==="admin"` |
-| FE-05 | CORRIGIDO LOCALMENTE | `app/index.html` — `impacto_credito` escapado; escape `h` renomeado para `escaparHtml` em 3 definições e 85 pontos |
-| FE-06 | CORRIGIDO LOCALMENTE | `app/index.html` — catch vazio virou registro e banner "SEM LEITURA", **com a regra CSS que faltava** para ele aparecer |
-| FE-07 | CORRIGIDO LOCALMENTE | `app/index.html` — `_vlog/_vwarn/_vinfo`, zero `console.*` cru |
-| FE-08 | CORRIGIDO LOCALMENTE | `app/index.html` — `_lsGet`/`_lsSet` validam forma e registram falha |
-| FE-09 | CORRIGIDO LOCALMENTE | `app/index.html` — e-mail em `data-*` com listener delegado |
-| FE-10 | CORRIGIDO LOCALMENTE | `app/index.html` (3 pontos) e `api/src/worker.js` (regex de gravação ancorada + `escapeHtml` no render do relatório compartilhado) |
+| FE-01 | EM PRODUÇÃO | `app/index.html` — e-mail do operador fora do HTML, gate por `role==="admin"` |
+| FE-05 | EM PRODUÇÃO | `app/index.html` — `impacto_credito` escapado; escape `h` renomeado para `escaparHtml` em 3 definições e 85 pontos |
+| FE-06 | EM PRODUÇÃO | `app/index.html` — catch vazio virou registro e banner "SEM LEITURA", **com a regra CSS que faltava** para ele aparecer |
+| FE-07 | EM PRODUÇÃO | `app/index.html` — `_vlog/_vwarn/_vinfo`, zero `console.*` cru |
+| FE-08 | EM PRODUÇÃO | `app/index.html` — `_lsGet`/`_lsSet` validam forma e registram falha |
+| FE-09 | EM PRODUÇÃO | `app/index.html` — e-mail em `data-*` com listener delegado |
+| FE-10 | EM PRODUÇÃO | `app/index.html` (3 pontos) e `api/src/worker.js` (regex de gravação ancorada + `escapeHtml` no render do relatório compartilhado) |
 | FE-02, FE-04 | AINDA ABERTO | Não são código; fora do escopo executado |
 
 **Achado novo, medido durante a execução e não previsto nesta auditoria:** o FE-10 tinha uma terceira ponta no lado servidor. O relatório compartilhado montava `<img src="${br.logo_data_url}">` sem escape, e a validação de gravação (`/^data:image\/(png|svg\+xml|jpeg|jpg);base64,/`, sem âncora de fim) aceitava `data:image/png;base64,x" onerror="alert(1)"`. O valor passava, era gravado no KV e quebrava o atributo na renderização — XSS que dispara ao abrir o documento compartilhado, sem clique. Corrigido nas duas camadas.
 
-### Fase 1, deploy e falha silenciosa do provedor — corrigida localmente
+### Fase 1, deploy e falha silenciosa do provedor — EM PRODUÇÃO desde 18/09
 
 | Achado | Situação | O que foi feito |
 |---|---|---|
-| CFG-01 | CORRIGIDO LOCALMENTE | `wrangler` declarado em `dependencies` de `api/package.json` com versão **exata** (`4.118.0`), lock regenerado, guarda nova `scripts/lib/vixradar-wrangler-pin.ps1` ligada no `deploy-worker.ps1`, que passa a executar o binário local em vez de `npx` |
-| LLM-01 | CORRIGIDO LOCALMENTE | Resposta 200 sem bloco de texto virou erro de provedor nos dois caminhos, com contador próprio no KV e ponto no Analytics Engine |
-| LLM-02 | CORRIGIDO LOCALMENTE | Backoff exponencial com jitter, teto e número de tentativas explícito |
-| LLM-03 | CORRIGIDO LOCALMENTE | Política única (`_llmFetchComRetry`) consumida pela análise e pelo verificador |
-| CFG-04 | CORRIGIDO LOCALMENTE | README sincronizado para v4.9.257; detector `scripts/check-version-drift.mjs` ligado no `check-drift.ps1` e em job próprio do `canonical-test.yml` |
+| CFG-01 | EM PRODUÇÃO | `wrangler` declarado em `dependencies` de `api/package.json` com versão **exata** (`4.118.0`), lock regenerado, guarda nova `scripts/lib/vixradar-wrangler-pin.ps1` ligada no `deploy-worker.ps1`, que passa a executar o binário local em vez de `npx` |
+| LLM-01 | EM PRODUÇÃO | Resposta 200 sem bloco de texto virou erro de provedor nos dois caminhos, com contador próprio no KV e ponto no Analytics Engine |
+| LLM-02 | EM PRODUÇÃO | Backoff exponencial com jitter, teto e número de tentativas explícito |
+| LLM-03 | EM PRODUÇÃO | Política única (`_llmFetchComRetry`) consumida pela análise e pelo verificador |
+| CFG-04 | EM PRODUÇÃO | README sincronizado (v4.9.258); detector `scripts/check-version-drift.mjs` ligado no `check-drift.ps1` e em job próprio do `canonical-test.yml` |
 | SEC-01, SEC-02, SEC-04, TST-01, TST-03, CI-01 | AINDA ABERTO | São Fase 2 e Fase 4, não executadas |
 
 ### Duas correções ao texto da auditoria
@@ -68,8 +68,8 @@ Prova de duas pontas, pelo caminho real com o provedor controlado: com a guarda,
 
 ### Risco residual desta execução
 
-- A mudança do Worker **não tem bundle publicado**. O bundle mais novo é `v4.9.257.js`, anterior às correções. Subir exige gerar o próximo e passar pelo `deploy-worker.ps1`.
-- `CFG-02` continua aberto e **piorou**: medido no health de 18/09, `cvm_atribuicao_cobertura_pct = 13.2` e `cvm_atribuicao_quarentena = 9915` (9811 na varredura da manhã, 9889 às 19h, 9915 agora: está crescendo).
+- ~~A mudança do Worker não tem bundle publicado.~~ **FECHADO em 18/09:** bundle `v4.9.258.js` gerado, deployado e validado em produção (`versao: v4.9.258`, `ok:true`).
+- `CFG-02` continua aberto e **piorou**: medido no health de 18/09, `cvm_atribuicao_cobertura_pct = 13.3` e `cvm_atribuicao_quarentena = 9943` (9811 na varredura da manhã de 18/09, 9889 às 19h, 9915 às 21h, 9943 ao fechar o dia). **Cresce ~30 por hora.** É a prioridade de 19/09.
 - **Efeito de latência no caminho de falha do provedor, e este é o risco mais material da Fase 1.** A política única de retry passou a valer 3 tentativas para os dois caminhos. O verificador antes fazia **uma** tentativa; agora faz três. Pior caso medido com as constantes declaradas (`timeout` de 55s na análise e 60s no verificador, esperas de 2s e 4s com jitter de até 50%):
 
   | Caminho | Antes | Sem orçamento | Com orçamento (atual) |
@@ -86,6 +86,24 @@ Prova de duas pontas, pelo caminho real com o provedor controlado: com a guarda,
 - **As unidades não são as mesmas para os dois caminhos.** A análise saiu de 113s para 120s: ficou ~7s mais lenta que o comportamento original, e esse é o preço consciente de ela agora repetir 429 e falha de transporte, que antes não repetia. O verificador dobrou (60s para 120s) e trocou isso por retentar, que antes não fazia nenhuma vez.
 - O mesmo efeito aparece em `api/test/fallback-ttl.test.mjs`, que depende do caminho de falha para exercitar o cache: os dois testes passaram de menos de 5s para cerca de 8s. Nenhuma asserção mudou, e o timeout implícito de 5s do Vitest virou um explícito de 20s com o motivo escrito no arquivo.
 - As cópias canônicas no vault Obsidian (`Obsidian VIX Radar/PENDENCIAS.md`) e em `status/ESTADO.md` **não** foram atualizadas; só este arquivo, que é o relatório da auditoria.
+### Fechamento do dia 18/09
+
+| Item | Situação |
+|---|---|
+| Worker | **v4.9.258 em produção**, `ok:true`, todos os bindings e o Sentry OK. Commits `13f5573` (correções) e `f2eff04` (bundle). |
+| Frontend | **em produção com as correções**. Commit `a44da04`. Validado por conteúdo: 8 marcadores, produção e repo com 0 divergência. |
+| FE-01, FE-05, FE-06, FE-07, FE-08, FE-09, FE-10 | FECHADOS e no ar. |
+| CFG-01, LLM-01, LLM-02, LLM-03, CFG-04 | FECHADOS e no ar. |
+| CFG-02 | **ABERTO**, cobertura 13,3% e quarentena 9.943. Prioridade de 19/09. |
+| SEC-01, SEC-02, SEC-04, TST-01, TST-03, CI-01 | ABERTOS. São Fase 2 e Fase 4. |
+
+**Riscos aceitos:** 429 sem `Retry-After`; contador de resposta vazia aproximado (KV sem incremento atômico). Ambos registrados no código e na seção acima.
+
+**Fragilidade observada:** `api/test/login-timing.test.mjs` falhou uma vez sob suíte completa (3755ms) e passa 3/3 isolado. Teste sensível a carga, sem relação com o diff do dia. Fica anotado para não ser confundido com regressão.
+
+**Guarda que ficou cega, para não repetir:** o `deploy-pages.ps1` detecta "conteúdo mudou sem bump de versão" comparando `app/index.html` com `app/deploy_zip/index.html`. Como a Fase 3 exigiu manter os dois sincronizados byte a byte, essa comparação deixou de acusar e o frontend subiu com `CACHE_VERSION` **v202.43 inalterada**. Sem impacto prático medido — o HTML é servido com `Cache-Control: no-cache, must-revalidate` — mas a guarda precisa de outro sinal.
+
+**Não iniciar em 19/09 sem decisão:** ARQ-01 (extração por domínio no `__coreFetch`), JWT/auth (SEC-02), KV/DO estrutural (EST-01, EST-02).
 ### Riscos aceitos, com o motivo
 
 - **429 não honra `Retry-After`.** Medido: o Worker não lê esse header em lugar nenhum do caminho Anthropic (o `retry_after_sec` que existe no arquivo é do rate limiter interno, em `checkRateLimitV2`). Quando o provedor pede 30s, o código insiste em 2s e 4s e faz até 3 requisições dentro da janela limitada em vez de 1 — o retry que existe para aliviar a pressão é o que a aumenta. Não corrigido por decisão de escopo: usar o maior valor entre o header e o backoff é mudança de política, não defeito, e o orçamento de tempo já limita o estrago a 3 requisições por chamada. Registrado no código, no ramo do 429.
@@ -137,16 +155,16 @@ Status `NOVO` significa achado desta varredura com citação verificada agora. `
 | ID | Categoria | Arquivo/Linha | Severidade | Esforço | Status | Descrição | Recomendação |
 |---|---|---|---|---|---|---|---|
 | ARQ-01 | Decadência arquitetural | `api/src/worker.js:19986-22018` | Alto | G | ATUALIZADO (F001 da auditoria de 16/06) | `__coreFetch` é o roteador único de tudo e cresceu de 1.139 linhas em junho para 2.033 agora (medido de 19986 até 22018, com o `scheduled` começando em 22024), com 108 comparações `action ===` espalhadas no arquivo. Nenhuma extração por domínio foi feita. Não muda comportamento, muda a capacidade de testar e de revisar. | Extrair por domínio em funções nomeadas (`handleAuth`, `handleAdmin`, `handleIngestao`, `handleObs`), mantendo o dispatch com poucas linhas. Fazer isso depois de estabilizar a migração KV para DO, para não misturar duas frentes. |
-| CFG-01 | Dependency debt | `api/package.json:1-21`, `scripts/deploy-worker.ps1` | Alto | P | NOVO - CORRIGIDO LOCALMENTE 18/09 | O wrangler não está declarado. `grep -c wrangler api/package.json` devolve 0, e `npm ls wrangler` mostra `wrangler@4.118.0` apenas transitivo de `@cloudflare/vitest-pool-workers` e `@sentry/cloudflare`. Como o deploy roda `npm ci --omit=dev` antes de `npx wrangler deploy`, a ferramenta de deploy depende de uma devDependency que o próprio `--omit=dev` remove, e o npx recorre à rede. | Declarar `wrangler` como dependência explícita de `api/package.json` com a versão que está em produção, e adicionar verificação de `npx wrangler --version` ao portão do deploy. |
-| LLM-01 | Cascade LLM | `api/src/worker.js:8932` e `:14012` | Alto | P | NOVO - CORRIGIDO LOCALMENTE 18/09 | `chamarClaudeAnalise` devolve `(data.content \|\| []).filter(c => c.type === "text").map(c => c.text).join("\n")` na linha 8932, e `chamarClaudeVerificador` faz o mesmo na 14012. Resposta 200 sem bloco de texto, por recusa, resposta só de ferramenta ou corpo truncado, vira string vazia e segue como sucesso. Não há contador de resposta vazia por provedor. | Tratar `texto.trim() === ""` como erro de provedor nos dois caminhos e contar a taxa de resposta vazia por modelo no Analytics Engine. |
+| CFG-01 | Dependency debt | `api/package.json:1-21`, `scripts/deploy-worker.ps1` | Alto | P | NOVO - EM PRODUCAO 18/09 | O wrangler não está declarado. `grep -c wrangler api/package.json` devolve 0, e `npm ls wrangler` mostra `wrangler@4.118.0` apenas transitivo de `@cloudflare/vitest-pool-workers` e `@sentry/cloudflare`. Como o deploy roda `npm ci --omit=dev` antes de `npx wrangler deploy`, a ferramenta de deploy depende de uma devDependency que o próprio `--omit=dev` remove, e o npx recorre à rede. | Declarar `wrangler` como dependência explícita de `api/package.json` com a versão que está em produção, e adicionar verificação de `npx wrangler --version` ao portão do deploy. |
+| LLM-01 | Cascade LLM | `api/src/worker.js:8932` e `:14012` | Alto | P | NOVO - EM PRODUCAO 18/09 | `chamarClaudeAnalise` devolve `(data.content \|\| []).filter(c => c.type === "text").map(c => c.text).join("\n")` na linha 8932, e `chamarClaudeVerificador` faz o mesmo na 14012. Resposta 200 sem bloco de texto, por recusa, resposta só de ferramenta ou corpo truncado, vira string vazia e segue como sucesso. Não há contador de resposta vazia por provedor. | Tratar `texto.trim() === ""` como erro de provedor nos dois caminhos e contar a taxa de resposta vazia por modelo no Analytics Engine. |
 | CFG-02 | Integração fonte externa | health 18/09/2026 19:52 UTC | Alto | G | NOVO | `cvm_atribuicao_cobertura_pct = 13.2` e `cvm_atribuicao_quarentena = 9811`, contra `36,1%` com 1439 de 2252 sem dono registrados em `status/ESTADO.md` em 01/09. Queda material em 17 dias, sem item aberto na fila com esse número. | Remedir com `admin_documentos_cvm` e abrir item. Se for material novo ainda em quarentena, a métrica precisa de janela. Se for regressão do árbitro `_donoDocumentoCVM`, é a família do SUBSTRINGDONO1. |
 | SEC-01 | Rate limit e abuse | `api/src/worker.js:17972-17983` | Alto | P | ATUALIZADO (F017 da auditoria de 16/06) | `checkRateLimitV2` devolve `allowed:true` no caminho `auth` quando `env` ou `RATE_LIMITER_DO` faltam, marcando `_bypass` e disparando `_rlAlertaAuth`. Só o caminho `critica` é fail-closed. Com o binding removido, a proteção anti-brute-force do login desaparece em silêncio, e o único registro é o blob `rl_bypass_auth` em `api/src/worker.js:17960-17961`, que nenhum alerta lê. | Fazer `auth` falhar fechado ou elevar o bypass a `ok:false` no health, e ligar `rl_bypass_auth` a contador visível. |
 | SEC-02 | Auth e JWT | `api/src/worker.js:4677` | Alto | M | NOVO | `exp: nowSec + 12 * 3600`, sem `jti`, sem denylist e sem versão de credencial. `verificarJWT` (`:4691`) só checa assinatura e expiração. Trocar a senha não derruba sessão viva e o logout é puramente local (`app/index.html:3522`). | Reduzir a validade e introduzir versão de credencial conferida na verificação, invalidando tokens antigos na troca de senha. |
 | EST-01 | KV | `api/src/worker.js:4801, 4848, 5153, 5161, 7879, 9565` | Médio | M | NOVO | 103 escritas `RADAR_KV.put(` contra 83 `expirationTtl`. 55 escritas não declaram TTL na mesma linha, das quais 5 declaram na linha seguinte (`:5064`, `:5110`, `:5174`, `:6401`, `:6739`). O residual precisa de leitura caso a caso. Amostras: `users:index` (`:4801`, `:4848`), chave por usuário `k.name` (`:5153`, `:5161`), `CVM_FONTE_META_KEY` (`:7879`) e `key` (`:9565`). | Classificar cada escrita em durável por desenho ou volátil com TTL, e marcar no código a decisão, do mesmo modo que `CVM_DOCUMENTOS_TTL_SEG` faz. |
-| LLM-02 | Cascade LLM | `api/src/worker.js:8913-8941` | Médio | P | NOVO - CORRIGIDO LOCALMENTE 18/09 | Retry limitado a 2 tentativas com espera fixa de 2s, apenas para 5xx e timeout. O 429 lança `RATE_LIMIT` e sai da função sem tentar de novo (`:8924`). Não há backoff exponencial nem jitter. | Backoff exponencial com jitter para 429 e 5xx, com registro do motivo da última falha anexado ao resultado. |
-| LLM-03 | Cascade LLM | `api/src/worker.js:13981-14030` | Médio | P | NOVO - CORRIGIDO LOCALMENTE 18/09 | `chamarClaudeVerificador` faz uma tentativa única e não trata 429 nem 5xx como o de análise trata, apesar de usar o mesmo endpoint e os mesmos códigos. Duas políticas de resiliência para o mesmo provedor. | Extrair a política de retry e timeout para helper único consumido pelos dois caminhos, mantendo `VERIFICADOR_CONFIG.timeout_ms` (`:13802`, 60000) como parâmetro. |
+| LLM-02 | Cascade LLM | `api/src/worker.js:8913-8941` | Médio | P | NOVO - EM PRODUCAO 18/09 | Retry limitado a 2 tentativas com espera fixa de 2s, apenas para 5xx e timeout. O 429 lança `RATE_LIMIT` e sai da função sem tentar de novo (`:8924`). Não há backoff exponencial nem jitter. | Backoff exponencial com jitter para 429 e 5xx, com registro do motivo da última falha anexado ao resultado. |
+| LLM-03 | Cascade LLM | `api/src/worker.js:13981-14030` | Médio | P | NOVO - EM PRODUCAO 18/09 | `chamarClaudeVerificador` faz uma tentativa única e não trata 429 nem 5xx como o de análise trata, apesar de usar o mesmo endpoint e os mesmos códigos. Duas políticas de resiliência para o mesmo provedor. | Extrair a política de retry e timeout para helper único consumido pelos dois caminhos, mantendo `VERIFICADOR_CONFIG.timeout_ms` (`:13802`, 60000) como parâmetro. |
 | CFG-03 | Observabilidade | `api/src/worker.js:22078` contra `CLAUDE.md:370-376` | Médio | P | NOVO | A lista viva do watchdog tem 5 agentes (`sync_cvm`, `newsletter`, `healthcheck_diario`, `varredura_local`, `verificacao_async`). O `CLAUDE.md` documenta 7, incluindo `varredura_batch`, `varredura_matinal` e `cascade_analise`. O `status/ESTADO.md` cita `worker.js:19471` como o ponto da lista, e essa linha hoje contém código do construtor de briefing. | Alinhar documento e código, e trocar a citação por linha por citação por nome de função, que não envelhece. |
-| CFG-04 | Documentation drift | `README.md:24`, `README.md:84` | Médio | P | NOVO - CORRIGIDO LOCALMENTE 18/09 | README declara `v4.9.255.js` e "Worker v4.9.255 confirmada 2026-09-16". O `api/wrangler.toml:1412` aponta `main = "v4.9.257.js"` e o health devolve `versao: v4.9.257`. O README é a tabela de versão canônica desde que SYNC-VERSION-DOCS aposentou os blocos do CLAUDE.md. | Rodar `scripts/sync-version-docs.ps1` e incluir a conferência no portão de deploy, que já valida produção. |
+| CFG-04 | Documentation drift | `README.md:24`, `README.md:84` | Médio | P | NOVO - EM PRODUCAO 18/09 | README declara `v4.9.255.js` e "Worker v4.9.255 confirmada 2026-09-16". O `api/wrangler.toml:1412` aponta `main = "v4.9.257.js"` e o health devolve `versao: v4.9.257`. O README é a tabela de versão canônica desde que SYNC-VERSION-DOCS aposentou os blocos do CLAUDE.md. | Rodar `scripts/sync-version-docs.ps1` e incluir a conferência no portão de deploy, que já valida produção. |
 | CFG-05 | Repo hygiene | `.gitignore:76-95`, `api/v4*.js` | Baixo | M | ATUALIZADO (F020 de junho) | 133 bundles versionados somando 117 MB no git, e 165 no disco somando 129 MB. Os 32 restantes existem por desenho e ficam invisíveis ao `git status` por regra explícita do `.gitignore`. O bloco em `.gitignore:76-95` tem racional escrito, o bundle é o artefato auditável e ignorar obrigava `git add -f` no deploy e produziu 8 dias de drift em julho. A política está certa e o custo é real. | Não é defeito, é decisão com preço. Se o clone ficar pesado demais, a saída que preserva a auditabilidade é manter no git só o `main` e o rollback declarado, e arquivar o resto em release tag. |
 | SEC-03 | Inconsistência | `api/src/worker.js:3627-3634`, `:3653-3660`, `:19975-19977` | Baixo | P | NOVO | Três mecanismos de CORS no mesmo arquivo: helper com allowlist explícita, objeto estático com origem fixa, e reescrita do header depois da resposta. O comportamento de segurança está correto, sem curinga e com `Vary: Origin`. O débito é a divergência. | Consolidar em um caminho único e apagar os outros dois. |
 | SEC-04 | Auth e contrato | `api/src/worker.js:21204, 21382-21430, 21592-21594` | Médio | M | ATUALIZADO (ROUTINEKEY-PLAIN1) | A autenticação de rotina compara string crua em pelo menos 8 handlers (`body.routine_key !== env.ROUTINE_API_KEY`), sem comparação de tempo constante, e a chave viaja no corpo do POST. | Comparar digest com `crypto.subtle.timingSafeEqual` e tratar a rotação como item próprio, já aberto na fila. |
@@ -292,7 +310,7 @@ Com a checagem em `verificarJWT` (`:4691`) recusando token cuja versão de crede
 
 Nenhuma correção foi executada na sessão da varredura que escreveu este plano. O plano abaixo agrupa os 39 achados em cinco fases, na ordem de dependência e de risco, uma fase por deploy. Regra de aceite herdada do próprio projeto: prova de duas pontas, mostrando que a guarda reprova o caso ruim e aceita o caso bom, com a saída crua colada. Não misturar fase de Worker com fase de frontend no mesmo commit, senão o rollback fica ambíguo.
 
-**Execução posterior, no mesmo dia:** as Fases 1 e 3 foram corrigidas localmente, sem deploy e sem commit. O estado factual está em `## Estado de execução`, no topo deste arquivo. O plano abaixo permanece como foi escrito, e as fases 2, 4 e 5 seguem não iniciadas.
+**Execução posterior, no mesmo dia:** as Fases 1 e 3 foram corrigidas, commitadas e deployadas em 18/09. O estado factual está em `## Estado de execução`, no topo deste arquivo. O plano abaixo permanece como foi escrito, e as fases 2, 4 e 5 seguem não iniciadas.
 
 ### Fase 1, deploy e falha silenciosa do provedor. Esforço P mais P
 
@@ -343,15 +361,15 @@ Podem entrar em qualquer janela sem deploy de Worker: CFG-03, CFG-04 e CFG-07, q
 
 ## Ganhos rápidos
 
-- [x] `CFG-04`, CORRIGIDO LOCALMENTE 18/09: README sincronizado para v4.9.257 e detector `scripts/check-version-drift.mjs` ligado no gate. Registro original: rodar `scripts/sync-version-docs.ps1` e conferir a tabela do README contra `versao` do health. Uma linha, remove drift de versão visível a qualquer leitor.
+- [x] `CFG-04`, EM PRODUCAO 18/09: README sincronizado (v4.9.258) e detector `scripts/check-version-drift.mjs` ligado no gate. Registro original: rodar `scripts/sync-version-docs.ps1` e conferir a tabela do README contra `versao` do health. Uma linha, remove drift de versão visível a qualquer leitor.
 - [ ] `CFG-03`, alinhar a lista do watchdog com o `CLAUDE.md`, ou corrigir o documento. Decidir qual é a régua antes de editar.
 - [ ] `SEC-03`, apagar dois dos três caminhos de CORS. O helper com allowlist é o que deve ficar.
-- [x] `LLM-02`, CORRIGIDO LOCALMENTE 18/09: backoff exponencial com jitter. Registro original: trocar a espera fixa de 2s por backoff com jitter na análise.
+- [x] `LLM-02`, EM PRODUCAO 18/09: backoff exponencial com jitter. Registro original: trocar a espera fixa de 2s por backoff com jitter na análise.
 - [ ] `SEC-05`, registrar no `CLAUDE.md` as 100.000 iterações de PBKDF2.
 - [ ] `PS-02`, remover ou marcar como histórico o `run_vixradar_ranking_mensal.ps1`.
 - [ ] `PS-03`, anotar a intenção do `catch` em `vixradar-openrouter.ps1:362`.
 - [ ] `CFG-07`, escolher 103 ou 104 emissores como número canônico e corrigir o `CLAUDE.md`.
-- [x] `FE-01`, CORRIGIDO LOCALMENTE 18/09 (Fase 3): endereço fora do HTML público. Registro original: tirar o endereço pessoal do HTML público.
+- [x] `FE-01`, EM PRODUCAO 18/09 (Fase 3): endereço fora do HTML público. Registro original: tirar o endereço pessoal do HTML público.
 
 ---
 
