@@ -29,7 +29,19 @@ $plan = Invoke-RestMethod -Uri $ApiUrl -Method Post -ContentType 'application/js
 if ($plan.ok -ne $true) { throw ('listar_plano_rotina falhou: ' + $plan.erro) }
 
 $items = @($plan.emissores)
-$staleAll = @($items | Where-Object { [double]$_.horas_stale -ge $MaxAgeHours })
+# EMISSORSTALE2 (2026-09-19): desde a v4.9.259 horas_stale mede a ultima ANALISE real e vem
+# com horas_stale_base ao lado. Sem a base, o Worker e anterior e horas_stale mede VARREDURA,
+# que SKIP e deferido renovam; foi assim que 18/09 passou com 0/104 stale enquanto a noturna
+# nao analisava ninguem. Falha fechado em vez de medir o relogio errado.
+$semBase = @($items | Where-Object { -not $_.horas_stale_base })
+if ($semBase.Count -gt 0) {
+    throw ('listar_plano_rotina sem horas_stale_base em ' + $semBase.Count + ' de ' + $items.Count + ' emissores (worker_version=' + $plan.worker_version + '). O Worker e anterior ao EMISSORSTALE2 (v4.9.259) e horas_stale ainda mede a varredura, nao a analise.')
+}
+# sem_analise_registrada e numero proprio (sentinela 9999), nunca diluido nos atrasados.
+$semRegistro = @($items | Where-Object { $_.horas_stale_base -eq 'sem_analise_registrada' })
+$foraMescla = @($items | Where-Object { $_.horas_stale_base -eq 'ultima_analise_fora_da_mescla' })
+$comCarimbo = @($items | Where-Object { $_.horas_stale_base -ne 'sem_analise_registrada' })
+$staleAll = @($comCarimbo | Where-Object { [double]$_.horas_stale -ge $MaxAgeHours })
 # STALE-GATE1 (v4.9.159): _status/inconclusivo vem do Worker, distingue staleness
 # genuina de INCONCLUSIVO (clock pausado de proposito pelo mecanismo FIN1, aguardando
 # promocao a tier FULL). So stale_real deve contar como severidade ALTO.
@@ -38,26 +50,30 @@ $staleInconclusivo = @($staleAll | Where-Object { $_.inconclusivo })
 $stuck = if ($StuckDate) {
     @($items | Where-Object { ('' + $_.contexto_historico) -match [regex]::Escape($StuckDate) })
 } else { @() }
-$max = if ($items.Count) { ($items | Measure-Object horas_stale -Maximum).Maximum } else { $null }
-$oldestReal = @($staleReal | Sort-Object horas_stale -Descending | Select-Object -First 10 empresa, horas_stale, contexto_historico, status)
-$oldestInconclusivo = @($staleInconclusivo | Sort-Object horas_stale -Descending | Select-Object -First 10 empresa, horas_stale, contexto_historico, status)
+$max = if ($comCarimbo.Count) { ($comCarimbo | Measure-Object horas_stale -Maximum).Maximum } else { $null }
+$oldestReal = @($staleReal | Sort-Object horas_stale -Descending | Select-Object -First 10 empresa, horas_stale, horas_stale_base, horas_desde_varredura, contexto_historico, status)
+$oldestInconclusivo = @($staleInconclusivo | Sort-Object horas_stale -Descending | Select-Object -First 10 empresa, horas_stale, horas_stale_base, horas_desde_varredura, contexto_historico, status)
 # EMISSORES104 (2026-09-18): o gate tinha 103 fixo e a carteira passou a ter 104
 # emissores, entao ele nunca fechava verde, nem com zero stale. O numero tem que
 # acompanhar EMISSORES_LISTA do Worker. Quando a carteira mudar de tamanho, muda
 # aqui e no plano esperado, senao o gate volta a mentir.
 $EmissoresEsperados = 104
-$healthy = ($items.Count -eq $EmissoresEsperados -and $staleReal.Count -eq 0 -and $stuck.Count -eq 0)
+$healthy = ($items.Count -eq $EmissoresEsperados -and $staleReal.Count -eq 0 -and $semRegistro.Count -eq 0 -and $stuck.Count -eq 0)
 
 [ordered]@{
     ok = $healthy
     api_ok = $plan.ok
     worker_version = $plan.worker_version
     checked_at = (Get-Date).ToString('o')
+    regua = 'ultima_analise (EMISSORSTALE2)'
     total = $items.Count
     max_age_hours_allowed = $MaxAgeHours
     stale_24h_total = $staleAll.Count
     stale_24h_real = $staleReal.Count
     stale_24h_inconclusivo = $staleInconclusivo.Count
+    sem_analise_registrada = $semRegistro.Count
+    sem_analise_registrada_nomes = @($semRegistro | Select-Object -First 20 -ExpandProperty empresa)
+    fora_da_mescla = $foraMescla.Count
     max_stale_hours = $max
     stuck_date = $StuckDate
     presos_data = $stuck.Count

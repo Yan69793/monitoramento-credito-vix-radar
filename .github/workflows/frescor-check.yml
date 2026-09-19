@@ -182,8 +182,27 @@ jobs:
           # Fonte: acao listar_plano_rotina, a mesma que a skill de auditoria usa.
           # INCONCLUSIVO nao conta (clock pausado de proposito pelo FIN1, desde
           # v4.9.159), igual ao gate da skill.
+          #
+          # EMISSORSTALE2 (2026-09-19). O bloco original lia horas_stale, que ate a v4.9.258
+          # media a VARREDURA (_last_scanned_at). SKIP e deferido renovam esse carimbo, entao
+          # em 18/09, com a noturna deferindo 78 e pulando 26 sem analisar ninguem, este gate
+          # mediu 0/104 (run 35426858302). Desde a v4.9.259 horas_stale mede a ultima ANALISE
+          # real e vem com horas_stale_base ao lado. Tres regras:
+          #   1. Sem horas_stale_base em algum emissor, o Worker e anterior a v4.9.259 e
+          #      horas_stale ainda mede varredura. Falha fechado: medir o relogio errado e
+          #      exatamente o que deixou 18/09 passar verde.
+          #   2. sem_analise_registrada (nenhum carimbo de analise no historico retido) e
+          #      numero proprio, nunca diluido nos atrasados. Conta para o gate de 50% porque
+          #      tambem e falta de analise, mas a mensagem separa os dois, para uma condicao
+          #      estrutural nao se passar por atraso.
+          #   3. Maximo e mais antigo so olham quem tem carimbo, para o sentinela 9999 nao
+          #      virar o "maximo" da carteira.
+          # Os marcadores EMISSORSTALE2-GATE delimitam o trecho que o teste local executa com
+          # jq 1.7.1 (mesma versao do ubuntu-latest) contra plano real e sintetico.
+          # EMISSORSTALE2-GATE-INICIO
           emp_total=nao_medido
           emp_stale=nao_medido
+          emp_sem_registro=nao_medido
           emp_max=nao_medido
           if [[ -z "${ROUTINE_KEY:-}" ]]; then
             echo "::error::ROUTINE_API_KEY ausente nos secrets; staleness por emissor nao medido neste run."
@@ -193,23 +212,37 @@ jobs:
               -H 'Content-Type: application/json' -d "$body_plano" --max-time 180)
             echo "$plano" | jq -e '.ok == true' >/dev/null
             emp_total=$(echo "$plano" | jq '.emissores | length')
-            emp_stale=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo != true) | select(((.horas_stale // 0)|tonumber) >= 24)] | length')
-            emp_inconc=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo == true) | select(((.horas_stale // 0)|tonumber) >= 24)] | length')
-            emp_max=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo != true) | ((.horas_stale // 0)|tonumber)] | max // 0')
-            emp_mais_antigo=$(echo "$plano" | jq -r '[.emissores[] | select(.inconclusivo != true)] | sort_by((.horas_stale // 0)|tonumber) | reverse | .[0] | ((.empresa // "?") + " " + ((.horas_stale // 0)|tostring) + "h " + (.contexto_historico // "sem contexto"))' 2>/dev/null || echo "indisponivel")
+            emp_sem_base=$(echo "$plano" | jq '[.emissores[] | select(.horas_stale_base == null)] | length')
+            if (( emp_sem_base > 0 )); then
+              echo "::error::listar_plano_rotina veio sem horas_stale_base em ${emp_sem_base} de ${emp_total} emissores. O Worker e anterior ao EMISSORSTALE2 (v4.9.259) e horas_stale ainda mede a VARREDURA, nao a analise. A guarda de carteira nao se avalia com o relogio errado."
+              exit 1
+            fi
+            # Atrasado: tem carimbo de analise, na mescla ou fora dela, e ele passou de 24h.
+            emp_stale=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo != true) | select(.horas_stale_base != "sem_analise_registrada") | select(((.horas_stale // 9999)|tonumber) >= 24)] | length')
+            emp_sem_registro=$(echo "$plano" | jq '[.emissores[] | select(.horas_stale_base == "sem_analise_registrada")] | length')
+            emp_fora_mescla=$(echo "$plano" | jq '[.emissores[] | select(.horas_stale_base == "ultima_analise_fora_da_mescla")] | length')
+            emp_inconc=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo == true) | select(.horas_stale_base != "sem_analise_registrada") | select(((.horas_stale // 9999)|tonumber) >= 24)] | length')
+            emp_max=$(echo "$plano" | jq '[.emissores[] | select(.inconclusivo != true) | select(.horas_stale_base != "sem_analise_registrada") | ((.horas_stale // 0)|tonumber)] | max // 0')
+            emp_mais_antigo=$(echo "$plano" | jq -r '[.emissores[] | select(.inconclusivo != true) | select(.horas_stale_base != "sem_analise_registrada")] | sort_by((.horas_stale // 0)|tonumber) | reverse | .[0] | if . == null then "nenhum" else ((.empresa // "?") + " " + ((.horas_stale // 0)|tostring) + "h desde a analise (" + (.horas_stale_base // "?") + "), " + ((.horas_desde_varredura // "?")|tostring) + "h desde a varredura, " + (.contexto_historico // "sem contexto")) end' 2>/dev/null || echo "indisponivel")
+            emp_sem_registro_nomes=$(echo "$plano" | jq -r '[.emissores[] | select(.horas_stale_base == "sem_analise_registrada") | .empresa] | .[0:20] | join(", ")' 2>/dev/null || echo "indisponivel")
+            emp_falta=$(( emp_stale + emp_sem_registro ))
             emp_pct=0
-            if (( emp_total > 0 )); then emp_pct=$(( emp_stale * 100 / emp_total )); fi
-            echo "EMISSORES_STALE real=${emp_stale}/${emp_total} (${emp_pct}%) inconclusivo_acima_24h=${emp_inconc} max_horas=${emp_max} mais_antigo=${emp_mais_antigo}"
+            if (( emp_total > 0 )); then emp_pct=$(( emp_falta * 100 / emp_total )); fi
+            echo "EMISSORES_STALE atrasados=${emp_stale}/${emp_total} sem_registro=${emp_sem_registro} fora_da_mescla=${emp_fora_mescla} falta_total=${emp_falta} (${emp_pct}%) inconclusivo_acima_24h=${emp_inconc} max_horas_analise=${emp_max} mais_antigo=${emp_mais_antigo}"
+            if (( emp_sem_registro > 0 )); then
+              echo "::warning::${emp_sem_registro} emissores sem nenhuma analise real registrada no historico retido (so SKIP ou deferido desde a CREDITODIA1, ou nunca analisados): ${emp_sem_registro_nomes}. Contados como falta de analise, separados dos atrasados. Se o numero nao cair sozinho, a causa e estrutural e nao atraso."
+            fi
             if (( emp_stale > 0 )); then
-              echo "::warning::${emp_stale} de ${emp_total} emissores sem analise ha mais de 24h (mais antigo: ${emp_mais_antigo}). SLA da carteira estourado, o feed pode seguir fresco enquanto a cobertura atrasa."
+              echo "::warning::${emp_stale} de ${emp_total} emissores com a ultima analise real ha mais de 24h (mais antigo: ${emp_mais_antigo}). SLA da carteira estourado, o feed pode seguir fresco enquanto a cobertura atrasa."
             fi
             if (( emp_pct > 50 )); then
-              echo "::error::CARTEIRA FAMINTA: ${emp_stale}/${emp_total} emissores (${emp_pct}%) sem analise ha mais de 24h, maximo ${emp_max}h, mais antigo em ${emp_mais_antigo}. Conferir os motivos de deferimento da ultima noturna e da matinal (cap_efetivo, limite_sessao_assinatura), se a noturna completou e se houve aborto de auth. Frescor de feed nao cobre isto."
+              echo "::error::CARTEIRA FAMINTA: ${emp_stale} atrasados mais ${emp_sem_registro} sem registro de analise, de ${emp_total} emissores (${emp_pct}%), maximo ${emp_max}h desde a ultima analise, mais antigo ${emp_mais_antigo}. Conferir os motivos de deferimento da ultima noturna e da matinal (cap_efetivo, CIRCUITO_ABERTO, limite_sessao_assinatura), se a noturna completou e se houve aborto de auth. Frescor de feed nao cobre isto."
               exit 1
             fi
           fi
+          # EMISSORSTALE2-GATE-FIM
 
-          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_elegivel=$av_teto teto_acervo=$av_acervo elegiveis=$av_eleg sem_dono=$av_sdono cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas emissores_stale_real=${emp_stale}/${emp_total} emissores_max_horas=${emp_max}"
+          echo "FRESCOR_OK empresas=$companies idade_h=$age_h evento_mais_novo=$ev_data idade_du=$ev_idade eventos=$ev_total avanco_feed=$av_estado teto_elegivel=$av_teto teto_acervo=$av_acervo elegiveis=$av_eleg sem_dono=$av_sdono cvm_motivo=$cvm_motivo cvm_falhas=$cvm_falhas emissores_stale_real=${emp_stale}/${emp_total} emissores_sem_registro=${emp_sem_registro} emissores_max_horas=${emp_max}"
 
       # FRESCORNOTIFY1 (auditoria 2026-08-29): ate aqui o gate reprovava mas o
       # aviso morria dentro do GitHub, sem canal nenhum (28/08 e 29/08 o operador
@@ -243,12 +276,17 @@ jobs:
           # EMISSORSTALE1: o alerta tambem nomeia a carteira, porque o gate novo
           # reprova por ela e um e-mail que so fala de feed manda procurar no lugar
           # errado. Mesma acao que o gate usa, com a chave que este passo ja tem.
+          # EMISSORSTALE2: mesma quebra do gate, atrasados separados de sem registro. Sem
+          # horas_stale_base o numero seria de varredura, entao o alerta diz isso em vez
+          # de repetir um numero errado.
+          # EMISSORSTALE2-ALERTA-INICIO
           if [[ -n "${ROUTINE_KEY:-}" ]]; then
             bp=$(jq -n --arg rk "$ROUTINE_KEY" '{action:"listar_plano_rotina",routine_key:$rk,modo:"noturno"}')
             pl=$(curl --fail-with-body -sS -X POST 'https://api.vixradar.com/' -H 'Content-Type: application/json' -d "$bp" --max-time 120 2>/dev/null || echo '{}')
-            det_stale=$(echo "$pl" | jq -r 'if (.emissores|type)=="array" and (.emissores|length)>0 then (.emissores as $e | ([$e[]|select(.inconclusivo != true)|select(((.horas_stale // 0)|tonumber) >= 24)]|length|tostring) + " de " + ($e|length|tostring) + " emissores sem analise ha mais de 24h") else "" end' 2>/dev/null || echo "")
+            det_stale=$(echo "$pl" | jq -r 'if (.emissores|type)=="array" and (.emissores|length)>0 then (.emissores as $e | if ([$e[]|select(.horas_stale_base == null)]|length) > 0 then "plano sem horas_stale_base (Worker anterior a v4.9.259, horas_stale mede varredura)" else ([$e[]|select(.inconclusivo != true)|select(.horas_stale_base != "sem_analise_registrada")|select(((.horas_stale // 9999)|tonumber) >= 24)]|length|tostring) + " atrasados e " + ([$e[]|select(.horas_stale_base == "sem_analise_registrada")]|length|tostring) + " sem registro de analise, de " + ($e|length|tostring) + " emissores" end) else "" end' 2>/dev/null || echo "")
             if [[ -n "$det_stale" ]]; then det="${det} | ${det_stale}"; fi
           fi
+          # EMISSORSTALE2-ALERTA-FIM
           run_url="https://github.com/Yan69793/monitoramento-credito-vix-radar/actions/runs/${GITHUB_RUN_ID}"
           motivo="Frescor da ingestao reprovou as $(date -u +%H:%MZ) UTC. Detalhe: ${det}. Log: ${run_url}"
           html="<h2>VIX Radar - frescor da ingestao reprovado</h2><p>${det}</p><p>Run: <a href=\"${run_url}\">ver log completo</a></p>"
