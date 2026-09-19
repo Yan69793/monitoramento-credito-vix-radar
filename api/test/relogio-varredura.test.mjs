@@ -22,6 +22,12 @@ beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 //
 // Prova reversa: contra o codigo antigo o primeiro teste falha com horas_stale ~3, e o
 // segundo (emissor sem evento) passa nos dois, que e exatamente o que escondia o bug.
+//
+// EMISSORSTALE2 (2026-09-19, v4.9.259): `horas_stale` passou a medir a ultima ANALISE
+// real (`_ultima_analise_at`). O relogio que este arquivo protege, o da VARREDURA, saiu no
+// plano como `horas_desde_varredura`. Os testes leem os dois: a varredura e o que a
+// RELOGIO3H1 exige, e a analise tambem tem que nascer com instante real, porque as duas
+// submissoes abaixo sao FULL e carimbam analise.
 
 const ROUTINE_KEY = "test-routine-key-nao-usar-em-producao";
 const EMISSOR_COM_EVENTO = "Vibra Energia";
@@ -61,7 +67,7 @@ async function submeter(empresa, resultado) {
   });
 }
 
-async function horasStale(empresa) {
+async function relogios(empresa) {
   const res = await SELF.fetch("https://example.com/", {
     method: "POST",
     headers: { "Content-Type": "application/json", "CF-Connecting-IP": "203.0.113.92" },
@@ -71,7 +77,7 @@ async function horasStale(empresa) {
   const b = await res.json();
   const alvo = (b.emissores || []).find((e) => e.empresa === empresa);
   expect(alvo, `emissor ${empresa} ausente do plano`).toBeTruthy();
-  return alvo.horas_stale;
+  return { varredura: alvo.horas_desde_varredura, analise: alvo.horas_stale, base: alvo.horas_stale_base };
 }
 
 afterEach(async () => {
@@ -102,9 +108,11 @@ describe("RELOGIO3H1 - varredura recem-gravada nao pode nascer com horas de atra
     });
     expect(r.status).toBe(200);
 
-    const h = await horasStale(EMISSOR_COM_EVENTO);
+    const h = await relogios(EMISSOR_COM_EVENTO);
     // 0,5h de folga cobre a latencia do teste. O bug produzia 3,0.
-    expect(h).toBeLessThan(0.5);
+    expect(h.varredura).toBeLessThan(0.5);
+    expect(h.analise).toBeLessThan(0.5);
+    expect(h.base).toBe("ultima_analise");
   });
 
   it("emissor SEM evento continua reportando frescor proximo de zero", async () => {
@@ -121,8 +129,10 @@ describe("RELOGIO3H1 - varredura recem-gravada nao pode nascer com horas de atra
     });
     expect(r.status).toBe(200);
 
-    const h = await horasStale(EMISSOR_SEM_EVENTO);
-    expect(h).toBeLessThan(0.5);
+    const h = await relogios(EMISSOR_SEM_EVENTO);
+    expect(h.varredura).toBeLessThan(0.5);
+    expect(h.analise).toBeLessThan(0.5);
+    expect(h.base).toBe("ultima_analise");
   });
 
   it("os dois caminhos concordam entre si", async () => {
@@ -140,8 +150,9 @@ describe("RELOGIO3H1 - varredura recem-gravada nao pode nascer com horas de atra
       _tier: "FULL", _rotina_v2: true
     });
 
-    const comEvento = await horasStale(EMISSOR_COM_EVENTO);
-    const semEvento = await horasStale(EMISSOR_SEM_EVENTO);
-    expect(Math.abs(comEvento - semEvento)).toBeLessThan(0.5);
+    const comEvento = await relogios(EMISSOR_COM_EVENTO);
+    const semEvento = await relogios(EMISSOR_SEM_EVENTO);
+    expect(Math.abs(comEvento.varredura - semEvento.varredura)).toBeLessThan(0.5);
+    expect(Math.abs(comEvento.analise - semEvento.analise)).toBeLessThan(0.5);
   });
 });

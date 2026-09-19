@@ -35,6 +35,29 @@
 #   agora a regex e ancorada e o render escapa; (c) cadastro: validacao de e-mail
 #   com forma de endereco (ancora de inicio e fim, TLD de 2+ letras, teto de 254)
 #   e telemetria email_invalido.
+# v4.9.259.js = v4.9.258 + EMISSORSTALE2: horas_stale do listar_plano_rotina passa a medir a
+#   ultima ANALISE real (_ultima_analise_at, carimbada so por _carimbarAnaliseReal), nao a
+#   varredura. A guarda EMISSORSTALE1 do frescor-check lia horas_stale, que vinha de
+#   _last_scanned_at, e SKIP e deferido renovam esse carimbo nos seis caminhos de escrita de
+#   persistirResultadoCompartilhadoInterno. Em 18/09 a noturna deferiu 78 e pulou 26 com 0
+#   analises e o gate mediu 0/104 (run 35426858302). Medido em 19/09 20:34Z com o plano de
+#   producao: 73 de 104 com a ultima analise real acima de 24h (17 inconclusivos a parte),
+#   maximo 128h (Cosan), contra 0 pelo relogio de varredura. Campos novos por emissor:
+#   horas_stale_base (ultima_analise | ultima_analise_fora_da_mescla | sem_analise_registrada)
+#   e horas_desde_varredura (o relogio antigo, que segue decidindo o tiering por decisao do
+#   operador de 19/09, junto do P0 de orcamento). No topo: horas_stale_sem_registro e
+#   horas_stale_fora_da_mescla, e a linha de log [montarPlanoRotina][HORAS_STALE] so quando
+#   alguma passa de zero. Sem carimbo na mescla de 3 semanas, o plano procura nas 2 semanas
+#   retidas alem dela (TTL de 35 dias); sem carimbo em nenhuma, horas_stale vira o sentinela
+#   nomeado HORAS_SEM_REGISTRO (9999), que falha fechado. horas_desde_analise passa a sair da
+#   mesma funcao. contexto_historico e dados_para_analise param de rotular a varredura como
+#   "Ultima analise". Tiering (horasStale renomeado para horasVarredura, sem mudar conta) e
+#   ranking da matinal (selecionarEmissoresPrioritarios) intocados.
+#   Testes: api/test/emissor-stale-analise.test.mjs, prova reversa com 12 de 13 falhando na
+#   v4.9.258 e o de tiering passando nas duas versoes; relogio-varredura.test.mjs passa a
+#   proteger horas_desde_varredura. Suite completa 443/444 com login-timing (instabilidade
+#   conhecida sob carga paralela, 249ms contra 200) verde isolado, limite intocado.
+#   Rollback: main = "v4.9.258.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de

@@ -11981,10 +11981,73 @@ var ROTINA_MATINAL_TOP = 15;
 // um lote grande da CVM nao vire gasto descontrolado. O que passar do teto nao se
 // perde, sai no campo excedente e volta na execucao seguinte.
 var ROTINA_PONTUAL_TETO = 8;
+// EMISSORSTALE2 (2026-09-19): sentinela com nome para "nao ha carimbo". O valor e o mesmo
+// 9999 de sempre, para todo consumidor que compara ">= 24" continuar falhando fechado. O que
+// muda e que ninguem mais escreve o numero solto no meio da conta.
+var HORAS_SEM_REGISTRO = 9999;
 function _parseHorasStale(lastTs) {
-  if (!lastTs) return 9999;
+  if (!lastTs) return HORAS_SEM_REGISTRO;
   return (Date.now() - new Date(lastTs).getTime()) / 36e5;
 }
+// EMISSORSTALE2 (2026-09-19): relogio de ANALISE do plano. `horas_stale` saia de
+// _last_scanned_at, que SKIP e deferido renovam nos seis caminhos de escrita de
+// persistirResultadoCompartilhadoInterno, entao a guarda EMISSORSTALE1 do frescor-check
+// media varredura. Em 18/09 a noturna deferiu 78 e pulou 26 com 0 analises e a guarda viu
+// 0/104 stale; o relogio de analise, medido em 19/09 19:53Z, dava 68 de 104 atrasados acima
+// de 24h (a guarda conta os 17 inconclusivos a parte). A fonte
+// certa e _ultima_analise_at, gravado so por _carimbarAnaliseReal. Tres bases, cada uma com
+// nome proprio, para quem le o plano separar "atrasado" de "sem registro":
+//   ultima_analise                carimbo na mescla de 3 semanas do plano
+//   ultima_analise_fora_da_mescla carimbo so nas semanas retidas alem dela, horas reais
+//   sem_analise_registrada        nenhum carimbo no historico retido, HORAS_SEM_REGISTRO
+// Data ilegivel conta como ausente (fail-closed). _last_scanned_at nunca vira analise.
+function _horasStaleAnalise(res, carimboForaDaMescla) {
+  var candidatos = [
+    [res && res._ultima_analise_at ? res._ultima_analise_at : null, "ultima_analise"],
+    [carimboForaDaMescla || null, "ultima_analise_fora_da_mescla"]
+  ];
+  for (var i = 0; i < candidatos.length; i++) {
+    var ts = candidatos[i][0];
+    if (!ts) continue;
+    var h = _parseHorasStale(ts);
+    if (isFinite(h)) return { horas: h, base: candidatos[i][1], carimbo: ts };
+  }
+  return { horas: HORAS_SEM_REGISTRO, base: "sem_analise_registrada", carimbo: null };
+}
+__name(_horasStaleAnalise, "_horasStaleAnalise");
+// EMISSORSTALE2: semanas retidas alem da mescla. montarPlanoRotina mescla 3 semanas ISO
+// (carregarEstadoMultiSemana(env, 3)) e o blob semanal vive 35 dias no KV, entao ate duas
+// semanas mais antigas ainda existem. So sao lidas quando algum emissor chega da mescla sem
+// carimbo de analise, e so para ele. Leitura crua, sem normalizarMojibake: ela so reescreve
+// valores string e preserva as chaves, e aqui se le um timestamp ISO ASCII pela chave do
+// emissor, entao a normalizacao nao mudaria o valor lido e custaria uma passada de regex no
+// blob inteiro. Semana ilegivel conta como ausente e o emissor cai em sem_analise_registrada,
+// que falha fechado, com aviso no log em vez de catch mudo.
+async function _carimbosAnaliseForaDaMescla(env2222, nomes, semanasMescla) {
+  var achados = {};
+  if (!env2222 || !env2222.RADAR_KV || !nomes || !nomes.length) return achados;
+  var agora = obterAgoraBRT();
+  var vistas = new Set(semanasMescla || []);
+  for (var i = 3; i <= 4; i++) {
+    var semana = semanaISO(new Date(agora.getTime() - i * 7 * 864e5));
+    if (vistas.has(semana)) continue;
+    vistas.add(semana);
+    try {
+      var raw = await env2222.RADAR_KV.get(chaveEstadoCompartilhado(semana), "text");
+      if (!raw) continue;
+      var results = (JSON.parse(raw) || {}).results || {};
+      for (var n = 0; n < nomes.length; n++) {
+        var r = results[nomes[n]];
+        var ts = r && r._ultima_analise_at;
+        if (ts && isFinite(new Date(ts).getTime()) && (!achados[nomes[n]] || ts > achados[nomes[n]])) achados[nomes[n]] = ts;
+      }
+    } catch (_eForaMescla) {
+      console.warn("[montarPlanoRotina][HORAS_STALE] semana " + semana + " ilegivel, conta como sem carimbo: " + (_eForaMescla && _eForaMescla.message || String(_eForaMescla)));
+    }
+  }
+  return achados;
+}
+__name(_carimbosAnaliseForaDaMescla, "_carimbosAnaliseForaDaMescla");
 // CREDITODIA1 (2026-09-02): credito de analise do dia, por qualquer rotina.
 // JANELA_CREDITO_H = 14: matinal 10h06 -> noturna 18h05 sao 8h; retry das 21h30 sao 11h30;
 // noturna 18h -> matinal 10h do dia seguinte sao 16h e ficam FORA de proposito (a matinal
@@ -12222,6 +12285,14 @@ async function montarPlanoRotina(env2222, opts) {
       return { nome: nome, setor: SETOR_DE_EMPRESA[nome] || "Outros" };
     });
   }
+  // EMISSORSTALE2: pre-passada do relogio de analise. Quem chega da mescla sem carimbo de
+  // analise legivel e procurado nas semanas retidas alem dela, numa leitura so para todos.
+  var _semCarimboMescla = [];
+  for (var _ic = 0; _ic < emissoresAlvo.length; _ic++) {
+    var _rc = estado.results ? estado.results[emissoresAlvo[_ic].nome] : null;
+    if (!(_rc && _rc._ultima_analise_at && isFinite(new Date(_rc._ultima_analise_at).getTime()))) _semCarimboMescla.push(emissoresAlvo[_ic].nome);
+  }
+  var _carimbosForaMescla = _semCarimboMescla.length ? await _carimbosAnaliseForaDaMescla(env2222, _semCarimboMescla, estado.weeks_loaded) : {};
   var plano = [];
   var skipPool = [];
   for (var i = 0; i < emissoresAlvo.length; i++) {
@@ -12230,13 +12301,19 @@ async function montarPlanoRotina(env2222, opts) {
     var res = estado.results ? estado.results[emp] : null;
     var eventos = res && res.eventos ? res.eventos : [];
     var ews = emissoresAlvo[i].ews_score != null ? { score: emissoresAlvo[i].ews_score } : calcularEWS(emp, anomalias, eventos, []);
+    // Relogio de VARREDURA: SKIP e deferido tambem renovam _last_scanned_at.
     var lastTs = res ? res._last_scanned_at || res.timestamp : null;
     // DEFERREDREC1 (auditoria 2026-08-15): emissor deferido por cap de tokens no
-    // dia anterior caia em SKIP no tiering seguinte (horasStale baixo) e o
+    // dia anterior caia em SKIP no tiering seguinte (horasVarredura baixo) e o
     // "Priorizar amanha" do ledger minimo nunca virava re-analise real. Deferido
     // agora entra como FULL prioritario; a proxima analise real sobrescreve o flag.
     var _foiDeferido = !!(res && res._token_cap_deferred === true);
-    var horasStale = _parseHorasStale(lastTs);
+    // EMISSORSTALE2 (decisao do operador, 19/09): o tiering abaixo continua no relogio de
+    // VARREDURA. Trocar para o de analise muda quem e analisado e em que tier, e isso e
+    // decisao junto do P0 de orcamento. O relogio de analise entra so no que o plano
+    // reporta (horas_stale, horas_desde_analise). O nome antigo, horasStale, prometia
+    // analise e entregava varredura, e foi assim que a guarda leu o campo errado.
+    var horasVarredura = _parseHorasStale(lastTs);
     var docs = await buscarDocumentosCVM(env2222, emp, janelaInicio, hoje).catch(function() { return []; });
     // SENTINELA1: "novo" passa a ser identidade de protocolo, nao data. Ver
     // _cvmNovosEfetivo. A marcacao so acontece no receber_analise bem-sucedido.
@@ -12260,14 +12337,14 @@ async function montarPlanoRotina(env2222, opts) {
       } else if (_foiDeferido) {
         tier = "FULL";
         motivos.push("deferred_prioritario");
-      } else if (horasStale < 12 && cvmOvernight.length === 0 && ews.score < ROTINA_EWS_LIGHT && (!res || res._status !== "INCONCLUSIVO")) {
+      } else if (horasVarredura < 12 && cvmOvernight.length === 0 && ews.score < ROTINA_EWS_LIGHT && (!res || res._status !== "INCONCLUSIVO")) {
         tier = "SKIP";
         motivos.push("scan_recente_sem_delta");
-      } else if (ews.score >= ROTINA_EWS_FULL || cvmOvernight.length > 0 || horasStale > ROTINA_STALE_LIGHT_H || matMax >= 60) {
+      } else if (ews.score >= ROTINA_EWS_FULL || cvmOvernight.length > 0 || horasVarredura > ROTINA_STALE_LIGHT_H || matMax >= 60) {
         tier = "FULL";
         if (ews.score >= ROTINA_EWS_FULL) motivos.push("ews_alto");
         if (cvmOvernight.length > 0) motivos.push("cvm_overnight_" + cvmOvernight.length);
-        if (horasStale > ROTINA_STALE_LIGHT_H) motivos.push("stale_2d");
+        if (horasVarredura > ROTINA_STALE_LIGHT_H) motivos.push("stale_2d");
         if (matMax >= 60) motivos.push("materialidade_alta");
       } else {
         tier = "LIGHT";
@@ -12295,17 +12372,19 @@ async function montarPlanoRotina(env2222, opts) {
       } else if (_temEventoMaterialRecente(eventos, 7)) {
         tier = "FULL";
         motivos.push("imprensa_recente_7d");
-      } else if (ews.score >= ROTINA_EWS_FULL || horasStale > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
+      } else if (ews.score >= ROTINA_EWS_FULL || horasVarredura > ROTINA_STALE_FULL_H || cvmNovos.length > 0 || matMax >= 65 || _temEventoMaterialRecente(eventos, 14)) {
         tier = "FULL";
         if (ews.score >= ROTINA_EWS_FULL) motivos.push("ews_alto");
-        if (horasStale > ROTINA_STALE_FULL_H) motivos.push("stale_5d");
+        if (horasVarredura > ROTINA_STALE_FULL_H) motivos.push("stale_5d");
         if (cvmNovos.length > 0) motivos.push("cvm_delta_" + cvmNovos.length);
         if (matMax >= 65) motivos.push("materialidade_alta");
-      } else if (horasStale < 30 && cvmNovos.length === 0 && ews.score < ROTINA_EWS_LIGHT && !_temEventoMaterialRecente(eventos, 7) && (!res || res._status !== "INCONCLUSIVO")) {
+      } else if (horasVarredura < 30 && cvmNovos.length === 0 && ews.score < ROTINA_EWS_LIGHT && !_temEventoMaterialRecente(eventos, 7) && (!res || res._status !== "INCONCLUSIVO")) {
         tier = "SKIP";
         motivos.push("sem_delta_30h");
-        skipPool.push({ empresa: emp, setor: setor, ews_score: ews.score, horas_stale: horasStale });
-      } else if (ews.score >= ROTINA_EWS_LIGHT || horasStale > ROTINA_STALE_LIGHT_H) {
+        // _selecionarAuditSkip so le .empresa; a chave de horas vai com o nome do relogio
+        // que decidiu o SKIP, para ninguem ler varredura achando que e analise.
+        skipPool.push({ empresa: emp, setor: setor, ews_score: ews.score, horas_desde_varredura: horasVarredura });
+      } else if (ews.score >= ROTINA_EWS_LIGHT || horasVarredura > ROTINA_STALE_LIGHT_H) {
         tier = "LIGHT";
         motivos.push("ews_medio_ou_stale_2d");
       } else {
@@ -12315,10 +12394,10 @@ async function montarPlanoRotina(env2222, opts) {
     }
     // v4.9.157: INCONCLUSIVO stale >48h -> FULL para quebrar loop de cobertura incompleta.
     // Se o scan anterior foi LIGHT (<8 rodadas) e retornou INCONCLUSIVO, forcar FULL agora.
-    if (res && res._status === "INCONCLUSIVO" && horasStale > 48) {
+    if (res && res._status === "INCONCLUSIVO" && horasVarredura > 48) {
       tier = "FULL";
       motivos = ["inconclusivo_stale_breakout"].concat(motivos.filter(function(m) { return m !== "inconclusivo_stale_breakout"; }));
-      console.log("[montarPlanoRotina][INCONCLUSIVO_BREAKOUT] emp=" + emp.slice(0, 25) + " horasStale=" + Math.round(horasStale) + " promovido para FULL");
+      console.log("[montarPlanoRotina][INCONCLUSIVO_BREAKOUT] emp=" + emp.slice(0, 25) + " horasVarredura=" + Math.round(horasVarredura) + " promovido para FULL");
     }
     // CREDITODIA1 (2026-09-02): depois de toda a escada de tier, um ponto so para matinal,
     // noturno e pontual (a pontual herda porque filtra tier SKIP). Medido em 01/09: 12
@@ -12328,7 +12407,12 @@ async function montarPlanoRotina(env2222, opts) {
     // igual ou mais profundo que o pedido agora, sai como SKIP com o nome de quem analisou.
     // Fato novo (cvmNovos) e divida por teto (deferido) vencem o credito sempre. Nao entra
     // em skipPool de proposito: credito nao e candidato a audit_amostral.
-    var horasAnalise = _parseHorasStale(res && res._ultima_analise_at ? res._ultima_analise_at : null);
+    // EMISSORSTALE2 (bloqueio 2 da revisao de 19/09): um relogio de analise so por item.
+    // horasAnalise, horas_stale e horas_desde_analise saem todos daqui. Para o credito e
+    // equivalente ao calculo antigo: carimbo fora da mescla tem 14+ dias e nunca credita,
+    // e data ilegivel nao creditava antes (NaN) nem credita agora (sentinela).
+    var _hsA = _horasStaleAnalise(res, _carimbosForaMescla[emp]);
+    var horasAnalise = _hsA.horas;
     var _cred = _creditoAnaliseDia(res, tier, _foiDeferido, cvmNovos.length, horasAnalise);
     if (_cred) {
       motivos = [_cred.motivo, _cred.detalhe].concat(motivos);
@@ -12338,7 +12422,11 @@ async function montarPlanoRotina(env2222, opts) {
     if (res) {
       var partes = [];
       if (res.memo_acontecimento) partes.push("Ultimo acontecimento: " + res.memo_acontecimento);
-      if (res._last_scanned_at) partes.push("Ultima analise: " + res._last_scanned_at.slice(0, 16));
+      // EMISSORSTALE2: este rotulo imprimia _last_scanned_at como "Ultima analise". O texto vai
+      // para o prompt e para a linha "mais antigo" da guarda, entao mostrava ao modelo e ao
+      // operador uma analise que nao aconteceu. Varredura so aparece com o aviso explicito.
+      if (_hsA.carimbo) partes.push("Ultima analise: " + String(_hsA.carimbo).slice(0, 16));
+      else if (res._last_scanned_at) partes.push("Sem analise registrada. Ultima varredura: " + String(res._last_scanned_at).slice(0, 16));
       ctxHist = partes.join(" | ");
     }
     // FEEDRETRO1 FASE2 (2026-09-04): delta para a rotina nao reencontrar fato ja
@@ -12383,7 +12471,11 @@ async function montarPlanoRotina(env2222, opts) {
       motivos: motivos,
       rodadas: _rodadasParaTier(tier, setor),
       ews_score: ews.score,
-      horas_stale: Math.round(horasStale * 10) / 10,
+      // EMISSORSTALE2: horas_stale mede a ultima ANALISE real, com a base declarada ao lado
+      // (ver _horasStaleAnalise). horas_desde_varredura e o relogio antigo, o que decide o tier.
+      horas_stale: Math.round(_hsA.horas * 10) / 10,
+      horas_stale_base: _hsA.base,
+      horas_desde_varredura: Math.round(horasVarredura * 10) / 10,
       cvm_novos: cvmNovos.length,
       // SENTINELA1: os ids voltam no receber_analise para so entao entrarem em
       // cvm_vistos. Quem falha nao marca nada e reaparece na execucao seguinte.
@@ -12405,7 +12497,9 @@ async function montarPlanoRotina(env2222, opts) {
       // CREDITODIA1: quem analisou por ultimo, com que profundidade e ha quanto tempo.
       ultimo_tier: res && res._ultimo_tier ? res._ultimo_tier : null,
       ultima_origem: res && res._ultima_origem ? res._ultima_origem : null,
-      horas_desde_analise: horasAnalise >= 9999 ? null : Math.round(horasAnalise * 10) / 10
+      // EMISSORSTALE2: mesma fonte de horas_stale, na forma anulavel que o motor le
+      // (run_vixradar_varredura.ps1, linha ALVO). Null so quando nao ha registro nenhum.
+      horas_desde_analise: _hsA.base === "sem_analise_registrada" ? null : Math.round(_hsA.horas * 10) / 10
     });
   }
   // COBERTURA-DESENHO1 (2026-09-02): exclusao cega do topo, OPCIONAL e desligada por padrao.
@@ -12474,6 +12568,20 @@ async function montarPlanoRotina(env2222, opts) {
     _pontualExcedente = Math.max(0, _gatilhados.length - _pTeto);
     plano = _gatilhados.slice(0, _pTeto);
   }
+  // EMISSORSTALE2: contagem propria dos sem registro e dos fora da mescla, nunca diluida no
+  // numero de atrasados, e uma linha de log agregada so quando alguma passa de zero. Pedido
+  // do operador em 19/09: e o que separa "nunca analisado" de "atrasado" e impede que uma
+  // condicao estrutural vire alarme que toca sozinho sem ninguem saber por que.
+  var _hsSemRegistro = [];
+  var _hsForaMescla = [];
+  for (var _hq = 0; _hq < plano.length; _hq++) {
+    if (plano[_hq].horas_stale_base === "sem_analise_registrada") _hsSemRegistro.push(plano[_hq].empresa);
+    else if (plano[_hq].horas_stale_base === "ultima_analise_fora_da_mescla") _hsForaMescla.push(plano[_hq].empresa);
+  }
+  if (_hsSemRegistro.length || _hsForaMescla.length) {
+    var _hsLista = function(nomes) { return nomes.length ? " [" + nomes.slice(0, 20).join(", ") + (nomes.length > 20 ? ", ..." : "") + "]" : ""; };
+    console.log("[montarPlanoRotina][HORAS_STALE] modo=" + modo + " sem_analise_registrada=" + _hsSemRegistro.length + _hsLista(_hsSemRegistro) + " fora_da_mescla=" + _hsForaMescla.length + _hsLista(_hsForaMescla));
+  }
   var contagem = { SKIP: 0, LIGHT: 0, FULL: 0, AUDIT: 0 };
   var buscasEstimadas = 0;
   for (var c = 0; c < plano.length; c++) {
@@ -12488,6 +12596,9 @@ async function montarPlanoRotina(env2222, opts) {
     data: hoje,
     total: plano.length,
     contagem_tiers: contagem,
+    // EMISSORSTALE2: contagens do relogio de analise, separadas de proposito.
+    horas_stale_sem_registro: _hsSemRegistro.length,
+    horas_stale_fora_da_mescla: _hsForaMescla.length,
     buscas_estimadas: buscasEstimadas,
     buscas_full_legacy: plano.length * 8,
     economia_pct: plano.length > 0 ? Math.round((1 - buscasEstimadas / (plano.length * 8)) * 100) : 0,
@@ -21633,7 +21744,10 @@ async function __coreFetch(request, env2222, ctx) {
         var _partes = [];
         if (_dpaRes.memo_acontecimento) _partes.push("Último acontecimento: " + _dpaRes.memo_acontecimento);
         if (_dpaRes.memo_monitorar) _partes.push("Monitorar: " + _dpaRes.memo_monitorar);
-        if (_dpaRes._last_scanned_at) _partes.push("Última análise: " + _dpaRes._last_scanned_at.slice(0, 10));
+        // EMISSORSTALE2: a varredura saia aqui rotulada como "Última análise", mesmo defeito do
+        // contexto_historico do plano, e este texto vai para o prompt da varredura de emergência.
+        if (_dpaRes._ultima_analise_at) _partes.push("Última análise: " + String(_dpaRes._ultima_analise_at).slice(0, 10));
+        else if (_dpaRes._last_scanned_at) _partes.push("Sem análise registrada na janela. Última varredura: " + String(_dpaRes._last_scanned_at).slice(0, 10));
         _dpaCtxHist = _partes.join(" | ");
       }
       var _dpaInstrumentos = _dpaRes && Array.isArray(_dpaRes.instrumentos_ativos) ? _dpaRes.instrumentos_ativos : [];
@@ -23307,6 +23421,9 @@ export {
   CUSTO_DISJUNTOR_USD_DIA,
   dataCustoBRT,
   carregarEstadoMultiSemana,
+  montarPlanoRotina,
+  _horasStaleAnalise,
+  HORAS_SEM_REGISTRO,
   SETOR_DE_EMPRESA,
   _listarPrioritariosComSetor,
   normalizarMojibake,
