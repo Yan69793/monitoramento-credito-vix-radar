@@ -58,6 +58,12 @@
 #   proteger horas_desde_varredura. Suite completa 443/444 com login-timing (instabilidade
 #   conhecida sob carga paralela, 249ms contra 200) verde isolado, limite intocado.
 #   Rollback: main = "v4.9.258.js".
+# v4.9.260.js = v4.9.259 + PROFUNDIDADE-NOTURNA1: noturna passa a usar profundidade
+#   adaptativa FULL/LIGHT com rotacao semanal, credito real da matinal e restart idempotente.
+#   Cauda por rotacao fecha ledger como DEFERIDO sem virar divida de cap nem analise real;
+#   Worker ignora rotacao_semanal em _carimbarAnaliseReal. Telemetria separa cap/auth/rotacao.
+#   Testes: api 448/448, profundidade 153/153, dispatch 29/29, varredura-defeitos 44/44.
+#   Rollback: main = "v4.9.259.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de
