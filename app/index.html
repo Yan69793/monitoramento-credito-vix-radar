@@ -3704,7 +3704,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
   <div id="status-right"></div>
 </div>
 
-<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","Usina Pampa Sul"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia","Braskem"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=104,CACHE_VERSION="v202.43";window.CACHE_VERSION="v202.43";const API_BASE="https://api.vixradar.com";
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==">const EMISSORES={"Energia Elétrica":["Equatorial Energia","CEMIG","Eletrobras","Eneva","Engie Brasil Energia","Energisa","Copel","ISA Energia","Neoenergia","Taesa","Auren Energia","CPFL Energia","Omega Energia","Comerc Energia","Light","Usina Pampa Sul"],"Transportes e Logística":["CCR","Rumo","Simpar","MRS Logística","Santos Brasil","EcoRodovias","Hidrovias do Brasil","JSL","Embraer","VLI","Tegma","Arteris","Azul","Vamos"],Saneamento:["Sabesp","Aegea Saneamento","Iguá Saneamento","Copasa","Sanepar","BRK Ambiental"],"Petróleo, Gás e Combustíveis":["Petrobras","Raízen","PRIO","Vibra Energia","Cosan","Brava Energia","Compass Gás e Energia","Braskem"],"Mineração e Siderurgia":["Vale","Gerdau","CSN","Usiminas","Tupy","CBA","Nexa Resources","CSN Mineração"],Financeiro:["Itaúsa","Itaú Unibanco","BTG Pactual","Banco Pan","Banco Daycoval","Cielo","B3 S.A.","Banco Votorantim","Bradesco"],"Locação de Veículos e Mobilidade":["Localiza","Movida","Unidas"],"Papel e Celulose":["Klabin","Suzano","Irani"],Agronegócio:["JBS","BRF","Marfrig","Minerva Foods","São Martinho","SLC Agrícola","Boa Safra Sementes","Terra Santa Agro","Camil Alimentos"],Saúde:["Rede D'Or","Hapvida","Fleury","Oncoclínicas","Dasa","Kora Saúde"],"Telecom e Tecnologia":["TIM Brasil","Oi","Totvs","Vivo (Telefônica Brasil)","Brisanet","Algar Telecom"],"Real Estate e Construção":["MRV Engenharia","Cyrela","Direcional Engenharia","Cury Construtora","Even Construtora","Trisul","Iguatemi","Multiplan","Log Commercial Properties"],"Varejo e Consumo":["Assaí Atacadista","Pão de Açúcar (GPA)","Cogna Educação","Grupo Mateus","LWSA","Natura &Co","Ultrapar"]},SETOR_DE={};Object.entries(EMISSORES).forEach(([e,a])=>a.forEach(a=>SETOR_DE[a]=e));const TOTAL_EMISSORES=104,CACHE_VERSION="v202.44";window.CACHE_VERSION="v202.44";const API_BASE="https://api.vixradar.com";
 /* P0-2026-05-11: WORKER_URL alias de API_BASE — corrige "[BRANDING] erro ao carregar: WORKER_URL is not defined" */
 const WORKER_URL=API_BASE;
 /* P0-2026-09-05: scrubber central de valor monetario absoluto, aplicado so nos renderers de cliente (institucional). Remove o trecho, nunca troca por travessao. Fail-closed: numero solto com milhoes/bilhoes tambem sai, mesmo sem simbolo de moeda. */
@@ -4080,7 +4080,7 @@ if(!o.length){var _nBase=Number(n&&n.totalDebenturesAnalisadas)||0;return void(e
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="anomalias-pre">!function(){const a={"Aegea Saneamento":[{tipo:"spread",severidade:"critica",descricao:"Spread da 8ª emissão abriu 142 bps acima da média de 20 DU após downgrade da Fitch para BB- com Watch Negative. Movimento compatível com repricing de crédito.",dados:{spread_atual_bps:387,spread_media_bps:245,delta_pp:1.42,direcao:"abertura",data:"02/04/2026"},detectada_em:"02/04/2026"}],Oi:[{tipo:"volume",severidade:"critica",descricao:"Volume de negociação 3.2x acima da média histórica. Saída relevante de posições coincide com resultado da alienação da UPI V.tal publicado pela CVM.",dados:{volume_atual:482e5,volume_media:151e5,fator:3.2,direcao:"alto",data:"01/04/2026"},detectada_em:"01/04/2026"},{tipo:"spread",severidade:"critica",descricao:"Spread da 1ª série abriu 218 bps em relação à média de 20 DU. Mercado precificando risco adicional pós-alienação V.tal.",dados:{spread_atual_bps:612,spread_media_bps:394,delta_pp:2.18,direcao:"abertura",data:"01/04/2026"},detectada_em:"01/04/2026"}],Light:[{tipo:"iliquidez",severidade:"relevante",descricao:"Debêntures da 9ª emissão sem negócio registrado há 14 dias úteis consecutivos. Papel em zona de alerta de iliquidez.",dados:{du_sem_negocio:14,ultimo_negocio:"13/03/2026",data:"02/04/2026"},detectada_em:"02/04/2026"}],Raízen:[{tipo:"concentracao",severidade:"relevante",descricao:"Concentração elevada nas negociações da 5ª emissão. Um único participante representou 78% do volume do dia, sugerindo saída de posição institucional.",dados:{pct_concentracao:78,volume_total:325e5,maior_negocio:254e5,data:"01/04/2026"},detectada_em:"01/04/2026"}]};Object.entries(a).forEach(function(a){var e=a[0],i=a[1];window._anomaliasAtivas[e]&&0!==window._anomaliasAtivas[e].length||(window._anomaliasAtivas[e]=i)}),window._anomaliasCarregadas=!0,window._carregarAnomaliasGlobal;var e=JSON.parse(JSON.stringify(a));window.fetch,setInterval(function(){if(document.hidden)return;Object.entries(e).forEach(function(a){window._anomaliasAtivas[a[0]]&&0!==window._anomaliasAtivas[a[0]].length||(window._anomaliasAtivas[a[0]]=a[1])})},35e3),_vlog("[VixRadar] Anomalias PRE carregadas:",Object.keys(a).length,"empresas")}();</script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="vr-audit">!function(){"use strict";function e(){try{var e=JSON.parse(localStorage.getItem("radar_user")||"{}");return!(!e||"admin"!==String(e.role||"").toLowerCase().trim())}catch(e){return!1}}window.__audit=!1;var t=null;function n(){var e="undefined"!=typeof selecionada?selecionada:null,t="undefined"!=typeof modo?modo:null,n=null;e&&"undefined"!=typeof resultados&&resultados[e]&&(n=resultados[e].timestamp||resultados[e]._salvo_em||null);var o=!1;e&&"undefined"!=typeof ewsEmpresaCache&&ewsEmpresaCache[e]&&(o=!0);var r=document.querySelectorAll(".ev-card").length,a=document.querySelectorAll(".memo-container").length;return JSON.stringify([e,t,n,o,r,a])}var o="verified",r="partial",a="curated",i="unverified",d={};function l(e,t){var n=e.getAttribute("data-ev-idx");if(null==n)return null;var o=parseInt(n,10);if(isNaN(o)||o<0||o>=t.length)return null;var r=t[o],a=e.querySelector(".ev-titulo");if(a&&r.titulo){var i=a.textContent.trim(),d=r.titulo.trim();if(i&&d&&i!==d)return _vwarn('[Audit] MISMATCH titulo card="'+i.slice(0,40)+'" vs evento="'+d.slice(0,40)+'" idx='+o),null}return r}function s(e){var t=d[e];if(!t)return null;var n=document.createElement("div");n.className="vr-audit-selo",n.style.cssText="display:flex;align-items:center;gap:6px;padding:3px 8px;margin-top:4px;font-size:9px;font-weight:700;letter-spacing:0.06em;color:"+t.fg+";background:"+t.bg+";border:1px solid "+t.border+";border-radius:3px;font-family:Inter,-apple-system,sans-serif";var o=document.createElement("span");o.style.cssText="width:6px;height:6px;border-radius:50%;background:"+t.fg+";flex-shrink:0",n.appendChild(o);var r=document.createElement("span");return r.textContent=t.label,n.appendChild(r),n}function u(e,t){if(t===i){e.style.position="relative";var n=document.createElement("div");n.className="vr-audit-overlay",n.style.cssText="position:absolute;inset:0;z-index:10;background:rgba(15,5,5,0.85);display:flex;align-items:center;justify-content:center;color:#EF4444;font-size:10px;font-weight:700;letter-spacing:0.08em;font-family:Inter,-apple-system,sans-serif;border-radius:inherit;pointer-events:none",n.textContent="SEM LINHAGEM VERIFICÁVEL",e.appendChild(n)}}function c(){if(window.__audit){document.querySelectorAll(".vr-audit-selo, .vr-audit-overlay").forEach(function(e){e.remove()});var e="undefined"!=typeof selecionada?selecionada:null,t={verified:0,partial:0,curated:0,unverified:0};document.querySelectorAll(".rs-metric").forEach(function(t){var n="undefined"!=typeof METRICAS_CURADAS&&METRICAS_CURADAS[e]?a:i,o=s(n);o&&t.appendChild(o),c(n)}),document.querySelectorAll(".status-item").forEach(function(e){var t=a,n=s(t);n&&e.appendChild(n),c(t)});var n=e&&"undefined"!=typeof resultados?resultados[e]:null,d=n&&n.eventos?n.eventos:[];document.querySelectorAll(".ev-card").forEach(function(e){var t=l(e,d);if(t){var p=function(e,t){if("undefined"!=typeof DEMO&&DEMO[e._empresa]&&(DEMO[e._empresa]&&DEMO[e._empresa].eventos||[]).some(function(t){return t.titulo===e.titulo&&t.data_evento===e.data_evento}))return a;if("undefined"!=typeof ARQUIVO_PRE&&ARQUIVO_PRE[e._empresa]&&ARQUIVO_PRE[e._empresa].some(function(t){return t.titulo===e.titulo&&t.data_evento===e.data_evento}))return a;var n=e.fonte_primaria&&"string"==typeof e.fonte_primaria&&e.fonte_primaria.startsWith("http"),d=e.fonte_tipo&&"string"==typeof e.fonte_tipo&&e.fonte_tipo.length>0,l=e.data_evento&&"string"==typeof e.data_evento&&/^\d{4}-\d{2}-\d{2}$/.test(e.data_evento),s=t&&t.fontes_consultadas&&t.fontes_consultadas.length>0,u=t&&t.timestamp&&"string"==typeof t.timestamp;return n&&d&&l&&s&&u?o:n||d||l?r:i}(t,n),f=e.querySelector(".ev-card-body")||e,m=s(p);m&&f.appendChild(m),u(f,p),c(p)}}),document.querySelectorAll(".ews-panel").forEach(function(t){var n=function(e){if("undefined"==typeof ewsEmpresaCache||!ewsEmpresaCache[e])return i;var t=ewsEmpresaCache[e],n="number"==typeof t.score,a=Array.isArray(t.decomposicao)&&t.decomposicao.length>0,d=a&&t.decomposicao.some(function(e){return"mercado"===e.tipo&&0!==e.pontos}),l=a&&t.decomposicao.some(function(e){return"eventos"===e.tipo&&0!==e.pontos});return n&&a&&(d||l)?o:r}(e),a=s(n);a&&t.appendChild(a),u(t,n),c(n)}),document.querySelectorAll(".memo-container").forEach(function(e){var t=e.closest(".ev-card");if(t){var n=l(t,d);if(n){var a=function(e){if(!(e.memo_acontecimento||e.memo_importancia_credito||e.memo_monitorar||e.memo_acao_sugerida))return i;var t=e.nivel_conviccao&&"string"==typeof e.nivel_conviccao,n=e.fonte_primaria&&e.fonte_primaria.startsWith("http"),a=e.data_evento&&/^\d{4}-\d{2}-\d{2}$/.test(e.data_evento);return t&&n&&a?o:r}(n),p=s(a);p&&e.appendChild(p),u(e,a),c(a)}}}),function(e){var t=document.getElementById("vr-audit-panel");t||((t=document.createElement("div")).id="vr-audit-panel",t.style.cssText="position:fixed;bottom:16px;right:16px;z-index:99999;background:#000D1A;border:1px solid #0D2438;border-radius:8px;padding:12px 16px;min-width:220px;font-family:Inter,-apple-system,sans-serif;box-shadow:0 4px 24px rgba(0,0,0,0.5)",document.body.appendChild(t)),t.innerHTML='<div style="color:#C9A96E;font-size:10px;font-weight:700;letter-spacing:0.1em;margin-bottom:8px">AUDITORIA DE LINHAGEM</div><div style="display:flex;flex-direction:column;gap:4px;font-size:11px"><div style="display:flex;justify-content:space-between"><span style="color:#34D399">● Verificados</span><span style="color:#34D399;font-weight:700">'+e.verified+'</span></div><div style="display:flex;justify-content:space-between"><span style="color:#FBBF24">● Parcial</span><span style="color:#FBBF24;font-weight:700">'+e.partial+'</span></div><div style="display:flex;justify-content:space-between"><span style="color:#60A5FA">● Curado manual</span><span style="color:#60A5FA;font-weight:700">'+e.curated+'</span></div><div style="display:flex;justify-content:space-between"><span style="color:#EF4444">● Sem linhagem</span><span style="color:#EF4444;font-weight:700">'+e.unverified+"</span></div></div>"}(t)}function c(e){e===o?t.verified++:e===r?t.partial++:e===a?t.curated++:e===i&&t.unverified++}}function p(){if(!document.getElementById("vr-audit-btn")&&e()){var o=document.querySelector(".topbar")||document.querySelector("header");if(o){var r=document.createElement("button");r.id="vr-audit-btn",r.style.cssText="background:#0D2438;border:1px solid #1E3A5F;color:#C9A96E;font-size:10px;font-weight:700;letter-spacing:0.08em;padding:4px 10px;border-radius:4px;cursor:pointer;font-family:Inter,-apple-system,sans-serif;transition:all 0.15s;margin-left:8px",r.textContent="◉ AUDITORIA",r.title="Modo de auditoria de linhagem (admin)",r.addEventListener("click",function(){if(e())if(window.__audit=!window.__audit,document.body.classList.toggle("vr-audit",window.__audit),r.style.background=window.__audit?"#1E3A5F":"#0D2438",r.style.color=window.__audit?"#FBBF24":"#C9A96E",r.textContent=window.__audit?"◉ AUDITORIA ON":"◉ AUDITORIA",window.__audit)t=n(),c();else{document.querySelectorAll(".vr-audit-selo, .vr-audit-overlay").forEach(function(e){e.remove()});var o=document.getElementById("vr-audit-panel");o&&o.remove(),t=null}else r.remove()}),(document.getElementById("top-right")||o).appendChild(r)}}}d[o]={fg:"#34D399",bg:"#34D39915",border:"#34D39930",label:"LINHAGEM VERIFICADA"},d[r]={fg:"#FBBF24",bg:"#FBBF2415",border:"#FBBF2430",label:"LINHAGEM PARCIAL"},d[a]={fg:"#60A5FA",bg:"#60A5FA15",border:"#60A5FA30",label:"DADO CURADO MANUALMENTE"},d[i]={fg:"#EF4444",bg:"#EF444415",border:"#EF444430",label:"SEM LINHAGEM VERIFICÁVEL"},p(),requestAnimationFrame(function e(){if(window.__audit){var o=n();o!==t&&(t=o,c())}requestAnimationFrame(e)}),window.addEventListener("storage",function(e){"radar_user"===e.key&&p()})}();</script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="provider-monitor-v2">!function(){"use strict";var e="undefined"!=typeof API_BASE?API_BASE:"https://api.vixradar.com",i=document.getElementById("banner");if(i){var n=document.createElement("style");n.textContent="#provider-banner{display:none;padding:8px 16px;font-family:Inter,-apple-system,sans-serif;font-size:12px;line-height:1.5;border-radius:0 0 6px 6px;margin:0 12px;cursor:pointer;transition:all .2s}#provider-banner.nivel-critico{display:block;background:linear-gradient(90deg,#7F1D1D,#991B1B);color:#FEE2E2;border:1px solid #DC2626}#provider-banner.nivel-vermelho{display:block;background:linear-gradient(90deg,#7C2D12,#9A3412);color:#FED7AA;border:1px solid #EA580C}#provider-banner.nivel-amarelo{display:block;background:linear-gradient(90deg,#713F12,#854D0E);color:#FEF3C7;border:1px solid #CA8A04}#provider-banner.nivel-desconhecido{display:block;background:linear-gradient(90deg,#334155,#475569);color:#E2E8F0;border:1px solid #64748B}#provider-banner.nivel-desconhecido .pb-tag{background:#64748B;color:#FFF}#provider-banner .pb-tag{display:inline-block;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.04em;margin-right:8px}#provider-banner.nivel-critico .pb-tag{background:#DC2626;color:#FFF}#provider-banner.nivel-vermelho .pb-tag{background:#EA580C;color:#FFF}#provider-banner.nivel-amarelo .pb-tag{background:#CA8A04;color:#FFF}#provider-banner .pb-inferido{font-style:italic;opacity:.7;font-size:10px}#provider-banner:focus-visible{outline:2px solid #B7985D;outline-offset:2px}",document.head.appendChild(n);var r=window.adminAutenticar;r&&(window.adminAutenticar=async function(){await r.apply(this,arguments),a()});var t=window.abrirAdmin;t&&(window.abrirAdmin=function(){t.apply(this,arguments),a()}),setTimeout(function(){a()},3e3)}function a(){fetch(e,{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"status_providers"})}).then(function(e){return 401===e.status&&"function"==typeof _tratarSessaoExpirada?(_tratarSessaoExpirada(e),null):403===e.status&&"function"==typeof _tratarAcessoNegado?(_tratarAcessoNegado(e,"status providers"),null):e.json()}).then(function(e){e&&e.ok&&e.status&&function(e){if(e&&"normal"!==e.nivel){var n=e.nivel,r=e.openrouter||{},t=e.gemini||{},a=e.perplexity||{},o=[];"normal"!==r.status&&("financeiro_exato"===r.origem&&null!==r.saldo_restante?o.push("<b>OpenRouter:</b> saldo baixo"):o.push("<b>OpenRouter:</b> "+d(r.status,r.codigo_ultimo_erro))),"normal"!==t.status&&o.push("<b>Gemini:</b> "+d(t.status,t.codigo_ultimo_erro)),"normal"!==a.status&&o.push("<b>Perplexity:</b> "+d(a.status,a.codigo_ultimo_erro)),0===o.length&&o.push("Serviços de análise com alerta ativo");var s="critico"===n?"CRÍTICO":"vermelho"===n?"ALTO":"MODERADO";i.innerHTML='<div id="provider-banner" class="nivel-'+n+'" role="button" tabindex="0" aria-live="polite" onclick="if(window.abrirAdmin)window.abrirAdmin()" title="Clique para abrir o painel admin" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}"><span class="pb-tag">'+s+"</span>"+o.join(" · ")+'<span style="float:right;opacity:.5;font-size:10px">'+(e.verificado_em?new Date(e.verificado_em).toLocaleString("pt-BR"):"")+"</span></div>"}else i.innerHTML="";function d(e,i){return e&&"normal"!==e?"auth_invalida"===e?"autenticação inválida":"rate_limit"===e?"limite de requisições":"timeout"===e?"tempo esgotado":"indisponivel"===e?"indisponível"+(i?" ("+i+")":""):"com alerta":""}}(e.status)}).catch(function(er){_vwarn("[providers] status indisponivel:",er&&er.message||er);var _pb=document.getElementById("provider-banner");if(!_pb&&i){_pb=document.createElement("div");_pb.id="provider-banner";i.appendChild(_pb);}if(_pb){_pb.className="nivel-desconhecido";_pb.setAttribute("role","status");_pb.innerHTML='<span class="pb-tag">SEM LEITURA</span>Status de provedores indisponível nesta carga. Isto não é leitura de ausência de risco.';}})}}();</script>
-<script type="module" src="app/js/admin-bootstrap.js?v=202.43" nonce="SBmwijc5RXf1v4r2gkzvoA=="></script>
+<script type="module" src="app/js/admin-bootstrap.js?v=202.44" nonce="SBmwijc5RXf1v4r2gkzvoA=="></script>
 <!-- MODULE-MIG1 (v202.1): old admin scripts replaced by ES module bootstrap above.
      Keep old files in deploy_zip/admin/ for now — remove after 1 deploy cycle. -->
 <!-- ── ONBOARDING ─────────────────────────────────── -->
@@ -4262,9 +4262,38 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     setoriaisColapsados: "radar_v201_setoriais_colapsados",
     empresasColapsadas: "radar_v201_empresas_colapsadas"
   };
+  /* FILTROEVENTOS1 (2026-09-20) — lista canonica unica de severidade do feed.
+     Antes desta correcao a mesma lista existia em 4 lugares divergentes:
+       FILTROS_DEFAULT -> 5 chaves (CRITICO, RELEVANTE, ECO, ALERTA, ATENCAO)
+       pills do seletor -> 4 chaves (sem ATENCAO: severidade ativa sem pill)
+       _v201ResumoCat  -> 3 chaves (CRITICO, RELEVANTE, ECO)
+       _v201ToggleSev  -> Object.values() sobre TODAS as chaves do objeto
+     Consequencia: um estado legado com CRITICO/RELEVANTE/ECO=false zerava o
+     feed (resumo exibia "Nenhuma") e nao havia como sair pela UI, porque a
+     severidade ainda ativa (ATENCAO) nao tinha pill para religar as outras.
+     Esta constante e a unica fonte da verdade: default, resumo, pills e
+     validacao de "ultima ativa" leem daqui. */
+  var V201_SEV_CANON = ["CRITICO", "ALERTA", "ATENCAO", "RELEVANTE", "ECO"];
+  function _v201SevDefault(){
+    var o = {}; V201_SEV_CANON.forEach(function(s){ o[s] = true; }); return o;
+  }
+  /* Normaliza um objeto de severidade contra a lista canonica.
+     - chave canonica ausente ou de tipo inesperado => default true;
+     - chave fora da canonica => descartada;
+     - resultado sem nenhuma ativa => todas true ("Nenhuma" nunca e estado valido). */
+  function _v201SevNormalizar(sev){
+    var o = {}, algumaAtiva = false;
+    V201_SEV_CANON.forEach(function(s){
+      var v = (sev && typeof sev === "object") ? sev[s] : undefined;
+      o[s] = (v === undefined) ? true : !!v;
+      if (o[s]) algumaAtiva = true;
+    });
+    if (!algumaAtiva) V201_SEV_CANON.forEach(function(s){ o[s] = true; });
+    return o;
+  }
   var FILTROS_DEFAULT = {
     janela: "30d",
-    severidade: { CRITICO: true, RELEVANTE: true, ECO: true, ALERTA: true, ATENCAO: true },
+    severidade: _v201SevDefault(),
     escopo: { idiossincratico: true, setorial: true },
     origem: { rating: true, fato_relevante: true, comunicado: true, imprensa: true, regulador: true }
   };
@@ -4277,14 +4306,19 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     // v201.30 (2026-05-12): bump janelas curtas (7d/15d) para 30d default uma vez,
     // garantindo que feed de noticias mostre eventos retroativos da janela 17-24/04 e similares.
     // Persiste a nova escolha no localStorage para nao reprocessar a cada load.
-    if (s.janela === "7d" || s.janela === "15d") {
-      s.janela = "30d";
-      try { localStorage.setItem(V201_LS.filtros, JSON.stringify(s)); } catch(e) {}
-    }
+    var bumpJanela = false;
+    if (s.janela === "7d" || s.janela === "15d") { s.janela = "30d"; bumpJanela = true; }
     if (s.janela) m.janela = s.janela;
-    if (s.severidade) Object.assign(m.severidade, s.severidade);
+    /* FILTROEVENTOS1: normaliza a severidade contra a lista canonica em vez de
+       fazer Object.assign as cegas. Chaves fora da canonica entram como lixo no
+       objeto e o estado zerado vira todas-true. Se o resultado difere do que
+       estava gravado, persiste na hora: a UI nunca carrega "Nenhuma". */
+    m.severidade = _v201SevNormalizar(s.severidade);
     if (s.escopo) Object.assign(m.escopo, s.escopo);
     if (s.origem) Object.assign(m.origem, s.origem);
+    if (bumpJanela || JSON.stringify(m.severidade) !== JSON.stringify(s.severidade)) {
+      _lsSet(V201_LS.filtros, m);
+    }
     return m;
   }
   var _v201Filtros = _v201LoadFiltros();
@@ -4708,9 +4742,14 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
   function _v201ResumoCat(cat, f){
     if (cat === "janela") return f.janela;
     if (cat === "severidade"){
-      var ativas = ["CRITICO","RELEVANTE","ECO"].filter(function(s){return f.severidade[s];});
-      if (ativas.length === 3) return "Todas";
-      if (ativas.length === 0) return "Nenhuma";
+      /* FILTROEVENTOS1: resumo derivado da lista canonica, e nao de um
+         subconjunto de 3 chaves. Estado zerado nao e apenas "nao exibivel":
+         e auto-corrigido aqui (normaliza + persiste) antes de resumir, para
+         que um estado invalido em memoria nunca chegue ao cabecalho. */
+      var norm = _v201SevNormalizar(f.severidade);
+      if (JSON.stringify(norm) !== JSON.stringify(f.severidade)) { f.severidade = norm; _v201SaveFiltros(); }
+      var ativas = V201_SEV_CANON.filter(function(s){return f.severidade[s];});
+      if (ativas.length === V201_SEV_CANON.length) return "Todas";
       return ativas.map(function(s){return s.charAt(0)+s.slice(1).toLowerCase();}).join("+");
     }
     if (cat === "tipo"){
@@ -4766,7 +4805,7 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
       if (_v201CatExpandida === "janela"){
         painel += ["7d","15d","30d","Tudo"].map(function(j){return pill(j,f.janela===j,"window._v201SetJanela('"+j+"')","Janela "+j);}).join("");
       } else if (_v201CatExpandida === "severidade"){
-        painel += ["CRITICO","ALERTA","RELEVANTE","ECO"].map(function(s){return pill(s,f.severidade[s],"window._v201ToggleSev('"+s+"')","Severidade "+s);}).join("");
+        painel += V201_SEV_CANON.map(function(s){return pill(s,f.severidade[s],"window._v201ToggleSev('"+s+"')","Severidade "+s);}).join("");
       } else if (_v201CatExpandida === "tipo"){
         painel += pill("Idiossincratico", f.escopo.idiossincratico, "window._v201ToggleEsc('idiossincratico')","Tipo idiossincratico");
         painel += pill("Setorial", f.escopo.setorial, "window._v201ToggleEsc('setorial')","Tipo setorial");
@@ -4784,7 +4823,22 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     head.parentElement.insertBefore(bar, head.nextSibling);
   }
   window._v201SetJanela = function(j){ _v201Filtros.janela=j; _v201SaveFiltros(); _v201Refresh(); };
-  window._v201ToggleSev = function(s){ _v201Filtros.severidade[s]=!_v201Filtros.severidade[s]; if(!Object.values(_v201Filtros.severidade).some(Boolean)){_v201Filtros.severidade[s]=true;alert("Mantenha pelo menos uma severidade ativa.");return;} _v201SaveFiltros(); _v201Refresh(); };
+  /* FILTROEVENTOS1: a validacao de "ultima ativa" olhava Object.values() do
+     objeto inteiro, o que contava chaves fora da canonica (ATENCAO sem pill).
+     Agora so a lista canonica decide, e a recusa acontece ANTES de qualquer
+     mutacao: nada de estado parcial nao persistido e nada de UI dessincronizada. */
+  window._v201ToggleSev = function(s){
+    if (V201_SEV_CANON.indexOf(s) < 0) return;
+    _v201Filtros.severidade = _v201SevNormalizar(_v201Filtros.severidade);
+    if (_v201Filtros.severidade[s]) {
+      var restantes = V201_SEV_CANON.filter(function(k){ return k !== s && _v201Filtros.severidade[k]; });
+      if (!restantes.length) { alert("Mantenha pelo menos uma severidade ativa."); return; }
+      _v201Filtros.severidade[s] = false;
+    } else {
+      _v201Filtros.severidade[s] = true;
+    }
+    _v201SaveFiltros(); _v201Refresh();
+  };
   window._v201ToggleEsc = function(e){ _v201Filtros.escopo[e]=!_v201Filtros.escopo[e]; if(!Object.values(_v201Filtros.escopo).some(Boolean)){_v201Filtros.escopo[e]=true;return;} _v201SaveFiltros(); _v201Refresh(); };
   window._v201ToggleOr  = function(o){ _v201Filtros.origem[o]=!_v201Filtros.origem[o]; _v201SaveFiltros(); _v201Refresh(); };
   function _v201Refresh(){ var b=document.getElementById("v201-filter-bar"); if(b)b.remove(); _v201InjectFilterBar(); var p=document.getElementById("ews-ranking-panel"); if(p)p.dataset.v201Rendered="0"; _v201RenderDashboardOverride(); _v201RebuildVisaoGeralRecentes(); }
@@ -4906,16 +4960,26 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     var ativos = window._v201EwsData.ranking.filter(function(e){return e.score>0});
     // v4.9.150: aplicar filtros de severidade ao ranking EWS (bug: filtros nao alteravam ranking).
     var sevFilter = _v201Filtros.severidade;
-    var allSevActive = sevFilter.CRITICO && sevFilter.RELEVANTE && sevFilter.ECO;
+    /* FILTROEVENTOS1: a classificacao da linha era uma regra paralela a lista
+       canonica — ALERTA/ATENCAO caiam em "RELEVANTE || CRITICO", ESTAVEL em ECO
+       e o resto em "sevFilter[sev] || ECO". Ou seja: desligar ALERTA nao tirava
+       as linhas ALERTA (elas sobreviviam via RELEVANTE/CRITICO) e desligar
+       RELEVANTE junto com CRITICO tirava ALERTA e ATENCAO sem que suas pills
+       estivessem desligadas. A severidade da linha agora passa pela MESMA
+       semantica de _v201Sev (canonica; ESTAVEL e desconhecida => ECO) e a
+       consulta e exclusivamente sevFilter[canonica]. Nenhuma lista nova: a
+       fonte continua sendo V201_SEV_CANON. */
+    function _v201SevLinha(a){
+      var c = String(a.severidade || a.label || "").toUpperCase();
+      return (V201_SEV_CANON.indexOf(c) >= 0) ? c : "ECO";
+    }
+    // Fast-path apenas como otimizacao: com as 5 canonicas ativas toda linha
+    // passa, entao pular o filtro da o mesmo resultado.
+    var allSevActive = V201_SEV_CANON.every(function(k){ return sevFilter[k]; });
     if (!allSevActive) {
-    ativos = ativos.filter(function(a){
-        var sev = String(a.severidade || a.label || "").toUpperCase();
-	        if (sev === "ALERTA" || sev === "ATENCAO") return sevFilter.RELEVANTE || sevFilter.CRITICO;
-	        if (sev === "ESTAVEL") return sevFilter.ECO;
-	        return sevFilter[sev] || sevFilter.ECO;
-	      });
-	    }
-	    if (!ativos.length) return;
+      ativos = ativos.filter(function(a){ return !!sevFilter[_v201SevLinha(a)]; });
+    }
+    if (!ativos.length) return;
 	    if (typeof window._v201RenderEWSv3 === "function"){
 	      var top = window._v201EwsExpandTop || 3;
 	      window._v201RenderEWSv3(ativos, top);
