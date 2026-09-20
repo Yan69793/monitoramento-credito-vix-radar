@@ -9907,6 +9907,20 @@ __name222(normalizarMojibake, "normalizarMojibake");
 function _carimbarAnaliseReal(alvo, payload, agora) {
   if (!alvo || !payload) return false;
   if (payload._token_cap_deferred === true) return false;
+  // PROFUNDIDADE-NOTURNA1 / D6 (2026-09-19): a cauda de rotacao semanal (Get-VixCaudaRotacao,
+  // run_vixradar_varredura.ps1) sai como DEFERIDO com `_token_cap_deferred=false`, porque NAO e
+  // corte de orcamento, e CHEGA AQUI carregando o tier analitico intacto (`_tier=FULL/LIGHT/
+  // AUDIT`, herdado do item do plano). Sem esta guarda ela passava pelo gate de tier abaixo e
+  // recebia _ultima_analise_at / _ultimo_tier / _ultima_origem sem ter sido analisada, e o plano
+  // seguinte creditava `analisado_hoje_por_noturno` (_creditoAnaliseDia, worker.js:12063) para um
+  // emissor que so ficou de fora por desenho da rotacao.
+  //
+  // O discriminador e o MOTIVO, nao a flag: so `rotacao_semanal` bloqueia aqui, e este campo
+  // nasce apenas no runner (Submit-CapDeferred), nunca em analise de verdade. Deferimento por
+  // cap/auth continua barrado na linha acima (`_token_cap_deferred=true`) e o caminho
+  // DEFERREDREC1 (`_token_cap_deferred` -> `deferred_prioritario`, worker.js:12339/12366)
+  // segue intacto. SKIP nao passa pelo gate de tier e nunca chegou a carimbar.
+  if (payload._defer_motivo === "rotacao_semanal") return false;
   var t = payload._tier || payload._matinal_tier || null;
   if (t !== "LIGHT" && t !== "FULL" && t !== "AUDIT") return false;
   alvo._ultimo_tier = t;

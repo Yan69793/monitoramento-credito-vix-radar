@@ -198,6 +198,7 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
+. (Join-Path $PSScriptRoot 'lib\vixradar-profundidade.ps1')
 # MVA-WIRING1 (2026-09-16): import EXPLICITO da lib de provider. O motor JA consome funcoes
 # dela direto (Get-VixLlmProvider nas linhas 995/996/1126, Test-VixLlmProviderPermiteRotina na
 # 999, Get-VixLlmBloqueadoMsg na 1004) e ate hoje so a carregava de carona pelo dot-source de
@@ -219,8 +220,29 @@ if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
 # e Test-VixBacklogPodeFechar e a regra que o dreno de DEFERIDO aplica. Lib truncada
 # quebra no boot com o nome da funcao faltante, em vez de morrer no meio do lote.
 Assert-VixLibFunctions @('Set-VixClaudeAuthEnv', 'Test-VixClaudeAmbienteLimpo', 'Test-VixWebSearchProbe', 'Send-VixRoutineAlert', 'Invoke-VixClaudeAuthEscalate', 'Invoke-VixClaudeAuthEscalateForcado', 'Get-VixSessionLimitAcao', 'Get-VixWsProbeClassificacao', 'ConvertTo-VixWsProbeResetAt', 'Initialize-VixClaudeAuth', 'Get-VixClaudeAuthModo', 'Get-VixFailoverClasse', 'Test-VixBacklogPodeFechar')
-foreach ($fn in @('Get-VixCustoConfig', 'Get-VixCustoDia', 'Get-VixCapEfetivo', 'Get-VixUsageParcelas')) {
+foreach ($fn in @('Get-VixCustoConfig', 'Get-VixCustoDia', 'Get-VixCapEfetivo', 'Get-VixUsageParcelas', 'Get-VixCustoEstimadoTier', 'Get-VixFullConfirmadosDoLedger', 'Get-VixFullSemanaDosLedgers', 'Merge-VixFullSemana', 'Select-VixProfundidadeNoturna', 'New-VixJobsPorTier', 'Get-VixCaudaRotacao')) {
     if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-custo.ps1'); exit 1 }
+}
+# D4 do P0 PROFUNDIDADE-NOTURNA1: boot gate da skill FULL. O lote FULL e um caminho novo do
+# motor, e ate 19/09/2026 ele carregava um prompt de 15/07 que definia esquema proprio de buscas
+# (rodadas R2/R6/R5, "max 3 buscas") em contradicao direta com o contrato COBERTURA1 de tres
+# familias obrigatorias que o proprio motor injeta no prompt. As duas regras chegariam juntas ao
+# modelo. O gate recusa o boot se a skill sumir ou se ela deixar de declarar as tres familias, o
+# override explicito e o delta - em vez de deixar a noite inteira sair com prompt divergente.
+# So vale para a noturna: a matinal nao usa este arquivo.
+if ($Perfil.modo -eq 'noturno') {
+    $skillFullPath = Join-Path $ScriptsDir 'noturno-batch-sonnet.md'
+    if (-not (Test-Path -LiteralPath $skillFullPath)) {
+        Write-Safe ('ERRO: skill do lote FULL ausente em ' + $skillFullPath + ' - a noturna nao sobe sem o prompt aprofundado')
+        exit 1
+    }
+    $skillFullTxt = Get-Content -LiteralPath $skillFullPath -Raw -Encoding UTF8
+    foreach ($marcador in @('COBERTURA1', 'F1-emissor', 'F2-divida', 'F3-fato', 'FEEDRETRO1', 'FONTEDIVERG1')) {
+        if ($skillFullTxt -notmatch [regex]::Escape($marcador)) {
+            Write-Safe ('ERRO: skill do lote FULL sem o marcador ' + $marcador + ' em ' + $skillFullPath + ' - contrato divergente do motor')
+            exit 1
+        }
+    }
 }
 
 function Get-CvmResumo($docs) {
@@ -230,7 +252,8 @@ function Get-CvmResumo($docs) {
     return ($arr.Count.ToString() + ' docs')
 }
 
-function Get-SlimEmissor($emp, [switch]$Ultra) {
+function Get-SlimEmissor($emp, [string]$Tier = '', [switch]$Ultra) {
+    if (-not $Tier) { $Tier = $Perfil.tier }
     $docs = @($emp.cvm_documentos | Select-Object -First $(if ($Ultra) { 2 } else { 3 }) | ForEach-Object {
         $assunto = '' + $_.assunto
         if ($assunto.Length -gt 100) { $assunto = $assunto.Substring(0, 100) }
@@ -239,7 +262,7 @@ function Get-SlimEmissor($emp, [switch]$Ultra) {
         [pscustomobject]$d
     })
     $o = [ordered]@{
-        empresa = $emp.empresa; setor = $emp.setor; tier = $Perfil.tier
+        empresa = $emp.empresa; setor = $emp.setor; tier = $Tier
         ews_score = $emp.ews_score; cvm_novos = $emp.cvm_novos; cvm_documentos = $docs
         # FEEDRETRO1 FASE2 (2026-09-04): delta que o Worker ja calcula no plano
         # (montarPlanoRotina), so repassado aqui. Sem isso o modelo nao tem como
@@ -292,7 +315,8 @@ function Submit-SkipEmissor($key, $emp) {
     return $resp
 }
 
-function Submit-CapDeferred($key, $emp, [string]$Motivo = 'cap_efetivo') {
+function Submit-CapDeferred($key, $emp, [string]$Motivo = 'cap_efetivo', [string]$Tier = '') {
+    if (-not $Tier) { $Tier = $Perfil.tier }
     # COBERTURAAUTH1 (2026-09-15): a nota de cobertura passa a nomear a causa REAL do
     # deferimento. Antes ela era fixa ("Cap efetivo <N> tokens") e ia para o estado de producao
     # descrevendo cap de tokens numa execucao que morreu por limite de sessao da assinatura -
@@ -302,17 +326,26 @@ function Submit-CapDeferred($key, $emp, [string]$Motivo = 'cap_efetivo') {
     # motivo deferred_prioritario; renomear exigiria mexer no Worker, fora do escopo deste card.
     $causa = if ($Motivo -eq 'cap_efetivo') {
         'Cap efetivo ' + $TokenHardCap + ' tokens - ledger minimo.'
+    } elseif ($Motivo -eq 'rotacao_semanal') {
+        'Rotacao semanal de profundidade (PROFUNDIDADE-NOTURNA1) - emissor nao selecionado para FULL nem LIGHT nesta noite. Nao e corte por orcamento.'
     } else {
         'Limite de sessao da assinatura no meio da execucao (NAO e cap de tokens: ' + $Motivo + ') - lote nao processado.'
     }
+    # D1 do P0 PROFUNDIDADE-NOTURNA1: `_token_cap_deferred` e a chave que o Worker le
+    # (DEFERREDREC1, worker.js:11938/11965) para devolver o emissor no plano seguinte como FULL
+    # motivo deferred_prioritario. Para corte por cap ou por assinatura isso e desejado. Para
+    # rotacao semanal NAO e: o emissor ficou de fora por desenho da rotacao, e devolve-lo como
+    # FULL prioritario no dia seguinte desfaria a propria rotacao que o deixou de fora, enchendo
+    # a noite seguinte de emissores que a anterior acabou de decidir nao aprofundar.
+    $ehCorteDeCap = ($Motivo -ne 'rotacao_semanal')
     $resultado = [ordered]@{
         empresa = $emp.empresa; setor = $emp.setor; sem_eventos = $true
-        cobertura_nota = "Tier $($Perfil.tier). $causa EWS=$($emp.ews_score). Priorizar amanha."
+        cobertura_nota = "Tier $Tier. $causa EWS=$($emp.ews_score). Priorizar amanha."
         fontes_consultadas = @([ordered]@{ rodada = '0'; query = 'token_cap'; resultado = 'deferred' })
-        eventos = @(); _tier = $Perfil.tier; _rotina_v2 = $true; _token_cap_deferred = $true
+        eventos = @(); _tier = $Tier; _rotina_v2 = $true; _token_cap_deferred = $ehCorteDeCap
         _defer_motivo = $Motivo
     }
-    return Submit-Analise $key $emp.empresa $emp.setor $resultado 'claude-cap-deferred' $Perfil.tier @()
+    return Submit-Analise $key $emp.empresa $emp.setor $resultado 'claude-cap-deferred' $Tier @()
 }
 
 function Split-IntoChunks($items, [int]$chunkSize) {
@@ -403,7 +436,8 @@ function Get-VixCodexUsageProbe($Linhas) {
     return [pscustomobject]@{ mensuravel = $false; parcelas = $null }
 }
 
-function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores = 0) {
+function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores = 0, [string]$Tier = '') {
+    if (-not $Tier) { $Tier = $Perfil.tier }
     # Flags de economia (medidas 2026-07-03): boot 33.9k -> ~13.6k tokens/invocacao.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -487,21 +521,21 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                 # SEARCHBUDGET1: o tamanho do lote vai ao adapter porque o teto de resultados de
                 # busca (max_total_results) e GLOBAL do POST: sem ele o lote de 15 emissores
                 # entrega 2 buscas e 13 RECHECK_PENDENTE (medido no dry-run de 03:34).
-                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Perfil.tier -TotalTimeoutSec $__loteTimeoutSec -Emissores $Emissores
+                $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Tier -TotalTimeoutSec $__loteTimeoutSec -Emissores $Emissores
                 # JSONCICLO1: serializacao pre-HTTP passa a ser observavel. Sem isto, os 55 min
                 # presos de 05/09 nao apareceram em log nenhum.
                 Write-Log ('PAYLOAD: serializacao=' + ([double]$script:VixOpenRouterUltimaSerializacaoSeg).ToString('F3') +
                            's bytes=' + $script:VixOpenRouterUltimoPayloadBytes +
-                           ' modelo=' + (Get-VixOpenRouterModel $Perfil.tier) +
+                           ' modelo=' + (Get-VixOpenRouterModel $Tier) +
                            ' teto_lote_s=' + $__loteTimeoutSec +
                            ' emissores=' + $Emissores +
                            ' busca_teto=' + $script:VixOpenRouterUltimoMaxTotalResults)
                 $raw = @($__orResp.Linhas)
                 $exitCode = $__orResp.ExitCode
-                $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel $Perfil.tier))
+                $retryLog += ('t' + ($attempt + 1) + ':openrouter:exit=' + $exitCode + ':model=' + (Get-VixOpenRouterModel $Tier))
                 if ($__orResp.Degradado402) {
                     $degradado402Lote++
-                    Write-Log ('WARN: DEGRADADO_402: lote ' + (Split-Path $promptPath -Leaf) + ' caiu para o fallback por saldo insuficiente (tier=' + (Get-VixOpenRouterModel $Perfil.tier) + ' fallback=' + $__orResp.Modelo + ') - repor credito OpenRouter')
+                    Write-Log ('WARN: DEGRADADO_402: lote ' + (Split-Path $promptPath -Leaf) + ' caiu para o fallback por saldo insuficiente (tier=' + (Get-VixOpenRouterModel $Tier) + ' fallback=' + $__orResp.Modelo + ') - repor credito OpenRouter')
                 }
                 if ($exitCode -eq 0) { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()); break }
                 Write-Log ('RETRY openrouter: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ': ' + $__orResp.Msg)
@@ -965,8 +999,8 @@ function Merge-VixContratoCobertura($alvo, [string]$empresa, [string]$status, [s
     }
 }
 
-function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [string]$FonteProvedor = 'openrouter', [switch]$Ultra) {
-    $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Ultra:$Ultra })
+function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaInicio, $janelaFim, [string]$FonteProvedor = 'openrouter', [switch]$Ultra, [string]$Tier = '') {
+    $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Tier $Tier -Ultra:$Ultra })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
     $skill = (Get-Content $skillPath -Raw -Encoding UTF8).Trim()
     return @"
@@ -1220,6 +1254,10 @@ $stats = @{
     # `deferred_auth` conta so quem ficou de fora porque a assinatura estourou o limite de sessao
     # no meio da execucao; `lotes_nao_processados` conta os lotes que o aborto deixou sem chamada.
     deferred_auth = 0; lotes_nao_processados = 0
+    # PROFUNDIDADE-NOTURNA1 (D1): deferidos por rotacao semanal de profundidade, que nao sao
+    # corte por orcamento nem por assinatura. Contador proprio para o FIM e o metrics nao
+    # chamarem de cap um corte que a rotacao decidiu de proposito.
+    deferred_rotacao = 0
     # DRENOMUDO1-FIX (2026-09-15): desfecho do dreno pos-rotina. $null = nao tentado (sem submit
     # ou em dry-run), 0 = drenou, outro valor = falhou. Nunca 0 por omissao: "nao rodou" nao pode
     # se ler como "rodou e deu certo".
@@ -1307,39 +1345,90 @@ try {
     }
     Write-Log ('SKIP_LOTE: ok=' + $stats.skip_ok + ' falha=' + $stats.skip_fail + ' total=' + $skipQueue.Count)
 
-    # Fila unica, ordenada por risco: cortes por cap caem sempre na cauda de menor EWS.
+    # Fila e tier aplicados. A noturna deriva FULL_SEMANA dos ledgers confirmados, une a
+    # matinal do proprio dia por emissor e so entao calcula ceil(faltam/noites_restantes).
+    # Nao existe credito por contagem bruta nem leitura de ultimo_tier do plano.
     $analyzeList = @($plano.emissores | Where-Object { $_.tier -ne 'SKIP' -and -not $jaProcessados.ContainsKey((Get-NomeNormalizado $_.empresa)) })
-    $fila = @($analyzeList | Sort-Object -Property ews_score, cvm_novos -Descending)
-    # BUSCADEGRADADA1-FIX: RECHECK_PENDENTE de cobertura (contrato de QUALQUER data) e
-    # reprocessado ANTES dos itens novos e continua na frente ate ser resolvido, sem janela
-    # de 2 dias. Ordem relativa dos demais preservada (particao estavel).
     $__faltAnt = Get-VixRecheckPendentes $LogDir
-    if ($__faltAnt.Count -gt 0) {
-        $__com = @($fila | Where-Object { $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
-        $__sem = @($fila | Where-Object { -not $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
-        if ($__com.Count -gt 0) { Write-Log ('COBERTURA1: ' + $__com.Count + ' emissor(es) com RECHECK_PENDENTE de cobertura priorizados no inicio da fila (sem janela de data)') }
-        $fila = @($__com) + @($__sem)
-    }
-    foreach ($emp in $fila) {
-        $h = if ($null -ne $emp.horas_desde_analise) { $emp.horas_desde_analise } else { '-' }
-        $u = if ($emp.ultima_origem) { $emp.ultima_origem } else { '-' }
-        Write-Log ('ALVO ' + $emp.empresa + ' tier=' + $emp.tier + ' cvm_novos=' + $emp.cvm_novos + ' motivo=' + @($emp.motivos)[0] + ' ews=' + $emp.ews_score + ' ultimo=' + $u + ' h=' + $h + ' aplicado=' + $Perfil.tier)
-    }
-    if ($MaxEmissores -gt 0) {
-        if ($DryRun) {
-            $fila = @($fila | Select-Object -First $MaxEmissores)
-            Write-Log ('AMOSTRA: -MaxEmissores ' + $MaxEmissores + ' (dry-run, medicao)')
-        } else {
-            Write-Log 'AVISO: -MaxEmissores ignorado fora de -DryRun (a rotina real cobre a fila inteira)'
+    foreach ($emp in $analyzeList) {
+        if ($__faltAnt.ContainsKey((Get-NomeNormalizado $emp.empresa))) {
+            try { $emp | Add-Member -NotePropertyName vix_recheck_pendente -NotePropertyValue $true -Force } catch { }
         }
     }
-    Write-Log ('Fila ' + $Perfil.tier + ': ' + $fila.Count + ' emissores em lotes de ' + $Perfil.chunk + ' (cap_efetivo=' + $TokenHardCap + ')')
-
     $jobs = New-Object System.Collections.Generic.List[object]
-    foreach ($chunk in (Split-IntoChunks $fila $Perfil.chunk)) {
-        $jobs.Add([ordered]@{ Name = $Perfil.tier.ToLower(); Model = $Perfil.model; Chunk = @($chunk); Skill = $Perfil.skill; Ultra = [bool]$Perfil.ultra; Provedor = $Perfil.provedor })
+    if ($Perfil.modo -eq 'noturno') {
+        $agoraProfundidade = Get-Date
+        # D2 do P0 PROFUNDIDADE-NOTURNA1: ler ate HOJE, nao ate ontem. A varredura le os ledgers
+        # confirmados de SEGUNDA ATE HOJE, matinal e noturno de cada dia, e une por emissor. Com
+        # `-Ate ontem` um restart no mesmo dia perdia os FULL que a propria noturna ja tinha
+        # concluido hoje e os recomprava na segunda passada - o oposto do que a rotacao quer.
+        # A leitura conta so OK|...|FULL|...|true|ANALISADO|: DRYRUN, submit false, SKIP e
+        # DEFERIDO nao creditam semana (Get-VixFullConfirmadosDoLedger).
+        $fullSemana = Get-VixFullSemanaDosLedgers $LogDir $agoraProfundidade -Ate $agoraProfundidade
+        $fullMatinalHoje = Get-VixFullConfirmadosDoLedger $LogDir 'matinal' $agoraProfundidade
+        $fullNoturnoHoje = Get-VixFullConfirmadosDoLedger $LogDir 'noturno' $agoraProfundidade
+        $fullSemana = Merge-VixFullSemana -FullSemana $fullSemana -EmissoresFull $fullMatinalHoje -Data $agoraProfundidade
+        $fullSemana = Merge-VixFullSemana -FullSemana $fullSemana -EmissoresFull $fullNoturnoHoje -Data $agoraProfundidade
+        $cobertosHoje = @{}
+        foreach ($emp in $creditados) { $cobertosHoje[(Get-NomeNormalizado $emp.empresa)] = 'plano_creditado' }
+        # D3: os custos vem da funcao unica, nunca de constante solta no motor.
+        $custoFullNoturno = (Get-VixCustoEstimadoTier 'FULL').Custo
+        $custoLightNoturno = (Get-VixCustoEstimadoTier 'LIGHT').Custo
+        # D2: a lista enviada ao seletor e a $analyzeList, que ja exclui SKIP e o que a
+        # idempotencia do ledger marcar como processado hoje. Restart no mesmo dia nao recompra
+        # FULL ja concluido, nem por dentro dos lotes nem por dentro da selecao.
+        $selecaoProfundidade = Select-VixProfundidadeNoturna -Emissores $analyzeList -FullSemana $fullSemana -CobertosHoje $cobertosHoje `
+            -BaseCarteira $planoTotal -NoitesRestantes (Get-VixDiasUteisRestantes $agoraProfundidade) -CapEfetivo $TokenHardCap `
+            -CustoFull $custoFullNoturno -CustoLight $custoLightNoturno -ChunkFull 16 -ChunkLight $Perfil.chunk
+        $fullSelecionados = @($selecaoProfundidade.Full)
+        $lightSelecionados = @($selecaoProfundidade.Light)
+        if ($MaxEmissores -gt 0) {
+            if ($DryRun) {
+                $nFullAmostra = [Math]::Min($MaxEmissores, $fullSelecionados.Count)
+                $fullSelecionados = if ($nFullAmostra -gt 0) { @($fullSelecionados | Select-Object -First $nFullAmostra) } else { @() }
+                $restoAmostra = $MaxEmissores - $fullSelecionados.Count
+                $lightSelecionados = if ($restoAmostra -gt 0) { @($lightSelecionados | Select-Object -First $restoAmostra) } else { @() }
+                Write-Log ('AMOSTRA: -MaxEmissores ' + $MaxEmissores + ' (dry-run, medicao)')
+            } else {
+                Write-Log 'AVISO: -MaxEmissores ignorado fora de -DryRun (a rotina real cobre a fila inteira)'
+            }
+        }
+        $jobsFull = New-VixJobsPorTier -Selecionados $fullSelecionados -Tier 'FULL' -Chunk 16 -Model $ModelSonnet -Skill (Join-Path $ScriptsDir 'noturno-batch-sonnet.md') -Ultra $false -Provedor 'claude-sonnet-routine'
+        $jobsLight = New-VixJobsPorTier -Selecionados $lightSelecionados -Tier 'LIGHT' -Chunk $Perfil.chunk -Model $ModelHaiku -Skill $Perfil.skill -Ultra ([bool]$Perfil.ultra) -Provedor $Perfil.provedor
+        foreach ($jobProf in @($jobsFull)) { $jobProf['CustoTrabalho'] = $custoFullNoturno; $jobs.Add($jobProf) }
+        foreach ($jobProf in @($jobsLight)) { $jobProf['CustoTrabalho'] = $custoLightNoturno; $jobs.Add($jobProf) }
+        $fila = @($fullSelecionados) + @($lightSelecionados)
+        Write-Log ('PROFUNDIDADE: full_semana=' + $fullSemana.Count + ' full_matinal_hoje=' + $fullMatinalHoje.Count + ' full_noturno_hoje=' + $fullNoturnoHoje.Count + ' faltam=' + $selecaoProfundidade.Meta.faltam_na_semana + ' noites=' + $selecaoProfundidade.Meta.noites_restantes + ' min_full=' + $selecaoProfundidade.Meta.min_full_noite + ' full=' + $fullSelecionados.Count + ' light=' + $lightSelecionados.Count + ' cap=' + $TokenHardCap + ' gap_dias_proxy_nao_web=' + $selecaoProfundidade.Meta.gap_dias_proxy_nao_web)
+    } else {
+        $fila = @($analyzeList | Sort-Object -Property ews_score, cvm_novos -Descending)
+        if ($__faltAnt.Count -gt 0) {
+            $__com = @($fila | Where-Object { $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
+            $__sem = @($fila | Where-Object { -not $__faltAnt.ContainsKey((Get-NomeNormalizado $_.empresa)) })
+            if ($__com.Count -gt 0) { Write-Log ('COBERTURA1: ' + $__com.Count + ' emissor(es) com RECHECK_PENDENTE de cobertura priorizados no inicio da fila (sem janela de data)') }
+            $fila = @($__com) + @($__sem)
+        }
+        if ($MaxEmissores -gt 0) {
+            if ($DryRun) {
+                $fila = @($fila | Select-Object -First $MaxEmissores)
+                Write-Log ('AMOSTRA: -MaxEmissores ' + $MaxEmissores + ' (dry-run, medicao)')
+            } else {
+                Write-Log 'AVISO: -MaxEmissores ignorado fora de -DryRun (a rotina real cobre a fila inteira)'
+            }
+        }
+        foreach ($chunk in (Split-IntoChunks $fila $Perfil.chunk)) {
+            $jobs.Add([ordered]@{ Name = $Perfil.tier.ToLower(); Tier = $Perfil.tier; Model = $Perfil.model; Chunk = @($chunk); Skill = $Perfil.skill; Ultra = [bool]$Perfil.ultra; Provedor = $Perfil.provedor })
+        }
     }
-    $lotesEsperados = if ($fila.Count -eq 0) { 0 } else { [Math]::Ceiling($fila.Count / $Perfil.chunk) }
+    foreach ($job in $jobs) {
+        foreach ($emp in $job.Chunk) {
+            try { $emp | Add-Member -NotePropertyName tier_aplicado -NotePropertyValue $job.Tier -Force } catch { }
+            $h = if ($null -ne $emp.horas_desde_analise) { $emp.horas_desde_analise } else { '-' }
+            $u = if ($emp.ultima_origem) { $emp.ultima_origem } else { '-' }
+            Write-Log ('ALVO ' + $emp.empresa + ' tier_plano=' + $emp.tier + ' tier_aplicado=' + $job.Tier + ' cvm_novos=' + $emp.cvm_novos + ' motivo=' + @($emp.motivos)[0] + ' ews=' + $emp.ews_score + ' ultimo=' + $u + ' h=' + $h)
+        }
+    }
+    Write-Log ('Fila aplicada: ' + $fila.Count + ' emissores em ' + $jobs.Count + ' lote(s) (cap_efetivo=' + $TokenHardCap + ')')
+    $lotesEsperados = if ($Perfil.modo -eq 'noturno') { @($jobsFull).Count + @($jobsLight).Count } elseif ($fila.Count -eq 0) { 0 } else { [Math]::Ceiling($fila.Count / $Perfil.chunk) }
     if ($jobs.Count -ne $lotesEsperados) {
         Write-Log ("AVISO CRITICO: agrupamento de lotes incorreto - lotes=$($jobs.Count) esperado=$lotesEsperados (fila=$($fila.Count)). Possivel regressao de Split-IntoChunks.")
     }
@@ -1350,11 +1439,11 @@ try {
     foreach ($job in $jobs) {
         $ji++
         Update-VixLock
-        $estLote = $Perfil.bootTok + ($job.Chunk.Count * $Perfil.unitTok)
+        $estLote = if ($null -ne $job.CustoTrabalho) { [int64][Math]::Ceiling($job.Chunk.Count * [double]$job.CustoTrabalho) } else { $Perfil.bootTok + ($job.Chunk.Count * $Perfil.unitTok) }
         if ($capAtingido -or ($stats.tokens_total + $estLote) -ge $TokenHardCap) {
             $stats.tokens_hard_hit = $true
             $capAtingido = $true
-            foreach ($e in $job.Chunk) { $pendingDeferred.Add($e) }
+            foreach ($e in $job.Chunk) { $pendingDeferred.Add([pscustomobject]@{ emissor = $e; tier = $job.Tier }) }
             Write-Log ('CAP pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' >= ' + $TokenHardCap + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores, cauda de menor EWS)')
             continue
         }
@@ -1367,20 +1456,20 @@ try {
         $label = $job.Name + '-' + $ji
         $modeloPrompt = $job.Model
         $fonteProvedor = 'openrouter'
-        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $Perfil.tier }
+        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $job.Tier }
         elseif ($script:VixUsaCodex) { $modeloPrompt = 'codex-subscription'; $fonteProvedor = 'codex' }
-        $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra
+        $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra -Tier $job.Tier
         $promptPath = Join-Path $LogDir ($Perfil.prefix + '_' + $label + '_' + $DateTag + '.txt')
         Set-Content $promptPath -Value $prompt -Encoding UTF8
 
         # MODELOLOG1: provider openrouter nunca imprime o rotulo Claude legado como se fosse o
         # modelo executado. $job.Model so descreve o TIER do plano (rapido x aprofundado).
         $modeloLote = $job.Model
-        if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel $Perfil.tier) + ' tier=' + $job.Name }
+        if ($script:VixUsaOpenRouter) { $modeloLote = 'openrouter:' + (Get-VixOpenRouterModel $job.Tier) + ' tier=' + $job.Name }
         elseif ($script:VixUsaCodex) { $modeloLote = 'codex:codex-subscription tier=' + $job.Name }
         Write-Log ('Lote ' + $label + ' [' + $modeloLote + ']: ' + (($job.Chunk | ForEach-Object { $_.empresa }) -join ', '))
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
-        $result = Invoke-ClaudeBatch $promptPath $job.Model $job.Chunk.Count
+        $result = Invoke-ClaudeBatch $promptPath $job.Model $job.Chunk.Count $job.Tier
         $swLote.Stop()
         $stats.degradados_402 += [int]$result.Degradados402
         $stats.batches_run++
@@ -1415,7 +1504,7 @@ try {
                             $abortoAuthDetalhe = $motivoAuth
                             $stats.lotes_nao_processados = ($jobs.Count - $jIdx - 1)
                             # Lote atual (nada submetido) e todos os seguintes vao para DEFERIDO.
-                            if ($jIdx -ge 0) { for ($k = $jIdx; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
+                            if ($jIdx -ge 0) { for ($k = $jIdx; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add([pscustomobject]@{ emissor = $e; tier = $jobs[$k].Tier }) } } }
                             break
                         }
 
@@ -1450,10 +1539,10 @@ try {
         if ($missing.Count -gt 0 -and $result.UsoMensuravel) {
             Write-Log ('WARN: ' + $missing.Count + ' sem RESULTADO no lote ' + $label + ' - retry parcial: ' + (($missing | ForEach-Object { $_.empresa }) -join ', '))
             $retryLabel = $label + '-retry'
-            $retryPrompt = New-BatchPrompt $missing $retryLabel $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra
+            $retryPrompt = New-BatchPrompt $missing $retryLabel $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra -Tier $job.Tier
             $retryPath = Join-Path $LogDir ($Perfil.prefix + '_' + $retryLabel + '_' + $DateTag + '.txt')
             Set-Content $retryPath -Value $retryPrompt -Encoding UTF8
-            $retryRes = Invoke-ClaudeBatch $retryPath $job.Model $missing.Count
+            $retryRes = Invoke-ClaudeBatch $retryPath $job.Model $missing.Count $job.Tier
             $stats.degradados_402 += [int]$retryRes.Degradados402
             if ($retryRes.Escalou) { $stats.auth_escalou = 'api'; Write-Log ($AlertaAuthTag + 'escalou para chave paga no retry ' + $retryLabel) }
             if ($retryRes.AuthFailure) {
@@ -1547,13 +1636,13 @@ try {
                 $stats.cobertura_deferidos++
                 if (-not $DryRun) { Merge-VixContratoCobertura $contratoCobertura $emp.empresa 'RECHECK_PENDENTE' $__decAus.faltantes }
             }
-            try { $res | Add-Member -NotePropertyName '_tier' -NotePropertyValue $Perfil.tier -Force } catch { }
+            try { $res | Add-Member -NotePropertyName '_tier' -NotePropertyValue $job.Tier -Force } catch { }
             $subOk = $false; $nEv = 0; $nAvanco = 0
             try {
-                $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor $Perfil.tier @($emp.cvm_novos_ids)
+                $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor $job.Tier @($emp.cvm_novos_ids)
                 if ($resp.ok -ne $true -and -not $DryRun) {
                     Start-Sleep -Seconds $PauseSec
-                    $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor $Perfil.tier @($emp.cvm_novos_ids)
+                    $resp = Submit-Analise $routineKey $emp.empresa $emp.setor $res $job.Provedor $job.Tier @($emp.cvm_novos_ids)
                 }
                 $subOk = ($resp.ok -eq $true)
                 if ($subOk) {
@@ -1611,7 +1700,7 @@ try {
                 Write-Log ('SUBMIT_EXC|' + $emp.empresa + '|' + $_.Exception.Message)
             }
             if ($DryRun) { $subOk = $false }
-            Write-Ledger $emp.empresa $Perfil.tier $classif $nEv $subOk 'ANALISADO' $nAvanco
+            Write-Ledger $emp.empresa $job.Tier $classif $nEv $subOk 'ANALISADO' $nAvanco
             # BUSCADEGRADADA1-FIX: RECHECK_PENDENTE so sai da frente da fila quando RESOLVIDO.
             # Emissor que estava pendente e fechou esta execucao com busca valida (sem recheck)
             # grava a resolucao no contrato do dia; o registro mais novo vence na leitura, entao
@@ -1640,39 +1729,76 @@ try {
             # Lote atual ja submetido: so os seguintes vao para DEFERIDO.
             $jIdx = Get-JobIndex $jobs $job
             if ($jIdx -ge 0) { $stats.lotes_nao_processados = ($jobs.Count - $jIdx - 1) }
-            if ($jIdx -ge 0) { for ($k = $jIdx + 1; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add($e) } } }
+            if ($jIdx -ge 0) { for ($k = $jIdx + 1; $k -lt $jobs.Count; $k++) { foreach ($e in $jobs[$k].Chunk) { $pendingDeferred.Add([pscustomobject]@{ emissor = $e; tier = $jobs[$k].Tier }) } } }
             break
         }
     }
 
-    foreach ($emp in $pendingDeferred) {
+    # D1 do P0 PROFUNDIDADE-NOTURNA1: a cauda de rotacao entra no MESMO desfecho dos demais
+    # deferidos, para o ledger fechar. O motivo e decidido aqui, depois do laco de lotes, porque
+    # so aqui se sabe se o cap fechou no meio da noite ou se o circuito ja abriu. Circuito
+    # aberto e cap estourado nao sao rotacao: sao corte por orcamento, e o texto de
+    # CIRCUITO_ABERTO sempre prometeu exatamente isso ("tudo que nao for SKIP sai como DEFERIDO").
+    if ($Perfil.modo -eq 'noturno') {
+        $caudaRotacao = Get-VixCaudaRotacao -AnalyzeList $analyzeList -Fila $fila -CapAtingido $capAtingido -TokenHardCap $TokenHardCap -CircuitoAberto ([bool]$custoDia.circuito_aberto)
+        if ($caudaRotacao.Emissores.Count -gt 0) {
+            foreach ($eRot in $caudaRotacao.Emissores) {
+                $pendingDeferred.Add([pscustomobject]@{ emissor = $eRot; tier = $eRot.tier; motivo = $caudaRotacao.Motivo })
+            }
+            Write-Log ('ROTACAO: ' + $caudaRotacao.Emissores.Count + ' emissor(es) nao selecionados para FULL nem LIGHT saem como DEFERIDO motivo=' + $caudaRotacao.Motivo)
+        }
+    }
+
+    foreach ($pendente in $pendingDeferred) {
+        $emp = $pendente.emissor
+        # O motivo do item vence o global quando existe (rotacao). Item sem motivo proprio
+        # continua lendo $motivoDeferido, que e o comportamento de COBERTURAAUTH1: o corte por
+        # assinatura no meio da execucao reescreve a causa de TODOS os deferidos, inclusive os
+        # que entraram antes dele.
+        $motivoItem = $motivoDeferido
+        if ($pendente.PSObject.Properties['motivo'] -and $pendente.motivo) { $motivoItem = $pendente.motivo }
         $subOk = $false
-        try { $r = Submit-CapDeferred $routineKey $emp $motivoDeferido; $subOk = ($r.ok -eq $true) } catch { $subOk = $false }
+        try { $r = Submit-CapDeferred $routineKey $emp $motivoItem $pendente.tier; $subOk = ($r.ok -eq $true) } catch { $subOk = $false }
         # MVA-BACKLOG1 (2026-09-16): a regra "backlog so fecha com submit confirmado" passa a vir da
         # lib (Test-VixBacklogPodeFechar), nao de um if inline. O valor e o MESMO - prova de aceite e
         # $r.ok, nunca presenca de tentativa - e a regra fica testavel e travada no boot.
         if (Test-VixBacklogPodeFechar -SubmitConfirmado $subOk) {
             $stats.deferred++
-            if ($motivoDeferido -ne 'cap_efetivo') { $stats.deferred_auth++ }
+            if ($motivoItem -eq 'rotacao_semanal') { $stats.deferred_rotacao++ }
+            elseif ($motivoDeferido -ne 'cap_efetivo') { $stats.deferred_auth++ }
         } else { $stats.deferred_fail++ }
-        Write-Ledger $emp.empresa $emp.tier '-' 0 $subOk 'DEFERIDO'
+        Write-Ledger $emp.empresa $pendente.tier '-' 0 $subOk 'DEFERIDO'
         if (-not $DryRun) { Start-Sleep -Milliseconds 400 }
     }
+    # DEFERIDOZERO1 (2026-09-18): execucao que nao deferiu nada nao tem causa de
+    # deferimento, e repetir o valor de partida (cap_efetivo) faz a linha afirmar um
+    # corte que nao houve. Medido na matinal de 18/09, execucao ociosa por
+    # idempotencia: `deferidos_cap=0 deferidos_auth=0 motivo_deferimento=cap_efetivo`.
+    # D1: quando TODOS os deferidos do dia vieram da rotacao semanal, o rotulo do dia e a
+    # rotacao, nao o `cap_efetivo` de partida. Sem isto a linha afirmaria um corte por
+    # orcamento numa noite que gastou pouco e so distribuiu profundidade.
+    # PROFUNDIDADE-NOTURNA1 / D6 (2026-09-19): a definicao veio para ANTES da linha DEFERIDOS.
+    # Antes ela era calculada depois, e o texto do corte ainda lia `$motivoDeferido`, o valor de
+    # partida: uma noite de rotacao (deferidos_cap=0, deferidos_rotacao>0) escrevia
+    # `motivo=cap_efetivo` no log enquanto o metrics e a linha FIM do MESMO dia diziam
+    # rotacao_semanal. Agora log, metrics e FIM leem a mesma variavel.
+    $motivoDeferimentoEfetivo = if ($stats.deferred -le 0) { 'nenhum' } elseif ($stats.deferred_rotacao -gt 0 -and $stats.deferred_rotacao -ge $stats.deferred) { 'rotacao_semanal' } else { $motivoDeferido }
     if ($pendingDeferred.Count -gt 0) {
-        Write-Log (Get-VixDeferidosTexto -Motivo $motivoDeferido -Ok $stats.deferred -Falha $stats.deferred_fail -Total $pendingDeferred.Count -TokensRealizados $stats.tokens_total -CapEfetivo $TokenHardCap -LotesNaoProcessados $stats.lotes_nao_processados)
+        Write-Log (Get-VixDeferidosTexto -Motivo $motivoDeferimentoEfetivo -Ok $stats.deferred -Falha $stats.deferred_fail -Total $pendingDeferred.Count -TokensRealizados $stats.tokens_total -CapEfetivo $TokenHardCap -LotesNaoProcessados $stats.lotes_nao_processados)
         # COBERTURAAUTH1: declaracao + DECISAO registrada. So sai quando o corte nao foi planejado.
         $__declCobertura = Get-VixCoberturaIncompletaTexto -Rotina $Rotina -Motivo $motivoDeferido -Deferidos $stats.deferred -Plano $planoTotal -LotesNaoProcessados $stats.lotes_nao_processados -DetalheAuth $abortoAuthDetalhe
         if ($__declCobertura) { Write-Log $__declCobertura }
     }
 
-    # DEFERIDOZERO1 (2026-09-18): execucao que nao deferiu nada nao tem causa de
-    # deferimento, e repetir o valor de partida (cap_efetivo) faz a linha afirmar um
-    # corte que nao houve. Medido na matinal de 18/09, execucao ociosa por
-    # idempotencia: `deferidos_cap=0 deferidos_auth=0 motivo_deferimento=cap_efetivo`.
-    # O rotulo do FIM e do metrics passa a ser `nenhum` quando deferred=0; o texto do
-    # corte (Get-VixDeferidosTexto) segue usando a causa real, porque so sai quando ha
-    # deferido de verdade.
-    $motivoDeferimentoEfetivo = if ($stats.deferred -le 0) { 'nenhum' } else { $motivoDeferido }
+    # DEFERIDOZERO1 (18/09) + D1: a definicao de `$motivoDeferimentoEfetivo` subiu para antes da
+    # linha DEFERIDOS (D6, 19/09). Aqui ficou so o consumidor do FIM e do metrics.
+    # PROFUNDIDADE-NOTURNA1: `deferidos_cap` passa a significar APENAS corte por cap. Antes era
+    # `deferred - deferred_auth`, e a rotacao semanal entrava nessa conta sem ser corte de
+    # orcamento, inflando o numero que o painel le como "faltou token". O max(0, ...) e
+    # defensivo: nenhum contador pode ficar negativo se uma execucao futura incrementar as
+    # causas sem incrementar o total. Calculado UMA vez e usado no metrics e na linha FIM, para
+    # as duas pontas nao divergirem.
+    $deferidosCap = [int][Math]::Max(0, ([int]$stats.deferred - [int]$stats.deferred_auth - [int]$stats.deferred_rotacao))
 
     $sw.Stop()
     $submitsAceitos = $stats.skip_ok + $stats.submit_ok + $stats.deferred
@@ -1759,8 +1885,11 @@ try {
             # sairam de fora. `deferidos_cap` = cauda planejada pelo cap de tokens;
             # `deferidos_auth` = emissores que o limite de sessao da assinatura deixou sem lote;
             # `lotes_nao_processados` = lotes que o aborto deixou sem chamada (nada silencioso).
-            deferidos_cap = ($stats.deferred - $stats.deferred_auth)
+            deferidos_cap = $deferidosCap
             deferidos_auth = $stats.deferred_auth
+            # D1: terceira causa de deferimento, separada das outras duas. As tres se somam ao
+            # total de deferidos, e `deferidos_cap` exclui explicitamente auth e rotacao.
+            deferidos_rotacao = $stats.deferred_rotacao
             motivo_deferimento = $motivoDeferimentoEfetivo
             lotes_nao_processados = $stats.lotes_nao_processados
             # DRENOMUDO1-FIX: desfecho do dreno pos-rotina. $null quando nao houve dreno (sem
@@ -1789,8 +1918,9 @@ try {
         # COBERTURAAUTH1 / DRENOMUDO1-FIX (2026-09-15): campos NOVOS vao no fim, depois dos
         # historicos. Toda leitura existente deste resumo e por regex de campo, entao acrescentar
         # no fim nao muda leitor nenhum; inserir no meio mudaria quem le posicionalmente.
-        ' deferidos_cap=' + ($stats.deferred - $stats.deferred_auth) +
+        ' deferidos_cap=' + $deferidosCap +
         ' deferidos_auth=' + $stats.deferred_auth +
+        ' deferidos_rotacao=' + $stats.deferred_rotacao +
         ' motivo_deferimento=' + $motivoDeferimentoEfetivo +
         ' lotes_nao_processados=' + $stats.lotes_nao_processados +
         $(if ($null -eq $stats.dreno_exit) { '' } else { ' dreno_exit=' + $stats.dreno_exit }) +
