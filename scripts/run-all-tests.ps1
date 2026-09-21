@@ -34,9 +34,17 @@ $BaselineFile = Join-Path $ScriptsDir 'tests-baseline.json'
 # Suites que NAO entram no gate por padrao. Motivo MEDIDO, nao precaucao:
 #   test-locks-overlap: sobe o motor REAL quatro vezes (run_vixradar_varredura.ps1) e escreve
 #   log/lock/transcript em logs\routines do dia. Leva ~7 min e deixa residuo se falhar no meio.
+#
+#   Os dois M3 nao sao teste unitario: sao smoke/relatorio AO VIVO, contra servico externo pago
+#   ou contra producao, e dependem de credencial que o CI nao tem (nem deve ter). Sem a chave eles
+#   falham por ambiente, nao por codigo - e o gate fica vermelho por motivo que nao e regressao.
+#   Ficam fora do gate por isso, com o motivo escrito aqui, em vez de entrarem no baseline (que e
+#   para defeito conhecido no codigo).
 # Usa -IncluirPesados para rodar.
 $Pesados = @{
     'test-locks-overlap.ps1' = 'sobe o motor real e escreve log/lock do dia em logs\routines'
+    'test-m3-openrouter-search.ps1' = 'smoke pago ao vivo no OpenRouter; exige OPENROUTER_API_KEY e payload local nao versionado'
+    'test-m3-reconciliacao.ps1' = 'relatorio ao vivo contra producao; exige ROUTINE_API_KEY'
 }
 
 function Get-Suites {
