@@ -7757,6 +7757,15 @@ function _atribuirDocumentoCVM(cnpj, razaoSocial) {
   return { emissor: porNome, origem: porNome ? "nome" : "sem_dono" };
 }
 __name(_atribuirDocumentoCVM, "_atribuirDocumentoCVM");
+// CFG-02 P2: origem da atribuicao contada sobre o acervo que vai ser (ou foi)
+// gravado. Soma sempre igual a docs.length, essa e a invariante que o health
+// e o teste T3 cobram. Nao confundir com descartados_allowlist, que e fluxo.
+function _coberturaAtribuicaoAcervo(docs) {
+  var c = { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
+  (Array.isArray(docs) ? docs : []).forEach(function(d) { c[_atribuirDocumentoCVM(d.j, d.e).origem]++; });
+  return c;
+}
+__name(_coberturaAtribuicaoAcervo, "_coberturaAtribuicaoAcervo");
 // ── CVMFRESCOR1 (auditoria 2026-08-19), PREMISSA CORRIGIDA EM 2026-08-20 ────
 // O feed de eventos ficou preso em 14/08 por 5 dias com TODO semaforo verde, e
 // a instrumentacao criada aqui (carimbar a idade REAL da fonte a cada sync) foi
@@ -7935,6 +7944,12 @@ async function avaliarFrescorCVM(env2222) {
   // SUBSTRINGDONO1 e escondendo se a ingestao de documentos rodou.
   out.cobertura = meta.cobertura && typeof meta.cobertura === "object" ? meta.cobertura : null;
   out.descartados_teto = meta.descartados_teto != null ? meta.descartados_teto : null;
+  // CFG-02 P2: `cobertura_atribuicao` e a origem (cnpj/nome/quarentena/sem_dono)
+  // medida sobre o acervo PERSISTIDO. `descartados_allowlist` e FLUXO do ultimo
+  // sync (o que a ingestao deixou de gravar), nao estoque, e por isso tem campo
+  // proprio no health. Nunca derivar um do outro.
+  out.cobertura_atribuicao = meta.cobertura_atribuicao && typeof meta.cobertura_atribuicao === "object" ? meta.cobertura_atribuicao : null;
+  out.descartados_allowlist = meta.descartados_allowlist != null ? meta.descartados_allowlist : null;
   out.origem = meta.origem || null;
   out.conteudo_sha256 = meta.conteudo_sha256 || null;
   out.documentos = meta.documentos != null ? meta.documentos : null;
@@ -8449,6 +8464,7 @@ async function syncCVMZipHistorico(env2222) {
       // SUBSTRINGDONO1, fase CNPJ: a cobertura vive no meta para o health poder
       // expor sem reprocessar o acervo inteiro a cada GET.
       cobertura: _cob,
+      descartados_allowlist: descartadosAllowlist,
       descartados_teto: descartadosPorTeto,
       origem: "sync_automatico"
     });
@@ -8618,7 +8634,7 @@ async function syncCVMAutomatico(env2222) {
     await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(candidatos), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
     var origemMeta = zipAnoCorrenteOk ? "enetweb+zip" : "enetweb_sem_zip_corrente";
     var gateMeta = zipAnoCorrenteOk ? "aprovado" : "bloqueado";
-    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, descartados_allowlist: descartadosAllowlist, descartados_allowlist_categoria: descartadosAllowlistCategoria, cobertura: { portal: { total: validosPortal, resolvidos: validosPortal - descartadosAllowlist, pct: validosPortal ? Number(((validosPortal - descartadosAllowlist) * 100 / validosPortal).toFixed(2)) : null }, zip: { total: zipDocs.length, resolvidos: zipDocs.filter(function(d) { return !!_atribuirDocumentoCVM(d.j, d.e).emissor; }).length } }, descartados_teto: descartadosTeto, metodologia_id: CVM_ENET_METODOLOGIA_ID, metodologia_anterior: metodologiaAnterior, universo_metodologia: pisoInfo.universo, documentos_anteriores: Array.isArray(base) ? base.length : 0, piso_documentos: piso, piso_modo: pisoInfo.modo, piso_bootstrap: pisoBootstrap, piso_dinamico: pisoDinamico, rebase_metodologia: rebase, motivo_rebase: rebase ? "troca_de_metodologia" : null, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
+    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, descartados_allowlist: descartadosAllowlist, descartados_allowlist_categoria: descartadosAllowlistCategoria, cobertura_atribuicao: _coberturaAtribuicaoAcervo(candidatos), cobertura: { portal: { total: validosPortal, resolvidos: validosPortal - descartadosAllowlist, pct: validosPortal ? Number(((validosPortal - descartadosAllowlist) * 100 / validosPortal).toFixed(2)) : null }, zip: { total: zipDocs.length, resolvidos: zipDocs.filter(function(d) { return !!_atribuirDocumentoCVM(d.j, d.e).emissor; }).length } }, descartados_teto: descartadosTeto, metodologia_id: CVM_ENET_METODOLOGIA_ID, metodologia_anterior: metodologiaAnterior, universo_metodologia: pisoInfo.universo, documentos_anteriores: Array.isArray(base) ? base.length : 0, piso_documentos: piso, piso_modo: pisoInfo.modo, piso_bootstrap: pisoBootstrap, piso_dinamico: pisoDinamico, rebase_metodologia: rebase, motivo_rebase: rebase ? "troca_de_metodologia" : null, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
     return { ok: true, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, gate_reconciliacao: gateMeta, log: { lotes: lotes } };
   } catch (e) {
     var motivo = baseExpirada ? "base_expirada_ttl" : String(e && e.message || e).slice(0, 80);
@@ -20767,11 +20783,16 @@ async function __coreFetch(request, env2222, ctx) {
       // companhia nova protocolasse, que e alarme que toca sozinho.
       // O canal proprio e a guarda scripts/check-cnpj-familia.mjs e a action
       // admin_cvm_quarentena.
-      var _cvmCob = (_cvmFrescor.cobertura && typeof _cvmFrescor.cobertura === "object")
-            ? _cvmFrescor.cobertura
-            : { cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 };
-          if (_cvmCob.portal) _cvmCob = { cnpj: _cvmCob.zip && _cvmCob.zip.resolvidos || 0, nome: _cvmCob.portal.resolvidos || 0, quarentena: Math.max(0, (_cvmCob.portal.total || 0) - (_cvmCob.portal.resolvidos || 0)), sem_dono: 0 };
-      var _cvmCobTotal = (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0);
+      // CFG-02 P2: portal/zip sao VIAS de coleta, nao origem de atribuicao, e
+      // `descartados_allowlist` e fluxo de sync, nao quarentena. A origem vem so
+      // de medida sobre o acervo persistido: `cobertura_atribuicao` (sync ENET) ou
+      // `cobertura` plana (sync do ZIP). Meta legado {portal,zip} nao traz origem,
+      // entao os campos saem null ate o proximo sync, em vez de um numero falso.
+      var _cvmCobBruta = (_cvmFrescor.cobertura_atribuicao && typeof _cvmFrescor.cobertura_atribuicao === "object")
+        ? _cvmFrescor.cobertura_atribuicao
+        : ((_cvmFrescor.cobertura && typeof _cvmFrescor.cobertura === "object" && !_cvmFrescor.cobertura.portal && !_cvmFrescor.cobertura.zip) ? _cvmFrescor.cobertura : null);
+      var _cvmCob = _cvmCobBruta || { cnpj: null, nome: null, quarentena: null, sem_dono: null };
+      var _cvmCobTotal = _cvmCobBruta ? (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0) : 0;
       var _cvmCobPct = _cvmCobTotal > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotal * 1e3) / 10 : null;
       // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): ate aqui NENHUM campo
       // do health media a idade do PAINEL (o que o usuario ve na tela). `ok`
@@ -20824,7 +20845,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_sem_dono: _cvmCob.sem_dono, cvm_ingestao_descartados_sem_dono: _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : null, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
@@ -23421,6 +23442,7 @@ export {
   DOMINIOS_FONTE_OFICIAL_DOCUMENTOS,
   _ehFonteConfitavelBloqueada,
   _atribuirDocumentoCVM,
+  _coberturaAtribuicaoAcervo,
   _cvmChaveDoc,
   _cvmPisoMetodologia,
   _enetExtrairLinhas,

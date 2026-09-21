@@ -24,6 +24,7 @@ import {
   CNPJ_FAMILIA_CVM,
   _soDigito
 } from "../api/src/worker.js";
+import { avaliarQuarentena } from "./lib/quarentena-guarda.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(__dirname, "..");
@@ -69,32 +70,31 @@ function donoPorCnpj() {
 
 const norm = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9]/g, " ").trim();
 
+async function fetchDescartados() {
+  // Fluxo do ultimo sync, exposto no health com nome proprio (CFG-02 P2).
+  const res = await fetch("https://api.vixradar.com", { headers: { "Cache-Control": "no-cache" } });
+  if (!res.ok) throw new Error("health HTTP " + res.status);
+  const h = await res.json();
+  return h.cvm_ingestao_descartados_sem_dono != null ? h.cvm_ingestao_descartados_sem_dono : null;
+}
+
 async function main() {
   const data = await fetchQuarentena();
+  const descartados = await fetchDescartados();
   const fila = data.fila || [];
-  const map = donoPorCnpj();
-
-  console.log(`acervo=${data.acervo} cobertura=${JSON.stringify(data.cobertura)} pct=${data.cobertura_pct} entidades_em_quarentena=${data.entidades_em_quarentena} retornadas=${fila.length}`);
-
-  // Cruzamento por CNPJ: emissor dos 103 cujo CNPJ casou = falha real.
-  const falhas = [];
-  for (const e of fila) {
-    const dig = _soDigito(e.cnpj || "");
-    if (map[dig]) {
-      falhas.push({ cnpj: e.cnpj, nome: e.nome, emissor: map[dig], documentos: e.documentos });
-    }
-  }
-
-  // Cruzamento por nome: aliases (BANCO VOTORANTIM, NEXA RESOURCES, etc.) ja entram
-  // por _atribuirDocumentoCVM. Apos o CNPJ, conferimos overlap de nome apenas como
-  // sinal secundario (o CNPJ mandou; nome e pista, nao atribuicao).
-  if (falhas.length === 0) {
+  console.log(`acervo=${data.acervo} cobertura=${JSON.stringify(data.cobertura)} pct=${data.cobertura_pct} entidades_em_quarentena=${data.entidades_em_quarentena} retornadas=${fila.length} descartados_ingestao=${descartados}`);
+  const r = avaliarQuarentena({ fila, entidades: data.entidades_em_quarentena, descartados, donoPorCnpj: donoPorCnpj(), soDigito: _soDigito });
+  if (r.codigo === 0) {
     console.log(`OK: nenhuma das ${fila.length} entidades (maior volume da quarentena) pertence a um dos 103 por CNPJ.`);
-  } else {
+  } else if (r.codigo === 1) {
     console.log("FALHA DE ATRIBUICAO: entidade(s) de emissor dos 103 na quarentena:");
-    for (const f of falhas) console.log(`  cnpj=${f.cnpj} nome="${f.nome}" -> ${f.emissor} docs=${f.documentos}`);
-    process.exit(1);
+    for (const f of r.falhas) console.log(`  cnpj=${f.cnpj} nome="${f.nome}" -> ${f.emissor} docs=${f.documentos}`);
+  } else if (r.codigo === 3) {
+    console.log(`FALHA DE VACUIDADE: fila de quarentena vazia mas a ingestao descartou ${descartados} documento(s) sem dono no ultimo sync. A guarda nao tem o que avaliar, e o descarte prova que a fila nao mostra o que foi recusado.`);
+  } else {
+    console.log("FALHA: fila vazia e o health nao expoe cvm_ingestao_descartados_sem_dono, nao ha como distinguir quarentena vazia de fila zerada por descarte.");
   }
+  process.exit(r.codigo);
 }
 
 main().catch((e) => {
