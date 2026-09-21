@@ -75,6 +75,17 @@ do Claude Desktop mudar, quando qualquer linha das duas tabelas divergir do que
 > 01/09/2026, vá pelo horário registrado no log, não pelo nome da task**, porque
 > esses logs antigos foram gravados sob o regime invertido.
 
+> **OBSOLETO / HISTÓRICO — regime CCD, superado pela CLAUDE-FREE-MIGRATION Fase A
+> (04/09/2026) e pelo cutover de 12/09/2026.** O motor de `VIXRadar-Matinal`,
+> `VIXRadar-Noturno` e `VIXRadar-Verificacao-Async` hoje é o **Task Scheduler
+> nativo**, com as tasks **Enabled** rodando o gate de provider, que grava
+> `BLOQUEADO_SEM_PROVIDER` e sai com exit 86 sem provider habilitado. Ver o
+> bloco de topo desta página e `logs/monitor-tasks/motor.json`
+> (`motor: task-scheduler`, desde 12/09/2026). O bloco abaixo descreve o regime
+> anterior, de sessões agendadas do Claude Desktop com as tasks nativas
+> `Disabled`, e fica mantido como registro histórico. **Não seguir a instrução
+> "Nunca reabilitar essas três".**
+>
 > **Atualizado 2026-08-07. Leia o aviso abaixo antes de mexer em qualquer task.**
 >
 > O agendamento está **dividido entre dois mecanismos**, e confundi-los causa
@@ -359,6 +370,18 @@ Worker versão de referência: ver `CLAUDE.md` (tabela "Produção atual").
 
 ## Como recriar tasks (em caso de perda do Task Scheduler)
 
+> **OBSOLETO / HISTÓRICO — regime CCD, superado pela CLAUDE-FREE-MIGRATION Fase A
+> (04/09/2026) e pelo cutover de 12/09/2026.** O motor de `VIXRadar-Matinal`,
+> `VIXRadar-Noturno` e `VIXRadar-Verificacao-Async` hoje é o **Task Scheduler
+> nativo**, com as tasks **Enabled**. As instruções abaixo que dependem do regime
+> anterior **não valem mais**: que essas três "já rodam pelo Claude Desktop",
+> criar e em seguida `Disable-ScheduledTask` "para manter o guard" (isso
+> desabilitaria o motor vivo), validar que as três aparecem `Disabled` e saem
+> `GUARD_OK`, e tratar o agendamento do Claude Desktop como o mecanismo a
+> monitorar. Ver o bloco de topo desta página e
+> `logs/monitor-tasks/motor.json` (`motor: task-scheduler`, desde 12/09/2026).
+> O texto datado abaixo fica mantido como registro do regime anterior.
+>
 > **Antes de recriar qualquer coisa, leia isto.** Recriar `VIXRadar-Matinal`,
 > `VIXRadar-Noturno` ou `VIXRadar-Verificacao-Async` como task **habilitada**
 > produz execução dupla, porque elas já rodam pelo Claude Desktop. Se precisar
