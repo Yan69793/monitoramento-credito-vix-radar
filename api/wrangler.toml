@@ -64,6 +64,25 @@
 #   Worker ignora rotacao_semanal em _carimbarAnaliseReal. Telemetria separa cap/auth/rotacao.
 #   Testes: api 448/448, profundidade 153/153, dispatch 29/29, varredura-defeitos 44/44.
 #   Rollback: main = "v4.9.259.js".
+# v4.9.261.js = v4.9.260 + CFG-02 P2/P3: o health para de chamar de quarentena o descarte
+#   da ingestao. `cvm_atribuicao_quarentena` era `portal.total - portal.resolvidos`, que e
+#   `descartados_allowlist`, o FLUXO do ultimo sync ENET e nao estoque; a quarentena real,
+#   medida na fila `admin_cvm_quarentena`, e 0 (acervo 796, cnpj 441, nome 355, sem_dono 0).
+#   P2: `_coberturaAtribuicaoAcervo` conta a origem sobre o acervo PERSISTIDO, com invariante
+#   de soma igual a docs.length; os dois syncs passam a gravar `cobertura_atribuicao` no meta;
+#   `avaliarFrescorCVM` expoe `cobertura_atribuicao` e `descartados_allowlist`; o health publica
+#   `cvm_atribuicao_por_cnpj/por_nome/quarentena/sem_dono` lidos de origem medida, e o descarte
+#   em campo proprio, `cvm_ingestao_descartados_sem_dono`, com `cobertura_pct` saindo da mesma
+#   origem. Meta legado {portal,zip} nao traz origem, entao os campos saem `null` ate o proximo
+#   sync, em vez de um numero derivado do descarte. P3: `check-quarentena-emissores.mjs` reprova
+#   fila vazia com descarte positivo (codigo 3) e descarte nao medivel (codigo 4), decisao pura
+#   em `scripts/lib/quarentena-guarda.mjs`. P1 intocado: a ingestao continua descartando
+#   documento sem dono antes de gravar (worker.js:8415 no ZIP, :8597 no ENET), e a serie antiga
+#   9265/9328/9431 nao e comparavel com a nova.
+#   Testes: T2/T3/T4 em cvm-atribuicao-health.test.mjs e quarentena-guarda.test.mjs; prova
+#   reversa do T2 medida contra o worker.js de HEAD (3 falhas, `expected 9426 to be +0`);
+#   suite da api 460/460 em 46 arquivos.
+#   Rollback: main = "v4.9.260.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de
