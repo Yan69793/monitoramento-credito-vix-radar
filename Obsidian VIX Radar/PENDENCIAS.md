@@ -1,5 +1,5 @@
 ---
-data: 2026-08-14
+data: 2026-09-21
 tipo: pendencia
 tags: [vix-radar, backlog, acoes]
 status: ativo
@@ -8,6 +8,19 @@ status: ativo
 # Pendencias — VIX Radar
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
+
+## 21/09: COBPARCIAL21 — a noturna fechou 104/104 no ledger e ainda assim deixou 27 INCONCLUSIVO e 25 rebaixamentos de tier, registrados sem correção
+
+> **Status:** ABERTO (P2), registrado sem correção por decisão explícita do operador. **Data:** 2026-09-21. **Origem do Registro:** a própria execução da noturna de 21/09, medida no log e no contrato de cobertura, antes do fechamento do estado canônico.
+> **De onde vem o número, e de onde não vem.** A rodada não foi disparada pelo Task Scheduler. Só leitura: `VIXRadar-Noturno` com `State=Ready`, `LastRunTime=09/18/2026 18:05:00`, `LastTaskResult=0`, `NextRunTime=09/21/2026 18:05:00`, `NumberOfMissedRuns=0`. As 13:48:50 foram o motor canônico chamado à mão, como a primeira linha do log declara (`INICIO: noturno (motor Task Scheduler, run_vixradar_varredura.ps1, modo=real)`), e a rodada agendada das 18:05 BRT de hoje ainda estava por vir. O ledger fechou `104/104 (ledger analisados=45 skip=10 deferidos=49)`, com `submit_ok=45`, `submit_fail=0`, `tokens=415218` de `cap_efetivo=700000`, `degradados_402=0` e `dreno_exit=0`, em `logs/routines/vixradar-noturno_20260921.log`.
+> **O que ficou parcial, medido.** Dos 45 analisados, **27 fecharam `INCONCLUSIVO`**, sendo 17 em tier `FULL` e 10 em `LIGHT`. Cada um deixou a linha `RECHECK_PENDENTE|<emissor>|motivo=familias_incompletas|faltantes=emissor,divida,fato|buscas=0_degradadas/3_efetivas -> INCONCLUSIVO, sem_eventos PROIBIDO, reanalise priorizada na proxima execucao`, e no ledger entrou como `OK|<emissor>|<tier>|INCONCLUSIVO|<n>|true|ANALISADO|<n>`. O contrato de cobertura gravou `COBERTURA1: contrato persistido com 35 emissor(es) por cobertura (recheck_pendente=27 resolvidos=8)` em `logs/routines/cobertura_20260921.json`.
+> **Os 27, para não precisar reabrir o log.** Gerdau, Suzano, Auren Energia, Neoenergia, Rumo, Arteris, Marfrig, Assaí Atacadista, VLI, Omega Energia, Cielo, Vale, JBS, ISA Energia, Totvs, Cury Construtora, LWSA, Minerva Foods, JSL, Even Construtora, Log Commercial Properties, Vamos, Vivo (Telefônica Brasil), BRK Ambiental, CCR, Algar Telecom e Brisanet.
+> **Os 25 rebaixamentos de tier, medidos no plano.** Todos saíram `tier_plano=FULL tier_aplicado=LIGHT` na linha `ALVO`, distribuídos em `deferred_prioritario` (14), `inconclusivo_stale_breakout` (9), `imprensa_recente_7d` (1) e `setor_financeiro_full` (1). O `inconclusivo_stale_breakout` é o único dos quatro que conversa direto com esta pendência, porque rebaixa por inconclusivo antigo.
+> **O que não é defeito.** Os 49 `DEFERIDO` saem com `motivo_deferimento=rotacao_semanal`, `deferidos_cap=0` e `deferidos_auth=0`. São o desenho da profundidade adaptativa semanal (`PROFUNDIDADE: full_semana=23 full_matinal_hoje=23 full_noturno_hoje=0 faltam=81 noites=5 min_full=17 full=17 light=28 cap=700000`), não corte por token nem por credencial, e não há lote sem desfecho (`lotes_nao_processados=0`). Também não é defeito o `light-3` ter fechado cheio, com `LOTE_FECHADO|light-3|ok=15|fail=0`: o parcial da noite não está num lote específico.
+> **Por que não foi corrigido agora.** Decisão do operador nesta rodada, junto com a ordem de não tocar código, configuração, Scheduler ou produção, e de não executar rotina. O item entra na fila como registro, não como ação aberta de agente.
+> **O que este registro NÃO afirma.** Não medi se os 27 são a mesma população dos 75 de 104 da CARTEIRA FAMINTA de 19/09 (bloco acima), nem se conversam com o `EMISSORSTALE4` (P3), que conta os inconclusivos da guarda à parte e registrava **17** em 19/09. São três medições de horários e réguas diferentes, e tratá-las como uma só seria inventar estado. Quem for apurar isso precisa da mesma régua nas três pontas.
+> **Relacionado, e também fora do escopo desta rodada.** O `CFG-02` (atribuição de documento da CVM) segue aberto, medido hoje no health vivo em `cvm_atribuicao_cobertura_pct = 13.4` e `cvm_atribuicao_quarentena = 9328`. Os números 13.3 e 9943 do bloco de 18/09 são daquele dia. É outra cobertura, com outra causa raiz, e não é esta pendência.
+> **Condição de Obsolescência:** cai quando os 27 `RECHECK_PENDENTE` do contrato de 21/09 forem resolvidos por execução real, ou quando uma noturna nova fechar sem `motivo=familias_incompletas` no plano.
 
 ## 19/09: EMISSORSTALE2 — a guarda de carteira media varredura e chamava de análise. Worker v4.9.259 em produção
 
