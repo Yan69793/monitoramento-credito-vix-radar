@@ -215,6 +215,27 @@ if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
 } else {
     $script:VixLibOpenRouterOk = $false
 }
+# COLETOR-PS1 (2026-09-23): a coleta deterministica substitui a busca feita pelo modelo.
+# VIXRADAR_COLETOR_PS=0 preserva o fluxo anterior para medicao A/B.
+$script:VixColetorAtivo = $false
+$script:VixColetorCache = @{}
+$script:VixColetorFalhas = @{}
+$__coletorLib = Join-Path $ScriptsDir 'lib\vixradar-coletor.ps1'
+if (Test-Path $__coletorLib) {
+    . $__coletorLib
+    $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'Process')
+    if (-not $__flagColetor) { $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'User') }
+    if (-not $__flagColetor) { $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'Machine') }
+    if (('' + $__flagColetor).Trim() -ne '0') { $script:VixColetorAtivo = $true }
+    Write-Log ('COLETOR_PS: ativo=' + $script:VixColetorAtivo + ' (VIXRADAR_COLETOR_PS; 0 desliga)')
+} else {
+    Write-Log 'COLETOR_PS: lib ausente - a evidencia continua sendo buscada pelo modelo.'
+}
+$script:VixColetorObrigatorio = ((Get-VixLlmProvider) -eq 'deepseek')
+if ($script:VixColetorObrigatorio -and -not $script:VixColetorAtivo) {
+    Write-Log 'ERRO FATAL: provider deepseek exige COLETOR_PS ativo. DeepSeek direta nao tem WebSearch/WebFetch; nenhum lote sera chamado.'
+    exit $VixLlmBloqueadoExit
+}
 # MVA-WIRING1 (2026-09-16): o boot passa a travar tambem pelo bloco MVA da lib, e nao so pelas
 # funcoes do provider gate. Get-VixFailoverClasse e chamada no ramo de falha de Invoke-ClaudeBatch
 # e Test-VixBacklogPodeFechar e a regra que o dreno de DEFERIDO aplica. Lib truncada
@@ -252,6 +273,27 @@ function Get-CvmResumo($docs) {
     return ($arr.Count.ToString() + ' docs')
 }
 
+function Get-VixColetorParaEmissor([string]$Empresa) {
+    # Cache por emissor dentro da execucao. O mesmo emissor pode reaparecer em retry de lote.
+    if (-not $script:VixColetorAtivo) { return $null }
+    $k = ('' + $Empresa).Trim().ToLowerInvariant()
+    if ($script:VixColetorCache.ContainsKey($k)) { return $script:VixColetorCache[$k] }
+    $c = $null
+    try { $c = Get-VixColetorEvidencia -Empresa $Empresa } catch { $c = $null }
+    if ($null -eq $c -or ($null -ne $c.PSObject.Properties['disponivel'] -and -not $c.disponivel)) { $script:VixColetorFalhas[$k] = $true }
+    $script:VixColetorCache[$k] = $c
+    return $c
+}
+
+function Test-VixColetorObrigatorioPronto($Emissores) {
+    if (-not $script:VixColetorObrigatorio) { return $true }
+    foreach ($emp in @($Emissores)) {
+        $coleta = Get-VixColetorParaEmissor ('' + $emp.empresa)
+        if ($null -eq $coleta -or ($null -ne $coleta.PSObject.Properties['disponivel'] -and -not $coleta.disponivel)) { return $false }
+    }
+    return $true
+}
+
 function Get-SlimEmissor($emp, [string]$Tier = '', [switch]$Ultra) {
     if (-not $Tier) { $Tier = $Perfil.tier }
     $docs = @($emp.cvm_documentos | Select-Object -First $(if ($Ultra) { 2 } else { 3 }) | ForEach-Object {
@@ -277,6 +319,21 @@ function Get-SlimEmissor($emp, [string]$Tier = '', [switch]$Ultra) {
         $max = if ($isCritico) { 400 } elseif ($Ultra) { 200 } else { 120 }
         if ($ctx.Length -gt $max) { $ctx = $ctx.Substring(0, $max) }
         $o['contexto_historico'] = $ctx
+    }
+    # F1/F2 abaixo sao contagens do RSS. F3 so conta documento que o proprio plano do Worker
+    # trouxe, porque resultado de RSS nao prova cobertura de CVM/RI/fato primario.
+    $coleta = Get-VixColetorParaEmissor ('' + $emp.empresa)
+    if ($coleta) {
+        $o['evidencia_coletada'] = Format-VixColetorEvidenciaTexto $coleta
+        $f1 = 0; $f2 = 0
+        try { $f1 = [int]$coleta.por_familia['F1'] } catch { $f1 = 0 }
+        try { $f2 = [int]$coleta.por_familia['F2'] } catch { $f2 = 0 }
+        $o['cobertura_familias'] = [ordered]@{
+            F1 = $f1
+            F2 = $f2
+            F3 = $(if ($docs.Count -gt 0) { $docs.Count } else { 0 })
+            origem = 'F1/F2 coletor PowerShell (Google News RSS); F3 somente cvm_documentos do plano'
+        }
     }
     return $o
 }
@@ -436,8 +493,30 @@ function Get-VixCodexUsageProbe($Linhas) {
     return [pscustomobject]@{ mensuravel = $false; parcelas = $null }
 }
 
-function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores = 0, [string]$Tier = '') {
+function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores = 0, [string]$Tier = '', [string]$ProviderOverride = '', [string]$PromptAppend = '') {
     if (-not $Tier) { $Tier = $Perfil.tier }
+    # Fallback cross-provider opt-in. O provider global continua sendo OpenRouter durante
+    # toda a rotina. A substituicao vale apenas para esta invocacao recursiva, quando o
+    # OpenRouter devolveu 402 de credito. Nunca habilitar a chave paga por este caminho.
+    $providerProcessAnterior = $null
+    $providerOverrideAtivo = [bool]$ProviderOverride
+    $providerDaInvocacao = if ($ProviderOverride) {
+        $ProviderOverride.Trim().ToLowerInvariant()
+    } elseif ($script:VixUsaOpenRouter) {
+        'openrouter'
+    } elseif ($script:VixUsaCodex) {
+        'codex'
+    } else {
+        'claude-subscription'
+    }
+    $usaOpenRouterNestaInvocacao = ($providerDaInvocacao -eq 'openrouter')
+    $usaCodexNestaInvocacao = ($providerDaInvocacao -eq 'codex')
+    $fallbackAuthIndisponivel = $false
+    $skipProviderInvoke = $false
+    if ($providerOverrideAtivo) {
+        $providerProcessAnterior = [Environment]::GetEnvironmentVariable('VIXRADAR_LLM_PROVIDER', 'Process')
+        [Environment]::SetEnvironmentVariable('VIXRADAR_LLM_PROVIDER', $providerDaInvocacao, 'Process')
+    }
     # Flags de economia (medidas 2026-07-03): boot 33.9k -> ~13.6k tokens/invocacao.
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
@@ -452,14 +531,41 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
         [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
         $OutputEncoding = [System.Text.Encoding]::UTF8
         $retryDelays = @(0, 30, 60)
-        if ($script:VixUsaCodex) { $retryDelays = @(0) }
+        if ($usaCodexNestaInvocacao) { $retryDelays = @(0) }
         # OR429-CAMADAUNICA (2026-09-09): com allow_fallbacks=true no adapter, o failover entre
         # providers do MESMO modelo e nativo do OpenRouter e o retry de 429/transporte e bounded
         # DENTRO do adapter (respeitando Retry-After). Re-disparar o lote inteiro aqui (30s/60s)
         # duplicava ate ~11 POSTs no mesmo payload apos cada 429 e foi o que matou a matinal de
         # 09/09 no backoff, sem FIM (pid 23428). Camada unica: 1 chamada do adapter por payload;
         # falha controlada no fluxo normal abaixo (FIM/ROTINA_RESUMO + exit != 0).
-        if ($script:VixUsaOpenRouter) { $retryDelays = @(0) }
+        if ($usaOpenRouterNestaInvocacao) { $retryDelays = @(0) }
+        if ($providerOverrideAtivo -and $providerDaInvocacao -eq 'claude-subscription') {
+            if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+                Write-Log 'FALLBACK_ANTHROPIC: claude.exe ausente, lote nao transferido.'
+                $fallbackAuthIndisponivel = $true
+            } else {
+                try {
+                    Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
+                    $modoFallback = Get-VixClaudeAuthModo
+                    if ($modoFallback -ne 'assinatura' -and $modoFallback -ne 'assinatura-token') {
+                        Write-Log ('FALLBACK_ANTHROPIC: assinatura indisponivel (modo=' + $modoFallback + '), chave paga nao sera usada.')
+                        $fallbackAuthIndisponivel = $true
+                    } else {
+                        Write-Log ('FALLBACK_ANTHROPIC: assinatura pronta (modo=' + $modoFallback + ').')
+                    }
+                } catch {
+                    Write-Log ('FALLBACK_ANTHROPIC: falha ao inicializar assinatura - ' + $_.Exception.Message)
+                    $fallbackAuthIndisponivel = $true
+                }
+            }
+            if ($fallbackAuthIndisponivel) {
+                $cotaEsgotadaSemFallback = $true
+                $cotaEsgotadaMotivo = 'fallback Claude subscription indisponivel; chave paga bloqueada'
+                $exitCode = 5
+                $raw = @('CLAUDE_FALLBACK_AUTH_UNAVAILABLE')
+                $skipProviderInvoke = $true
+            }
+        }
         $retryLog = @()
         # OR402-DEGRADA1 (2026-09-11): quantas chamadas ao adapter desta invocacao cairam para o
         # modelo de fallback por saldo insuficiente (HTTP 402) no modelo do tier. Vai no retorno
@@ -471,6 +577,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
         # comeriam o teto de parede e a rotina morreria mesmo assim.
         $jaEsperouReset = $false
         for ($attempt = 0; $attempt -lt $retryDelays.Count; $attempt++) {
+            if ($skipProviderInvoke) { break }
             if ($attempt -gt 0) {
                 $delay = $retryDelays[$attempt]
                 Write-Log ('RETRY: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ' aguardando ' + $delay + 's (lote morreu na anterior)')
@@ -480,7 +587,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
             # Fase B D1: provider openrouter despacha para o adapter HTTP proprio
             # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch.
             # Mesmo prompt, mesmo protocolo textual; envelope normalizado no parser abaixo.
-            if ($script:VixUsaCodex) {
+            if ($usaCodexNestaInvocacao) {
                 $codexOutFile = Join-Path $LogDir ($Perfil.prefix + '_codex_' + $DateTag + '_' + $PID + '.txt')
                 $promptText = Get-Content $promptPath -Raw -Encoding UTF8
                 $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
@@ -505,7 +612,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                 Write-Log ('RETRY codex: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ' falhou')
                 continue
             }
-            if ($script:VixUsaOpenRouter) {
+            if ($usaOpenRouterNestaInvocacao) {
                 # OR429-TETO (2026-09-09): teto de parede TOTAL do lote passado ao adapter, para o
                 # ciclo retry+fallback+Retry-After nunca estourar o orcamento (09/09 morreu no meio
                 # do backoff sem teto). Default = 2 paredes de tentativa
@@ -539,10 +646,25 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                 }
                 if ($exitCode -eq 0) { Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower()); break }
                 Write-Log ('RETRY openrouter: tentativa ' + ($attempt + 1) + '/' + $retryDelays.Count + ': ' + $__orResp.Msg)
+                if ($script:VixOpenRouterFallbackAnthropic -and $__orResp.Status -eq 402 -and -not $ProviderOverride) {
+                    Write-Log 'FALLBACK_ANTHROPIC: OpenRouter sem credito, transferindo somente este lote para a assinatura.'
+                    $anthropicResp = Invoke-ClaudeBatch -promptPath $promptPath -Model 'claude-sonnet-4-6' -Emissores $Emissores -Tier $Tier -ProviderOverride 'claude-subscription' -PromptAppend 'Fallback temporario por saldo do OpenRouter. Use economia de tokens: responda de forma concisa, sem explicacoes fora do formato exigido, preserve o JSON e as linhas RESULTADO exigidas pelo protocolo.'
+                    if ($anthropicResp) {
+                        $anthropicResp.Degradados402 = [int]$anthropicResp.Degradados402 + 1
+                        if ($anthropicResp.ExitCode -eq 0) {
+                            Write-Log 'FALLBACK_ANTHROPIC: lote concluido pela assinatura.'
+                        } else {
+                            Write-Log ('FALLBACK_ANTHROPIC: lote falhou na assinatura, exit=' + $anthropicResp.ExitCode)
+                        }
+                        return $anthropicResp
+                    }
+                }
                 continue
             }
             Set-VixClaudeAuthEnv
-            $raw = Get-Content $promptPath -Raw -Encoding UTF8 | claude -p `
+            $promptForClaude = Get-Content $promptPath -Raw -Encoding UTF8
+            if ($PromptAppend) { $promptForClaude += "`r`n`r`n" + $PromptAppend }
+            $raw = $promptForClaude | claude -p `
                 --model $Model `
                 --permission-mode bypassPermissions `
                 --output-format json `
@@ -603,13 +725,38 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                         # escaladas forcadas inuteis (03:18:16, 03:18:59, 03:20:11) e zero lote entregue.
                         # Sai do laco com UMA chamada e entrega o lote ao aborto/deferimento que ja
                         # existe (AuthFailure -> exit 7 -> motivo=limite_sessao_assinatura), sem
-                        # inventar disponibilidade e sem fallback pago (Get-VixAnthropicApiKey devolve
-                        # $null sob claude-subscription; ANTHROPIC_API_PAYG=NAO AUTORIZADO).
-                        $cotaEsgotadaSemFallback = $true
-                        $cotaEsgotadaMotivo = ($acao.Motivo + '; sem chave paga para assumir; sem retry e sem fallback autorizado')
-                        Write-Log ($AlertaAuthTag + $acao.Motivo + ', e sem chave paga para assumir. Cota da assinatura esgotada confirmada: sem retry (a mesma credencial nao muda) e sem fallback pago autorizado. A rotina vai morrer neste lote.')
-                        $retryLog += ('cota:esgotada:sem-fallback:' + $acao.Acao)
-                        break
+                        # inventar disponibilidade e sem fallback pago Anthropic (Get-VixAnthropicApiKey
+                        # devolve $null sob claude-subscription; ANTHROPIC_API_PAYG=NAO AUTORIZADO).
+                        #
+                        # CLAUDEFALLBACK-OR1 (2026-09-22): antes de desistir do lote, tenta o adapter
+                        # OpenRouter - so quando o operador autorizou explicitamente
+                        # (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter) e so para ESTE lote
+                        # (-not $providerOverrideAtivo evita recursao quando ja estamos numa invocacao
+                        # de fallback). Simetrico ao FALLBACK_ANTHROPIC ja existente no ramo openrouter
+                        # (402 de credito -> assinatura), agora no sentido inverso.
+                        $__claudeFrDesviado = $false
+                        if ((Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue) -and -not $providerOverrideAtivo) {
+                            $__claudeFrBoot = Test-VixOpenRouterPronto
+                            if ($__claudeFrBoot.ok) {
+                                Write-Log ('FALLBACK_OPENROUTER: ' + $acao.Motivo + '. Transferindo somente este lote para openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter).')
+                                $__orFrResp = Invoke-ClaudeBatch -promptPath $promptPath -Model $Model -Emissores $Emissores -Tier $Tier -ProviderOverride 'openrouter'
+                                if ($__orFrResp) {
+                                    $__claudeFrDesviado = $true
+                                    if ($__orFrResp.ExitCode -eq 0) { Write-Log 'FALLBACK_OPENROUTER: lote concluido pelo openrouter.' }
+                                    else { Write-Log ('FALLBACK_OPENROUTER: lote falhou no openrouter, exit=' + $__orFrResp.ExitCode) }
+                                    return $__orFrResp
+                                }
+                            } else {
+                                Write-Log ('FALLBACK_OPENROUTER: fallback habilitado mas adapter nao pronto (' + $__claudeFrBoot.motivo + '). Sem desvio possivel, lote segue para aborto.')
+                            }
+                        }
+                        if (-not $__claudeFrDesviado) {
+                            $cotaEsgotadaSemFallback = $true
+                            $cotaEsgotadaMotivo = ($acao.Motivo + '; sem chave paga para assumir; sem retry e sem fallback autorizado')
+                            Write-Log ($AlertaAuthTag + $acao.Motivo + ', e sem chave paga para assumir. Cota da assinatura esgotada confirmada: sem retry (a mesma credencial nao muda) e sem fallback pago autorizado. A rotina vai morrer neste lote.')
+                            $retryLog += ('cota:esgotada:sem-fallback:' + $acao.Acao)
+                            break
+                        }
                     }
                 }
             }
@@ -647,9 +794,13 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
     # classificacao le stdout E stderr; a regex do motor roda so no stdout ja parseado, entao sem
     # esta linha um reset declarado apenas no stderr nao chegaria ao aborto/deferimento.
     if ($cotaEsgotadaSemFallback) { $authFail = $true }
+    if ($fallbackAuthIndisponivel) { $authFail = $true }
     if (-not $usoMensuravel) {
         $tokens = $null
         $parcelas = @{ input = 'NAO_MENSURAVEL'; output = 'NAO_MENSURAVEL'; cache_creation = 'NAO_MENSURAVEL'; cache_read = 'NAO_MENSURAVEL'; trabalho = 'NAO_MENSURAVEL' }
+    }
+    if ($providerOverrideAtivo) {
+        [Environment]::SetEnvironmentVariable('VIXRADAR_LLM_PROVIDER', $providerProcessAnterior, 'Process')
     }
     return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; UsoMensuravel = $usoMensuravel; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote; CotaEsgotada = $cotaEsgotadaSemFallback; CotaEsgotadaMotivo = $cotaEsgotadaMotivo }
 }
@@ -1003,6 +1154,16 @@ function New-BatchPrompt($batch, $batchLabel, $modelName, $skillPath, $janelaIni
     $slim = @($batch | ForEach-Object { Get-SlimEmissor $_ -Tier $Tier -Ultra:$Ultra })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
     $skill = (Get-Content $skillPath -Raw -Encoding UTF8).Trim()
+    $instrucaoCobertura = @"
+COBERTURA (OBRIGATORIO, COBERTURA1): para CADA emissor execute ao menos 1 consulta por familia, nesta ordem: F1-emissor (web_search: nome + contexto/fato conhecido), F2-divida (web_search: divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria na janela). F3FETCH1 - MECANISMO DA F3: fetch-first com fallback obrigatorio. Se o emissor tem link em cvm_documentos[], faca web_fetch no documento mais relevante da janela (fonte primaria, sem custo de busca) - 1 (UM) fetch nesta familia. SEM link no JSON, OU web_fetch que falha / devolve erro / conteudo vazio / PDF binario ilegivel: execute web_search na F3 imediatamente - a familia F3 NUNCA fica sem consulta executada. PROIBIDO substituir o fetch falho por fetch de OUTRA URL (homepage RI, site institucional): o fallback da F3 e SEMPRE web_search. Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato", "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"$FonteProvedor:web_search|web_fetch", "status_http":200, "resultado":"<resposta textual da consulta>", "classificacao":"ok". Item de web_fetch: query = a URL primaria fetchada; provedor = "$FonteProvedor:web_fetch" (prefixo completo, NUNCA so "web_fetch"); status_http 200 somente quando a tool devolveu conteudo (status completed); resultado = o que o documento diz de fato na janela (data_evento sai dele, FONTEDIVERG1). Fetch que falhou NAO vira item de fontes_consultadas e NUNCA sustenta a familia: a F3 fica com a busca de fallback que rodou de verdade (provedor "$FonteProvedor:web_search"). SAIDA JSON SEM QUEBRA DE LINHA DENTRO DO OBJETO: cada linha RESULTADO| e uma unica linha com JSON compacto, sem \n interno (quebra interna faz o parser perder o emissor inteiro). EXCECAO DE CAPABILITY DECLARADA: somente provedor "codex" pode emitir "status_http":null porque o Codex CLI nao publica HTTP; nesse caso mantenha todos os outros campos e classificacao "ok", e a cobertura sera marcada parcial sob o contrato provider_codex_sem_http. Todo outro provedor exige status_http inteiro 2xx. PROIBIDO (PROVAFALSA1): registrar consulta que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou (ex.: "nada na janela apos X"); "nao pesquisada" = familia ausente.
+"@
+    $linhaBuscas = 'Ultima linha: LOTE_RESUMO|buscas=<total de consultas executadas: web_search + web_fetch>'
+    if ($script:VixColetorAtivo) {
+        $instrucaoCobertura = @"
+COLETOR_PS_ATIVO: a busca ja foi executada pelo orquestrador. Use somente "evidencia_coletada", "cvm_documentos" e "contexto_historico" do JSON. PROIBIDO executar WebSearch, WebFetch, ferramenta de busca ou fetch. Em "fontes_consultadas", registre somente fonte que esta nesses campos, copiando familia, data, veiculo e dominio quando houver evidencia coletada. Nao invente URL, query, veiculo, dominio, data, status HTTP ou resultado. "cobertura_familias" informa contagens observadas, nao uma garantia de cobertura. EVIDENCIA_VAZIA significa que as consultas terminaram e nao acharam publicacao na janela, podendo retornar classificacao_geral "NENHUM", sem_eventos true e cobertura_nota correspondente. EVIDENCIA_INDISPONIVEL significa falha de coleta e NUNCA certifica NENHUM ou sem_eventos, devendo registrar cobertura indisponivel. A saida do lote deve registrar buscas=0.
+"@
+        $linhaBuscas = 'Ultima linha: LOTE_RESUMO|buscas=0'
+    }
     return @"
 Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais. Sem chamadas HTTP de submit - o orquestrador grava os resultados.
 JANELA: $janelaInicio a $janelaFim
@@ -1010,12 +1171,12 @@ DELTA - nao recrie fato conhecido (FEEDRETRO1): cada emissor no JSON abaixo tem 
 
 DATA - sai da fonte, nunca da busca (FONTEDIVERG1): data_evento e a data em que o fato ocorreu ou foi publicado pela fonte que voce esta citando, lida no proprio conteudo (data no topo da materia, data no path da URL, protocolo CVM). Encontrar a materia numa busca ancorada no mes corrente NAO a torna do mes corrente: a ancora estreita a busca, nao data o resultado. Sem conseguir confirmar a data de publicacao, trate como fato conhecido (eventos=[]) em vez de carimbar hoje. Medido em 04/09/2026: a Kora Saude voltou com data_evento=2026-09-04 citando materia cujo article:published_time no HTML era 2026-05-05.
 PROIBIDO: markdown, tabelas, backticks, headers, narrativa, texto fora do protocolo abaixo.
-COBERTURA (OBRIGATORIO, COBERTURA1): para CADA emissor execute ao menos 1 consulta por familia, nesta ordem: F1-emissor (web_search: nome + contexto/fato conhecido), F2-divida (web_search: divida|debentures|emissao|captacao|titulos), F3-fato (CVM/RI/fato relevante/fonte primaria na janela). F3FETCH1 - MECANISMO DA F3: fetch-first com fallback obrigatorio. Se o emissor tem link em cvm_documentos[], faca web_fetch no documento mais relevante da janela (fonte primaria, sem custo de busca) - 1 (UM) fetch nesta familia. SEM link no JSON, OU web_fetch que falha / devolve erro / conteudo vazio / PDF binario ilegivel: execute web_search na F3 imediatamente - a familia F3 NUNCA fica sem consulta executada. PROIBIDO substituir o fetch falho por fetch de OUTRA URL (homepage RI, site institucional): o fallback da F3 e SEMPRE web_search. Cada item de fontes_consultadas DEVE ser objeto com TODOS os campos: "familia":"emissor|divida|fato", "query":"...", "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"$FonteProvedor:web_search|web_fetch", "status_http":200, "resultado":"<resposta textual da consulta>", "classificacao":"ok". Item de web_fetch: query = a URL primaria fetchada; provedor = "$FonteProvedor:web_fetch" (prefixo completo, NUNCA so "web_fetch"); status_http 200 somente quando a tool devolveu conteudo (status completed); resultado = o que o documento diz de fato na janela (data_evento sai dele, FONTEDIVERG1). Fetch que falhou NAO vira item de fontes_consultadas e NUNCA sustenta a familia: a F3 fica com a busca de fallback que rodou de verdade (provedor "$FonteProvedor:web_search"). SAIDA JSON SEM QUEBRA DE LINHA DENTRO DO OBJETO: cada linha RESULTADO| e uma unica linha com JSON compacto, sem \n interno (quebra interna faz o parser perder o emissor inteiro). EXCECAO DE CAPABILITY DECLARADA: somente provedor "codex" pode emitir "status_http":null porque o Codex CLI nao publica HTTP; nesse caso mantenha todos os outros campos e classificacao "ok", e a cobertura sera marcada parcial sob o contrato provider_codex_sem_http. Todo outro provedor exige status_http inteiro 2xx. PROIBIDO (PROVAFALSA1): registrar consulta que nao executou, inventar status_http/resultado/timestamp ou omitir campos; busca que falhou (429, rate limit, limite backend, sem retorno, resposta vazia) vai com status_http real e classificacao "degradada", nunca "ok". "Pesquisada sem evento" = resultado ok descrevendo o que achou (ex.: "nada na janela apos X"); "nao pesquisada" = familia ausente.
+$instrucaoCobertura
 SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
 Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
 Cada evento em CRITICO/RELEVANTE EXIGE: memo_acontecimento (2-3 frases, o que aconteceu - alimenta o card do usuario E o contexto_historico da rotina de amanha), memo_importancia_credito (por que importa para o credito), memo_monitorar (o que observar a seguir). Sem esses 3 campos preenchidos o evento fica incompleto - nao omitir.
-Ultima linha: LOTE_RESUMO|buscas=<total de consultas executadas: web_search + web_fetch>
+$linhaBuscas
 Anomalia operacional (opcional, max 1): ANOTA|<frase curta>
 Exemplo literal de saida completa para lote de 2 emissores:
 RESULTADO|Empresa A|{"classificacao_geral":"ECO","sem_eventos":true,"cobertura_nota":"R2 sem sinal de credito na janela.","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"Empresa A divida rating","resultado":"sem eventos"}]}
@@ -1052,7 +1213,11 @@ function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, 
 # passa -ForceClaude, entao provider 'none' (default) ou 'claude-manual' sem flag = bloqueio.
 # Fase B D1 (2026-09-04): provider 'openrouter' libera a execucao pelo adapter HTTP proprio
 # (lib\vixradar-openrouter.ps1), sem claude, sem auth Anthropic, sem escalacao paga.
-$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+$script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
+$__anthropicFallbackProvider = [Environment]::GetEnvironmentVariable('VIXRADAR_OPENROUTER_FALLBACK_PROVIDER', 'Process')
+if (-not $__anthropicFallbackProvider) { $__anthropicFallbackProvider = [Environment]::GetEnvironmentVariable('VIXRADAR_OPENROUTER_FALLBACK_PROVIDER', 'User') }
+if (-not $__anthropicFallbackProvider) { $__anthropicFallbackProvider = [Environment]::GetEnvironmentVariable('VIXRADAR_OPENROUTER_FALLBACK_PROVIDER', 'Machine') }
+$script:VixOpenRouterFallbackAnthropic = ($script:VixUsaOpenRouter -and (('' + $__anthropicFallbackProvider).Trim().ToLowerInvariant() -eq 'claude-subscription'))
 $script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
 $openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
 $codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
@@ -1161,7 +1326,7 @@ if ($script:VixUsaOpenRouter) {
         Write-Log 'ERRO FATAL: OpenRouter configurado mas adapter nao pronto. Nenhuma chamada sera feita.'
         exit 5
     }
-    Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+    Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
     # MODELOLOG1 (05/09): o modelo efetivo sai resolvido AQUI, inclusive quando vem do default
     # do adapter. Antes so existia o rotulo legado de Claude nos lotes, que dizia
     # claude-haiku-4-5 numa execucao que nao tocava em Anthropic nenhuma.
@@ -1175,43 +1340,64 @@ if ($script:VixUsaOpenRouter) {
 } else {
     Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
     $authModoInicial = Get-VixClaudeAuthModo
-    Write-Log ('AUTH_MODO: ' + $authModoInicial)
-    if ($authModoInicial -eq 'nenhum') {
-        Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
-        Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
-        # DRYRUN-CRASH1: tambem aqui a tag decide (02/09 16:00 um dry-run sem credencial virou 9004 real).
-        Write-Log ($AlertaAuthTag + 'sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
-        exit 5
+    $__claudeBloqueado = (($authModoInicial -eq 'nenhum') -or ($authModoInicial -eq 'api' -and (Get-VixLlmProvider) -eq 'claude-subscription'))
+    # CLAUDEFALLBACK-OR1 (2026-09-22): os dois motivos de bloqueio (sem credencial nenhuma,
+    # ou escalada para API paga barrada por politica) tem a mesma causa raiz - assinatura
+    # indisponivel - e os dois desviam para openrouter quando o operador autorizou
+    # (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter). Ausencia da var preserva o
+    # comportamento antigo (aborta, COTAESGOTADA1/ANTHROPIC_API_PAYG continuam intocados).
+    if ($__claudeBloqueado -and (Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        $__claudeFrBoot = Test-VixOpenRouterPronto
+        if ($__claudeFrBoot.ok) {
+            Write-Log ('FALLBACK_OPENROUTER: assinatura indisponivel (modo=' + $authModoInicial + '), desviando ' + $Rotina + ' para openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter).')
+            $script:VixUsaOpenRouter = $true
+        } else {
+            Write-Log ('FALLBACK_OPENROUTER: fallback habilitado mas adapter nao pronto (' + $__claudeFrBoot.motivo + '). Sem desvio possivel.')
+        }
     }
-    if ($authModoInicial -eq 'api' -and (Get-VixLlmProvider) -eq 'claude-subscription') {
-        Write-Log 'ERRO FATAL: assinatura Claude Code Pro indisponivel e fallback para Anthropic API paga bloqueado.'
-        Write-Log ($AlertaAuthTag + 'assinatura Claude Code Pro indisponivel na ' + $Rotina + ' (nenhum custo sera gerado)')
-        exit 5
+    if ($script:VixUsaOpenRouter) {
+        Write-Log 'AUTH_MODO: openrouter (fallback da assinatura esgotada, adapter HTTP D1)'
+        $__orModelo = Get-VixOpenRouterModel $Perfil.tier
+        Write-Log ('MODELO_EFETIVO: ' + $__orModelo + ' (origem: fallback CLAUDEFALLBACK-OR1)')
+    } else {
+        Write-Log ('AUTH_MODO: ' + $authModoInicial)
+        if ($authModoInicial -eq 'nenhum') {
+            Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
+            Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
+            # DRYRUN-CRASH1: tambem aqui a tag decide (02/09 16:00 um dry-run sem credencial virou 9004 real).
+            Write-Log ($AlertaAuthTag + 'sem credencial nenhuma na ' + $Rotina + ' (modo=nenhum)')
+            exit 5
+        }
+        if ($authModoInicial -eq 'api' -and (Get-VixLlmProvider) -eq 'claude-subscription') {
+            Write-Log 'ERRO FATAL: assinatura Claude Code Pro indisponivel e fallback para Anthropic API paga bloqueado.'
+            Write-Log ($AlertaAuthTag + 'assinatura Claude Code Pro indisponivel na ' + $Rotina + ' (nenhum custo sera gerado)')
+            exit 5
+        }
+        if ($authModoInicial -eq 'api') {
+            Write-Log ($AlertaAuthTag +$Rotina + ' comecou direto na chave paga (assinatura indisponivel no boot). Cada lote custa dolar.')
+        }
+        $ambientViolacao = Test-VixClaudeAmbienteLimpo
+        if ($ambientViolacao) {
+            Write-Log "AVISO: ambiente contaminado detectado - $ambientViolacao"
+            $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
+            Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
+            Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
+            Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
+            Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
+            Remove-Item Env:\ANTHROPIC_DEFAULT_OPUS_MODEL -ErrorAction SilentlyContinue
+            [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
+            [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
+            [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
+            [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
+            Write-Log 'RECUPERACAO: env vars Anthropic injetadas para neutralizar contaminacao do settings.json.'
+        }
+        if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+            Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel. Abortado antes do primeiro submit.'
+            exit 7
+        }
+        Invoke-Cleanup
+        if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Write-Log 'ERRO: claude.exe ausente'; exit 2 }
     }
-    if ($authModoInicial -eq 'api') {
-        Write-Log ($AlertaAuthTag +$Rotina + ' comecou direto na chave paga (assinatura indisponivel no boot). Cada lote custa dolar.')
-    }
-    $ambientViolacao = Test-VixClaudeAmbienteLimpo
-    if ($ambientViolacao) {
-        Write-Log "AVISO: ambiente contaminado detectado - $ambientViolacao"
-        $env:ANTHROPIC_BASE_URL = 'https://api.anthropic.com'
-        Remove-Item Env:\ANTHROPIC_MODEL -ErrorAction SilentlyContinue
-        Remove-Item Env:\ANTHROPIC_AUTH_TOKEN -ErrorAction SilentlyContinue
-        Remove-Item Env:\ANTHROPIC_DEFAULT_HAIKU_MODEL -ErrorAction SilentlyContinue
-        Remove-Item Env:\ANTHROPIC_DEFAULT_SONNET_MODEL -ErrorAction SilentlyContinue
-        Remove-Item Env:\ANTHROPIC_DEFAULT_OPUS_MODEL -ErrorAction SilentlyContinue
-        [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', '', 'Process')
-        [Environment]::SetEnvironmentVariable('ANTHROPIC_MODEL', '', 'Process')
-        [Environment]::SetEnvironmentVariable('ANTHROPIC_AUTH_TOKEN', $null, 'User')
-        [Environment]::SetEnvironmentVariable('ANTHROPIC_API_KEY', $null, 'User')
-        Write-Log 'RECUPERACAO: env vars Anthropic injetadas para neutralizar contaminacao do settings.json.'
-    }
-    if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
-        Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel. Abortado antes do primeiro submit.'
-        exit 7
-    }
-    Invoke-Cleanup
-    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Write-Log 'ERRO: claude.exe ausente'; exit 2 }
 }
 
 try {
@@ -1454,6 +1640,10 @@ try {
 
         $batchSeq++
         $label = $job.Name + '-' + $ji
+        if (-not (Test-VixColetorObrigatorioPronto $job.Chunk)) {
+            Write-Log ('ERRO FATAL: coletor indisponivel para lote ' + $label + ' sob provider deepseek. DeepSeek nao pode classificar sem evidencia coletada.')
+            exit 6
+        }
         $modeloPrompt = $job.Model
         $fonteProvedor = 'openrouter'
         if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $job.Tier }

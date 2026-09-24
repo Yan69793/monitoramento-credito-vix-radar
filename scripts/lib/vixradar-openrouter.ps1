@@ -49,6 +49,43 @@ $VixOpenRouterFallbackLightDefault = 'deepseek/deepseek-v4-pro-0813'
 $VixOpenRouterFallbackDefault = $VixOpenRouterFallbackLightDefault
 $VixOpenRouterRetryable = @(408, 429, 500, 502, 503, 504, 522, 524, 529)
 
+# BRIDGE-DEEPSEEK1 (2026-09-23): ponte temporaria, autorizada pelo operador ate 2026-09-26.
+# A API direta da DeepSeek e OpenAI-compativel e serve os mesmos modelos por outro caminho,
+# mas NAO tem server tools de busca. Medido em 23/09 contra api.deepseek.com: um POST com
+# tools[0].type='openrouter:web_search' devolve HTTP 422 com
+# "unknown variant `openrouter:web_search`, expected `function`", enquanto o mesmo endpoint
+# sem tools responde 200. Ou seja, neste endpoint a rotina roda SEM busca web.
+# Endpoint escolhido por VIXRADAR_LLM_ENDPOINT (Process>User>Machine), default 'openrouter'.
+$VixLlmEndpointDeepSeekBase       = 'https://api.deepseek.com/v1/chat/completions'
+$VixLlmEndpointDeepSeekModelFull  = 'deepseek-v4-pro'
+$VixLlmEndpointDeepSeekModelLight = 'deepseek-flash'
+
+function Get-VixLlmEndpoint {
+    $v = Get-VixOpenRouterEnv 'VIXRADAR_LLM_ENDPOINT'
+    if ((('' + $v).Trim().ToLowerInvariant()) -eq 'deepseek') { return 'deepseek' }
+    return 'openrouter'
+}
+
+function Test-VixLlmEndpointTemBusca {
+    # Contrato de capacidade, nao de configuracao: so o OpenRouter hospeda web_search/web_fetch
+    # server-side. Quem chama isto decide se a rotina pode se declarar aterrada.
+    return ((Get-VixLlmEndpoint) -eq 'openrouter')
+}
+
+function Get-VixLlmEndpointBase {
+    if ((Get-VixLlmEndpoint) -eq 'deepseek') { return $VixLlmEndpointDeepSeekBase }
+    return $VixOpenRouterBase
+}
+
+function Test-VixModeloIdDeepSeekValido([string]$Modelo) {
+    # IDs da DeepSeek nao tem barra (deepseek-v4-pro). Test-VixModeloIdValido exige vendor/modelo
+    # porque isso e contrato do OpenRouter, entao a validacao do outro endpoint e separada para
+    # nao afrouxar a do OpenRouter.
+    $m = ('' + $Modelo).Trim()
+    if ($m -eq '') { return $false }
+    return ($m -match '^[a-z0-9][a-z0-9._-]*$')
+}
+
 function Get-VixOpenRouterEnv([string]$Name) {
     $v = [Environment]::GetEnvironmentVariable($Name, 'Process')
     if (-not $v) { $v = [Environment]::GetEnvironmentVariable($Name, 'User') }
@@ -59,6 +96,14 @@ function Get-VixOpenRouterEnv([string]$Name) {
 function Get-VixOpenRouterApiKey {
     # 2026-09-10: chave dedicada VIXRADAR_OPENROUTER_API_KEY tem precedencia; OPENROUTER_API_KEY
     # e o fallback (rotinas fora do VIX Radar seguem usando so a OPENROUTER_API_KEY).
+    # BRIDGE-DEEPSEEK1: no endpoint deepseek a chave e outra, mesma precedencia de escopo. O nome
+    # desta funcao ficou por compatibilidade com os ~10 call sites; o que ela devolve segue o
+    # endpoint resolvido, nunca o nome.
+    if ((Get-VixLlmEndpoint) -eq 'deepseek') {
+        $kd = Get-VixOpenRouterEnv 'VIXRADAR_DEEPSEEK_API_KEY'
+        if (-not $kd) { $kd = Get-VixOpenRouterEnv 'DEEPSEEK_API_KEY' }
+        return $kd
+    }
     $k = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_API_KEY'
     if (-not $k) { $k = Get-VixOpenRouterEnv 'OPENROUTER_API_KEY' }
     return $k
@@ -78,6 +123,17 @@ function Test-VixModeloIdValido([string]$Modelo) {
 
 function Get-VixOpenRouterModel([string]$Tier = '') {
     $tierUpper = ('' + $Tier).Trim().ToUpperInvariant()
+    # BRIDGE-DEEPSEEK1: namespace proprio. As vars VIXRADAR_OPENROUTER_MODEL_* ficam FORA deste
+    # ramo de proposito: hoje VIXRADAR_OPENROUTER_MODEL_FULL vale 'deepseek/deepseek-v4-pro-0813',
+    # que e slug de OpenRouter e a DeepSeek rejeitaria com 422.
+    if ((Get-VixLlmEndpoint) -eq 'deepseek') {
+        $dv = if ($tierUpper -eq 'FULL') { 'VIXRADAR_DEEPSEEK_MODEL_FULL' } else { 'VIXRADAR_DEEPSEEK_MODEL_LIGHT' }
+        $dm = Get-VixOpenRouterEnv $dv
+        if (-not $dm) { $dm = Get-VixOpenRouterEnv 'VIXRADAR_DEEPSEEK_MODEL' }
+        if ($dm -and (Test-VixModeloIdDeepSeekValido $dm)) { return ('' + $dm).Trim() }
+        if ($tierUpper -eq 'FULL') { return $VixLlmEndpointDeepSeekModelFull }
+        return $VixLlmEndpointDeepSeekModelLight
+    }
     $envName = if ($tierUpper -eq 'LIGHT') { 'VIXRADAR_OPENROUTER_MODEL_LIGHT' } elseif ($tierUpper -eq 'FULL') { 'VIXRADAR_OPENROUTER_MODEL_FULL' } else { '' }
     $m = if ($envName) { Get-VixOpenRouterEnv $envName } else { $null }
     if (-not $m) { $m = Get-VixOpenRouterEnv 'VIXRADAR_OPENROUTER_MODEL' }
@@ -94,6 +150,14 @@ function Get-VixOpenRouterModel([string]$Tier = '') {
 # igual que en la primaria (mismo contrato).
 function Get-VixOpenRouterFallbackModel([string]$Tier = '') {
     $tierUpper = ('' + $Tier).Trim().ToUpperInvariant()
+    # BRIDGE-DEEPSEEK1: no endpoint deepseek a segunda malha e o OUTRO modelo da mesma conta.
+    # O sentido economico do fallback do OpenRouter (desviar de um 402 por saldo) nao existe aqui,
+    # mas a resiliencia a falha transiente sim, entao o par continua montado.
+    if ((Get-VixLlmEndpoint) -eq 'deepseek') {
+        $m = if ($tierUpper -eq 'FULL') { $VixLlmEndpointDeepSeekModelLight } else { $VixLlmEndpointDeepSeekModelFull }
+        if ($m -eq (Get-VixOpenRouterModel $Tier)) { return $null }
+        return $m
+    }
     # Precedencia: override do TIER, depois override global legado, depois o default do tier.
     $m = $null
     if ($tierUpper -eq 'LIGHT' -or $tierUpper -eq 'FULL') { $m = Get-VixOpenRouterEnv ('VIXRADAR_OPENROUTER_FALLBACK_MODEL_' + $tierUpper) }
@@ -274,13 +338,23 @@ function ConvertTo-VixOpenRouterJsonLimitado($Obj, [int]$Depth = 12, [double]$Ti
     }
 }
 
+function Get-VixLlmEndpointDescricao {
+    # Rotulo de proveniencia para log. Existe para a rotina nao carimbar 'openrouter' numa
+    # execucao que falou com a DeepSeek, que era o defeito de proveniencia que o MODELOLOG1
+    # (05/09) corrigiu do lado do modelo.
+    if ((Get-VixLlmEndpoint) -eq 'deepseek') { return 'deepseek (API direta, sem server tools de busca)' }
+    return 'openrouter (server tools web_search/web_fetch)'
+}
+
 function Test-VixOpenRouterPronto {
     # Sem segredo no retorno: so diz se a chave existe e o modelo resolveu.
+    $endpoint = Get-VixLlmEndpoint
     $key = Get-VixOpenRouterApiKey
     $model = Get-VixOpenRouterModel
-    if (-not $key) { return [pscustomobject]@{ ok = $false; motivo = 'OPENROUTER_API_KEY ausente (processo/User/Machine). Rotina nao sai do bloqueio.' } }
-    if (-not $model) { return [pscustomobject]@{ ok = $false; motivo = 'modelo OpenRouter vazio (VIXRADAR_OPENROUTER_MODEL).' } }
-    return [pscustomobject]@{ ok = $true; motivo = 'pronto' }
+    $nomeChave = if ($endpoint -eq 'deepseek') { 'DEEPSEEK_API_KEY' } else { 'OPENROUTER_API_KEY' }
+    if (-not $key) { return [pscustomobject]@{ ok = $false; motivo = ($nomeChave + ' ausente (processo/User/Machine). Rotina nao sai do bloqueio.'); endpoint = $endpoint } }
+    if (-not $model) { return [pscustomobject]@{ ok = $false; motivo = ('modelo vazio para o endpoint ' + $endpoint + '.'); endpoint = $endpoint } }
+    return [pscustomobject]@{ ok = $true; motivo = 'pronto'; endpoint = $endpoint; tem_busca = (Test-VixLlmEndpointTemBusca) }
 }
 
 function Test-VixOpenRouterStatusRetryable([int]$Status) {
@@ -334,6 +408,9 @@ function ConvertTo-VixOpenRouterEnvelope($Resp) {
 # Headers HTTP constantes do adapter. Isolados numa funcao testavel offline (nada de rede) e
 # para a chave nunca vazar do Authorization para um dictionary/retorno testavel.
 function Get-VixOpenRouterHttpHeaders {
+    # BRIDGE-DEEPSEEK1: os tres cabecalhos sao contrato do OpenRouter (atribuicao/ranking).
+    # No endpoint deepseek nao vao, para nao mandar campo de outro provedor.
+    if ((Get-VixLlmEndpoint) -eq 'deepseek') { return [ordered]@{} }
     return [ordered]@{
         'X-OpenRouter-Metadata' = 'enabled'
         'HTTP-Referer'          = 'https://vixradar.com'
@@ -362,7 +439,7 @@ function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
             try { [void]$client.DefaultRequestHeaders.Add([string]$h.Key, [string]$h.Value) } catch { }
         }
         $content = New-Object System.Net.Http.StringContent($JsonBody, [System.Text.Encoding]::UTF8, 'application/json')
-        $resp = $client.PostAsync($VixOpenRouterBase, $content).GetAwaiter().GetResult()
+        $resp = $client.PostAsync((Get-VixLlmEndpointBase), $content).GetAwaiter().GetResult()
         $res.Status = [int]$resp.StatusCode
         # Retry-After (429/503): OpenRouter lo envia en segundos o como HTTP-date. Se captura
         # aqui y la malha de retry lo respeta acotado (Get-VixOpenRouterRetryAfterSec).
@@ -462,10 +539,25 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     $maxResultsBusca = 5
     $maxTotalResults = Get-VixOpenRouterMaxTotalResults $Emissores $maxResultsBusca
     $script:VixOpenRouterUltimoMaxTotalResults = $maxTotalResults
-    $tools = @(
-        [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'parallel'; mode = 'turbo'; max_results = $maxResultsBusca; max_total_results = $maxTotalResults } },
-        [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 4000 } }
-    )
+    # BRIDGE-DEEPSEEK1 (2026-09-23): as server tools sao contrato do OpenRouter. No endpoint
+    # deepseek o array sai VAZIO, porque mandar 'openrouter:web_search' la devolve 422. O efeito e
+    # a rotina rodar sem busca, e isso NAO pode ficar implicito: o flag abaixo vira log em cada
+    # lote e no resumo, para uma execucao sem aterramento ser visivel em vez de silenciosa.
+    $script:VixLlmUltimoTemBusca = Test-VixLlmEndpointTemBusca
+    $script:VixLlmEndpointEhOpenRouter = ((Get-VixLlmEndpoint) -eq 'openrouter')
+    $tools = @()
+    if ($script:VixLlmUltimoTemBusca) {
+        $tools = @(
+            [ordered]@{ type = 'openrouter:web_search'; parameters = [ordered]@{ engine = 'parallel'; mode = 'turbo'; max_results = $maxResultsBusca; max_total_results = $maxTotalResults } },
+            [ordered]@{ type = 'openrouter:web_fetch'; parameters = [ordered]@{ engine = 'openrouter'; max_content_tokens = 4000 } }
+        )
+    } else {
+        # Write-Log existe no escopo do driver que dot-source esta lib; numa carga isolada
+        # (testes) nao existe. Chamada guardada para a lib seguir carregavel sozinha.
+        if (Get-Command Write-Log -ErrorAction SilentlyContinue) {
+            Write-Log ('BRIDGE_SEM_BUSCA: endpoint ' + (Get-VixLlmEndpoint) + ' nao tem server tools de busca. Este lote roda sem aterramento web.')
+        }
+    }
     $modeloPrincipal = Get-VixOpenRouterModel $Tier
     $modeloFallback  = Get-VixOpenRouterFallbackModel $Tier
     $maxTokens = Get-VixOpenRouterMaxTokens $Tier
@@ -525,6 +617,9 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 model = $item.M
                 messages = @([ordered]@{ role = 'user'; content = $prompt })
                 max_tokens = $maxTokensAtual
+                stream = $false
+            }
+            if ($script:VixLlmEndpointEhOpenRouter) {
                 # REASONING-OFF1 (2026-09-18, t_56b5670f): o catalogo declara
                 # deepseek-v4-flash-0731 com default_enabled=true e default_effort=high
                 # (GET /api/v1/models medido em 18/09): sem este campo o modelo pensa em
@@ -533,9 +628,8 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 # effort none desliga o thinking onde suportado; modelos sem reasoning
                 # ignoram o campo (mandatory=false). Lote de volume (LIGHT/FULL) nao
                 # precisa de raciocinio profundo: o prompt e protocolo textual fechado.
-                reasoning = [ordered]@{ effort = 'none' }
-                tools = $tools
-                stream = $false
+                $bodyObj['reasoning'] = [ordered]@{ effort = 'none' }
+                $bodyObj['tools'] = $tools
                 # Ruteo (spec D1, revisado OR429-FIX 2026-09-09): allow_fallbacks=true reativa o
                 # FAILOVER NATIVO do OpenRouter entre providers do MESMO modelo (o slug fixo
                 # deepseek/deepseek-v4-flash-0731 tem varios providers; 429 de um upstream e
@@ -543,7 +637,12 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 # permanece: so roteia para provider que aceite os parametros/tools deste payload.
                 # Sem provider.only/order/ignore. Retry bounded 429/transporte (com Retry-After)
                 # continua AQUI como camada unica apos o failover nativo.
-                provider = [ordered]@{ require_parameters = $true; allow_fallbacks = $true }
+                $bodyObj['provider'] = [ordered]@{ require_parameters = $true; allow_fallbacks = $true }
+            } else {
+                # BRIDGE-DEEPSEEK1: a API direta rejeita os objetos OpenRouter `reasoning` e
+                # `provider`, alem de nao aceitar server tools. O campo plano e compativel com o
+                # endpoint e mantem o thinking desligado sem vazar o contrato do agregador.
+                $bodyObj['reasoning_effort'] = 'none'
             }
             # JSONCICLO1, guarda de 2 estagios antes de cualquier red:
             #   1) sanitiza: reconstruye el payload solo con [ordered], array, string y primitivo.

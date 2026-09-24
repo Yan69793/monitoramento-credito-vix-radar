@@ -17,6 +17,16 @@
 # monitor nem com os exits 1/2/3/4/5/7/8 das rotinas. Linha canonica de log:
 #   BLOQUEADO_SEM_PROVIDER provider=<v> exit=86 gatilho=<script> motivo=<por que>
 #
+# CLAUDEFALLBACK-OR1 (2026-09-22): com VIXRADAR_LLM_PROVIDER=claude-subscription (o valor
+# ativo), a variavel VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter (escopo User, mesma
+# precedencia Process>User>Machine) habilita desvio simetrico ao fallback OpenRouter->
+# Claude ja existente: quando a assinatura nao responde (preflight sem credencial) ou a
+# cota confirma esgotada no meio de um lote (COTAESGOTADA1), a rotina tenta OpenRouter
+# antes de abortar. So desvia se o adapter estiver pronto (Test-VixOpenRouterPronto);
+# sem isso, cai no fail-closed original sem mudanca de comportamento. Nao troca o
+# ANTHROPIC_API_PAYG=NAO AUTORIZADO: openrouter e provider distinto, ja permitido como
+# caminho gated em CLAUDE.md.
+#
 # Contrato das funcoes:
 #   Get-VixLlmProvider                -> 'none'|'claude-subscription'|'claude-manual'|'deepseek'|'openrouter'|'codex'
 #   Set-VixLlmForceClaude [switch]    -> registra forca manual no escopo do script
@@ -24,6 +34,7 @@
 #   Test-VixLlmProviderPermiteRotina        -> bool; decisao canonica do motor
 #   Test-VixLlmGateViolacao                 -> bool; classifica 9006 no monitor
 #   Get-VixLlmBloqueadoMsg [Gatilho]  -> string canonica (para o Write-Log do chamador)
+#   Get-VixClaudeFallbackOpenRouterHabilitado -> bool; CLAUDEFALLBACK-OR1, le VIXRADAR_CLAUDE_FALLBACK_PROVIDER
 #   Stop-VixLlmBloqueado [Gatilho]    -> imprime a linha canonica e exit 86 (backstop)
 #
 # PowerShell 5.1, ASCII puro, sem dependencia de rede nem de credencial.
@@ -74,6 +85,10 @@ function Test-VixLlmPermiteClaude {
         $script:VixLlmMotivo = 'provider nao configurado (VIXRADAR_LLM_PROVIDER ausente ou none)'
     } elseif ($provider -eq 'claude-manual') {
         $script:VixLlmMotivo = 'Claude manual exige -ForceClaude explicito do operador (scheduler nunca passa)'
+    } elseif ($provider -eq 'deepseek') {
+        # BRIDGE-DEEPSEEK1: o motivo util aqui e qual das duas condicoes da ponte falhou.
+        $__ponte = Test-VixDeepSeekBridgeValida
+        $script:VixLlmMotivo = if ($__ponte.ok) { 'provider deepseek e caminho de adapter HTTP, nao de claude CLI' } else { $__ponte.motivo }
     } else {
         $script:VixLlmMotivo = ('provider ' + $provider + ' reservado para Fase B, motor ainda nao migrado')
     }
@@ -90,6 +105,23 @@ function Test-VixLlmProviderPermiteRotina {
         [bool]$CodexAdapterHabilitado = $false
     )
     $provider = Get-VixLlmProvider
+    if ($provider -eq 'deepseek') {
+        # BRIDGE-DEEPSEEK1: duas condicoes, e as duas falham fechado. O prazo tem de estar
+        # declarado e nao vencido (senao a ponte vira regime por esquecimento), e o adapter HTTP
+        # tem de estar carregado, que e o mesmo sinal que o openrouter usa porque o endpoint
+        # deepseek mora no mesmo arquivo de adapter.
+        $__ponte = Test-VixDeepSeekBridgeValida
+        if (-not $__ponte.ok) {
+            $script:VixLlmMotivo = $__ponte.motivo
+            return $false
+        }
+        if ($OpenRouterAdapterHabilitado) {
+            $script:VixLlmMotivo = $null
+            return $true
+        }
+        $script:VixLlmMotivo = 'provider deepseek configurado sem o adapter HTTP carregado'
+        return $false
+    }
     if ($provider -eq 'openrouter') {
         if ($OpenRouterAdapterHabilitado) {
             $script:VixLlmMotivo = $null
@@ -126,6 +158,63 @@ function Get-VixLlmBloqueadoMsg {
     $motivo = $script:VixLlmMotivo
     if (-not $motivo) { $motivo = 'forca manual ausente ou provider nao habilitado' }
     return ($VixLlmSentinel + ' provider=' + $provider + ' exit=' + $VixLlmBloqueadoExit + ' gatilho=' + $Gatilho + ' motivo=' + $motivo)
+}
+
+# CLAUDEFALLBACK-OR1 (2026-09-22): decisao pura e simetrica ao inverso ja existente
+# (VIXRADAR_OPENROUTER_FALLBACK_PROVIDER=claude-subscription, que desvia UM lote do
+# openrouter para a assinatura quando o openrouter devolve 402 de credito). Esta funcao
+# cobre o sentido oposto: quando o provider ATIVO e claude-subscription (ou claude-manual)
+# e a propria assinatura fica sem credencial (cota de sessao esgotada, ou nenhuma
+# credencial disponivel no preflight), o operador pode autorizar desviar para o adapter
+# OpenRouter em vez de abortar a rotina. Decisao por env var, mesmo padrao das demais
+# (Process > User > Machine), NUNCA true por omissao - ausencia da var mantem o
+# comportamento fail-closed documentado (COTAESGOTADA1: cota esgotada sem fallback pago
+# autorizado e erro). So o valor literal 'openrouter' habilita; qualquer outra coisa,
+# vazio ou ausente = desabilitado.
+function Get-VixClaudeFallbackOpenRouterHabilitado {
+    $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CLAUDE_FALLBACK_PROVIDER', 'Process')
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CLAUDE_FALLBACK_PROVIDER', 'User') }
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CLAUDE_FALLBACK_PROVIDER', 'Machine') }
+    return ((('' + $v).Trim().ToLowerInvariant()) -eq 'openrouter')
+}
+
+# BRIDGE-DEEPSEEK1 (2026-09-23): ponte temporaria autorizada pelo operador ate 2026-09-26, para
+# as rotinas continuarem rodando enquanto a cota da assinatura Claude esta esgotada e o OpenRouter
+# esta sem saldo. O endpoint deepseek vive no MESMO adapter HTTP do OpenRouter
+# (scripts/lib/vixradar-openrouter.ps1), e por isso o sinal de "adapter pronto" que os chamadores
+# ja passam serve para os dois. Restricao que a ponte NAO resolve: a API direta da DeepSeek nao
+# tem server tools de busca, entao nesse endpoint a evidencia tem de vir do coletor PowerShell
+# (scripts/lib/vixradar-coletor.ps1), senao a rotina roda sem aterramento.
+
+# A ponte exige PRAZO DECLARADO. Sem a variavel, ela nao liga: uma ponte sem data vira regime
+# permanente por esquecimento, que e exatamente o que "ate sabado" quer evitar.
+function Get-VixDeepSeekBridgeAte {
+    $v = [Environment]::GetEnvironmentVariable('VIXRADAR_DEEPSEEK_BRIDGE_ATE', 'Process')
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_DEEPSEEK_BRIDGE_ATE', 'User') }
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_DEEPSEEK_BRIDGE_ATE', 'Machine') }
+    return ('' + $v).Trim()
+}
+
+function Test-VixDeepSeekBridgeValida {
+    # Agora e injetavel para o teste de virada de data nao depender do relogio da maquina.
+    param([datetime]$Agora = (Get-Date))
+    $ate = Get-VixDeepSeekBridgeAte
+    if (-not $ate) { return [pscustomobject]@{ ok = $false; motivo = 'VIXRADAR_DEEPSEEK_BRIDGE_ATE ausente: a ponte deepseek exige prazo declarado' } }
+    $d = [datetime]::MinValue
+    if (-not [datetime]::TryParse($ate, [ref]$d)) { return [pscustomobject]@{ ok = $false; motivo = ('VIXRADAR_DEEPSEEK_BRIDGE_ATE invalido: ' + $ate) } }
+    # Limite no FIM do dia declarado, para "ate sabado" incluir o proprio sabado.
+    $limite = $d.Date.AddDays(1).AddSeconds(-1)
+    if ($Agora -gt $limite) { return [pscustomobject]@{ ok = $false; motivo = ('ponte deepseek expirada em ' + $d.ToString('yyyy-MM-dd') + ': voltar ao provider oficial ou renovar o prazo de proposito') } }
+    return [pscustomobject]@{ ok = $true; motivo = ('ponte deepseek valida ate ' + $d.ToString('yyyy-MM-dd')) }
+}
+
+function Test-VixUsaLlmAdapterHttp {
+    # True quando o provider ativo despacha pelo adapter HTTP proprio em vez do claude CLI.
+    # Quem decide QUAL endpoint e o adapter, por VIXRADAR_LLM_ENDPOINT. Os drivers usam isto no
+    # lugar de comparar com 'openrouter' literal, senao a ponte deepseek cairia no ramo Claude e
+    # morreria na guarda de ambiente.
+    $p = Get-VixLlmProvider
+    return (($p -eq 'openrouter') -or ($p -eq 'deepseek'))
 }
 
 function Stop-VixLlmBloqueado {

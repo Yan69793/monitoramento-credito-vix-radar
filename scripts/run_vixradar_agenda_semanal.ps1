@@ -279,7 +279,7 @@ Se nao achar nenhuma data para nenhum trimestre pedido de uma empresa, devolva
 
 # CLAUDE-FREE-MIGRATION (2026-09-04): a agenda pesquisa com claude (WebSearch + JSON por
 # lote). Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
-$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+$script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
 if ($script:VixUsaOpenRouter) {
     if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
         Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
@@ -348,26 +348,44 @@ try {
             Write-Log 'ERRO FATAL: OpenRouter configurado mas adapter nao pronto. Nenhuma chamada sera feita.'
             exit 5
         }
-        Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+        Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
     } else {
         # Ambiente + WebSearch so testados DEPOIS do preflight barato, mesma ordem da async.
         Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-        if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
-            Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
-            exit 5
+        $__claudeAuthModo = Get-VixClaudeAuthModo
+        # CLAUDEFALLBACK-OR1 (2026-09-22): mesmo desvio dos outros drivers - so ativa com
+        # VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter explicito. Quando ativa, os testes
+        # de ambiente/probe WebSearch abaixo sao exclusivos do caminho Claude e ficam
+        # pulados - o boot do openrouter (Test-VixOpenRouterPronto) e o equivalente dele.
+        if ($__claudeAuthModo -eq 'nenhum' -and (Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+            $__claudeFrBoot = Test-VixOpenRouterPronto
+            if ($__claudeFrBoot.ok) {
+                Write-Log 'FALLBACK_OPENROUTER: assinatura sem credencial, desviando agenda-semanal para openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter).'
+                $script:VixUsaOpenRouter = $true
+            } else {
+                Write-Log ('FALLBACK_OPENROUTER: fallback habilitado mas adapter nao pronto (' + $__claudeFrBoot.motivo + '). Sem desvio possivel.')
+            }
         }
-        $ambientViolacao = Test-VixClaudeAmbienteLimpo
-        if ($ambientViolacao) {
-            Write-Log ('ERRO FATAL: ambiente contaminado detectado - ' + $ambientViolacao)
-            exit 6
-        }
-        if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
-            Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
-            exit 7
-        }
-        if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
-            Write-Log 'ERRO: claude.exe ausente'
-            exit 2
+        if ($script:VixUsaOpenRouter) {
+            Write-Log 'AUTH_MODO: openrouter (fallback da assinatura esgotada, adapter HTTP D1)'
+        } else {
+            if ($__claudeAuthModo -eq 'nenhum') {
+                Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
+                exit 5
+            }
+            $ambientViolacao = Test-VixClaudeAmbienteLimpo
+            if ($ambientViolacao) {
+                Write-Log ('ERRO FATAL: ambiente contaminado detectado - ' + $ambientViolacao)
+                exit 6
+            }
+            if (-not (Test-VixWebSearchProbe $McpConfigFile)) {
+                Write-Log 'ERRO FATAL: probe WebSearch falhou - ferramenta de busca indisponivel.'
+                exit 7
+            }
+            if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+                Write-Log 'ERRO: claude.exe ausente'
+                exit 2
+            }
         }
     }
 

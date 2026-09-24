@@ -380,7 +380,25 @@ if (Test-Path (Join-Path $ScriptsDir 'lib\vixradar-openrouter.ps1')) {
 } else {
     $script:VixLibOpenRouterOk = $false
 }
-$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+
+# COLETOR-PS1 (2026-09-23): a coleta de evidencia sai do modelo e vira fetch proprio. O porque
+# esta no cabecalho de scripts/lib/vixradar-coletor.ps1. Desligavel por VIXRADAR_COLETOR_PS=0,
+# que existe para medir token com e sem coletor na MESMA rotina, sem editar codigo.
+$script:VixColetorAtivo = $false
+$script:VixColetorCache = @{}
+$__coletorLib = Join-Path $ScriptsDir 'lib\vixradar-coletor.ps1'
+if (Test-Path $__coletorLib) {
+    . $__coletorLib
+    $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'Process')
+    if (-not $__flagColetor) { $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'User') }
+    if (-not $__flagColetor) { $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'Machine') }
+    if (('' + $__flagColetor).Trim() -ne '0') { $script:VixColetorAtivo = $true }
+    Write-Log ('COLETOR_PS: ativo=' + $script:VixColetorAtivo + ' (VIXRADAR_COLETOR_PS; 0 desliga)')
+} else {
+    Write-Log 'COLETOR_PS: lib ausente - a evidencia continua sendo buscada pelo modelo.'
+}
+
+$script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
 if ($script:VixUsaOpenRouter) {
     if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
         Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
@@ -415,7 +433,7 @@ if ($script:VixUsaOpenRouter) {
         Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=openrouter_nao_pronto'
         exit 5
     }
-    Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+    Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
 } else {
     if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
         Write-Log 'ERRO: claude.exe ausente.'
@@ -428,12 +446,33 @@ if ($script:VixUsaOpenRouter) {
     . (Join-Path $ScriptsDir 'lib\vixradar-ambient-check.ps1')
 
     Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-    if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
+    $__claudeAuthModo = Get-VixClaudeAuthModo
+    # CLAUDEFALLBACK-OR1 (2026-09-22): mesmo desvio dos outros drivers - so ativa com
+    # VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter explicito. Ver vixradar-llm-provider.ps1.
+    if ($__claudeAuthModo -eq 'nenhum' -and (Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        $__claudeFrBoot = Test-VixOpenRouterPronto
+        if ($__claudeFrBoot.ok) {
+            Write-Log 'FALLBACK_OPENROUTER: assinatura sem credencial, desviando a sentinela para openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter).'
+            $script:VixUsaOpenRouter = $true
+        } else {
+            Write-Log ('FALLBACK_OPENROUTER: fallback habilitado mas adapter nao pronto (' + $__claudeFrBoot.motivo + '). Sem desvio possivel.')
+        }
+    }
+    if ($script:VixUsaOpenRouter) {
+        Write-Log 'AUTH_MODO: openrouter (fallback da assinatura esgotada, adapter HTTP D1)'
+    } elseif ($__claudeAuthModo -eq 'nenhum') {
         Write-Log 'ERRO: nenhuma credencial Claude disponivel. Abortando antes do primeiro lote.'
         Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
         Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=sem_credencial'
         exit 5
     }
+    # CLAUDEFALLBACK-OR1-FIX1 (2026-09-23): o desvio para openrouter acontece DENTRO deste ramo,
+    # entao o if/elseif acima decidiu so o LOG. Sem esta guarda a execucao seguia para as
+    # checagens exclusivas do caminho Claude (ambiente, probe WebSearch) e morria em exit 7 mesmo
+    # tendo desviado. Medido em producao em 22/09 17:57, literal: a linha 'AUTH_MODO: openrouter'
+    # seguida de 'ERRO: probe WebSearch falhou'. Mesmo padrao ja correto em
+    # run_vixradar_varredura.ps1:1291 e run_vixradar_agenda_semanal.ps1:369.
+    if (-not $script:VixUsaOpenRouter) {
     $ambientViolacao = Test-VixClaudeAmbienteLimpo
     if ($ambientViolacao) {
         Write-Log ('AVISO: ambiente contaminado - ' + $ambientViolacao + '. Sobrescrevendo com valores oficiais Anthropic.')
@@ -449,6 +488,20 @@ if ($script:VixUsaOpenRouter) {
         Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=websearch_indisponivel'
         exit 7
     }
+    }
+}
+
+function Get-VixColetorParaEmissor([string]$Empresa) {
+    # Cache por emissor dentro da execucao: o mesmo emissor reaparece em retry de lote, e refazer
+    # a coleta seria gastar parede do lote a toa. Nao custa token de qualquer forma, mas custa
+    # tempo, e o lote tem teto de parede.
+    if (-not $script:VixColetorAtivo) { return $null }
+    $k = ('' + $Empresa).Trim().ToLowerInvariant()
+    if ($script:VixColetorCache.ContainsKey($k)) { return $script:VixColetorCache[$k] }
+    $c = $null
+    try { $c = Get-VixColetorEvidencia -Empresa $Empresa } catch { $c = $null }
+    $script:VixColetorCache[$k] = $c
+    return $c
 }
 
 function Get-SlimEmissorSentinela($emp) {
@@ -466,6 +519,23 @@ function Get-SlimEmissorSentinela($emp) {
         if ($ctx.Length -gt 300) { $ctx = $ctx.Substring(0, 300) }
         $o['contexto_historico'] = $ctx
     }
+    # COLETOR-PS1: evidencia factual, coletada por este processo e nao pelo modelo. Quando o
+    # coletor esta ligado, o modelo NAO busca - ver a instrucao no prompt. A F3 do contrato
+    # (CVM/RI/fato) nao vem do RSS, vem dos cvm_documentos que o plano ja entrega, e por isso a
+    # cobertura efetiva e a do coletor somada a F3 quando ha documento no plano.
+    $coleta = Get-VixColetorParaEmissor ('' + $emp.empresa)
+    if ($coleta) {
+        $o['evidencia_coletada'] = Format-VixColetorEvidenciaTexto $coleta
+        $f1 = 0; $f2 = 0
+        try { $f1 = [int]$coleta.por_familia['F1'] } catch { $f1 = 0 }
+        try { $f2 = [int]$coleta.por_familia['F2'] } catch { $f2 = 0 }
+        $o['cobertura_familias'] = [ordered]@{
+            F1 = $f1
+            F2 = $f2
+            F3 = $(if ($docs.Count -gt 0) { $docs.Count } else { 0 })
+            origem = 'coletor PowerShell (Google News RSS) + cvm_documentos do plano'
+        }
+    }
     return $o
 }
 
@@ -473,6 +543,19 @@ function New-BatchPromptSentinela($batch, $batchLabel, $modelName, $skillPath, $
     $slim = @($batch | ForEach-Object { Get-SlimEmissorSentinela $_ })
     $json = $slim | ConvertTo-Json -Depth 8 -Compress
     $skill = (Get-Content $skillPath -Raw -Encoding UTF8).Trim()
+    # COLETOR-PS1: quando o coletor esta ligado, a busca sai do modelo. As duas linhas abaixo sao
+    # contrato da mudanca, nao enfeite. Sem a proibicao explicita o modelo busca por conta propria
+    # e o ganho de token evapora; sem a regra de fontes_consultadas o campo volta a ser
+    # auto-declaracao, que e exatamente a classe PROVAFALSA1 que o contrato de cobertura combate.
+    $blocoColeta = ''
+    $linhaBuscas = 'Ultima linha: LOTE_RESUMO|buscas=<total de buscas executadas>'
+    if ($script:VixColetorAtivo) {
+        $linhaBuscas = 'Ultima linha: LOTE_RESUMO|buscas=0'
+        $blocoColeta = @"
+COLETA: a busca JA FOI FEITA pelo orquestrador e esta no campo "evidencia_coletada" de cada emissor, com familia (F1 emissor, F2 divida/emissao/captacao, F3 CVM/RI/fato), data, veiculo e dominio. PROIBIDO executar busca web propria, PROIBIDO usar ferramenta de busca ou fetch. Classifique SOMENTE com a evidencia fornecida mais o "contexto_historico" e os "cvm_documentos" do proprio JSON.
+FONTES: preencha "fontes_consultadas" com o que voce REALMENTE usou, copiando familia, data e dominio da evidencia. Nao invente query, veiculo nem resultado. Se a evidencia de um emissor vier vazia (EVIDENCIA_VAZIA), a classificacao e NENHUM com "sem_eventos":true e "cobertura_nota" dizendo que nao houve publicacao na janela.
+"@
+    }
     return @"
 Execute lote $batchLabel ($($batch.Count) emissores). Modelo: $modelName. Sequencial. Sem subagentes. Sem arquivos locais. Sem chamadas HTTP de submit - o orquestrador grava os resultados.
 JANELA: $janelaInicio a $janelaFim
@@ -482,9 +565,9 @@ SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
 Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
 Cada evento em CRITICO/RELEVANTE EXIGE: memo_acontecimento (2-3 frases), memo_importancia_credito, memo_monitorar. Sem esses 3 campos o evento fica incompleto - nao omitir.
-Ultima linha: LOTE_RESUMO|buscas=<total de buscas executadas>
+$linhaBuscas
 Anomalia operacional (opcional, max 1): ANOTA|<frase curta>
-
+$blocoColeta
 JSON:
 $json
 

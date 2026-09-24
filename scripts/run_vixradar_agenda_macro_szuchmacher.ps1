@@ -211,7 +211,7 @@ Assert-VixLibFunctions @('Assert-VixLibFunctions', 'Get-VixLlmProvider', 'Test-V
 
 # GATE provedor-agnostico. Nenhum claude e invocado neste caminho: a pesquisa vai pelo
 # adapter OpenRouter. Provider diferente de 'openrouter' para a rotina com exit 86.
-$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+$script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
 $__adapterOk = $script:VixLibOpenRouterOk -and
     ($null -ne (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue)) -and
     ($null -ne (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
@@ -236,7 +236,7 @@ if (-not $__mutex.WaitOne(0)) {
 
 $inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
 Write-Log ('INICIO: atualizar-agenda-macro-szuchmacher | janela=' + $Inicio + '..' + $Fim + ' | provider=openrouter | motor=adapter-http')
-Write-Log 'AUTH_MODO: openrouter (adapter HTTP, sem claude, sem auth Anthropic)'
+Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
 Write-Log 'PROVE_NAO_CLAUDE: nenhuma CLI de agente foi invocada nesta execucao - a pesquisa vai pelo adapter HTTP OpenRouter (gate Test-VixLlmProviderPermiteRotina)'
 
 $exitCode = 0

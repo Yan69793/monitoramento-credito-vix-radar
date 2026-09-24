@@ -152,10 +152,56 @@ if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
 } else {
     $script:VixLibOpenRouterOk = $false
 }
+# COLETOR-PS1 (2026-09-23): evidencia deterministica para o verificador, desligavel para A/B.
+$script:VixColetorAtivo = $false
+$script:VixColetorCache = @{}
+$script:VixColetorFalhas = @{}
+$__coletorLib = Join-Path $PSScriptRoot 'lib\vixradar-coletor.ps1'
+if (Test-Path $__coletorLib) {
+    . $__coletorLib
+    $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'Process')
+    if (-not $__flagColetor) { $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'User') }
+    if (-not $__flagColetor) { $__flagColetor = [Environment]::GetEnvironmentVariable('VIXRADAR_COLETOR_PS', 'Machine') }
+    if (('' + $__flagColetor).Trim() -ne '0') { $script:VixColetorAtivo = $true }
+    Write-Log ('COLETOR_PS: ativo=' + $script:VixColetorAtivo + ' (VIXRADAR_COLETOR_PS; 0 desliga)')
+} else {
+    Write-Log 'COLETOR_PS: lib ausente - o verificador continua buscando pelo modelo.'
+}
+$script:VixColetorObrigatorio = ((Get-VixLlmProvider) -eq 'deepseek')
+if ($script:VixColetorObrigatorio -and -not $script:VixColetorAtivo) {
+    Write-Log 'ERRO FATAL: provider deepseek exige COLETOR_PS ativo. DeepSeek direta nao tem WebSearch/WebFetch; nenhum lote sera chamado.'
+    exit $VixLlmBloqueadoExit
+}
 
 function Get-AnthropicApiKey {
     # Mantida como fachada: ha chamadas antigas por este nome. A regra vive no helper.
     return (Get-VixAnthropicApiKey)
+}
+
+function Get-VixColetorParaEmissor([string]$Empresa) {
+    if (-not $script:VixColetorAtivo) { return $null }
+    $k = ('' + $Empresa).Trim().ToLowerInvariant()
+    if ($script:VixColetorCache.ContainsKey($k)) { return $script:VixColetorCache[$k] }
+    $c = $null
+    try { $c = Get-VixColetorEvidencia -Empresa $Empresa } catch { $c = $null }
+    if ($null -eq $c -or ($null -ne $c.PSObject.Properties['disponivel'] -and -not $c.disponivel)) { $script:VixColetorFalhas[$k] = $true }
+    $script:VixColetorCache[$k] = $c
+    return $c
+}
+
+function Get-VixBlocoColetorVerificacao($Itens) {
+    if (-not $script:VixColetorAtivo) { return '' }
+    $linhas = @()
+    $linhas += 'COLETOR_PS_ATIVO: a evidencia abaixo foi coletada localmente pelo orquestrador para cada evento. PROIBIDO executar WebSearch, WebFetch, ferramenta de busca ou fetch. Use somente a evidencia fornecida e os dados do prompt do Worker.'
+    $linhas += 'FONTES: nao invente URL, titulo, veiculo, dominio, data ou resultado. fontes_validas so pode conter URL ja presente no evento ou no prompt do Worker.'
+    $linhas += 'COLETA_VAZIA: EVIDENCIA_VAZIA significa consulta concluida sem publicacao na janela. EVIDENCIA_INDISPONIVEL significa falha de coleta. Em qualquer um dos dois casos, retorne obrigatoriamente REPROVADO, confianca 0, fontes_validas [], com motivo fiel ao estado. Nao aprove nem corrija sem evidencia.'
+    foreach ($item in @($Itens)) {
+        $coleta = Get-VixColetorParaEmissor ('' + $item.empresa)
+        $linhas += ('EVENTO_COLETOR|id=' + $item.id + '|empresa=' + $item.empresa)
+        $linhas += (Format-VixColetorEvidenciaTexto $coleta)
+        $linhas += 'FIM_EVENTO_COLETOR'
+    }
+    return ($linhas -join "`n")
 }
 
 # Identica a run_vixradar_noturno_claude.ps1 (mesmas flags de economia/isolamento ja validadas em producao)
@@ -346,7 +392,7 @@ function Invoke-WorkerJsonUtf8 {
 # evento. Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
 # Scheduler nunca passa -ForceClaude; provider 'none' (default) ou 'claude-manual' sem flag
 # = BLOQUEADO_SEM_PROVIDER.
-$script:VixUsaOpenRouter = ((Get-VixLlmProvider) -eq 'openrouter')
+$script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
 if ($script:VixUsaOpenRouter) {
     if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
         Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
@@ -419,10 +465,26 @@ if ($script:VixUsaOpenRouter) {
         Write-Log 'ERRO FATAL: OpenRouter configurado mas adapter nao pronto. Nenhuma chamada sera feita.'
         exit 5
     }
-    Write-Log 'AUTH_MODO: openrouter (adapter HTTP D1, sem claude, sem auth Anthropic)'
+    Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
 } else {
     Initialize-VixClaudeAuth -McpConfigFile $McpConfigFile | Out-Null
-    if ((Get-VixClaudeAuthModo) -eq 'nenhum') {
+    $__claudeAuthModo = Get-VixClaudeAuthModo
+    # CLAUDEFALLBACK-OR1 (2026-09-22): assinatura sem credencial (cota de sessao esgotada
+    # ou nenhum token disponivel) nao aborta mais direto quando o operador autorizou o
+    # desvio (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter). Ausencia da var = comportamento
+    # antigo intocado (aborta e alerta). Decisao pura em Get-VixClaudeFallbackOpenRouterHabilitado.
+    if ($__claudeAuthModo -eq 'nenhum' -and (Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+        $__claudeFrBoot = Test-VixOpenRouterPronto
+        if ($__claudeFrBoot.ok) {
+            Write-Log 'FALLBACK_OPENROUTER: assinatura sem credencial, desviando a rotina inteira para openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter).'
+            $script:VixUsaOpenRouter = $true
+        } else {
+            Write-Log ('FALLBACK_OPENROUTER: fallback habilitado mas adapter nao pronto (' + $__claudeFrBoot.motivo + '). Sem desvio possivel.')
+        }
+    }
+    if ($script:VixUsaOpenRouter) {
+        Write-Log 'AUTH_MODO: openrouter (fallback da assinatura esgotada, adapter HTTP D1)'
+    } elseif ($__claudeAuthModo -eq 'nenhum') {
         Write-Log 'ERRO FATAL: nenhuma credencial Claude disponivel (assinatura expirada, token longevo ausente, chave paga invalida ou ausente). Abortando antes do primeiro lote.'
         Write-Log 'ERRO FATAL: rode `claude setup-token` para token longevo ou defina VIXRADAR_ANTHROPIC_API_KEY com chave sk-ant-valida.'
         # DRENOMUDO1 (2026-09-13): este ramo saia calado, ao contrario do ramo irmao de
@@ -438,6 +500,14 @@ if ($script:VixUsaOpenRouter) {
                 else { $null = Send-VixRoutineAlert -Rotina 'verificacao-async' -Motivo ('ALERTA_AUTH: nenhuma credencial Claude na verificacao-async (cota de assinatura estourada ou token ausente) - fila de verificacao nao drenada') -RoutineKey $script:routineKey -Causa 'sem_credencial' -Severidade 'critico' }
                 exit 5
     }
+    # CLAUDEFALLBACK-OR1-FIX1 (2026-09-23): o desvio para openrouter acontece DENTRO deste ramo,
+    # entao o if/elseif acima decidiu so o LOG. Sem esta guarda a execucao seguia para as
+    # checagens exclusivas do caminho Claude (ambiente, probe WebSearch, claude.exe) e morria em
+    # exit 7 mesmo tendo desviado. Medido em producao em 22/09 18:14 e 19:16, literal: a linha
+    # 'AUTH_MODO: openrouter' seguida de 'ERRO FATAL: probe WebSearch falhou'. Mesmo padrao ja
+    # correto em run_vixradar_varredura.ps1:1291 e run_vixradar_agenda_semanal.ps1:369, onde as
+    # guardas ficam no else e sao puladas pelo desvio.
+    if (-not $script:VixUsaOpenRouter) {
     # Alinhado com 2b025b0: a guarda perdeu o parametro -ModeloFixadoNaChamada e a funcao
     # Get-VixModeloEnvInfo, mas as duas chamadas continuaram aqui. Sob $ErrorActionPreference
     # 'Continue' isso nao mataria o script - e pior: parametro inexistente faz o bind falhar,
@@ -460,6 +530,7 @@ if ($script:VixUsaOpenRouter) {
     if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
         Write-Log 'ERRO: claude.exe ausente'
         exit 2
+    }
     }
 }
 
@@ -596,7 +667,14 @@ try {
                 Start-Sleep -Seconds $PauseSec
                 continue
             }
-            $promptTexto = $promptChunkFila.system_prompt + "`n`n" + $promptChunkFila.user_prompt + "`n`nResponda SOMENTE com o array JSON de veredictos, um por evento, na mesma ordem em que os eventos foram listados acima. Nenhum texto antes ou depois do JSON."
+            $blocoColetor = Get-VixBlocoColetorVerificacao $nonCached
+            if ($script:VixColetorObrigatorio -and $script:VixColetorFalhas.Count -gt 0) {
+                Write-Log ('ERRO FATAL: coletor indisponivel para evento(s) do lote ' + $label + ' sob provider deepseek. DeepSeek nao pode verificar sem evidencia coletada.')
+                exit 6
+            }
+            $promptTexto = $promptChunkFila.system_prompt + "`n`n" + $promptChunkFila.user_prompt
+            if ($blocoColetor) { $promptTexto += ("`n`n" + $blocoColetor) }
+            $promptTexto += "`n`nResponda SOMENTE com o array JSON de veredictos, um por evento, na mesma ordem em que os eventos foram listados acima. Nenhum texto antes ou depois do JSON."
             $promptPath = Join-Path $LogDir ('verifasync_' + $label + '_' + $DateTag + '.txt')
             Set-Content $promptPath -Value $promptTexto -Encoding UTF8
 

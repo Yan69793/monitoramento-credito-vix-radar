@@ -20,6 +20,8 @@ function Assert-True([bool]$cond, [string]$name) {
 
 # chave FAKE so para exercitar caminho de codigo; nunca sai em stdout, nunca vai a rede.
 $env:OPENROUTER_API_KEY = 'or-fake-teste-' + $PID
+$script:EndpointAnterior = $env:VIXRADAR_LLM_ENDPOINT
+$env:VIXRADAR_LLM_ENDPOINT = 'openrouter'
 
 $promptTmp = Join-Path $env:TEMP ('or-test-prompt-' + $PID + '.txt')
 Set-Content -Path $promptTmp -Value 'Prompt de teste sem rede.' -Encoding UTF8
@@ -95,6 +97,7 @@ try {
     Assert-True ($script:CapturedBody -match 'openrouter:web_fetch') 'T6 body: tool web_fetch presente'
     Assert-True ($script:CapturedBody -match '"require_parameters":true') 'T6 body: provider.require_parameters=true'
     Assert-True ($script:CapturedBody -match '"allow_fallbacks":true') 'T6 body: provider.allow_fallbacks=true (failover nativo OR entre providers do mesmo modelo)'
+    Assert-True ($script:CapturedBody -match '"reasoning":{"effort":"none"}') 'T6 body: OpenRouter preserva objeto reasoning'
     Assert-True ($script:CapturedBody -match [regex]::Escape('deepseek/deepseek-v4-flash-0731')) 'T6 body: model default'
     $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'full/modelo-validado'
     $r6full = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -Tier 'FULL'
@@ -486,6 +489,8 @@ finally {
     Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
     Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS -ErrorAction SilentlyContinue
     Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS_FULL -ErrorAction SilentlyContinue
+    if ($null -eq $script:EndpointAnterior) { Remove-Item Env:\VIXRADAR_LLM_ENDPOINT -ErrorAction SilentlyContinue }
+    else { $env:VIXRADAR_LLM_ENDPOINT = $script:EndpointAnterior }
     if (Test-Path $promptTmp) { Remove-Item $promptTmp -Force -ErrorAction SilentlyContinue }
 }
 
