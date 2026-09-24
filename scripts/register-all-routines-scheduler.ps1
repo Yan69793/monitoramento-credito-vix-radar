@@ -28,6 +28,7 @@ param(
     [switch]$Remove,
     [switch]$Status,
     [switch]$RunNow,
+    [switch]$DryRun,
     [string]$RunTask
 )
 
@@ -45,6 +46,14 @@ try {
 $Scripts = 'E:\Diretorio\Claude\Monitoramento de Credito\scripts'
 $Fechamento = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\scripts\run_fechamento_claude.ps1'
 $Watchdog = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\scripts\briefing_watchdog.ps1'
+# GUARD-REG1 (2026-09-24): contrato unico de guarda em scripts/lib/vixradar-task-guard.ps1,
+# o mesmo de register-reconciliacao-cvm-task.ps1. Toda task deste repositorio nasce apontada
+# para $Guarda e nao depende mais de apply-preflight-tasks.ps1 -Apply rodar depois.
+# EXCECAO: Szuchmacher-FechamentoDiario/Watchdog apontam para OUTRO repositorio. O guarda recusa
+# alvo fora da arvore varrida (preflight-and-run.ps1), entao essas duas ficam fora do guarda e
+# marcadas com Guarda=$false na tabela; nao ha protecao possivel com este contrato.
+$Guarda = Join-Path $Scripts 'preflight-and-run.ps1'
+. (Join-Path $Scripts 'lib\vixradar-task-guard.ps1')
 
 $Tasks = @(
     @{
@@ -55,6 +64,8 @@ $Tasks = @(
         # (sem -RoutineId, sem parametros - o script nao declara bloco param()).
         Script      = Join-Path $Scripts 'run_vixradar_agenda_semanal.ps1'
         ArgList     = @()
+        Guarda      = $true
+        LogPattern  = 'logs\routines\vixradar-agenda-semanal_{yyyyMMdd}.log'
         # CALVAL-V2 regra 9 (2026-08-14): revalidacao 2x/semana (Dom+Qua).
         DaysOfWeek  = 'Sunday,Wednesday'
         At          = '22:00'
@@ -65,6 +76,8 @@ $Tasks = @(
         Description = 'VIX Radar matinal tiered top 15'
         Script      = Join-Path $Scripts 'run_vixradar_matinal_claude.ps1'
         ArgList     = @()
+        Guarda      = $true
+        LogPattern  = 'logs\routines\vixradar-matinal_{yyyyMMdd}.log'
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '10:00'
         Daily       = $false
@@ -74,6 +87,8 @@ $Tasks = @(
         Description = 'VIX Radar noturno 103/103 orquestrado'
         Script      = Join-Path $Scripts 'run_vixradar_noturno_claude.ps1'
         ArgList     = @()
+        Guarda      = $true
+        LogPattern  = 'logs\routines\vixradar-noturno_{yyyyMMdd}.log'
         DaysOfWeek  = $null
         At          = '18:00'
         Daily       = $true
@@ -83,6 +98,8 @@ $Tasks = @(
         Description = 'VIX Radar dreno fila verificacao (motor nativo)'
         Script      = Join-Path $Scripts 'run_vixradar_verificacao_async.ps1'
         ArgList     = @()
+        Guarda      = $true
+        LogPattern  = 'logs\routines\vixradar-verificacao-async_{yyyyMMdd}.log'
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '10:20'
         Daily       = $false
@@ -92,6 +109,8 @@ $Tasks = @(
         Description = 'Agenda macro szuchmacher.com.br via adapter OpenRouter'
         Script      = Join-Path $Scripts 'run_vixradar_agenda_macro_szuchmacher.ps1'
         ArgList     = @()
+        Guarda      = $true
+        LogPattern  = 'logs\routines\agenda-macro-szuchmacher_{yyyyMMdd}.log'
         DaysOfWeek  = 'Friday'
         At          = '07:07'
         Daily       = $false
@@ -101,6 +120,7 @@ $Tasks = @(
         Description = 'Fechamento mercado Szuchmacher 19h'
         Script      = $Fechamento
         ArgList     = @()
+        Guarda      = $false
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '19:00'
         Daily       = $false
@@ -110,6 +130,7 @@ $Tasks = @(
         Description = 'Watchdog fechamento 19h20 fallback'
         Script      = $Watchdog
         ArgList     = @()
+        Guarda      = $false
         DaysOfWeek  = 'Monday,Tuesday,Wednesday,Thursday,Friday'
         At          = '19:20'
         Daily       = $false
@@ -127,6 +148,41 @@ function Register-OneTask($t) {
     if (-not (Test-Path $t.Script)) {
         throw ('Script ausente: ' + $t.Script)
     }
+    # GUARD-REG1: a Action nasce apontando para o guarda. O argumento e montado com o MESMO
+    # contrato de apply-preflight-tasks.ps1, para os dois concordarem por igualdade exata de
+    # string e nao existir apply posterior obrigatorio.
+    if ($t.Guarda) {
+        # Sem o guarda na arvore o registrador RECUSA (fail-closed): nao existe registro sem guarda.
+        Assert-VixGuardPath -Guarda $Guarda | Out-Null
+        $psArg = Get-VixGuardArgument -Guarda $Guarda -Target $t.Script -Name $t.Name -LogPattern $t.LogPattern -ExtraArgs $t.ArgList
+    } else {
+        # EXCECAO documentada: alvo fora do repositorio varrido. preflight-and-run.ps1 recusa
+        # alvo fora da arvore por construcao, entao estas duas continuam na chamada direta.
+        $psArg = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $t.Script + '"'
+        if ($t.ArgList -and $t.ArgList.Count -gt 0) {
+            $psArg += ' ' + (($t.ArgList | ForEach-Object { '"' + $_ + '"' }) -join ' ')
+        }
+    }
+    $act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $psArg -WorkingDirectory $Scripts
+
+    if ($DryRun) {
+        # Write-Host (informacao) e nao Write-Output: o retorno desta funcao tem de ser SO o
+        # numero de falhas, senao o chamador soma texto e reprova o DryRun por engano.
+        $trgLabel = 'Daily ' + $t.At
+        if (-not $t.Daily) { $trgLabel = 'Weekly ' + $t.DaysOfWeek + ' ' + $t.At }
+        Write-Host '--- DRYRUN: nada foi registrado ---'
+        Write-Host ('task     : ' + $t.Name)
+        Write-Host ('execute  : ' + $act.Execute)
+        Write-Host ('argument : ' + $act.Arguments)
+        Write-Host ('trigger  : ' + $trgLabel)
+        if (-not $t.Guarda) {
+            Write-Host ('guarda   : ISENTO - alvo fora do repositorio varrido (o guarda recusa): ' + $t.Script)
+            return 0
+        }
+        Write-Host 'guarda   : preflight-and-run.ps1'
+        return (Test-VixGuardAction -Nome $t.Name -Argument $psArg)
+    }
+
     # P2-SCHEDGUARD1: avisar se o re-registro acontece depois do horario do trigger do dia
     $agora = Get-Date
     $triggerTime = [datetime]::ParseExact($t.At, 'HH:mm', $null)
@@ -144,12 +200,6 @@ function Register-OneTask($t) {
     }
     Unregister-ScheduledTask -TaskName $t.Name -Confirm:$false -ErrorAction SilentlyContinue
 
-    $psArg = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $t.Script + '"'
-    if ($t.ArgList -and $t.ArgList.Count -gt 0) {
-        $psArg += ' ' + (($t.ArgList | ForEach-Object { '"' + $_ + '"' }) -join ' ')
-    }
-    $act = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $psArg -WorkingDirectory $Scripts
-
     if ($t.Daily) {
         $trg = New-ScheduledTaskTrigger -Daily -At $t.At
     } else {
@@ -162,6 +212,16 @@ function Register-OneTask($t) {
     $desc = if ($t.Description) { $t.Description } else { $t.Name }
     Register-ScheduledTask -TaskName $t.Name -Action $act -Trigger $trg `
         -Settings (New-TaskSettings) -Principal $principal -Description $desc -Force | Out-Null
+
+    # Leitura de volta: registro que nao e conferido nao conta como registrado. Vale so para as
+    # tasks guardadas; as isentas (fora do repo) nao tem string de guarda com que comparar.
+    if ($t.Guarda) {
+        $lida = Get-ScheduledTask -TaskName $t.Name
+        $argLida = [string](@($lida.Actions)[0]).Arguments
+        if ($argLida -ne $psArg) {
+            throw ('leitura de volta diferente do esperado para ' + $t.Name + '. esperado: ' + $psArg + ' | lido: ' + $argLida)
+        }
+    }
 
     # CLAUDE-FREE-MIGRATION (2026-09-04, Fase A): nenhuma task registrada aqui carrega mais
     # Disabled = $true (Matinal/Noturno/Verificacao-Async sao o motor nativo Enabled, com o
@@ -202,6 +262,23 @@ if ($Remove) {
     }
     Unregister-ScheduledTask -TaskName 'VIXRadar-Matinal-Retry' -Confirm:$false -ErrorAction SilentlyContinue
     return
+}
+
+if ($DryRun) {
+    Write-Output '=== DRYRUN: nenhuma task foi registrada, removida ou disparada ==='
+    $falhasDry = 0
+    foreach ($t in $Tasks) {
+        try {
+            $falhasDry += [int](Register-OneTask $t)
+        } catch {
+            $falhasDry++
+            Write-Output ('FALHA ' + $t.Name + ': ' + $_.Exception.Message)
+        }
+    }
+    Write-Output ''
+    if ($falhasDry -gt 0) { Write-Output ('DRYRUN REPROVADO: ' + $falhasDry + ' falha(s)'); exit 1 }
+    Write-Output ('DRYRUN OK: ' + $Tasks.Count + ' task(s) conferidas, nenhuma escrita no Task Scheduler')
+    exit 0
 }
 
 Write-Host '=== Registrando rotinas automaticas ===' -ForegroundColor Cyan

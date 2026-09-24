@@ -11,9 +11,15 @@
 # janela para ~15 min em horario comercial (task Seg-Sex 08:00-20:00).
 #
 # Registrar:  powershell.exe -NoProfile -File scripts\watch-vixradar-health.ps1 -Register
+# DryRun:     powershell.exe -NoProfile -File scripts\watch-vixradar-health.ps1 -DryRun
+#             (monta e compara a Action final; nao registra, nao altera, nao envia nada)
 # Testar:     powershell.exe -NoProfile -File scripts\watch-vixradar-health.ps1
 # Task:       VIXRadar-Health-Watch, Seg-Sex 08:00-20:00 a cada 15 min.
 # Saida:      logs\watch-health\watch_YYYYMMDD.log
+#
+# GUARD-REG1 (2026-09-24): o -Register nasce apontado para scripts\preflight-and-run.ps1, com o
+# mesmo contrato de guarda de register-reconciliacao-cvm-task.ps1 e a montagem na lib
+# scripts/lib/vixradar-task-guard.ps1. A task nao depende mais de apply-preflight-tasks.ps1.
 #
 # Regras PS 5.1: conteudo ASCII apenas (sem BOM), ErrorActionPreference
 # Continue, exit real no final (contrato com o Task Scheduler). Exit 0 sempre:
@@ -22,6 +28,7 @@
 
 param(
     [switch]$Register,
+    [switch]$DryRun,
     [string]$VersaoEsperada = 'v4.9.193',
     [string]$WorkerUrl = 'https://api.vixradar.com/',
     [string]$To = 'szuchmacheryan@gmail.com',
@@ -68,17 +75,55 @@ function Write-WatchLog([string]$Msg) {
     Add-Content -Path (Join-Path $LogDir ('watch_' + (Get-Date -Format 'yyyyMMdd') + '.log')) -Value $line -Encoding UTF8
 }
 
-if ($Register) {
+if ($Register -or $DryRun) {
     $taskName = 'VIXRadar-Health-Watch'
     $scriptPath = $PSCommandPath
-    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument ('-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + $scriptPath + '"')
+    $guarda = Join-Path $Root 'scripts\preflight-and-run.ps1'
+    $logPattern = 'logs\watch-health\watch_{yyyyMMdd}.log'
+    # GUARD-REG1: contrato unico em scripts/lib/vixradar-task-guard.ps1. Sem o guarda na arvore o
+    # registrador RECUSA (fail-closed): nao existe registro sem guarda.
+    . (Join-Path $Root 'scripts\lib\vixradar-task-guard.ps1')
+    try {
+        Assert-VixGuardPath -Guarda $guarda | Out-Null
+    } catch {
+        Write-Output ('ERRO: ' + $_.Exception.Message)
+        exit 1
+    }
+    # Formato identico ao Get-ArgumentoGuarda de scripts/apply-preflight-tasks.ps1: o apply compara
+    # por igualdade exata de string, entao este registrador nao deixa correcao pendente para depois.
+    $argument = Get-VixGuardArgument -Guarda $guarda -Target $scriptPath -Name $taskName -LogPattern $logPattern
+    $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $argument
     $trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday,Tuesday,Wednesday,Thursday,Friday -At 08:00
     $trigger.Repetition = (New-ScheduledTaskTrigger -Once -At 08:00 -RepetitionInterval (New-TimeSpan -Minutes 15) -RepetitionDuration (New-TimeSpan -Hours 12)).Repetition
     $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -LogonType Interactive -RunLevel Limited
     $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 5)
+
+    if ($DryRun) {
+        Write-Output '--- DRYRUN: nada foi registrado ---'
+        Write-Output ('task     : ' + $taskName)
+        Write-Output ('execute  : ' + $action.Execute)
+        Write-Output ('argument : ' + $action.Arguments)
+        Write-Output ('trigger  : ' + $trigger.CimClass.CimClassName + ' StartBoundary=' + $trigger.StartBoundary + ' repete ' + $trigger.Repetition.Interval + ' por ' + $trigger.Repetition.Duration)
+        Write-Output ('limit    : ' + $settings.ExecutionTimeLimit)
+        Write-Output ('principal: ' + $principal.UserId + ' / ' + $principal.LogonType + ' / ' + $principal.RunLevel)
+        $falhas = Test-VixGuardAction -Nome $taskName -Argument $argument
+        if ($falhas -gt 0) { Write-Output ('DRYRUN REPROVADO: ' + $falhas + ' falha(s)'); exit 1 }
+        Write-Output 'DRYRUN OK'
+        exit 0
+    }
+
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+
+    # Leitura de volta: registro que nao e conferido nao conta como registrado.
+    $lida = Get-ScheduledTask -TaskName $taskName
+    $argLida = [string](@($lida.Actions)[0]).Arguments
+    if ($argLida -ne $argument) {
+        Write-Output ('ERRO: leitura de volta diferente do esperado. esperado: ' + $argument + ' | lido: ' + $argLida)
+        exit 1
+    }
+
     Write-WatchLog ('REGISTRADO: ' + $taskName + ' Seg-Sex 08:00-20:00 a cada 15 min, esperado v' + $VersaoEsperada.TrimStart('v'))
-    Write-Output ('Task ' + $taskName + ' registrada.')
+    Write-Output ('Task ' + $taskName + ' registrada e conferida no guarda.')
     exit 0
 }
 
