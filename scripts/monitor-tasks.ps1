@@ -23,6 +23,10 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # MESMA funcao que a producao usa.
 . (Join-Path $ScriptDir 'lib\vixradar-watchdog.ps1')
 . (Join-Path $ScriptDir 'lib\vixradar-custo.ps1')
+# KFPJANELA1 (2026-09-24): decisao da excecao de falso-positivo conhecido. Mora na lib para
+# o test-monitor-kfp-janela.ps1 provar a MESMA funcao que a producao usa, sem executar o
+# monitor inteiro. Regra ancorada em data fixa, nao no LastRunTime vivo.
+. (Join-Path $ScriptDir 'lib\vixradar-monitor-kfp.ps1')
 # CLAUDE-FREE-MIGRATION (2026-09-04): fonte unica de provider de LLM das rotinas.
 # Quando bloqueado, as rotinas LLM do VIX saem exit 86 com a linha canonica
 # BLOQUEADO_SEM_PROVIDER ANTES de qualquer auth/claude. Este monitor trata exit 86 como
@@ -107,34 +111,42 @@ $PrefixesExcluir = @($EscopoCfg.excluir)
 # Prefixos de projetos pessoais/externos (reportar como warning, nao erro)
 $ExternalPrefixes = @('Monitor-Panerai-', 'PME-Codex-')
 
-# Tasks conhecidas como falso-positivo documentado (comentario no codigo explicando)
+# Tasks conhecidas como falso-positivo documentado (comentario no codigo explicando).
+# KFPJANELA1 (2026-09-24): frozenLastRun e a DATA DO INCIDENTE documentado, e a excecao
+# so vale para um LastRunTime que NAO seja posterior a ela. Resultado de execucao mais nova
+# e falha nova e cai na classificacao normal (vira erro), nunca em mascaramento. Sem
+# execucao nova, a janela expira em graceDays de qualquer forma. A decisao mora em
+# scripts/lib/vixradar-monitor-kfp.ps1 e e provada por scripts/test-monitor-kfp-janela.ps1.
 $KnownFalsePositives = @{
     'VIXRadar-Matinal' = @{
         code = 6
-        reason = 'exit 6 falso documentado no codigo (2026-07-13). Verificar se persiste > 7d.'
+        reason = 'exit 6 falso documentado no codigo em 2026-07-13.'
+        frozenLastRun = '2026-07-13'
         graceDays = 7
     }
-    # Corrigido e validado 2026-08-07, mas a task e semanal (segunda 08h) e o
-    # LastTaskResult=1 de 03/08 fica congelado ate 10/08. Causa era
-    # ConvertFrom-Json -AsHashTable, parametro que so existe no PS 7, contra uma
-    # task que roda powershell.exe 5.1. Fix ja no script (linha ~301).
-    # Validado no runtime que falhava: powershell.exe -File ... -DryRun deu
-    # exit 0 com 3/3 semanas lidas. Graca de 7d a partir de 03/08 cobre exatamente
-    # ate a proxima execucao agendada, e escala se falhar de novo em 10/08.
+    # Corrigido e validado 2026-08-07. Causa era ConvertFrom-Json -AsHashTable, parametro
+    # que so existe no PS 7, contra uma task que roda powershell.exe 5.1. Fix ja no script
+    # (linha ~301) e validado no runtime que falhava (powershell.exe -File ... -DryRun deu
+    # exit 0 com 3/3 semanas lidas). A ancora e 03/08, a execucao que falhou: o exit 1 de
+    # 21/09/2026 (404 do zip do ano corrente, antes do retry RECONCILE-CVM404B) e falha
+    # NOVA, nao cabe nesta excecao e tem de aparecer como erro ate a proxima execucao
+    # provar o fix.
     'VIXRadar-Reconciliacao-CVM' = @{
         code = 1
-        reason = 'exit 1 de 03/08 e residuo de bug ja corrigido e validado em 07/08. Se persistir depois de 10/08, o fix nao pegou.'
+        reason = 'exit 1 de 03/08 e residuo de bug ja corrigido e validado em 07/08. Ancora 03/08: qualquer LastRun posterior e falha nova.'
+        frozenLastRun = '2026-08-03'
         graceDays = 7
     }
     # exit 6 de 03/08 foi pre-flight abortando com ANTHROPIC_MODEL=deepseek-v4-pro[1m]
     # no ambiente, comportamento correto do guard. A variavel nao esta mais setada em
     # nenhum escopo e Test-VixClaudeAmbienteLimpo passa desde 07/08. A task e semanal
     # (domingo), entao o resultado fica congelado ate o proximo disparo.
-    # NAO validado ao vivo, so o pre-flight foi. Se persistir depois do proximo
-    # domingo, a causa e outra e precisa investigacao nova.
+    # NAO validado ao vivo, so o pre-flight foi. Ancora 03/08: se houver resultado novo,
+    # a causa e outra e precisa investigacao nova.
     'VIXRadar-AgendaSemanal' = @{
         code = 6
-        reason = 'exit 6 de 03/08 era ambiente contaminado, resolvido em 07/08 mas nao validado ao vivo. Se persistir depois do proximo domingo, investigar de novo.'
+        reason = 'exit 6 de 03/08 era ambiente contaminado, resolvido em 07/08 mas nao validado ao vivo. Ancora 03/08: resultado posterior e falha nova.'
+        frozenLastRun = '2026-08-03'
         graceDays = 7
     }
 }
@@ -476,20 +488,23 @@ foreach ($task in $allTasks) {
         continue
     }
 
-    # Verifica falso-positivo conhecido
+    # Verifica falso-positivo conhecido (KFPJANELA1: excecao ancorada em data fixa).
+    # A decisao vem da lib vixradar-monitor-kfp.ps1: Masked = incidente documentado dentro
+    # da janela; Expired = janela vencida sem execucao nova (warning); NewFailure = existe
+    # resultado posterior a ancora, que nao e falso-positivo nenhum e segue para a
+    # classificacao normal logo abaixo, onde vira erro. Nao existe caminho em que uma
+    # execucao nova seja mascarada.
     if ($KnownFalsePositives.ContainsKey($name)) {
-        $kfp = $KnownFalsePositives[$name]
-        if ($code -eq $kfp.code) {
-            $ageDays = ((Get-Date) - $lastRun).Days
-            if ($ageDays -le $kfp.graceDays) {
-                Write-Log "INFO: $name exit=$code (falso-positivo conhecido, dia $ageDays/$($kfp.graceDays))"
-                $skipped++
-                continue
-            }
-            # Excedeu periodo de graca - escala para warning
+        $kfp = Get-VixMonitorKfpDecision -Name $name -Code $code -LastRun $lastRun -Now (Get-Date) -Entry $KnownFalsePositives[$name]
+        if ($kfp.Masked) {
+            Write-Log "INFO: $name exit=$code (falso-positivo conhecido ancorado em $($kfp.Frozen), dia $($kfp.AgeDays)/$($kfp.GraceDays))"
+            $skipped++
+            continue
+        }
+        if ($kfp.Expired) {
             $warnings += [ordered]@{
                 task = $name; code = $code; lastRun = $lastRun.ToString('yyyy-MM-dd HH:mm')
-                reason = "falso-positivo conhecido ha $ageDays dias (> $($kfp.graceDays)d) - reavaliar"
+                reason = $kfp.Reason
             }
             continue
         }
