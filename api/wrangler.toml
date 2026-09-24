@@ -83,6 +83,14 @@
 #   reversa do T2 medida contra o worker.js de HEAD (3 falhas, `expected 9426 to be +0`);
 #   suite da api 460/460 em 46 arquivos.
 #   Rollback: main = "v4.9.260.js".
+# v4.9.262.js = v4.9.261 + CVM-QUARENTENA: documentos sem dono passam a ser retidos em quarentena
+#   em vez de descartados antes da gravacao (ZIP e ENET); teto 16000 falha fechado
+#   (zip_teto_documentos_excedido / enet_teto_documentos_excedido) preservando o acervo anterior;
+#   health ganha cvm_ingestao_recebidos/atribuidos/quarentena/descartados com invariante
+#   recebidos = atribuidos + quarentena + descartados.
+#   Testes: suite api 461/461 em 46 arquivos, cvm-atribuicao-health 7/7; bundle difere de src
+#   apenas pelo placeholder de versao.
+#   Rollback: main = "v4.9.261.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de
