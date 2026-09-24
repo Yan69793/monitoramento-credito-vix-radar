@@ -197,6 +197,10 @@ backups/
 # regra, um `git add -A` os pegaria. O deploy so exige limpeza nos 4 trackeados.
 _backup_*/
 _backup-janela-*/
+# Backups locais do provider de LLM (snapshot + rollback gerados por script
+# local; contem estado de env e nunca devem ser versionados).
+_backup-env-provider-*.json
+_backup-env-provider-*.json.rollback.ps1
 *.tar.gz
 *.zip
 index.html.bak*
