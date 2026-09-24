@@ -7,7 +7,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 > **Onde vivem as skills.** O canonico versionado do projeto e `.claude/skills/`, e e o
 > que um clone novo recebe. O `.agents/skills/` e a biblioteca local do operador, cerca
 > de 28 MB e majoritariamente de terceiros, **nao versionada** e coberta pelo `.gitignore`.
-> Dos 37 nomes presentes nas duas arvores, 12 aparecem em `.agents/skills/` como symlink
+> Nomes compartilhados entre as duas arvores podem aparecer em `.agents/skills/` como symlink
 > para `.claude/skills/`, ou seja, o sistema depende de `.claude/skills/` existir. O
 > `skills.paths` do `kilo.json` aponta para `./.claude/skills`, e nenhum caminho de skill
 > depende de `.agents/skills/` existir num clone.
@@ -33,6 +33,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | Repor varredura perdida / replay de dias, feed preso em data antiga | `/repor-varredura` | default | audit |
 | Executar/validar varredura matinal/noturno do dia (FIM, locks, health) | `/vixradar-varredura` | default | audit, repor-varredura |
 | Deploy Worker, wrangler, KV, DO | `/wrangler` + `/workers-best-practices` | — | audit |
+| Inteligência de crédito, emissor, alerta, spread, EWS, watchlist, comitê | `/vix-radar-credit-intelligence` | default | audit, deploy |
 | Feature/debug profundo Radar | `radar-credito-privado` (VIXRADAR/skills) | lazy | só quando necessário |
 | Incidente urgente | `/ODDA` | — | — |
 | Resposta densa/expert | `/299` ou `/godmode` | sob pedido | — |
@@ -54,6 +55,7 @@ Gerar índice local: `pwsh scripts/skills-index.ps1`
 | `vixradar-varredura` | Executar e validar a varredura matinal/noturno do dia com segurança: pre-flight, locks/mutex, FIM, painel_fresco/feed_fresco |
 | `vix-radar-next-steps` | P0/P1/P2 + quick wins |
 | `vix-radar-predictive` | Scores preditivos de crédito, z-scores ANBIMA, Merton e pipeline rule+logistic |
+| `vix-radar-credit-intelligence` | Inteligência de crédito auditável: delta, evidência, materialidade, divergência mercado-fundamental, watchlists e comitê |
 | `vix-radar-session-briefing` | Briefing rápido de sessão |
 | `vix-radar-system-council` | Conselho de sistema, sete lentes para falha recorrente e melhoria sistemica |
 | `wrangler` | CLI Cloudflare |

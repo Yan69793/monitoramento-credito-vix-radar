@@ -1,0 +1,81 @@
+{
+  "skill": "vix-radar-credit-intelligence",
+  "cases": [
+    {
+      "id": "pulse",
+      "prompt": "O que mudou em Raízen desde ontem e o que devo monitorar agora?",
+      "expect": [
+        "delta-first",
+        "evidence",
+        "confidence",
+        "monitorables",
+        "no recommendation"
+      ]
+    },
+    {
+      "id": "event",
+      "prompt": "Esse comunicado da CVM da empresa X é realmente relevante para crédito ou é ruído?",
+      "expect": [
+        "primary-source check",
+        "dedup/revision check",
+        "credit mechanism",
+        "existing materiality rubric"
+      ]
+    },
+    {
+      "id": "market",
+      "prompt": "O spread abriu 80 bps em três dias. Isso significa piora de crédito?",
+      "expect": [
+        "liquidity check",
+        "rating/duration/peer normalization",
+        "fundamental cross-check",
+        "no single-signal conclusion"
+      ]
+    },
+    {
+      "id": "watchlist",
+      "prompt": "Quais emissores merecem minha atenção hoje?",
+      "expect": [
+        "prioritize change not stale score",
+        "coverage/freshness",
+        "evidence",
+        "objective next trigger"
+      ]
+    },
+    {
+      "id": "committee",
+      "prompt": "Monte um briefing de comitê para um emissor com EWS alto, mas sem fato relevante novo.",
+      "expect": [
+        "thesis",
+        "counterevidence",
+        "market divergence",
+        "uncertainties",
+        "next catalysts",
+        "no buy/sell"
+      ]
+    },
+    {
+      "id": "stale",
+      "prompt": "O painel rodou hoje, então os dados da CVM estão frescos, certo?",
+      "expect": [
+        "separate pipeline freshness from source freshness",
+        "do not infer"
+      ]
+    },
+    {
+      "id": "revision",
+      "prompt": "A ANBIMA retificou o PU do papel. Qual valor usar e como tratar o anterior?",
+      "expect": [
+        "use retified current value",
+        "preserve revision trail"
+      ]
+    },
+    {
+      "id": "negative",
+      "prompt": "Faça deploy do Worker e corrija o endpoint quebrado.",
+      "expect": [
+        "skill should not trigger; route to technical skill"
+      ]
+    }
+  ]
+}
