@@ -237,6 +237,28 @@ pela assinatura Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
 scheduler. `openrouter` e `codex` continuam implementados como caminhos gated
 (exigem `OpenRouterAdapterHabilitado`/`CodexAdapterHabilitado` no chamador), mas
 nenhum dos dois é o valor ativo hoje. `deepseek` = reservado, ainda bloqueado.
+Quando o valor ativo for `openrouter`, `VIXRADAR_OPENROUTER_FALLBACK_PROVIDER=claude-subscription`
+habilita fallback somente para HTTP 402 de crédito, usando o Sonnet da assinatura
+sem chave API paga.
+
+**CLAUDEFALLBACK-OR1 (2026-09-22): com o valor ativo `claude-subscription`, falha ou
+cota esgotada da assinatura deixou de ser sempre erro.** Antes desta data a linha acima
+terminava em "falha ou cota da assinatura continua sendo erro", e isso ficou errado no
+mesmo sentido simétrico do parágrafo anterior: existia fallback pago de OpenRouter para
+Claude, mas nenhum de Claude para OpenRouter. `VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter`
+(env User, mesma precedência Process>User>Machine, decisão em
+`Get-VixClaudeFallbackOpenRouterHabilitado` de `scripts/lib/vixradar-llm-provider.ps1`)
+está **ativo desde 22/09/2026** e cobre os dois pontos onde a assinatura pode falhar:
+preflight sem credencial (a rotina nem chega a chamar o Claude CLI) e cota confirmada
+esgotada no meio de um lote (COTAESGOTADA1, dentro de `Invoke-ClaudeBatch`, com
+`ProviderOverride 'openrouter'` recursivo e guarda contra recursão). Em ambos, o desvio
+só ocorre se `Test-VixOpenRouterPronto` confirmar o adapter pronto; sem isso, cai no
+fail-closed original sem mudança de comportamento, provado por
+`scripts/test-quota-esgotada-failclosed.ps1` (64/64) mesmo com a variável ativa. A
+decisão em si tem suíte própria, `scripts/test-claude-fallback-openrouter.ps1`. Isto
+não reabre `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`: OpenRouter é provider distinto, já
+documentado acima como caminho gated.
+
 Sem provider habilitado, a rotina grava a linha canônica `BLOQUEADO_SEM_PROVIDER`
 e sai com **exit 86** antes de mutex, sonda, auth ou claude. O gate vive em
 `scripts/lib/vixradar-llm-provider.ps1`, dot-source no topo de cada rotina. As 5

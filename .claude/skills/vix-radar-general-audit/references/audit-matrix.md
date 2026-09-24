@@ -1,14 +1,20 @@
 # Audit Matrix
 
-> **Governanca (2026-09-01).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.228 e Frontend v202.35, medidos ao vivo em 01/09 no health publico e
+> **Governanca (2026-09-22).** Status: vigente. Data da versao alinhada a producao:
+> Worker v4.9.261 e Frontend v202.44, medidos ao vivo em 22/09 no health publico e
 > no version.json, coincidindo com o repo. Origem do registro: producao, depois
 > Obsidian, depois codigo (api/wrangler.toml main + changelog). Condicao de
-> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.228 ou
+> obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar v4.9.261 ou
 > surgir binding, fila, endpoint, rotina ou incidente novo que nenhuma secao alcance.
-> Esta linha ficou uma versao atras na auditoria de 01/09 (achado P3-1): checar a
-> condicao acima e parte do passo 3 da skill, e atualizar os dois blocos de
-> governanca fecha a auditoria, nao fica para depois.
+>
+> **Item permanente, segunda reincidencia (22/09/2026).** Este bloco ficou uma versao
+> atras em 01/09 e **33 versoes** atras em 22/09. A regra da propria skill diz que
+> causa raiz vista em duas auditorias vira item permanente da matriz, entao aqui
+> esta: o snapshot de versao e o unico campo da skill que envelhece sozinho, e a
+> unica forma de ele nao mentir e o mapa de versoes rodar como PORTAO antes da
+> leitura de codigo. O custo de nao fazer isso ja esta medido: a matriz passou tres
+> semanas descrevendo um motor de agendamento aposentado e um pipeline de ingestao
+> da CVM que nao existe mais sozinho.
 
 Referencia rapida para auditoria geral backend/frontend do VIX Radar.
 
@@ -23,9 +29,16 @@ Referencia rapida para auditoria geral backend/frontend do VIX Radar.
 
 ## Backend Worker
 
-> Producao em 2026-09-01: Worker v4.9.228 e Frontend v202.35, medidos ao vivo no
-> health publico e no version.json, coincidindo com o repo (main = v4.9.228.js).
-> Marcos pos v4.9.197 no changelog do wrangler.toml: v4.9.205 SPREADSERIE1,
+> Producao em 2026-09-22: Worker v4.9.261 e Frontend v202.44, medidos ao vivo no
+> health publico e no version.json, coincidindo com o repo (main = v4.9.261.js).
+> Marcos pos v4.9.228, resumidos (detalhe no changelog do `api/wrangler.toml`):
+> v4.9.236 PAINELFRESCOR1, v4.9.237-238 FEEDRETRO1, v4.9.241 MERGEDUP1,
+> v4.9.242 REPROVADO-FAILCLOSED1, v4.9.243 SWEEP-ORFAOS1, v4.9.244 BUSCADEGRADADA1,
+> v4.9.246 feed_fresco com limite de 2 dias uteis, **v4.9.247-253 ingestao ENETWeb**
+> (secao propria abaixo), v4.9.254 CVMSTITCH1, v4.9.255 FIN1-REV/BUSCADEGRADA1,
+> v4.9.256-257 PISOORFAO1, v4.9.258 politica unica de retry LLM,
+> v4.9.259 EMISSORSTALE2, v4.9.260 PROFUNDIDADE-NOTURNA1, v4.9.261 CFG-02 P2/P3.
+> Marcos anteriores, pos v4.9.197: v4.9.205 SPREADSERIE1,
 > v4.9.209-210 CVMURL404/CVMDURA1, v4.9.214 EMAILSILENT1, v4.9.215 SUBSTRINGDONO1,
 > v4.9.216 SENTINELA1, v4.9.217-219 DEFERGRUDA1/2/3, v4.9.220 STATUSGRUDA1,
 > v4.9.221 CVMTTL1/ATRIBTEL1, v4.9.223 EWSFLOOR1/MATERIALSAT1/BRIEFDEDUP1/AGENDA401,
@@ -83,6 +96,70 @@ rg -n "JWT_SECRET|ADMIN_EMAIL|ROUTINE_API_KEY|ANTHROPIC_API_KEY|OPENROUTER|Math.
 curl.exe -s https://api.vixradar.com/ -w "`nHTTP:%{http_code} TEMPO:%{time_total}s"
 ```
 
+## Ingestao CVM: ENETWeb e reconciliacao com o ZIP (v4.9.247-253, 2026-09)
+
+Subsistema novo e hoje o caminho PRIMARIO de entrada de documento da CVM. A matriz
+passou tres semanas sem mencionar ele, e por isso esta secao existe.
+
+O que mudou: em vez de depender so do bulk `ipe_cia_aberta_*.zip` (que ja sumiu do
+servidor uma vez, CVMURL404), o Worker consulta o portal interativo
+`https://www.rad.cvm.gov.br/ENETWeb/frmConsultaExternaCVM.aspx/ListarDocumentos` por
+janela de data, normaliza as linhas e faz merge canonico com o ZIP quando o ZIP esta
+disponivel. Nota de corpus: memoria antiga de projeto diz "RAD tem reCAPTCHA e esta
+fora" — **desatualizada**, o v4.9.248 trata `SolicitarCaptcha` como um desfecho
+declarado e o caminho esta vivo em producao.
+
+Simbolos para grep em `api/src/worker.js`: `_enetConsulta`, `_enetConsultaRetry`,
+`_enetCadastro`, `_enetLinhaNormalizada`, `_enetInterpretarResposta`,
+`_enetExtrairLinhas`, `CVM_ENET_METODOLOGIA_ID`, `CVM_ENET_UNIVERSO_MEDIDO`,
+`_cvmPisoMetodologia`, `_coberturaAtribuicaoAcervo`.
+
+O que checar:
+
+- **Timeout e retry na chamada externa.** `_enetConsulta` usa `AbortSignal.timeout(2e4)`;
+  `_enetConsultaRetry` trata `enet_sucesso_vazio` como falha de proposito (v4.9.248),
+  porque resposta 200 com corpo vazio e indistinguivel de "nao ha documento" e as duas
+  coisas tem consequencias opostas. Conferir que caminho novo preserva essa distincao.
+- **Piso por metodologia, nao por contagem crua.** `CVM_ENET_METODOLOGIA_ID`
+  (`enetweb_allowlist_v2`) e comparado com `meta.metodologia_id` antes de aplicar piso
+  anti-encolhimento. Se alguem mudar a allowlist sem trocar o `metodologia_id`, o piso
+  da metodologia velha passa a julgar o acervo da nova. Conferir os dois juntos.
+- **Gate de reconciliacao ZIP.** A escrita ENETWeb foi desacoplada da reconciliacao no
+  v4.9.249: o health expoe `reconciliacao_zip_ok`, `reconciliacao_zip_motivo` e
+  `reconciliacao_zip_idade_dias`, e `origem` no meta vira `enetweb+zip` ou
+  `enetweb_sem_zip_corrente`. Conferir que ausencia de ZIP degrada e declara, em vez de
+  bloquear a ingestao ou de passar como se o ZIP tivesse confirmado.
+- **Teto de 16000 e corte ordenado** (v4.9.250): `descartados_teto` no meta. Teto que
+  corta em silencio e a familia SENTINELA1/`pontual_excedente`; conferir que o excedente
+  aparece.
+- **Descarte por falta de dono acontece ANTES da gravacao** (`worker.js:8415` no ZIP,
+  `:8597` no ENET). Isso e decisao de produto em aberto (CFG-02 P1, nao autorizada pelo
+  operador), nao defeito a reabrir. O efeito colateral que a auditoria precisa lembrar:
+  `cvm_atribuicao_quarentena` fica 0 por construcao, e `cobertura_pct` 100 nao significa
+  que nada se perdeu, significa que o que se perdeu nunca entrou. O numero honesto e
+  `cvm_ingestao_descartados_sem_dono` (9367 em 22/09).
+
+## Campos do health publico e o que cada um reprova
+
+O gatilho "campo novo no health" e item de revisao desta matriz, e em 22/09 havia 14
+campos sem cobertura nenhuma aqui. Mapa atual, para nao auditar de novo um campo achando
+que ele e outro:
+
+| Campo | Entra no `ok` agregado? | O que significa |
+|---|---|---|
+| `ok`, `bindings.kv`, `bindings.rate_limiter`, `bindings.telemetria` | sim | plataforma. `ok:false` = problema com correcao do nosso lado (HEALTHSPLIT1) |
+| `sentry_ok`, `admin_email_ok`, `verificador_ok` | sim | secrets validados por formato, nao so por presenca |
+| `fonte_externa_ok`, `cvm_fonte_*` | nao | frescor de terceiro. Cadencia semanal, so reprova apos 2 ciclos (CVMCADENCIA1) |
+| `reconciliacao_zip_ok` / `_motivo` / `_idade_dias` | nao | gate ENETWeb x ZIP (v4.9.249) |
+| `painel_atualizado_em` / `_idade_min` / `_fresco` / `_regra` / `_exigido_desde` | nao | PAINELFRESCOR1 (v4.9.236): idade do PAINEL. Nasceu do incidente de painel parado 12h41 com `ok:true` |
+| `feed_evento_mais_novo` / `_idade_du` / `_fresco` / `_ultimo_evento_novo_em` | nao | FEEDRETRO1 (v4.9.237): idade do FATO em dias uteis. **Esta e a guarda de feed, nunca `ok` nem `painel_fresco`** |
+| `verif_orfaos_ativos` | nao | SWEEP-ORFAOS1 (v4.9.243): reserva de fila expirada |
+| `cvm_atribuicao_*`, `cvm_ingestao_descartados_sem_dono` | nao | CFG-02 (v4.9.261): origem medida sobre o acervo GRAVADO, e o descarte em campo separado |
+
+Consequencia pratica para quem audita: **um health inteiramente verde nao prova que a
+rotina do dia rodou.** `painel_fresco` e `feed_fresco` cobrem a saida do pipeline; a
+execucao em si so aparece na linha `FIM:` do log e no `dreno_exit`.
+
 ## Camada de persistência (migração KV→DO v5)
 
 A migração é incremental e fail-open. KV ainda é a fonte da verdade.
@@ -120,11 +197,22 @@ O que checar:
 - `$VixRoot` e caminhos hardcoded no script: confirmar que apontam para o caminho fisico
   canonico do projeto (nao para um junction legado), especialmente apos qualquer inversao
   de junction como a de 2026-08-18.
-- O agendamento das rotinas Claude Desktop (matinal, noturno, verificacao async) vive no
-  CCD store `%APPDATA%\Claude\claude-code-sessions\<conta>\<device>\scheduled-tasks.json`
-  (INVERSAO-CD1), nao so no Task Scheduler. As tasks homonimas ficam `Disabled` de
-  proposito, guarda anti-duplicata. Ao validar rotinas, conferir a entrada no CCD store e
-  a linha `FIM:` no log em `logs/routines/`, nunca o `LastTaskResult`.
+- **O motor de agendamento e o Task Scheduler nativo desde 12/09/2026 (cutover).** A
+  redacao anterior desta linha mandava conferir o CCD store do Claude Desktop
+  (`%APPDATA%\Claude\claude-code-sessions\...\scheduled-tasks.json`, regime INVERSAO-CD1) e
+  ficou errada por dez dias. A fonte da verdade e `logs/monitor-tasks/motor.json`
+  (medido 22/09: `{"motor":"task-scheduler","desde":"2026-09-12T23:09:43Z"}`), e o registro
+  canonico das 5 tasks e reconstruido por `scripts/cutover-motor.ps1`, nao por
+  `register-all-routines-scheduler.ps1`, que produz um estado diferente (um trigger por task,
+  sem retries). **Comecar sempre lendo `motor.json`, nunca assumir o motor pelo que a doc
+  diz**, porque o motor ja trocou duas vezes e vai trocar de novo.
+- **`LastTaskResult` continua nao sendo evidencia, em nenhum motor.** Medido em 22/09: as
+  tasks mostravam `rc=5` (Noturno, Sentinela, Verificacao-Async), `rc=3221225786` (Matinal,
+  que e `STATUS_CONTROL_C_EXIT`), `rc=267014` e `rc=1`, e ainda assim a matinal do dia tinha
+  fechado normalmente com `FIM: ... 23/23 ... submit_ok=8`. O codigo 5 e sobrecarregado no
+  motor (cai em pelo menos dois caminhos distintos: credencial indisponivel e gate de
+  contagem de emissores), entao ele diz que algo falhou e nao diz o que. A evidencia boa
+  continua sendo a linha `FIM:` do log do dia em `logs/routines/`.
 - **Rotina com trigger de ancora + repeticao perde o dia inteiro em silencio (SENTINELA-DIAPERDIDO1, 2026-08-29).**
   A `VIXRadar-Sentinela` usa ancoras 09h25/09h55 com repeticao PT1H por PT8H; se a maquina
   dorme na janela das ancoras, a cadeia do dia morre, `StartWhenAvailable=True` NAO

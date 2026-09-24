@@ -1,0 +1,304 @@
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VIX Radar — Relatórios 103 e 104 (2026-09-19)</title><style>
+:root{--fg:#1c1c1e;--mut:#6b6b70;--bd:#e2e2e6;--bg:#fff;--ac:#b3261e;--ok:#1a7f37}
+*{box-sizing:border-box}
+body{margin:0;padding:24px 18px 90px;font:16px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:var(--fg);background:var(--bg);max-width:820px;margin-inline:auto;-webkit-text-size-adjust:100%}
+h1{font-size:1.6em;line-height:1.25;margin:0 0 .2em;border-bottom:3px solid var(--ac);padding-bottom:.35em}
+h2{font-size:1.24em;margin:2em 0 .5em;border-bottom:1px solid var(--bd);padding-bottom:.25em}
+h3{font-size:1.06em;margin:1.5em 0 .4em}
+h4{font-size:1em;margin:1.2em 0 .3em;color:var(--mut)}
+hr{border:0;border-top:1px solid var(--bd);margin:2.2em 0}
+code{background:#f4f4f6;padding:.12em .38em;border-radius:4px;font-size:.88em;font-family:ui-monospace,Menlo,Consolas,monospace}
+pre{background:#1c1c1e;color:#f2f2f4;padding:14px 16px;border-radius:9px;overflow-x:auto;font-size:.82em;line-height:1.5}
+pre code{background:none;padding:0;color:inherit}
+table{border-collapse:collapse;width:100%;margin:1.1em 0;font-size:.9em;display:block;overflow-x:auto}
+th,td{border:1px solid var(--bd);padding:7px 10px;text-align:left;vertical-align:top}
+th{background:#f7f7f9;font-weight:600}
+blockquote{margin:1em 0;padding:.55em 0 .55em 1em;border-left:3px solid var(--bd);color:var(--mut)}
+.callout{margin:1.2em 0;padding:13px 16px;border-radius:9px;background:#fdf3f2;border-left:4px solid var(--ac);font-size:.95em}
+.callout.warning{background:#fff8e6;border-left-color:#c77700}
+.callout.success{background:#eef9f0;border-left-color:var(--ok)}
+ul,ol{padding-left:1.4em}
+li{margin:.3em 0}
+a{color:#0b57d0}
+.doc{margin-bottom:56px}
+@media print{body{max-width:none}pre{background:#f4f4f6;color:#1c1c1e}}
+</style></head><body>
+<p style="color:#6b6b70;font-size:.85em;margin-bottom:1.6em">
+VIX Radar · relatórios internos de diagnóstico · 2026-09-19 ·
+<a href="#r104">104 Operacional</a> · <a href="#r103">103 CVM</a></p>
+<div id="r104"></div><section class="doc"><h1>104 - Diagnóstico Operacional — Circuito de Custo e Cobertura de Análise</h1>
+<p><strong>Data:</strong> 2026-09-19 (madrugada)</p>
+<p><strong>Origem:</strong> verificação do estado operacional após o relatório <code>103</code>. O relatório 103 concluiu, a partir do health, que "o sistema não está quebrado". <strong>Essa conclusão estava errada</strong> e este documento a corrige.</p>
+<p><strong>Status:</strong> diagnóstico fechado. Nenhuma correção aplicada.</p>
+<p><strong>Relação com o 102:</strong> confirma e detalha o <strong>P0 já registrado</strong> em <code>102 - Auditoria Operacional 2026-09-18.md</code> ("Fechar o buraco de cobertura"), com o mecanismo e os números de 18/09.</p>
+<hr>
+<h2>Veredito</h2>
+<p><strong>O produto não está analisando os emissores.</strong></p>
+<table><thead><tr><th>Rotina de 18/09</th><th>Analisados</th><th>Deferidos</th><th>Cap efetivo</th></tr></thead><tbody><tr><td>Matinal, 1ª execução (01:40)</td><td><strong>4 de 23</strong></td><td>19</td><td>225.907</td></tr><tr><td>Matinal, 2ª execução (10:06)</td><td><strong>0</strong></td><td>0</td><td><strong>0</strong></td></tr><tr><td>Noturna (18:05)</td><td><strong>0 de 104</strong></td><td>78 (+26 skip)</td><td><strong>0</strong></td></tr></tbody></table>
+<p>A noturna — a rotina principal, que cobre a carteira inteira — <strong>executou 0 análises em 197 segundos</strong>, gastou 0 tokens, fez 0 buscas, e <strong>fechou o log com "OK"</strong>.</p>
+<p>O health público reportou <code>ok:true</code>, <code>painel_fresco:true</code> e <code>feed_fresco:true</code> durante todo o período. <strong>Ele não estava mentindo sobre o que mede — estava medindo a coisa errada.</strong> <code>painel_fresco</code> mede se o painel foi <em>escrito</em>; não mede se alguma análise <em>aconteceu</em>. Uma execução que defere 100% do plano e escreve o painel satisfaz o health perfeitamente.</p>
+<hr>
+<h2>1. Evidência — os números exatos</h2>
+<h3>1.1 Noturna de 18/09 (<code>logs/routines/vixradar-noturno_20260918.log</code>)</h3>
+<pre><code>2026-09-18 18:05:07  CAP_EFETIVO=0
+   (cap_proprio=700000  gasto_dia=1445668  teto=1300000  reserva_outras=150000)
+
+2026-09-18 18:05:07  CUSTO_DIA 20260918:
+   matinal=685032  noturno=572973  verificacao=18405  sentinela=169258  agenda=0
+   TOTAL_DIA=1445668   TETO=1300000   MARGEM=-145668   CIRCUITO_ABERTO
+
+2026-09-18 18:05:07  CIRCUITO_ABERTO: margem do dia -145668 abaixo de 100000.
+   Nenhum lote sera disparado; tudo que nao for SKIP sai como DEFERIDO.
+
+2026-09-18 18:08:24  DEFERIDOS: ok=78 falha=0 total=78 motivo=cap_efetivo (0/0 realizados)
+2026-09-18 18:08:24  FIM: noturno concluido. Total do dia 104/104
+   (ledger analisados=0 skip=26 deferidos=78).
+   analisados_execucao=0 skip_execucao=26 deferidos_execucao=78
+   submits_aceitos=104 submit_ok=0 submit_fail=0
+   tokens=0 cache_read=0 cap_efetivo=0 lotes=0 lotes_com_trabalho=0 buscas=0
+   deferidos_cap=78 deferidos_auth=0 motivo_deferimento=cap_efetivo
+   duracao_sec=197.4</code></pre>
+<p>Note a linha <code>(0/0 realizados)</code>: é uma razão sem significado, impressa porque o cap era zero.</p>
+<h3>1.2 Matinal de 18/09 (<code>logs/routines/vixradar-matinal_20260918.log</code>)</h3>
+<p><strong>Primeira execução, 01:40</strong> — fez algum trabalho e saturou o próprio cap:</p>
+<pre><code>DEFERIDOS: ok=19 falha=0 total=19 motivo=cap_efetivo (194127/225907 realizados)
+FIM: matinal concluido. Total do dia 23/23 (ledger analisados=4 skip=0 deferidos=19).
+   analisados_execucao=4 deferidos_execucao=19 tokens=194127 cap_efetivo=225907
+   buscas=12 lotes=1 duracao_sec=617.5</code></pre>
+<p><strong>Segunda execução, 10:06</strong> — não fez nada, em 6,8 segundos:</p>
+<pre><code>FIM: matinal concluido. Total do dia 23/23 (ledger analisados=4 skip=0 deferidos=19).
+   analisados_execucao=0 deferidos_execucao=0 tokens=0 cache_read=0 cap_efetivo=0
+   lotes=0 buscas=0 duracao_sec=6.8</code></pre>
+<blockquote>Observação: o <code>ledger analisados=4 ... deferidos=19</code> da segunda execução é o <strong>resíduo da primeira</strong> — os contadores <code>_execucao</code> mostram a verdade daquela execução (<code>0/0</code>). O ledger não foi reprocessado porque o cap era zero.</blockquote>
+<hr>
+<h2>2. Cadeia causal</h2>
+<h3>2.1 O cálculo</h3>
+<p><code>scripts/run_vixradar_varredura.ps1:1197-1211</code>:</p>
+<pre><code>$custoCfg = Get-VixCustoConfig $LogDir
+$custoDia = Get-VixCustoDia $LogDir $DateTag $custoCfg
+$reservaOutras = [int64]$custoCfg.RESERVA_VERIFICACAO
+if ($Perfil.reservaOutrasKey -eq &#x27;RESERVA_NOTURNO&#x27;) { $reservaOutras += [int64]$custoCfg.RESERVA_NOTURNO }
+$TokenHardCap = [int64](Get-VixCapEfetivo ([int64]$Perfil.capProprio) $custoDia $custoCfg $reservaOutras)
+...
+if ($custoDia.circuito_aberto) {
+    Write-Log (&#x27;CIRCUITO_ABERTO: ... Nenhum lote sera disparado; tudo que nao for SKIP sai como DEFERIDO.&#x27;)
+    $TokenHardCap = 0
+}</code></pre>
+<p><code>scripts/lib/vixradar-custo.ps1:131-139</code>:</p>
+<pre><code>$disp = [int64]$Config.TETO_DIA - $gasto - $ReservaOutras
+if ($disp -lt 0) { $disp = [int64]0 }</code></pre>
+<p><code>scripts/lib/vixradar-custo.ps1:114-115</code>:</p>
+<pre><code>$margem = [int64]$Config.TETO_DIA - $total
+$aberto = ($margem -lt [int64]$Config.MARGEM_MINIMA)</code></pre>
+<p><strong>Há dois caminhos independentes para o cap virar zero:</strong> a aritmética (<code>$disp</code> satura em 0) e o disjuntor explícito (<code>circuito_aberto</code> → <code>$TokenHardCap = 0</code>). Em 18/09 os dois coincidiram.</p>
+<h3>2.2 O que aconteceu em 18/09</h3>
+<ol><li>O <strong>matinal gastou 685.032</strong> tokens — quase <strong>2x a folga que o projeto lhe reserva</strong> (ver 2.3).</li><li>Somado a <code>noturno=572973 + verificacao=18405 + sentinela=169258</code>, o dia fechou em <strong>1.445.668</strong> contra um teto de <strong>1.300.000</strong>.</li><li><code>margem = -145.668</code>, abaixo de <code>MARGEM_MINIMA = 100.000</code> → <strong><code>CIRCUITO_ABERTO</code></strong>.</li><li>O cap da noturna foi forçado a <strong>0</strong>.</li><li>Noturna: 78 deferidos, 0 analisados, log "OK".</li></ol>
+<h3>2.3 A aritmética estrutural</h3>
+<p><code>logs/routines/custo-config.json</code> (real, não os defaults):</p>
+<pre><code>{ &quot;TETO_DIA&quot;: 1300000, &quot;RESERVA_VERIFICACAO&quot;: 150000,
+  &quot;RESERVA_NOTURNO&quot;: 700000, &quot;MARGEM_MINIMA&quot;: 100000 }</code></pre>
+<p>Com essas reservas, a folga <strong>projetada</strong> de cada rotina é:</p>
+<table><thead><tr><th>Rotina</th><th>Folga por projeto</th><th>Consumido em 18/09</th></tr></thead><tbody><tr><td>Matinal</td><td><code>1.300.000 − 700.000 − 150.000 − 100.000</code> = <strong>350.000</strong></td><td><strong>685.032</strong> (196%)</td></tr><tr><td>Noturna</td><td><code>1.300.000 − gastoDia − 850.000</code> = <strong>≤ 450.000</strong></td><td>0 (starved)</td></tr></tbody></table>
+<p>O <code>RESERVA_NOTURNO = 700.000</code> consome 54% do teto diário. E a reserva é subtraída <strong>duas vezes</strong> no caso da noturna: ela reserva para si mesma (<code>$reservaOutras += RESERVA_NOTURNO</code>) e depois ainda é limitada pelo próprio <code>capProprio = 700.000</code>. O efeito prático é que a noturna só roda com o que sobra — e quando o dia estoura, sobra zero.</p>
+<h3>2.4 Histórico — não é um dia isolado</h3>
+<p><code>TOTAL_DIA</code> por dia, lido dos logs:</p>
+<table><thead><tr><th>Data</th><th>TOTAL_DIA</th><th>Circuito</th></tr></thead><tbody><tr><td>2026-09-16</td><td>516.134</td><td>fechado</td></tr><tr><td>2026-09-17</td><td>350.231</td><td>fechado</td></tr><tr><td><strong>2026-09-18</strong></td><td><strong>1.445.668</strong></td><td><strong>ABERTO</strong> (e mais 3 leituras acima do teto no mesmo dia: 1.276.410, 1.100.136, 1.100.136)</td></tr></tbody></table>
+<p>O 102 já registrava a mesma falha em 16/09 (<code>vixradar-matinal_20260916.log</code> com <code>analisados=0 deferidos=23 deferidos_cap=23</code>) e o deferimento por <code>limite_sessao_assinatura</code> em 16/09. <strong>18/09 é a repetição mais grave, não a primeira ocorrência.</strong></p>
+<hr>
+<h2>3. Por que nada alertou</h2>
+<p><strong>Esta é a parte mais importante do diagnóstico.</strong></p>
+<table><thead><tr><th>Sinal</th><th>O que mede</th><th>Estado em 18/09</th></tr></thead><tbody><tr><td><code>ok</code> do health</td><td>plataforma de pé, bindings, providers</td><td><code>true</code></td></tr><tr><td><code>painel_fresco</code></td><td>o painel foi <strong>escrito</strong> nas últimas X horas</td><td><code>true</code></td></tr><tr><td><code>feed_fresco</code></td><td>chegou evento novo na fonte</td><td><code>true</code></td></tr><tr><td><code>CIRCUITO_ABERTO</code> no log</td><td>orçamento estourado</td><td><strong>presente, e ninguém lê</strong></td></tr><tr><td><code>analisados_execucao</code></td><td><strong>quantas análises foram feitas</strong></td><td><strong>0 — não exposto em lugar nenhum</strong></td></tr></tbody></table>
+<p>O health não tem nenhum campo que responda <em>"quantas análises foram feitas hoje?"</em>. Enquanto a rotina escrever o painel, <code>painel_fresco</code> fica verde mesmo com 0 análises.</p>
+<p>O gate que vigia exatamente isso — <strong><code>EMISSORSTALE1</code></strong> em <code>.github/workflows/frescor-check.yml</code> — <strong>está dormente</strong>. Palavras do próprio 102:</p>
+<blockquote>"<strong>Só entra em vigor quando chegar em <code>main</code>, porque o agendado roda lá.</strong>"</blockquote>
+<p><code>origin/main</code> está <strong>5 commits atrás</strong> da produção. O gate que alertaria "75 de 104 emissores sem análise há mais de 24h" existe no repositório, foi testado contra produção real, e <strong>não roda</strong> — porque o agendado lê <code>main</code>.</p>
+<p>É a mesma classe que o fechamento de 18/09 nomeou: <em>"guarda que ficou cega"</em>.</p>
+<hr>
+<h2>4. O que já estava registrado (e continua aberto)</h2>
+<p>Do <code>102 - Auditoria Operacional 2026-09-18.md</code>:</p>
+<blockquote>"<strong>75 de 104 emissores sem análise há mais de 24h</strong>, o mais antigo em 2026-09-16 21:10. [...] Classificação geral: <strong>degradado</strong>, sem P0 de superfície."</blockquote>
+<blockquote>"<strong>P0</strong> Fechar o buraco de cobertura. O plano de 104 não fecha com o orçamento atual e a maior parte é deferida por cap ou por limite de sessão. Enquanto isso, o SLA de 24h por emissor não é atingível."</blockquote>
+<blockquote>"A rotina roda, a maior parte do plano é deferida, e <strong>o plano de 104 não fecha em um dia com o orçamento atual</strong>."</blockquote>
+<p>Gate <code>audit-routine-staleness.ps1</code>: <code>total=104</code>, <code>stale_24h_real=75</code>, <code>max_stale_hours=43.3</code>, mais antigo <code>2026-09-16T21:10</code>. Tiers: SKIP 4, LIGHT 40, FULL 60.</p>
+<p><strong>Este documento não descobre o problema. Ele mede o mecanismo e confirma que o P0 segue aberto e piorando.</strong></p>
+<hr>
+<h2>5. Achado secundário — CI vermelho por higiene</h2>
+<p>O gate <code>scripts-tests</code> está <strong>vermelho</strong> em <code>main</code> e em <code>mva-provider-agnostic</code>:</p>
+<pre><code>REGRESSAO NOVA (nao esta no baseline):
+  - test-m3-openrouter-search.ps1    (exit=2, 0.5s)
+  - test-m3-reconciliacao.ps1        (exit=10, 0.6s)</code></pre>
+<p><strong>Não é regressão de código.</strong> Rodei as duas localmente: <strong>ambas passam com <code>exit 0</code></strong>. Elas exigem credencial — <code>ROUTINE_API_KEY</code> (produção) e <code>OPENROUTER_API_KEY</code> — que existe na máquina do operador e <strong>não existe no CI</strong>: <code>scripts-tests.yml</code> não tem uma única referência a <code>secrets.</code> nem bloco <code>env:</code>.</p>
+<p>As duas foram commitadas em <code>4b30ba0</code> (2026-09-18, "test(m3): versiona suites de busca OpenRouter e reconciliacao"). São <strong>instrumentos de investigação</strong> — o próprio cabeçalho de <code>test-m3-openrouter-search.ps1</code> diz <em>"standalone, NAO ALTERA motor, provider, scheduler, Worker, frontend"</em> — e foram versionadas com prefixo <code>test-</code> em <code>scripts/</code>, onde o runner faz glob de <code>test-*.ps1</code> e compara contra <code>scripts/tests-baseline.json</code> (que tem exatamente 2 entradas, nenhuma delas as M3).</p>
+<p><strong>Por que isso importa mais do que parece:</strong> o deploy da <strong>v4.9.258 subiu com esse gate reprovando</strong>. Com o gate permanentemente vermelho, <strong>qualquer regressão real em <code>scripts/</code> fica invisível</strong> — é o "alarme que toca sozinho", o modo de falha que o próprio projeto documenta em vários lugares.</p>
+<hr>
+<h2>6. O que NÃO foi feito</h2>
+<ul><li>Nenhuma alteração em código, <code>custo-config.json</code>, <code>wrangler.toml</code>, flags, crons ou secrets</li><li>Nenhum deploy de Worker ou Pages</li><li>Nenhuma alteração em <code>status/ESTADO.md</code> ou <code>PENDENCIAS.md</code></li><li>Working tree limpo exceto pelos relatórios 103 e 104 (não commitados)</li><li>Os únicos comandos com efeito colateral foram as duas suítes M3, que escrevem em <code>logs/routines/teste-miniaturaminimaxm3/</code> — artefato de teste, não de produção</li></ul>
+<hr>
+<h2>7. Decisões pendentes</h2>
+<p>Nada aqui deve ser executado sem decisão explícita do operador.</p>
+<h3>7.1 P0 — cobertura (o item que importa)</h3>
+<p>O plano de 104 emissores <strong>não cabe</strong> em 1.300.000 tokens/dia com as reservas atuais. Três caminhos, não mutuamente exclusivos:</p>
+<blockquote><strong>O comportamento está correto e tem cobertura de teste verde.</strong> As três suítes que exercitam o cap e o deferimento passam integralmente, medidas em 2026-09-19:</blockquote>
+<p>&gt;</p>
+<blockquote>| Suíte | Resultado |</blockquote>
+<blockquote>|---|---|</blockquote>
+<blockquote>| <code>scripts/test-quota-esgotada-failclosed.ps1</code> | <code>ok=64 falha=0</code> |</blockquote>
+<blockquote>| <code>scripts/test-idempotencia-janela.ps1</code> | <code>31/31 asserts OK</code> |</blockquote>
+<blockquote>| <code>scripts/test-varredura-defeitos.ps1</code> | <code>pass=44 fail=0</code> |</blockquote>
+<p>&gt;</p>
+<blockquote><strong>139 asserts verdes.</strong> O disjuntor e o deferimento fazem exatamente o que foram construídos para fazer. <strong>Não há bug a caçar aqui.</strong> O defeito não está no mecanismo — está em o plano não caber no orçamento, e isso é decisão de orçamento (ou de tamanho de plano), não de código. Um conserto no cap seria consertar o que está funcionando.</blockquote>
+<ul><li><strong>(a) Subir o <code>TETO_DIA</code>.</strong> É um arquivo editável (<code>logs/routines/custo-config.json</code>), sem deploy. Exige saber qual é o orçamento real disponível — decisão de negócio, não técnica.</li><li><strong>(b) Reequilibrar as reservas.</strong> <code>RESERVA_NOTURNO = 700.000</code> (54% do teto) somado ao <code>capProprio = 700.000</code> da própria noturna é redundante e estrangula o matinal a 350.000, que ele estourou por 2x.</li><li><strong>(c) Reduzir o custo por emissor.</strong> O 102 já aponta que o produto do trabalho é o que estoura. Reduzir <code>batch_size</code>, cortar <code>LIGHT</code>/<code>SKIP</code>, ou reduzir o universo por ciclo.</li></ul>
+<p><strong>Enquanto isso não for decidido, a rotina continua rodando, deferindo a maior parte do plano e fechando "OK".</strong></p>
+<h3>7.2 Guarda que não pode acordar</h3>
+<ul><li><code>EMISSORSTALE1</code> existe e está testado, mas <strong>não roda</strong> porque <code>origin/main</code> está 5 commits atrás da produção. Enquanto isso, o sinal que alertaria o P0 acima fica desligado.</li><li><code>audit-routine-staleness.ps1</code> (skill) é manual e vive em <code>.claude/skills/vix-radar-audit/scripts/audit-routine-staleness.ps1</code> (não em <code>skills/</code>). É o instrumento que responde "quantos emissores estão fora do SLA de 24h" — rode-o agora e ele deve mostrar o mesmo <code>stale_24h_real</code> de 18/09 ou pior.</li><li>Recomendação: um campo de <strong>cobertura de análise</strong> no health (<code>analisados_execucao</code> do dia, ou <code>emissores_analisados_24h</code>), porque hoje o health é estruturalmente incapaz de distinguir "rodou e analisou" de "rodou e deferiu tudo".</li></ul>
+<h3>7.3 CI</h3>
+<p>Tirar as duas M3 de <code>scripts/</code> (mover para <code>scripts/diagnostico/</code> ou similar), ou adicioná-las ao baseline com motivo escrito, ou dar credencial ao job. Recomendação: <strong>mover</strong>, porque elas não são testes — são instrumentos.</p>
+<hr>
+<h2>8. Correção ao relatório 103</h2>
+<p>O <code>103 - Diagnostico CFG-02</code> está <strong>correto no que afirma sobre o CFG-02</strong>: a métrica de atribuição CVM é um artefato de relatório, a cobertura real é 100% e a quarentena real é 0.</p>
+<p>Mas ele abre dizendo que "o sistema não está quebrado" com base em <code>ok:true</code>, <code>painel_fresco</code> e <code>feed_fresco</code>. <strong>Essa inferência é inválida</strong> — nenhum desses três campos mede se alguma análise foi produzida. O sistema está quebrado, e o defeito está neste documento, não naquele.</p>
+<p>A lição operacional, para registro: <strong>o health do VIX Radar não é um indicador de saúde do produto.</strong> É um indicador de saúde da plataforma mais frescor de escrita. A pergunta "os emissores foram analisados?" não tem resposta em nenhum endpoint.</p>
+<hr>
+<h2>Condição de Obsolescência</h2>
+<p>Cai quando qualquer um destes ocorrer:</p>
+<ol><li><code>analisados_execucao</code> da noturna voltar a ser &gt; 0 de forma sustentada, e o <code>stale_24h_real</code> do gate cair abaixo de 104.</li><li>Um campo de cobertura de análise for exposto no health (seção 7.2).</li><li><code>EMISSORSTALE1</code> entrar em vigor em <code>main</code> e passar a alertar.</li><li>O <code>TETO_DIA</code> / reservas forem reequilibrados e o circuito deixar de abrir.</li></ol>
+<hr>
+<p><strong>Investigação:</strong> sessão de 2026-09-19 (madrugada).</p>
+<p><strong>Método:</strong> leitura dos logs de rotina reais (<code>logs/routines/</code>), do motor <code>run_vixradar_varredura.ps1</code>, da lib <code>vixradar-custo.ps1</code>, do config de custo, do CI via <code>gh run</code>, e execução local das duas suítes M3.</p>
+<p><strong>Nenhum artefato de produção foi alterado.</strong></p></section>
+<div id="r103"></div><section class="doc"><h1>103 - Diagnóstico CFG-02 — Atribuição CVM</h1>
+<p><strong>Data:</strong> 2026-09-19 (madrugada)</p>
+<p><strong>Origem:</strong> investigação da prioridade declarada no fechamento operacional de 18/09 (<code>672e982</code>)</p>
+<p><strong>Escopo declarado pelo operador:</strong> diagnóstico com prova, sem tocar código. Cumprido.</p>
+<p><strong>Status:</strong> DIAGNÓSTICO FECHADO. Nenhuma correção aplicada, nenhum deploy, working tree limpo.</p>
+<blockquote>[!warning] CORREÇÃO — leia o <code>104</code> antes deste</blockquote>
+<blockquote>Este documento conclui, na seção <strong>Veredito</strong> abaixo, que "o sistema não está quebrado", com base em <code>ok:true</code>, <code>painel_fresco:true</code> e <code>feed_fresco:true</code>. <strong>Essa inferência é inválida e foi falsificada.</strong></blockquote>
+<p>&gt;</p>
+<blockquote>Nenhum desses três campos mede se alguma análise foi produzida. Em 18/09 a noturna analisou <strong>0 de 104</strong> emissores e a matinal <strong>4 de 23</strong>, com o health verde o tempo todo. O sistema <strong>está</strong> quebrado — ver <code>104 - Diagnostico Operacional Circuito de Custo e Cobertura 2026-09-19.md</code>.</blockquote>
+<p>&gt;</p>
+<blockquote>O que este documento afirma <strong>sobre o CFG-02 continua correto e medido</strong>: a métrica de atribuição CVM é artefato de relatório, a cobertura real do acervo é 100% e a quarentena real é 0. O erro está apenas na inferência sobre a saúde geral do sistema.</blockquote>
+<hr>
+<h2>Veredito</h2>
+<p><strong>Não existe regressão de atribuição da CVM.</strong> A cobertura real do acervo é <strong>100%</strong> e a quarentena real é <strong>zero</strong>.</p>
+<p>O <code>cvm_atribuicao_cobertura_pct = 13.3</code> e o <code>cvm_atribuicao_quarentena = 9943</code> que aparecem no health público são <strong>fabricados por um adaptador</strong> que funde duas populações diferentes e rotula uma delas com o nome de outra. O <code>9943</code> não é quarentena: é a contagem de documentos do portal ENET de <strong>qualquer companhia aberta do Brasil</strong> descartados na entrada por estarem fora do universo dos 103 — comportamento fail-closed correto e documentado desde 25/08.</p>
+<p><strong>CFG-02 não é um problema de pipeline. É um problema de relatório.</strong></p>
+<p>O achado secundário, este sim material, está na seção 5: o filtro de ingestão contradiz o próprio comentário que o explica, e a guarda criada para vigiar essa classe de falha é <strong>cega por construção</strong> — o <code>exit 0</code> dela não prova nada.</p>
+<hr>
+<h2>1. Evidência</h2>
+<h3>1.1 Health público × verdade medida no KV</h3>
+<p>Medido em 2026-09-19T03:03Z, Worker <code>v4.9.258</code>:</p>
+<table><thead><tr><th>Campo</th><th>Health público</th><th>Verdade (KV ao vivo)</th><th>Situação</th></tr></thead><tbody><tr><td>acervo (<code>cvm:documentos</code>)</td><td><em>não exposto</em></td><td><strong>774</strong></td><td>—</td></tr><tr><td>atribuídos por CNPJ</td><td>769</td><td><strong>441</strong></td><td>rótulo errado</td></tr><tr><td>atribuídos por nome</td><td>750</td><td><strong>333</strong></td><td>rótulo errado</td></tr><tr><td>quarentena</td><td><strong>9943</strong></td><td><strong>0</strong></td><td><strong>inventado</strong></td></tr><tr><td>sem dono</td><td><em>fixo em 0</em></td><td><strong>0</strong></td><td>escondido</td></tr><tr><td>cobertura</td><td><strong>13,3%</strong></td><td><strong>100%</strong></td><td><strong>invertido</strong></td></tr><tr><td>emissores dos 103 em quarentena</td><td>—</td><td><strong>0</strong></td><td>guarda exit 0</td></tr><tr><td>CNPJ plausível fora da família</td><td>—</td><td><strong>nenhum</strong></td><td>guarda exit 0</td></tr></tbody></table>
+<h3>1.2 Reprodutibilidade — os comandos exatos</h3>
+<p>Ambas as guardas são read-only e usam a <strong>mesma régua de produção</strong> (<code>_atribuirDocumentoCVM</code>, <code>CNPJ_FAMILIA_CVM</code>, <code>CNPJ_PRIMARIO_EMISSOR</code> importados de <code>api/src/worker.js</code>).</p>
+<pre><code>cd &quot;E:\Diretorio\Claude\Monitoramento de Credito&quot;
+
+node scripts/check-quarentena-emissores.mjs
+# acervo=774 cobertura={&quot;cnpj&quot;:441,&quot;nome&quot;:333,&quot;quarentena&quot;:0,&quot;sem_dono&quot;:0} pct=100
+#   entidades_em_quarentena=0 retornadas=0
+# OK: nenhuma das 0 entidades (maior volume da quarentena) pertence a um dos 103 por CNPJ.
+# ---EXIT: 0---
+
+node scripts/check-cnpj-familia.mjs
+#   CNPJs no indice: 715
+#   ja declarados (primario + familia): 151
+#   recusados com motivo: 2
+# OK: nenhum CNPJ plausivel ficou fora da familia sem decisao.
+# ---EXIT: 0---</code></pre>
+<p>O <code>check-quarentena-emissores.mjs</code> obtém a credencial via <code>api/Get-VixAdminCredential.ps1 -AsPlainText</code> (helper DPAPI, não imprime segredo) e lê o endpoint <code>admin_cvm_quarentena</code>, que recomputa o árbitro sobre o acervo real.</p>
+<h3>1.3 Conferência aritmética</h3>
+<p>O número do health fecha exatamente com a fórmula do adaptador, o que prova qual ramo executou:</p>
+<pre><code>portal.total = quarentena + nome = 9943 + 750 = 10693
+total        = 769 + 750 + 9943 + 0        = 11462
+pct          = (769 + 750) / 11462 × 100   = 13,25% → 13,3  ✓</code></pre>
+<hr>
+<h2>2. Mecanismo — <code>api/src/worker.js:20648</code></h2>
+<p>Existem <strong>três</strong> caminhos que escrevem <code>cvm:documentos</code> / <code>cvm:fonte_meta</code>, e eles gravam formatos diferentes:</p>
+<table><thead><tr><th>Caminho</th><th>Linha</th><th>Filtra sem dono?</th><th>Formato de <code>cobertura</code></th></tr></thead><tbody><tr><td><code>syncCVMZipHistorico</code> (ZIP)</td><td>8264</td><td><strong>Sim</strong> (8400)</td><td>plano: <code>{cnpj, nome, quarentena, sem_dono}</code></td></tr><tr><td><code>syncCVMAutomatico</code> (portal ENET)</td><td>8566</td><td><strong>Sim</strong> (8581)</td><td>aninhado: <code>{portal:{...}, zip:{...}}</code></td></tr><tr><td><code>handleSyncCVM</code> (POST admin)</td><td>6882</td><td><strong>Não</strong></td><td>ausente</td></tr></tbody></table>
+<p>O health lê <code>cvm:fonte_meta.cobertura</code> e, se encontrar a forma aninhada, aplica este adaptador:</p>
+<pre><code>// api/src/worker.js:20648
+if (_cvmCob.portal) _cvmCob = {
+  cnpj:       _cvmCob.zip &amp;&amp; _cvmCob.zip.resolvidos || 0,
+  nome:       _cvmCob.portal.resolvidos || 0,
+  quarentena: Math.max(0, (_cvmCob.portal.total || 0) - (_cvmCob.portal.resolvidos || 0)),
+  sem_dono:   0
+};</code></pre>
+<p>Quatro defeitos em uma linha:</p>
+<ol><li><strong><code>quarentena</code> não é quarentena.</strong> É <code>portal.total - portal.resolvidos</code>, que é exatamente <code>descartadosAllowlist</code> — documentos do portal ENET que falharam <code>_atribuirDocumentoCVM</code> por estarem <strong>fora do universo monitorado</strong>. O árbitro tem uma origem própria chamada <code>"quarentena"</code> (CNPJ presente e não declarado), semanticamente diferente. Dois conceitos distintos compartilham um nome.</li><li><strong><code>nome</code> não é atribuição por nome.</strong> É <code>portal.resolvidos</code>, ou seja, tudo que o portal resolveu (por CNPJ <em>ou</em> por nome). O bucket real de atribuição por nome é 333; o health diz 750.</li><li><strong><code>cnpj</code> não é atribuição por CNPJ.</strong> É <code>zip.resolvidos</code>, que como o caminho ZIP filtra na entrada, equivale ao <strong>acervo inteiro</strong> (769). O bucket real por CNPJ é 441.</li><li><strong><code>sem_dono</code> é fixo em 0.</strong> Qualquer documento genuinamente órfão fica invisível por construção.</li></ol>
+<p>E o <code>pct</code> (linha 20650) <strong>divide dois universos diferentes</strong>: numerador do ZIP (<code>zip.resolvidos</code>), denominador do portal (<code>portal.total</code>). A razão resultante não mede nada.</p>
+<hr>
+<h2>3. Por que o número mudou de significado</h2>
+<p>A semântica da métrica <strong>depende de quem escreveu <code>cvm:fonte_meta</code> por último</strong> — não-determinismo latente:</p>
+<ul><li><code>syncCVMZipHistorico</code> grava a forma <strong>plana</strong>, onde <code>quarentena</code> tem o sentido real do árbitro. Foi o que produziu os <strong>36,1% de 01/09</strong>, que batiam com a verdade.</li><li><code>syncCVMAutomatico</code> chama <code>syncCVMZipHistorico</code> (8590) e <strong>depois sobrescreve o meta</strong> com a forma aninhada (8621). Num ciclo completo, a forma aninhada sempre vence.</li></ul>
+<p>Logo: <strong>36,1% e 13,3% medem coisas diferentes.</strong> A "queda material em 17 dias" registrada em <code>PENDENCIAS.md:160</code> é uma <strong>redefinição de métrica</strong>, não uma perda de atribuição.</p>
+<p>No mesmo período a cobertura <strong>verdadeira subiu de 36,1% para 100%</strong>. O health andou para o lado oposto da realidade.</p>
+<hr>
+<h2>4. O que de fato aconteceu no acervo</h2>
+<table><thead><tr><th></th><th>01/09/2026</th><th>19/09/2026</th></tr></thead><tbody><tr><td>acervo total</td><td>2252</td><td><strong>774</strong></td></tr><tr><td>com dono</td><td>813</td><td><strong>774</strong></td></tr><tr><td>sem dono</td><td>1439</td><td><strong>0</strong></td></tr><tr><td>cobertura verdadeira</td><td>36,1%</td><td><strong>100%</strong></td></tr></tbody></table>
+<p>Os documentos <strong>nossos</strong> permaneceram estáveis (813 → 774, variação de janela). O que saiu foram os <strong>1439 sem dono</strong> — expirados pelo TTL de 30 dias (<code>CVM_DOCUMENTOS_TTL_SEG</code>) e, na entrada, barrados pelo filtro da linha 8400.</p>
+<p>O acervo não encolheu em conteúdo útil. Ele <strong>ficou limpo</strong> — e a métrica do health moveu na direção contrária.</p>
+<hr>
+<h2>5. Achado secundário — a fila de revisão que não existe</h2>
+<p><strong>Este é o achado material desta investigação.</strong> Não estava no escopo do CFG-02 e é independente dele.</p>
+<p><code>api/src/worker.js:8387-8396</code> documenta a decisão de projeto do SUBSTRINGDONO1 fase CNPJ:</p>
+<blockquote>"Agora o filtro de entrada e so categoria e janela de data, que sao fatos do documento e nao juizo sobre ele. <strong>A atribuicao virou etapa de LEITURA. Documento de CNPJ desconhecido fica gravado, sem dono, e alimenta a fila de revisao.</strong> E a diferenca entre 'nao sei de quem e' e 'nunca vi'."</blockquote>
+<p>O código na linha seguinte (<code>8399-8400</code>) faz o oposto:</p>
+<pre><code>const allow = _atribuirDocumentoCVM((cols[iCnpj] || &quot;&quot;).trim(), (cols[iNome] || &quot;&quot;).trim());
+if (!allow.emissor) { descartadosAllowlist++; /* ... */ continue; }   // ← descarta antes de gravar</code></pre>
+<p><strong>O comentário e o código se contradizem, e a fila de revisão prometida não existe.</strong></p>
+<p>Confirmado nas duas pontas automáticas:</p>
+<ul><li><code>syncCVMZipHistorico:8400</code> — <code>continue</code> antes do <code>docs.push</code></li><li><code>syncCVMAutomatico:8581</code> — <code>filtrados = validos.filter(... allow.emissor ...)</code></li><li><code>syncCVMAutomatico:8602</code> — <code>candidatos = merged = zipDocs.concat(docs)</code>, ambos já filtrados</li><li><code>syncCVMAutomatico:8618</code> — grava <code>candidatos</code> em <code>cvm:documentos</code></li></ul>
+<p><strong>Consequência 1 — a quarentena do acervo é sempre 0 por construção.</strong> Só a via manual (<code>handleSyncCVM</code>, POST admin) consegue inserir documento sem dono.</p>
+<p><strong>Consequência 2 — <code>admin_cvm_quarentena</code> lê esse acervo, então a fila é vazia por construção</strong>, não por saúde.</p>
+<p><strong>Consequência 3 — <code>check-quarentena-emissores.mjs</code> só pode examinar documentos que sobreviveram ao filtro.</strong> Ele é <strong>incapaz de detectar a própria classe de falha que existe para pegar</strong>. O <code>exit 0</code> desta madrugada <strong>não é prova de que os 103 estão atribuídos</strong> — é prova de que o acervo não contém nada que pudesse reprovar.</p>
+<p><strong>Consequência 4 — a cegueira da CSN continua possível.</strong> Um emissor novo ou renomeado tem os documentos <strong>descartados na entrada, em silêncio</strong>, em vez de aparecer na fila. O <code>descarte</code> é contado em <code>descartadosAllowlist</code> e detalhado em <code>descartadosAllowlistCategoria</code> (ambos no meta, <strong>não expostos no health</strong>), mas ninguém lê esses campos — e nada no CI falha quando um deles cresce.</p>
+<p>Isto é literalmente a classe que o fechamento de 18/09 nomeou como <em>"guarda que ficou cega"</em> (<code>CACHE_VERSION</code>). Aqui ela está em estado mais grave: a guarda <strong>não pode</strong> acender.</p>
+<h3>5.1 Nuance importante, para não exagerar o achado</h3>
+<p>O estado <strong>atual</strong> dos 103 está correto. O <code>check-cnpj-familia.mjs</code> verifica a outra ponta e passa: dos 715 CNPJs do índice CVM, 151 já estão declarados e nenhum candidato plausível ficou de fora sem decisão. Não há emissor quebrado hoje.</p>
+<p>O defeito é de <strong>observabilidade futura</strong>, não de estado presente. A pergunta que o sistema deixou de saber responder é: <em>"existe documento de uma companhia que deveria ser nossa e que eu joguei fora?"</em></p>
+<hr>
+<h2>6. Mapa de saída — crons, e-mails e a armadilha das flags</h2>
+<p>Levantado porque o operador pediu para "parar o que sai para fora". Não foi executado nada.</p>
+<h3>6.1 Crons (<code>api/wrangler.toml:1531</code>)</h3>
+<table><thead><tr><th>Cron UTC</th><th>BRT</th><th>Ramo</th><th>Envia e-mail?</th></tr></thead><tbody><tr><td><code>0 1 <em> </em> *</code></td><td>22:00</td><td><code>ehWatchdog</code></td><td>Sim — health para <code>ADMIN_EMAIL</code> (interno)</td></tr><tr><td><code>0 4 <em> </em> *</code></td><td>01:00</td><td><code>ehAgenda</code></td><td><strong>Não</strong> — só <code>agendaBuildPersistir</code></td></tr><tr><td><code>30 15 <em> </em> *</code></td><td>12:30</td><td><code>ehMatinal</code></td><td><strong>Não</strong> — sync CVM, anomalias, ANBIMA, preditivo</td></tr><tr><td><code>30 21 <em> </em> *</code></td><td>18:30</td><td><code>ehNoturno</code></td><td><strong>Sim</strong> — newsletter + boletim diário para assinante</td></tr></tbody></table>
+<p>A newsletter e o boletim vivem no ramo <strong>noturno</strong> (<code>worker.js:22500</code> e <code>22506</code>), não no matinal. O próximo envio a assinante é <strong>19/09 às 18:30 BRT</strong>.</p>
+<h3>6.2 As duas flags desligam de jeitos diferentes</h3>
+<pre><code># api/wrangler.toml:1505-1506
+RELATORIO_DIARIO_ENABLED = &quot;1&quot;
+EMAIL_ALERTAS_ENABLED    = &quot;1&quot;</code></pre>
+<table><thead><tr><th>Flag</th><th>Teste no código</th><th>Desliga com</th><th>Armadilha</th></tr></thead><tbody><tr><td><code>RELATORIO_DIARIO_ENABLED</code></td><td><code>!== "1"</code> (13509)</td><td><code>"0"</code></td><td>funciona ✅</td></tr><tr><td><code>EMAIL_ALERTAS_ENABLED</code></td><td><strong>truthy</strong> (5381, 13064, 13512, 22375)</td><td>só <code>""</code></td><td><strong><code>"0"</code> mantém ligado</strong> ⚠️</td></tr></tbody></table>
+<p><code>"0"</code> é string não-vazia, portanto truthy. Quem colocar <code>"0"</code> nas duas acredita ter desligado tudo e desligou apenas o boletim.</p>
+<h3>6.3 Saídas que <strong>não</strong> passam por nenhuma das duas flags</h3>
+<ul><li><code>enviarEmailRastreado</code> — transacionais de aprovação, rejeição, cadastro, unsubscribe (6267, 6310, 6435, 6551, 6592, 6963, 6980)</li><li>Alertas internos para <code>ADMIN_EMAIL</code> — providers (18058), rotina requer atenção (21400, 21438)</li><li><code>Teste Radar</code> para a lista inteira (21490) — apenas por ação admin explícita</li></ul>
+<p>Um corte realmente completo de saída exige agir no provedor (rotação da chave Resend), não nas flags — e isso <strong>destrói a chave atual</strong>, exigindo emissão de nova no Resend.</p>
+<hr>
+<h2>7. O que NÃO foi feito</h2>
+<ul><li>Nenhuma alteração em código</li><li>Nenhum deploy de Worker ou Pages</li><li>Nenhuma alteração em <code>wrangler.toml</code>, <code>status/ESTADO.md</code>, <code>PENDENCIAS.md</code> ou qualquer flag</li><li>Nenhuma rotação de credencial</li><li>Working tree limpo (verificado: <code>git status --short</code> vazio)</li><li>Nenhum desligamento de rotina, cron, e-mail ou frontend</li></ul>
+<p>Os dois scripts executados são read-only por construção.</p>
+<hr>
+<h2>8. Decisões pendentes para o operador</h2>
+<h3>8.1 CFG-02 — corrigir a semântica da métrica</h3>
+<p>Conserto de <strong>leitura</strong>, não de pipeline. Recomendação: expor as duas populações <strong>separadas</strong>, em vez de fundi-las num ratio.</p>
+<ul><li><code>cobertura_acervo</code> — a que importa (hoje 100%)</li><li><code>descartes_portal</code> — diagnóstico do funil ENET (hoje 9943), com <code>descartados_allowlist_categoria</code> visível</li><li><code>sem_dono</code> — deixar de ser fixo em 0</li><li><code>cvm_atribuicao_cobertura_pct</code> — <strong>sair do health</strong>. Na forma atual ele só pode enganar.</li></ul>
+<p>Exige bump de versão + <code>pwsh scripts/deploy-worker.ps1</code> (a mudança é em <code>api/src/worker.js</code>, gera bundle novo).</p>
+<h3>8.2 Linha 8400 — filtro de ingestão</h3>
+<p>Decisão de arquitetura, não de métrica. Duas saídas honestas:</p>
+<ul><li><strong>(a)</strong> Remover o filtro. O acervo passa a guardar documento sem dono e a fila de revisão passa a existir de verdade. Custo: acervo maior (o teto <code>TETO_DOCS = 16000</code> já comporta), e a quarentena deixa de ser 0 — o que é o ponto.</li><li><strong>(b)</strong> Manter o filtro e <strong>corrigir o comentário</strong>, assumindo formalmente que o descarte acontece na entrada. Nesse caso é <strong>obrigatório</strong> criar outra guarda que enxergue o descarte — a atual não enxerga.</li></ul>
+<p>A opção (b) sem guarda nova deixa o sistema exatamente no estado que produziu a CSN sem fonte primária por meses.</p>
+<h3>8.3 Registro</h3>
+<p>Este diagnóstico <strong>não foi registrado</strong> em <code>PENDENCIAS.md</code> nem em <code>status/ESTADO.md</code>. O item <code>CFG-02</code> segue na fila com a descrição antiga ("cobertura 13,3% e quarentena 9.943"), que agora se sabe estar errada. A atualização desses dois arquivos é decisão do operador.</p>
+<hr>
+<h2>9. Correções sugeridas à fila</h2>
+<p>Para quando o operador decidir atualizar a documentação canônica:</p>
+<ul><li><code>PENDENCIAS.md:72</code> — "CFG-02 continua aberto e <strong>piorou</strong>... Cresce ~30 por hora" → <strong>incorreto</strong>. Não há crescimento de quarentena; há recomputação de um contador de descarte do portal.</li><li><code>PENDENCIAS.md:97</code> — "cobertura 13,3% e quarentena 9.943" → <strong>incorreto</strong>. Cobertura real 100%, quarentena real 0.</li><li><code>PENDENCIAS.md:160</code> — "Queda material em 17 dias" → <strong>incorreto</strong>. Comparação entre duas definições distintas de métrica. A cobertura verdadeira subiu.</li><li><code>status/ESTADO.md:3</code> — "CFG-02 continua ABERTO e piorando" → reclassificar: CFG-02 é defeito de <strong>relatório</strong>, e o achado material é o da seção 5 (filtro 8400 + guarda cega).</li></ul>
+<hr>
+<h2>Condição de Obsolescência</h2>
+<p>Cai quando qualquer um destes ocorrer:</p>
+<ol><li><code>cvm_atribuicao_cobertura_pct</code> e <code>cvm_atribuicao_quarentena</code> saírem do health ou forem redefinidos com populações separadas (seção 8.1).</li><li>O filtro da linha 8400 for removido, ou o comentário em 8387-8396 for corrigido com a guarda correspondente (seção 8.2).</li><li>O acervo real divergir materialmente de 774 documentos atribuídos, ou alguma das duas guardas passar a reprovar.</li></ol>
+<p>Enquanto isso, <strong>este documento é a leitura correta do estado da atribuição CVM</strong> — e o health público, neste campo específico, não é.</p>
+<hr>
+<p><strong>Investigação:</strong> sessão de 2026-09-19 (madrugada), a pedido do operador.</p>
+<p><strong>Método:</strong> leitura de código-fonte + duas guardas read-only do próprio projeto + medição ao vivo de <code>https://api.vixradar.com/</code>.</p>
+<p><strong>Nenhum artefato de produção foi alterado.</strong></p></section>
+</body></html>

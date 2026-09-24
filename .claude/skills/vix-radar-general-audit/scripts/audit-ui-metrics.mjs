@@ -60,7 +60,7 @@ const TERMOS_RESERVADOS = {
   critico: "evento classificado CRITICO pelo pipeline.",
   relevantes: "contagem de emissores com evento RELEVANTE (excluindo os ja criticos).",
   relevante: "evento classificado RELEVANTE pelo pipeline.",
-  emissores: "contagem do universo monitorado (103).",
+  emissores: "contagem do universo monitorado. Nao fixar o numero aqui: a fonte e TOTAL_EMISSORES em app/index.html, confirmada pelo preflight da rotina ('ROUTINE_API_KEY aceita pelo Worker (N emissores)'). Media 104 em 2026-09-22; este texto ja mentiu dizendo 103 depois da entrada da Usina Pampa Sul.",
   ews: "Early Warning Score do emissor.",
   score: "score preditivo de credito.",
   staleness: "idade do dado desde a ultima atualizacao real.",

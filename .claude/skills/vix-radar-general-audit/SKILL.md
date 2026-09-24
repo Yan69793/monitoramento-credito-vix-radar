@@ -17,24 +17,31 @@ date: 2026-09-01
 
 # VIX Radar General Audit
 
-> **Governanca (2026-09-01).** Status: vigente. Data da versao alinhada a producao:
-> Worker v4.9.228 e Frontend v202.35, medidos ao vivo em 01/09 no health publico
-> e no version.json de vixradar.com, coincidindo com o repo (main = v4.9.228.js e
-> CACHE_VERSION v202.35). Origem do registro: producao (health + version.json),
-> depois Obsidian (nota 98, auditoria geral de 01/09), depois codigo
+> **Governanca (2026-09-22).** Status: vigente. Data da versao alinhada a producao:
+> Worker v4.9.261 e Frontend v202.44, medidos ao vivo em 22/09 no health publico
+> e no version.json de vixradar.com, coincidindo com o repo (main = v4.9.261.js e
+> CACHE_VERSION v202.44). Origem do registro: producao (health + version.json),
+> depois Obsidian (`status/ESTADO.md` de 21/09), depois codigo
 > (api/wrangler.toml main + changelog).
 > Condicao de obsolescencia: revisar quando o main de api/wrangler.toml ultrapassar
-> v4.9.228, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
+> v4.9.261, ou quando surgir binding, fila, endpoint, rotina ou incidente novo que
 > nenhuma secao desta skill alcance.
 >
-> **Ler a condicao acima ANTES de auditar, nao depois (achado P3-1 de 01/09).** Na
-> auditoria daquele dia este bloco dizia v4.9.226 e a producao ja estava em
-> v4.9.227 desde a vespera: a condicao de obsolescencia tinha disparado de fato e
-> ninguem rodou a revisao antes de usar a skill. O deploy que a disparou aconteceu
-> no mesmo dia do snapshot, depois dele, e nada compara a data do snapshot com a do
-> changelog. O passo 3 de "Antes de auditar" (mapa de versoes) detecta a divergencia;
-> quando ele detectar, atualizar este bloco e o de `references/audit-matrix.md` faz
-> parte da auditoria, nao e trabalho para depois.
+> **Ler a condicao acima ANTES de auditar, nao depois.** Esta advertencia esta na
+> terceira ocorrencia do mesmo defeito. Em 01/09 o bloco dizia v4.9.226 com a
+> producao em v4.9.227 (achado P3-1). Em 22/09 dizia v4.9.228 com a producao em
+> v4.9.261: **33 versoes de atraso**, e o bloco de `references/audit-matrix.md`
+> junto. Nenhuma das duas vezes a condicao de obsolescencia falhou, ela disparou e
+> ninguem a leu, porque ler e um ato de disciplina e o resto da skill nao depende
+> dele para rodar.
+>
+> **Por isso o passo 3 de "Antes de auditar" virou portao, nao etapa.** Rodar o mapa
+> de versoes ANTES de qualquer leitura de codigo, e se ele divergir deste bloco, a
+> primeira edicao da auditoria e atualizar os tres blocos de governanca (`SKILL.md`,
+> `references/audit-matrix.md`, `references/glossario-dominio.md`). Auditoria que
+> comeca pela leitura de fonte com o snapshot vencido esta medindo o sistema com a
+> regua errada, e foi assim que o subsistema ENETWeb inteiro (v4.9.247-253) ficou
+> fora de cobertura por tres semanas.
 
 Auditoria ampla de engenharia para o VIX Radar. Esta skill complementa
 `vix-radar-audit`: use `vix-radar-audit` para health operacional/producao e esta

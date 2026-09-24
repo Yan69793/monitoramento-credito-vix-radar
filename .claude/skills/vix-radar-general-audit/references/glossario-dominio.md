@@ -1,9 +1,18 @@
 # Glossario de dominio — VIX Radar
 
-> **Governanca (2026-08-31).** Status: vigente. Data da versao alinhada a producao:
-> Frontend v202.35 (version.json ao vivo em 31/08, deploy 2026-08-30). Origem do
-> registro: producao, depois Obsidian, depois codigo. Condicao de obsolescencia:
-> revisar quando o frontend avancar de v202.35 ou surgir termo reservado novo.
+> **Governanca (2026-09-22).** Status: vigente. Data da versao alinhada a producao:
+> Frontend v202.44 (`https://vixradar.com/version.json` ao vivo em 22/09,
+> `deployed_at 2026-09-20T03:27:52Z`, coincidindo com `CACHE_VERSION` de
+> `app/index.html`). Origem do registro: producao, depois Obsidian, depois codigo.
+> Condicao de obsolescencia: revisar quando o frontend avancar de v202.44 ou surgir
+> termo reservado novo.
+>
+> **Contagem de emissor nunca entra aqui como literal.** Este bloco dizia v202.35 e a
+> tabela abaixo dizia "103" em 22/09/2026, com a producao em v202.44 e o universo em
+> 104 desde a entrada da Usina Pampa Sul. Um numero copiado para dentro do glossario
+> vira a quinta copia a mao de uma contagem que ja vive em cinco lugares, e o
+> `audit-ui-metrics.mjs` chegou a imprimir "deve medir: ... (103)" enquanto auditava
+> uma tela de 104. Termo reservado declara a FONTE do numero, nao o numero.
 
 Fonte canonica dos termos que aparecem em rotulo de UI, campo de KV, nome de
 variavel, prompt de LLM e texto de e-mail. Existe por uma razao concreta: em
@@ -21,7 +30,7 @@ com outro sentido.
 | Termo | Significa exatamente | Nao significa |
 |---|---|---|
 | **Cobertura** | Fracao do universo efetivamente varrida/analisada, ou rodadas de busca concluidas (`fontes_consultadas`, `_coberturaMin`, `cobertura_nota`) | Emissores sem alerta. Saude do mercado. Disponibilidade do sistema |
-| **Emissores** | Contagem do universo monitorado (103) | Emissores com evento. Emissores varridos hoje |
+| **Emissores** | Contagem do universo monitorado. Fonte unica: `TOTAL_EMISSORES` em `app/index.html`, conferida contra o preflight da rotina (`ROUTINE_API_KEY aceita pelo Worker (N emissores)`). Medido 104 em 22/09/2026 | Emissores com evento. Emissores varridos hoje. Um numero literal copiado para ca |
 | **Criticos** | Emissores distintos com ao menos um evento `CRITICO` na janela | Contagem de eventos. Severidade de infra |
 | **Relevantes** | Emissores distintos com evento `RELEVANTE`, **excluindo** os ja contados como criticos | Total de eventos relevantes |
 | **EWS** | Early Warning Score do emissor (faixas: >=61 CRITICO, >=36 ALERTA, >=16 ATENCAO, senao ESTAVEL) | Score preditivo de default |
