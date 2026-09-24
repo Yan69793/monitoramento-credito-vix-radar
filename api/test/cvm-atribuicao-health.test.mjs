@@ -2,11 +2,10 @@ import { SELF, env } from "cloudflare:test";
 import { beforeEach, describe, expect, it } from "vitest";
 import { CNPJ_FAMILIA_CVM, _coberturaAtribuicaoAcervo } from "../src/worker.js";
 
-// CFG-02 P2 (2026-09-21). Desde 13/09 o health publicava
-// cvm_atribuicao_quarentena = 9426 enquanto a fila real (admin_cvm_quarentena)
-// tinha ZERO entidades e o acervo 100% atribuido. O numero era descartados_allowlist,
-// FLUXO do ultimo sync ENET, e cnpj/nome eram contagens das vias portal/zip, nao
-// origem de atribuicao. Estes testes travam as duas pontas.
+// CFG-02 P2 (2026-09-21). O health separa a origem da atribuicao do fluxo de
+// ingestao. A conta do sync precisa fechar, recebidos = atribuidos + quarentena
+// + descartados, para que cobertura de 100% do acervo nunca esconda perda antes
+// da gravacao.
 const META_KEY = "cvm:fonte_meta";
 
 function hojeISO() { return new Date(Date.now() - 3 * 60 * 60 * 1e3).toISOString().slice(0, 10); }
@@ -32,9 +31,7 @@ describe("CFG-02 P2 - health separa origem de atribuicao do descarte de ingestao
     await env.RADAR_KV.delete("cvm:documentos");
   });
 
-  // T2, ponta boa: meta novo. Quarentena vem da origem medida no acervo (0) e o
-  // descarte de 9426 aparece so no campo proprio.
-  it("T2 bom: quarentena = origem medida no acervo, descarte em campo proprio", async () => {
+  it("T2 legado: descarte historico entra na conta de recebidos, sem fingir cobertura total", async () => {
     await seedMeta({
       documentos: 796,
       descartados_allowlist: 9426,
@@ -48,6 +45,25 @@ describe("CFG-02 P2 - health separa origem de atribuicao do descarte de ingestao
     expect(b.cvm_atribuicao_sem_dono).toBe(0);
     expect(b.cvm_atribuicao_cobertura_pct).toBe(100);
     expect(b.cvm_ingestao_descartados_sem_dono).toBe(9426);
+    expect(b.cvm_ingestao_recebidos).toBe(10222);
+    expect(b.cvm_ingestao_atribuidos).toBe(796);
+    expect(b.cvm_ingestao_quarentena).toBe(0);
+    expect(b.cvm_ingestao_descartados).toBe(9426);
+  });
+
+  it("T2 novo: documento sem dono permanece em quarentena e nada e descartado", async () => {
+    await seedMeta({
+      documentos: 800,
+      descartados_allowlist: 0,
+      descartados_teto: 0,
+      cobertura_atribuicao: { cnpj: 441, nome: 355, quarentena: 2, sem_dono: 2 }
+    });
+    const b = await health();
+    expect(b.cvm_ingestao_recebidos).toBe(800);
+    expect(b.cvm_ingestao_atribuidos).toBe(796);
+    expect(b.cvm_ingestao_quarentena).toBe(4);
+    expect(b.cvm_ingestao_descartados).toBe(0);
+    expect(b.cvm_ingestao_recebidos).toBe(b.cvm_ingestao_atribuidos + b.cvm_ingestao_quarentena + b.cvm_ingestao_descartados);
   });
 
   // T2, ponta ruim: meta legado {portal,zip}. Antes, quarentena = total - resolvidos
@@ -66,6 +82,10 @@ describe("CFG-02 P2 - health separa origem de atribuicao do descarte de ingestao
     expect(b.cvm_atribuicao_cobertura_pct).toBeNull();
     expect(b.cvm_atribuicao_quarentena).not.toBe(9426);
     expect(b.cvm_ingestao_descartados_sem_dono).toBe(9426);
+    expect(b.cvm_ingestao_recebidos).toBeNull();
+    expect(b.cvm_ingestao_atribuidos).toBeNull();
+    expect(b.cvm_ingestao_quarentena).toBeNull();
+    expect(b.cvm_ingestao_descartados).toBeNull();
   });
 
   it("T2: sem descarte gravado, o campo de descarte e null e nao zero", async () => {
@@ -73,6 +93,10 @@ describe("CFG-02 P2 - health separa origem de atribuicao do descarte de ingestao
     const b = await health();
     expect(b.cvm_ingestao_descartados_sem_dono).toBeNull();
     expect(b.cvm_atribuicao_por_cnpj).toBe(10);
+    expect(b.cvm_ingestao_recebidos).toBe(10);
+    expect(b.cvm_ingestao_atribuidos).toBe(10);
+    expect(b.cvm_ingestao_quarentena).toBe(0);
+    expect(b.cvm_ingestao_descartados).toBe(0);
   });
 });
 

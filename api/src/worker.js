@@ -8368,10 +8368,8 @@ async function syncCVMZipHistorico(env2222) {
     const trintaDiasAtras = new Date(Date.now() - 35 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
     const hoje = obterAgoraBRT().toISOString().split("T")[0];
     const docs = [];
-    const descartadosAllowlistCategoria = {};
-    let descartadosAllowlist = 0;
-    // A mesma allowlist do leitor, aplicada antes da escrita nas duas fontes.
-    // filtro. Se medisse so os 103 emissores, um dia em que a CVM publicou
+    // O limite da carteira nao filtra a coleta. Se medisse so os 103 emissores,
+    // um dia em que a CVM publicou
     // normalmente mas nenhum emissor nosso protocolou pareceria fonte parada.
     let maxEntregaFonte = null;
     for (let i = 1; i < lines.length; i++) {
@@ -8411,8 +8409,6 @@ async function syncCVMZipHistorico(env2222) {
       // revisao. E a diferenca entre "nao sei de quem e" e "nunca vi".
       const dataRef = (cols[iData] || "").trim();
       if (dataRef > hoje || dataRef < trintaDiasAtras) continue;
-      const allow = _atribuirDocumentoCVM((cols[iCnpj] || "").trim(), (cols[iNome] || "").trim());
-      if (!allow.emissor) { descartadosAllowlist++; descartadosAllowlistCategoria[cat] = (descartadosAllowlistCategoria[cat] || 0) + 1; continue; }
       docs.push({ e: (cols[iNome] || "").trim(), j: iCnpj >= 0 ? (cols[iCnpj] || "").trim() : "", d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim(), l: (cols[iLink] || "").trim() });
     }
     docs.sort((a, b) => b.d.localeCompare(a.d));
@@ -8420,24 +8416,15 @@ async function syncCVMZipHistorico(env2222) {
     // Base: data/cvm-referencia/ipe_janela_2026-08-25.json.gz, a mesma janela de 35
     // dias que o sync usa, medida sobre o acervo real. Da 2175 documentos, 510
     // empresas, 0,82 MB serializado. O limite de valor do KV e 25 MB, entao a folga
-    // e de 30x. O teto de 4000 e cerca de 2x a medicao e ainda 6% do limite.
+    // e de 30x. O teto de 16000 e cerca de 7x a medicao e ainda cabe no limite.
     //
-    // Ao estourar, sai primeiro o que NAO tem dono, do mais antigo por Data_Entrega,
-    // porque quarentena vale menos que documento de emissor da carteira. E a
-    // contagem descartada vai para o log e para o meta: truncamento silencioso e
-    // exatamente a classe de falha que esta mudanca existe para matar.
+    // O teto protege o limite do KV, mas nunca autoriza descartar documento sem
+    // dono. Se o lote nao cabe, o sync falha antes de gravar e preserva o acervo
+    // anterior para que o proximo ciclo possa ser investigado sem perda de dados.
     const TETO_DOCS = 16000;
     let descartadosPorTeto = 0;
     if (docs.length > TETO_DOCS) {
-      const comDono = [], semDono = [];
-      for (const d of docs) (_atribuirDocumentoCVM(d.j, d.e).emissor ? comDono : semDono).push(d);
-      semDono.sort((a, b) => (b.de || b.d).localeCompare(a.de || a.d));
-      const vagas = Math.max(0, TETO_DOCS - comDono.length);
-      descartadosPorTeto = docs.length - Math.min(docs.length, comDono.length + vagas);
-      docs.length = 0;
-      docs.push(...comDono, ...semDono.slice(0, vagas));
-      docs.sort((a, b) => b.d.localeCompare(a.d));
-      console.warn("[cvm][teto] acervo acima de " + TETO_DOCS + ", descartados " + descartadosPorTeto + " documentos sem dono");
+      throw new Error("zip_teto_documentos_excedido");
     }
     // VOLTTL1 aplicado aqui em 2026-08-24: a chave so e reescrita em sync
     // BEM-SUCEDIDO, e o lote util da CVM e semanal. TTL de 14 dias dava margem
@@ -8464,7 +8451,8 @@ async function syncCVMZipHistorico(env2222) {
       // SUBSTRINGDONO1, fase CNPJ: a cobertura vive no meta para o health poder
       // expor sem reprocessar o acervo inteiro a cada GET.
       cobertura: _cob,
-      descartados_allowlist: descartadosAllowlist,
+      descartados_allowlist: 0,
+      descartados_allowlist_categoria: {},
       descartados_teto: descartadosPorTeto,
       origem: "sync_automatico"
     });
@@ -8587,16 +8575,15 @@ async function syncCVMAutomatico(env2222) {
   var baseExpirada = !Array.isArray(base) || !base.length;
   if (baseExpirada) await gravarFonteCVMMeta(env2222, { ok: false, motivo: "base_expirada_ttl", base_presente: false, sincronizado_em: agora, origem: "enetweb" });
   try {
-    var cadastro = await _enetCadastro(), cur = new Date(inicio + "T00:00:00Z"), fim = new Date(hoje + "T00:00:00Z"), lotes = [], docs = [], protocolos = {}, descartadosAllowlist = 0, descartadosAllowlistCategoria = {}, validosPortal = 0;
+    var cadastro = await _enetCadastro(), cur = new Date(inicio + "T00:00:00Z"), fim = new Date(hoje + "T00:00:00Z"), lotes = [], docs = [], protocolos = {}, validosPortal = 0;
     while (cur <= fim) {
       var de = cur.toISOString().slice(0, 10); cur.setUTCDate(cur.getUTCDate() + 9); var ate = cur > fim ? hoje : cur.toISOString().slice(0, 10); cur.setUTCDate(cur.getUTCDate() + 1);
       var payload = { dataDe: de.split("-").reverse().join("/"), dataAte: ate.split("-").reverse().join("/"), empresa: "", setorAtividade: "", categoriaEmissor: "", situacaoEmissor: "", tipoParticipante: "", dataReferencia: "", categoria: "IPE_-1_-1_-1", periodo: "2", horaIni: "0", horaFim: "23", palavraChave: "", ultimaDtRef: "false", tipoEmpresa: "", token: "", versaoCaptcha: "" };
       var texto = await _enetConsultaRetry(payload), linhas = _enetExtrairLinhas(texto), validos = linhas.map(function(c) { return _enetLinhaNormalizada(c, cadastro); }).filter(Boolean);
       if (!validos.length) throw new Error("enet_layout_invalido");
       validosPortal += validos.length;
-      var filtrados = validos.filter(function(d) { var allow = _atribuirDocumentoCVM(d.j, d.e); if (allow.emissor) return true; descartadosAllowlist++; descartadosAllowlistCategoria[d.c] = (descartadosAllowlistCategoria[d.c] || 0) + 1; return false; });
-      filtrados.forEach(function(d) { docs.push(d); if (d._protocolo) { if (!protocolos[d._protocolo]) protocolos[d._protocolo] = []; protocolos[d._protocolo].push(d.l); } });
-      lotes.push({ de: de, ate: ate, documentos: filtrados.length, documentos_brutos: validos.length, descartados_allowlist: validos.length - filtrados.length });
+      validos.forEach(function(d) { docs.push(d); if (d._protocolo) { if (!protocolos[d._protocolo]) protocolos[d._protocolo] = []; protocolos[d._protocolo].push(d.l); } });
+      lotes.push({ de: de, ate: ate, documentos: validos.length, documentos_brutos: validos.length, descartados_allowlist: 0 });
     }
     var zipOk = false, zipDocs = [], rec = anterior && anterior.reconciliacao_zip_ultimo_ok_em;
     // Sem reconciliacao anterior nao existe idade mensuravel. 999 era um
@@ -8622,11 +8609,7 @@ async function syncCVMAutomatico(env2222) {
     if (candidatos.length < piso) throw new Error("enet_encolhimento_bloqueado");
     var TETO_DOCS = 16000, descartadosTeto = 0;
     if (candidatos.length > TETO_DOCS) {
-      candidatos = candidatos.slice().sort(function(a, b) { return (b.de || "").localeCompare(a.de || "") || (b.d || "").localeCompare(a.d || "") || String(a.l || "").localeCompare(String(b.l || "")); });
-      var removidos = candidatos.slice(TETO_DOCS);
-      var limite14 = new Date(Date.now() - 14 * 864e5).toISOString().slice(0, 10);
-      if (removidos.some(function(d) { return (d.de || d.d || "") >= limite14 || zipOnly.some(function(z) { return _cvmChaveDoc({ link: z.l, categoria: z.c, data: z.d, assunto: z.a }) === _cvmChaveDoc({ link: d.l, categoria: d.c, data: d.d, assunto: d.a }); }); })) throw new Error("enet_teto_corte_protegido");
-      descartadosTeto = removidos.length; candidatos = candidatos.slice(0, TETO_DOCS);
+      throw new Error("enet_teto_documentos_excedido");
     }
     var hashInput = JSON.stringify(candidatos.map(function(d) { return { e: d.e, j: d.j, d: d.d, de: d.de, c: d.c, a: d.a, l: d.l }; }).sort(function(a, b) { return a.l.localeCompare(b.l); }));
     var digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(hashInput));
@@ -8634,7 +8617,7 @@ async function syncCVMAutomatico(env2222) {
     await env2222.RADAR_KV.put("cvm:documentos", JSON.stringify(candidatos), { expirationTtl: CVM_DOCUMENTOS_TTL_SEG });
     var origemMeta = zipAnoCorrenteOk ? "enetweb+zip" : "enetweb_sem_zip_corrente";
     var gateMeta = zipAnoCorrenteOk ? "aprovado" : "bloqueado";
-    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, descartados_allowlist: descartadosAllowlist, descartados_allowlist_categoria: descartadosAllowlistCategoria, cobertura_atribuicao: _coberturaAtribuicaoAcervo(candidatos), cobertura: { portal: { total: validosPortal, resolvidos: validosPortal - descartadosAllowlist, pct: validosPortal ? Number(((validosPortal - descartadosAllowlist) * 100 / validosPortal).toFixed(2)) : null }, zip: { total: zipDocs.length, resolvidos: zipDocs.filter(function(d) { return !!_atribuirDocumentoCVM(d.j, d.e).emissor; }).length } }, descartados_teto: descartadosTeto, metodologia_id: CVM_ENET_METODOLOGIA_ID, metodologia_anterior: metodologiaAnterior, universo_metodologia: pisoInfo.universo, documentos_anteriores: Array.isArray(base) ? base.length : 0, piso_documentos: piso, piso_modo: pisoInfo.modo, piso_bootstrap: pisoBootstrap, piso_dinamico: pisoDinamico, rebase_metodologia: rebase, motivo_rebase: rebase ? "troca_de_metodologia" : null, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
+    await gravarFonteCVMMeta(env2222, { ok: true, origem: origemMeta, base_presente: true, sincronizado_em: agora, max_data_entrega: candidatos.reduce(function(m, d) { return d.de > m ? d.de : m; }, ""), conteudo_sha256: hash, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, comuns: merged.length - zipOnly.length - portalOnly.length, descartados_allowlist: 0, descartados_allowlist_categoria: {}, cobertura_atribuicao: _coberturaAtribuicaoAcervo(candidatos), cobertura: { portal: { total: validosPortal, resolvidos: validosPortal, pct: validosPortal ? 100 : null }, zip: { total: zipDocs.length, resolvidos: zipDocs.filter(function(d) { return !!_atribuirDocumentoCVM(d.j, d.e).emissor; }).length } }, descartados_teto: descartadosTeto, metodologia_id: CVM_ENET_METODOLOGIA_ID, metodologia_anterior: metodologiaAnterior, universo_metodologia: pisoInfo.universo, documentos_anteriores: Array.isArray(base) ? base.length : 0, piso_documentos: piso, piso_modo: pisoInfo.modo, piso_bootstrap: pisoBootstrap, piso_dinamico: pisoDinamico, rebase_metodologia: rebase, motivo_rebase: rebase ? "troca_de_metodologia" : null, reconciliacao_zip_ultimo_ok_em: rec, reconciliacao_zip_idade_dias: idadeRec, reconciliacao_zip_ano_corrente_ok: zipAnoCorrenteOk, reconciliacao_zip_gate_motivo: zipGateMotivo, gate_reconciliacao: gateMeta, gate_reconciliacao_motivo: zipGateMotivo });
     return { ok: true, documentos: candidatos.length, lotes_ok: lotes.length, portal_only: portalOnly.length, zip_only: zipOnly.length, gate_reconciliacao: gateMeta, log: { lotes: lotes } };
   } catch (e) {
     var motivo = baseExpirada ? "base_expirada_ttl" : String(e && e.message || e).slice(0, 80);
@@ -20794,6 +20777,17 @@ async function __coreFetch(request, env2222, ctx) {
       var _cvmCob = _cvmCobBruta || { cnpj: null, nome: null, quarentena: null, sem_dono: null };
       var _cvmCobTotal = _cvmCobBruta ? (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0) : 0;
       var _cvmCobPct = _cvmCobTotal > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotal * 1e3) / 10 : null;
+      // A sequencia abaixo fecha a conta do ultimo sync. `recebidos` inclui o
+      // que entrou no acervo e qualquer corte historico registrado no meta,
+      // portanto cobertura de 100% nunca esconde documento que ficou de fora.
+      var _cvmDescartadosAllowlist = _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : 0;
+      var _cvmDescartadosTeto = _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0;
+      var _cvmIngestao = _cvmCobBruta ? {
+        recebidos: _cvmCobTotal + _cvmDescartadosAllowlist + _cvmDescartadosTeto,
+        atribuidos: (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0),
+        quarentena: (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0),
+        descartados: _cvmDescartadosAllowlist + _cvmDescartadosTeto
+      } : { recebidos: null, atribuidos: null, quarentena: null, descartados: null };
       // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): ate aqui NENHUM campo
       // do health media a idade do PAINEL (o que o usuario ve na tela). `ok`
       // mede o servico (HEALTHSPLIT1) e `evento_mais_novo`/`avanco_feed` medem a
@@ -20845,7 +20839,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_sem_dono: _cvmCob.sem_dono, cvm_ingestao_descartados_sem_dono: _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : null, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_sem_dono: _cvmCob.sem_dono, cvm_ingestao_recebidos: _cvmIngestao.recebidos, cvm_ingestao_atribuidos: _cvmIngestao.atribuidos, cvm_ingestao_quarentena: _cvmIngestao.quarentena, cvm_ingestao_descartados: _cvmIngestao.descartados, cvm_ingestao_descartados_sem_dono: _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : null, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
