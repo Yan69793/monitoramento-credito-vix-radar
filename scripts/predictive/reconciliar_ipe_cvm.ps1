@@ -15,7 +15,10 @@
 #
 # Fonte de dados: dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{ano}.zip
 #   (mesmo dataset que o Worker consome em syncCVMAutomatico, api/v4.9.161.js:6268+).
-#   Publicacao semanal aos domingos (~07h BRT, medido uma vez em 12/07/2026 - nota 60).
+#   Publicacao semanal: a A-1 e escrita no domingo (~07h BRT, medido uma vez em 12/07/2026 -
+#   nota 60) e o zip do ANO CORRENTE e republicado na segunda de manha - medido em
+#   21/09/2026 as 08:53 BRT (Last-Modified 11:53:41Z). Por isso o trigger da task e
+#   segunda 12:00 BRT e o download tem retry curto (RECONCILE-CVM404B).
 # Universo de emissores: scripts/predictive/cnpj_emissores.json (nome -> CNPJ, ja com o guard
 #   de entidade de atualizar_altman_cvm.ps1). Emissores sem CNPJ mapeado (PRED3, hoje 22) nao
 #   podem ser reconciliados - reportados como gap informativo, nao como divergencia.
@@ -33,11 +36,22 @@
 # Exit codes: 0 ok (com ou sem divergencias - divergencia e dado, nao falha de execucao)
 #             1 falha ao baixar/parsear o IPE · 2 falha ao ler todas as semanas de estado do KV
 #
-# Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\predictive\reconciliar_ipe_cvm.ps1" [-DiasJanela 10] [-SemanasEstado 3] [-DryRun] [-Quiet]
+# RECONCILE-CVM404B (2026-09-24): a CVM republica o zip do ANO CORRENTE na segunda de
+# manha e em 21/09/2026 so o escreveu as 08:53 BRT - a execucao das 08:00 pegou 404 no
+# nome canonico, o catalogo CKAN anunciou a MESMA URL ausente e a rotina morreu as
+# 08:00:05 com ERRO FATAL, exit 1. Passou a rodar segunda 12:00 BRT e o download do zip
+# do ano ganhou retry curto e limitado (-DownloadTentativas/-DownloadEsperaSeg, default
+# 3 tentativas com esperas de 60s e 120s, ~3 min, folgado no ExecutionTimeLimit PT20M
+# da task). Contrato de exit inalterado: esgotado o retry, 404 -> catalogo -> ERRO FATAL
+# fonte_ausente_no_catalogo -> exit 1. Nunca sucesso com dado incompleto.
+#
+# Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\predictive\reconciliar_ipe_cvm.ps1" [-DiasJanela 10] [-SemanasEstado 3] [-DownloadTentativas 3] [-DownloadEsperaSeg 60] [-DryRun] [-Quiet]
 
 param(
     [int]$DiasJanela = 10,
     [int]$SemanasEstado = 3,
+    [int]$DownloadTentativas = 3,
+    [int]$DownloadEsperaSeg = 60,
     [switch]$DryRun,
     [switch]$Quiet
 )
@@ -168,18 +182,42 @@ try {
     if (Test-Path $zipPath) { Remove-Item -Path $zipPath -Force }
     $urlZip = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/IPE/DADOS/ipe_cia_aberta_{0}.zip" -f $ano
     Write-Log ("Baixando IPE {0} (dados.cvm.gov.br)..." -f $ano)
-    try {
-        Invoke-WebRequest -Uri $urlZip -OutFile $zipPath -UseBasicParsing -TimeoutSec 60
-    } catch {
-        $statusCvm = $null
-        try { $statusCvm = [int]$_.Exception.Response.StatusCode } catch { $statusCvm = $null }
+
+    # RECONCILE-CVM404B (2026-09-24): a execucao das 08:00 de 21/09/2026 pegou o zip do
+    # ano ausente (404) e morreu as 08:00:05 com ERRO FATAL; a CVM so o escreveu as
+    # 08:53 BRT. Era janela de publicacao, nao fonte ausente de verdade, e nao havia
+    # retentativa nenhuma. Aqui vai retry curto e limitado (default 3 tentativas,
+    # esperas de 60s e 120s, ~3 min - teto folgado dentro do ExecutionTimeLimit PT20M
+    # da task) para o caso de a republicacao atrasar alguns minutos.
+    # Esgotadas as tentativas, o contrato NAO muda: 404 -> catalogo -> ERRO FATAL
+    # fonte_ausente_no_catalogo -> exit 1. Nunca sucesso com dado incompleto.
+    $statusCvm = $null
+    $msgCvm = $null
+    for ($tentativa = 1; $tentativa -le $DownloadTentativas; $tentativa++) {
+        try {
+            Invoke-WebRequest -Uri $urlZip -OutFile $zipPath -UseBasicParsing -TimeoutSec 60
+            $statusCvm = 200
+            $msgCvm = $null
+            break
+        } catch {
+            $statusCvm = $null
+            try { $statusCvm = [int]$_.Exception.Response.StatusCode } catch { $statusCvm = $null }
+            $msgCvm = $_.Exception.Message
+            if ($tentativa -lt $DownloadTentativas) {
+                $espera = $DownloadEsperaSeg * $tentativa
+                Write-Log ("AVISO: download do IPE {0} falhou (status {1}) - tentativa {2}/{3}, retentando em {4}s" -f $ano, $statusCvm, $tentativa, $DownloadTentativas, $espera)
+                Start-Sleep -Seconds $espera
+            }
+        }
+    }
+    if ($statusCvm -ne 200) {
         if ($statusCvm -eq 404) {
             # Caminho canonico sem o zip do ano (CVMURL404). Pergunta ao catalogo;
             # se ele tambem nao conhecer o ano, contrato preservado: ERRO FATAL
             # fonte_ausente_no_catalogo + exit 1 no catch global (reconciliacao e
             # secundaria, o monitor tem grace 7d; a ingestao principal ja e coberta
             # pelo fix do Worker v4.9.209/210).
-            Write-Log ("AVISO: {0} respondeu 404 - consultando o catalogo CKAN da CVM..." -f $urlZip)
+            Write-Log ("AVISO: {0} respondeu 404 apos {1} tentativa(s) - consultando o catalogo CKAN da CVM..." -f $urlZip, $DownloadTentativas)
             $urlZip = Get-UrlZipCvmPeloCatalogo $ano
             if (-not $urlZip) {
                 throw ('fonte_ausente_no_catalogo: catalogo CVM nao lista ipe_cia_aberta_{0}.zip e o nome canonico respondeu 404' -f $ano)
@@ -196,7 +234,7 @@ try {
                 throw ('fonte_ausente_no_catalogo: URL anunciada pelo catalogo ({0}) tambem falhou (status {1}): {2}' -f $urlZip, $stCat, $_.Exception.Message)
             }
         } else {
-            throw ('falha ao baixar IPE {0} (status {1}): {2}' -f $ano, $statusCvm, $_.Exception.Message)
+            throw ('falha ao baixar IPE {0} (status {1}): {2}' -f $ano, $statusCvm, $msgCvm)
         }
     }
     # Defesa em profundidade (espelha o nao_e_zip do Worker, worker.js:8012-8016):

@@ -1,8 +1,13 @@
 # register-reconciliacao-cvm-task.ps1
 # Cria a task VIXRadar-Reconciliacao-CVM no Windows Task Scheduler.
-# Roda SEMANALMENTE as segundas-feiras 08:00 (hora local BRT) - depois da publicacao do
-# dataset IPE da CVM aos domingos (~07h BRT, medido uma vez em 12/07/2026, nota Obsidian 60)
-# e fora da janela matinal (10h00) e do cron de verificacao (10h20).
+# Roda SEMANALMENTE as segundas-feiras 12:00 (hora local BRT). Era 08:00, herdado da epoca
+# em que se supunha que so a serie A-1 existia (escrita no domingo ~07h BRT, medido uma vez
+# em 12/07/2026, nota Obsidian 60). Medido em 21/09/2026: o zip do ANO CORRENTE e republicado
+# pela CVM na segunda de manha e naquele dia so foi escrito as 08:53 BRT (Last-Modified
+# 11:53:41Z) - a execucao das 08:00 pegou 404 e morreu com ERRO FATAL (exit 1). 12:00 fica
+# depois dessa janela e tambem fora da janela matinal (10h00) e do cron de verificacao (10h20).
+# O retry curto no download (RECONCILE-CVM404B, no proprio reconciliador) cobre atraso de
+# minutos na republicacao.
 # Reversao: Unregister-ScheduledTask -TaskName 'VIXRadar-Reconciliacao-CVM' -Confirm:$false
 #
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-reconciliacao-cvm-task.ps1"
@@ -14,7 +19,7 @@ $ScriptPath  = Join-Path $ProjectRoot 'scripts\predictive\reconciliar_ipe_cvm.ps
 if (-not (Test-Path $ScriptPath)) { throw "Script nao encontrado: $ScriptPath" }
 
 $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File `"$ScriptPath`""
-$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '08:00'
+$trigger = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '12:00'
 $principal = New-ScheduledTaskPrincipal -UserId 'User' -LogonType Interactive -RunLevel Limited
 $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 20)
 

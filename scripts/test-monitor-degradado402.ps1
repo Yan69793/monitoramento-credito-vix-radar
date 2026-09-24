@@ -110,7 +110,10 @@ foreach ($f in @('monitor-tasks.ps1', 'lib\vixradar-watchdog.ps1')) {
     $n = @($errs).Count
     Assert ($n -eq 0) ($f + ': 0 erro de parse (achados=' + $n + $(if ($n -gt 0) { ' -> ' + $errs[0].Message } else { '' }) + ')')
 }
-Assert ($mont -match '\$exitCode = \[Math\]::Min\(\$erros\.Count, 255\)') 'exit code do monitor continua sendo $erros.Count (degradacao nao muda o resultado da task)'
+Assert ($mont -match '(?m)^exit 0\r?$') 'EXITCONTRATO1: monitor sai 0 (a varredura completou; achado nao vira exit code de task)'
+Assert (-not ($mont -match '\$exitCode')) 'EXITCONTRATO1: contrato antigo "exit = contagem de achados" nao voltou'
+Assert ($mont -match 'Erros: \$\(\$erros\.Count\)') 'contagem de achados continua publicada no resumo do log'
+Assert ($mont -match 'Warnings: \$\(\$warnings\.Count\)') 'contagem de warnings continua publicada no resumo do log'
 
 Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
 Write-Host ''

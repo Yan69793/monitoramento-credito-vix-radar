@@ -274,7 +274,7 @@ antigos foram gravados sob o regime invertido.
 | `VIXRadar-AgendaSemanal` | Task Scheduler | **Dom e Qua** 22h00 BRT | `run_vixradar_agenda_semanal.ps1` | Calendário trimestral, top 20 stale. 2x/semana é decisão deliberada de 14/08 (CALVAL-V2 regra 9, motivo `revalidar_proximo`), ver `routines/README.md` |
 | `VIXRadar-Coleta-Volatilidade` | Task Scheduler | Diário 17h00 BRT | — | Cotações + volatilidade no KV |
 | `VIXRadar-Export-Historico` | Task Scheduler | Diário 20h45 BRT | — | Exporta estado |
-| `VIXRadar-Reconciliacao-CVM` | Task Scheduler | Seg 08h00 BRT | — | Reconcilia IPE CVM vs estado |
+| `VIXRadar-Reconciliacao-CVM` | Task Scheduler | Seg **12h00** BRT | — | Reconcilia IPE CVM vs estado. Era 08h00; a CVM republica o zip do ano na segunda de manhã e em 21/09/2026 a execução das 08h00 pegou 404 (RECONCILE-CVM404B) |
 | `VIXRadar-Health-Watch` | Task Scheduler | **DESATIVADO 21/08/2026, decisão do operador** | — | Vigia de health a cada 15 min, desligado. O alerta de queda continua existindo, mais lento, via `canonical-test` a cada 6h e `frescor-check` diário. Reativar: `Enable-ScheduledTask -TaskName "VIXRadar-Health-Watch"` |
 | `VIXRadar-Ranking-Mensal` | **OBSOLETO** (task não existe) | — | — | SEO mensal, descontinuada 18/08/2026, ver `routines/README.md` |
 

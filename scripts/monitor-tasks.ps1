@@ -223,10 +223,12 @@ $degradacoes = @()
 $ok = 0
 $skipped = 0
 
-# Este script sai com exit = numero de erros encontrados (ver fim do arquivo).
-# Escanear a propria task e circular: 6 erros as 07h viram LastTaskResult=6, que
-# cai fora da whitelist benigna e vira um setimo erro no dia seguinte. Nao e
-# falha de execucao, e a contagem de achados. O log e o e-mail ja informam isso.
+# Contrato de saida (EXITCONTRATO1, 2026-09-24): exit 0 sempre que a varredura chega
+# ao fim; o numero de achados vive no log, no erros_<data>.json e no e-mail, nunca no
+# exit. (Antes: exit = numero de erros encontrados, contrato que o Task Scheduler
+# embrulha em HRESULT 0x8007000A e o Console le como falha da task.) E escanear a
+# propria task e circular: 6 erros as 07h viravam LastTaskResult=6, que cai fora da
+# whitelist benigna e virava um setimo erro no dia seguinte.
 $SelfTask = 'Monitor-Tasks'
 
 $allTasks = Get-ScheduledTask | Where-Object {
@@ -1329,10 +1331,17 @@ if ($SendEmail -and $deveEnviar -and -not $DryRun) {
 
 Write-Log '=== FIM ==='
 
-if ($erros.Count -eq 0) {
-    exit 0
-} else {
-    # Sai com contagem de erros (capped em 255) para o Task Scheduler ver
-    $exitCode = [Math]::Min($erros.Count, 255)
-    exit $exitCode
-}
+# EXITCONTRATO1 (2026-09-24): aqui o script saia com [Math]::Min($erros.Count, 255).
+# O Task Scheduler embrulha o exit do processo em HRESULT (0x80070000 | codigo) e o
+# Console Operacional le qualquer LastTaskResult fora de {0, 267009, 267011} como
+# "falhou". Medido em 23/09/2026 07:00: 10 achados -> LastTaskResult 2147942410
+# (0x8007000A = exit 10), resumo do proprio log "Erros: 10", e-mail enviado e a
+# varredura completada: nada disso e crash, mas o painel mostrava falha da task.
+# Achado e DADO - vai no log, no erros_<data>.json e no e-mail -, nao e falha de
+# execucao da varredura. O exit 0 agora significa exatamente "a varredura chegou ao
+# fim"; erro de verdade do proprio monitor (excecao nao tratada, guarda recusando)
+# continua saindo nao-zero pelo caminho normal do PowerShell/guarda, e a degradacao
+# de provedor continua com codigo proprio no relatorio (9007/9008, nunca em $erros).
+# Nao havia consumidor do contrato antigo: nenhum hook, wrapper ou rotina decide
+# nada pelo exit deste script, e o Console le o LastTaskResult, nao o numero.
+exit 0
