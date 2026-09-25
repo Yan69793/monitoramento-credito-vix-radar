@@ -58,6 +58,38 @@ jobs:
       - name: Instalar dependencias (lockfile)
         run: npm ci
 
+      # Guarda de acento destruido (achado de 2026-09-25). Roda antes das deps porque nao
+      # depende de nenhuma: so le os dois HTML e reprova '?' no lugar de letra acentuada
+      # dentro de literal de string. Vem primeiro para o defeito aparecer em segundos.
+      - name: Guarda de acento — o repo como esta tem que passar
+        working-directory: .
+        run: node scripts/check-acentos-frontend.mjs
+
+      # Prova da outra ponta, dentro do proprio CI. Sem isto, uma guarda que aprovasse
+      # qualquer coisa continuaria verde para sempre, porque o caso bom nunca deixaria de
+      # passar. Mesmo desenho da guarda de emissores: injeta o defeito, CONFERE que a
+      # injecao entrou (senao o teste seguinte passaria vazio) e exige a reprovacao.
+      - name: Guarda de acento — tem que reprovar acento destruido injetado
+        working-directory: .
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/guarda-acentos
+          perl -0pe 's/Visão Geral/Vis?o Geral/g' app/index.html > /tmp/guarda-acentos/index.html
+          perl -0pe 's/Visão Geral/Vis?o Geral/g' app/deploy_zip/index.html > /tmp/guarda-acentos/deploy_zip.html
+          if ! grep -q 'Vis?o Geral' /tmp/guarda-acentos/index.html; then
+            echo "::error::A injecao nao entrou em app/index.html. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if ! grep -q 'Vis?o Geral' /tmp/guarda-acentos/deploy_zip.html; then
+            echo "::error::A injecao nao entrou em app/deploy_zip/index.html. O teste seguinte passaria vazio."
+            exit 1
+          fi
+          if node scripts/check-acentos-frontend.mjs /tmp/guarda-acentos/index.html /tmp/guarda-acentos/deploy_zip.html; then
+            echo "::error::A guarda APROVOU acento destruido. Ela esta quebrada e nao protege nada."
+            exit 1
+          fi
+          echo "OK: guarda reprovou o acento destruido, como deve."
+
       - name: Instalar Chromium (versao do lockfile)
         run: npx playwright install --with-deps chromium
 
