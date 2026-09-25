@@ -1,0 +1,20 @@
+{
+    "schema_version":  1,
+    "gerado_em":  "2026-09-25 17:21:57",
+    "janela_dias":  10,
+    "data_min_documento":  "2026-09-15",
+    "semanas_estado":  [
+                           "2026-W39",
+                           "2026-W38",
+                           "2026-W37"
+                       ],
+    "semanas_lidas":  1,
+    "total_documentos_severos_ipe":  1,
+    "total_emissores_com_doc_severo":  0,
+    "total_divergencias":  0,
+    "emissores_sem_cnpj_gap":  6,
+    "divergencias":  [
+
+                     ],
+    "dry_run":  false
+}
