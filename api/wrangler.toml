@@ -91,6 +91,13 @@
 #   Testes: suite api 461/461 em 46 arquivos, cvm-atribuicao-health 7/7; bundle difere de src
 #   apenas pelo placeholder de versao.
 #   Rollback: main = "v4.9.261.js".
+# v4.9.263.js = v4.9.262 + CVMHEALTH1: cobertura de atribuicao deixa de usar `sem_dono` no
+#   denominador. Documentos sem dono continuam visiveis no health como volume bruto, enquanto
+#   `quarentena` continua penalizando a cobertura por representar CNPJ desconhecido que exige
+#   decisao. Evita que documentos de companhias fora da carteira derrubem artificialmente a
+#   cobertura dos 104 emissores monitorados.
+#   Testes: cvm-atribuicao-health 7/7; git diff --check verde.
+#   Rollback: main = "v4.9.262.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de
@@ -1484,7 +1491,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.262.js"
+main       = "v4.9.263.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
