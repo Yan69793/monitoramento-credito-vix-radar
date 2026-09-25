@@ -392,6 +392,55 @@ if [ -n "$STAGED_PREDICTIVE" ]; then
     FALHOU=1
 fi
 
+# ─── Gate 10: acento destruido em literal de string do HTML (ACENTO-DESTRUIDO1) ──
+# Motivo: o commit e2983c8 (25/09/2026) inseriu o bloco VIX-DESIGN-2026 em app/index.html
+# com TODO caractere nao-ASCII ja trocado por '?'. A tela passou a ler "Vis?o Geral",
+# "aten??o", "deteriora??o", e o defeito foi para producao.
+#
+# Nada acusava. O arquivo continuava UTF-8 valido, com BOM e sem U+FFFD, o <meta charset>
+# estava certo, e o '?' e ASCII puro, entao atravessa qualquer verificacao de encoding e nao
+# gera erro de sintaxe. A contagem de caracteres nao-ASCII ficou identica antes e depois do
+# commit, o que prova que o bloco NASCEU em ASCII.
+#
+# Inspecao de transcript depois mostrou que nenhuma sessao registrada nesta maquina escreveu
+# aquele texto: zero ocorrencia em 1349 transcripts do Claude Code e em nove outros harnesses
+# instalados. A origem exata ficou desconhecida, entao nao da para defender por identidade da
+# ferramenta. A defesa que sobra e por FORMA do conteudo, no ponto exato onde ele vira commit.
+#
+# Mesma tecnica dos gates 1, 5, 7 e 8: materializa o blob EM STAGING e roda o checker. Gate
+# que promete mais do que entrega vira --no-verify na primeira vez que atrapalha, por isso o
+# limite esta declarado no proprio checker: ele olha literal de string dentro de <script>, e
+# ternario de JavaScript continua valido por construcao, nao por sorte.
+STAGED_ACENTO=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^app/(index\.html|deploy_zip/index\.html)$' || true)
+CHECKER_ACENTO="scripts/check-acentos-frontend.mjs"
+
+if [ -n "$STAGED_ACENTO" ] && [ -f "$CHECKER_ACENTO" ]; then
+    if ! command -v node >/dev/null 2>&1; then
+        echo ""
+        echo "GATE 10 (acento) NAO PODE RODAR: node ausente do PATH e ha HTML do app em staging."
+        echo "Instale o Node ou use 'git commit --no-verify' assumindo o risco."
+        FALHOU=1
+    else
+        while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            stage_blob "$f" || continue
+            if ! node "$PWD/$CHECKER_ACENTO" "$STAGEDIR/$f"; then
+                echo ""
+                echo "GATE 10 (acento destruido) REPROVOU: $f"
+                echo "  O texto perdeu acento na escrita e o usuario le '?' no lugar da letra."
+                echo "  Os caminhos exibidos sao copias do conteudo EM STAGING. O arquivo real"
+                echo "  e o mesmo caminho sem o prefixo $STAGEDIR/."
+                echo "  Corrija a STRING, nao o encoding do arquivo: o arquivo segue UTF-8 valido"
+                echo "  e nenhuma checagem de encoding acusa este defeito."
+                echo "  Emergencia assumindo o risco: git commit --no-verify."
+                FALHOU=1
+            fi
+        done <<ACENTO_EOF
+$STAGED_ACENTO
+ACENTO_EOF
+    fi
+fi
+
 rm -rf "$STAGEDIR"
 
 # --- Gate 4: higiene de raiz (informativo, NUNCA bloqueia) -----------------
