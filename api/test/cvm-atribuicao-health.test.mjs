@@ -62,6 +62,7 @@ describe("CFG-02 P2 - health separa origem de atribuicao do descarte de ingestao
     expect(b.cvm_ingestao_recebidos).toBe(800);
     expect(b.cvm_ingestao_atribuidos).toBe(796);
     expect(b.cvm_ingestao_quarentena).toBe(4);
+    expect(b.cvm_atribuicao_cobertura_pct).toBe(99.7);
     expect(b.cvm_ingestao_descartados).toBe(0);
     expect(b.cvm_ingestao_recebidos).toBe(b.cvm_ingestao_atribuidos + b.cvm_ingestao_quarentena + b.cvm_ingestao_descartados);
   });

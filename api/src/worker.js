@@ -20775,15 +20775,19 @@ async function __coreFetch(request, env2222, ctx) {
         ? _cvmFrescor.cobertura_atribuicao
         : ((_cvmFrescor.cobertura && typeof _cvmFrescor.cobertura === "object" && !_cvmFrescor.cobertura.portal && !_cvmFrescor.cobertura.zip) ? _cvmFrescor.cobertura : null);
       var _cvmCob = _cvmCobBruta || { cnpj: null, nome: null, quarentena: null, sem_dono: null };
-      var _cvmCobTotal = _cvmCobBruta ? (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0) : 0;
-      var _cvmCobPct = _cvmCobTotal > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotal * 1e3) / 10 : null;
+      // CVMHEALTH1: cobertura de atribuicao mede apenas o universo atribuivel da carteira.
+      // sem_dono continua visivel como volume bruto, mas nao entra no denominador;
+      // quarentena continua penalizando por ser CNPJ desconhecido que exige decisao.
+      var _cvmCobTotalAtribuivel = _cvmCobBruta ? (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) : 0;
+      var _cvmCobPct = _cvmCobTotalAtribuivel > 0 ? Math.round(((_cvmCob.cnpj || 0) + (_cvmCob.nome || 0)) / _cvmCobTotalAtribuivel * 1e3) / 10 : null;
       // A sequencia abaixo fecha a conta do ultimo sync. `recebidos` inclui o
       // que entrou no acervo e qualquer corte historico registrado no meta,
       // portanto cobertura de 100% nunca esconde documento que ficou de fora.
+      var _cvmCobTotalBruto = _cvmCobBruta ? (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0) + (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0) : 0;
       var _cvmDescartadosAllowlist = _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : 0;
       var _cvmDescartadosTeto = _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0;
       var _cvmIngestao = _cvmCobBruta ? {
-        recebidos: _cvmCobTotal + _cvmDescartadosAllowlist + _cvmDescartadosTeto,
+        recebidos: _cvmCobTotalBruto + _cvmDescartadosAllowlist + _cvmDescartadosTeto,
         atribuidos: (_cvmCob.cnpj || 0) + (_cvmCob.nome || 0),
         quarentena: (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0),
         descartados: _cvmDescartadosAllowlist + _cvmDescartadosTeto
