@@ -90,8 +90,7 @@ export function injectBaseStyles() {
     '.uso-heatmap td{transition:background .15s ease}' +
     '.uso-vis-btn:focus-visible,.admin-tab-btn:focus-visible,.admin-btn:focus-visible{outline:2px solid #64748B;outline-offset:2px}' +
     '#admin-overlay{z-index:100002!important}' +
-    '#admin-overlay.vis{display:flex!important}' +
-    'body.vr-admin-open #publicHome{pointer-events:none}';
+    '#admin-overlay.vis{display:flex!important}';
   document.head.appendChild(s);
 }
 
