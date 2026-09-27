@@ -86,3 +86,131 @@ test('navegacao principal alterna Visao Geral e Painel de Eventos sem duplicar a
   expect(m.third.label).toBe('Painel de Eventos');
   expect(m.third.overviewVisible).toBe(true);
 });
+
+
+test('boot autenticado prioriza Visao Geral e destaca acesso ao Painel de Eventos', async ({ page }) => {
+  await openLanding(page, { extended: true });
+  const bootContract = await page.evaluate(() => [...document.scripts].some((s) =>
+    (s.textContent || '').includes('window._marketOverviewClick?window._marketOverviewClick():mostrarDashboard()')
+  ));
+  expect(bootContract).toBe(true);
+  await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    window._marketOverviewClick();
+  });
+  if ((await page.viewportSize()).width <= 768) {
+    await page.evaluate(() => { if (typeof mobNavEmissores === 'function') mobNavEmissores(); });
+  }
+  const btn = page.locator('#sidebar-visao-geral');
+  await expect(btn.locator('.sidebar-view-label')).toHaveText('Painel de Eventos');
+  await expect(btn).toHaveClass(/events-primary/);
+  await expect(btn.locator('.sidebar-action-cue')).toBeVisible();
+});
+
+
+test('cards compactos do Painel de Eventos mantem densidade controlada', async ({ page }) => {
+  await openLanding(page, { extended: true });
+  const m = await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    if (typeof mostrarDashboard === 'function') mostrarDashboard();
+    const host = document.getElementById('dash-eventos');
+    host.innerHTML = renderEventoCard({ classificacao:'RELEVANTE', titulo:'Evento objetivo para teste de densidade', evento:'Descrição suficientemente longa para validar truncamento em uma única linha sem perder a estrutura do card.', data_evento:'2026-09-27', fonte_tipo:'CVM', _empresa:'Emissor Teste' }, true);
+    const card = host.querySelector('.ev-card.compact');
+    const body = card.querySelector('.ev-card-body');
+    const txt = card.querySelector('.ev-texto');
+    const meta = card.querySelector('.ev-meta-v63');
+    return { height: Math.round(card.getBoundingClientRect().height), paddingTop: parseFloat(getComputedStyle(body).paddingTop), clamp: getComputedStyle(txt).webkitLineClamp, meta: getComputedStyle(meta).display };
+  });
+  expect(m.height).toBeLessThanOrEqual(115);
+  expect(m.paddingTop).toBeLessThanOrEqual(8);
+  expect(m.clamp).toBe('1');
+  expect(m.meta).toBe('none');
+});
+
+
+test('visao geral nao corta texto informativo e oferece acesso ao emissor', async ({ page }) => {
+  await openLanding(page, { extended: true });
+  const m = await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    try { resultados = { Sabesp: { empresa:'Sabesp', eventos:[{ classificacao:'RELEVANTE', titulo:'Evento de teste', data_evento:'2026-09-27' }] } }; } catch (_) {}
+    try { ewsRankingCache = { ranking:[{ empresa:'Sabesp', score:72, faixa:'ATENCAO', decomposicao:[{ fator:'driver informativo completo sem corte visual', pontos:5 }] }] }; } catch (_) {}
+    window._vixDesign2026Render();
+    const driver = document.querySelector('#mo-content .vx2-driver');
+    const open = document.querySelector('#mo-content .vx2-open');
+    if (!driver || !open) throw new Error('driver/link da Visao Geral ausente');
+    const cs = getComputedStyle(driver);
+    window.__vxTesteSelecionado = null;
+    const original = window.selecionar;
+    window.selecionar = (name) => { window.__vxTesteSelecionado = name; };
+    open.click();
+    window.selecionar = original;
+    return { overflow:cs.overflow, textOverflow:cs.textOverflow, whiteSpace:cs.whiteSpace, display:cs.display, text:driver.textContent.trim(), link:open.textContent.trim(), selected:window.__vxTesteSelecionado };
+  });
+  expect(m.textOverflow).not.toBe('ellipsis');
+  expect(m.whiteSpace).toBe('normal');
+  expect(m.display).not.toBe('none');
+  expect(m.text).toContain('driver informativo completo');
+  expect(m.link).toContain('Ver emissor');
+  expect(m.selected).toBe('Sabesp');
+});
+
+
+test('Painel de Eventos consolida dois eventos da mesma empresa no mesmo dia', async ({ page }) => {
+  await openLanding(page, { extended: true });
+  const m = await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    resultados = {
+      'Empresa Teste': { empresa:'Empresa Teste', eventos:[
+        { classificacao:'CRITICO', titulo:'Evento crítico', data_evento:'2026-09-27', fonte_tipo:'CVM' },
+        { classificacao:'RELEVANTE', titulo:'Segundo evento', data_evento:'2026-09-27', fonte_tipo:'IMPRENSA' }
+      ] }
+    };
+    if (typeof mostrarDashboard === 'function') mostrarDashboard();
+    if (typeof _v201Refresh === 'function') _v201Refresh();
+    const g = document.querySelector('.v201-emp-agrupado');
+    if (!g) throw new Error('grupo consolidado ausente');
+    const h = g.querySelector('header');
+    const body = g.querySelector('[id^=emp-body-]');
+    const before = { text:h.textContent, expanded:h.getAttribute('aria-expanded'), display:getComputedStyle(body).display, cards:body.querySelectorAll('.v201-card').length };
+    h.click();
+    const after = { expanded:h.getAttribute('aria-expanded'), display:getComputedStyle(body).display };
+    return { before, after };
+  });
+  expect(m.before.text).toContain('2 atualizações no dia');
+  expect(m.before.expanded).toBe('false');
+  expect(m.before.display).toBe('none');
+  expect(m.before.cards).toBe(2);
+  expect(m.after.expanded).toBe('true');
+  expect(m.after.display).not.toBe('none');
+});
+
+
+test('Agenda consolida varias divulgacoes da mesma empresa no mesmo dia', async ({ page }) => {
+  await openLanding(page, { extended: true });
+  await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    const orig = window.fetch.bind(window);
+    window.fetch = (url, opts) => {
+      if (String(url).includes('op=calendario')) {
+        const body = {
+          ok:true, horizonte_dias:30, cobertura:{total_emissores_universo:104,com_resultado:1,com_vencimento:1,com_assembleia:0},
+          eventos:[
+            {data:'2026-09-28',emissor:'Empresa Agenda',tipo:'resultado',titulo:'Resultado trimestral',fonte:'CVM'},
+            {data:'2026-09-28',emissor:'Empresa Agenda',tipo:'vencimento',titulo:'Vencimento debênture',fonte:'ANBIMA'}
+          ]
+        };
+        return Promise.resolve(new Response(JSON.stringify(body), {status:200, headers:{'Content-Type':'application/json'}}));
+      }
+      return orig(url, opts);
+    };
+    agendaAbrir();
+  });
+  await page.waitForSelector('#agenda-overlay .ag-evento-grupo', { timeout:5000 });
+  const g = page.locator('#agenda-overlay .ag-evento-grupo').first();
+  await expect(g).toContainText('Empresa Agenda');
+  await expect(g).toContainText('2 atualizações');
+  await expect(g).toHaveAttribute('aria-expanded','false');
+  await g.click();
+  await expect(g).toHaveAttribute('aria-expanded','true');
+  await expect(g.locator('.ag-evento')).toHaveCount(2);
+});
