@@ -61,3 +61,28 @@ test('visao geral distingue falta de leitura de zero medido', async ({ page }) =
   expect(m.vals[2]).toBe('—');
   expect(m.text).toContain('Sem leitura');
 });
+
+
+test('navegacao principal alterna Visao Geral e Painel de Eventos sem duplicar a pagina atual', async ({ page }) => {
+  await openLanding(page, { extended: true });
+  const m = await page.evaluate(() => {
+    const ph = document.getElementById('publicHome');
+    if (ph) ph.style.display = 'none';
+    if (typeof window._marketOverviewClick !== 'function') throw new Error('Visao Geral indisponivel');
+    window._marketOverviewClick();
+    const btn = document.getElementById('sidebar-visao-geral');
+    const label = () => btn?.querySelector('.sidebar-view-label')?.textContent?.trim() || '';
+    const first = { label: label(), oldButton: !!document.querySelector('#mo-content .vx2-old') };
+    btn.click();
+    const second = { label: label(), dashVisible: getComputedStyle(document.getElementById('dashboard')).display !== 'none' };
+    btn.click();
+    const third = { label: label(), overviewVisible: getComputedStyle(document.getElementById('mo-content')).display !== 'none' };
+    return { first, second, third };
+  });
+  expect(m.first.label).toBe('Painel de Eventos');
+  expect(m.first.oldButton).toBe(false);
+  expect(m.second.label).toBe('Visão Geral');
+  expect(m.second.dashVisible).toBe(true);
+  expect(m.third.label).toBe('Painel de Eventos');
+  expect(m.third.overviewVisible).toBe(true);
+});
