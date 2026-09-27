@@ -57,6 +57,7 @@ function normaliza(s) {
 // roda ANTES da funcao que contem a frase, ou checagem inline no mesmo bloco.
 const GUARDAS_LOCAIS = [
   "_ewsCarregou", "_semLeitura", "_detOk", "_nBase", "detector_operacional", "_detectorOperacional",
+  "_vxHasRead", "d.feed_fresco === false", "[providers] status indisponivel",
   "STATE.payload.ok === false"       // agenda: _render() aborta antes de chegar nos ag-empty
 ];
 const JANELA = 3000;
@@ -68,7 +69,7 @@ const JANELA = 3000;
 // remover UM guard esconde a falta atras de outro guard que ainda existe no
 // arquivo. Cada marcador foi conferido manualmente lendo o call site uma vez.
 const GUARDAS_GLOBAIS = [
-  { marcador: "res.ok !== true", quando: /(sem eventos materiais na janela|nenhum dado para os emissores selecionados|nenhum evento nos filt)/,
+  { marcador: "res.ok !== true", quando: /(sem eventos materiais na janela|nenhum dado para os emissores selecionados|nenhum evento nos filt|nenhum fato novo foi classificado hoje)/,
     onde: "briefing/comparar: o loader so chama o render apos checar res.ok !== true" },
   { marcador: "if (!eventos.length)", quando: /(nenhum destaque narrativo no periodo|periodo sem alertas materiais identificados|sem eventos no periodo|nenhum evento critico ou relevante no periodo selecionado)/,
     onde: "exportar PDF: window.exportar aborta antes de chamar buildHtml" }

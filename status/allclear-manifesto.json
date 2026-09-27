@@ -1,6 +1,6 @@
 {
   "nota": "Toda frase que afirma ausencia precisa de classificacao. nao_revisada reprova de proposito. Ver ZEROINDISPONIVEL1.",
-  "total": 57,
+  "total": 67,
   "frases": [
     {
       "chave": "sem pressao refinanc 20 anos",
@@ -31,6 +31,12 @@
       "texto": ">Informacional, sem impacto direto de crédito</span></span>\\n </div>';for(const[e,a]of x){const t=SETOR_DE[e]|",
       "classificacao": "demo",
       "nota": "Texto do dataset de demonstracao, so aparece em modo demo."
+    },
+    {
+      "chave": "sem metrica de balanco curada para este emissordivn div class",
+      "texto": ">Sem métrica de balanço curada para este emissor</div>\\n <div class=",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio de um emissor: indicadores de balanco ainda nao curados; o texto explicita que o painel nao estima dado ausente."
     },
     {
       "chave": "nenhum comentario aindadivn div style",
@@ -177,6 +183,12 @@
       "nota": "Rotulo de campo de um registro, nao afirma nada sobre a carteira."
     },
     {
+      "chave": "sem leituraspanstatus de provedores indisponivel nesta carga isto nao e leitura de ausenci",
+      "texto": ">SEM LEITURA</span>Status de provedores indisponível nesta carga. Isto não é leitura de ausência de risco.';}}",
+      "classificacao": "guardada",
+      "nota": "Ramo de falha do status de provedores; explicita SEM LEITURA e nao afirma ausencia de risco."
+    },
+    {
       "chave": " sem sessao o resultados fica vazio criticosativos e relevantesativos caem a 0 por ausenci",
       "texto": ". Sem sessao o `resultados` fica vazio, criticosAtivos e relevantesAtivos caem a 0 por AUSENCIA e nao por medi",
       "classificacao": "guardada",
@@ -231,6 +243,36 @@
       "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
     },
     {
+      "chave": "nenhum sinal priorizado disponivel nesta leituradivdiv class",
+      "texto": ">Nenhum sinal priorizado disponível nesta leitura.</div>':'<div class=",
+      "classificacao": "guardada",
+      "nota": "VIX-DESIGN-2026: exibido como ausencia medida somente quando _vxHasRead=true; sem leitura usa estado separado."
+    },
+    {
+      "chave": "nenhum novo evento datado de hoje nesta leitura isso nao significa ausencia de riscodivdiv",
+      "texto": ">Nenhum novo evento datado de hoje nesta leitura. Isso não significa ausência de risco.</div>':'<div class=",
+      "classificacao": "guardada",
+      "nota": "VIX-DESIGN-2026: exibido somente quando _vxHasRead=true; sem leitura usa estado separado."
+    },
+    {
+      "chave": "sem eventos recentes disponiveis nesta leituradivdiv class",
+      "texto": ">Sem eventos recentes disponíveis nesta leitura.</div>':'<div class=",
+      "classificacao": "guardada",
+      "nota": "VIX-DESIGN-2026: exibido somente quando _vxHasRead=true; sem leitura usa estado separado."
+    },
+    {
+      "chave": "sem leitura de eventos nesta sessao isto nao e ausencia de riscodivhostinnerhtmldiv class",
+      "texto": ">Sem leitura de eventos nesta sessão. Isto não é ausência de risco.</div>');host.innerHTML='<div class=",
+      "classificacao": "guardada",
+      "nota": "Estado fail-closed acionado quando _vxHasRead=false; explicita que nao e ausencia de risco."
+    },
+    {
+      "chave": "sem leitura carregada",
+      "texto": "Sem leitura carregada",
+      "classificacao": "guardada",
+      "nota": "Carimbo fail-closed do VIX-DESIGN-2026 quando _vxHasRead=false."
+    },
+    {
       "chave": "nenhum resultado para strong style",
       "texto": ">Nenhum resultado para <strong style=",
       "classificacao": "rotulo",
@@ -255,6 +297,12 @@
       "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true. Cor atualizada de #6b7280 para #94A3B8 em 20/08/2026 (A11YCONTRASTE1), frase e gatilho inalterados."
     },
     {
+      "chave": "sem fato novo recente",
+      "texto": "Sem fato novo recente",
+      "classificacao": "guardada",
+      "nota": "Status amarelo somente quando health informa feed_fresco === false; nao e all-clear."
+    },
+    {
       "chave": "sem data oficial",
       "texto": "SEM DATA OFICIAL",
       "classificacao": "rotulo",
@@ -267,10 +315,10 @@
       "nota": "Agenda: _render() aborta com STATE.payload.ok === false antes de chegar no ag-empty."
     },
     {
-      "chave": "sem eventos materiais na janela",
-      "texto": "Sem eventos materiais na janela.",
+      "chave": "nenhum fato novo foi classificado hoje o historico permanece disponivel na analise de cada",
+      "texto": "Nenhum fato novo foi classificado hoje. O histórico permanece disponível na análise de cada emissor.",
       "classificacao": "guardada",
-      "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true."
+      "nota": "Briefing so renderiza depois de _apiGet retornar res.ok === true."
     },
     {
       "chave": "nenhum alerta de mercado ativo spreadvolume na janela",
@@ -309,16 +357,28 @@
       "nota": "Briefing/comparar: _briefingAbrir() e o loader de comparar so chamam o render apos checar res.ok !== true."
     },
     {
-      "chave": "escevtituloeveventosem titulo",
-      "texto": "+esc(ev.titulo||ev.evento||\"(sem titulo)\")+",
+      "chave": "escwindowvixscrubmoneyevtituloeveventosem titulo",
+      "texto": "+esc(window._vixScrubMoney(ev.titulo||ev.evento||\"(sem titulo)\"))+",
       "classificacao": "rotulo",
-      "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+      "nota": "Placeholder de titulo de um evento individual."
     },
     {
       "chave": "div classp14emptysem seriediv",
       "texto": "<div class=\"p14-empty\">Sem série</div>",
       "classificacao": "rotulo",
       "nota": "Rotulo de campo ou placeholder de item unico, sem afirmacao sobre a carteira."
+    },
+    {
+      "chave": "div classp14paperlistdiv classp14emptysem papeis na data de referenciadivdiv",
+      "texto": "<div class=\"p14-paperlist\"><div class=\"p14-empty\">Sem papéis na data de referência</div></div>",
+      "classificacao": "escopo_registro",
+      "nota": "Vazio da lista de papeis de um emissor na resposta ANBIMA, nao all-clear da carteira."
+    },
+    {
+      "chave": "sem liquidez reune  selecione um papeldiv elsetaxacardrendercard",
+      "texto": ">Sem liquidez REUNE — selecione um papel</div>');} else{taxaCard=renderCard(",
+      "classificacao": "escopo_registro",
+      "nota": "Estado de um papel/emissor na resposta REUNE; nao afirma ausencia de risco da carteira."
     },
     {
       "chave": "mutednenhum destaque narrativo no periodop",
