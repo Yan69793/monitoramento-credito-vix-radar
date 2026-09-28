@@ -201,6 +201,8 @@ _backup-janela-*/
 # local; contem estado de env e nunca devem ser versionados).
 _backup-env-provider-*.json
 _backup-env-provider-*.json.rollback.ps1
+# Rollbacks locais de auditoria/correcao; preservados para reversao e nunca versionados.
+.rollback/
 *.tar.gz
 *.zip
 index.html.bak*
