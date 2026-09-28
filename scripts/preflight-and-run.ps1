@@ -54,6 +54,20 @@ param(
 
 $ErrorActionPreference = 'Continue'
 
+
+# TASKENV1 (2026-09-26): o Task Scheduler pode manter snapshot antigo do ambiente do usuario.
+# Para tarefas VIXRadar, refresca apenas a configuracao operacional persistida em User antes
+# de spawnar o alvo; evita provider/modelo obsoleto sem depender de logoff/reboot.
+if ($GuardName -like 'VIXRadar-*' -or $GuardTarget -match '(?i)run_vixradar_') {
+    $userEnv = [Environment]::GetEnvironmentVariables('User')
+    foreach ($k in @($userEnv.Keys)) {
+        $nomeEnv = '' + $k
+        if ($nomeEnv -like 'VIXRADAR_*' -or $nomeEnv -eq 'OPENROUTER_API_KEY') {
+            [Environment]::SetEnvironmentVariable($nomeEnv, ('' + $userEnv[$k]), 'Process')
+        }
+    }
+}
+
 $RecusaCode = 89
 $lib = Join-Path $PSScriptRoot 'lib\vixradar-preflight.ps1'
 

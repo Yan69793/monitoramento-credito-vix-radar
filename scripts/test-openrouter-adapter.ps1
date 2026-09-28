@@ -116,6 +116,7 @@ try {
     Assert-True ((Get-VixOpenRouterMaxTotalResults 1) -eq 20) 'T6b teto busca: lote 1 = 5 resultados x 4 buscas = 20'
     Assert-True ((Get-VixOpenRouterMaxTotalResults 4) -eq 80) 'T6b teto busca: lote 4 (FULL) = 80'
     Assert-True ((Get-VixOpenRouterMaxTotalResults 15) -eq 300) 'T6b teto busca: lote 15 (LIGHT) = 300'
+    Assert-True ((Get-VixOpenRouterMaxTotalResults 1 5 8) -eq 40) 'T6b teto busca: override sentinela 1 emissor x 8 buscas = 40'
     $script:CapturedBody = ''
     $r6b = Invoke-VixOpenRouterLote -PromptPath $promptTmp -RetryDelays @(0, 0, 0) -Emissores 15
     Assert-True ($r6b.ExitCode -eq 0) 'T6b lote 15: fecha ok com o stub'
@@ -410,7 +411,9 @@ try {
     Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
 
     # ---- T25 (OR402-DEGRADA1): tier LIGHT com fallback FUNCIONAL, das duas pontas ----
-    # LIGHT = principal flash-0731, fallback pro-0813. Sem env nenhuma: e o default do tier.
+    # LIGHT = principal flash-0731, fallback pro-0813. Fixa o principal no processo para
+    # nao herdar VIXRADAR_OPENROUTER_MODEL_LIGHT do ambiente User da maquina operacional.
+    $env:VIXRADAR_OPENROUTER_MODEL_LIGHT = 'deepseek/deepseek-v4-flash-0731'
     $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-pro-0813'
     $script:HttpCalls = 0
     $script:ModelosVistos = @()
@@ -441,6 +444,7 @@ try {
     Assert-True ($script:HttpCalls -eq 3) 'T25 LIGHT 402 nos dois: 1 retry reduzido no principal, sem retry do fallback'
     Assert-True (-not $r25b.FallbackUsado) 'T25 LIGHT 402 nos dois: nao houve sucesso de fallback'
     Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_LIGHT -ErrorAction SilentlyContinue
 
     # ---- T26 (OR402-MAXTOKENS1): FULL nao pede o teto 131072 e 402 especifico faz fallback ----
     Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS -ErrorAction SilentlyContinue

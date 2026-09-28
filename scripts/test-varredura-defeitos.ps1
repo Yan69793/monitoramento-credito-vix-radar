@@ -27,7 +27,7 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 # operador): no runner do CI o ParseFile lancava antes do primeiro assert e a suite morria com
 # exit=1 sem imprimir nada (medido em 5/5 execucoes do gate, 12 a 14/09/2026).
 $MotorPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina', 'Get-VixDeferidoMotivo', 'Get-VixDeferidosTexto', 'Get-VixCoberturaIncompletaTexto', 'Get-VixDrenoAlerta', 'Set-VixMetricsDrenoExit'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina', 'Get-VixDeferidoMotivo', 'Get-VixDeferidosTexto', 'Get-VixCoberturaIncompletaTexto', 'Get-VixDrenoAlerta', 'Set-VixMetricsDrenoExit', 'New-BatchPrompt', 'Get-SlimEmissor', 'Get-VixColetorParaEmissor'))) { Invoke-Expression $_def }
 
 # Stub de log: as funcoes do motor escrevem por Write-Log, que os testes trocam pela coleta.
 $script:LinhasLog = @()
@@ -98,9 +98,29 @@ $retryCalls = $motorAst.FindAll({
     return ($n.Extent.Text -match '\$missing')
 }, $true)
 Assert-True (($retryCalls.Count -eq 1) -and ($retryCalls[0].Extent.Text -match '\$janFim\s+\$fonteProvedor\s+-Ultra:\$job\.Ultra')) 'D2e: retry repassa fonteProvedor ao New-BatchPrompt'
-$promptDef = $motorAst.FindAll({ param($n) $n -is [System.Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'New-BatchPrompt' }, $true) | Select-Object -First 1
-$promptText = if ($promptDef) { $promptDef.Extent.Text } else { '' }
-Assert-True (($promptText -match '"provedor":"\$FonteProvedor:web_search\|web_fetch"') -and ($promptText -match 'somente provedor "codex" pode emitir "status_http":null') -and ($promptText -match 'Todo outro provedor exige status_http inteiro 2xx')) 'D2f: prompt do retry Codex declara codex:web_search|web_fetch e excecao sem HTTP'
+# D2f: valida o PROMPT RENDERIZADO (interpolacao real), nao o token-fonte. Renderiza
+# New-BatchPrompt do proprio motor com a skill FULL do checkout e conferere a saida final:
+# o provedor tem que vir com namespace (openrouter), nunca vazio, nunca "<fonte>".
+$skillFullRender = Join-Path $PSScriptRoot 'noturno-batch-sonnet.md'
+$batchRender = @([pscustomobject]@{
+    empresa = 'Empresa Teste'; setor = 'x'; tier = 'FULL'; ews_score = 10; cvm_novos = $false;
+    cvm_documentos = @(); ultimo_evento_data = $null; eventos_conhecidos = @(); janela_delta_inicio = $null
+})
+$promptRender = New-BatchPrompt -batch $batchRender -batchLabel 'full-test' -modelName 'claude-sonnet-4-6' `
+    -skillPath $skillFullRender -janelaInicio '2026-09-01' -janelaFim '2026-09-30' -FonteProvedor 'openrouter' -Tier 'FULL'
+$renderDescreveWebSearch = ($promptRender -match 'openrouter:web_search\|web_fetch')
+$renderDescreveWebFetch = ($promptRender -match 'openrouter:web_fetch')
+$zeroProvedorVazio = (-not ($promptRender -match '"provedor":"\|"'))
+$zeroFonte = (-not ($promptRender -match '<fonte>'))
+$zeroUnexpanded = (-not ($promptRender -match '\$FonteProvedor'))
+$renderSkillInterpolado = ($promptRender -match 'openrouter:web_search\|web_fetch')
+Assert-True ($renderDescreveWebSearch -and $renderDescreveWebFetch) 'D2f: prompt renderizado declara openrouter:web_search|web_fetch resolvido'
+Assert-True $zeroProvedorVazio 'D2f: zero "provedor":"|" no prompt renderizado'
+Assert-True $zeroFonte 'D2f: zero placeholder "<fonte>" no prompt renderizado'
+Assert-True $zeroUnexpanded 'D2f: zero interpolacao sem namespace ($FonteProvedor) no prompt renderizado'
+Assert-True $renderSkillInterpolado 'D2f: a skill FULL do checkout entra interpolada no prompt renderizado'
+Assert-True ($promptRender -match 'somente provedor "codex" pode emitir "status_http":null') 'D2f: excecao sem HTTP so para codex permanece no prompt'
+Assert-True ($promptRender -match 'Todo outro provedor exige status_http inteiro 2xx') 'D2f: exigencia de status_http 2xx permanece no prompt'
 
 Write-Host '== D5 dreno pos-rotina: exit != 0 nunca sai como "concluido" =='
 # DRENOMUDO1 (2026-09-13): em 13/09 o log do motor disse "POS-MATINAL: dreno concluido (exit=5)"

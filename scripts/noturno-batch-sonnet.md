@@ -38,7 +38,7 @@
 #   F3-fato    : CVM/RI/fato relevante/fonte primaria na janela.
 # A familia conta como pesquisada so com prova MECANICA. Cada item de fontes_consultadas DEVE ser
 # objeto com TODOS os campos: "familia":"emissor|divida|fato", "query":"...",
-# "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"<fonte>:web_search|web_fetch", "status_http":200,
+# "timestamp":"YYYY-MM-DDTHH:MM:SSZ", "provedor":"openrouter:web_search|web_fetch", "status_http":200,
 # "resultado":"<resposta textual da consulta>", "classificacao":"ok". Familia ausente, degradada
 # (429, rate limit, limite backend, sem retorno, resposta vazia) ou sem os campos estruturais nao
 # sustenta ausencia de fato.

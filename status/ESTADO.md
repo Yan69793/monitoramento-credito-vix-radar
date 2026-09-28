@@ -1,5 +1,12 @@
 # Estado do projeto — VIX Radar
 
+> [!warning] 28/09 — ESTADO VIVO AUDITADO antes da apresentação ao Head de Crédito do Bradesco.
+> **Produção:** Worker `v4.9.264` com `ok:true`; frontend `v202.51`; painel e feed frescos; evento mais novo do feed `2026-09-28`. O HTML servido por `vixradar.com` é o blob `6a9c25a`, igual ao `HEAD/origin` no instante da medição (`eb0c1cc`). Depois da medição, o pacote de correções runtime foi consolidado em commit local nesta sessão; `origin/main` permanece `eb0c1cc`, sem push e sem deploy.
+> **Runtime local:** Matinal/Noturno/Sentinela/Verificação-Async estão Enabled/Ready com StartWhenAvailable. A ação viva da `VIXRadar-Noturno` foi realinhada ao `preflight-and-run.ps1`, preservando o gatilho Seg-Sex 18:05 e removendo dependência de wrapper não versionado.
+> **FULL noturno:** correção do namespace de `fontes_consultadas` aplicada no working tree e prova offline `test-varredura-defeitos.ps1` 50/50 PASS. Prova runtime do FULL corrigido segue pendente da execução natural das 18:05; não declarar fechado antes dela.
+> **Sentinela:** falso-verde corrigido: `resultado=PARCIAL` agora sai não-zero (provas runtime às 11:25 e 11:40: Scheduler `LastTaskResult=10`). O teto de busca passou de 8 fixo para budget proporcional e específico da Sentinela. Prova real controlada às 11:40: lote FULL com Marfrig+Bradesco, Bradesco entregue com `eventos=3`, `cvm_marcados=1`, `fila_verif=0`; Marfrig permaneceu sem resultado porque o documento CVM é PDF binário ilegível e o modelo não produziu prova suficiente. O gatilho foi preservado e a execução ficou PARCIAL, sem falso-verde. Isso é fail-closed esperado, não ausência certificada de risco.
+> **Condição de Obsolescência:** novo deploy Worker/Pages, alteração de `HEAD`, ou nova prova runtime que contradiga qualquer item acima.
+
 Última atualização: 2026-09-25 (acento destruído no frontend do redesign e KPI "Universo monitorado" em 0, corrigidos no repositório e provados localmente, sem deploy; ver o bloco novo no topo). O parágrafo anterior, de 2026-09-25, era o drift do Worker v4.9.263, e continua abaixo sem edição.
 
 Última atualização anterior: 2026-09-22 (CLAUDEFALLBACK-OR1 ativado nas rotinas locais e achado de título CVM/ENETWeb errado no painel; ver os dois blocos logo abaixo).

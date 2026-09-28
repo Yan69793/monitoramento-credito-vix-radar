@@ -614,7 +614,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
         # no backlog, mesmo efeito do timeout do claude.
         if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Tier -TotalTimeoutSec ($TimeoutMin * 60)
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Tier -TotalTimeoutSec ($TimeoutMin * 60) -Emissores $job.Chunk.Count -BuscasPorEmissor 8
             $raw = @($__orResp.Linhas)
             if ($__orResp.ExitCode -ne 0) {
                 $falhaTransporte = $true
@@ -867,6 +867,7 @@ if ($lotesIntentados -gt 0 -and $lotesOk -eq 0 -and $lotesFalhaProvider -gt 0) {
     $exitFim = 9
 } elseif ($semResultado -gt 0 -or $submitFail -gt 0) {
     $resultadoFim = 'PARCIAL'
+    $exitFim = 10
 }
 
 Write-Log ('FIM: sentinela resultado=' + $resultadoFim + '. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou + ' lotes_ok=' + $lotesOk + ' lotes_falha_provider=' + $lotesFalhaProvider)

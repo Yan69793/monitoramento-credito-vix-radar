@@ -205,11 +205,11 @@ function Get-VixOpenRouterTimeoutMin {
 # O valor e TETO, nunca quota: o modelo busca o que o prompt manda, nao o que o teto permite.
 # Chamador que nao informa o tamanho do lote (agenda, verificacao, sentinela) mantem o
 # comportamento historico (8), para esta mudanca nao alterar rotina fora do escopo.
-function Get-VixOpenRouterMaxTotalResults([int]$Emissores = 0, [int]$MaxResults = 5) {
+function Get-VixOpenRouterMaxTotalResults([int]$Emissores = 0, [int]$MaxResults = 5, [int]$BuscasPorEmissor = 4) {
     if ($MaxResults -le 0) { $MaxResults = 5 }
     if ($Emissores -le 0) { return 8 }
-    $buscasPorEmissor = 4   # F1 + F2 + F3 + fallback de busca da F3 (COBERTURA1)
-    $teto = $MaxResults * $buscasPorEmissor * $Emissores
+    if ($BuscasPorEmissor -le 0) { $BuscasPorEmissor = 4 }
+    $teto = $MaxResults * $BuscasPorEmissor * $Emissores
     if ($teto -lt 8) { $teto = 8 }
     return $teto
 }
@@ -509,7 +509,7 @@ function Test-VixOpenRouter402Credito([string]$Body) {
 #   402: sin retry del principal y sin entrar en la lista retryable, con UNA pasada al modelo
 #        de fallback (mas barato). 402 en el fallback tambien cierra duro.
 #   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
-function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '', [int]$Emissores = 0) {
+function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '', [int]$Emissores = 0, [int]$BuscasPorEmissor = 4) {
     $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = ''; Degradado402 = $false }
     $prompt = ''
     # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
@@ -537,7 +537,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     # Get-VixOpenRouterMaxTotalResults). O literal 8 degradava todo lote com mais de ~2
     # emissores: 15 emissores / 3 familias por emissor nao cabem em 8 resultados por POST.
     $maxResultsBusca = 5
-    $maxTotalResults = Get-VixOpenRouterMaxTotalResults $Emissores $maxResultsBusca
+    $maxTotalResults = Get-VixOpenRouterMaxTotalResults $Emissores $maxResultsBusca $BuscasPorEmissor
     $script:VixOpenRouterUltimoMaxTotalResults = $maxTotalResults
     # BRIDGE-DEEPSEEK1 (2026-09-23): as server tools sao contrato do OpenRouter. No endpoint
     # deepseek o array sai VAZIO, porque mandar 'openrouter:web_search' la devolve 422. O efeito e
