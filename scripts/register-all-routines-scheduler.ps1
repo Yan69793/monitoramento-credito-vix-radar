@@ -29,7 +29,9 @@ param(
     [switch]$Status,
     [switch]$RunNow,
     [switch]$DryRun,
-    [string]$RunTask
+    [string]$RunTask,
+    # UNITREG1 (2026-09-25): modo unitario. Vazio (default) = comportamento de sempre.
+    [string]$TaskName
 )
 
 $ErrorActionPreference = 'Continue'
@@ -136,6 +138,18 @@ $Tasks = @(
         Daily       = $false
     }
 )
+
+# UNITREG1 (2026-09-25): modo unitario. Sem -TaskName esta secao nao executa e o default
+# segue como sempre foi. Com -TaskName, a tabela acima e reduzida a EXATAMENTE uma task e o
+# conjunto de escrita e conferido ANTES de qualquer escrita: alvo desconhecido, alvo ambiguo
+# e write-set diferente de 1 RECUSAM - sem sintaxe nova de task e sem tabela duplicada.
+# Contrato em scripts/lib/vixradar-task-unit.ps1; prova em scripts/test-registrador-unitario.ps1.
+if ($TaskName) {
+    . (Join-Path $Scripts 'lib\vixradar-task-unit.ps1')
+    $Tasks = @(Select-VixUnitDef -Defs $Tasks -Nome $TaskName -NomeCampo 'Name')
+    Assert-VixUnitWriteSet -Defs $Tasks -Nome $TaskName -NomeCampo 'Name' | Out-Null
+    if (-not $Status) { Write-VixUnitWriteSet -Nome $TaskName }
+}
 
 function New-TaskSettings {
     $s = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
@@ -260,7 +274,10 @@ if ($Remove) {
         Unregister-ScheduledTask -TaskName $t.Name -Confirm:$false -ErrorAction SilentlyContinue
         Write-Host ('Removida: ' + $t.Name) -ForegroundColor Yellow
     }
-    Unregister-ScheduledTask -TaskName 'VIXRadar-Matinal-Retry' -Confirm:$false -ErrorAction SilentlyContinue
+    # UNITREG1: no modo unitario o conjunto de escrita e so a task alvo; o retry orfao fica fora.
+    if (-not $TaskName) {
+        Unregister-ScheduledTask -TaskName 'VIXRadar-Matinal-Retry' -Confirm:$false -ErrorAction SilentlyContinue
+    }
     return
 }
 
@@ -297,9 +314,12 @@ if ($fail -gt 0) {
     Write-Host ("`n$fail task(s) falharam. Rode como usuario logado: pwsh -File `"$PSCommandPath`"") -ForegroundColor Yellow
 }
 
-# Remover retry orfao sem proxima execucao
-Unregister-ScheduledTask -TaskName 'VIXRadar-Matinal-Retry' -Confirm:$false -ErrorAction SilentlyContinue
-Write-Host 'Limpo: VIXRadar-Matinal-Retry (one-shot obsoleto)' -ForegroundColor DarkGray
+# Remover retry orfao sem proxima execucao. UNITREG1: fora do modo unitario, para o conjunto
+# de escrita do -TaskName continuar sendo exatamente a task alvo.
+if (-not $TaskName) {
+    Unregister-ScheduledTask -TaskName 'VIXRadar-Matinal-Retry' -Confirm:$false -ErrorAction SilentlyContinue
+    Write-Host 'Limpo: VIXRadar-Matinal-Retry (one-shot obsoleto)' -ForegroundColor DarkGray
+}
 
 Write-Host ''
 & $PSCommandPath -Status

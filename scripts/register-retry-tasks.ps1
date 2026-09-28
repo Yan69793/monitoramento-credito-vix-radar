@@ -43,7 +43,11 @@
 # o mesmo contrato de guarda de register-reconciliacao-cvm-task.ps1 e a montagem na lib
 # scripts/lib/vixradar-task-guard.ps1.
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    # UNITREG1 (2026-09-25): registra SO a task alvo (RetryVixMatinal OU RetryVixNoturno).
+    # Vazio (default) = as duas, como sempre. Existe para corrigir 1 retry por vez sem
+    # mexer no outro (RetryVixMatinal esta Disabled de proposito e nao pode ser religado).
+    [string]$TaskName
 )
 
 $ErrorActionPreference = 'Stop'
@@ -99,6 +103,17 @@ $tasks = @(
         Descricao = 'VIX Radar - retry da rotina noturna se o log do dia nao tem FIM valido (Seg-Sex 21:30 e 23:20 BRT)'
     }
 )
+
+# UNITREG1 (2026-09-25): modo unitario. Sem -TaskName esta secao nao executa e o default
+# segue registrando as duas tasks. Com -TaskName, $tasks e reduzido a EXATAMENTE uma task e o
+# conjunto de escrita e conferido ANTES de qualquer escrita (alvo desconhecido/ambiguo e
+# write-set != 1 RECUSAM). A VERIFICACAO final herda a mesma lista filtrada.
+# Contrato: scripts/lib/vixradar-task-unit.ps1.
+if ($TaskName) {
+    . (Join-Path $ProjectRoot 'scripts\lib\vixradar-task-unit.ps1')
+    $tasks = @(Select-VixUnitDef -Defs $tasks -Nome $TaskName -NomeCampo 'Nome')
+    Write-VixUnitWriteSet -Nome (Assert-VixUnitWriteSet -Defs $tasks -Nome $TaskName -NomeCampo 'Nome')
+}
 
 if ($DryRun) {
     Write-Output '--- DRYRUN: nada foi registrado ---'

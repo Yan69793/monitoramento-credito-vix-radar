@@ -19,7 +19,9 @@
 # Uso: powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-monitor-tasks.ps1"
 #      powershell -NoProfile -ExecutionPolicy Bypass -File "scripts\register-monitor-tasks.ps1" -DryRun
 param(
-    [switch]$DryRun
+    [switch]$DryRun,
+    # UNITREG1 (2026-09-25): registra SO a task alvo. Vazio (default) = as duas, como sempre.
+    [string]$TaskName
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,6 +47,16 @@ $defs = @(
     @{ Name = 'Monitor-Tasks';      At = '07:00'; Escopo = 'VIX';  LogPattern = 'logs\monitor-tasks\monitor_{yyyyMMdd}.log';       ExtraArgs = @('-Quiet', '-SendEmail');                    Desc = 'VIX Radar - vigia diario de falha silenciosa no Task Scheduler, escopo VIX (VIXRadar-, Monitor-, Szuchmacher-RetryVix*), entrega por log das rotinas, ALERTA_AUTH e circuito de custo (MONITORCEGO1, MONITOR-PROJETOMISTO1).' },
     @{ Name = 'Monitor-Tasks-Site'; At = '07:05'; Escopo = 'Site'; LogPattern = 'logs\monitor-tasks\monitor_Site_{yyyyMMdd}.log'; ExtraArgs = @('-Quiet', '-SendEmail', '-Escopo', 'Site'); Desc = 'Vigia diario de falha silenciosa no Task Scheduler, escopo Site (Szuchmacher-, MorningCall-, RadarQuant-, PME-, YanOS_), sem as tasks do VIX Radar (MONITOR-PROJETOMISTO1).' }
 )
+
+# UNITREG1 (2026-09-25): modo unitario. Sem -TaskName esta secao nao executa e o default
+# segue registrando as duas tasks. Com -TaskName, $defs e reduzido a EXATAMENTE uma task e o
+# conjunto de escrita e conferido ANTES de qualquer escrita (alvo desconhecido/ambiguo e
+# write-set != 1 RECUSAM). Contrato: scripts/lib/vixradar-task-unit.ps1.
+if ($TaskName) {
+    . (Join-Path $ProjectRoot 'scripts\lib\vixradar-task-unit.ps1')
+    $defs = @(Select-VixUnitDef -Defs $defs -Nome $TaskName -NomeCampo 'Name')
+    Write-VixUnitWriteSet -Nome (Assert-VixUnitWriteSet -Defs $defs -Nome $TaskName -NomeCampo 'Name')
+}
 
 $falhas = 0
 foreach ($d in $defs) {
