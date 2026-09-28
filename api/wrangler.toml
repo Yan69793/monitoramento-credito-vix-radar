@@ -1,5 +1,5 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.261)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.264)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
@@ -98,6 +98,19 @@
 #   cobertura dos 104 emissores monitorados.
 #   Testes: cvm-atribuicao-health 7/7; git diff --check verde.
 #   Rollback: main = "v4.9.262.js".
+# v4.9.264.js = v4.9.263 + ENETASSUNTOCOL1: o assunto do documento ENETWeb passa a ser
+#   escolhido pela CATEGORIA em vez do indice 4 fixo. Medido ao vivo no endpoint do portal
+#   (janela 15-22/09/2026, 2188 registros): em "Comunicado ao Mercado" a coluna 4 traz quase
+#   sempre um codigo curto de formulario SEC do emissor estrangeiro ("8-K", "424B2", "144")
+#   ou um traco, e o assunto real esta na coluna 3; em "Fato Relevante" e o oposto, a coluna 3
+#   vem vazia e a 4 tem o assunto. Sintoma visivel: card da Vale de 21/09 com titulo "4".
+#   Categoria fora das duas conhecidas preserva a coluna 4, e um valor que e so codigo/traco
+#   nunca e aceito como assunto. `costurarCvmEmEventos` e `emitirAlertaTier1` consomem o campo
+#   normalizado, entao o titulo do evento herda a correcao sem mudanca neles.
+#   Testes: cvm-enetweb.test.mjs bloco ENETASSUNTOCOL1, prova reversa medida (os 2 casos de
+#   "Comunicado ao Mercado" falhavam contra o codigo anterior, devolvendo "424B2 -" e "4");
+#   suite completa verde antes do deploy.
+#   Rollback: main = "v4.9.263.js".
 # v4.9.256.js = v4.9.255 + PISOORFAO1 e ENCCOLHIMENTODIAG1: com base anterior na mesma
 #   metodologia o piso do sync da CVM passa a ser so o dinamico (0.7 x base anterior), e o
 #   bootstrap de 0.7 x universo medido fica restrito a primeira execucao ou a troca de

@@ -84,3 +84,56 @@ describe("CVM ENETWeb", () => {
     expect(a._protocolo).toBe(b._protocolo);
   });
 });
+
+// ENETASSUNTOCOL1 (2026-09-28). A coluna que carrega o ASSUNTO do documento
+// depende da CATEGORIA, e o parser lia o indice 4 fixo. Medido ao vivo contra o
+// proprio endpoint do portal (POST rad.cvm.gov.br/ENETWeb/frmConsultaExternaCVM.aspx/
+// ListarDocumentos, janela 15-22/09/2026, 2188 registros): em "Comunicado ao
+// Mercado" a coluna 4 traz quase sempre um codigo curto de formulario SEC do
+// emissor estrangeiro ("8-K", "424B2", "144") ou um traco, e o assunto real esta
+// na coluna 3; em "Fato Relevante" e o oposto, a coluna 3 vem vazia e a 4 tem o
+// assunto. Sintoma visivel: card da Vale de 21/09 com titulo "4".
+// Prova reversa: os casos "Comunicado ao Mercado" abaixo FALHAM contra o codigo
+// anterior (cols[4] fixo devolvia "424B2 -" e "4"); os de "Fato Relevante" e de
+// categoria desconhecida passam nas duas versoes, travando a nao-regressao.
+function colsComAssunto(categoria, col3, col4) {
+  const cols = linha().split("$&");
+  cols[2] = categoria;
+  cols[3] = col3;
+  cols[4] = col4;
+  return cols;
+}
+
+describe("CVM ENETWeb - ENETASSUNTOCOL1 (assunto por categoria)", () => {
+  it("Comunicado ao Mercado usa a coluna 3 e descarta o codigo SEC da coluna 4", () => {
+    const doc = _enetLinhaNormalizada(
+      colsComAssunto("Comunicado ao Mercado", "Outros Comunicados Não Considerados Fatos Relevantes", "424B2 -"), {});
+    expect(doc.a).toBe("Outros Comunicados Não Considerados Fatos Relevantes");
+    expect(doc.a).not.toBe("424B2 -");
+  });
+
+  it("caso da Vale: coluna 4 = \"4\" nao vira titulo do evento", () => {
+    const doc = _enetLinhaNormalizada(
+      colsComAssunto("Comunicado ao Mercado", "Aviso aos Debenturistas", "4"), {});
+    expect(doc.a).toBe("Aviso aos Debenturistas");
+    expect(doc.a).not.toBe("4");
+  });
+
+  it("Fato Relevante continua usando a coluna 4 (a 3 vem vazia)", () => {
+    const doc = _enetLinhaNormalizada(
+      colsComAssunto("Fato Relevante", "", "JBS Viva - Acordo de associação"), {});
+    expect(doc.a).toBe("JBS Viva - Acordo de associação");
+  });
+
+  it("Comunicado ao Mercado sem coluna 3 util cai na coluna 4", () => {
+    const doc = _enetLinhaNormalizada(
+      colsComAssunto("Comunicado ao Mercado", "-", "Assunto vindo da coluna 4"), {});
+    expect(doc.a).toBe("Assunto vindo da coluna 4");
+  });
+
+  it("categoria desconhecida preserva o comportamento historico (coluna 4)", () => {
+    const doc = _enetLinhaNormalizada(
+      colsComAssunto("Outros Documentos", "algo na coluna 3", "Assunto historico da coluna 4"), {});
+    expect(doc.a).toBe("Assunto historico da coluna 4");
+  });
+});

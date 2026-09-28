@@ -8480,12 +8480,42 @@ function _enetIsoData(v) {
 function _enetTextoLimpo(v) {
   return String(v == null ? "" : v).replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ").replace(/&amp;/gi, "&").replace(/&quot;/gi, '"').replace(/&#39;/gi, "'").replace(/\s+/g, " ").trim();
 }
+// ENETASSUNTOCOL1 (2026-09-28): a coluna que carrega o assunto depende da
+// CATEGORIA, e o parser lia o indice 4 fixo. Medido ao vivo no endpoint do
+// portal (janela 15-22/09/2026, 2188 registros): em "Comunicado ao Mercado" a
+// coluna 4 traz quase sempre um codigo curto de formulario SEC do emissor
+// estrangeiro ("8-K", "424B2", "144") ou um traco, e o assunto real esta na
+// coluna 3; em "Fato Relevante" e o oposto, a coluna 3 vem vazia e a 4 tem o
+// assunto. O card da Vale de 21/09 saiu com titulo "4" por causa disso.
+// Guarda de duas pontas: api/test/cvm-enetweb.test.mjs, bloco ENETASSUNTOCOL1.
+function _enetAssuntoUtil(v) {
+  var t = _enetTextoLimpo(v);
+  if (!t) return false;
+  if (/^[-\u2013\u2014]+$/.test(t)) return false;
+  var semTraco = t.replace(/\s*[-\u2013\u2014]\s*$/, "").trim();
+  if (!semTraco) return false;
+  // forma de codigo de formulario ("144", "8-K", "6-K", "20-F", "424B2")
+  if (/^\d{1,4}([-\/][A-Za-z]{1,3})?$/.test(semTraco)) return false;
+  return true;
+}
+function _enetAssuntoPorCategoria(categoria, col3, col4) {
+  var c3 = _enetTextoLimpo(col3);
+  var c4 = _enetTextoLimpo(col4);
+  var c3Util = _enetAssuntoUtil(c3) ? c3 : "";
+  var c4Util = _enetAssuntoUtil(c4) ? c4 : "";
+  var cat = String(categoria == null ? "" : categoria).toLowerCase();
+  if (cat.indexOf("comunicado ao mercado") >= 0) return c3Util || c4Util || c3 || c4 || "";
+  if (cat.indexOf("fato relevante") >= 0) return c4Util || c3Util || c4 || c3 || "";
+  // Categoria fora das duas conhecidas: preserva o comportamento historico
+  // (coluna 4) e so desvia quando a coluna 4 nao serve como assunto.
+  return c4Util || c3Util || c4 || c3 || "";
+}
 function _enetLinhaNormalizada(cols, cadastro) {
   if (!Array.isArray(cols) || cols.length !== 13) return null;
   var codigo = String(cols[0] || "").replace(/\D/g, "").replace(/^0+/, "") || "0";
   var cad = cadastro && cadastro[codigo] || null;
   var categoria = _enetTextoLimpo(cols[2]);
-  var assunto = _enetTextoLimpo(cols[4]);
+  var assunto = _enetAssuntoPorCategoria(categoria, cols[3], cols[4]);
   var data = _enetIsoData(cols[5]);
   var entrega = _enetIsoData(cols[6]);
   var html = String(cols[10] || "");
