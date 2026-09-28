@@ -88,7 +88,7 @@ test('navegacao principal alterna Visao Geral e Painel de Eventos sem duplicar a
 });
 
 
-test('boot autenticado prioriza Visao Geral e destaca acesso ao Painel de Eventos', async ({ page }) => {
+test('boot autenticado prioriza Visao Geral sem duplicar navegacao no mobile', async ({ page }) => {
   await openLanding(page, { extended: true });
   const bootContract = await page.evaluate(() => [...document.scripts].some((s) =>
     (s.textContent || '').includes('window._marketOverviewClick?window._marketOverviewClick():mostrarDashboard()')
@@ -98,13 +98,18 @@ test('boot autenticado prioriza Visao Geral e destaca acesso ao Painel de Evento
     const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
     window._marketOverviewClick();
   });
-  if ((await page.viewportSize()).width <= 768) {
-    await page.evaluate(() => { if (typeof mobNavEmissores === 'function') mobNavEmissores(); });
-  }
   const btn = page.locator('#sidebar-visao-geral');
-  await expect(btn.locator('.sidebar-view-label')).toHaveText('Painel de Eventos');
-  await expect(btn).toHaveClass(/events-primary/);
-  await expect(btn.locator('.sidebar-action-cue')).toBeVisible();
+  if ((await page.viewportSize()).width <= 768) {
+    await expect(page.locator('#mob-btn-visaogeral')).toHaveClass(/active/);
+    await expect(btn).toBeHidden();
+    await page.evaluate(() => { if (typeof mobNavEmissores === 'function') mobNavEmissores(); });
+    await expect(page.locator('#mobile-bottom-nav')).toBeVisible();
+    await expect(page.locator('#mob-btn-analise')).toHaveClass(/active/);
+  } else {
+    await expect(btn.locator('.sidebar-view-label')).toHaveText('Painel de Eventos');
+    await expect(btn).toHaveClass(/events-primary/);
+    await expect(btn.locator('.sidebar-action-cue')).toBeVisible();
+  }
 });
 
 
@@ -213,4 +218,112 @@ test('Agenda consolida varias divulgacoes da mesma empresa no mesmo dia', async 
   await g.click();
   await expect(g).toHaveAttribute('aria-expanded','true');
   await expect(g.locator('.ag-evento')).toHaveCount(2);
+});
+
+
+test('mobile primary views stay mutually exclusive', async ({ page }) => {
+  test.skip((await page.viewportSize()).width > 768, 'mobile only');
+  await openLanding(page, { extended: true });
+  const m = await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    const visible = (id) => getComputedStyle(document.getElementById(id)).display !== 'none';
+    window._marketOverviewClick();
+    const overview = { mo:visible('mo-content'), dash:visible('dashboard'), emp:visible('emp-panel'), cfg:visible('config-panel') };
+    mobNavDashboard();
+    const events = { mo:visible('mo-content'), dash:visible('dashboard'), emp:visible('emp-panel'), cfg:visible('config-panel') };
+    selecionada = 'Sabesp'; window.selecionada = 'Sabesp'; mobNavAnalise();
+    const issuer = { mo:visible('mo-content'), dash:visible('dashboard'), emp:visible('emp-panel'), cfg:visible('config-panel') };
+    mobNavConfig();
+    const config = { mo:visible('mo-content'), dash:visible('dashboard'), emp:visible('emp-panel'), cfg:visible('config-panel') };
+    return { overview, events, issuer, config };
+  });
+  expect(m.overview).toEqual({ mo:true, dash:false, emp:false, cfg:false });
+  expect(m.events).toEqual({ mo:false, dash:true, emp:false, cfg:false });
+  expect(m.issuer).toEqual({ mo:false, dash:false, emp:true, cfg:false });
+  expect(m.config).toEqual({ mo:false, dash:false, emp:false, cfg:true });
+});
+
+test('mobile bottom nav reflects overview and issuer drawer remains navigable', async ({ page }) => {
+  test.skip((await page.viewportSize()).width > 768, 'mobile only');
+  await openLanding(page, { extended: true });
+  const m = await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    window._marketOverviewClick();
+    const overviewActive = document.getElementById('mob-btn-visaogeral').classList.contains('active');
+    const analysisInitiallyActive = document.getElementById('mob-btn-analise').classList.contains('active');
+    selecionada = null; window.selecionada = null; mobNavAnalise();
+    const nav = document.getElementById('mobile-bottom-nav');
+    const sidebar = document.getElementById('sidebar');
+    return {
+      overviewActive,
+      analysisInitiallyActive,
+      analysisActive: document.getElementById('mob-btn-analise').classList.contains('active'),
+      navDisplay: getComputedStyle(nav).display,
+      drawerOpen: sidebar.classList.contains('drawer-open'),
+      overviewShortcutInDrawer: getComputedStyle(document.getElementById('sidebar-visao-geral')).display
+    };
+  });
+  expect(m.overviewActive).toBe(true);
+  expect(m.analysisInitiallyActive).toBe(false);
+  expect(m.analysisActive).toBe(true);
+  expect(m.navDisplay).toBe('flex');
+  expect(m.drawerOpen).toBe(true);
+  expect(m.overviewShortcutInDrawer).toBe('none');
+});
+
+test('mobile bottom buttons respond to real taps', async ({ page }) => {
+  test.skip((await page.viewportSize()).width > 768, 'mobile only');
+  await openLanding(page, { extended: true });
+  await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    window._marketOverviewClick();
+  });
+
+  await page.locator('#mob-btn-dashboard').click();
+  await expect(page.locator('#dashboard')).toBeVisible();
+  await expect(page.locator('#mo-content')).toBeHidden();
+
+  await page.locator('#mob-btn-visaogeral').click();
+  await expect(page.locator('#mo-content')).toBeVisible();
+  await expect(page.locator('#dashboard')).toBeHidden();
+
+  await page.evaluate(() => { selecionada = null; window.selecionada = null; });
+  await page.locator('#mob-btn-analise').click();
+  await expect(page.locator('#sidebar')).toHaveClass(/drawer-open/);
+  await expect(page.locator('#mobile-bottom-nav')).toBeVisible();
+
+  await page.locator('#mob-btn-dashboard').click();
+  await expect(page.locator('#sidebar')).not.toHaveClass(/drawer-open/);
+  await expect(page.locator('#dashboard')).toBeVisible();
+
+  await page.locator('#mob-btn-config').click();
+  await expect(page.locator('#config-panel')).toBeVisible();
+
+  await page.evaluate(() => {
+    window.agendaAbrir = () => document.getElementById('agenda-overlay').classList.add('show');
+  });
+  await page.locator('#mob-btn-agenda').click();
+  await expect(page.locator('#agenda-overlay')).toHaveClass(/show/);
+  await expect(page.locator('#mob-btn-config')).toHaveClass(/active/);
+});
+
+test('mobile topbar is compact and does not duplicate bottom navigation', async ({ page }) => {
+  test.skip((await page.viewportSize()).width > 768, 'mobile only');
+  await openLanding(page, { extended: true });
+  await page.evaluate(() => {
+    const ph = document.getElementById('publicHome'); if (ph) ph.style.display = 'none';
+    window._marketOverviewClick();
+  });
+  await expect(page.locator('#top-center')).toBeHidden();
+  await expect(page.locator('#btn-agenda')).toBeHidden();
+  await expect(page.locator('#btn-carteira')).toBeVisible();
+  await expect(page.locator('#btn-mais')).toBeVisible();
+  const m = await page.locator('#top-right').evaluate((el) => ({
+    scrollWidth: el.scrollWidth,
+    clientWidth: el.clientWidth,
+    overflowX: getComputedStyle(el).overflowX
+  }));
+  expect(m.scrollWidth).toBeLessThanOrEqual(m.clientWidth + 1);
+  expect(m.overflowX).not.toBe('auto');
+  await expect(page.locator('#mob-btn-visaogeral')).toContainText('Visão');
 });

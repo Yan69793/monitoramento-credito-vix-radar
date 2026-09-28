@@ -21,9 +21,12 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const INDEX_HTML = path.join(ROOT, "app", "index.html");
 
 function extrairFuncoesDedup(html) {
-  const i = html.indexOf("function _normTituloDedup");
+  // _fonteCanonica e extraida junto: desde 2026-09-24 _isDupSemantico compara a
+  // URL canonica COMPLETA (so parametros de tracking saem), e a funcao nao roda
+  // isolada. Extrair do arquivo real continua valendo para as tres.
+  const i = html.indexOf("function _fonteCanonica");
   const j = html.indexOf("</script></head>", i);
-  if (i < 0 || j < 0) throw new Error("_normTituloDedup nao encontrado em app/index.html - arquivo mudou de forma?");
+  if (i < 0 || j < 0) throw new Error("_fonteCanonica/_normTituloDedup nao encontrados em app/index.html - arquivo mudou de forma?");
   return html.slice(i, j);
 }
 
@@ -62,6 +65,22 @@ caso(
   "Eneva",
   { titulo: "Eneva capta R$ 900 milhoes em nova debenture", data_evento: "2026-08-10", fonte_primaria: "https://valor.globo.com/x?src=share" },
   { titulo: "Eneva: emissao de debenture de R$ 900 mi e concluida", data_evento: "2026-08-11", fonte_primaria: "https://valor.globo.com/x" },
+  true
+);
+
+caso(
+  "documentos CVM DISTINTOS do mesmo emissor (mesmo script RAD, numProtocolo diferente) -> MANTEM",
+  "Raízen",
+  { titulo: "Raizen protocola na CVM novas assembleias de debenturistas da 2a, 3a e 4a emissoes", data_evento: "2026-08-25", fonte_primaria: "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1556767&numSequencia=1081473&numVersao=1" },
+  { titulo: "Raizen pede conversao do registro de categoria B para A na CVM, passo necessario a conversao de divida em acoes", data_evento: "2026-08-12", fonte_primaria: "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1556614&numSequencia=1081320&numVersao=1" },
+  false
+);
+
+caso(
+  "MESMO documento CVM (numProtocolo igual), titulo e data reescritos -> deduplica (mesmo documento)",
+  "Oncoclínicas",
+  { titulo: "Justica defere a recuperacao extrajudicial da Oncoclinicas e suspende cobrancas por 180 dias", data_evento: "2026-08-04", fonte_primaria: "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1552285&numSequencia=1076991&numVersao=1" },
+  { titulo: "Justica defere recuperacao extrajudicial da Oncoclinicas para R$ 5,1 bilhoes em divida", data_evento: "2026-08-05", fonte_primaria: "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1552285&numSequencia=1076991&numVersao=1" },
   true
 );
 
