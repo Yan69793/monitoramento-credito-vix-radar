@@ -350,6 +350,11 @@ function Get-VeredictosArray($outputLines, [int]$esperado) {
     $texto = ($outputLines -join "`n").Trim()
     $fence = [regex]::Match($texto, '```(?:json)?\s*([\s\S]*?)```')
     $scan = if ($fence.Success) { $fence.Groups[1].Value } else { $texto }
+    # VERIF-PARSER2 (2026-09-29): quando o modelo ignora a instrucao de JSON puro,
+    # a analise pode conter marcadores como [0], [1], [2] antes do array real.
+    # Prioriza explicitamente o array de objetos de veredicto para nao capturar [0].
+    $verdictStart = [regex]::Match($scan, '\[\s*\{\s*"veredicto"\s*:')
+    if ($verdictStart.Success) { $scan = $scan.Substring($verdictStart.Index) }
     $bruto = Get-BalancedJson $scan
     if (-not $bruto) { return $null }
     try {

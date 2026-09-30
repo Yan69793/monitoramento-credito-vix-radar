@@ -9,6 +9,18 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 29/09: `Szuchmacher-RetryVixMatinal` Disabled — comportamento esperado (decisao do operador), nao falha. Nada a corrigir.
+
+> **Status:** REGISTRADO, SEM ACAO. Diagnosticada como comportamento esperado; nenhuma alteracao feita e nenhuma planejada. **Data da Versao:** 2026-09-29. **Origem do Registro:** diagnostico pedido pelo operador sobre estado `Disabled`, 25 execucoes perdidas e `NextRun` de 30/09; resposta aceita, operador instruiu apenas registrar e encerrar (sem religar, recriar, alterar triggers, commit ou deploy).
+
+**Estado medido ao vivo** (`Get-ScheduledTask` / `Get-ScheduledTaskInfo`): `Szuchmacher-RetryVixMatinal` `Disabled`; `LastRunTime=2026-09-04 14:03 BRT`, `LastTaskResult=0` (ultima execucao terminou OK); `MissedRuns=25`; `NextRun=2026-09-30 13:30` (gatilho persistido, mas task Disabled nao dispara). Assinatura da Action aponta para `preflight-and-run.ps1` -> `retry-vixradar.ps1 -RoutineId vixradar-matinal`, exatamente conforme o registrador. As rotinas reais seguem `Ready`: `VIXRadar-Matinal` e `VIXRadar-Noturno`.
+
+**Causa (CONFIRMADO via decisoes documentadas na arvore):** `Disabled` e decisao intencional do operador, registrada em: `scripts/register-retry-tasks.ps1` (UNITREG1, 25/09 — "RetryVixMatinal esta Disabled de proposito e nao pode ser religado"), `routines/claude-desktop/matinal/SKILL.md` ("a RetryVixMatinal continua desligada por decisao do operador: nao ha relancamento automatico para a matinal"), `routines/README.md` (os dois retries ficam Disabled apos o cutover), `status/ESTADO.md` (as duas retries seguem Disabled). O retry era o vigia do regime Claude Desktop, morto pelo cutover para o Task Scheduler nativo do motor; religa-lo reintroduziria o risco de sobrescrita de emissores do incidente de 08/08.
+
+**Evidencia de contexto, rotulo de incerteza explicito:** a criacao do arquivo `scripts/retry-vixradar.ps1.bak-2026-09-04` nao tem prova documental da causa (preserva a versao anterior ao motor) — INFERIDO, nao CONFIRMADO. O comportamento exato do contador `NumberOfMissedRuns` em task Disabled nao foi demonstrado por fonte direta do sistema nesta investigacao — INFERIDO ser o acumulo normal de disparos perdidos enquanto a task esteve desativada, nao CONFIRMADO. Nenhum desses dois fatos muda a conclusao (nao ha falha a corrigir).
+
+**RISCO REMANESCENTE (aceito e documentado):** se a matinal morrer por cota ou stall na janela, nao ha recuperacao automatica; o noturno cobre o painel em profundidade LIGHT. Sem alteracao prevista.
+
 ## 22/09: Auditoria geral — skill `vix-radar-general-audit` corrigida (33 versoes de atraso na governanca), fila de verificacao sem cobertura por cota da assinatura
 
 **Status:** skill CORRIGIDA (sem deploy de codigo). Cota da assinatura e diff pendente do motor: registrados, nao corrigidos. **Data:** 2026-09-22. **Origem do Registro:** auditoria geral com o `melhorar-e-executar`, medindo producao (health, version.json), o repo e os logs de rotina do dia antes de qualquer leitura de codigo.

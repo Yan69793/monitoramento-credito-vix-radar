@@ -614,7 +614,11 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
         # no backlog, mesmo efeito do timeout do claude.
         if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Tier -TotalTimeoutSec ($TimeoutMin * 60) -Emissores $job.Chunk.Count -BuscasPorEmissor 8
+            # SENTINELA-SEARCHBUDGET2 (2026-09-29): 8 buscas/emissor = 40 resultados
+            # com max_results=5 e deixou EcoRodovias sem RESULTADO quando a F3 exigiu
+            # fallback apos PDF CVM ilegivel. A Sentinela trabalha com lotes pequenos e
+            # turbo; 12 buscas/emissor eleva o teto para 60 sem transformar em quota.
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier $Tier -TotalTimeoutSec ($TimeoutMin * 60) -Emissores $job.Chunk.Count -BuscasPorEmissor 12
             $raw = @($__orResp.Linhas)
             if ($__orResp.ExitCode -ne 0) {
                 $falhaTransporte = $true
@@ -806,9 +810,35 @@ foreach ($job in $jobs) {
     foreach ($emp in $job.Chunk) {
         $obj = $parsed.Map[(Get-NomeNormalizado ('' + $emp.empresa))]
         if (-not $obj) {
-            Write-Log ('AVISO: sem resultado para ' + $emp.empresa + ' no lote ' + $job.Label + ' - gatilho preservado.')
-            $semResultado++
-            continue
+            # SENTINELA-RETRY1 (2026-09-29): se um emissor for omitido em lote,
+            # reprocessa somente o ausente uma vez antes de manter o backlog.
+            $retryLabel = $job.Label + '-retry-' + (Get-NomeNormalizado ('' + $emp.empresa))
+            $retryPrompt = Join-Path $LogDir ('sentinela_' + $retryLabel + '_' + $DateTag + '_' + $PID + '.txt')
+            try {
+                $retryModeloPrompt = $job.Model
+                if ($script:VixUsaOpenRouter) { $retryModeloPrompt = Get-VixOpenRouterModel $job.Tier }
+                New-BatchPromptSentinela @($emp) $retryLabel $retryModeloPrompt $job.Skill $janelaInicio $janelaFim | Set-Content -Path $retryPrompt -Encoding UTF8
+                Write-Log ('RETRY_INDIVIDUAL: ' + $emp.empresa + ' ausente em ' + $job.Label + '; repetindo isoladamente uma vez.')
+                $retryRestanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
+                $retryRes = Invoke-ClaudeBatchSentinela $retryPrompt $job.Model $retryRestanteMin $job.Tier
+                if ($retryRes.Tokens -ge 0) { $tokensAcum += $retryRes.Tokens }
+                $retryParsed = Get-ParsedResultadosSentinela $retryRes.Output
+                if ($retryParsed.Buscas -ge 0) { $buscasTotal += $retryParsed.Buscas }
+                $obj = $retryParsed.Map[(Get-NomeNormalizado ('' + $emp.empresa))]
+                if ($obj) {
+                    Write-Log ('RETRY_INDIVIDUAL_OK: ' + $emp.empresa + ' recuperado.')
+                } else {
+                    Write-Log ('RETRY_INDIVIDUAL_FALHOU: ' + $emp.empresa + ' segue sem RESULTADO|; gatilho preservado.')
+                }
+            } catch {
+                Write-Log ('RETRY_INDIVIDUAL_ERRO: ' + $emp.empresa + ' - ' + $_.Exception.Message)
+            } finally {
+                Remove-Item $retryPrompt -Force -ErrorAction SilentlyContinue
+            }
+            if (-not $obj) {
+                $semResultado++
+                continue
+            }
         }
         $provRotina = 'claude-sentinela-' + $job.Model
         if ($script:VixUsaOpenRouter) { $provRotina = 'openrouter-sentinela-' + (Get-VixOpenRouterModel $job.Tier) }
