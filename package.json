@@ -1,0 +1,15 @@
+{
+  "name": "monitoramento-credito-vix-radar",
+  "version": "1.0.0",
+  "description": "Sistema de inteligência de crédito privado com IA",
+  "private": true,
+  "scripts": {
+    "test": "echo \"No tests configured\""
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.4.1"
+  },
+  "keywords": ["credit", "monitoring", "analytics"],
+  "author": "Yan Szuchmacher",
+  "license": "UNLICENSED"
+}

@@ -3292,6 +3292,13 @@ button:focus-visible, a:focus-visible, input:focus-visible, [role="button"]:focu
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">(function(){var _on=false;try{_on=(localStorage.getItem("radar_debug")==="1")||window.__VIX_DEBUG===true;}catch(_){}window.__VIX_DEBUG=_on;window._vlog=function(){if(!window.__VIX_DEBUG)return;try{console.log.apply(console,arguments);}catch(_){}};window._vwarn=function(){if(!window.__VIX_DEBUG)return;try{console.warn.apply(console,arguments);}catch(_){}};window._vinfo=function(){if(!window.__VIX_DEBUG)return;try{console.info.apply(console,arguments);}catch(_){}};})();window.VIX_LANDING_EXTENDED=false;window.VIX_LANDING_P1=true;</script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==">function _fonteCanonica(u){const s=String(u||'').split('#')[0],q=s.indexOf('?');if(q<0)return s.replace(/\/$/,'');const base=s.slice(0,q),pares=s.slice(q+1).split('&').filter(Boolean).filter(function(p){return!/^(utm_|fbclid=|gclid=|gclsrc=|dclid=|msclkid=|_hsenc=|_hsmi=|mc_cid=|mc_eid=|igshid=|src=|source=|ref=|ref_src=|share=|s_kwcid=|gbraid=|wbraid=|campanha=)/i.test(p)});return(pares.length?base+'?'+pares.join('&'):base).replace(/\/$/,'')}function _normTituloDedup(t){if(!t)return'';return t.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\b(fato relevante|comunicado ao mercado|informa sobre|informa acerca de|informa acerca|informa que|comunica sobre|comunica que|informa|comunica|sobre|acerca de|acerca)\b/gi,' ').replace(/\bde\b/gi,' ').replace(/\b(rating)s\b/gi,'$1').replace(/^[^a-z0-9]+/,'').replace(/\s+/g,' ').trim()}function _isDupSemantico(ev,existentes){const normA=_normTituloDedup(ev.titulo);if(!normA)return false;const empA=(ev.empresa||ev._empresa||'').toLowerCase();const dEvA=String(ev.data_evento||'');const fA=_fonteCanonica(ev.fonte_primaria);for(const ex of existentes){const empB=(ex.empresa||ex._empresa||'').toLowerCase();if(empA!==empB)continue;if((ev.titulo||'')===(ex.titulo||'')&&dEvA===(ex.data_evento||''))return true;const fB=_fonteCanonica(ex.fonte_primaria);if(fA&&fB&&fA===fB)return true;const normB=_normTituloDedup(ex.titulo);if(normA!==normB)continue;if(dEvA===(ex.data_evento||''))return true}return false}</script></head>
 <body>
+<!-- Vercel Web Analytics -->
+<script>
+  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+</script>
+<script defer src="/_vercel/insights/script.js"></script>
+<!-- End Vercel Web Analytics -->
+
 
 <div id="publicHome">
   <div class="ph-landing ph-landing--classic" id="phClassic">
