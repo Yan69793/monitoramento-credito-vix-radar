@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   VIX Radar — Sistema de Monitoramento de Crédito Privado com IA
   Copyright (c) 2026 Szuchmacher Consultoria Ltda. Todos os direitos reservados.
   Software registrado no INPI. Protegido pela Lei 9.609/98 (Lei do Software)
@@ -4443,9 +4443,7 @@ o=_semLeitura?'<span class="mo-card-chip mo-card-chip-warn">sem leitura</span>':
     return {cor:"#94A3B8",label:"ECO",aria:"Eco"};
   }
   function _v201DefasagemEstado(diff){
-    if (diff===null||diff<=7) return null;
-    if (diff<=30) return {cor:"#71717A",label:String(diff)+"d defasagem",aria:String(diff)+" dias defasagem",mostraIcone:false};
-    return {cor:"#F59E0B",icone:String.fromCharCode(0x26A0),label:String(diff)+"d defasagem",aria:String(diff)+" dias defasagem",mostraIcone:true};
+    return null; // Aviso visual de defasagem desativado por decisao do operador.
   }
   function _v201Esc(s){ return String(s||"").replace(/[<>"]/g, function(c){return {"<":"&lt;",">":"&gt;",'"':"&quot;"}[c];}); }
   function _v201PassaFiltro(ev, hoje){
