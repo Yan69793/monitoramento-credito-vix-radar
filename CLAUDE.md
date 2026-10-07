@@ -57,7 +57,7 @@ skills também não é varredura: ler `.claude/SKILLS-ROUTER.md` primeiro, índi
 
 ## Memória canônica
 
-Vault Obsidian: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\`
+Vault Obsidian: `E:\Diretorio\Claude\SISTEMAS\VIX-Radar\Obsidian VIX Radar\`
 Começar por `00 - Índice (MOC).md` e `03 - Estado Atual.md`.
 Se conflito chat vs Obsidian: Obsidian prevalece.
 Nunca deixar informação crítica só no chat — gravar no Obsidian ao final.
