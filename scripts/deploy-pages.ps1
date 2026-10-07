@@ -27,6 +27,8 @@ param(
   # Roda sync + todos os gates e para antes do wrangler. Nao deploya, nao commita.
   # Serve para provar que os gates pegam um bundle ruim sem publicar nada.
   [switch]$DryRun,
+  # Valida apenas a allowlist local, sem rede, sync, credenciais ou deploy.
+  [switch]$ValidateBundleOnly,
   # Ignora CLOUDFLARE_API_TOKEN e usa a sessao OAuth do wrangler direto.
   [switch]$ForcarOAuth
 )
@@ -40,9 +42,22 @@ $indexSrc = Join-Path $appDir "index.html"
 # DRIFT-CONTEUDO1 (2026-09-08): funcao do gate de conteudo repo x deploy_zip,
 # compartilhada com scripts/test-deploy-pages-gate.ps1 (roda o codigo real).
 . (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-pages-content-gate.ps1")
+. (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-pages-bundle-gate.ps1")
 
 function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
 function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
+
+function Assert-PagesBundle {
+  $unexpected = @(Get-VixPagesUnexpectedFiles -BundlePath $zipDir)
+  if ($unexpected.Count -gt 0) {
+    Fail ("BUNDLE_ARQUIVO_NAO_PERMITIDO: nenhum arquivo foi publicado. Remova do pacote ou revise a allowlist:`n" + ($unexpected -join "`n"))
+  }
+  Write-Host "Gate allowlist Pages: OK" -ForegroundColor Green
+}
+
+# Antes das credenciais e do sync, que poderia apagar evidencia de arquivo indevido.
+Assert-PagesBundle
+if ($ValidateBundleOnly) { return }
 
 # Compara duas versoes de frontend (vNNN.MMM). Retorna -1, 0 ou 1.
 #
@@ -432,6 +447,10 @@ if ($falhas34.Count -gt 0) {
   Fail ("GATE 3.4 (rotas de acesso ao painel admin) reprovou. NADA foi deployado:`n{0}" -f ($falhas34 -join "`n"))
 }
 Write-Host "Gate 3.4: rotas de acesso ao painel admin OK (atalho, modulo, botao, ?v=, portao de senha)" -ForegroundColor Green
+
+# O sync tambem pode introduzir arquivos inesperados a partir das pastas fonte.
+# Revalida o pacote final imediatamente antes da saida DryRun ou do upload.
+Assert-PagesBundle
 
 if ($DryRun) {
   Write-Host "`nDRY-RUN: sync feito e todos os gates passaram. NADA foi deployado, NADA foi commitado." -ForegroundColor Cyan
