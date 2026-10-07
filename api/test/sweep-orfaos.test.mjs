@@ -121,6 +121,14 @@ function post(body) {
   });
 }
 
+function postAdmin(body) {
+  return SELF.fetch("https://example.com/", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(Object.assign({ admin_senha: "test-admin-password-nao-usar-em-producao" }, body)),
+  });
+}
+
 async function lerConclusao(id) {
   return env.RADAR_KV.get(chaveConclusaoVerificacao(id), "json");
 }
@@ -640,6 +648,140 @@ describe("SWEEP-ORFAOS1-LIVENESS1 (P0) - remocao da fila continua correta, mas n
     expect(r.resultado.retratados).toBe(0);
     expect(await lerOrfao(ID)).toBeTruthy();
     expect(await lerConclusao(ID)).toBeNull();
+  });
+
+  it("27. resolucao manual de orfao exige autenticacao admin", async () => {
+    await prepararOrfaoComEstado();
+    const resp = await SELF.fetch("https://example.com/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "admin_verif_orfao_resolver", id: ID, decisao: "descartar", motivo: "revisao manual comprovou inconsistencias materiais", fontes: [FONTE] }),
+    });
+    expect(resp.status).toBe(403);
+    expect(await lerOrfao(ID)).toBeTruthy();
+  });
+
+  it("28. admin pode DESCARTAR orfao com persistencia terminal e trilha de auditoria", async () => {
+    await prepararOrfaoComEstado();
+    const resp = await postAdmin({
+      action: "admin_verif_orfao_resolver",
+      id: ID,
+      decisao: "descartar",
+      motivo: "revisao humana confirmou que a fonte citada nao sustenta o fato material publicado",
+      fontes: [FONTE],
+    });
+    const r = await resp.json();
+    expect(resp.status).toBe(200);
+    expect(r.ok).toBe(true);
+    expect(r.decisao).toBe("descartar");
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerEventos()).toHaveLength(0);
+    const audit = await env.RADAR_KV.get("radar:verif:manual:" + ID, "json");
+    expect(audit.fase).toBe("finalizado");
+    expect(audit.decisao).toBe("descartar");
+  });
+
+  it("29. admin pode CONFIRMAR orfao e retirar somente a pendencia", async () => {
+    await prepararOrfaoComEstado();
+    const resp = await postAdmin({
+      action: "admin_verif_orfao_resolver",
+      id: ID,
+      decisao: "confirmar",
+      motivo: "revisao humana confirmou o fato e a materialidade com evidencia externa rastreavel",
+      fontes: [FONTE, "https://example.com/segunda-fonte-independente"],
+    });
+    const r = await resp.json();
+    expect(resp.status).toBe(200);
+    expect(r.ok).toBe(true);
+    expect(await lerOrfao(ID)).toBeNull();
+    const evs = await lerEventos();
+    expect(evs).toHaveLength(1);
+    expect(evs[0]._pendente_verificacao).toBe(false);
+    expect(evs[0]._verif_manual.decisao).toBe("confirmar");
+  });
+
+  it("30. resolucao manual sem evidencia URL falha e preserva orfao/estado", async () => {
+    await prepararOrfaoComEstado();
+    const before = JSON.stringify(await lerEventos());
+    const resp = await postAdmin({
+      action: "admin_verif_orfao_resolver",
+      id: ID,
+      decisao: "descartar",
+      motivo: "revisao humana aponta problema, mas nenhuma evidencia rastreavel foi anexada",
+      fontes: [],
+    });
+    expect(resp.status).toBe(400);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(JSON.stringify(await lerEventos())).toBe(before);
+  });
+
+  it("31. resolucao manual de id inexistente falha sem criar estado", async () => {
+    const resp = await postAdmin({
+      action: "admin_verif_orfao_resolver",
+      id: "2026-09-01|empresa|example.com/inexistente",
+      decisao: "descartar",
+      motivo: "decisao administrativa com evidencia suficiente para o teste de ausencia",
+      fontes: ["https://example.com/evidencia"],
+    });
+    expect(resp.status).toBe(404);
+    const r = await resp.json();
+    expect(r.codigo).toBe("ORFAO_AUSENTE");
+  });
+
+  it("32. falha depois de DESCARTAR preserva orfao e retry conclui sem ressuscitar evento", async () => {
+    await prepararOrfaoComEstado();
+    _definirFalhaInjetadaTeste("conclusao_put");
+    const resp1 = await postAdmin({
+      action: "admin_verif_orfao_resolver",
+      id: ID,
+      decisao: "descartar",
+      motivo: "revisao humana confirmou falsidade material e exige descarte terminal auditavel",
+      fontes: [FONTE],
+    });
+    expect(resp1.status).toBe(409);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    expect(await lerEventos()).toHaveLength(0);
+
+    _limparFalhasInjetadasTeste();
+    const resp2 = await postAdmin({
+      action: "admin_verif_orfao_resolver",
+      id: ID,
+      decisao: "descartar",
+      motivo: "revisao humana confirmou falsidade material e exige descarte terminal auditavel",
+      fontes: [FONTE],
+    });
+    const r2 = await resp2.json();
+    expect(resp2.status).toBe(200);
+    expect(r2.ok).toBe(true);
+    expect(r2.detalhe.acao).toBe("resolvido");
+    expect(await lerOrfao(ID)).toBeNull();
+    expect(await lerEventos()).toHaveLength(0);
+  });
+
+  it("33. falha depois de CONFIRMAR preserva estado confirmado e retry apenas conclui o orfao", async () => {
+    await prepararOrfaoComEstado();
+    _definirFalhaInjetadaTeste("conclusao_put");
+    const payload = {
+      action: "admin_verif_orfao_resolver",
+      id: ID,
+      decisao: "confirmar",
+      motivo: "revisao humana confirmou o fato com evidencia externa rastreavel e suficiente",
+      fontes: [FONTE, "https://example.com/segunda-fonte"],
+    };
+    const resp1 = await postAdmin(payload);
+    expect(resp1.status).toBe(409);
+    expect(await lerOrfao(ID)).toBeTruthy();
+    let evs = await lerEventos();
+    expect(evs).toHaveLength(1);
+    expect(evs[0]._pendente_verificacao).toBe(false);
+
+    _limparFalhasInjetadasTeste();
+    const resp2 = await postAdmin(payload);
+    expect(resp2.status).toBe(200);
+    expect(await lerOrfao(ID)).toBeNull();
+    evs = await lerEventos();
+    expect(evs).toHaveLength(1);
+    expect(evs[0]._pendente_verificacao).toBe(false);
   });
 
   it("26. no cenario P0 corrigido, attempt e quarentena continuam intocados quando o merge resolve", async () => {

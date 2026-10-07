@@ -5656,7 +5656,8 @@ async function _exigeJwtAdmin(request, env2222) {
 __name(_exigeJwtAdmin, "_exigeJwtAdmin");
 __name2(_exigeJwtAdmin, "_exigeJwtAdmin");
 // Lab preditivo (v4.9.170): politica unificada de leitura/execucao.
-// Aceita JWT admin OU ADMIN_PASSWORD (body.admin_senha | query | x-admin-password | X-Admin-Auth).
+// Aceita JWT admin OU ADMIN_PASSWORD (body.admin_senha | x-admin-password | X-Admin-Auth).
+// Senhas em querystring nunca autenticam, para nao vazar em URL/historico/log.
 // Usado por GET op=predictive_v1 e POST action=admin_executar_predictive.
 async function _exigeLabPreditivoAdmin(request, env2222, body) {
   const jwt = await _exigeJwtAdmin(request, env2222);
@@ -5664,16 +5665,12 @@ async function _exigeLabPreditivoAdmin(request, env2222, body) {
   let senha = "";
   if (body && typeof body.admin_senha === "string") senha = body.admin_senha;
   if (!senha && request) {
-    try {
-      const u = new URL(request.url);
-      senha = u.searchParams.get("admin_senha") || u.searchParams.get("senha") || "";
-    } catch (_e) { /* ignore */ }
-    if (!senha) senha = (request.headers.get("x-admin-password") || request.headers.get("X-Admin-Auth") || "").trim();
+    senha = (request.headers.get("x-admin-password") || request.headers.get("X-Admin-Auth") || "").trim();
   }
   if (env2222.ADMIN_PASSWORD && senha && senha === env2222.ADMIN_PASSWORD) {
     return { ok: true, via: "admin_password" };
   }
-  // PREDRL1 (auditoria 2026-08-15): a porta de senha por query/header no GET
+  // PREDRL1 (auditoria 2026-08-15): a porta de senha por header no GET
   // op=predictive_v1 nao passava pelo gate de rate limit (que cobre so body de
   // POST com admin_senha). Senha errada agora consome o throttle anonimo por IP,
   // fechando o brute force com oraculo (auth_via na resposta).
@@ -11027,6 +11024,148 @@ async function _resolverOrfaoPorConclusao(env2222, id, provaTerminal, veredicto,
   return { acao: "resolvido" };
 }
 __name(_resolverOrfaoPorConclusao, "_resolverOrfaoPorConclusao");
+// MANUAL-ORFAO1 (2026-10-07): caminho administrativo explicito para um orfao
+// cuja verificacao automatica ficou nao-conclusiva. Nao reutiliza REPROVADO
+// para fabricar conclusao: a decisao manual e uma operacao distinta, auditada,
+// que primeiro persiste o estado terminal e so depois resolve o orfao.
+var ORFAO_MANUAL_PREFIXO = "radar:verif:manual:";
+function chaveResolucaoManualOrfao(id) {
+  return ORFAO_MANUAL_PREFIXO + id;
+}
+__name(chaveResolucaoManualOrfao, "chaveResolucaoManualOrfao");
+async function resolverOrfaoManualAdmin(env2222, id, decisao, motivo, fontes, request) {
+  if (!env2222.RADAR_KV || !id) return { ok: false, codigo: "ORFAO_PARAMETROS" };
+  const _motivo = typeof motivo === "string" ? motivo.trim().slice(0, 1000) : "";
+  if (_motivo.length < 20) return { ok: false, codigo: "ORFAO_MOTIVO_INSUFICIENTE" };
+  const _fontes = Array.isArray(fontes) ? Array.from(new Set(fontes.filter((u) => typeof u === "string" && /^https?:\/\//i.test(u)).map((u) => u.slice(0, 1000)))).slice(0, 10) : [];
+  if (_fontes.length < 1) return { ok: false, codigo: "ORFAO_EVIDENCIA_AUSENTE" };
+  if (decisao !== "confirmar" && decisao !== "descartar") return { ok: false, codigo: "ORFAO_DECISAO_INVALIDA" };
+
+  const _auditKey = chaveResolucaoManualOrfao(id);
+  let _auditAnterior = null;
+  try { _auditAnterior = await env2222.RADAR_KV.get(_auditKey, "json"); } catch (_) { }
+  if (_auditAnterior && _auditAnterior.decisao && _auditAnterior.decisao !== decisao) {
+    return { ok: false, codigo: "ORFAO_DECISAO_CONFLITANTE", decisao_anterior: _auditAnterior.decisao };
+  }
+
+  let _orfao;
+  try {
+    _orfao = await env2222.RADAR_KV.get(chaveOrfaoVerificacao(id), "json");
+  } catch (e) {
+    return { ok: false, codigo: "ORFAO_LEITURA_FALHOU", erro: e && e.message ? String(e.message).slice(0, 200) : "erro" };
+  }
+  if (!_orfao || !_orfao.id) {
+    if (_auditAnterior && _auditAnterior.fase === "finalizado" && _auditAnterior.decisao === decisao) {
+      return { ok: true, id, decisao, idempotente: true, orfao: { acao: "sem_orfao" } };
+    }
+    return { ok: false, codigo: "ORFAO_AUSENTE" };
+  }
+  if (!_orfao.semana || !_orfao.empresa) return { ok: false, codigo: "ORFAO_DADOS_INCOMPLETOS" };
+
+  const _estado = await carregarEstadoCompartilhado(env2222, _orfao.semana);
+  const _reg = _estado && _estado.results ? _estado.results[_orfao.empresa] : null;
+  if (!_reg || !Array.isArray(_reg.eventos)) return { ok: false, codigo: "ORFAO_ESTADO_AUSENTE" };
+
+  // Prova duravel de uma tentativa manual cujo ESTADO ja foi persistido.
+  // Fica no mesmo blob semanal que sofreu a mutacao; permite concluir um retry
+  // se o marcador/delete do orfao falhar depois da escrita do estado.
+  const _manualMap = _reg._verif_manual_resolucoes && typeof _reg._verif_manual_resolucoes === "object" ? _reg._verif_manual_resolucoes : {};
+  const _manualPrev = _manualMap[id] || null;
+  if (_manualPrev) {
+    if (_manualPrev.decisao !== decisao) return { ok: false, codigo: "ORFAO_ESTADO_DECISAO_CONFLITANTE", decisao_anterior: _manualPrev.decisao };
+    const _retryRes = await _resolverOrfaoPorConclusao(env2222, id, true, decisao === "confirmar" ? "MANUAL_CONFIRMADO" : "MANUAL_DESCARTADO", request);
+    const _retryOk = _retryRes && (_retryRes.acao === "resolvido" || _retryRes.acao === "sem_orfao");
+    try {
+      await env2222.RADAR_KV.put(_auditKey, JSON.stringify(Object.assign({}, _auditAnterior || {}, {
+        schema: 1, id, empresa: _orfao.empresa, semana: _orfao.semana, decisao,
+        motivo: _manualPrev.motivo || _motivo, fontes: _manualPrev.fontes || _fontes,
+        por: "admin", fase: _retryOk ? "finalizado" : "resolucao_pendente",
+        estado_persistido_em: _manualPrev.em || null,
+        orfao_resultado: _retryRes && _retryRes.acao || null,
+        concluido_em: _retryOk ? (/* @__PURE__ */ new Date()).toISOString() : null
+      })), { expirationTtl: 60 * 60 * 24 * 180 });
+    } catch (_) { }
+    return { ok: _retryOk, codigo: _retryOk ? null : "ORFAO_RESOLUCAO_PENDENTE", decisao, id, retry: true, orfao: _retryRes };
+  }
+
+  const _matches = [];
+  for (let _i = 0; _i < _reg.eventos.length; _i++) {
+    const _ev = _reg.eventos[_i];
+    if (_ev && _ev._pendente_verificacao === true && _chaveDedupEvento(_ev) === id) _matches.push(_i);
+  }
+  if (_matches.length !== 1) return { ok: false, codigo: _matches.length === 0 ? "ORFAO_EVENTO_NAO_ENCONTRADO" : "ORFAO_EVENTO_AMBIGUO", matches: _matches.length };
+
+  const _idx = _matches[0];
+  const _antes = JSON.parse(JSON.stringify(_reg.eventos[_idx]));
+  const _agora = (/* @__PURE__ */ new Date()).toISOString();
+  const _auditBase = {
+    schema: 1,
+    id,
+    empresa: _orfao.empresa,
+    semana: _orfao.semana,
+    decisao,
+    motivo: _motivo,
+    fontes: _fontes,
+    por: "admin",
+    iniciado_em: _agora,
+    orfao_expirado_em: _orfao.expirado_em || null
+  };
+  try {
+    await env2222.RADAR_KV.put(_auditKey, JSON.stringify(Object.assign({}, _auditBase, { fase: "intent" })), { expirationTtl: 60 * 60 * 24 * 180 });
+  } catch (e) {
+    return { ok: false, codigo: "ORFAO_AUDIT_INTENT_FALHOU", erro: e && e.message ? String(e.message).slice(0, 200) : "erro" };
+  }
+
+  // O marcador vive no MESMO blob de estado da decisao. Se o processo cair
+  // depois deste put e antes do delete do orfao, o retry tem prova segura de
+  // que a mutacao terminal do estado ocorreu e pode apenas concluir o orfao.
+  _reg._verif_manual_resolucoes = Object.assign({}, _manualMap, {
+    [id]: { decisao, motivo: _motivo, fontes: _fontes, em: _agora, por: "admin" }
+  });
+
+  if (decisao === "confirmar") {
+    const _evFinal = Object.assign({}, _reg.eventos[_idx]);
+    _evFinal._pendente_verificacao = false;
+    _evFinal._verif_manual = { decisao: "confirmar", motivo: _motivo, fontes: _fontes, em: _agora, por: "admin" };
+    _reg.eventos[_idx] = _evFinal;
+  } else {
+    _reg.eventos.splice(_idx, 1);
+    _reg.sem_eventos = _reg.eventos.length === 0;
+  }
+  _reg._versao = (_reg._versao || 0) + 1;
+  _reg._ultima_verificacao_async = _agora;
+  _estado.results[_orfao.empresa] = normalizarMojibake(_reg);
+  _estado.updated_at = _agora;
+
+  try {
+    await env2222.RADAR_KV.put(chaveEstadoCompartilhado(_orfao.semana), JSON.stringify(_estado), { expirationTtl: 60 * 60 * 24 * 35 });
+  } catch (e) {
+    try { await env2222.RADAR_KV.put(_auditKey, JSON.stringify(Object.assign({}, _auditBase, { fase: "estado_falhou", erro: String(e && e.message || e).slice(0, 200) })), { expirationTtl: 60 * 60 * 24 * 180 }); } catch (_) { }
+    return { ok: false, codigo: "ORFAO_ESTADO_PERSIST_FALHOU" };
+  }
+
+  try {
+    await env2222.RADAR_KV.put(_auditKey, JSON.stringify(Object.assign({}, _auditBase, { fase: "estado_persistido", estado_persistido_em: _agora, evento_antes: _antes })), { expirationTtl: 60 * 60 * 24 * 180 });
+  } catch (e) {
+    // Nao reverte o estado: o marcador no proprio blob semanal permite retry seguro.
+    console.error("[verif][orfao][manual] estado persistido, mas audit update falhou; marcador no estado permite retry:", e && e.message || String(e));
+  }
+
+  const _resOrfao = await _resolverOrfaoPorConclusao(env2222, id, true, decisao === "confirmar" ? "MANUAL_CONFIRMADO" : "MANUAL_DESCARTADO", request);
+  const _okFinal = _resOrfao && (_resOrfao.acao === "resolvido" || _resOrfao.acao === "sem_orfao");
+  try {
+    await env2222.RADAR_KV.put(_auditKey, JSON.stringify(Object.assign({}, _auditBase, {
+      fase: _okFinal ? "finalizado" : "resolucao_pendente",
+      estado_persistido_em: _agora,
+      orfao_resultado: _resOrfao && _resOrfao.acao || null,
+      concluido_em: _okFinal ? (/* @__PURE__ */ new Date()).toISOString() : null,
+      evento_antes: _antes
+    })), { expirationTtl: 60 * 60 * 24 * 180 });
+  } catch (_) { }
+
+  return { ok: _okFinal, codigo: _okFinal ? null : "ORFAO_RESOLUCAO_PENDENTE", decisao, id, orfao: _resOrfao };
+}
+__name(resolverOrfaoManualAdmin, "resolverOrfaoManualAdmin");
 // SWEEP-ORFAOS1 (2026-09-06): convergencia. Se o delete terminal falhou, o orfao
 // e o marcador coexistem. Aqui o orfao so e apagado quando o marcador PROVA
 // conclusao posterior ao expirado_em dele. Marcador ausente, ilegivel, sem hora
@@ -21375,6 +21514,20 @@ async function __coreFetch(request, env2222, ctx) {
       }
       await tel(env2222, request, { evento: "verificacao_quarentena_resolvida", empresa: String(_rvLocalizado.empresa).slice(0, 40), extra: { id: id, decisao: decisao } });
       return resp({ ok: true, id: id, decisao: decisao, resolvido: true, indice_removido: true }, 200, request);
+    }
+    if (body.action === "admin_verif_orfao_resolver") {
+      // MANUAL-ORFAO1: revisao humana terminal de um orfao, separada do contrato
+      // automatico REPROVADO/APROVADO. Exige admin, motivo e evidencia URL.
+      const { admin_senha, id, decisao, motivo, fontes } = body;
+      if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!id || typeof id !== "string" || id.length > 512) return resp({ ok: false, erro: "id obrigatorio." }, 400, request);
+      const _om = await resolverOrfaoManualAdmin(env2222, id, decisao, motivo, fontes, request);
+      if (!_om.ok) {
+        const _status = _om.codigo === "ORFAO_AUSENTE" ? 404 : (_om.codigo === "ORFAO_DECISAO_INVALIDA" || _om.codigo === "ORFAO_MOTIVO_INSUFICIENTE" || _om.codigo === "ORFAO_EVIDENCIA_AUSENTE" ? 400 : 409);
+        return resp(Object.assign({ ok: false, erro: "Resolucao manual do orfao recusada (fail-closed)." }, _om), _status, request);
+      }
+      await tel(env2222, request, { evento: "verificacao_orfao_resolvido_manual", empresa: "", extra: { id: String(id).slice(0, 128), decisao: decisao } });
+      return resp({ ok: true, id, decisao, resolvido: true, detalhe: _om.orfao || null }, 200, request);
     }
     if (body.action === "admin_remover_data") {
       const { admin_senha, data_alvo } = body;

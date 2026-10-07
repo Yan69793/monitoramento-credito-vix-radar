@@ -1,10 +1,17 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.264)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.265)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
-# v4.9.257.js = v4.9.256 + PISOORFAO1b: a metodologia sobrevive a falha e `mesma` nao exige o id
+# v4.9.265.js = v4.9.264 + MANUAL-ORFAO1: resolucao administrativa explicita e auditavel
+#   para orfaos de verificacao que permaneceram nao-terminais apos parecer REPROVADO.
+#   Acao admin_verif_orfao_resolver exige ADMIN_PASSWORD, decisao confirmar|descartar,
+#   motivo e ao menos uma URL de evidencia; persiste estado terminal antes de resolver
+#   o orfao e grava marcador duravel no mesmo estado semanal para retry idempotente.
+#   Decisao conflitante falha fechada. Nao altera a semantica automatica de REPROVADO.
+#   Testes locais no candidato: sweep 32/32; regressao dirigida 95/95 em 6 arquivos.
+#   Rollback: main = "v4.9.264.js".# v4.9.257.js = v4.9.256 + PISOORFAO1b: a metodologia sobrevive a falha e `mesma` nao exige o id
 #   guardado. Medido em producao logo depois do deploy da v4.9.256: candidatos 759, base 441,
 #   `piso: 961` com `piso_modo: bootstrap` e `piso_dinamico: 0`, porque o meta de FALHA era
 #   gravado sem `metodologia_id`, a leitura seguinte concluia `mesma=false` e o piso caia no
@@ -1504,7 +1511,7 @@
 # v4.9.148.js = v4.9.147 + auditoria geral 2026-07-07: SEC admin_mercado remove de vez o path GET com senha em querystring (so aceitava por engano, coexistia com o POST desde v4.9.142); SEC action=zscores_anbima e action=teste passam a exigir _exigeJwtAdmin (endpoints publicos sem auth — zscores expunha dado analitico proprietario, teste disparava chamadas pagas reais a providers); FIX tel(env2222,"verificacao_async_rejeitado",...) call-site quebrado (mesma classe do bug corrigido em routine_analise_recebida no commit anterior, essa ocorrencia ficou de fora) — telemetria de rejeicao do verificador assincrono volta a gravar; remove funcao morta executarRotaWebSecundariaExa (zero call sites).
 # Deploy: `npx wrangler deploy` (de api/, com CLOUDFLARE_API_TOKEN no ambiente).
 name       = "radar-credito-api"
-main       = "v4.9.264.js"
+main       = "v4.9.265.js"
 compatibility_date  = "2026-06-16"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = true
