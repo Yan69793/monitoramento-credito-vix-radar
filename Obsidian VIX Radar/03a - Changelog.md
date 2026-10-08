@@ -11,6 +11,26 @@ Registro cronológico de incidentes, deploys e eventos de produção. Cobertura:
 
 ---
 
+> [!success] 08/10 — **SESSION-ONE v4.9.266 + v202.61. Sessão única por conta: um segundo login encerra o anterior.**
+> **Status:** resolvido, commit e push confirmados, Worker e Pages publicados e validados em produção
+> **Data da Versão:** 2026-10-08
+> **Origem do Registro:** pedido do operador para finalizar a política de sessão única iniciada na sessão anterior (Worker e aviso no frontend já no working tree, sem commit). Base isolada em worktree destacado sobre `origin/main d3d34e1`; suíte completa de partida 472/488, com as 16 falhas medidas antes de qualquer correção
+> **Condição de Obsolescência:** perde validade se `verificarJWT` voltar a aceitar token sem `sid` ativo, ou se `emitirSessaoUnica` deixar de gravar a sessão ativa no `UsuarioDO`
+>
+> **O gate.** O login passou a emitir um `sid` (`crypto.randomUUID`); `emitirSessaoUnica` grava esse `sid` como a sessão ativa no `UsuarioDO` do usuário (op `setSessaoAtiva`) e assina o mesmo `sid` no JWT. `verificarJWT` só aceita token cujo `sid` continue sendo o ativo (op `checkSessaoAtiva`) e falha fechado se o `UsuarioDO` estiver indisponível. Um segundo login encerra o anterior e a resposta carrega `sessao_anterior_encerrada` + `mensagem_sessao`; vale igual no login administrativo (`admin_auto_login`). Isolamento por DO de usuário (`idFromName(email)`), operações serializadas pela fila do DO (concorrência) e expiração pelo `exp` do JWT. Token antigo, sem `sid`, deixa de valer por construção: não há bypass nem aceitação de token pré-existente. A consequência esperada é o relogin único de todas as sessões abertas no dia do deploy.
+>
+> **Causa raiz das 16 falhas, medida e não suposta.** As fixtures antigas montavam o JWT à mão (HS256 sobre `JWT_SECRET`), sem sessão nenhuma no `UsuarioDO`, então `verificarJWT` passou a recusá-las por construção — 401 no lugar de 200/403 em `anbima-papeis`, `briefing-dedup`, `ews-piso`, `materialidade`, `predictive-auth-url` e `reprovado-failclosed-quarentena`. A correção não enfraquece o gate: o helper `api/test/_auth-fixture.mjs` gera token pelo fluxo real, semeando o usuário no KV com hash PBKDF2 no formato de produção e chamando `action=login`. Um caso fora do conjunto, `agenda-validacao`, mintava JWT à mão para um endpoint público (`op=calendario`), onde o token nunca valeu nada — conferido e deixado como está.
+>
+> **Instabilidade do `login-timing`.** A medição fechava as três amostras de um caminho e só então ia ao próximo; um pico de carga durante uma única janela inflava só aquele caminho e produzia diferença falsa (205 ms observados no run da suíte completa, contra 200 ms de janela). Passou a amostragem entrelaçada (round-robin) dos quatro caminhos, cinco amostras por caminho e uma passada de aquecimento descartada. O piso de 80 ms por caminho e a janela de uniformidade de 200 ms ficaram intocados: o que muda é a estimativa, não a proteção contra enumeração de contas.
+>
+> **Suite.** 49 arquivos, 496/496 verde (as 472 que já passavam mais 8 casos novos em `api/test/sessao-unica.test.mjs`: token antigo inválido, login administrativo, isolamento entre contas, concorrência com exatamente um token vivo, expiração, token sem `sid`, `sid` estranho e falha de storage fail-closed). `node --check` no bundle, `tests/system-final-regressions.mjs`, `check-version-drift.mjs`, `check-cache-version.mjs` e `check-acentos-frontend.mjs` também verdes.
+>
+> **Bloqueio achado no caminho do deploy.** `scripts/deploy-pages.ps1` dot-sourceava `scripts/lib/vixradar-pages-bundle-gate.ps1`, arquivo introduzido no commit `0bef6cf` e **nunca commitado**: o deploy de Pages morria no dot-source ("termo não reconhecido") e nenhum teste pegava, porque a suíte de scripts não cobria a função. A lib foi restaurada idêntica ao original (sha256 `67FEA77A20CA74A538007C054CA0BEFC2EAB927E7A85A3BF94AFA3946E1E9531`) e o gate foi provado nas duas pontas: aprova o pacote real e reprova arquivo inesperado injetado em bancada isolada.
+>
+> **Produção.** Worker v4.9.266 em `api.vixradar.com` e no domínio workers.dev, com `ok:true`, `kv`, `telemetria`, `sentry_ok` e `verificador_ok`. Pages v202.61 com `version.json` idêntico em apex e www e `CACHE_VERSION` conferido no HTML servido. Homologação de sessão única com a conta demo documentada do projeto: login #1 (token A) responde 200; login #2 responde 200 com `sessao_anterior_encerrada:true`; o token A passa a 401 no mesmo instante e o token B segue 200; token inválido responde 401. Isolamento entre contas permanece coberto pela suíte, porque a homologação pública não tem segunda conta autorizada.
+>
+> **Rollback.** Worker: `main = "v4.9.265.js"`. Frontend: redeploy do bundle v202.60 (o `version.json` de produção guarda `deployed_at` para conferência). Nota operacional medida no dia: a borda Cloudflare responde 403 `error code: 1000` quando o cliente envia o header reservado `CF-Connecting-IP`; sonda de login em produção precisa omitir esse header.
+
 > [!success] 24/08 — **CURADORIA1 v202.32. Troca de carteira aplicada só no backend deixou a Braskem sem card de métrica no dia da recuperação extrajudicial.**
 > **Status:** Marco 1 resolvido e deployado. Marco 2, recuração dos 101 emissores herdados, aberto
 > **Data da Versão:** 2026-08-24
