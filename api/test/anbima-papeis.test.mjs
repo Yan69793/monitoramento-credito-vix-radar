@@ -1,6 +1,7 @@
 import { SELF, env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
+import { EMAIL_FIXTURE, tokenFixture } from "./_auth-fixture.mjs";
 import {
   _grupoAnbima,
   _formatarTaxaDisplay,
@@ -24,7 +25,6 @@ import {
 // para serie legada sem metadados, e o caminhante de fronteira do backfill
 // que nao para em 404 isolado.
 
-const JWT_SECRET = "test-jwt-secret-nao-usar-em-producao";
 const EMPRESA = "Eneva";
 const DATA_REF = "2026-08-28";
 
@@ -60,23 +60,10 @@ function parseTxt(txt) {
   return parseANBIMATxt(new TextEncoder().encode(txt));
 }
 
-function b64urlBytes(bytes) {
-  let bin = "";
-  bytes.forEach((b) => (bin += String.fromCharCode(b)));
-  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function mintJwt(secret, payload) {
-  const enc = new TextEncoder();
-  const header = b64urlBytes(enc.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })));
-  const body = b64urlBytes(enc.encode(JSON.stringify(payload)));
-  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(`${header}.${body}`));
-  return `${header}.${body}.${b64urlBytes(new Uint8Array(sig))}`;
-}
-
+// SESSION-ONE: o token vem do fluxo real de login (sessao unica), nao mais de
+// um JWT montado a mao — que nao cria sessao e por isso seria recusado.
 async function authHeaders() {
-  const token = await mintJwt(JWT_SECRET, { email: "teste-papeis@example.com", exp: Math.floor(Date.now() / 1e3) + 3600 });
+  const token = await tokenFixture(EMAIL_FIXTURE);
   return { Authorization: `Bearer ${token}` };
 }
 

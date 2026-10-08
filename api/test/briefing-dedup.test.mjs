@@ -2,6 +2,7 @@ import { SELF, env } from "cloudflare:test";
 import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
+import { EMAIL_FIXTURE, tokenFixture } from "./_auth-fixture.mjs";
 import estadoW31 from "./fixtures/materialidade-estado-2026-W31.json" with { type: "json" };
 import estadoW32 from "./fixtures/materialidade-estado-2026-W32.json" with { type: "json" };
 import estadoW33 from "./fixtures/materialidade-estado-2026-W33.json" with { type: "json" };
@@ -30,16 +31,6 @@ beforeEach(async () => { await bootstrapIndiceQuarentena(env); });
 const WEEKS = ["2026-W31", "2026-W32", "2026-W33", "2026-W34", "2026-W35"];
 const ESTADOS = [estadoW31, estadoW32, estadoW33, estadoW34, estadoW35];
 const FIX_KEY = "radar:estado:";
-
-async function mintJWT(secret) {
-  const b64url = (buf) => Buffer.from(buf).toString("base64url");
-  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const agora = Math.floor(Date.now() / 1000);
-  const body = b64url(JSON.stringify({ sub: "test", email: "test@example.com", iat: agora, exp: agora + 3600 }));
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
-  return `${header}.${body}.${b64url(sig)}`;
-}
 
 function kvMapDosFixtures() {
   const map = {};
@@ -78,7 +69,7 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
   });
 
   it("briefing padrao mostra somente fatos do dia, sem puxar o historico semanal", async () => {
-    const token = await mintJWT(env.JWT_SECRET);
+    const token = await tokenFixture(EMAIL_FIXTURE);
     const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo", {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -121,7 +112,7 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
   });
 
   it("top_eventos: Cosan e Braskem aparecem uma vez cada, Auren ganha vaga", async () => {
-    const token = await mintJWT(env.JWT_SECRET);
+    const token = await tokenFixture(EMAIL_FIXTURE);
     const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo&escopo=historico", {
       headers: { Authorization: `Bearer ${token}` }
     });
@@ -150,7 +141,7 @@ describe("BRIEFING — dedup semantico (BRIEFDEDUP1)", () => {
   });
 
   it("cross-check: top-10 do endpoint bate com o harness dedupado, byte a byte", async () => {
-    const token = await mintJWT(env.JWT_SECRET);
+    const token = await tokenFixture(EMAIL_FIXTURE);
     // Com o relogio preso em 30/08 o endpoint pede W35..W31, as chaves onde o
     // beforeEach ja gravou os fixtures. Nao ha mais remapeamento de semana.
     const r = await SELF.fetch("https://exemplo.invalid/?op=briefing_executivo&escopo=historico", {

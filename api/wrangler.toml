@@ -4,6 +4,25 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.266.js = v4.9.265 + SESSION-ONE: sessao unica por conta. O login passa a
+#   emitir um sid (crypto.randomUUID) e gravar esse sid como a sessao ativa do
+#   usuario no UsuarioDO (op setSessaoAtiva); verificarJWT so aceita token cujo
+#   sid continue sendo o ativo (op checkSessaoAtiva) e falha fechado quando o
+#   UsuarioDO esta indisponivel. Um segundo login encerra a sessao anterior e
+#   devolve sessao_anterior_encerrada + mensagem_sessao; vale igual no login
+#   administrativo (admin_auto_login). Isolamento por DO de usuario
+#   (idFromName(email)), operacoes serializadas pela fila do DO (concorrencia),
+#   expiracao segue pelo exp do JWT. Token antigo (sem sid) deixa de valer por
+#   construcao: nao ha bypass nem aceitacao de token pre-existente. Frontend
+#   ganha aviso quando a sessao anterior e encerrada e mantem o tratamento de
+#   401 (_tratarSessaoExpirada), que ja limpa a sessao local.
+#   Testes: api/test/sessao-unica.test.mjs (token antigo invalido, login admin,
+#   isolamento entre contas, concorrencia, expiracao, token sem sid/sid estranho,
+#   falha de storage fail-closed); fixtures de auth dos testes legados passam a
+#   emitir token pelo fluxo real de login; login-timing sem instabilidade, com
+#   amostragem entrelacada (piso de 80ms e janela de 200ms intocados).
+#   Suite completa no candidato: 49 arquivos, 496/496 verde.
+#   Rollback: main = "v4.9.265.js".
 # v4.9.265.js = v4.9.264 + MANUAL-ORFAO1: resolucao administrativa explicita e auditavel
 #   para orfaos de verificacao que permaneceram nao-terminais apos parecer REPROVADO.
 #   Acao admin_verif_orfao_resolver exige ADMIN_PASSWORD, decisao confirmar|descartar,

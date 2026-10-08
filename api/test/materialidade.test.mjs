@@ -2,6 +2,7 @@ import { SELF, env } from "cloudflare:test";
 import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
+import { EMAIL_FIXTURE, tokenFixture } from "./_auth-fixture.mjs";
 import estadoW31 from "./fixtures/materialidade-estado-2026-W31.json" with { type: "json" };
 import estadoW32 from "./fixtures/materialidade-estado-2026-W32.json" with { type: "json" };
 import estadoW33 from "./fixtures/materialidade-estado-2026-W33.json" with { type: "json" };
@@ -56,16 +57,6 @@ function chaveEvento(e) {
   return `${e.empresa}|${e.data_evento}|${(e.titulo || "").slice(0, 40)}`;
 }
 
-async function mintJWT(secret) {
-  const b64url = (buf) => Buffer.from(buf).toString("base64url");
-  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const agora = Math.floor(Date.now() / 1000);
-  const body = b64url(JSON.stringify({ sub: "test", email: "test@example.com", iat: agora, exp: agora + 3600 }));
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
-  return `${header}.${body}.${b64url(sig)}`;
-}
-
 describe("MATERIALIDADE — sem saturacao (MATERIALSAT1)", () => {
   let token;
 
@@ -78,7 +69,7 @@ describe("MATERIALIDADE — sem saturacao (MATERIALSAT1)", () => {
     const map = kvMapDosFixtures();
     for (const [k, v] of Object.entries(map)) await env.RADAR_KV.put(k, v);
     await env.RADAR_KV.put("mercado:anomalias:ativas", JSON.stringify(anomalias));
-    token = await mintJWT(env.JWT_SECRET);
+    token = await tokenFixture(EMAIL_FIXTURE);
   });
 
   afterEach(() => {

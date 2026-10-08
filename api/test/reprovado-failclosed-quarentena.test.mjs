@@ -12,6 +12,7 @@ import {
   _limparFalhasInjetadasTeste,
 } from "../src/worker.js";
 import { bootstrapIndiceQuarentena, resetIndiceQuarentena, adicionarAoIndice, lerIndice } from "./_quarentena-idx.mjs";
+import { EMAIL_FIXTURE, tokenFixture } from "./_auth-fixture.mjs";
 
 // =============================================================================
 // REPROVADO-FAILCLOSED1 (2026-09-06): indice unico de quarentena de verificacao.
@@ -83,16 +84,6 @@ function semanaISOAtual() {
   return `${data.getUTCFullYear()}-W${String(Math.ceil(((data - pj) / 864e5 + 1) / 7)).padStart(2, "0")}`;
 }
 const SEMANA_ATUAL = semanaISOAtual();
-
-async function mintJWT(secret, email) {
-  const b64url = (buf) => Buffer.from(buf).toString("base64url");
-  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const agora = Math.floor(Date.now() / 1000);
-  const body = b64url(JSON.stringify({ sub: "test", email: email || "test@example.com", iat: agora, exp: agora + 3600 }));
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
-  return `${header}.${body}.${b64url(sig)}`;
-}
 
 function post(body) {
   return SELF.fetch("https://example.com/", {
@@ -310,7 +301,7 @@ describe("T1/T5 — predicado, identidade e entrada n=3", () => {
 
     // Consumidores publicos: o evento some do estado corrente (flag + indice).
     await semear(SEMANA_ATUAL, [eventoBase({ _pendente_verificacao: true, _verif_aguarda_manual: true, _verif_quarentena_id: ID_A })]);
-    const token = await mintJWT(env.JWT_SECRET);
+    const token = await tokenFixture(EMAIL_FIXTURE);
     const st = await estadoPublico(token);
     expect(st.ok).toBe(true);
     expect(st.results[EMPRESA].eventos).toHaveLength(0);
@@ -606,7 +597,7 @@ describe("T7 — frescor: quarentenado nao certifica", () => {
 describe("T8 — shares retroativos + no-store", () => {
   it("share criado publico esconde o fato depois da quarentena; erro de indice = 503; criacao em erro = 503", async () => {
     await semear(SEMANA_ATUAL, [eventoBase({ _pendente_verificacao: true })]);
-    const token = await mintJWT(env.JWT_SECRET);
+    const token = await tokenFixture(EMAIL_FIXTURE);
 
     const rc = await SELF.fetch("https://example.com/", {
       method: "POST",
@@ -891,7 +882,7 @@ describe("T9 — fault injection das SAIDAS: indice permanece ate a publicacao e
 describe("T10 — caminho feliz com indice vazio valido", () => {
   it("state/ews/briefing/share/gates funcionam normalmente com {schema:1,ids:{}}", async () => {
     await semear(SEMANA_ATUAL, [eventoBase({ _pendente_verificacao: false })]);
-    const token = await mintJWT(env.JWT_SECRET);
+    const token = await tokenFixture(EMAIL_FIXTURE);
 
     const st = await estadoPublico(token);
     expect(st.ok).toBe(true);

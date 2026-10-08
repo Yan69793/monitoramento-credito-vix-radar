@@ -2,6 +2,7 @@ import { SELF, env } from "cloudflare:test";
 import { bootstrapIndiceQuarentena } from "./_quarentena-idx.mjs";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
+import { EMAIL_FIXTURE, tokenFixture } from "./_auth-fixture.mjs";
 import estadoW31 from "./fixtures/estado-2026-W31.json" with { type: "json" };
 import estadoW32 from "./fixtures/estado-2026-W32.json" with { type: "json" };
 import estadoW33 from "./fixtures/estado-2026-W33.json" with { type: "json" };
@@ -39,16 +40,7 @@ const ALVOS = ["Raízen", "Oncoclínicas", "Oi", "Light"];
 
 const ESTADOS = [estadoW31, estadoW32, estadoW33, estadoW34, estadoW35];
 
-async function mintJWT(secret) {
-  const b64url = (buf) => Buffer.from(buf).toString("base64url");
-  const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
-  const agora = Math.floor(Date.now() / 1000);
-  const body = b64url(JSON.stringify({ sub: "test", email: "test@example.com", iat: agora, exp: agora + 3600 }));
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
-  return `${header}.${body}.${b64url(sig)}`;
-}
-
+// SESSION-ONE: token pelo fluxo real de login (sessao unica).
 async function ewsDe(empresa, token) {
   const r = await SELF.fetch(`https://exemplo.invalid/?op=ews&empresa=${encodeURIComponent(empresa)}`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -75,7 +67,7 @@ describe("PISO EWS — semântica corrigida (EWSFLOOR1)", () => {
       await env.RADAR_KV.put(`radar:estado:${WEEKS[i]}`, JSON.stringify(ESTADOS[i]));
     }
     await env.RADAR_KV.put("mercado:anomalias:ativas", JSON.stringify(anomalias));
-    token = await mintJWT(env.JWT_SECRET);
+    token = await tokenFixture(EMAIL_FIXTURE);
   });
 
   afterEach(() => {

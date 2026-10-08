@@ -1,17 +1,15 @@
 import { SELF, env } from "cloudflare:test";
 import { beforeAll, describe, expect, it } from "vitest";
+import { EMAIL_FIXTURE, tokenAdmin, tokenFixture } from "./_auth-fixture.mjs";
 
 const fixturePassword = "test-admin-password-nao-usar-em-producao";
 
-// Usa apenas os bindings sinteticos de wrangler.test.jsonc, nunca senha real na URL.
+// SESSION-ONE: o token passa a vir do fluxo real de login (sessao unica). O
+// helper antigo montava um JWT HS256 a mao, sem sessao ativa no UsuarioDO, e
+// por isso o verificarJWT o recusa agora — corretamente. Usa apenas os
+// bindings sinteticos de wrangler.test.jsonc, nunca senha real na URL.
 async function jwt(role) {
-  const encode = (value) => btoa(JSON.stringify(value)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  const header = encode({ alg: "HS256", typ: "JWT" });
-  const body = encode({ email: "fixture@audit.example", role, exp: Math.floor(Date.now() / 1000) + 600 });
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(env.JWT_SECRET), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
-  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
-  const sig = btoa(String.fromCharCode(...new Uint8Array(signature))).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-  return `${header}.${body}.${sig}`;
+  return role === "admin" ? await tokenAdmin() : await tokenFixture(EMAIL_FIXTURE);
 }
 
 describe("laboratorio preditivo sem senha na URL", () => {

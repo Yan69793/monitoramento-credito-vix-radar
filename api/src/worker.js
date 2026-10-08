@@ -4671,6 +4671,13 @@ __name22222(b64urlEncode, "b64urlEncode");
 __name222222(b64urlEncode, "b64urlEncode");
 __name2222222(b64urlEncode, "b64urlEncode");
 __name22222222(b64urlEncode, "b64urlEncode");
+async function emitirSessaoUnica(env, payload) {
+  if (!env.USUARIO_DO || !payload.email) throw new Error("Controle de sessoes indisponivel");
+  const sid = crypto.randomUUID();
+  const anterior = await _rotearParaUsuarioDO(env, payload.email, "setSessaoAtiva", [sid]);
+  const token = await gerarJWT(env, { ...payload, sid });
+  return { token, sessao_anterior_encerrada: !!anterior };
+}
 async function gerarJWT(env2222, payload) {
   const header = b64urlEncode(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const nowSec = Math.floor(Date.now() / 1e3);
@@ -4696,6 +4703,9 @@ async function verificarJWT(env2222, token) {
     if (!valid) return null;
     const payload = JSON.parse(atob(body.replace(/-/g, "+").replace(/_/g, "/")));
     if (payload.exp && payload.exp < Math.floor(Date.now() / 1e3)) return null;
+    if (!payload.sid || !payload.email || !env2222.USUARIO_DO) return null;
+    const ativa = await _rotearParaUsuarioDO(env2222, payload.email, "checkSessaoAtiva", [payload.sid]);
+    if (ativa !== true) return null;
     return payload;
   } catch {
     return null;
@@ -6405,10 +6415,10 @@ async function handleLogin(body, env2222, request) {
   const tenantConfig = await getTenantConfig(env2222, tenantId);
   const whiteLabel = user.white_label === true;
   const roleFinal = String(user.email || "").toLowerCase().trim() === ADMIN_EMAIL.toLowerCase() ? "admin" : "user";
-  const token = await gerarJWT(env2222, { email: user.email, nome: user.nome, empresa: user.empresa, role: roleFinal, tenant: tenantId, ui_track: uiTrack, white_label: whiteLabel });
+  const { token, sessao_anterior_encerrada } = await emitirSessaoUnica(env2222, { email: user.email, nome: user.nome, empresa: user.empresa, role: roleFinal, tenant: tenantId, ui_track: uiTrack, white_label: whiteLabel });
   await tel(env2222, request, { evento: "login", email: user.email, status_code: 200 });
   // COOKIE-CLEAR1 (v4.9.179): sem Set-Cookie radar_token — auth so via Authorization Bearer (CSRF-COOKIE1)
-  return resp({ ok: true, token, usuario: { nome: user.nome, email: user.email, empresa: user.empresa, tenant: tenantId, ui_track: uiTrack, white_label: whiteLabel, role: roleFinal }, tenant_config: tenantConfig, ui_track: uiTrack }, 200, request);
+  return resp({ ok: true, token, usuario: { nome: user.nome, email: user.email, empresa: user.empresa, tenant: tenantId, ui_track: uiTrack, white_label: whiteLabel, role: roleFinal }, tenant_config: tenantConfig, ui_track: uiTrack, sessao_anterior_encerrada, mensagem_sessao: sessao_anterior_encerrada ? "A sessao anterior foi encerrada automaticamente." : null }, 200, request);
 }
 __name(handleLogin, "handleLogin");
 __name2(handleLogin, "handleLogin");
@@ -6688,9 +6698,9 @@ async function handleAdminAutoLogin(body, env2222, request) {
   const tenantId = userTenant(user);
   const uiTrack = resolverUiTrack(user);
   const tenantConfig = await getTenantConfig(env2222, tenantId);
-  const token = await gerarJWT(env2222, { email: user.email, nome: user.nome, empresa: user.empresa, role: "admin", tenant: tenantId, ui_track: uiTrack, white_label: true });
+  const { token, sessao_anterior_encerrada } = await emitirSessaoUnica(env2222, { email: user.email, nome: user.nome, empresa: user.empresa, role: "admin", tenant: tenantId, ui_track: uiTrack, white_label: true });
   // COOKIE-CLEAR1 (v4.9.179): sem Set-Cookie radar_token
-  return resp({ ok: true, token, usuario: { nome: user.nome, email: user.email, empresa: user.empresa, tenant: tenantId, ui_track: uiTrack, white_label: true }, tenant_config: tenantConfig, ui_track: uiTrack }, 200, request);
+  return resp({ ok: true, token, usuario: { nome: user.nome, email: user.email, empresa: user.empresa, tenant: tenantId, ui_track: uiTrack, white_label: true }, tenant_config: tenantConfig, ui_track: uiTrack, sessao_anterior_encerrada, mensagem_sessao: sessao_anterior_encerrada ? "A sessao anterior foi encerrada automaticamente." : null }, 200, request);
 }
 __name(handleAdminAutoLogin, "handleAdminAutoLogin");
 __name2(handleAdminAutoLogin, "handleAdminAutoLogin");
@@ -23110,6 +23120,16 @@ var UsuarioDO = class {
   }
   async _executar(op, args) {
     // --- Perfil (cadastro/login) ---
+    if (op === "setSessaoAtiva") {
+      if (typeof args[0] !== "string" || !args[0]) throw new Error("sid invalido");
+      const anterior = await this.state.storage.get("sessao:ativa");
+      await this.state.storage.put("sessao:ativa", args[0]);
+      return !!anterior && anterior !== args[0];
+    }
+    if (op === "checkSessaoAtiva") {
+      const ativa = await this.state.storage.get("sessao:ativa");
+      return typeof args[0] === "string" && !!ativa && ativa === args[0];
+    }
     if (op === "getPerfil") return await this.state.storage.get("perfil");
     if (op === "putPerfil") { await this.state.storage.put("perfil", args[0]); return null; }
     // --- Favoritos (lista de emissores) ---
@@ -23681,6 +23701,8 @@ export {
   _rotearParaEmissorDO,
   _rotearParaUsuarioDO,
   _rotearParaConfigDO,
+  emitirSessaoUnica,
+  verificarJWT,
   _kvPutDualEmissor,
   _kvGetDualEmissor,
   _kvPutDualUsuario,

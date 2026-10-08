@@ -72,12 +72,29 @@ async function login(email, senha) {
   return { status: res.status, corpo, ms: Date.now() - t0 };
 }
 
-async function menorDe(email, senha, amostras) {
-  let menor = Infinity;
-  for (let i = 0; i < amostras; i++) {
-    const r = await login(email, senha);
+// SESSION-ONE (2026-10-08): a medicao antiga fechava os 3 samples de um caminho
+// e so depois ia para o proximo. Um pico de carga durante uma unica janela
+// (a suite completa roda varios isolates em paralelo) inflava SO aquele caminho
+// e abria diferenca falsa de ate 205 ms no run de 08/10, reprovando um codigo
+// correto. A amostragem passa a ser ENTRELAÇADA (round-robin): as quatro
+// mensagens alternam dentro da mesma janela, entao o ruido de agendamento atinge
+// todos por igual em vez de um so. Mais amostras por caminho (o minimo e um
+// estimador robusto, converge para o piso real) e uma passada de aquecimento
+// descartada para tirar JIT/cold start da medida. Nada disso afrouxa o gate: o
+// piso de 80 ms por caminho e a janela de uniformidade seguem iguais.
+async function menorPorCaminhoEntrelacado(casos, amostras) {
+  const menor = {};
+  for (const c of casos) menor[c.rotulo] = Infinity;
+  for (const c of casos) {
+    const r = await login(c.email, c.senha);
     expect(r.status).toBe(401);
-    if (r.ms < menor) menor = r.ms;
+  }
+  for (let i = 0; i < amostras; i++) {
+    for (const c of casos) {
+      const r = await login(c.email, c.senha);
+      expect(r.status).toBe(401);
+      if (r.ms < menor[c.rotulo]) menor[c.rotulo] = r.ms;
+    }
   }
   return menor;
 }
@@ -112,13 +129,14 @@ describe("LOGINTIMING1: login nao vaza existencia de conta pelo tempo", () => {
   });
 
   it("todo caminho de falha paga o mesmo piso de atraso", async () => {
-    const amostras = 3;
-    const medidas = {
-      inexistente: await menorDe(INEXISTENTE, "qualquer-coisa", amostras),
-      senha_errada: await menorDe(APROVADO, "senha-errada-999", amostras),
-      pendente: await menorDe(PENDENTE, SENHA_CERTA, amostras),
-      rejeitado: await menorDe(REJEITADO, SENHA_CERTA, amostras),
-    };
+    const amostras = 5;
+    const casos = [
+      { rotulo: "inexistente", email: INEXISTENTE, senha: "qualquer-coisa" },
+      { rotulo: "senha_errada", email: APROVADO, senha: "senha-errada-999" },
+      { rotulo: "pendente", email: PENDENTE, senha: SENHA_CERTA },
+      { rotulo: "rejeitado", email: REJEITADO, senha: SENHA_CERTA },
+    ];
+    const medidas = await menorPorCaminhoEntrelacado(casos, amostras);
     console.log("[LOGINTIMING1] menor latencia por caminho (ms):", medidas);
 
     // Piso: no codigo antigo, pendente/rejeitado voltavam sem hash e sem atraso, e senha
@@ -133,5 +151,5 @@ describe("LOGINTIMING1: login nao vaza existencia de conta pelo tempo", () => {
     // custo entre os ramos, que e o defeito real.
     const valores = Object.values(medidas);
     expect(Math.max(...valores) - Math.min(...valores)).toBeLessThanOrEqual(200);
-  });
+  }, 30000); // 1 warmup + 5 amostras x 4 caminhos = 24 logins reais (~200ms cada)
 });
