@@ -160,6 +160,14 @@ $dryRuns = @(
     'watch-vixradar-health.ps1'
 )
 $difereMaquina = 0
+# Os 8 registradores apontam para a raiz canonica abaixo, hardcoded por contrato DENTRO deles.
+# Fora dessa maquina - ex.: o runner do CI, que faz checkout em D:\a\... - o $ScriptPath deles nao
+# existe, o registrador lanca "Script nao encontrado" e sai 1 por AMBIENTE, nao por codigo. Mesmo
+# criterio do PULADO ja usado no bloco do register-all logo abaixo.
+$raizCanonica = 'E:\Diretorio\Claude\Monitoramento de Credito'
+if (-not (Test-Path -LiteralPath $raizCanonica)) {
+    Write-Host ('  PULADO DryRun dos ' + $dryRuns.Count + ' registradores: raiz canonica ' + $raizCanonica + ' ausente nesta maquina (nao e falha)')
+} else {
 foreach ($nome in $dryRuns) {
     $caminho = Join-Path $scriptDir $nome
     $saida = (& powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $caminho -DryRun *>&1 | Out-String)
@@ -174,6 +182,7 @@ foreach ($nome in $dryRuns) {
         Assert $soDiferencaDeMaquina ($nome + ' -DryRun so reprovou por diferenca da task viva local (exit=' + $rc + ')')
         if ($soDiferencaDeMaquina) { $difereMaquina++ }
     }
+}
 }
 $alvoFechamento = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\scripts\run_fechamento_claude.ps1'
 $alvoWatchdog = 'E:\Diretorio\Claude\FREQUENTE\relatorio-diario-szuchmacher\scripts\briefing_watchdog.ps1'

@@ -93,6 +93,14 @@ Assert ($msgOutro -match 'VIX-UNIT-WRITESET-EXCEDIDO') 'write-set de outra task 
 
 Write-Host ''
 Write-Host '=== 2/3. os 6 alvos do drift: DryRun com escopo de exatamente 1 task ==='
+# Os 8 registradores apontam para a raiz canonica abaixo, hardcoded por contrato DENTRO deles.
+# Fora dessa maquina - ex.: o runner do CI, que faz checkout em D:\a\... - o $ScriptPath deles nao
+# existe, o registrador lanca "Script nao encontrado" e sai 1 por AMBIENTE, nao por codigo.
+# As secoes 5 e 6 continuam rodando: elas leem fonte, nao o Agendador.
+$raizCanonica = 'E:\Diretorio\Claude\Monitoramento de Credito'
+if (-not (Test-Path -LiteralPath $raizCanonica)) {
+    Write-Host ('  PULADO secoes 2/3, 3b e 4: raiz canonica ' + $raizCanonica + ' ausente nesta maquina (nao e falha)')
+} else {
 foreach ($a in $ALVOS) {
     $argvs = @()
     if ($a.Unitario) { $argvs = @('-TaskName', $a.Alvo) }
@@ -169,6 +177,7 @@ if (-not $gitOk) {
     } finally {
         if (Test-Path -LiteralPath $tmp) { [System.IO.Directory]::Delete($tmp, $true) }
     }
+}
 }
 
 Write-Host ''
