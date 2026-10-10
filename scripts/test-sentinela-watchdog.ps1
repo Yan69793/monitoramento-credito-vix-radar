@@ -100,7 +100,7 @@ else { Write-Host ('AGENDA SHADOW OK: ' + $stA3.motivo) }
 
 # SENTINELA-SEARCHBUDGET/PARCIAL: guardas estaticas do contrato operacional.
 $sentinelaSrc = Get-Content (Join-Path $scriptDir 'run_vixradar_sentinela.ps1') -Raw -Encoding UTF8
-if (-not ($sentinelaSrc.Contains('-Emissores $job.Chunk.Count') -and $sentinelaSrc.Contains('-BuscasPorEmissor 8'))) { $falhas += 'SENTINELA SEARCHBUDGET: adapter sem tamanho/budget real do lote' }
+if (-not ($sentinelaSrc.Contains('-Emissores $job.Chunk.Count') -and $sentinelaSrc.Contains('-BuscasPorEmissor 12'))) { $falhas += 'SENTINELA SEARCHBUDGET: adapter sem tamanho/budget real do lote' }
 else { Write-Host 'SENTINELA SEARCHBUDGET OK: tamanho e budget do lote chegam ao adapter' }
 if (-not ($sentinelaSrc.Contains("$resultadoFim = 'PARCIAL'") -and $sentinelaSrc.Contains('$exitFim = 10'))) { $falhas += 'SENTINELA PARCIAL: resultado parcial ainda pode sair exit 0' }
 else { Write-Host 'SENTINELA PARCIAL OK: parcial sai nao-zero' }

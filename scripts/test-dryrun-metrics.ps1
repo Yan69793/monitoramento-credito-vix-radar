@@ -64,7 +64,7 @@ Assert ($srcV -match "if \(\`$DryRun\) \{ Write-Log 'DRYRUN: alerta NAO enviado"
 # e foi por ali que o dreno pos-matinal de 13/09 morreu calado (o motor chamador ainda escrevia
 # "dreno concluido (exit=5)"). Contrato: o ramo levanta ALERTA_AUTH e notifica o admin, igual ao
 # ramo irmao de escalada paga. Prova reversa: contra o codigo anterior o ramo nao tinha nenhum dos dois.
-$ramoSemCred = [regex]::Match($srcV, "(?s)Get-VixClaudeAuthModo\) -eq 'nenhum'\) \{.*?\r?\n\s*exit 5")
+$ramoSemCred = [regex]::Match($srcV, "(?s)\`$__claudeAuthModo -eq 'nenhum'\) \{.*?\r?\n\s*exit 5")
 Assert ($ramoSemCred.Success) 'verificacao: ramo do modo nenhum localizado no fonte'
 Assert ($ramoSemCred.Success -and ($ramoSemCred.Value -match 'ALERTA_AUTH')) 'verificacao: ramo sem credencial levanta ALERTA_AUTH'
 Assert ($ramoSemCred.Success -and ($ramoSemCred.Value -match 'Send-VixRoutineAlert')) 'verificacao: ramo sem credencial notifica o admin'
