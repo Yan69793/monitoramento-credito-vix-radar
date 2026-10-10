@@ -20,8 +20,8 @@ if ($Status) {
 & $All
 
 if ($RunNowMatinal) {
-    & (Join-Path $PSScriptRoot 'run_vixradar_matinal_claude.ps1')
+    & (Join-Path $PSScriptRoot 'run_vixradar_matinal.ps1')
 }
 if ($RunNowNoturno) {
-    & (Join-Path $PSScriptRoot 'run_vixradar_noturno_claude.ps1')
+    & (Join-Path $PSScriptRoot 'run_vixradar_noturno.ps1')
 }

@@ -14,7 +14,7 @@
 # claimante padrao, 4 parcelas de usage na regua unica, ALERTA_AUTH na escalada e -DryRun
 # (lista e reserva com origem "local-dryrun", nunca confirma). Drenos: local 11h03 e 19h15,
 # remoto 02h07 (RemoteTrigger), mais o dreno inline no fim de cada varredura.
-param([switch]$DryRun, [switch]$ForceClaude)
+param([switch]$DryRun, [switch]$ForceClaude, [string]$ReplayFilaPath = '', [string]$ReplayOutPath = '', [ValidateRange(1, 4)][int]$MaxEventos = 1)
 # 'Continue' obrigatorio: regra do CLAUDE.md do VIX Radar. Com 'Stop' o script
 # aborta antes do 'exit' e o Task Scheduler/Claude Desktop perde o codigo de saida.
 $ErrorActionPreference = 'Continue'
@@ -25,10 +25,14 @@ $ErrorActionPreference = 'Continue'
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
-$ProjectRoot    = 'E:\Diretorio\Claude\Monitoramento de Credito'
+$ProjectRoot    = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $WorkerUrl      = 'https://api.vixradar.com'
 $ScheduledTasks = 'C:\Users\User\.claude\scheduled-tasks'
 $LogDir         = Join-Path $ProjectRoot 'logs\routines'
+if ($ReplayFilaPath) {
+    if (-not $ReplayOutPath) { Write-Error 'Replay exige -ReplayOutPath local.'; exit 2 }
+    $LogDir = Split-Path -Parent ([IO.Path]::GetFullPath($ReplayOutPath))
+}
 $DateTag        = Get-Date -Format 'yyyyMMdd'
 $LogFile        = Join-Path $LogDir ('vixradar-verificacao-async_' + $DateTag + '.log')
 $MetricsFile    = Join-Path $LogDir ('verificacao_async_metrics_' + $DateTag + '.json')
@@ -42,6 +46,20 @@ $ModelVerificador = 'claude-sonnet-4-6'
 $ModelFallback    = 'claude-sonnet-4-6'  # --fallback-model quando ModelVerificador != ModelFallback (ex.: troca futura pra claude-fable-5)
 $ChunkSize        = 4
 $PauseSec         = 2
+
+# VERIF-TETO1 (2026-10-04): teto de conclusao EXCLUSIVO da verificacao no adapter OpenRouter.
+# Antes o lote herdava o teto do tier FULL (49152) e, de 02 a 04/10, todo dreno tomou 402
+# ("You requested up to 49152 tokens, but can only afford 2657..13493") com a fila parada.
+# Medido nas verificacoes bem-sucedidas de 29 e 30/09: lotes de 1 a 5 eventos produziram de
+# 326 a 1197 tokens de saida. 8192 e hipotese de validacao com folga de ~7x, nao garantia:
+# resposta cortada no teto vira falha (ERRO_TRUNCADO) e o item fica na fila. As demais
+# rotinas seguem com o teto do tier. Override por VIXRADAR_VERIF_MAX_TOKENS (Process>User),
+# limitado pelo adapter a [1024, 49152].
+$MaxTokensVerificacao = 8192
+$__envVerifMax = [Environment]::GetEnvironmentVariable('VIXRADAR_VERIF_MAX_TOKENS', 'Process')
+if (-not $__envVerifMax) { $__envVerifMax = [Environment]::GetEnvironmentVariable('VIXRADAR_VERIF_MAX_TOKENS', 'User') }
+$__nVerifMax = 0
+if ($__envVerifMax -and [int]::TryParse(('' + $__envVerifMax).Trim(), [ref]$__nVerifMax) -and $__nVerifMax -ge 1024) { $MaxTokensVerificacao = $__nVerifMax }
 
 # Orcamento de token (2026-07-17): esta rotina era a UNICA das quatro sem teto nenhum — o token
 # era somado para relatorio e nunca decidia nada. Medido em 16/07: 773.392 tokens para 18 eventos,
@@ -204,12 +222,30 @@ function Get-VixBlocoColetorVerificacao($Itens) {
     return ($linhas -join "`n")
 }
 
-# Identica a run_vixradar_noturno_claude.ps1 (mesmas flags de economia/isolamento ja validadas em producao)
+function Get-VixCodexUsageProbe($Linhas) {
+    foreach ($linha in @($Linhas)) {
+        try {
+            $obj = ('' + $linha).Trim() | ConvertFrom-Json
+            if ($obj.usage -and $null -ne $obj.usage.input_tokens -and $null -ne $obj.usage.output_tokens) {
+                $inputTotal = [int64]$obj.usage.input_tokens
+                $cacheRead = [int64]$obj.usage.cached_input_tokens
+                if ($null -ne $obj.usage.cache_read_input_tokens) { $cacheRead = [int64]$obj.usage.cache_read_input_tokens }
+                if ($inputTotal -lt 0 -or $cacheRead -lt 0 -or $cacheRead -gt $inputTotal -or [int64]$obj.usage.output_tokens -lt 0) { continue }
+                return [pscustomobject]@{ mensuravel = $true; parcelas = @{ input = ($inputTotal - $cacheRead); output = [int64]$obj.usage.output_tokens; cache_creation = [int64]$obj.usage.cache_creation_input_tokens; cache_read = $cacheRead } }
+            }
+        } catch { }
+    }
+    return [pscustomobject]@{ mensuravel = $false; parcelas = $null }
+}
+
+# Mesmas flags de isolamento Codex usadas pelo motor de varredura.
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $LogDir ('verifasync_stderr_' + $DateTag + '_' + $PID + '.txt')
     $raw = $null; $exitCode = 1
+    # VERIF-TETO1: estado do provider HTTP, separado de parse. Ficam $false/vazios no ramo claude.
+    $providerFalhou = $false; $providerMsg = ''; $semConsumo = $false; $truncado = $false; $stopReason = ''; $maxPedido = 0
     # --fallback-model so entra quando Model difere do fallback - evita fallback-pra-si-mesmo.
     # Hoje (Model=Sonnet=ModelFallback) isso NAO adiciona a flag; ativa sozinho se Model virar Fable.
     # Guard de nulidade: se a funcao for copiada para outro script sem $ModelFallback no escopo,
@@ -221,14 +257,59 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
         # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter; se esgotar,
         # itens ficam na fila (mesmo efeito do fluxo claude, sem tocar em chave paga).
-        if ($script:VixUsaOpenRouter) {
-            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
+        if ($script:VixUsaCodex) {
+            $codexOutFile = Join-Path $LogDir ('verifasync_codex_' + $DateTag + '_' + $PID + '.txt')
+            Remove-Item -LiteralPath $codexOutFile -Force -ErrorAction SilentlyContinue
+            $promptText = Get-Content -LiteralPath $promptPath -Raw -Encoding UTF8
+            # CODEX-SKILLBLOCK1 (2026-10-09): ver run_vixradar_varredura.ps1/run_vixradar_sentinela.ps1.
+            # Sem skip_host_skill_discovery o modelo tenta ler ~/.agents/skills, o sandbox read-only
+            # rejeita o processo ("blocked by policy") e o lote sai como falha de provedor, 0 analise.
+            $codexRaw = $promptText | codex -c features.skip_host_skill_discovery=true --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
+                $codexText = [string](Get-Content -LiteralPath $codexOutFile -Raw -Encoding UTF8)
+                if ([string]::IsNullOrWhiteSpace($codexText)) {
+                    $providerFalhou = $true; $providerMsg = 'Codex retornou resposta vazia'; $exitCode = 1
+                } else {
+                    $codexUsage = Get-VixCodexUsageProbe @($codexRaw)
+                    $envelope = [ordered]@{ result = $codexText; is_error = $false; model = 'codex-subscription' }
+                    if ($codexUsage.mensuravel) {
+                        $envelope.usage = [ordered]@{ input_tokens = $codexUsage.parcelas.input; output_tokens = $codexUsage.parcelas.output; cache_creation_input_tokens = $codexUsage.parcelas.cache_creation; cache_read_input_tokens = $codexUsage.parcelas.cache_read }
+                    } else { Write-Log 'USAGE_CODEX=NAO_MENSURAVEL: cap fecha apos este lote.' }
+                    $raw = @(($envelope | ConvertTo-Json -Compress))
+                }
+            } else {
+                $providerFalhou = $true; $providerMsg = ('Codex falhou ou nao produziu arquivo de resposta, exit=' + $exitCode)
+                $raw = @($codexRaw)
+            }
+            Remove-Item -LiteralPath $codexOutFile -Force -ErrorAction SilentlyContinue
+            if ($providerFalhou) { Write-Log ('ERRO_CODEX: ' + $providerMsg + ' - itens ficam na fila') }
+        } elseif ($script:VixUsaOpenRouter) {
+            $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL' -MaxTokens $MaxTokensVerificacao
             $raw = @($__orResp.Linhas)
             $exitCode = $__orResp.ExitCode
+            # VERIF-TETO1: uma linha por tentativa (modelo, teto pedido, status, causa, consumo).
+            foreach ($__t in @($__orResp.Tentativas)) { if ($__t) { Write-Log (Format-VixOpenRouterTentativa $__t) } }
+            $truncado = [bool]$__orResp.Truncado
+            $stopReason = '' + $__orResp.StopReason
+            $maxPedido = [int]$__orResp.MaxTokensPedido
             if ($exitCode -ne 0) {
+                $providerFalhou = $true
+                $providerMsg = '' + $__orResp.Msg
+                $semConsumo = [bool]$__orResp.SemConsumo
                 Write-Log ('AVISO: lote OpenRouter falhou (' + $__orResp.Msg + ') - itens ficam na fila')
+                # 402: diagnostico de causa pelo limit_source documentado e, uma vez por execucao,
+                # leitura autenticada do estado da chave. So numeros vao ao log.
+                if ([int]$__orResp.Status -eq 402) {
+                    Write-Log ('OR_402|causa=' + $__orResp.Causa402 + '|afford=' + $__orResp.Afford + '|teto_pedido=' + $maxPedido)
+                    if (-not $script:VixChaveStatusLida) {
+                        $script:VixChaveStatusLida = $true
+                        $__ck = Get-VixOpenRouterChaveStatus
+                        Write-Log ('OR_CHAVE|ok=' + $__ck.ok + '|limit=' + $__ck.limit + '|limit_remaining=' + $__ck.limit_remaining + '|usage=' + $__ck.usage + '|is_free_tier=' + $__ck.is_free_tier + '|erro=' + $__ck.erro)
+                    }
+                }
             } else {
-                Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower())
+                Write-Log ('OR_OK: modelo=' + $__orResp.Modelo + ' intentos=' + $__orResp.Intentos + ' fallback=' + ('' + $__orResp.FallbackUsado).ToLower() + ' max_tokens=' + $maxPedido + ' stop=' + $stopReason)
             }
         } else {
             # Reforca UTF8 a cada lote (defesa contra reset de codepage mid-run, mesmo padrao
@@ -272,7 +353,9 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             }
         }
     } catch {
-        Write-Log ('AVISO: excecao ao invocar claude -p (' + $_.Exception.Message + ') - lote marcado como falho')
+        if ($script:VixUsaCodex) { $providerFalhou = $true; $providerMsg = $_.Exception.Message }
+        $motorFalha = if ($script:VixUsaCodex) { 'codex exec' } else { 'claude -p/adapter HTTP' }
+        Write-Log ('AVISO: excecao ao invocar ' + $motorFalha + ' (' + $_.Exception.Message + ') - lote marcado como falho')
     } finally {
         $ErrorActionPreference = $prevEAP
     }
@@ -298,6 +381,8 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
             # confirmados no envelope do CLI (nunca observado em teste real) - le se existir, sem
             # quebrar se nao existir. Sem este guard, uma recusa cairia no branch generico de
             # parse-falhou e a causa raiz ficaria invisivel no log.
+            # VERIF-TETO1: conclusao cortada no teto, nos dois motores, vira falha do lote.
+            if (('' + $json.stop_reason) -eq 'max_tokens' -or ('' + $json.stop_reason) -eq 'length') { $truncado = $true; $stopReason = '' + $json.stop_reason }
             if ($json.stop_reason -eq 'refusal') {
                 $refusal = $true
                 if ($json.stop_details) {
@@ -313,6 +398,9 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model) {
     return @{
         Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; AuthFailure = $authFail
         Refusal = $refusal; RefusalCategory = $refusalCategory; RefusalExplanation = $refusalExplanation
+        ProviderFalhou = $providerFalhou; ProviderMsg = $providerMsg; SemConsumo = $semConsumo
+        Truncado = $truncado; StopReason = $stopReason; MaxTokensPedido = $maxPedido
+        UsageNaoMensuravel = ($script:VixUsaCodex -and $tokens -lt 0)
     }
 }
 
@@ -374,6 +462,45 @@ function Get-VeredictosArray($outputLines, [int]$esperado) {
     return ,$arr
 }
 
+# VERIF-TETO1 (2026-10-04): parecer completo e o unico que pode ir ao confirmar_verificacao.
+# O Worker aceita APROVADO sem fonte e retrata o evento num CORRIGIR sem correcoes, entao a
+# barreira fica aqui, antes da submissao. Devolve '' quando o parecer esta completo, ou o
+# motivo curto da reprova. REPROVADO sem fonte e valido de proposito: e o que o prompt exige
+# quando a coleta vem vazia. Pura, sem rede.
+function Get-VixParecerIncompleto($V) {
+    if ($null -eq $V) { return 'parecer_nulo' }
+    $ver = ('' + $V.veredicto).Trim().ToUpperInvariant()
+    if (@('APROVADO', 'REPROVADO', 'CORRIGIR') -notcontains $ver) { return ('veredicto_invalido:' + $ver) }
+    if (('' + $V.veredicto) -cne $ver) { return 'veredicto_formato_invalido' }
+    $conf = 0.0
+    if ($null -eq $V.confianca -or -not [double]::TryParse(('' + $V.confianca), [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$conf)) { return 'confianca_ausente' }
+    if ([double]::IsNaN($conf) -or [double]::IsInfinity($conf) -or $conf -lt 0 -or $conf -gt 1) { return 'confianca_fora_de_0_1' }
+    if ([string]::IsNullOrWhiteSpace(('' + $V.motivo))) { return 'motivo_vazio' }
+    if ($ver -eq 'APROVADO' -or $ver -eq 'CORRIGIR') {
+        $fontes = @(@($V.fontes_validas) | Where-Object { $_ -is [string] -and $_ -match '^(?i)https?://\S+' })
+        if ($fontes.Count -eq 0) { return 'aprovacao_sem_fonte' }
+        if ($V.fontes_validas -isnot [array]) { return 'fontes_validas_nao_array' }
+    }
+    if ($ver -eq 'CORRIGIR') {
+        # Contrato real de aplicarCorrecaoVerificador no Worker. Um CORRIGIR que
+        # nao altera campo suportado volta false e seria tratado como rejeicao.
+        if ($conf -lt 0.8) { return 'corrigir_confianca_abaixo_de_0_8' }
+        $c = $V.correcoes
+        if ($null -eq $c -or $c -is [string] -or $c -is [array] -or @($c.PSObject.Properties).Count -eq 0) { return 'corrigir_sem_correcoes' }
+        $aplicavel = $false
+        $hojeBrt = [datetime]::UtcNow.AddHours(-3).Date
+        $minimoBrt = $hojeBrt.AddDays(-35).ToString('yyyy-MM-dd')
+        $hojeTexto = $hojeBrt.ToString('yyyy-MM-dd')
+        $dataCorrecao = [datetime]::MinValue
+        if ($c.data_evento -is [string] -and $c.data_evento -cmatch '^\d{4}-\d{2}-\d{2}$' -and [datetime]::TryParseExact($c.data_evento, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$dataCorrecao) -and [string]::CompareOrdinal($c.data_evento, $minimoBrt) -ge 0 -and [string]::CompareOrdinal($c.data_evento, $hojeTexto) -le 0) { $aplicavel = $true }
+        if ($c.fonte_primaria -is [string] -and @($fontes | Where-Object { $_ -ceq $c.fonte_primaria }).Count -gt 0) { $aplicavel = $true }
+        if (@('CRITICO', 'RELEVANTE', 'ECO') -ccontains $c.classificacao) { $aplicavel = $true }
+        if ($c.titulo -is [string] -and $c.titulo.Trim().Length -ge 8 -and $c.titulo.Length -le 240) { $aplicavel = $true }
+        if (-not $aplicavel) { return 'corrigir_sem_campo_aplicavel' }
+    }
+    return ''
+}
+
 function Invoke-WorkerJsonUtf8 {
     # Worker responde application/json SEM charset; Windows PowerShell 5.1 decodificaria a
     # resposta como ISO-8859-1, corrompendo acentos em memoria (nomes de emissor e ate o
@@ -398,14 +525,57 @@ function Invoke-WorkerJsonUtf8 {
 # Scheduler nunca passa -ForceClaude; provider 'none' (default) ou 'claude-manual' sem flag
 # = BLOQUEADO_SEM_PROVIDER.
 $script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
-if ($script:VixUsaOpenRouter) {
-    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
-        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
-        exit $VixLlmBloqueadoExit
-    }
-} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+$script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
+$openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
+$codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
+if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado -CodexAdapterHabilitado:$codexAdapterHabilitado)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_verificacao_async.ps1')
     exit $VixLlmBloqueadoExit
+}
+
+# Replay local termina antes do mutex, preflight, reserva, confirmacao e notificacoes.
+# O payload preserva o contrato do Worker. Proveniencia deve declarar se veio de
+# listar_fila_verificacao ou foi reconstruido localmente de eventos reais do KV
+# e do template Worker. Reconstrucao local nao comprova o endpoint da fila.
+if ($ReplayFilaPath) {
+    try {
+        if (-not $script:VixUsaCodex) { throw 'Replay local exige provider codex.' }
+        $filaReplay = Get-Content -LiteralPath $ReplayFilaPath -Raw -Encoding UTF8 -ErrorAction Stop | ConvertFrom-Json -ErrorAction Stop
+        $itensReplay = @($filaReplay.itens)
+        if ($filaReplay.ok -ne $true -or -not $filaReplay.system_prompt -or -not $filaReplay.user_prompt -or $itensReplay.Count -lt 1 -or $itensReplay.Count -gt $MaxEventos) { throw 'Payload real invalido ou quantidade acima de MaxEventos. Salve listar_fila_verificacao filtrado por ids.' }
+        $idsReplay = @{}
+        foreach ($itemReplay in $itensReplay) {
+            if ([string]::IsNullOrWhiteSpace(('' + $itemReplay.id)) -or [string]::IsNullOrWhiteSpace(('' + $itemReplay.empresa)) -or $idsReplay.ContainsKey(('' + $itemReplay.id))) { throw 'Replay exige id unico e empresa em cada item.' }
+            $idsReplay[('' + $itemReplay.id)] = $true
+        }
+        if ($script:VixColetorAtivo) {
+            foreach ($itemReplay in $itensReplay) {
+                $chaveReplay = ('' + $itemReplay.empresa).Trim().ToLowerInvariant()
+                $propReplay = $null
+                if ($filaReplay.coletor_por_emissor) { $propReplay = $filaReplay.coletor_por_emissor.PSObject.Properties[$chaveReplay] }
+                if ($null -eq $propReplay -or $null -eq $propReplay.Value) { throw 'Replay com coletor ativo exige coletor_por_emissor real para cada empresa.' }
+                $script:VixColetorCache[$chaveReplay] = $propReplay.Value
+            }
+        }
+        $promptReplay = $filaReplay.system_prompt + "`n`n" + $filaReplay.user_prompt
+        $blocoReplay = Get-VixBlocoColetorVerificacao $itensReplay
+        if ($blocoReplay) { $promptReplay += "`n`n" + $blocoReplay }
+        $promptReplay += "`n`nResponda SOMENTE com o array JSON de veredictos, um por evento, na mesma ordem em que os eventos foram listados acima. Nenhum texto antes ou depois do JSON."
+        $promptReplay += "`nREPLAY LOCAL: execute apenas consultas de leitura para verificar evidencias. Proibido chamar o Worker do VIX, reservar, confirmar, notificar, enviar mensagem ou alterar qualquer servico. Retorne o parecer somente na resposta."
+        $promptReplayPath = Join-Path $LogDir ('verifasync_replay_prompt_' + $PID + '.txt')
+        Set-Content -LiteralPath $promptReplayPath -Value $promptReplay -Encoding UTF8 -ErrorAction Stop
+        $resultadoReplay = Invoke-ClaudeBatch $promptReplayPath $ModelVerificador
+        $pareceresReplay = $null
+        if (-not $resultadoReplay.ProviderFalhou -and -not $resultadoReplay.Truncado -and -not $resultadoReplay.Refusal -and -not $resultadoReplay.AuthFailure -and $resultadoReplay.ExitCode -eq 0) { $pareceresReplay = Get-VeredictosArray $resultadoReplay.Output $itensReplay.Count }
+        $completosReplay = 0
+        foreach ($parecerReplay in @($pareceresReplay)) { if ($null -ne $parecerReplay -and -not (Get-VixParecerIncompleto $parecerReplay)) { $completosReplay++ } }
+        $okReplay = ($null -ne $pareceresReplay -and $completosReplay -eq $itensReplay.Count)
+        [ordered]@{ ok = $okReplay; modo = 'replay_local'; provenance = $filaReplay.provenance; proveniencia = $filaReplay.proveniencia; submit_ok = 0; esperados = $itensReplay.Count; completos = $completosReplay; resultado = $resultadoReplay; pareceres = $pareceresReplay } | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $ReplayOutPath -Encoding UTF8 -ErrorAction Stop
+        Write-Log ('REPLAY_LOCAL|ok=' + $okReplay + '|eventos=' + $itensReplay.Count + '|completos=' + $completosReplay + '|submit_ok=0')
+        if (-not $okReplay) { exit 6 }
+        exit 0
+    } catch { Write-Log ('REPLAY_LOCAL_ERRO: ' + $_.Exception.Message); exit 6 }
+    finally { if ($promptReplayPath) { Remove-Item -LiteralPath $promptReplayPath -Force -ErrorAction SilentlyContinue } }
 }
 
 $__verifMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-verifasync')
@@ -463,7 +633,9 @@ Write-Log ('Preflight: ROUTINE_API_KEY aceita pelo Worker (' + [int]$__pfResp.to
 # Fase B D1 (2026-09-04): provider openrouter nao usa auth Claude, nao roda probe WebSearch do
 # CLI e nao exige claude.exe. O adapter tem a chave OpenRouter (ambiente) e as server tools
 # web_search/web_fetch nativas; a credencial ja foi validada externamente pelo operador.
-if ($script:VixUsaOpenRouter) {
+if ($script:VixUsaCodex) {
+    Write-Log 'AUTH_MODO: codex (assinatura Codex CLI, sem OpenRouter e sem auth Anthropic)'
+} elseif ($script:VixUsaOpenRouter) {
     $__orBoot = Test-VixOpenRouterPronto
     if (-not $__orBoot.ok) {
         Write-Log ('ERRO FATAL: ' + $__orBoot.motivo)
@@ -540,7 +712,8 @@ if ($script:VixUsaOpenRouter) {
 }
 
 $stats = @{ total_fila = 0; lotes = 0; aprovados = 0; rejeitados = 0; erros_parse = 0; refusals = 0; tokens_total = 0; tokens_desconhecidos = 0; deferred = 0; token_hard_hit = $false
-    input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0; reservados = 0; ja_reservados = 0; protecao_ativa = $false; confirmados = 0 }
+    input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0; reservados = 0; ja_reservados = 0; protecao_ativa = $false; confirmados = 0
+    falhas_provider = 0; truncados = 0; pareceres_incompletos = 0 }
 $script:AuthEscalou = 'nenhum'
 $exitCode = 0
 $origemLocal = if ($DryRun) { 'local-dryrun' } else { 'local' }
@@ -599,6 +772,10 @@ try {
     }
 
     for ($i = 0; $i -lt $itens.Count; $i += $ChunkSize) {
+        if ($script:VixUsaCodex -and $stats.token_hard_hit) {
+            $stats.deferred += ($itens.Count - $i)
+            break
+        }
         $fim = [Math]::Min($i + $ChunkSize - 1, $itens.Count - 1)
         $chunk = @($itens[$i..$fim])
         $stats.lotes++
@@ -685,6 +862,24 @@ try {
 
             Write-Log ('Lote ' + $label + ': ' + $nonCached.Count + ' evento(s) [cache=' + $cacheHitCount + '] - ' + (($nonCached | ForEach-Object { $_.empresa }) -join ', '))
             $result = Invoke-ClaudeBatch $promptPath $ModelVerificador
+            if ($result.UsageNaoMensuravel) { $stats.token_hard_hit = $true }
+            # VERIF-TETO1: falha do provider (402, 4xx, transporte esgotado) e categoria propria.
+            # Antes caia no parse e virava "parse de veredictos falhou" com erros_parse=1 e uma
+            # estimativa de 85000 a 120000 tokens cobrada contra o cap, sem nada ter sido gerado.
+            if ($result.ProviderFalhou) {
+                if ($result.SemConsumo) {
+                    Write-Log ('Tokens lote=0 (provider recusou todas as tentativas com 4xx antes de gerar) acum=' + $stats.tokens_total)
+                } else {
+                    $stats.tokens_total += $estLote
+                    $stats.tokens_desconhecidos++
+                    Write-Log ('AVISO: tokens do lote ' + $label + ' DESCONHECIDOS (falha de provider com possivel consumo) - cobrando estimativa ' + $estLote + ' contra o cap; acum=' + $stats.tokens_total)
+                }
+                $stats.falhas_provider++
+                Write-Log ('ERRO_PROVIDER|' + $label + '|eventos=' + $nonCached.Count + '|teto=' + $result.MaxTokensPedido + '|sem_consumo=' + $result.SemConsumo + '|pareceres_completos=0 - itens ficam na fila')
+                Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds $PauseSec
+                continue
+            }
             if ($result.Tokens -gt 0) {
                 $stats.tokens_total += $result.Tokens
                 $stats.input += $result.Parcelas.input; $stats.output += $result.Parcelas.output
@@ -693,7 +888,10 @@ try {
             } else {
                 $stats.tokens_total += $estLote
                 $stats.tokens_desconhecidos++
-                Write-Log ('AVISO: tokens do lote ' + $label + ' DESCONHECIDOS (parse do envelope falhou) - cobrando estimativa ' + $estLote + ' contra o cap; acum=' + $stats.tokens_total)
+                if ($result.UsageNaoMensuravel) {
+                    $stats.token_hard_hit = $true
+                    Write-Log 'USAGE_CODEX=NAO_MENSURAVEL: lote corrente pode concluir, lotes seguintes deferred.'
+                } else { Write-Log ('AVISO: tokens do lote ' + $label + ' DESCONHECIDOS (parse do envelope falhou) - cobrando estimativa ' + $estLote + ' contra o cap; acum=' + $stats.tokens_total) }
             }
 
             if ($result.AuthFailure) {
@@ -719,6 +917,18 @@ try {
                 continue
             }
 
+            # VERIF-TETO1: resposta cortada no teto nao vale, mesmo que o JSON pareca fechar.
+            # Nada e submetido, o lote inteiro fica na fila e a saida bruta fica para auditoria.
+            if ($result.Truncado) {
+                $rawOutPath = Join-Path $LogDir ('verifasync_rawout_truncado_' + $label + '_' + $DateTag + '.txt')
+                Set-Content $rawOutPath -Value (($result.Output) -join "`n") -Encoding UTF8
+                Write-Log ('ERRO_TRUNCADO|' + $label + '|stop=' + $result.StopReason + '|teto=' + $result.MaxTokensPedido + '|output=' + $result.Parcelas.output + '|pareceres_completos=0 - itens ficam na fila. Saida bruta em ' + $rawOutPath)
+                $stats.truncados++
+                Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+                Start-Sleep -Seconds $PauseSec
+                continue
+            }
+
             $veredictos = Get-VeredictosArray $result.Output $nonCached.Count
             if (-not $veredictos) {
                 $rawOutPath = Join-Path $LogDir ('verifasync_rawout_' + $label + '_' + $DateTag + '.txt')
@@ -731,18 +941,32 @@ try {
                 continue
             }
 
+            $completosLote = 0
             for ($j = 0; $j -lt $nonCached.Count; $j++) {
+                # VERIF-TETO1: parecer incompleto nao e submetido. O item fica na fila, sem
+                # aprovacao automatica e sem retratacao por CORRIGIR vazio.
+                $motivoIncompleto = Get-VixParecerIncompleto $veredictos[$j]
+                if ($motivoIncompleto) {
+                    $stats.pareceres_incompletos++
+                    Write-Log ('PARECER_INCOMPLETO|' + $label + '|id=' + $nonCached[$j].id + '|empresa=' + $nonCached[$j].empresa + '|motivo=' + $motivoIncompleto + ' - item fica na fila')
+                    continue
+                }
+                $completosLote++
                 $confirmarItens += @{
                     id = $nonCached[$j].id; empresa = $nonCached[$j].empresa; semana = $nonCached[$j].semana
                     setor = $nonCached[$j].setor; data_fila = $nonCached[$j].data_fila; evento = $nonCached[$j].evento
                     veredicto = $veredictos[$j]
                 }
             }
+            Write-Log ('PARECERES|' + $label + '|completos=' + $completosLote + '|esperados=' + $nonCached.Count + '|teto=' + $result.MaxTokensPedido + '|stop=' + $result.StopReason)
         } else {
             Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' evento(s) TODOS do cache - sem chamada LLM')
         }
 
-        if ($DryRun) {
+        if ($confirmarItens.Count -eq 0) {
+            # VERIF-TETO1: nenhum parecer completo neste lote, nada a submeter.
+            Write-Log ('LOTE_SEM_SUBMISSAO|' + $label + '|nenhum parecer completo - itens ficam na fila')
+        } elseif ($DryRun) {
             Write-Log ('DRYRUN_CONFIRM|' + $label + '|itens=' + $confirmarItens.Count + '|veredictos=' + (($confirmarItens | ForEach-Object { '' + $_.empresa + ':' + $_.veredicto.veredicto }) -join ', ') + ' (nao confirmado, itens seguem na fila)')
         } else {
             # Sem protecao atomica (DO indisponivel) o recheck e obrigatorio: so confirma o que
@@ -773,6 +997,10 @@ try {
         }
 
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
+        if ($script:VixUsaCodex -and $result.UsageNaoMensuravel) {
+            $stats.deferred += [Math]::Max(0, $itens.Count - $fim - 1)
+            break
+        }
         Start-Sleep -Seconds $PauseSec
     }
 
@@ -782,20 +1010,23 @@ try {
         reservados = $stats.reservados; ja_reservados = $stats.ja_reservados; protecao_ativa = $stats.protecao_ativa
         aprovados = $stats.aprovados; rejeitados = $stats.rejeitados; confirmados = $stats.confirmados
         erros_parse = $stats.erros_parse; refusals = $stats.refusals
+        falhas_provider = $stats.falhas_provider; truncados = $stats.truncados; pareceres_incompletos = $stats.pareceres_incompletos; max_tokens_verificacao = $MaxTokensVerificacao
         tokens_total_est = $stats.tokens_total; tokens_trabalho = $stats.tokens_total
         tokens_input = $stats.input; tokens_output = $stats.output; tokens_cache_creation = $stats.cache_creation; tokens_cache_read = $stats.cache_read
         auth_escalou = $script:AuthEscalou
     } | ConvertTo-Json | Set-Content $metricsOut -Encoding UTF8
 
     $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
-    Write-Log ($fimTag + 'fila=' + $stats.total_fila + ' reservados=' + $stats.reservados + ' ja_reservados=' + $stats.ja_reservados + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' submit_ok=' + $stats.confirmados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos + ' auth_escalou=' + $script:AuthEscalou)
+    Write-Log ($fimTag + 'fila=' + $stats.total_fila + ' reservados=' + $stats.reservados + ' ja_reservados=' + $stats.ja_reservados + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' submit_ok=' + $stats.confirmados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos + ' auth_escalou=' + $script:AuthEscalou + ' falhas_provider=' + $stats.falhas_provider + ' truncados=' + $stats.truncados + ' pareceres_incompletos=' + $stats.pareceres_incompletos + ' max_tokens=' + $MaxTokensVerificacao)
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $errosTotal = $stats.erros_parse + $stats.refusals
+    # VERIF-TETO1: falha de provider, truncamento e parecer incompleto contam como erro do dreno
+    # (PARCIAL e exit 6, mesmo efeito que o monitor ja conhece), mas com causa separada no log.
+    $errosTotal = $stats.erros_parse + $stats.refusals + $stats.falhas_provider + $stats.truncados + $stats.pareceres_incompletos
     $resultadoTxt = if ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
     Write-Log ('ROTINA_RESUMO|vixradar-verificacao-async|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + ($stats.aprovados + $stats.rejeitados) + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
-    if ($stats.erros_parse -gt 0) { $exitCode = 6 } elseif ($stats.refusals -gt 0) { $exitCode = 8 }
+    if (($stats.erros_parse + $stats.falhas_provider + $stats.truncados + $stats.pareceres_incompletos) -gt 0) { $exitCode = 6 } elseif ($stats.refusals -gt 0) { $exitCode = 8 }
 } catch {
     Write-Log ('ERRO FATAL: ' + $_.Exception.Message)
     $exitCode = 1

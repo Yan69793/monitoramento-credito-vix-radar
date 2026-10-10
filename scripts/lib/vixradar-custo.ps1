@@ -60,12 +60,16 @@ function Get-VixParcelas($m) {
 }
 
 # Soma tokens= das linhas FIM: da sentinela do dia (ela nao grava metrics json).
+# FALHATRANSPORTE-TOKENS1 (2026-10-09): o FIM da sentinela passou a carregar tambem
+# `tokens_falha_provider=`, que fica FORA do trabalho do dia. O regex e nao-guloso (.*?) e
+# captura o PRIMEIRO `tokens=` depois de "FIM: sentinela" - nunca o de um campo acrescentado
+# depois (nem "tokens_falha_provider", que nao contem a substring "tokens=").
 function Get-VixTokensSentinela([string]$LogDir, [string]$DateTag) {
     $sent = [int64]0
     $sl = Join-Path $LogDir ('vixradar-sentinela_' + $DateTag + '.log')
     if (Test-Path $sl) {
         foreach ($l in (Get-Content $sl -Encoding UTF8)) {
-            if ($l -match 'FIM: sentinela .*tokens=(\d+)') { $sent += [int64]$Matches[1] }
+            if ($l -match 'FIM: sentinela .*?tokens=(\d+)') { $sent += [int64]$Matches[1] }
         }
     }
     return $sent
@@ -136,6 +140,31 @@ function Get-VixCapEfetivo([int64]$CapProprio, $Custo, $Config, [int64]$ReservaO
     if ($disp -lt 0) { $disp = [int64]0 }
     if ($disp -lt $CapProprio) { return $disp }
     return $CapProprio
+}
+
+# CIRCUITOSENTINELA1 (2026-10-09): orcamento que sobra para a SENTINELA hoje, preservando
+# as reservas das outras rotinas. Formula (unica fonte, testavel isoladamente):
+#   disponivel = TETO_DIA - MARGEM_MINIMA - (RESERVA_NOTURNO + RESERVA_VERIFICACAO)
+#                - gasto_das_outras_rotinas_hoje - gasto_da_sentinela_hoje
+# Devolve 0 (nunca negativo) quando nao ha espaco - o chamador entao nao dispara lote.
+# Sem isto, a sentinela consumia o orcamento do dia sem ser limitada por ele (ela so tinha
+# o cap por execucao) e, em 09/10/2026, 10.558.736 tokens dela abriram o circuito e
+# deferiram as 104 analises da noturna e as 22 da matinal.
+function Get-VixDisponivelSentinela($Custo, $Config) {
+    if (-not $Config) { $Config = @{ TETO_DIA = 1300000; RESERVA_VERIFICACAO = 150000; RESERVA_NOTURNO = 700000; MARGEM_MINIMA = 100000 } }
+    $gastoSentinela = [int64]0
+    $gastoOutras = [int64]0
+    if ($Custo) {
+        if ($Custo.ContainsKey('total_trabalho')) { $gastoOutras = [int64]$Custo.total_trabalho }
+        if ($Custo.ContainsKey('por_rotina') -and $Custo.por_rotina.ContainsKey('sentinela')) {
+            $gastoSentinela = [int64]$Custo.por_rotina['sentinela'].trabalho
+            $gastoOutras = $gastoOutras - $gastoSentinela
+        }
+    }
+    $reserva = [int64]$Config.RESERVA_NOTURNO + [int64]$Config.RESERVA_VERIFICACAO
+    $disp = [int64]$Config.TETO_DIA - [int64]$Config.MARGEM_MINIMA - $reserva - $gastoOutras - $gastoSentinela
+    if ($disp -lt 0) { return [int64]0 }
+    return $disp
 }
 
 # Extrai as 4 parcelas do envelope usage do claude -p (--output-format json).

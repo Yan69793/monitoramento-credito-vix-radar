@@ -13,6 +13,8 @@ Esta seção descreve o **presente**. Tudo abaixo dela é o registro da varredur
 
 Branch `mva-provider-agnostic`. **Tudo deployado e commitado em 18/09.** Produção em **v4.9.258** no Worker e **v202.43** no frontend, ambas com as correções. Commits `13f5573` (correções), `f2eff04` (bundle do Worker) e `a44da04` (frontend), todos empurrados para o origin.
 
+> **Nota datada de 09/10/2026 (não reescreve o registro acima).** O parágrafo anterior é o retrato de 18/09 e ficou desatualizado: o `HEAD` local é `254583c`, 11 commits atrás de `origin/main` (`c687852`), com arvore de trabalho suja. A auditoria de 09/10 encontrou o motor paralisado (Sentinela de 09/10 somou 10.558.736 tokens contra `TETO_DIA=1.300.000`, abriu o circuito e deferiu 104+22 emissores) e correcoes locais foram aplicadas para P0 a P6, todas testadas e **sem commit, push ou deploy**. A fila viva e o detalhe estao em `Obsidian VIX Radar/PENDENCIAS.md` (secao de 09/10) e `status/ESTADO.md`. Este arquivo segue como varredura datada.
+
 ### Fase 3, segurança de frontend — EM PRODUÇÃO desde 18/09
 
 | Achado | Situação | Onde |

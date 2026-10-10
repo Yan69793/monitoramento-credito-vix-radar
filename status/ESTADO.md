@@ -1,5 +1,39 @@
 # Estado do projeto — VIX Radar
 
+## 10/10/2026, porta publicada
+
+Frontend em producao `v202.62`, `deployed_at` `2026-10-10T10:47:17Z`. O HTML de `https://vixradar.com/` nao contem `Spread da 8ª emissão abriu 142`. A pagina publica abre na frase de valor e diz que a atualizacao sai depois do fechamento da B3. A faixa do livro esta no painel e so le a lista deste navegador. Worker segue `v4.9.266`. O painel nao ganhou leitura nova. `painel_atualizado_em` `2026-10-09T21:08:48.386Z`. `origin/main` em `5cb5f0f`. A pasta principal local continua suja e atrasada. A Sentinela que o agendador roda ja para o dia no primeiro lote com falha de provedor. O teto nao mudou. O log da matinal de 10/10 ainda nao existia as 07:49 BRT. A verificacao assincrona continua em `E:\Diretorio\Claude\SISTEMAS\VIX-Radar`.
+
+## 09/10/2026, correcao do motor analitico paralisado (auditoria de 09/10), local e sem publicacao
+
+Producao medida: `HEAD` local `254583c`, 11 commits atras de `origin/main` (`c687852`), arvore de trabalho suja. A auditoria de 09/10 se confirmou integralmente nos logs reais do dia. Nada foi commitado, empurrado ou implantado; nenhuma escrita em KV ou producao. Todos os itens abaixo sao correcoes locais verificadas por teste.
+
+**P0 - motor paralisado.** O log `logs/routines/vixradar-noturno_20261009.log` mostra `cap_efetivo=0` e `CUSTO_DIA ... sentinela=10558736 ... CIRCUITO_ABERTO`, com 104 DEFERIDO na noturna e 22 na matinal. Causa raiz: a Sentinela consumia o orcamento do dia mas nao era limitada por ele. Ela so tinha o cap por execucao (120k) e o seu `tokens=` do FIM entrava no ledger diario por `Get-VixTokensSentinela`; em 09/10 somou 10.558.736 contra `TETO_DIA=1.300.000`, abriu o circuito e deferiu tudo. Duas correcoes: `CIRCUITOSENTINELA1` (lib `Get-VixDisponivelSentinela`; a Sentinela passa a respeitar `RESERVA_NOTURNO`/`RESERVA_VERIFICACAO` e aborta com backlog intacto quando nao ha orcamento) e `FALHATRANSPORTE-TOKENS1` (token de lote que falhou por provedor/transporte sai do trabalho do dia e vai para `tokens_falha_provider`, visivel no FIM). Nenhum teto foi elevado.
+
+**P1 - Codex CLI.** `sentinela_stderr_20261009_*.txt` traz `exec_command failed ... rejected: blocked by policy` quando o modelo tentava ler `~/.agents/skills/*/SKILL.md`. O Codex anunciava as skills do host e o sandbox read-only recusava o processo; todo lote de 09/10 saiu `FALLO_PROVEEDOR` com 0 analise. Correcao `CODEX-SKILLBLOCK1`: `-c features.skip_host_skill_discovery=true` em toda invocacao (sentinela, varredura, verificacao, agenda), sem afrouxar o sandbox (`read-only`, `--ignore-user-config`, `--ignore-rules` preservados).
+
+**P3 - Agenda Semanal.** Os 5 lotes e 20 emissores stale de 07/10 vieram de `Get-Content -Raw` devolver string com note properties (`PSPath`/`ReadCount`) que o `ConvertTo-Json` serializava em `{"result":{"value":...}}`; o parser lia `@{value=[...]; PSPath=...}` e devolvia null. Correcao `CODEX-PSDECOR1`: cast `[string]` antes do envelope, nos tres caminhos Codex. Nenhuma data ou fonte foi inventada.
+
+**P2 - recovery.** O retry das 21:30 de 09/10 registrou `VIVA: log atualizado ha 0 min` para uma noturna que terminou 18:09. A prova de vida era o mtime do log, e `preflight-and-run.ps1` carimba a primeira linha do log da rotina ANTES de invocar o alvo. Correcao `RETRYLOCK1`/`LOCKIDENT1`: a vida passa a ser julgada pelo lock do motor (pid + `inicio_utc`), em `lib\vixradar-lock.ps1`, compartilhada com o motor.
+
+**P4 - CVM.** A identidade `recebidos = atribuidos + quarentena + descartados` era tautologica: `recebidos` era definido como a soma dos proprios baldes. Correcao `CONTAGEMFONTE1`: contadores independentes da fonte no sync do ZIP e `cvm_ingestao_identidade_ok` no health, que agora pode acusar perda silenciosa. Documentos sem correspondencia seguem em quarentena, nada foi descartado.
+
+**P5 - observabilidade.** O backlog da fila era dobrado em `verificador_ok`. `HEALTHBACKLOG1` expoe `verif_fila_pendentes`, `verif_fila_mais_antiga_h`, `verif_fila_atrasada` e `api_disponivel` (aditivo; `ok` e `verificador_ok` intactos).
+
+**P6 - seguranca.** `RLADMIN4`: o formulario `admin_mercado` (form-urlencoded, campo `senha`) retornava antes do gate de rate limit, que so olha JSON com `admin_senha`. Brute force do `ADMIN_PASSWORD` sem throttle. Corrigido: senha errada entra no `checkRateLimitV2` (burst 3/60s por IP).
+
+**Testes.** Worker vitest: 50 arquivos, 483 testes, todos verdes. PowerShell: suites de retry, lock, orcamento, codex, sentinela-watchdog, varredura, profundidade, openrouter, idempotencia, quota, provider-gate, cobertura e verificacao-teto verdes. Quatro suites estavam desatualizadas em relacao a mudancas ja presentes na arvore (varredura-defeitos extraia `Get-VixLockState` do motor; sentinela-watchdog esperava `-BuscasPorEmissor 8` contra 12; profundidade D4 esperava 1 leitura de tier contra 2) e foram corrigidas, sem alterar o codigo de producao.
+
+**Pendente e nao mascarado.** Publicacao nao executada (sem commit, push ou deploy). P5 ainda nao cobre quatro dimensoes exigidas pela auditoria: frescor de analise efetiva por emissor, cobertura por emissor, estado das rotinas e orcamento no `/`. P6: nao ha revogacao de sessao (logout/reset/bloqueio), a senha admin segue embutida no HTML de `admin_mercado`, nao ha CSP e o escopo de `op=dados_privados` nao foi confirmado. O pacote do Worker nao foi reproduzido (`api/v4.9.264.js`), entao as correcoes de `api/src/worker.js` so chegam a producao com deploy autorizado.
+
+## 04/10/2026, correcoes locais de seguranca e verificador pendente
+
+Producao medida com Worker `v4.9.264`, `ok:false`, `verificador_ok:false` e 2 orfaos ativos, Braskem e Hapvida. Ambos continuam pendentes no estado da semana 40, sem marcador de conclusao. Os logs de verificacao de 02 a 04/10 mostram HTTP 402 da OpenRouter e zero submissao concluida. Nao houve alteracao operacional ou escrita em producao.
+
+PDF, senha admin por URL e allowlist do pacote Pages corrigidos localmente. Frontend preparado em `v202.60`, ainda sem deploy. Backup retirado de `app/deploy_zip/`, copia identica preservada em `app/`. Testes de PDF e allowlist passaram nas duas pontas. Detalhes e limites em [registro da tarefa](../docs/auditorias/2026-10-04-seguranca-e-verificador.md). Sem commit ou push. Os snapshots datados abaixo permanecem historicos.
+
+Verificador, prioridade 1 (VERIF-TETO1), corrigido localmente: teto de 8192 tokens so na verificacao, retry e fallback que nunca sobem o pedido apos 402, causa do 402 registrada, falha de provider e truncamento separados de erro de parse, parecer sem evidencia nao submetido. Testes verdes no PowerShell 5.1 e 7. A tarefa agendada le esta pasta, entao a proxima execucao ja usa o codigo novo. Os 2 orfaos seguem abertos e exigem reentrada pelo `receber_analise`, ver [procedimento](../docs/auditorias/2026-10-04-verificador-p1-teto.md).
+
 > [!warning] 28/09 — ESTADO VIVO AUDITADO antes da apresentação ao Head de Crédito do Bradesco.
 > **Produção:** Worker `v4.9.264` com `ok:true`; frontend `v202.51`; painel e feed frescos; evento mais novo do feed `2026-09-28`. O HTML servido por `vixradar.com` é o blob `6a9c25a`, igual ao `HEAD/origin` no instante da medição (`eb0c1cc`). Depois da medição, o pacote de correções runtime foi consolidado em commit local nesta sessão; `origin/main` permanece `eb0c1cc`, sem push e sem deploy.
 > **Runtime local:** Matinal/Noturno/Sentinela/Verificação-Async estão Enabled/Ready com StartWhenAvailable. A ação viva da `VIXRadar-Noturno` foi realinhada ao `preflight-and-run.ps1`, preservando o gatilho Seg-Sex 18:05 e removendo dependência de wrapper não versionado.

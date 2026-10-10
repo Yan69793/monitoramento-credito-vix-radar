@@ -9,6 +9,36 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 09/10, motor analitico paralisado: corrigido localmente, NAO publicado
+
+**Status:** CORRIGIDO localmente e testado; SEM commit, SEM push, SEM deploy. Producao evolui no proximo deploy autorizado.
+
+A auditoria de 09/10 se confirmou nos logs reais. `logs/routines/vixradar-noturno_20261009.log`: `cap_efetivo=0`, `CUSTO_DIA ... sentinela=10558736 ... CIRCUITO_ABERTO`, 104 DEFERIDO. A Sentinela consumia o orcamento do dia sem ser limitada por ele - o `tokens=` do FIM entrava no ledger por `Get-VixTokensSentinela`, somou 10.558.736 contra `TETO_DIA=1.300.000` e abriu o circuito, deferindo noturna e matinal.
+
+Correcoes, todas locais, sem elevar teto nem liberar gasto:
+- `CIRCUITOSENTINELA1`: a Sentinela respeita `RESERVA_NOTURNO`/`RESERVA_VERIFICACAO` (`Get-VixDisponivelSentinela`) e aborta com backlog intacto quando nao ha orcamento. Uma rotina nao paralisa mais as outras.
+- `FALHATRANSPORTE-TOKENS1`: token de lote que falhou por provedor/transporte sai do trabalho do dia; fica visivel em `tokens_falha_provider` no FIM.
+- `CODEX-SKILLBLOCK1` (P1): `sentinela_stderr_20261009_*.txt` mostrava `blocked by policy` ao ler `~/.agents/skills/*`. `-c features.skip_host_skill_discovery=true` em toda invocacao Codex, sem afrouxar o sandbox.
+- `CODEX-PSDECOR1` (P3): `Get-Content -Raw` devolvia string com note properties que o `ConvertTo-Json` virava em `{result:{value:...}}`; o parser lia `@{value=[...]; PSPath=...}` e falhava - os 5 lotes e 20 emissores stale da Agenda em 07/10. Cast `[string]` nos tres caminhos Codex.
+- `RETRYLOCK1`/`LOCKIDENT1` (P2): o retry julgava vida pelo mtime do log, que o proprio preflight corrompe (`VIVA: log atualizado ha 0 min` para uma noturna terminada 18:09). Passa a usar o lock do motor (pid + `inicio_utc`), em `lib\vixradar-lock.ps1`.
+- `CONTAGEMFONTE1` (P4): a identidade `recebidos = atribuidos + quarentena + descartados` era tautologica. Contadores independentes da fonte + `cvm_ingestao_identidade_ok` no health. Nada foi descartado; documento sem dono segue em quarentena.
+- `HEALTHBACKLOG1` (P5): `verif_fila_pendentes`, `verif_fila_mais_antiga_h`, `verif_fila_atrasada`, `api_disponivel` expostos (aditivo).
+- `RLADMIN4` (P6): o formulario `admin_mercado` (form-urlencoded, campo `senha`) retornava antes do rate limit; agora senha errada entra no `checkRateLimitV2` (burst 3/60s por IP).
+
+**Ainda aberto (nao mascarado):**
+- P5 incompleto: frescor de ANALISE efetiva por emissor, cobertura por emissor, estado das rotinas e orcamento ainda fora do `/`.
+- P6: sem revogacao de sessao (logout/reset/bloqueio); senha admin ainda embutida no HTML de `admin_mercado`; sem CSP; escopo de `op=dados_privados` nao confirmado.
+- Os 2 orfaos de Braskem/Hapvida do ciclo 02-04/10 seguem abertos (secao de 04/10 abaixo) e exigem reentrada manual.
+- Pendente de decisao do operador: a economia real do Codex. Um lote bem-sucedido da matinal em 08/10 consumiu 1.205.154 tokens de trabalho para 4 emissores (`tokens_hard_hit=true`, 18 deferidos). Mesmo com as correcoes, 1,3M/dia cobre poucos emissores - a calibragem do orcamento para o provedor de assinatura continua decisao do operador.
+
+## 04/10, verificacao de Braskem e Hapvida interrompida por HTTP 402
+
+**Status:** ABERTO em producao. Os 2 orfaos do health sao eventos de 30/09 enfileirados em 02/10 e expirados em 04/10 apos 48h. Ambos continuam com `_pendente_verificacao:true` e sem marcador de conclusao. Os logs de verificacao de 02 a 04/10 mostram OpenRouter HTTP 402, pedido de ate 49152 tokens e `submit_ok=0`. A listagem de tentativas nao mostra quarentena. Recuperar o caminho de verificacao antes de reprocessar os eventos, sem aprovar ou descartar automaticamente para tornar o gate verde.
+
+Correcoes de PDF, senha por query e allowlist de Pages preparadas e testadas localmente, frontend `v202.60`, sem commit, push ou deploy. A URL do backup publicado so deixa de servir o arquivo depois de um deploy autorizado. Evidencia e escopo em `docs/auditorias/2026-10-04-seguranca-e-verificador.md`.
+
+**VERIF-TETO1, mesma data, local e sem commit.** Causa raiz: a verificacao herdava o teto FULL de 49152 tokens de conclusao, a saida real medida e de 326 a 1197, e depois do 402 o retry e o fallback nao desciam o pedido (o fallback voltava a 49152, e com teto abaixo de 32768 o retry SUBIA). Correcao: teto exclusivo de 8192 na verificacao, retry e fallback que so descem, causa do 402 por `limit_source`, falha de provider e truncamento fora do parse, parecer incompleto nao submetido. Guarda: `scripts/test-openrouter-adapter.ps1` (T26 a T34) e `scripts/test-verificacao-teto.ps1`, provados nas duas pontas. A chave tem `limit=50` e `limit_remaining=47,12`, entao o 402 e saldo da conta, nao limite da chave. A rotina agendada le os scripts desta pasta, entao o codigo entra em operacao na proxima execucao se nao for revertido. Os 2 orfaos nao voltam sozinhos, o registro de orfao nao guarda o evento e nao ha acao administrativa de reentrada. Procedimento em `docs/auditorias/2026-10-04-verificador-p1-teto.md`.
+
 ## 29/09: `Szuchmacher-RetryVixMatinal` Disabled — comportamento esperado (decisao do operador), nao falha. Nada a corrigir.
 
 > **Status:** REGISTRADO, SEM ACAO. Diagnosticada como comportamento esperado; nenhuma alteracao feita e nenhuma planejada. **Data da Versao:** 2026-09-29. **Origem do Registro:** diagnostico pedido pelo operador sobre estado `Disabled`, 25 execucoes perdidas e `NextRun` de 30/09; resposta aceita, operador instruiu apenas registrar e encerrar (sem religar, recriar, alterar triggers, commit ou deploy).

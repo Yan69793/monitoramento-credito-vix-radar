@@ -1,4 +1,4 @@
-# retry-vixradar.ps1 - Retry automatico das rotinas VIX (noturno/matinal)
+﻿# retry-vixradar.ps1 - Retry automatico das rotinas VIX (noturno/matinal)
 # quando a execucao via Claude Desktop nao entrega (sem linha FIM: valida no
 # log do dia). ASCII puro (Task Scheduler, powershell.exe 5.1).
 #
@@ -52,7 +52,7 @@ $Watchdog    = Join-Path $LibDir 'vixradar-watchdog.ps1'
 $ClaudeAuth  = Join-Path $LibDir 'vixradar-claude-auth.ps1'
 # MOTORRETRY1 (2026-09-12): o retry relancava por run_claude_routine.ps1, que executa a SKILL do
 # Claude Desktop. Esse e o caminho legado, morto desde o MOTOR1 (02/09): a propria SKILL registra
-# "NAO chame run_vixradar_noturno_claude.ps1, ele depende do CLI quebrado", que e exatamente o
+# "NAO chame run_vixradar_noturno.ps1, ele depende do CLI quebrado", que e exatamente o
 # motor de hoje. Com a assinatura como unico provider, relancar o legado nao entrega a noite e
 # ainda reabre o risco do incidente de 08/08 (segunda analise leu fonte mais velha e sobrescreveu
 # 3 emissores). O retry passa a relancar o MOTOR, por rotina.
@@ -61,8 +61,8 @@ $ClaudeAuth  = Join-Path $LibDir 'vixradar-claude-auth.ps1'
 function Get-VixRetryRunner([string]$Id, [string]$Override) {
     if ($Override) { return [pscustomobject]@{ Path = $Override; PassaRoutineId = $true } }
     $porRotina = @{
-        'vixradar-noturno' = 'run_vixradar_noturno_claude.ps1'
-        'vixradar-matinal' = 'run_vixradar_matinal_claude.ps1'
+        'vixradar-noturno' = 'run_vixradar_noturno.ps1'
+        'vixradar-matinal' = 'run_vixradar_matinal.ps1'
     }
     if ($porRotina.ContainsKey($Id)) {
         return [pscustomobject]@{ Path = (Join-Path $VixRoot ('scripts\' + $porRotina[$Id])); PassaRoutineId = $false }
@@ -86,6 +86,10 @@ function Write-Log([string]$msg) {
 }
 
 if (Test-Path -LiteralPath $Watchdog) { . $Watchdog } else { Write-Log "AVISO: $Watchdog ausente" }
+# LOCKIDENT1 (2026-10-09): prova de vida passa a ser o lock do motor (pid + inicio_utc), nao
+# o mtime do log. Ver lib\vixradar-lock.ps1 para o incidente que motivou a troca.
+$LockLib     = Join-Path $LibDir 'vixradar-lock.ps1'
+if (Test-Path -LiteralPath $LockLib) { . $LockLib } else { Write-Log "AVISO: $LockLib ausente - vida sera julgada sem o lock; o motor revalida antes de relancar" }
 $temClaudeAuth = $false
 if (Test-Path -LiteralPath $ClaudeAuth) {
     try { . $ClaudeAuth; $temClaudeAuth = $true } catch { Write-Log "AVISO: dot-source $ClaudeAuth falhou: $_" }
@@ -190,16 +194,35 @@ if ($julgamento.Entregue) {
 }
 Write-Log ("Ledger na janela (>= " + $JanelaHora.ToString('00') + ":00 BRT) tem " + $julgamento.LedgerNaJanela + " emissor(es) distinto(s), minimo " + $MinimoLedger + ", fim_na_janela=" + $julgamento.FimComContagemSuficiente + " - nao confirma entrega.")
 
-# Execucao Desktop pode estar viva e lenta. Se o log mexeu nos ultimos 15 min,
-# a rotina esta em andamento agora. O lock da skill decidiria no Passo 0, mas
-# nao gastamos um run inteiro para descobrir.
-$idadeMin = ((Get-Date) - (Get-Item $RotLog).LastWriteTime).TotalMinutes
-if ($idadeMin -lt 15) {
-    Write-Log "VIVA: log atualizado ha $([int]$idadeMin) min, execucao em andamento. Pulo."
+# RETRYLOCK1 (2026-10-09): a rotina esta VIVA? A pergunta era respondida pelo mtime do
+# log ("log mexeu nos ultimos 15 min = execucao em andamento"), e essa regua esta
+# corrompida na origem: preflight-and-run.ps1 carimba a primeira linha do log da rotina
+# ANTES de invocar o alvo, e este retry e registrado com GuardLogPattern = log da PROPRIA
+# rotina. Logo, a execucao do retry deixa o mtime em "agora" e a rotina parece viva sempre.
+# Incidente medido em 09/10/2026: noturna terminou 18:09:03 com FIM:, retry 21:30:05 leu
+# "log atualizado ha 0 min" e pulou - a recuperacao automatica nunca relancou nada.
+# A prova de vida passa a ser o LOCK do motor (pid + inicio_utc), a mesma identidade de
+# execucao que o motor usa para recusar segunda instancia. Sem lock vivo -> relanca; o
+# proprio motor revalida o lock no boot e sai limpo em 0 token se houver execucao real,
+# entao relancar nunca cria duplicata.
+$LockFile = Join-Path $LogDir ($RoutineId + '_' + $DateTag + '.lock')
+$lockAtivo = $false
+$lockMotivo = 'LIB_AUSENTE'
+$lockPid = $null
+if (Get-Command Test-VixRotinaAtiva -ErrorAction SilentlyContinue) {
+    $stLock = Test-VixRotinaAtiva -LockPath $LockFile -AbandonoMin 0
+    $lockAtivo = [bool]$stLock.ativa
+    $lockMotivo = '' + $stLock.motivo
+    $lockPid = $stLock.pid
+} else {
+    Write-Log ('AVISO: Test-VixRotinaAtiva indisponivel (lib\vixradar-lock.ps1 ausente) - julgando sem o lock; o motor revalida antes de relancar.')
+}
+if ($lockAtivo) {
+    Write-Log ("VIVA: lock " + (Split-Path $LockFile -Leaf) + " pid=" + $lockPid + " " + $lockMotivo + " - execucao em andamento. Pulo.")
     exit 0
 }
 
-Write-Log "SEM ENTREGA: log parado ha $([int]$idadeMin) min. Relancando $RoutineId via motor ($(Split-Path $Runner -Leaf))."
+Write-Log ("SEM ENTREGA: sem execucao viva (" + $lockMotivo + ", lock " + (Split-Path $LockFile -Leaf) + "). Relancando " + $RoutineId + " via motor (" + (Split-Path $Runner -Leaf) + ").")
 # Nao passa -TaskInicio pela linha de comando de proposito: DateTime
 # serializado/reparseado atraves de processo filho e sensivel a locale (esta
 # maquina usa pt-BR). O runner usa o proprio default (inicio dele mesmo), que
@@ -229,3 +252,4 @@ $motivoFalha = 'Relancamento de ' + $RoutineId + ' nao confirmou entrega (exit='
 Write-Log ('SEM ENTREGA APOS RELANCAMENTO: ' + $motivoFalha)
 Send-VixRetryAlerta -Motivo $motivoFalha -Causa 'sem_entrega' -Severidade 'critico'
 exit 1
+

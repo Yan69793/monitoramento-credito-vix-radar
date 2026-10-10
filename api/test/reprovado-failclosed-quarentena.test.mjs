@@ -12,6 +12,7 @@ import {
   _limparFalhasInjetadasTeste,
 } from "../src/worker.js";
 import { bootstrapIndiceQuarentena, resetIndiceQuarentena, adicionarAoIndice, lerIndice } from "./_quarentena-idx.mjs";
+import { payloadComSessao } from "./_sessao-token.mjs";
 
 // =============================================================================
 // REPROVADO-FAILCLOSED1 (2026-09-06): indice unico de quarentena de verificacao.
@@ -88,7 +89,7 @@ async function mintJWT(secret, email) {
   const b64url = (buf) => Buffer.from(buf).toString("base64url");
   const header = b64url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const agora = Math.floor(Date.now() / 1000);
-  const body = b64url(JSON.stringify({ sub: "test", email: email || "test@example.com", iat: agora, exp: agora + 3600 }));
+  const body = b64url(JSON.stringify(await payloadComSessao(env, { sub: "test", email: email || "test@example.com", iat: agora, exp: agora + 3600 })));
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
   const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${header}.${body}`));
   return `${header}.${body}.${b64url(sig)}`;

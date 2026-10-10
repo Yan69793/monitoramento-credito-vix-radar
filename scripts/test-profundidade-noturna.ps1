@@ -358,9 +358,17 @@ Assert-True ($runnerTxt -match 'contrato divergente do motor') 'D4 o boot gate c
 # Leitura do tier do perfil so pode sobrar no diagnostico de boot (MODELO_EFETIVO), que roda
 # uma vez antes de existir lote. Dentro do caminho de lote o roteamento e sempre $job.Tier.
 $leiturasPerfil = ([regex]::Matches($runnerTxt, 'Get-VixOpenRouterModel \$Perfil\.tier')).Count
-Assert-Igual 1 $leiturasPerfil 'D4 so o diagnostico de boot le o modelo pelo tier do perfil'
+Assert-Igual 2 $leiturasPerfil 'D4 so os DOIS diagnosticos de boot leem o modelo pelo tier do perfil'
+# A referencia de posicao e o LACO DE EXECUCAO dos lotes (foreach ($job in $jobs)), nao a
+# DEFINICAO de Invoke-ClaudeBatch (linha 469, muito antes do boot) - comparar com a definicao
+# dava falso negativo: o bloco de boot/AUTH_MODO vive depois dela no arquivo.
+$idxLacoLotes = $runnerTxt.IndexOf('foreach ($job in $jobs)')
+$leituras = [regex]::Matches($runnerTxt, 'Get-VixOpenRouterModel \$Perfil\.tier')
+$todasNoBoot = ($idxLacoLotes -gt 0) -and ($leituras.Count -gt 0)
+foreach ($m in $leituras) { if ($m.Index -gt $idxLacoLotes) { $todasNoBoot = $false } }
+Assert-True $todasNoBoot 'D4 TODAS as leituras por perfil estao antes do laco de lotes (nenhuma no caminho de lote)'
 $blocoBoot = [regex]::Match($runnerTxt, 'MODELO_EFETIVO:.*?Get-VixOpenRouterModel \$Perfil\.tier')
-Assert-True (-not $blocoBoot.Success -or $blocoBoot.Index -lt $runnerTxt.IndexOf('function Invoke-ClaudeBatch')) 'D4 a unica leitura por perfil esta antes do caminho de lote'
+Assert-True (-not $blocoBoot.Success -or $blocoBoot.Index -lt $idxLacoLotes) 'D4 a leitura por perfil esta no diagnostico de boot, antes do laco de lotes'
 
 # --- D1/D2/D3: amarras do motor -------------------------------------------------------------
 Assert-True ($runnerTxt -match 'Get-VixCaudaRotacao') 'W1 o motor fecha a cauda pela funcao pura, nao por regra inline'

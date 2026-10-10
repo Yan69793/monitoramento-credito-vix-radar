@@ -22,7 +22,9 @@
 # explicita com VIXRADAR_LLM_PROVIDER='claude-manual'. O Task Scheduler nunca passa essa
 # flag; sem ela o gate abaixo bloqueia com exit 86 antes de gastar qualquer token.
 param(
-    [switch]$ForceClaude
+    [switch]$ForceClaude,
+    [switch]$DryRun,
+    [int]$MaxEmissores = 0
 )
 
 $ErrorActionPreference = 'Continue'
@@ -33,8 +35,9 @@ $ProjectRoot   = 'E:\Diretorio\Claude\Monitoramento de Credito'
 $WorkerUrl     = 'https://api.vixradar.com'
 $LogDir        = Join-Path $ProjectRoot 'logs\routines'
 $DateTag       = Get-Date -Format 'yyyyMMdd'
-$LogFile       = Join-Path $LogDir ('vixradar-agenda-semanal_' + $DateTag + '.log')
-$MetricsFile   = Join-Path $LogDir ('agenda-semanal_metrics_' + $DateTag + '.json')
+$RunSuffix     = if ($DryRun) { '_dryrun' } else { '' }
+$LogFile       = Join-Path $LogDir ('vixradar-agenda-semanal_' + $DateTag + $RunSuffix + '.log')
+$MetricsFile   = Join-Path $LogDir ('agenda-semanal_metrics_' + $DateTag + $RunSuffix + '.json')
 $McpConfigFile = Join-Path $LogDir 'mcp-empty.json'
 
 $Model          = 'claude-sonnet-4-6'
@@ -121,7 +124,27 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada) {
         # Fase B D1 (2026-09-04): provider openrouter despacha para o adapter HTTP proprio
         # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter.
-        if ($script:VixUsaOpenRouter) {
+        if ($script:VixUsaCodex) {
+            $codexOutFile = Join-Path $LogDir ('agendasem_codex_' + $DateTag + '_' + $PID + '.txt')
+            $promptText = Get-Content $promptPath -Raw -Encoding UTF8
+            # CODEX-SKILLBLOCK1 (2026-10-09): ver run_vixradar_varredura.ps1/run_vixradar_sentinela.ps1.
+            # Sem skip_host_skill_discovery o modelo tenta ler ~/.agents/skills, o sandbox read-only
+            # rejeita o processo ("blocked by policy") e o lote sai como falha de provedor, 0 analise.
+            $codexRaw = $promptText | codex -c features.skip_host_skill_discovery=true --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
+            $exitCode = $LASTEXITCODE
+            if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
+                # CODEX-PSDECOR1 (2026-10-09): Get-Content -Raw devolve uma string COM note
+                # properties (PSPath/PSParentPath/PSChildName/PSDrive/PSProvider/ReadCount);
+                # ConvertTo-Json desce nelas e o envelope vira
+                # {"result":{"value":"<texto>","PSPath":"...","ReadCount":1}} -> o parser le
+                # "@{value=[...]; PSPath=...}" e falha. Foi a causa dos 5 lotes e dos 20
+                # emissores stale em 07/10/2026 (agendasem_rawout_*_20261007.txt). O cast
+                # [string] (ToString) descarta as note properties, igual a verificacao_async.
+                $codexText = [string](Get-Content -LiteralPath $codexOutFile -Raw -Encoding UTF8)
+                $raw = @(([ordered]@{ result=$codexText; is_error=$false; model='codex-subscription' } | ConvertTo-Json -Compress))
+            } else { $raw = @($codexRaw) }
+            Remove-Item $codexOutFile -Force -ErrorAction SilentlyContinue
+        } elseif ($script:VixUsaOpenRouter) {
             $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
             $raw = @($__orResp.Linhas)
             $exitCode = $__orResp.ExitCode
@@ -280,12 +303,10 @@ Se nao achar nenhuma data para nenhum trimestre pedido de uma empresa, devolva
 # CLAUDE-FREE-MIGRATION (2026-09-04): a agenda pesquisa com claude (WebSearch + JSON por
 # lote). Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
 $script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
-if ($script:VixUsaOpenRouter) {
-    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
-        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
-        exit $VixLlmBloqueadoExit
-    }
-} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+$script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
+$openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
+$codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
+if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado -CodexAdapterHabilitado:$codexAdapterHabilitado)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_agenda_semanal.ps1')
     exit $VixLlmBloqueadoExit
 }
@@ -311,7 +332,7 @@ try {
 
 try { $routineKey = Get-RoutineKey } catch { Write-Log $_.Exception.Message; exit 4 }
 
-$stats = @{ stale_inicial = 0; atualizados = 0; pulados = 0; mismatch = 0; erros = 0; lotes = 0; tokens_total = 0 }
+$stats = @{ stale_inicial = 0; atualizados = 0; dryrun_validos = 0; pulados = 0; mismatch = 0; erros = 0; lotes = 0; tokens_total = 0 }
 $exitCode = 0
 
 try {
@@ -341,7 +362,9 @@ try {
     # Fase B D1 (2026-09-04): provider openrouter nao usa auth Claude, nao roda probe WebSearch
     # do CLI e nao exige claude.exe. O adapter tem a chave OpenRouter (ambiente) e as server
     # tools web_search/web_fetch nativas; a credencial ja foi validada externamente pelo operador.
-    if ($script:VixUsaOpenRouter) {
+    if ($script:VixUsaCodex) {
+        Write-Log 'AUTH_MODO: codex (assinatura Codex CLI, sem OpenRouter e sem auth Anthropic)'
+    } elseif ($script:VixUsaOpenRouter) {
         $__orBoot = Test-VixOpenRouterPronto
         if (-not $__orBoot.ok) {
             Write-Log ('ERRO FATAL: ' + $__orBoot.motivo)
@@ -390,6 +413,10 @@ try {
     }
 
     $emissores = @($stale.emissores)
+    if ($DryRun -and $MaxEmissores -gt 0 -and $emissores.Count -gt $MaxEmissores) {
+        $emissores = @($emissores | Select-Object -First $MaxEmissores)
+        Write-Log ('DRYRUN: amostra=' + $emissores.Count + '; nenhum update sera enviado ao Worker.')
+    }
 # BUSCADEGRADADA2: 3 buscas por empresa e budget OpenRouter de 8 exigem no maximo 2 empresas
 # por lote. O caminho Claude mantem o tamanho historico de 4.
 $chunkSizeEfetivo = if ($script:VixUsaOpenRouter) { [Math]::Min($ChunkSize, [Math]::Floor(8 / 3)) } else { $ChunkSize }
@@ -459,6 +486,11 @@ for ($i = 0; $i -lt $emissores.Count; $i += $chunkSizeEfetivo) {
                 $stats.pulados++
                 continue
             }
+            if ($DryRun) {
+                Write-Log ('DRYRUN_OK|' + $nomeCanonico + '|trimestres_count=' + $trimestres.Count + '|sem_update_worker')
+                $stats.dryrun_validos++
+                continue
+            }
             try {
                 $upd = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'atualizar_calendario_emissor'; routine_key = $routineKey; empresa = $nomeCanonico; trimestres = $trimestres } -Depth 12 -TimeoutSec 60
                 if ($upd.ok -eq $true -and [int]$upd.trimestres_count -ge 1) {
@@ -486,10 +518,10 @@ for ($i = 0; $i -lt $emissores.Count; $i += $chunkSizeEfetivo) {
     @{
         data = $DateTag; stale_inicial = $stats.stale_inicial; lotes = $stats.lotes
         atualizados = $stats.atualizados; pulados = $stats.pulados; mismatch = $stats.mismatch
-        erros = $stats.erros; tokens_total_est = $stats.tokens_total
+        erros = $stats.erros; dryrun_validos = $stats.dryrun_validos; dryrun = [bool]$DryRun; tokens_total_est = $stats.tokens_total
     } | ConvertTo-Json | Set-Content $MetricsFile -Encoding UTF8
 
-    Write-Log ('FIM: agenda-semanal | stale_inicial=' + $stats.stale_inicial + ' atualizados=' + $stats.atualizados + ' pulados=' + $stats.pulados + ' mismatch=' + $stats.mismatch + ' erros=' + $stats.erros + ' lotes=' + $stats.lotes + ' tokens=' + $stats.tokens_total)
+    Write-Log ('FIM: agenda-semanal | dryrun=' + $DryRun + ' stale_inicial=' + $stats.stale_inicial + ' atualizados=' + $stats.atualizados + ' dryrun_validos=' + $stats.dryrun_validos + ' pulados=' + $stats.pulados + ' mismatch=' + $stats.mismatch + ' erros=' + $stats.erros + ' lotes=' + $stats.lotes + ' tokens=' + $stats.tokens_total)
     Write-Log ('ROTINA_RESUMO|vixradar-agenda-semanal|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.atualizados + '|' + $stats.erros + '|' + $pendentes + '|' + $versaoWorker)
 
     if ($stats.erros -gt 0) { $exitCode = 6 }

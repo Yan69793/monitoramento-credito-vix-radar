@@ -27,7 +27,12 @@ function Get-MotorFuncDefs([string]$Path, [string[]]$Names) {
 # operador): no runner do CI o ParseFile lancava antes do primeiro assert e a suite morria com
 # exit=1 sem imprimir nada (medido em 5/5 execucoes do gate, 12 a 14/09/2026).
 $MotorPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts\run_vixradar_varredura.ps1'
-foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixLockState', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina', 'Get-VixDeferidoMotivo', 'Get-VixDeferidosTexto', 'Get-VixCoberturaIncompletaTexto', 'Get-VixDrenoAlerta', 'Set-VixMetricsDrenoExit', 'New-BatchPrompt', 'Get-SlimEmissor', 'Get-VixColetorParaEmissor'))) { Invoke-Expression $_def }
+foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-VixResumoLedger', 'Get-VixCodexUsageProbe', 'Get-VixCoberturaProviderCapability', 'Test-VixBuscaDegradada', 'ConvertTo-VixFonteEstrutural', 'Resolve-VixCoberturaFamilias', 'Get-VixDrenoTexto', 'Invoke-VixDrenoPosRotina', 'Get-VixDeferidoMotivo', 'Get-VixDeferidosTexto', 'Get-VixCoberturaIncompletaTexto', 'Get-VixDrenoAlerta', 'Set-VixMetricsDrenoExit', 'New-BatchPrompt', 'Get-SlimEmissor', 'Get-VixColetorParaEmissor'))) { Invoke-Expression $_def }
+# LOCKIDENT1 (2026-10-09): Get-VixLockState saiu do motor para lib\vixradar-lock.ps1, para que o
+# motor e o retry julguem "execucao viva" pela MESMA implementacao (o retry julgava por mtime do
+# log, que o proprio preflight corrompe). A funcao passa a ser carregada da lib.
+$LockLibPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'scripts\lib\vixradar-lock.ps1'
+foreach ($_def in (Get-MotorFuncDefs $LockLibPath @('Get-VixLockState'))) { Invoke-Expression $_def }
 
 # Stub de log: as funcoes do motor escrevem por Write-Log, que os testes trocam pela coleta.
 $script:LinhasLog = @()

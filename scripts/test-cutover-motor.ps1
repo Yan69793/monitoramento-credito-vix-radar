@@ -1,4 +1,4 @@
-# test-cutover-motor.ps1 - prova de duas pontas do cutover-motor.ps1 SEM tocar o Task Scheduler real.
+﻿# test-cutover-motor.ps1 - prova de duas pontas do cutover-motor.ps1 SEM tocar o Task Scheduler real.
 # Por padrao roda SO contra estado simulado em diretorio temporario (nenhum Get/Set/Export/Register-
 # ScheduledTask, decisao do operador em 02/09): modelo JSON espelhando as 5 tasks reais medidas em
 # 02/09/2026, antes -> Ativar -> Reverter com restauracao identica (inclusive os dois retries),
@@ -50,8 +50,8 @@ function New-TaskModel($nome, $enabled, $trigs, $etl, $rc, $ri, $action) {
 }
 $base = 'powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "E:\Diretorio\Claude\Monitoramento de Credito\scripts\'
 $fixture = [ordered]@{ tasks = [ordered]@{
-    'VIXRadar-Matinal'            = New-TaskModel 'VIXRadar-Matinal' $false @([ordered]@{ Tipo = 'Weekly'; Hora = '10:00'; DaysOfWeek = 62; Enabled = $true }) 'PT4H' 1 'PT15M' ($base + 'run_vixradar_matinal_claude.ps1"')
-    'VIXRadar-Noturno'            = New-TaskModel 'VIXRadar-Noturno' $false @([ordered]@{ Tipo = 'Daily'; Hora = '18:00'; DaysOfWeek = $null; Enabled = $true }) 'PT4H' 1 'PT15M' ($base + 'run_vixradar_noturno_claude.ps1"')
+    'VIXRadar-Matinal'            = New-TaskModel 'VIXRadar-Matinal' $false @([ordered]@{ Tipo = 'Weekly'; Hora = '10:00'; DaysOfWeek = 62; Enabled = $true }) 'PT4H' 1 'PT15M' ($base + 'run_vixradar_matinal.ps1"')
+    'VIXRadar-Noturno'            = New-TaskModel 'VIXRadar-Noturno' $false @([ordered]@{ Tipo = 'Daily'; Hora = '18:00'; DaysOfWeek = $null; Enabled = $true }) 'PT4H' 1 'PT15M' ($base + 'run_vixradar_noturno.ps1"')
     'VIXRadar-Verificacao-Async'  = New-TaskModel 'VIXRadar-Verificacao-Async' $false @([ordered]@{ Tipo = 'Daily'; Hora = '10:20'; DaysOfWeek = $null; Enabled = $true }, [ordered]@{ Tipo = 'Daily'; Hora = '18:20'; DaysOfWeek = $null; Enabled = $true }) 'PT30M' 0 '' ($base + 'run_vixradar_verificacao_async.ps1"')
     'Szuchmacher-RetryVixMatinal' = New-TaskModel 'Szuchmacher-RetryVixMatinal' $true @([ordered]@{ Tipo = 'Daily'; Hora = '13:30'; DaysOfWeek = $null; Enabled = $true }) 'PT4H' 0 '' ($base + 'retry-vixradar.ps1" -RoutineId vixradar-matinal')
     'Szuchmacher-RetryVixNoturno' = New-TaskModel 'Szuchmacher-RetryVixNoturno' $true @([ordered]@{ Tipo = 'Weekly'; Hora = '21:30'; DaysOfWeek = 62; Enabled = $true }) 'PT4H' 0 '' ($base + 'retry-vixradar.ps1" -RoutineId vixradar-noturno')
@@ -203,3 +203,4 @@ Write-Host ''
 Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)')
 if ($script:fal -gt 0) { exit 1 }
 exit 0
+

@@ -198,6 +198,11 @@ function Get-RoutineKey {
 . (Join-Path $PSScriptRoot 'lib\vixradar-claude-auth.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
+# LOCKIDENT1 (2026-10-09): Get-VixLockState sai deste arquivo e passa a viver em
+# lib\vixradar-lock.ps1, para que o motor e o retry julguem "execucao viva" pela MESMA
+# identidade (pid + inicio_utc). Ver lib\vixradar-lock.ps1.
+. (Join-Path $PSScriptRoot 'lib\vixradar-lock.ps1')
+if (-not (Get-Command Get-VixLockState -ErrorAction SilentlyContinue)) { Write-Safe 'ERRO: lib\vixradar-lock.ps1 ausente ou sem Get-VixLockState'; exit 1 }
 . (Join-Path $PSScriptRoot 'lib\vixradar-profundidade.ps1')
 # MVA-WIRING1 (2026-09-16): import EXPLICITO da lib de provider. O motor JA consome funcoes
 # dela direto (Get-VixLlmProvider nas linhas 995/996/1126, Test-VixLlmProviderPermiteRotina na
@@ -422,40 +427,8 @@ function Update-VixLock {
 
 # D1: lock so bloqueia quando o processo que o escreveu continua vivo COM o mesmo
 # inicio. PID sozinho pode ser reutilizado pelo Windows depois de um crash.
-function Get-VixLockState([string]$Path, [int]$AbandonoMin) {
-    $out = [pscustomobject]@{ bloqueia = $false; motivo = 'LOCK_ORFAO_AUSENTE'; pid = $null; inicio_utc = $null }
-    if (-not (Test-Path -LiteralPath $Path)) { return $out }
-    $dados = @{}
-    try {
-        foreach ($linha in @(Get-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction Stop)) {
-            if ($linha -match '^([^=]+)=(.*)$') { $dados[$Matches[1].Trim().ToLowerInvariant()] = $Matches[2].Trim() }
-        }
-    } catch { $out.motivo = 'LOCK_ORFAO_ILEGIVEL'; return $out }
-    $pidLock = 0
-    if (-not $dados.ContainsKey('pid') -or -not [int]::TryParse($dados['pid'], [ref]$pidLock) -or $pidLock -le 0) {
-        $out.motivo = 'LOCK_ORFAO_PID_INVALIDO'; return $out
-    }
-    $inicioTxt = ''
-    if ($dados.ContainsKey('inicio_utc')) { $inicioTxt = $dados['inicio_utc'] }
-    elseif ($dados.ContainsKey('inicio')) { $inicioTxt = $dados['inicio'] }
-    $inicioLock = [datetime]::MinValue
-    if (-not $inicioTxt -or -not [datetime]::TryParse($inicioTxt, [ref]$inicioLock)) {
-        $out.motivo = 'LOCK_ORFAO_INICIO_INVALIDO'; $out.pid = $pidLock; return $out
-    }
-    $out.pid = $pidLock
-    $out.inicio_utc = $inicioLock.ToUniversalTime()
-    try { $proc = Get-Process -Id $pidLock -ErrorAction Stop }
-    catch { $out.motivo = 'LOCK_ORFAO_PID_MORTO'; return $out }
-    try { $inicioProc = $proc.StartTime.ToUniversalTime() }
-    catch { $out.motivo = 'LOCK_ORFAO_PROCESSO_INACESSIVEL'; return $out }
-    if ([math]::Abs(($inicioProc - $out.inicio_utc).TotalSeconds) -gt 2) {
-        $out.motivo = 'LOCK_ORFAO_PID_REUTILIZADO'; return $out
-    }
-    $out.bloqueia = $true
-    $out.motivo = 'LOCK_VIVO'
-    return $out
-}
-
+# LOCKIDENT1 (2026-10-09): a implementacao mudou para lib\vixradar-lock.ps1 (dot-source no
+# boot), para o retry julgar vida pela MESMA regra. Nao redefinir Get-VixLockState aqui.
 # D4: o total final e a leitura do ledger do dia. Contadores da execucao atual
 # nao representam um reinicio e podem divergir de linhas ja persistidas.
 function Get-VixResumoLedger([string]$Path) {
@@ -590,10 +563,26 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
             if ($usaCodexNestaInvocacao) {
                 $codexOutFile = Join-Path $LogDir ($Perfil.prefix + '_codex_' + $DateTag + '_' + $PID + '.txt')
                 $promptText = Get-Content $promptPath -Raw -Encoding UTF8
-                $codexRaw = $promptText | codex --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
+                # CODEX-SKILLBLOCK1 (2026-10-09): o Codex CLI anunciava as skills do host
+                # (~/.agents/skills) ao modelo, que tentava le-las com `pwsh -Command Get-Content`,
+                # e o sandbox read-only rejeitava a criacao de processo ("blocked by policy"). O
+                # lote morria como falha de provedor com ZERO analise - medido em 09/10/2026 no
+                # log da sentinela (sentinela_stderr_20261009_*.txt). O prompt ja embute a skill
+                # em texto; desligar a descoberta de skills do host NAO afrouxa o sandbox (segue
+                # read-only, --ignore-user-config, --ignore-rules) - apenas retira do modelo a
+                # lista de arquivos que ele nao pode ler.
+                $codexRaw = $promptText | codex -c features.skip_host_skill_discovery=true --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $codexOutFile - 2>>$stderrFile
                 $exitCode = $LASTEXITCODE
                 if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
-                    $codexText = Get-Content $codexOutFile -Raw -Encoding UTF8
+                    # CODEX-PSDECOR1 (2026-10-09): Get-Content -Raw devolve uma string COM note
+                    # properties (PSPath/PSParentPath/PSChildName/PSDrive/PSProvider/ReadCount).
+                    # ConvertTo-Json DESCE nelas: o envelope vira
+                    # {"result":{"value":"<texto>","PSPath":"...","ReadCount":1},...} e o parse
+                    # do lote le "@{value=[...]; PSPath=...}" e falha - foi o que deixou os 20
+                    # emissores da agenda sem atualizacao em 07/10/2026. O cast [string] chama
+                    # ToString e descarta as note properties. Ver a mesma correcao na agenda e
+                    # na verificacao (que ja usa [string] desde a migracao para codex).
+                    $codexText = [string](Get-Content -LiteralPath $codexOutFile -Raw -Encoding UTF8)
                     $codexUsage = Get-VixCodexUsageProbe @($codexRaw)
                     $usoMensuravel = [bool]$codexUsage.mensuravel
                     $envelope = [ordered]@{
@@ -2118,7 +2107,13 @@ try {
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail + $stats.descartes_inesperados
-    $resultadoTxt = if ($DryRun) { 'DRYRUN' } elseif ($trabalhoZero) { 'INVALIDO' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
+    # SEM-ANALISE-EFETIVA1 (2026-10-06): nenhuma rotina declara OK quando a
+    # analise efetiva nao ocorreu. ANALISADO e SKIP contam como efetivos;
+    # DEFERIDO e FALHA nao. Se o plano tinha trabalho (planoTotal>0) e nada
+    # foi efetivamente analisado, o resultado e no maximo PARCIAL, mesmo com
+    # errosTotal=0 (ex.: todos DEFERIDOS com submit aceito e sem batch_fail).
+    $semAnaliseEfetiva = (-not $DryRun) -and ($stats.analisados -eq 0) -and ($stats.skip_ok -eq 0) -and ($planoTotal -gt 0)
+    $resultadoTxt = if ($DryRun) { 'DRYRUN' } elseif ($trabalhoZero) { 'INVALIDO' } elseif ($semAnaliseEfetiva) { 'PARCIAL' } elseif ($errosTotal -gt 0) { 'PARCIAL' } else { 'OK' }
     Write-Log ('ROTINA_RESUMO|' + $Perfil.id + '|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)
 
     # DRENOMUDO1-FIX: o dreno roda ANTES deste ponto agora (ver bloco acima). Aqui o desfecho ja
@@ -2128,6 +2123,7 @@ try {
     if (-not $DryRun) { $null = Set-VixMetricsDrenoExit -MetricsPath $MetricsFile -ExitCode $stats.dreno_exit }
 
     if ($trabalhoZero) { $exitCode = 9 }
+    if ($semAnaliseEfetiva -and ($exitCode -eq 0)) { $exitCode = 6 }
     if (-not $DryRun -and ($stats.silent_fail -gt 0 -or $stats.skip_fail -gt 0 -or $stats.batch_fail -gt 0)) { if ($exitCode -eq 0) { $exitCode = 6 } }
 } catch {
     $errMsg = 'ERRO FATAL: excecao nao tratada no bloco principal - ' + $_.Exception.Message

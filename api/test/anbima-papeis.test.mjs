@@ -1,6 +1,7 @@
 import { SELF, env } from "cloudflare:test";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { fixarRelogioDoFixture, soltarRelogio } from "./_relogio-fixo.mjs";
+import { payloadComSessao } from "./_sessao-token.mjs";
 import {
   _grupoAnbima,
   _formatarTaxaDisplay,
@@ -76,7 +77,7 @@ async function mintJwt(secret, payload) {
 }
 
 async function authHeaders() {
-  const token = await mintJwt(JWT_SECRET, { email: "teste-papeis@example.com", exp: Math.floor(Date.now() / 1e3) + 3600 });
+  const token = await mintJwt(JWT_SECRET, await payloadComSessao(env, { email: "teste-papeis@example.com", exp: Math.floor(Date.now() / 1e3) + 3600 }));
   return { Authorization: `Bearer ${token}` };
 }
 

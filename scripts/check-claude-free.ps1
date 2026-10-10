@@ -67,8 +67,8 @@ $falhas = New-Object System.Collections.Generic.List[string]
 
 $G = @(
     'scripts/run_vixradar_varredura.ps1',
-    'scripts/run_vixradar_matinal_claude.ps1',
-    'scripts/run_vixradar_noturno_claude.ps1',
+    'scripts/run_vixradar_matinal.ps1',
+    'scripts/run_vixradar_noturno.ps1',
     'scripts/run_vixradar_verificacao_async.ps1',
     'scripts/run_vixradar_sentinela.ps1',
     'scripts/run_vixradar_agenda_semanal.ps1',
@@ -252,3 +252,4 @@ if ($falhas.Count -gt 0) {
     exit 1
 }
 exit 0
+

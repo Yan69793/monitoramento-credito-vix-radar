@@ -1,4 +1,4 @@
-﻿# run_vixradar_sentinela.ps1 - varredura pontual por gatilho (SENTINELA1, 2026-08-25)
+# run_vixradar_sentinela.ps1 - varredura pontual por gatilho (SENTINELA1, 2026-08-25)
 #
 # Status: vigente
 # Data da Versao: 2026-08-25
@@ -366,6 +366,31 @@ foreach ($a in $alvos) {
     Write-Log ('  ALVO ' + $a.empresa + ' tier=' + $a.tier + ' cvm_novos=' + $a.cvm_novos + ' fr=' + $a.cvm_novos_fato_relevante + ' motivos=' + ($a.motivos -join ','))
 }
 
+# FALHAPROVIDERDIA1 (2026-10-10): um FIM do proprio dia com lotes_falha_provider>0 basta.
+# Em 09/10 o mesmo lote falho repetiu 16 vezes, 0 analise, e queimou a cota real mesmo
+# com tokens=0 no trabalho. O proximo disparo sai antes do modelo. O arquivo de log muda
+# com a data, entao o dia util seguinte volta a tentar. Dia sem esse FIM devolve false.
+function Test-VixSentinelaFalhaProviderNoDia([string]$CaminhoLog) {
+    if (-not $CaminhoLog) { return $false }
+    if (-not (Test-Path -LiteralPath $CaminhoLog)) { return $false }
+    $linhas = @()
+    try { $linhas = @(Get-Content -LiteralPath $CaminhoLog -Encoding UTF8 -ErrorAction Stop) }
+    catch { return $false }
+    foreach ($linha in $linhas) {
+        if ($linha -match 'FIM:.*lotes_falha_provider=(\d+)') {
+            if ([int]$Matches[1] -gt 0) { return $true }
+        }
+    }
+    return $false
+}
+
+if (Test-VixSentinelaFalhaProviderNoDia $LogFile) {
+    Write-Log 'FALHA_PROVIDER_JA_NO_DIA: ja houve lote com falha de provedor hoje. Nenhum modelo dispara; backlog intacto.'
+    Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+    Write-Log ('FIM: sentinela resultado=ADIADA_FALHA_PROVIDER. tokens=0 analisados=0 submit_fail=0 deferidos=0 sem_resultado=0 excedente_worker=' + $excedente + ' buscas=0 backlog=True lotes_ok=0 lotes_falha_provider=0 motivo=falha_provider_ja_no_dia')
+    exit 0
+}
+
 # CLAUDE-FREE-MIGRATION (2026-09-04): daqui pra frente a sentinela gasta LLM (claude por
 # lote). Sem provider manual forcado, bloqueia com exit 86 ANTES do Get-Command claude, da
 # sonda WebSearch e de qualquer claude. Provider 'none' (default) ou 'claude-manual' sem a
@@ -398,15 +423,24 @@ if (Test-Path $__coletorLib) {
     Write-Log 'COLETOR_PS: lib ausente - a evidencia continua sendo buscada pelo modelo.'
 }
 
+# CIRCUITOSENTINELA1 (2026-10-09): a sentinela passa a LER o circuito de custo do dia.
+# Ate aqui ela consumia o orcamento do dia mas nao era limitada por ele: Get-VixTokensSentinela
+# soma o tokens= do FIM ao ledger diario, e a unica trava local era o cap por execucao (120k).
+# Em 09/10/2026 isso somou 10.558.736 tokens contra TETO_DIA=1.300.000 na regua das rotinas
+# locais, abriu o CIRCUITO_ABERTO e DEFERIU as 104 analises da noturna e as 22 da matinal.
+$__custoLib = Join-Path $ScriptsDir 'lib\vixradar-custo.ps1'
+$script:VixCustoLibOk = $false
+if (Test-Path $__custoLib) {
+    . $__custoLib
+    $script:VixCustoLibOk = ($null -ne (Get-Command Get-VixCustoDia -ErrorAction SilentlyContinue))
+}
+if (-not $script:VixCustoLibOk) { Write-Log 'AVISO: lib\vixradar-custo.ps1 ausente - sentinela roda sem o circuito do dia (comportamento anterior)' }
+
 $script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
-if ($script:VixUsaOpenRouter) {
-    if (-not $script:VixLibOpenRouterOk -or -not (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -or -not (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
-        Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1). Provider openrouter sem adapter = bloqueio.'
-        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
-        Write-Log 'FIM: sentinela bloqueada sem adapter openrouter. tokens=0 analisados=0 motivo=sem_adapter'
-        exit $VixLlmBloqueadoExit
-    }
-} elseif (-not (Test-VixLlmPermiteClaude -ForceClaude:$ForceClaude)) {
+$script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
+$openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
+$codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
+if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado -CodexAdapterHabilitado:$codexAdapterHabilitado)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_sentinela.ps1')
     Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
     Write-Log 'FIM: sentinela bloqueada sem provider. tokens=0 analisados=0 motivo=sem_provider'
@@ -425,7 +459,9 @@ foreach ($f in @($HaikuSkill, $SonnetSkill)) {
         exit 6
     }
 }
-if ($script:VixUsaOpenRouter) {
+if ($script:VixUsaCodex) {
+    Write-Log 'AUTH_MODO: codex (assinatura Codex CLI, sem OpenRouter e sem auth Anthropic)'
+} elseif ($script:VixUsaOpenRouter) {
     $__orBoot = Test-VixOpenRouterPronto
     if (-not $__orBoot.ok) {
         Write-Log ('ERRO: ' + $__orBoot.motivo)
@@ -613,7 +649,43 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter (tem timeout
         # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
         # no backlog, mesmo efeito do timeout do claude.
-        if ($script:VixUsaOpenRouter) {
+        if ($script:VixUsaCodex) {
+            $codexResultFile = Join-Path $LogDir ('sentinela_codex_result_' + $DateTag + '_' + $PID + '.txt')
+            $codexStdoutFile = Join-Path $LogDir ('sentinela_codex_stdout_' + $DateTag + '_' + $PID + '.jsonl')
+            Remove-Item $codexResultFile,$codexStdoutFile -Force -ErrorAction SilentlyContinue
+            $exe = (Get-Command codex -ErrorAction Stop).Source
+            # CODEX-SKILLBLOCK1 (2026-10-09): o Codex anunciava as skills do host
+            # (~/.agents/skills) ao modelo, que tentava le-las via `pwsh -Command Get-Content` e
+            # levava "blocked by policy" do sandbox read-only. Todos os lotes de 09/10/2026
+            # sairam FALLO_PROVEEDOR com 0 analise (sentinela_stderr_20261009_*.txt). O prompt ja
+            # embute a skill em texto; desligar a descoberta de skills do host NAO afrouxa o
+            # sandbox (segue read-only, --ignore-user-config, --ignore-rules).
+            $args = @('-c','features.skip_host_skill_discovery=true','--search','exec','--json','--ephemeral','--sandbox','read-only','--ignore-user-config','--ignore-rules','--skip-git-repo-check','-C',('"'+$env:TEMP+'"'),'-o',('"'+$codexResultFile+'"'),'-')
+            $proc = Start-Process -FilePath $exe -ArgumentList $args -RedirectStandardInput $promptPath -RedirectStandardOutput $codexStdoutFile -RedirectStandardError $stderrFile -NoNewWindow -PassThru
+            if (-not $proc.WaitForExit($TimeoutMin * 60 * 1000)) {
+                $timedOut=$true
+                Write-Log ('TIMEOUT: lote Codex passou de ' + $TimeoutMin + ' min. Matando PID ' + $proc.Id + '.')
+                Stop-ArvoreProcesso $proc.Id
+            }
+            if (-not $timedOut -and $proc.ExitCode -eq 0 -and (Test-Path -LiteralPath $codexResultFile)) {
+                # CODEX-PSDECOR1 (2026-10-09): ver run_vixradar_varredura.ps1 - Get-Content -Raw
+                # anexa note properties (PSPath/.../ReadCount) que o ConvertTo-Json serializa e
+                # quebram o parse do lote. O cast [string] (ToString) as descarta.
+                $codexText=[string](Get-Content -LiteralPath $codexResultFile -Raw -Encoding UTF8)
+                if ([string]::IsNullOrWhiteSpace($codexText)) {
+                    # CODEX-VAZIO1: exit 0 com resultado vazio nao e entrega - falha de provedor.
+                    $falhaTransporte=$true
+                    $falhaMsg='codex exit=0 com resultado vazio'
+                } else {
+                    $raw=@(([ordered]@{result=$codexText;is_error=$false;model='codex-subscription'}|ConvertTo-Json -Compress))
+                }
+            } else {
+                $falhaTransporte=$true
+                $falhaMsg='codex exit=' + $(if($proc.HasExited){$proc.ExitCode}else{'timeout'})
+                if(Test-Path $codexStdoutFile){$raw=Get-Content $codexStdoutFile -Encoding UTF8}
+            }
+            Remove-Item $codexResultFile,$codexStdoutFile -Force -ErrorAction SilentlyContinue
+        } elseif ($script:VixUsaOpenRouter) {
             # SENTINELA-SEARCHBUDGET2 (2026-09-29): 8 buscas/emissor = 40 resultados
             # com max_results=5 e deixou EcoRodovias sem RESULTADO quando a F3 exigiu
             # fallback apos PDF CVM ilegivel. A Sentinela trabalha com lotes pequenos e
@@ -694,7 +766,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
     # sentinela al 01:03:22 nao logue AVISO/FIM, apenas o error e exit 0). O adapter ja
     # reporta FalhaTransporte/FalhaMsg; a deteccion de auth Anthropic no aplica aqui.
     $authFailureFinal = $false
-    if (-not $script:VixUsaOpenRouter) {
+    if (-not $script:VixUsaOpenRouter -and -not $script:VixUsaCodex) {
         $authFailureFinal = (Test-VixClaudeAuthFailure $textOut)
     }
     return @{ Output = $textOut; Tokens = $tokens; AuthFailure = $authFailureFinal; TimedOut = $timedOut; FalhaTransporte = $falhaTransporte; FalhaMsg = $falhaMsg }
@@ -722,6 +794,9 @@ function Get-ParsedResultadosSentinela($outputLines) {
 $janelaInicio = '' + $alvos[0].janela_inicio
 $janelaFim    = '' + $alvos[0].janela_fim
 $tokensAcum   = 0
+# FALHATRANSPORTE-TOKENS1 (2026-10-09): tokens de lote que falhou por provedor/transporte
+# ficam em contador PROPRIO (visivel no FIM), nunca somados ao trabalho do dia.
+$tokensFalhaProvider = 0
 $submitOk     = 0
 $submitFail   = 0
 $deferidos    = 0
@@ -752,6 +827,34 @@ foreach ($fila in @(@{ N = 'sonnet'; M = 'claude-sonnet-4-6'; S = $SonnetSkill; 
     }
 }
 
+# CIRCUITOSENTINELA1 (2026-10-09): orcamento da sentinela DENTRO do circuito do dia.
+# Regra: a sentinela so pode gastar o que sobra depois de reservar a noturna e a verificacao,
+# e nunca o orcamento ja consumido por elas (nem por execucoes anteriores da propria sentinela).
+# Isso e o que impede uma rotina de paralisar todas as demais: em 09/10/2026 a sentinela
+# somou 10.558.736 tokens ao dia, abriu CIRCUITO_ABERTO e zerou a noturna (104) e a matinal (22).
+# Nao eleva teto nenhum - apenas faz a sentinela respeitar a reserva que ja existe em
+# custo-config.json (RESERVA_NOTURNO/RESERVA_VERIFICACAO), hoje ignorada por ela.
+if ($script:VixCustoLibOk) {
+    $__cfgSentinela = Get-VixCustoConfig $LogDir
+    $__custoDiaSentinela = Get-VixCustoDia $LogDir $DateTag $__cfgSentinela
+    $__gastoSentinela = [int64]0
+    if ($__custoDiaSentinela.por_rotina.ContainsKey('sentinela')) { $__gastoSentinela = [int64]$__custoDiaSentinela.por_rotina['sentinela'].trabalho }
+    $__gastoOutras = [int64]$__custoDiaSentinela.total_trabalho - $__gastoSentinela
+    $__reserva = [int64]$__cfgSentinela.RESERVA_NOTURNO + [int64]$__cfgSentinela.RESERVA_VERIFICACAO
+    $__disponivelSentinela = Get-VixDisponivelSentinela -Custo $__custoDiaSentinela -Config $__cfgSentinela
+    Write-Log ('CIRCUITO_DIA: teto=' + $__cfgSentinela.TETO_DIA + ' gasto_outras=' + $__gastoOutras + ' gasto_sentinela_hoje=' + $__gastoSentinela + ' reserva_noturno+verificacao=' + $__reserva + ' disponivel_sentinela=' + $__disponivelSentinela)
+    if ($__disponivelSentinela -le 0) {
+        Write-Log 'CIRCUITO_SENTINELA_FECHADO: sem orcamento para a sentinela hoje (reserva da noturna/verificacao preservada). Nenhum lote dispara; backlog intacto.'
+        Write-State $workerLm $zipLmParaEstado $true ($streak + 1)
+        Write-Log ('FIM: sentinela resultado=SEM_ORCAMENTO. tokens=0 analisados=0 submit_fail=0 deferidos=0 sem_resultado=0 excedente_worker=' + $excedente + ' buscas=0 backlog=True lotes_ok=0 lotes_falha_provider=0 motivo=circuito_sentinela')
+        exit 0
+    }
+    if ($__disponivelSentinela -lt $TokenHardCap) {
+        Write-Log ('CAP_AJUSTADO: cap da execucao ' + $TokenHardCap + ' -> ' + $__disponivelSentinela + ' (orcamento do dia disponivel para a sentinela)')
+        $TokenHardCap = [int64]$__disponivelSentinela
+    }
+}
+
 $inicioExec = Get-Date
 foreach ($job in $jobs) {
     if ($tokensAcum -ge $TokenHardCap) {
@@ -777,7 +880,15 @@ foreach ($job in $jobs) {
     $restanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
     $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model $restanteMin $job.Tier
     if ($res.FalhaTransporte) { $lotesFalhaProvider++ }
-    if ($res.Tokens -ge 0) { $tokensAcum += $res.Tokens }
+    # FALHATRANSPORTE-TOKENS1 (2026-10-09): lote que falhou por provedor/transporte nao
+    # analisou emissor nenhum - o token que ele consumiu e desperdicio, nao trabalho. Em
+    # 09/10/2026 esses lotes somaram 10.558.736 tokens de "trabalho" para 0 analise, abriram
+    # o circuito do dia e deferiram as 104 da noturna e as 22 da matinal. O consumo continua
+    # medido e visivel em tokens_falha_provider, apenas fora do teto de trabalho.
+    if ($res.Tokens -ge 0) {
+        if ($res.FalhaTransporte) { $tokensFalhaProvider += $res.Tokens }
+        else { $tokensAcum += $res.Tokens }
+    }
     if ($res.TimedOut) {
         # Emissores do lote ficam intactos: nada de submit, nada marcado em cvm_vistos.
         # Contam como sem_resultado, o que liga o backlog e devolve todos na proxima
@@ -821,7 +932,10 @@ foreach ($job in $jobs) {
                 Write-Log ('RETRY_INDIVIDUAL: ' + $emp.empresa + ' ausente em ' + $job.Label + '; repetindo isoladamente uma vez.')
                 $retryRestanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
                 $retryRes = Invoke-ClaudeBatchSentinela $retryPrompt $job.Model $retryRestanteMin $job.Tier
-                if ($retryRes.Tokens -ge 0) { $tokensAcum += $retryRes.Tokens }
+                if ($retryRes.Tokens -ge 0) {
+                    if ($retryRes.FalhaTransporte) { $tokensFalhaProvider += $retryRes.Tokens }
+                    else { $tokensAcum += $retryRes.Tokens }
+                }
                 $retryParsed = Get-ParsedResultadosSentinela $retryRes.Output
                 if ($retryParsed.Buscas -ge 0) { $buscasTotal += $retryParsed.Buscas }
                 $obj = $retryParsed.Map[(Get-NomeNormalizado ('' + $emp.empresa))]
@@ -900,7 +1014,7 @@ if ($lotesIntentados -gt 0 -and $lotesOk -eq 0 -and $lotesFalhaProvider -gt 0) {
     $exitFim = 10
 }
 
-Write-Log ('FIM: sentinela resultado=' + $resultadoFim + '. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou + ' lotes_ok=' + $lotesOk + ' lotes_falha_provider=' + $lotesFalhaProvider)
+Write-Log ('FIM: sentinela resultado=' + $resultadoFim + '. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou + ' lotes_ok=' + $lotesOk + ' lotes_falha_provider=' + $lotesFalhaProvider + ' tokens_falha_provider=' + $tokensFalhaProvider)
 exit $exitFim
 
 } finally {

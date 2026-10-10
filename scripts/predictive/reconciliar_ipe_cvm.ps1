@@ -34,7 +34,11 @@
 #   (padrao de run_vixradar_ranking_mensal.ps1). KV publicado: radar:reconciliacao_cvm:latest
 #   (chave nova, sem consumidor no Worker ainda - zero risco ao caminho de score/ingestao).
 # Exit codes: 0 ok (com ou sem divergencias - divergencia e dado, nao falha de execucao)
-#             1 falha ao baixar/parsear o IPE · 2 falha ao ler todas as semanas de estado do KV
+#             1 falha ao baixar/parsear o IPE - 2 cobertura incompleta (menos semanas
+#               lidas que o pedido) - 3 falha ao persistir no KV (put falhou)
+# RECONCILIACAO-FAILCLOSED1 (2026-10-06): cobertura parcial ou KV put falho nao
+#   sai exit 0 nem FIM ok. PARCIAL com exit 2/3, para o Scheduler e o monitor
+#   nao lerem como rotina saudavel.
 #
 # RECONCILE-CVM404B (2026-09-24): a CVM republica o zip do ANO CORRENTE na segunda de
 # manha e em 21/09/2026 so o escreveu as 08:53 BRT - a execucao das 08:00 pegou 404 no
@@ -100,6 +104,7 @@ if (-not $mutex.WaitOne(0)) {
 }
 
 $exitCode = 0
+$kvPutFalhou = $false
 try {
     $inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     Write-Log ('INICIO: reconciliacao IPE CVM vs estado Radar (janela {0}d, {1} semanas, DryRun={2})' -f $DiasJanela, $SemanasEstado, [bool]$DryRun)
@@ -508,7 +513,7 @@ try {
         $kvErrFile = Join-Path $env:TEMP 'reconciliacao_kvput.err'
         $kvCode = Invoke-WranglerKVPut 'radar:reconciliacao_cvm:latest' $relPath $kvErrFile
         Pop-Location
-        if ($kvCode -ne 0) { Write-Log ('AVISO: kv put radar:reconciliacao_cvm:latest falhou - ' + ((Get-Content $kvErrFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' ')) }
+        if ($kvCode -ne 0) { $kvPutFalhou = $true; Write-Log ('AVISO: kv put radar:reconciliacao_cvm:latest falhou - ' + ((Get-Content $kvErrFile -TotalCount 2 -ErrorAction SilentlyContinue) -join ' ')) }
         else { Write-Log 'Publicado: radar:reconciliacao_cvm:latest no KV de producao' }
     } else {
         Write-Log 'DryRun: KV nao publicado'
@@ -588,6 +593,14 @@ try {
         Write-Log 'Sem divergencias neste ciclo'
     }
 
+    # RECONCILIACAO-FAILCLOSED1: exit e FIM refletem cobertura e persistencia.
+    # semanasFalhas>0 -> PARCIAL exit 2; kv put falhou -> PARCIAL exit 3 (3 vence
+    # se ambos, pois persistencia perdida e pior que cobertura parcial lida).
+    $semanasFalhasPre = $semanas.Count - $semanasLidas
+    $kvFalhouPre = ((-not $DryRun) -and $kvPutFalhou)
+    if ($semanasFalhasPre -gt 0) { $exitCode = 2 }
+    if ($kvFalhouPre) { $exitCode = 3 }
+
     # Metricas (padrao das rotinas)
     $metrics = [pscustomobject]@{
         data                    = $DataRef
@@ -599,15 +612,17 @@ try {
         semanas_total           = $semanas.Count
         emissores_sem_cnpj_gap  = $semCnpj.Count
         dry_run                 = [bool]$DryRun
-        exit                    = 0
+        kv_put_falhou           = [bool]$kvPutFalhou
+        exit                    = $exitCode
     }
     $metrics | ConvertTo-Json | Set-Content -Path (Join-Path $LogDir ("vixradar-reconciliacao-cvm_metrics_{0}.json" -f $Stamp)) -Encoding UTF8
 
-    Write-Log ("FIM: ok - {0} documentos severos, {1} emissores casados, {2} divergencias" -f $documentosSeveros.Count, $emissoresComDocSevero.Count, $divergencias.Count)
+    if ($exitCode -ne 0) { Write-Log ("FIM: parcial - {0} documentos severos, {1} emissores casados, {2} divergencias, semanas {3}/{4} lidas, kv_put_falhou={5}" -f $documentosSeveros.Count, $emissoresComDocSevero.Count, $divergencias.Count, $semanasLidas, $semanas.Count, [bool]$kvPutFalhou) }
+    else { Write-Log ("FIM: ok - {0} documentos severos, {1} emissores casados, {2} divergencias" -f $documentosSeveros.Count, $emissoresComDocSevero.Count, $divergencias.Count) }
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-    $semanasFalhas = $semanas.Count - $semanasLidas
-    $resultadoTxt = if ($semanasFalhas -gt 0) { 'PARCIAL' } else { 'OK' }
+    $semanasFalhas = $semanasFalhasPre
+    $resultadoTxt = if ($semanasFalhas -gt 0 -or $kvPutFalhou) { 'PARCIAL' } else { 'OK' }
     Write-Log ('ROTINA_RESUMO|vixradar-reconciliacao-cvm|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $emissoresComDocSevero.Count + '|' + $semanasFalhas + '|' + $divergencias.Count + '|')
 
     # AUTOCOMMIT-RECONCILIACAO1 (2026-08-11): commit restrito a $relPath e $notaPath,
@@ -630,7 +645,8 @@ try {
         }
     }
 
-    $exitCode = 0
+    # $exitCode ja foi definido antes das metricas (2 semanas parcial, 3 KV
+    # falhou, 0 ok). Nao zerar aqui: zerar apagaria a falha real com exit 0.
 } catch {
     Write-Log ('ERRO FATAL: ' + $_.Exception.Message)
     $exitCode = 1

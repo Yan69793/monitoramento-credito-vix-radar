@@ -470,7 +470,10 @@ try {
     }
     $r26 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0) -FallbackRetryDelays @(0)
     Assert-True ($r26.ExitCode -eq 0 -and $script:HttpCalls -eq 3) 'T26 402 credito: retry reduzido e fallback concluem sem perda silenciosa'
-    Assert-True ((@($script:MaxTokensVistos) -notcontains 131072) -and $script:MaxTokensVistos[0] -eq 49152 -and $script:MaxTokensVistos[1] -eq 24576 -and $script:MaxTokensVistos[2] -eq 49152) 'T26: retry usa 24576 e fallback 49152, nunca 131072'
+    # VERIF-TETO1 (2026-10-04): este assert dizia "fallback 49152" e travava como correto o
+    # defeito dos logs de 02 a 04/10, em que a 3a tentativa voltava ao teto cheio depois de o
+    # retry reduzido ja ter tomado 402. O fallback agora herda o ultimo teto recusado.
+    Assert-True ((@($script:MaxTokensVistos) -notcontains 131072) -and $script:MaxTokensVistos[0] -eq 49152 -and $script:MaxTokensVistos[1] -eq 24576 -and $script:MaxTokensVistos[2] -eq 24576) 'T26: retry usa 24576 e fallback herda 24576, nunca volta a 49152'
 
     # 402 sem evidencia de credito/max_tokens nao autoriza fallback.
     $script:HttpCalls = 0
@@ -481,6 +484,107 @@ try {
     $r26b = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0) -FallbackRetryDelays @(0)
     Assert-True ($r26b.ExitCode -ne 0 -and $script:HttpCalls -eq 1) 'T26 402 generico: fail-closed sem fallback inseguro'
     Remove-Item Env:\VIXRADAR_OPENROUTER_MAX_TOKENS -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
+    Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
+
+    # ===== VERIF-TETO1 (2026-10-04): teto explicito da verificacao =====
+    $env:VIXRADAR_OPENROUTER_MODEL_FULL = 'deepseek/deepseek-v4-pro-0813'
+    $env:VIXRADAR_OPENROUTER_FALLBACK_MODEL = 'deepseek/deepseek-v4-flash-0731'
+    $body402Saldo = '{"error":{"message":"This request requires more credits, or fewer max_tokens. You requested up to 8192 tokens, but can only afford 2657.","metadata":{"limit_source":"openrouter_credits"}}}'
+
+    # ---- T27: teto explicito vai no body, sucesso carrega a tentativa e stop_reason ----
+    $script:MaxTokensVistos = @()
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:MaxTokensVistos += [int](('' + ($JsonBody | ConvertFrom-Json).max_tokens))
+        $body = '{"id":"x","model":"deepseek/deepseek-v4-pro-0813","choices":[{"index":0,"message":{"role":"assistant","content":"[{\"veredicto\":\"APROVADO\"}]"},"finish_reason":"stop"}],"usage":{"prompt_tokens":1000,"completion_tokens":700}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $r27 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -MaxTokens 8192 -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r27.ExitCode -eq 0 -and $script:MaxTokensVistos.Count -eq 1 -and $script:MaxTokensVistos[0] -eq 8192) 'T27 teto explicito: unico POST pede max_tokens=8192'
+    Assert-True ($r27.MaxTokensPedido -eq 8192 -and -not $r27.Truncado -and $r27.StopReason -eq 'stop') 'T27 sucesso: MaxTokensPedido 8192, stop=stop, nao truncado'
+    Assert-True (@($r27.Tentativas).Count -eq 1 -and $r27.Tentativas[0].max_tokens -eq 8192 -and $r27.Tentativas[0].output -eq 700 -and $r27.Tentativas[0].status -eq 200) 'T27 tentativa registrada com teto, status e consumo'
+    $linhaT27 = Format-VixOpenRouterTentativa $r27.Tentativas[0]
+    Assert-True ($linhaT27 -match '^OR_TENTATIVA\|n=1\|modelo=deepseek/deepseek-v4-pro-0813\|max_tokens=8192\|status=200\|') 'T27 linha OR_TENTATIVA em formato fixo'
+    Assert-True ($linhaT27 -notmatch 'or-fake-teste' -and $linhaT27 -notmatch 'APROVADO') 'T27 linha de tentativa sem chave e sem conteudo do modelo'
+
+    # ---- T28: 402 de saldo com teto 8192: nenhuma tentativa sobe, causa e afford no retorno ----
+    # Ponta ruim que a correcao fecha: a conta antiga Max(16384, teto/2) subia 8192 para 16384,
+    # e o fallback voltava ao teto. Aqui a sequencia tem que ser 8192, 4096, 4096.
+    $script:MaxTokensVistos = @()
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        $script:MaxTokensVistos += [int](('' + ($JsonBody | ConvertFrom-Json).max_tokens))
+        return @{ Status = 402; Body = $body402Saldo; Erro = ''; RetryAfter = '' }
+    }
+    $r28 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -MaxTokens 8192 -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    $vistos28 = @($script:MaxTokensVistos)
+    Assert-True ($r28.ExitCode -ne 0 -and $r28.Status -eq 402 -and $script:HttpCalls -eq 3) 'T28 402 em tudo: falha dura apos principal, retry reduzido e fallback'
+    Assert-True ($vistos28[0] -eq 8192 -and $vistos28[1] -eq 4096 -and $vistos28[2] -eq 4096) 'T28 sequencia de teto 8192, 4096, 4096'
+    $sobe28 = $false
+    for ($k = 1; $k -lt $vistos28.Count; $k++) { if ($vistos28[$k] -gt $vistos28[$k - 1]) { $sobe28 = $true } }
+    Assert-True ((-not $sobe28) -and (@($vistos28 | Where-Object { $_ -gt 8192 }).Count -eq 0)) 'T28 nenhuma tentativa acima do teto escolhido nem acima da anterior'
+    Assert-True ($r28.Causa402 -eq 'saldo_conta' -and $r28.Afford -eq 2657) 'T28 causa pelo limit_source (saldo_conta) e afford=2657'
+    Assert-True ($r28.SemConsumo -eq $true) 'T28 so 4xx: SemConsumo=true (nada a cobrar contra o cap)'
+    Assert-True (@($r28.Tentativas).Count -eq 3 -and $r28.Tentativas[0].causa -eq '402_saldo_conta afford=2657') 'T28 tres tentativas registradas com a causa do 402'
+    Assert-True ($r28.Linhas[0] -eq 'OPENROUTER_FALHA_COD=402') 'T28 linha de erro segue so com o codigo'
+
+    # ---- T29: teto explicito nunca fura o teto do tier ----
+    Assert-True ((Resolve-VixOpenRouterMaxTokensExplicito 200000 'FULL') -eq 49152) 'T29 explicito 200000 no FULL limitado a 49152'
+    Assert-True ((Resolve-VixOpenRouterMaxTokensExplicito 500 'FULL') -eq 1024) 'T29 explicito abaixo do piso sobe para 1024'
+    Assert-True ((Resolve-VixOpenRouterMaxTokensExplicito 0 'FULL') -eq 0) 'T29 explicito 0 = sem teto explicito'
+    $script:MaxTokensVistos = @()
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:MaxTokensVistos += [int](('' + ($JsonBody | ConvertFrom-Json).max_tokens))
+        $body = '{"id":"x","model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}],"usage":{"prompt_tokens":10,"completion_tokens":5}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $null = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($script:MaxTokensVistos[0] -eq 49152) 'T29 sem -MaxTokens o FULL segue em 49152 (demais rotinas preservadas)'
+
+    # ---- T30: conclusao cortada no teto e sinalizada, das duas pontas ----
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $body = '{"id":"x","model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"[{\"veredicto\":\"APRO"},"finish_reason":"length"}],"usage":{"prompt_tokens":10,"completion_tokens":8192}}'
+        return @{ Status = 200; Body = $body; Erro = ''; RetryAfter = '' }
+    }
+    $r30 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -MaxTokens 8192 -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($r30.ExitCode -eq 0 -and $r30.Truncado -eq $true -and $r30.StopReason -eq 'length') 'T30 finish_reason=length: Truncado=true'
+    Assert-True ($r27.Truncado -eq $false) 'T30 ponta boa: finish_reason=stop nao e truncado'
+
+    # ---- T31: classificacao do 402 pelo campo documentado, nunca pelo texto ----
+    Assert-True ((Get-VixOpenRouter402Causa '{"error":{"message":"x","metadata":{"limit_source":"openrouter_key_limit"}}}') -eq 'limite_chave') 'T31 limit_source key_limit -> limite_chave'
+    Assert-True ((Get-VixOpenRouter402Causa '{"error":{"message":"x","metadata":{"limit_source":"openrouter_in_flight_budget"}}}') -eq 'orcamento_simultaneo') 'T31 limit_source in_flight_budget -> orcamento_simultaneo'
+    Assert-True ((Get-VixOpenRouter402Causa '{"error":{"message":"x","metadata":{"limit_source":"openrouter_credits"}}}') -eq 'saldo_conta') 'T31 limit_source credits -> saldo_conta'
+    Assert-True ((Get-VixOpenRouter402Causa '{"error":{"message":"insufficient credits on key limit"}}') -eq 'indeterminado') 'T31 sem limit_source: indeterminado, mesmo com texto sugestivo'
+    Assert-True ((Get-VixOpenRouter402Causa 'nao e json') -eq 'indeterminado') 'T31 corpo invalido: indeterminado sem lancar'
+    Assert-True ((Get-VixOpenRouter402Afford '{"error":{"message":"sem numero"}}') -eq -1) 'T31 afford ausente = -1'
+
+    # ---- T32: falha de transporte nao conta como sem consumo ----
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) { return @{ Status = 0; Body = ''; Erro = 'timeout simulado'; RetryAfter = '' } }
+    $r32 = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -MaxTokens 8192 -RetryDelays @(0, 0) -FallbackRetryDelays @(0, 0)
+    Assert-True ($r32.ExitCode -ne 0 -and $r32.SemConsumo -eq $false) 'T32 transporte: falha com SemConsumo=false (pode ter consumido)'
+    Assert-True (@($r32.Tentativas | Where-Object { $_.causa -eq 'transporte' }).Count -eq @($r32.Tentativas).Count) 'T32 todas as tentativas registradas como transporte'
+
+    # ---- T33: no piso nao ha retry reduzido, vai direto ao fallback no mesmo teto ----
+    $script:MaxTokensVistos = @()
+    $script:HttpCalls = 0
+    function Send-VixOpenRouterHttp([string]$ApiKey, [string]$JsonBody) {
+        $script:HttpCalls++
+        $script:MaxTokensVistos += [int](('' + ($JsonBody | ConvertFrom-Json).max_tokens))
+        return @{ Status = 402; Body = $body402Saldo; Erro = ''; RetryAfter = '' }
+    }
+    $null = Invoke-VixOpenRouterLote -PromptPath $promptTmp -Tier 'FULL' -MaxTokens 1024 -RetryDelays @(0, 0, 0) -FallbackRetryDelays @(0, 0, 0)
+    Assert-True ($script:HttpCalls -eq 2 -and $script:MaxTokensVistos[0] -eq 1024 -and $script:MaxTokensVistos[1] -eq 1024) 'T33 teto 1024: principal e fallback em 1024, sem retry inutil'
+
+    # ---- T34: leitura da chave falha fechada sem rede quando nao ha o que ler ----
+    $env:VIXRADAR_LLM_ENDPOINT = 'deepseek'
+    $ck34 = Get-VixOpenRouterChaveStatus
+    Assert-True (-not $ck34.ok -and $ck34.erro -eq 'endpoint nao e openrouter') 'T34 endpoint deepseek: nao consulta a chave do OpenRouter'
+    $env:VIXRADAR_LLM_ENDPOINT = 'openrouter'
+    function Get-VixOpenRouterApiKey { return '' }
+    $ck34b = Get-VixOpenRouterChaveStatus
+    Assert-True (-not $ck34b.ok -and $ck34b.erro -eq 'chave ausente') 'T34 sem chave: ok=false, erro chave ausente'
+    Assert-True (-not (($ck34b | ConvertTo-Json -Compress) -match 'or-fake-teste')) 'T34 retorno sem valor de chave'
     Remove-Item Env:\VIXRADAR_OPENROUTER_MODEL_FULL -ErrorAction SilentlyContinue
     Remove-Item Env:\VIXRADAR_OPENROUTER_FALLBACK_MODEL -ErrorAction SilentlyContinue
 

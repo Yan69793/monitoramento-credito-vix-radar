@@ -1,4 +1,4 @@
-# preflight-and-run.ps1 - guarda de execucao das rotinas agendadas deste repositorio.
+﻿# preflight-and-run.ps1 - guarda de execucao das rotinas agendadas deste repositorio.
 #
 # POR QUE ESTE ARQUIVO EXISTE
 # As tarefas agendadas chamavam direto o script da rotina. Se a arvore estivesse quebrada
@@ -27,7 +27,7 @@
 #
 # USO (o alvo vai em -GuardTarget; os argumentos do alvo seguem sem traducao nenhuma):
 #   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\preflight-and-run.ps1 `
-#     -GuardTarget scripts\run_vixradar_matinal_claude.ps1 `
+#     -GuardTarget scripts\run_vixradar_matinal.ps1 `
 #     -GuardName 'VIXRadar-Matinal' `
 #     -GuardLogPattern 'logs\routines\vixradar-matinal_{yyyyMMdd}.log'
 #
@@ -242,3 +242,4 @@ if ($deferido) {
 $dur = [int]((Get-Date) - $inicio).TotalSeconds
 Add-PreflightAudit -Root $root -Linha ('fim nome=' + $nome + ' exit=' + $r.Exit + ' dur=' + $dur + 's') | Out-Null
 exit $r.Exit
+
