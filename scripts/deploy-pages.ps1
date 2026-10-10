@@ -30,7 +30,12 @@ param(
   # Valida apenas a allowlist local, sem rede, sync, credenciais ou deploy.
   [switch]$ValidateBundleOnly,
   # Ignora CLOUDFLARE_API_TOKEN e usa a sessao OAuth do wrangler direto.
-  [switch]$ForcarOAuth
+  [switch]$ForcarOAuth,
+  # FAILCLOSED1 (2026-10-10): publica mesmo sem conseguir ler a versao de
+  # producao, pulando o gate anti-regressao de forma consciente. Existe para o
+  # caso legitimo de publicar com a rede/Cloudflare fora. Assumindo o risco: se
+  # producao estiver a frente, este deploy REGRIDE versao e conteudo.
+  [switch]$Offline
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,6 +48,9 @@ $indexSrc = Join-Path $appDir "index.html"
 # compartilhada com scripts/test-deploy-pages-gate.ps1 (roda o codigo real).
 . (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-pages-content-gate.ps1")
 . (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-pages-bundle-gate.ps1")
+# FAILCLOSED1 (2026-10-10): decisao do gate anti-regressao, compartilhada com
+# scripts/test-deploy-prodversion-gate.ps1 (roda o codigo real).
+. (Join-Path (Join-Path $PSScriptRoot "lib") "vixradar-deploy-prodversion.ps1")
 
 function Fail($msg) { Write-Host "ERRO: $msg" -ForegroundColor Red; exit 1 }
 function Warn($msg) { Write-Host "AVISO: $msg" -ForegroundColor Yellow }
@@ -136,18 +144,32 @@ if (-not $env:CLOUDFLARE_ACCOUNT_ID) {
 if (-not (Test-Path $indexSrc)) { Fail "Nao achei $indexSrc" }
 
 # --- 0.1 GATE ANTI-REGRESSAO: versao em producao ---------------------------
+# FAILCLOSED1 (2026-10-10): FAIL-CLOSED. Antes, falha na leitura desligava o gate
+# em silencio e um checkout limpo e velho publicava por cima de producao mais
+# nova. Agora, sem o dado de producao o deploy ABORTA — salvo -Offline explicito.
+$prodFetched = $null
+$prodErro    = $null
 try {
   $prodVerJson = Invoke-RestMethod -Uri "https://vixradar.com/version.json?_=$(Get-Date -Format 'yyyyMMddHHmmss')" -TimeoutSec 10 -Headers @{ "Cache-Control"="no-cache" }
-  $prodVersion = $prodVerJson.version
-  if ($prodVersion) {
-    # So compara depois de extrair CACHE_VERSION do index.html (passo 1),
-    # porque precisamos da versao local para comparar.
-    $script:prodVersion = $prodVersion
-    Write-Host "Gate pre-deploy: producao reporta $prodVersion" -ForegroundColor DarkGray
-  }
+  $prodFetched = $prodVerJson.version
 } catch {
-  Warn "Falha ao consultar version.json de producao: $_. Prosseguindo sem o gate anti-regressao."
+  $prodErro = "$_"
+}
+
+$gateProd = Resolve-VixProdVersionGate -FetchedVersion $prodFetched -FetchError $prodErro -Offline:$Offline
+if (-not $gateProd.Ok) {
+  Fail ("GATE ANTI-REGRESSAO INDISPONIVEL: " + $gateProd.Bloqueio + "`n" +
+        "Sem a versao de producao eu nao consigo garantir que este deploy nao regride o que esta no ar.`n" +
+        "Se a rede/Cloudflare estiver fora e a publicacao for intencional, rode com -Offline (assumindo o risco).")
+}
+if ($gateProd.Forcado) {
+  Warn "OFFLINE (-Offline): producao NAO foi consultada. Se ela estiver a frente, este deploy regride versao e conteudo."
   $script:prodVersion = $null
+} else {
+  # So compara depois de extrair CACHE_VERSION do index.html (passo 1),
+  # porque precisamos da versao local para comparar.
+  $script:prodVersion = $gateProd.Version
+  Write-Host "Gate pre-deploy: producao reporta $($gateProd.Version)" -ForegroundColor DarkGray
 }
 
 # --- 0.2 GATE WORKING TREE: sem alteracoes nao commitadas ------------------
