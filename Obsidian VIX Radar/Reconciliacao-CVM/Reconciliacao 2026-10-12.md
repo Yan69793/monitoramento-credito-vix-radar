@@ -1,6 +1,6 @@
 ﻿# Reconciliacao CVM IPE vs Estado Radar - 2026-10-12
 
-Gerado por reconciliar_ipe_cvm.ps1 (janela 10d, semanas 2026-W42, 2026-W41, 2026-W40, 2/3 lidas).
+Gerado por reconciliar_ipe_cvm.ps1 (janela 10d, semanas 2026-W42, 2026-W41, 2026-W40, 3/3 lidas).
 
 Documentos severos no IPE (RJ/RE/default/reestruturacao/inadimplencia) na janela: **7**, casando com **1** emissor(es) do universo Radar.
 
