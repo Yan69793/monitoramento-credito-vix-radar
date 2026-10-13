@@ -1,4 +1,4 @@
-# test-retry-janela.ps1 - prova de duas pontas do julgamento de entrega por janela
+﻿# test-retry-janela.ps1 - prova de duas pontas do julgamento de entrega por janela
 # (INCIDENTE-FRESHNESS2, A4/H). Parte 1: Test-VixLedgerEntregueNaJanela isolada
 # (lib/vixradar-watchdog.ps1). Parte 2: retry-vixradar.ps1 fim a fim, com
 # -RunnerOverride/-LogDirOverride/-SemAlerta (nenhum toca producao, nenhum POST
@@ -171,8 +171,8 @@ exit 0
         $dNot = Get-VixRetryRunner 'vixradar-noturno' $null
         $dMat = Get-VixRetryRunner 'vixradar-matinal' $null
         $dStub = Get-VixRetryRunner 'vixradar-noturno' 'C:\tmp\stub.ps1'
-        Assert ((Split-Path $dNot.Path -Leaf) -eq 'run_vixradar_noturno_claude.ps1') ('3c: noturno relanca o wrapper do motor (obtido ' + $dNot.Path + ')')
-        Assert ((Split-Path $dMat.Path -Leaf) -eq 'run_vixradar_matinal_claude.ps1') ('3d: matinal relanca o wrapper do motor (obtido ' + $dMat.Path + ')')
+        Assert ((Split-Path $dNot.Path -Leaf) -eq 'run_vixradar_noturno.ps1') ('3c: noturno relanca o wrapper do motor (obtido ' + $dNot.Path + ')')
+        Assert ((Split-Path $dMat.Path -Leaf) -eq 'run_vixradar_matinal.ps1') ('3d: matinal relanca o wrapper do motor (obtido ' + $dMat.Path + ')')
         Assert ($dNot.PassaRoutineId -eq $false -and $dMat.PassaRoutineId -eq $false) '3e: wrapper do motor nao recebe -RoutineId (a rotina esta fixada nele)'
         Assert ($dStub.Path -eq 'C:\tmp\stub.ps1' -and $dStub.PassaRoutineId -eq $true) '3f: -RunnerOverride vence o mapa e mantem -RoutineId (compativel com o stub desta suite)'
         Assert ((Test-Path -LiteralPath $dNot.Path) -and (Test-Path -LiteralPath $dMat.Path)) '3g: os dois wrappers apontados existem no repo'
@@ -244,3 +244,4 @@ Write-Host ''
 Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)')
 if ($script:fal -gt 0) { exit 1 }
 exit 0
+

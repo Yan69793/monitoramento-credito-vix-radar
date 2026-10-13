@@ -83,13 +83,21 @@ function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
 # ledger, mesma regra), para os dois julgarem entrega da mesma forma.
 function Test-VixLedgerEntregueNaJanela {
     # Entregue exige, dentro da janela: ledger OK| com >= MinimoLedger emissores
-    # distintos (sinal AUTORITATIVO, ROTINACEGA2), OU uma linha FIM:/RUNNER_FIM:
+    # distintos EFETIVOS (sinal AUTORITATIVO, ROTINACEGA2), OU uma linha FIM:/RUNNER_FIM:
     # cujo PROPRIO texto reporte contagem >= MinimoLedger (FIMREAL, os 4 formatos
     # historicos: submit_ok=N, Total do dia N/D, N processados, processados=N).
     # Uma linha FIM: SEM contagem parseavel NAO basta sozinha - "RUNNER_FIM:"
     # (INCIDENTE-FRESHNESS2) existe justamente para marcar "exit 0, mas isso nao
     # prova entrega", entao tratar a mera presenca de FIM: como prova contradiria
     # a razao de o rotulo ter sido criado.
+    # DEFERIDO-NAO-E-SUCESSO1 (2026-10-06): linha OK| com status DEFERIDO NAO
+    # conta como entrega. Formato do ledger:
+    #   OK|empresa|tier|classe|n_eventos|submit|status|n_avanco_data
+    # Status ausente (ledger antigo) conta como entrega, para nao reprocessar
+    # historico retroativamente. SKIP conta como entrega (avaliado de proposito).
+    # FIM com analise efetiva zero (ledger analisados=0 skip=0, ou submit_ok=0
+    # no formato novo) NAO confirma entrega, mesmo com Total do dia >= minimo.
+    # FIM legado sem esses campos mantem o comportamento antigo.
     param(
         [Parameter(Mandatory)][string]$Conteudo,
         [Parameter(Mandatory)][datetime]$DataLog,
@@ -98,8 +106,12 @@ function Test-VixLedgerEntregueNaJanela {
     )
     $limite = Get-Date -Year $DataLog.Year -Month $DataLog.Month -Day $DataLog.Day -Hour $JanelaHora -Minute 0 -Second 0
     $vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $vistosEfetivos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $vistosDeferidos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $fimComContagemSuficiente = $false
     $ultimoFimInvalido = $false
+    $ultimoResultado = ''
+    $ultimosPendentes = -1
     $linhaRegex = [regex]'^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) (.*)$'
     foreach ($linhaRaw in ($Conteudo -split "`r?`n")) {
         $lm = $linhaRegex.Match($linhaRaw)
@@ -112,16 +124,62 @@ function Test-VixLedgerEntregueNaJanela {
         if ($ts -lt $limite) { continue }
         $resto = $lm.Groups[3].Value
         $okM = [regex]::Match($resto, '^OK\|([^|]+)\|')
-        if ($okM.Success) { [void]$vistos.Add($okM.Groups[1].Value.Trim()); continue }
+        if ($okM.Success) {
+            $nomeOk = $okM.Groups[1].Value.Trim()
+            [void]$vistos.Add($nomeOk)
+            $statusOk = ''
+            $idxOk = $linhaRaw.IndexOf('OK|')
+            if ($idxOk -ge 0) {
+                $camposOk = $linhaRaw.Substring($idxOk) -split '\|'
+                if ($camposOk.Count -ge 7) { $statusOk = $camposOk[6].Trim() }
+            }
+            if ($statusOk -eq 'DEFERIDO') { [void]$vistosDeferidos.Add($nomeOk) }
+            else { [void]$vistosEfetivos.Add($nomeOk) }
+            continue
+        }
         if ($resto -match '(?<!SHADOW_)FIM_INVALIDO:') { $ultimoFimInvalido = $true; continue }
         if ($resto -match '(?<!SHADOW_)(?:RUNNER_)?FIM:') {
             $ultimoFimInvalido = $false
+            # COBERTURA-13OUT1 (2026-10-13): o FIM passou a declarar resultado=OK|PARCIAL|FALHA e
+            # pendentes_obrigatorios=N. "Total do dia 22/22" soma DEFERIDO, entao sozinho ele
+            # fazia a matinal de 13/10 (4 analisados, 17 deferidos) parecer entrega completa.
+            # A ULTIMA linha FIM vence (proveniencia), como no FIMFALSO1. FIM antigo sem o
+            # campo fica com UltimoResultado vazio e o comportamento anterior.
+            $mRes = [regex]::Match($resto, '\bresultado=(OK|PARCIAL|FALHA|DRYRUN)\b')
+            $ultimoResultado = if ($mRes.Success) { $mRes.Groups[1].Value } else { '' }
+            $mPend = [regex]::Match($resto, '\bpendentes_obrigatorios=(\d+)')
+            $ultimosPendentes = if ($mPend.Success) { [int]$mPend.Groups[1].Value } else { -1 }
             $n = -1
-            if ($resto -match 'submit_ok=(\d+)') { $n = [int]$Matches[1] }
-            elseif ($resto -match 'Total do dia (\d+)/\d+') { $n = [int]$Matches[1] }
-            elseif ($resto -match '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') { $n = [int]$Matches[1] }
-            elseif ($resto -match 'processados=(\d+)') { $n = [int]$Matches[1] }
-            if ($n -ge $MinimoLedger) { $fimComContagemSuficiente = $true }
+            # FIM pode trazer varios contadores (Total do dia, submit_ok,
+            # processados). Vale o MAIOR, para o Total do ledger nao ser
+            # escondido pelo submit_ok efetivo menor (caso 21/09: Total 104
+            # com submit_ok 45). A distincao efetivo x deferido sai do
+            # $fimEfetivo abaixo, nao do $n.
+            foreach ($rxFim in @('Total do dia (\d+)/\d+', 'submit_ok=(\d+)', '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados', 'processados=(\d+)')) {
+                $mFimN = [regex]::Match($resto, $rxFim)
+                if ($mFimN.Success) {
+                    $vN = [int]$mFimN.Groups[1].Value
+                    if ($vN -gt $n) { $n = $vN }
+                }
+            }
+            $fimEfetivo = $true
+            $mLed = [regex]::Match($resto, 'ledger analisados=(\d+)\s+skip=(\d+)')
+            if ($mLed.Success) {
+                $fimEfetivo = (([int]$mLed.Groups[1].Value + [int]$mLed.Groups[2].Value) -gt 0)
+            } else {
+                $mExecA = [regex]::Match($resto, 'analisados_execucao=(\d+)')
+                $mExecS = [regex]::Match($resto, 'skip_execucao=(\d+)')
+                if ($mExecA.Success -or $mExecS.Success) {
+                    $aExec = 0
+                    $sExec = 0
+                    if ($mExecA.Success) { $aExec = [int]$mExecA.Groups[1].Value }
+                    if ($mExecS.Success) { $sExec = [int]$mExecS.Groups[1].Value }
+                    $fimEfetivo = (($aExec + $sExec) -gt 0)
+                } elseif (($mSubOk = [regex]::Match($resto, 'submit_ok=(\d+)')).Success) {
+                    $fimEfetivo = ([int]$mSubOk.Groups[1].Value -gt 0)
+                }
+            }
+            if (($n -ge $MinimoLedger) -and $fimEfetivo) { $fimComContagemSuficiente = $true }
         }
     }
     # FIMFALSO1 (2026-09-12): a ULTIMA linha FIM do dia marcou trabalho zero
@@ -129,13 +187,23 @@ function Test-VixLedgerEntregueNaJanela {
     # prova entrega, mesmo somando >= MinimoLedger. Uma FIM normal posterior reseta a
     # flag, entao a ultima marcacao vence (proveniencia), nao a primeira.
     if ($ultimoFimInvalido) { $fimComContagemSuficiente = $false }
-    $entregue = ($vistos.Count -ge $MinimoLedger) -or $fimComContagemSuficiente
+    $entregue = ($vistosEfetivos.Count -ge $MinimoLedger) -or $fimComContagemSuficiente
     if ($ultimoFimInvalido) { $entregue = $false }
+    # COBERTURA-13OUT1: Parcial = a rotina rodou e entregou parte, mas declarou pendencia
+    # obrigatoria. NAO muda Entregue (o retry nao relanca por isso: um relancamento ganharia um
+    # cap novo no mesmo dia e passaria do limite da rotina). Quem recupera e a proxima execucao
+    # agendada, pela fila pendente e pelo deferred_prioritario do Worker. O monitor alerta.
+    $parcial = ($ultimoResultado -eq 'PARCIAL') -or ($ultimoResultado -eq 'FALHA') -or ($ultimosPendentes -gt 0) -or ($vistosDeferidos.Count -gt 0 -and $ultimoResultado -eq '')
     return [PSCustomObject]@{
         Entregue                 = $entregue
         LedgerNaJanela            = $vistos.Count
+        EfetivosNaJanela          = $vistosEfetivos.Count
+        DeferidosNaJanela         = $vistosDeferidos.Count
         FimComContagemSuficiente = $fimComContagemSuficiente
         LimiteUsado               = $limite
+        UltimoResultado           = $ultimoResultado
+        PendentesObrigatorios     = $ultimosPendentes
+        Parcial                   = [bool]$parcial
     }
 }
 

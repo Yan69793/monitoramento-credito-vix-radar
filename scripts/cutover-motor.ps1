@@ -1,4 +1,4 @@
-# cutover-motor.ps1 - liga ou desliga o motor Task Scheduler das tres rotinas do VIX Radar
+﻿# cutover-motor.ps1 - liga ou desliga o motor Task Scheduler das tres rotinas do VIX Radar
 # (MOTOR1), de forma atomica e reversivel. PowerShell 5.1, ASCII puro, exit code real.
 #
 #   -Acao Ativar      snapshot exato das 5 tasks -> horarios/settings/enabled do motor novo -> motor.json
@@ -67,7 +67,7 @@ $Desejado = @{
     'Szuchmacher-RetryVixNoturno' = @{ Enabled = $false; Triggers = $null; ExecutionTimeLimit = $null }
 }
 $CcdTasks = @('vixradar-matinal', 'vixradar-noturno', 'vixradar-verificacao-async-11h', 'vixradar-verificacao-async-1845')
-$MotorFiles = @('scripts/run_vixradar_varredura.ps1', 'scripts/run_vixradar_noturno_claude.ps1', 'scripts/run_vixradar_matinal_claude.ps1',
+$MotorFiles = @('scripts/run_vixradar_varredura.ps1', 'scripts/run_vixradar_noturno.ps1', 'scripts/run_vixradar_matinal.ps1',
     'scripts/run_vixradar_verificacao_async.ps1', 'scripts/lib/vixradar-claude-auth.ps1', 'scripts/lib/vixradar-custo.ps1',
     'scripts/lib/vixradar-watchdog.ps1', 'scripts/lib/vixradar-ambient-check.ps1', 'scripts/monitor-tasks.ps1', 'scripts/cutover-motor.ps1')
 
@@ -321,3 +321,4 @@ if ($NoExit) {
     return
 }
 exit $rc
+

@@ -67,8 +67,8 @@ $falhas = New-Object System.Collections.Generic.List[string]
 
 $G = @(
     'scripts/run_vixradar_varredura.ps1',
-    'scripts/run_vixradar_matinal_claude.ps1',
-    'scripts/run_vixradar_noturno_claude.ps1',
+    'scripts/run_vixradar_matinal.ps1',
+    'scripts/run_vixradar_noturno.ps1',
     'scripts/run_vixradar_verificacao_async.ps1',
     'scripts/run_vixradar_sentinela.ps1',
     'scripts/run_vixradar_agenda_semanal.ps1',
@@ -169,7 +169,13 @@ function Teste-Arquivo([string]$caminhoAbs, [string]$relpath) {
     if (-not $raw) { return }
     $stripped = Remove-Comentario ($raw -split "`r?`n")
     $txtLimpo = ($stripped -join "`n")
-    $invoca = [bool]($txtLimpo -match $ReInvoca)
+    # COBERTURA-13OUT1 (2026-10-13): `claude --version` / `claude --help` so leem metadado do
+    # executavel local, nao abrem sessao, nao autenticam e nao consomem token. Tratar isso como
+    # invocacao reprovava scripts/diag-provider-migration.ps1 (inventario de versoes) por R1.
+    # A excecao e estreita: so a forma cujo UNICO argumento e --version/--help sai da conta;
+    # qualquer outra chamada no mesmo arquivo (inclusive na mesma linha) continua reprovando.
+    $txtInvoca = [regex]::Replace($txtLimpo, '(?:&\s*|\|\s*)?\bclaude(?:\.exe)?\s+--(?:version|help)\b(?=\s*(?:2>&1|2>\$null)?\s*(?:\||\)|;|$))', '', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+    $invoca = [bool]($txtInvoca -match $ReInvoca)
 
     # auth lib: invariantes R4 + R5 valem sempre que o arquivo existir em disco
     if ($rel -eq 'scripts/lib/vixradar-claude-auth.ps1') {
@@ -252,3 +258,4 @@ if ($falhas.Count -gt 0) {
     exit 1
 }
 exit 0
+

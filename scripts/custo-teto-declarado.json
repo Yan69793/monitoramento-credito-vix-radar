@@ -1,0 +1,12 @@
+{
+  "_doc": "Valores DECLARADOS do circuito de custo diario. logs/routines/custo-config.json e o arquivo operativo (fora do git, editavel sem tocar em script); este arquivo e a referencia versionada contra a qual test-orcamento-sentinela.ps1 confere o operativo. Mudar o teto exige mudar os DOIS e registrar data e motivo aqui. Divergencia entre eles reprova o teste: e assim que uma alteracao silenciosa do teto fica visivel.",
+  "TETO_DIA": 2600000,
+  "RESERVA_NOTURNO": 700000,
+  "RESERVA_VERIFICACAO": 150000,
+  "MARGEM_MINIMA": 100000,
+  "SENTINELA_DIA": 320000,
+  "historico": [
+    { "data": "2026-09-02", "TETO_DIA": 1300000, "motivo": "REGUA-UNICA1, valor inicial (default da lib vixradar-custo.ps1)." },
+    { "data": "2026-10-12", "TETO_DIA": 2600000, "motivo": "Registrado no _doc de custo-config.json: o valor anterior travava a sentinela antes de cobrir os 104 emissores (YS). Declaracao versionada criada em 2026-10-13 (COBERTURA-13OUT1) a partir desse registro." }
+  ]
+}

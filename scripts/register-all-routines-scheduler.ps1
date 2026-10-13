@@ -76,7 +76,7 @@ $Tasks = @(
     @{
         Name        = 'VIXRadar-Matinal'
         Description = 'VIX Radar matinal tiered top 15'
-        Script      = Join-Path $Scripts 'run_vixradar_matinal_claude.ps1'
+        Script      = Join-Path $Scripts 'run_vixradar_matinal.ps1'
         ArgList     = @()
         Guarda      = $true
         LogPattern  = 'logs\routines\vixradar-matinal_{yyyyMMdd}.log'
@@ -87,7 +87,7 @@ $Tasks = @(
     @{
         Name        = 'VIXRadar-Noturno'
         Description = 'VIX Radar noturno 103/103 orquestrado'
-        Script      = Join-Path $Scripts 'run_vixradar_noturno_claude.ps1'
+        Script      = Join-Path $Scripts 'run_vixradar_noturno.ps1'
         ArgList     = @()
         Guarda      = $true
         LogPattern  = 'logs\routines\vixradar-noturno_{yyyyMMdd}.log'

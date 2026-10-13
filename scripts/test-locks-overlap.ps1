@@ -87,6 +87,25 @@ function Get-LogTail([string]$Path, [int]$DesdeLinha) {
     return $saida.ToArray()
 }
 
+function Get-LogTailEFallback([string]$Path, [int]$DesdeLinha, [datetime]$Inicio) {
+    # LOGLOCK1-REC (B, 09/10/2026): quando o log principal esta preso por outro processo
+    # (Indexer, OneDrive, handle de leitura concorrente), o Write-Log do motor esgota 8
+    # tentativas e escreve em <log>_fallback_<pid>.log - por desenho, para nunca perder o
+    # rastro. Este caso rodava contra o log principal apenas, entao reprovava por
+    # INVISIBILIDADE, nao por comportamento: medido em 09/10, os ABORT de mutex, de lock e a
+    # espera da sentinela estavam nos fallbacks 29320/33964/7400/41876. Ler os fallbacks
+    # criados a partir do disparo do caso devolve o comportamento real do motor.
+    $linhas = New-Object System.Collections.Generic.List[string]
+    foreach ($l in (Get-LogTail $Path $DesdeLinha)) { $linhas.Add($l) }
+    $dir = Split-Path $Path -Parent
+    $filtro = (Split-Path ([regex]::Replace($Path, '\.log$', '')) -Leaf) + '_fallback_*.log'
+    foreach ($f in @(Get-ChildItem -Path $dir -Filter $filtro -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime)) {
+        if ($f.LastWriteTime -lt $Inicio) { continue }
+        foreach ($l in @(Get-Content -LiteralPath $f.FullName -Encoding UTF8 -ErrorAction SilentlyContinue)) { $linhas.Add($l) }
+    }
+    return $linhas.ToArray()
+}
+
 function Assert-Contem([string[]]$Linhas, [string]$Padrao, [string]$Rotulo) {
     $script:Casos++
     $achou = $false
@@ -276,9 +295,10 @@ if (-not (Wait-MutexOcupado 'Global\vixradar-noturno-v2' 20)) {
     $script:Falhas++
 } else {
     $t0 = Get-LogPos $LogNoturno
+    $inicioA = Get-Date
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Runner -Rotina noturno | Out-Null
     $exitA = $LASTEXITCODE
-    $tailA = Get-LogTail $LogNoturno $t0
+    $tailA = Get-LogTailEFallback $LogNoturno $t0 $inicioA
     Write-Output ('  exit=' + $exitA)
     foreach ($l in $tailA) { Write-Output ('  | ' + $l) }
     Assert-Contem $tailA 'ABORT: outra instancia da noturno ja esta em execucao \(mutex ocupado\)' 'runner abortou pelo mutex proprio'
@@ -294,9 +314,10 @@ Write-Cabecalho 'CASO B - lock do dia tocado agora: execucao REAL aborta e nao a
 try {
     New-LockDeTeste 0
     $t0 = Get-LogPos $LogNoturno
+    $inicioB = Get-Date
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Runner -Rotina noturno | Out-Null
     $exitB = $LASTEXITCODE
-    $tailB = Get-LogTail $LogNoturno $t0
+    $tailB = Get-LogTailEFallback $LogNoturno $t0 $inicioB
     Write-Output ('  exit=' + $exitB)
     foreach ($l in $tailB) { Write-Output ('  | ' + $l) }
     Assert-Contem $tailB 'ABORT: lock vixradar-noturno_.*\.lock pid=\d+ LOCK_VIVO \(outra execucao viva\)' 'execucao real abortou pelo lock vivo'
@@ -326,9 +347,10 @@ if (-not (Wait-MutexOcupado 'Global\vixradar-sentinela-v1' 20)) {
         # no lock, provando a ORDEM (espera de mutex primeiro, lock depois) sem gastar token.
         New-LockDeTeste 0
         $t0 = Get-LogPos $LogNoturno
+        $inicioC = Get-Date
         & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Runner -Rotina noturno | Out-Null
         $exitC = $LASTEXITCODE
-        $tailC = Get-LogTail $LogNoturno $t0
+        $tailC = Get-LogTailEFallback $LogNoturno $t0 $inicioC
         Write-Output ('  exit=' + $exitC)
         foreach ($l in $tailC) { Write-Output ('  | ' + $l) }
         Assert-Contem $tailC 'AGUARDANDO sentinela: mutex Global\\vixradar-sentinela-v1 ocupado' 'runner esperou pela sentinela'

@@ -102,12 +102,27 @@ function Invoke-VixColetorRss {
     $t = if ($TimeoutSec -gt 0) { $TimeoutSec } else { $VixColetorTimeoutSec }
     $enc = [uri]::EscapeDataString($Query)
     $url = ($VixColetorRssBase + '?q=' + $enc + '&hl=pt-BR&gl=BR&ceid=BR:pt-419')
-    $out = @()
-    try { $out = @(& curl.exe -s -A $VixColetorUa --max-time $t -w "`n__HTTP__%{http_code}" $url 2>$null) } catch { $out = @() }
-    $txt = ($out -join "`n")
+    # COBERTURA-13OUT1: o corpo vai para ARQUIVO (-o) e e decodificado como UTF-8 por bytes. Ler o
+    # stdout do curl.exe pela pipeline usa [Console]::OutputEncoding, que no processo sem console
+    # UTF-8 (Agendador, Start-Process oculto) e a pagina OEM: o titulo "Raizen" voltava como
+    # "Ra??zen", o casamento do nome falhava e o emissor saia QUIETO com manchetes novas (medido:
+    # mesma lista, MATERIAL no terminal e QUIETO em processo oculto). So o codigo HTTP passa
+    # pelo stdout, e ele e ASCII.
+    $tmp = Join-Path ([IO.Path]::GetTempPath()) ('vixcol_' + [guid]::NewGuid().ToString('N') + '.xml')
     $status = 0
-    $m = [regex]::Match($txt, '__HTTP__(\d{3})\s*$')
-    if ($m.Success) { $status = [int]$m.Groups[1].Value; $txt = $txt.Substring(0, $m.Index) }
+    $txt = ''
+    try {
+        $cod = @(& curl.exe -s -A $VixColetorUa --max-time $t -o $tmp -w '%{http_code}' $url 2>$null)
+        $m = [regex]::Match((($cod -join '').Trim()), '(\d{3})$')
+        if ($m.Success) { $status = [int]$m.Groups[1].Value }
+        if (Test-Path -LiteralPath $tmp) {
+            $bytes = [IO.File]::ReadAllBytes($tmp)
+            $ini = 0
+            if ($bytes.Length -ge 3 -and $bytes[0] -eq 0xEF -and $bytes[1] -eq 0xBB -and $bytes[2] -eq 0xBF) { $ini = 3 }
+            $txt = [Text.Encoding]::UTF8.GetString($bytes, $ini, $bytes.Length - $ini)
+        }
+    } catch { $status = 0; $txt = '' }
+    finally { if (Test-Path -LiteralPath $tmp) { [IO.File]::Delete($tmp) } }
     return [pscustomobject]@{ Status = $status; Corpo = $txt }
 }
 
@@ -128,6 +143,7 @@ function Get-VixColetorEvidencia {
 
     $evidencias = @()
     $resumoFam = [ordered]@{}
+    $brutos = [ordered]@{}
     $erros = @()
     $vistos = @{}
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -146,6 +162,10 @@ function Get-VixColetorEvidencia {
         }
         $itens = @()
         if ($resp.Status -eq 200 -and $xmlValido) { $itens = @(ConvertFrom-VixColetorRss $resp.Corpo) }
+        # COBERTURA-13OUT1: itens que o feed devolveu ANTES do filtro de janela. HTTP 200 com XML
+        # valido e zero itens e throttling/consulta quebrada, nao "nada publicado": o consumidor
+        # da triagem precisa dessa contagem para nao ler resposta vazia como emissor quieto.
+        $brutos[$fam.Id] = $itens.Count
         $n = 0
         foreach ($it in $itens) {
             if ($n -ge $max) { break }
@@ -179,9 +199,14 @@ function Get-VixColetorEvidencia {
 
     return [pscustomobject]@{
         empresa      = $Empresa
+        # COBERTURA-13OUT1: carimbo da coleta (fontes_consultadas do caminho deterministico e
+        # validade do cache de coleta entre rotinas do mesmo dia).
+        coletado_em  = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        queries      = @(Get-VixColetorFamilias $Empresa | ForEach-Object { [pscustomobject]@{ familia = $_.Id; query = $_.Query } })
         evidencias   = $evidencias
         total        = $evidencias.Count
         por_familia  = $resumoFam
+        itens_brutos = $brutos
         cobertura    = $cobertura
         familias_ok  = $cobertura
         janela_dias  = $janela

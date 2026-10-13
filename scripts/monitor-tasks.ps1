@@ -691,9 +691,21 @@ $RotinasLogDir = Join-Path $VixRoot 'logs\routines'
 function Get-VixEmissoresUnicos([string]$conteudo) {
     if (-not $conteudo) { return 0 }
     $vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
-    foreach ($m in [regex]::Matches($conteudo, '(?m)^[\d-]+ [\d:]+ OK\|([^|]+)\|')) {
+    foreach ($linhaRaw in ($conteudo -split "`r?`n")) {
+        $m = [regex]::Match($linhaRaw, '(?m)^[\d-]+ [\d:]+ OK\|([^|]+)\|')
+        if (-not $m.Success) { continue }
         $nome = $m.Groups[1].Value.Trim()
-        if ($nome) { [void]$vistos.Add($nome) }
+        if (-not $nome) { continue }
+        # DEFERIDO-NAO-E-SUCESSO1 (2026-10-06): DEFERIDO nao conta como entrega.
+        # Status ausente (ledger antigo) conta, para nao reprocessar historico.
+        $statusOk = ''
+        $idxOk = $linhaRaw.IndexOf('OK|')
+        if ($idxOk -ge 0) {
+            $camposOk = $linhaRaw.Substring($idxOk) -split '\|'
+            if ($camposOk.Count -ge 7) { $statusOk = $camposOk[6].Trim() }
+        }
+        if ($statusOk -eq 'DEFERIDO') { continue }
+        [void]$vistos.Add($nome)
     }
     return $vistos.Count
 }
@@ -772,6 +784,7 @@ foreach ($rot in $RotinasVigiadas) {
     $motivoR   = $null
     $fallbackR = $null
     $submitOk  = -1
+    $codigoParcialR = $false
 
     if (-not (Test-Path $logRot)) {
         $motivoR = "$alvoTxt sem log de execucao, a rotina nao chegou a iniciar"
@@ -847,10 +860,16 @@ foreach ($rot in $RotinasVigiadas) {
                 # escreveu "FIM: 19 emissores processados", sem "/19". Nao casava com
                 # nenhum dos 4 padroes e cairia em 9001 falso com o dia entregue.
                 # Causa raiz (SKILL.md da matinal sem formato exigido) fechada junto.
-                $mFim = [regex]::Match($linha, 'submit_ok=(\d+)')
-                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'Total do dia (\d+)/\d+') }
-                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados') }
-                if (-not $mFim.Success) { $mFim = [regex]::Match($linha, 'processados=(\d+)') }
+                # DEFERIDO-NAO-E-SUCESSO1: vale o MAIOR contador da linha (Total do
+                # dia nao e escondido pelo submit_ok efetivo menor); o efetivo x
+                # deferido e decidido pelo $fimEfetivoMonitor abaixo, nao aqui.
+                $mFim = $null
+                foreach ($rxFimMon in @('Total do dia (\d+)/\d+', 'submit_ok=(\d+)', '(\d+)(?:/\d+)?(?:\s+\S+)?\s+processados', 'processados=(\d+)')) {
+                    $mCand = [regex]::Match($linha, $rxFimMon)
+                    if ($mCand.Success) {
+                        if (($null -eq $mFim) -or ([int]$mCand.Groups[1].Value -gt [int]$mFim.Groups[1].Value)) { $mFim = $mCand }
+                    }
+                }
 
                 $mFal    = [regex]::Match($linha, '(\d+) falhas de submit|falhas=(\d+)')
                 $nFalEsta = -1
@@ -860,7 +879,7 @@ foreach ($rot in $RotinasVigiadas) {
                 }
                 if ($nFalEsta -gt $nFal) { $nFal = $nFalEsta }
 
-                if ($mFim.Success) {
+                if (($null -ne $mFim) -and $mFim.Success) {
                     $valor = [int]$mFim.Groups[1].Value
                     if ($valor -gt $submitOk) {
                         $submitOk    = $valor
@@ -871,7 +890,41 @@ foreach ($rot in $RotinasVigiadas) {
             }
             if ($linhaMelhor) { $linhaFim = $linhaMelhor }
 
-            if ($submitOk -ge $rot.minSubmit -and $nFalMelhor -le 0) {
+            # DEFERIDO-NAO-E-SUCESSO1 (2026-10-06): FIM com analise efetiva zero
+            # (ledger analisados=0 skip=0, ou submit_ok=0 no formato novo) nao
+            # confirma entrega, mesmo com Total do dia >= minimo. FIM legado sem
+            # esses campos mantem o comportamento antigo.
+            $fimEfetivoMonitor = $true
+            $mLedMon = [regex]::Match($linhaFim, 'ledger analisados=(\d+)\s+skip=(\d+)')
+            if ($mLedMon.Success) {
+                $fimEfetivoMonitor = (([int]$mLedMon.Groups[1].Value + [int]$mLedMon.Groups[2].Value) -gt 0)
+            } else {
+                $mExecAMon = [regex]::Match($linhaFim, 'analisados_execucao=(\d+)')
+                $mExecSMon = [regex]::Match($linhaFim, 'skip_execucao=(\d+)')
+                if ($mExecAMon.Success -or $mExecSMon.Success) {
+                    $aExecMon = 0
+                    $sExecMon = 0
+                    if ($mExecAMon.Success) { $aExecMon = [int]$mExecAMon.Groups[1].Value }
+                    if ($mExecSMon.Success) { $sExecMon = [int]$mExecSMon.Groups[1].Value }
+                    $fimEfetivoMonitor = (($aExecMon + $sExecMon) -gt 0)
+                } elseif ($linhaFim -match 'submit_ok=(\d+)') {
+                    $fimEfetivoMonitor = ([int]$Matches[1] -gt 0)
+                }
+            }
+            if (-not $fimEfetivoMonitor) { $submitOk = 0 }
+
+            # COBERTURA-13OUT1 (2026-10-13): a ULTIMA linha FIM do dia declara resultado e
+            # pendentes. "Total do dia 22/22" soma DEFERIDO e, sozinho, aprovava a matinal de 13/10
+            # (4 analisados, 17 deferidos) como entrega completa, sem alerta nenhum.
+            $linhaUltimoFim = $fims[$fims.Count - 1].Groups[1].Value
+            $resUltimoFim = ''
+            if ($linhaUltimoFim -match '\bresultado=(OK|PARCIAL|FALHA)\b') { $resUltimoFim = $Matches[1] }
+            $pendUltimoFim = -1
+            if ($linhaUltimoFim -match '\bpendentes_obrigatorios=(\d+)') { $pendUltimoFim = [int]$Matches[1] }
+            if ($submitOk -ge $rot.minSubmit -and $nFalMelhor -le 0 -and ($resUltimoFim -eq 'PARCIAL' -or $resUltimoFim -eq 'FALHA' -or $pendUltimoFim -gt 0)) {
+                $motivoR = "$alvoTxt ENTREGA_PARCIAL resultado=$resUltimoFim pendentes_obrigatorios=$pendUltimoFim (ledger do dia $submitOk inclui deferidos; recuperacao pela fila pendente na proxima execucao)"
+                $codigoParcialR = $true
+            } elseif ($submitOk -ge $rot.minSubmit -and $nFalMelhor -le 0) {
                 # Dia entregue. Falha de uma execucao anterior corrigida por outra
                 # nao derruba o dia, o que vale e a evidencia de entrega completa.
                 $motivoR = $null
@@ -894,7 +947,20 @@ foreach ($rot in $RotinasVigiadas) {
         }
     }
 
-    if ($motivoR) {
+    if ($motivoR -and $codigoParcialR) {
+        # COBERTURA-13OUT1: 9010 ENTREGA_PARCIAL. Erro (entra no exit code e no e-mail), mas
+        # distinto do 9001: a rotina rodou e entregou parte; o resto esta na fila pendente.
+        Write-Log "ROTINA ENTREGA PARCIAL: $($rot.rotulo) | $motivoR"
+        $erros += [ordered]@{
+            task    = $rot.rotulo
+            code    = 9010
+            codeHex = '0x2332'
+            lastRun = "$alvoTxt (ciclo esperado)"
+            ageDays = [int]((Get-Date).Date - $alvo).Days
+            script  = $logRot
+            reason  = $motivoR
+        }
+    } elseif ($motivoR) {
         Write-Log "ROTINA SEM ENTREGA: $($rot.rotulo) | $motivoR"
         $erros += [ordered]@{
             task    = $rot.rotulo

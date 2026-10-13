@@ -499,6 +499,96 @@ function Test-VixOpenRouter402Credito([string]$Body) {
     return ($m -match '(?i)(more credits|insufficient credit|insufficient funds|fewer max_tokens|max_tokens)')
 }
 
+# VERIF-TETO1 (2026-10-04): teto explicito de conclusao pedido pelo chamador. Mesmo piso e
+# mesmo teto por tier que Get-VixOpenRouterMaxTokens, para um valor explicito nunca furar o
+# limite que protege as demais rotinas. 0 ou negativo = sem teto explicito (usa o do tier).
+function Resolve-VixOpenRouterMaxTokensExplicito([int]$MaxTokens, [string]$Tier = '') {
+    if ($MaxTokens -le 0) { return 0 }
+    $tierUpper = ('' + $Tier).Trim().ToUpperInvariant()
+    $n = $MaxTokens
+    if ($n -lt 1024) { $n = 1024 }
+    if ($tierUpper -eq 'FULL' -and $n -gt 49152) { $n = 49152 }
+    if ($tierUpper -ne 'FULL' -and $n -gt 65536) { $n = 65536 }
+    return $n
+}
+
+# VERIF-TETO1: causa do 402 pelo campo que o OpenRouter documenta, error.metadata.limit_source
+# (https://openrouter.ai/docs/api_reference/limits). Os tres valores pedem acoes diferentes:
+# saldo da conta, limite da chave e orcamento de requisicoes em voo. Sem o campo, a causa fica
+# 'indeterminado', nunca deduzida do texto. Pura, sem rede.
+function Get-VixOpenRouter402Causa([string]$Body) {
+    $src = ''
+    try {
+        $ep = ('' + $Body) | ConvertFrom-Json
+        if ($ep -and $ep.error -and $ep.error.metadata -and $ep.error.metadata.limit_source) { $src = ('' + $ep.error.metadata.limit_source).Trim() }
+    } catch { $src = '' }
+    if ($src -eq 'openrouter_credits') { return 'saldo_conta' }
+    if ($src -eq 'openrouter_key_limit') { return 'limite_chave' }
+    if ($src -eq 'openrouter_in_flight_budget') { return 'orcamento_simultaneo' }
+    return 'indeterminado'
+}
+
+# VERIF-TETO1: "can only afford N" do corpo do 402. -1 quando ausente. Pura, sem rede.
+function Get-VixOpenRouter402Afford([string]$Body) {
+    $m = [regex]::Match(('' + $Body), '(?i)can only afford\s+(\d+)')
+    if ($m.Success) { return [int64]$m.Groups[1].Value }
+    return [int64]-1
+}
+
+# VERIF-TETO1: registro de UMA tentativa HTTP. So metadado: numero, modelo, teto pedido,
+# status, causa curta e consumo devolvido. Nunca prompt, corpo de resposta ou segredo.
+function New-VixOpenRouterTentativa([int]$N, [string]$Modelo, [int]$MaxTokens, [int]$Status, [string]$Causa, $Usage) {
+    $in = [int64]-1; $out = [int64]-1
+    if ($Usage) {
+        try { $in = [int64]$Usage.input_tokens + [int64]$Usage.cache_read_input_tokens } catch { $in = [int64]-1 }
+        try { $out = [int64]$Usage.output_tokens } catch { $out = [int64]-1 }
+    }
+    return [pscustomobject]@{ n = $N; modelo = ('' + $Modelo); max_tokens = $MaxTokens; status = $Status; causa = ('' + $Causa); input = $in; output = $out }
+}
+
+# Linha de log de uma tentativa, formato fixo e grep-avel (OR_TENTATIVA|...).
+function Format-VixOpenRouterTentativa($T) {
+    return ('OR_TENTATIVA|n=' + $T.n + '|modelo=' + $T.modelo + '|max_tokens=' + $T.max_tokens + '|status=' + $T.status + '|causa=' + $T.causa + '|input=' + $T.input + '|output=' + $T.output)
+}
+
+# VERIF-TETO1: leitura autenticada do estado da chave (GET /api/v1/key). Devolve so numeros e
+# flags, nunca a chave nem o corpo bruto. A chave vai no header Authorization do HttpClient,
+# nunca em argumento de comando ou URL (INC-2026-08-20). Nao lanca.
+function Get-VixOpenRouterChaveStatus {
+    $res = [ordered]@{ ok = $false; status = 0; limit = $null; limit_remaining = $null; usage = $null; is_free_tier = $null; erro = '' }
+    if ((Get-VixLlmEndpoint) -ne 'openrouter') { $res.erro = 'endpoint nao e openrouter'; return [pscustomobject]$res }
+    $apiKey = Get-VixOpenRouterApiKey
+    if (-not $apiKey) { $res.erro = 'chave ausente'; return [pscustomobject]$res }
+    $client = $null
+    try {
+        Add-Type -AssemblyName System.Net.Http -ErrorAction SilentlyContinue
+        $client = New-Object System.Net.Http.HttpClient
+        $client.Timeout = [TimeSpan]::FromSeconds(30)
+        $client.DefaultRequestHeaders.Authorization = New-Object System.Net.Http.Headers.AuthenticationHeaderValue('Bearer', $apiKey)
+        $resp = $client.GetAsync('https://openrouter.ai/api/v1/key').GetAwaiter().GetResult()
+        $res.status = [int]$resp.StatusCode
+        $body = ''
+        try { $body = $resp.Content.ReadAsStringAsync().GetAwaiter().GetResult() } catch { $body = '' }
+        try { $resp.Dispose() } catch { }
+        if ($res.status -ge 200 -and $res.status -lt 300) {
+            $j = $body | ConvertFrom-Json
+            $d = if ($j -and $j.data) { $j.data } else { $j }
+            if ($d) {
+                $res.limit = $d.limit
+                $res.limit_remaining = $d.limit_remaining
+                $res.usage = $d.usage
+                $res.is_free_tier = $d.is_free_tier
+                $res.ok = $true
+            }
+        } else { $res.erro = 'HTTP ' + $res.status }
+    } catch {
+        $res.erro = 'falha de transporte'
+    } finally {
+        if ($client) { try { $client.Dispose() } catch { } }
+    }
+    return [pscustomobject]$res
+}
+
 # Orquestra un lote completo: lee el prompt, POST con server tools, normaliza el envelope.
 # Retenta bounded en status retryable; agotado el primario, prueba el fallback explicito
 # (DeepSeek validado) con su propia malha de retry. Retorna
@@ -509,8 +599,14 @@ function Test-VixOpenRouter402Credito([string]$Body) {
 #   402: sin retry del principal y sin entrar en la lista retryable, con UNA pasada al modelo
 #        de fallback (mas barato). 402 en el fallback tambien cierra duro.
 #   Retry-After de un 429 se respeta (acotado a 120s) en la espera de la siguiente tentativa.
-function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '', [int]$Emissores = 0, [int]$BuscasPorEmissor = 4) {
-    $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = ''; Degradado402 = $false }
+#   VERIF-TETO1 (2026-10-04): -MaxTokens > 0 fixa o teto de conclusao do lote (perfil da
+#        verificacao). Nenhuma tentativa posterior pede mais que a anterior depois de um 402:
+#        o retry reduzido so desce, e o fallback herda o ultimo teto recusado em vez de voltar
+#        ao teto cheio. O retorno carrega Tentativas (modelo, teto pedido, status, causa),
+#        Causa402, Afford, StopReason, Truncado e SemConsumo, sem prompt nem segredo.
+function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0, 5, 20), [int[]]$FallbackRetryDelays = @(0, 10), [int]$TotalTimeoutSec = 0, [string]$Tier = '', [int]$Emissores = 0, [int]$BuscasPorEmissor = 4, [int]$MaxTokens = 0) {
+    $falha = @{ Linhas = @('OPENROUTER_FALHA_COD=1'); ExitCode = 1; Msg = 'falha interna'; Tokens = -1; Parcelas = $null; Modelo = ''; FallbackUsado = $false; Intentos = 0; Status = 0; RetryAfter = ''; Degradado402 = $false
+        Tentativas = @(); Causa402 = ''; Afford = [int64]-1; StopReason = ''; Truncado = $false; SemConsumo = $false; MaxTokensPedido = 0 }
     $prompt = ''
     # JSONCICLO1: el [string] no es cosmetico. Get-Content devuelve string decorada con
     # PSDrive/PSProvider, y esa decoracion es el ciclo que trabo la noturna de 05/09 en el
@@ -560,7 +656,18 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     }
     $modeloPrincipal = Get-VixOpenRouterModel $Tier
     $modeloFallback  = Get-VixOpenRouterFallbackModel $Tier
+    # VERIF-TETO1: o explicito e lido ANTES de $maxTokens ser atribuido. Variavel em PowerShell
+    # nao diferencia maiuscula, e $maxTokens e o mesmo nome do parametro -MaxTokens: na ordem
+    # inversa o teto do tier sobrescrevia o pedido do chamador (pego pelo T27/T28).
+    $maxTokensExplicito = Resolve-VixOpenRouterMaxTokensExplicito $MaxTokens $Tier
     $maxTokens = Get-VixOpenRouterMaxTokens $Tier
+    if ($maxTokensExplicito -gt 0) { $maxTokens = $maxTokensExplicito }
+    $falha.MaxTokensPedido = $maxTokens
+    # VERIF-TETO1: teto vigente do lote. So desce (402 de credito), nunca sobe.
+    $tetoCorrente = $maxTokens
+    $tentativas = @()
+    $causa402 = ''
+    $afford = [int64]-1
     $modelos = @()
     if ($modeloPrincipal) { $modelos += ,@{ M = $modeloPrincipal; Delays = $RetryDelays } }
     if ($modeloFallback) { $modelos += ,@{ M = $modeloFallback; Delays = $FallbackRetryDelays } }
@@ -580,7 +687,7 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
         $esFallback = ($item.M -ne $modeloPrincipal)
         $delays = $item.Delays
         if (-not $delays -or $delays.Count -eq 0) { $delays = @(0, 5, 20) }
-        $maxTokensAtual = $maxTokens
+        $maxTokensAtual = $tetoCorrente
         $reduziu402 = $false
         for ($i = 0; $i -lt $delays.Count; $i++) {
             $intentos++
@@ -668,12 +775,17 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
             if ($http.RetryAfter) { $ultimoRetryAfter = '' + $http.RetryAfter }
             $script:VixOpenRouterUltimoRetryAfter = $ultimoRetryAfter
             if ($http.Status -gt 0) { $ultimoCod = $http.Status }
-            if ($http.Erro) { $ultimoMsg = ('erro de transporte: ' + $http.Erro); continue }
+            if ($http.Erro) {
+                $ultimoMsg = ('erro de transporte: ' + $http.Erro)
+                $tentativas += New-VixOpenRouterTentativa $intentos $item.M $maxTokensAtual 0 'transporte' $null
+                continue
+            }
             if ($http.Status -ge 200 -and $http.Status -lt 300) {
                 $parsed = $null
                 try { $parsed = $http.Body | ConvertFrom-Json } catch { $parsed = $null }
                 if ($null -eq $parsed -or $null -eq $parsed.choices -or @($parsed.choices).Count -eq 0) {
                     $ultimoMsg = ('HTTP ' + $http.Status + ' resposta sem choices (body malformado ou vazio)')
+                    $tentativas += New-VixOpenRouterTentativa $intentos $item.M $maxTokensAtual $http.Status 'sem_choices' $null
                     $vacioFinal = $false
                     if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
                     $duro = $true
@@ -685,13 +797,21 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                     # vacio tras loop de server-tools). Retryable semantico: agota la malha y
                     # luego prueba el fallback, igual que un 429.
                     $ultimoMsg = 'OPENROUTER_EMPTY_RESULT'
+                    $tentativas += New-VixOpenRouterTentativa $intentos $item.M $maxTokensAtual $http.Status ('vazio stop=' + $env.stop_reason) $env.usage
                     $vacioFinal = $true
                     continue
                 }
                 $linha = $env | ConvertTo-Json -Depth 8 -Compress
                 $parcelas = @{ input = [int64]$env.usage.input_tokens; output = [int64]$env.usage.output_tokens; cache_creation = [int64]$env.usage.cache_creation_input_tokens; cache_read = [int64]$env.usage.cache_read_input_tokens }
                 $parcelas.trabajo = $parcelas.input + $parcelas.output + $parcelas.cache_creation
-                return @{ Linhas = @($linha); ExitCode = 0; Msg = 'ok http=' + $http.Status + ' model=' + $env.model + ' intentos=' + $intentos + ' fallback=' + $esFallback.ToString().ToLower(); Tokens = [int64]$parcelas.trabajo; Parcelas = $parcelas; Modelo = $item.M; FallbackUsado = $esFallback; Intentos = $intentos; Status = [int]$http.Status; RetryAfter = $ultimoRetryAfter; Degradado402 = $degradado402 }
+                $stopReason = ('' + $env.stop_reason).Trim()
+                # VERIF-TETO1: 'length' (OpenAI/OpenRouter) e 'max_tokens' (envelope estilo claude)
+                # significam conclusao cortada no teto. O adapter so sinaliza; quem decide se o
+                # lote vale e o chamador (a verificacao trata como falha).
+                $truncado = ($stopReason -eq 'length' -or $stopReason -eq 'max_tokens')
+                $tentativas += New-VixOpenRouterTentativa $intentos $item.M $maxTokensAtual $http.Status ('ok stop=' + $stopReason) $env.usage
+                return @{ Linhas = @($linha); ExitCode = 0; Msg = 'ok http=' + $http.Status + ' model=' + $env.model + ' intentos=' + $intentos + ' fallback=' + $esFallback.ToString().ToLower(); Tokens = [int64]$parcelas.trabajo; Parcelas = $parcelas; Modelo = $item.M; FallbackUsado = $esFallback; Intentos = $intentos; Status = [int]$http.Status; RetryAfter = $ultimoRetryAfter; Degradado402 = $degradado402
+                    Tentativas = $tentativas; Causa402 = $causa402; Afford = $afford; StopReason = $stopReason; Truncado = $truncado; SemConsumo = $false; MaxTokensPedido = $maxTokensAtual }
             }
             # cuerpo de error puede venir con .error.message; extrae sin secreto, corta a 200
             $motivo = ''
@@ -700,8 +820,17 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
                 if ($ep -and $ep.error -and $ep.error.message) { $motivo = (' ' + (('' + $ep.error.message))) }
             } catch { }
             if ($motivo.Length -gt 200) { $motivo = $motivo.Substring(0, 200) }
-            $ultimoMsg = 'OPENROUTER_HTTP_STATUS=' + $http.Status + $motivo + ' modelo=' + $item.M + ' intento=' + $intentos
+            $ultimoMsg = 'OPENROUTER_HTTP_STATUS=' + $http.Status + $motivo + ' modelo=' + $item.M + ' intento=' + $intentos + ' max_tokens=' + $maxTokensAtual
             $vacioFinal = $false
+            $causaTentativa = 'http_' + $http.Status
+            if ($http.Status -eq 402) {
+                $causa402 = Get-VixOpenRouter402Causa $http.Body
+                $aff = Get-VixOpenRouter402Afford $http.Body
+                if ($aff -ge 0) { $afford = $aff }
+                $causaTentativa = '402_' + $causa402
+                if ($aff -ge 0) { $causaTentativa += ' afford=' + $aff }
+            }
+            $tentativas += New-VixOpenRouterTentativa $intentos $item.M $maxTokensAtual $http.Status $causaTentativa $null
             if (Test-VixOpenRouterStatusRetryable $http.Status) { continue }
             # OR402-DEGRADA1 (2026-09-11): 402 es falta de SALDO, no de payload. No se retenta el
             # principal (mismo pedido, misma cuenta, mismo resultado) y 402 NO entra en la lista
@@ -710,14 +839,21 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
             # pro-0813, y 2 de 6 lotes murieron con 3 emisores INCONCLUSIVO cada uno mientras el
             # fallback estaba montado y nunca se llamaba.
             if ($http.Status -eq 402 -and (Test-VixOpenRouter402Credito $http.Body) -and -not $esFallback) {
-                # No maximo uma nova tentativa no FULL com metade do teto, antes do fallback.
+                # No maximo uma nova tentativa com metade do teto VIGENTE, antes do fallback.
                 # Se o chamador fornecer apenas uma tentativa, cai direto no fallback.
-                if (-not $reduziu402 -and $i -lt ($delays.Count - 1)) {
+                # VERIF-TETO1 (2026-10-04): a conta antiga era Max(16384, teto/2), que com um teto
+                # explicito abaixo de 32768 SUBIA o pedido (8192 virava 16384). Agora a reducao so
+                # desce, com piso de 1024; se ja nao da para descer, vai direto ao fallback.
+                $tetoReduzido = [int][Math]::Max(1024, [Math]::Floor($maxTokensAtual / 2))
+                if (-not $reduziu402 -and $i -lt ($delays.Count - 1) -and $tetoReduzido -lt $maxTokensAtual) {
                     $reduziu402 = $true
-                    $maxTokensAtual = [Math]::Max(16384, [Math]::Floor($maxTokens / 2))
+                    $maxTokensAtual = $tetoReduzido
                     $ultimoMsg += ' retry_max_tokens=' + $maxTokensAtual
                     continue
                 }
+                # VERIF-TETO1: o fallback herda o ultimo teto recusado. Antes ele voltava ao teto
+                # cheio (49152), e era essa a 3a tentativa dos logs de 02 a 04/10.
+                $tetoCorrente = [int][Math]::Min($tetoCorrente, $maxTokensAtual)
                 if ($modeloFallback) { $degradado402 = $true; break }
             }
             $duro = $true
@@ -734,6 +870,14 @@ function Invoke-VixOpenRouterLote([string]$PromptPath, [int[]]$RetryDelays = @(0
     $falha.Status = $ultimoCod
     $falha.RetryAfter = $ultimoRetryAfter
     $falha.Degradado402 = $degradado402
+    $falha.Tentativas = $tentativas
+    $falha.Causa402 = $causa402
+    $falha.Afford = $afford
+    # VERIF-TETO1: sem consumo so quando TODA tentativa foi recusada com 4xx antes de gerar.
+    # Transporte, timeout e 5xx podem ter consumido do lado do provider, entao nao entram.
+    $semConsumo = (@($tentativas).Count -gt 0)
+    foreach ($t in @($tentativas)) { if (-not ($t.status -ge 400 -and $t.status -lt 500)) { $semConsumo = $false } }
+    $falha.SemConsumo = $semConsumo
     if ($vacioFinal) {
         # Esgotou los retries (y fallback si existia) con resultado vacio: codigo SEMANTICO
         # estable, sin body/prompt/secret, para que el parser del motor no confunda con auth.

@@ -126,10 +126,10 @@ if ($Live -and $key) {
 $cleanup = Join-Path $root 'scripts\cleanup-rotina-artifacts.ps1'
 Assert-Check (Test-Path $cleanup) 'cleanup-rotina-artifacts.ps1 existe'
 
-$orchNot = Join-Path $root 'scripts\run_vixradar_noturno_claude.ps1'
+$orchNot = Join-Path $root 'scripts\run_vixradar_noturno.ps1'
 $batchNotH = Join-Path $root 'scripts\noturno-batch-haiku.md'
 $batchNotS = Join-Path $root 'scripts\noturno-batch-sonnet.md'
-Assert-Check (Test-Path $orchNot) 'run_vixradar_noturno_claude.ps1 orquestrado'
+Assert-Check (Test-Path $orchNot) 'run_vixradar_noturno.ps1 orquestrado'
 Assert-Check (Test-Path $batchNotH) 'noturno-batch-haiku.md existe'
 Assert-Check (Test-Path $batchNotS) 'noturno-batch-sonnet.md existe'
 if (Test-Path $orchNot) {
@@ -144,11 +144,11 @@ if (Test-Path $orchNot) {
     Assert-Check ($o -match 'Sem arquivos locais') 'noturno proibe artefatos locais'
 }
 
-$orchMat = Join-Path $root 'scripts\run_vixradar_matinal_claude.ps1'
+$orchMat = Join-Path $root 'scripts\run_vixradar_matinal.ps1'
 $batchMatH = Join-Path $root 'scripts\matinal-batch-haiku.md'
 $batchMatS = Join-Path $root 'scripts\matinal-batch-sonnet.md'
 $estMat = Join-Path $root 'scripts\_archive\estimate-matinal-tokens.ps1'
-Assert-Check (Test-Path $orchMat) 'run_vixradar_matinal_claude.ps1 orquestrado'
+Assert-Check (Test-Path $orchMat) 'run_vixradar_matinal.ps1 orquestrado'
 Assert-Check (Test-Path $batchMatH) 'matinal-batch-haiku.md existe'
 Assert-Check (Test-Path $batchMatS) 'matinal-batch-sonnet.md existe'
 Assert-Check (Test-Path $estMat) 'estimate-matinal-tokens.ps1 existe (ferramenta auxiliar, arquivada - nao e dependencia de runtime)'

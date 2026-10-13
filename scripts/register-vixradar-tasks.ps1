@@ -35,7 +35,7 @@ if (-not $PWSH) { $PWSH = 'pwsh' }
 $tasks = @(
     @{
         Name       = 'VIXRadar-Matinal'
-        Script     = Join-Path $ROOT 'scripts\run_vixradar_matinal_claude.ps1'
+        Script     = Join-Path $ROOT 'scripts\run_vixradar_matinal.ps1'
         Hour       = 10
         Minute     = 0
         DaysOfWeek = 'Monday','Tuesday','Wednesday','Thursday','Friday'
@@ -43,7 +43,7 @@ $tasks = @(
     },
     @{
         Name       = 'VIXRadar-Noturno'
-        Script     = Join-Path $ROOT 'scripts\run_vixradar_noturno_claude.ps1'
+        Script     = Join-Path $ROOT 'scripts\run_vixradar_noturno.ps1'
         Hour       = 18
         Minute     = 0
         DaysOfWeek = 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'
@@ -82,3 +82,4 @@ foreach ($t in $tasks) {
 Write-Host ""
 Write-Host "Verificar com:"
 Write-Host "  Get-ScheduledTask | Where-Object TaskName -like 'VIXRadar-*' | Select TaskName, State, NextRunTime"
+

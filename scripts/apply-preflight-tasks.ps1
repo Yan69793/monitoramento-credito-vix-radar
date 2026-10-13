@@ -1,4 +1,4 @@
-# apply-preflight-tasks.ps1 - re-aponta as 13 acoes de tarefa agendada para passar pelo guarda.
+﻿# apply-preflight-tasks.ps1 - re-aponta as 13 acoes de tarefa agendada para passar pelo guarda.
 #
 # ISTO E ATIVACAO, NAO PREPARACAO. NAO rode sem querer.
 #   - Sem -Apply o script apenas LE o Task Scheduler e imprime o antes/depois. Nenhuma escrita.
@@ -45,8 +45,8 @@ $Tarefas = @(
     @{ Nome = 'VIXRadar-Coleta-Volatilidade';   Script = 'scripts\run_coleta_volatilidade.ps1';              Log = 'logs\routines\coleta_volatilidade_{yyyyMMdd}.log';                 Args = @() }
     @{ Nome = 'VIXRadar-Export-Historico';      Script = 'scripts\run_vixradar_export_historico.ps1';        Log = 'logs\routines\vixradar-export_{yyyyMMdd_HHmmss}.log';              Args = @() }
     @{ Nome = 'VIXRadar-Health-Watch';          Script = 'scripts\watch-vixradar-health.ps1';                Log = 'logs\watch-health\watch_{yyyyMMdd}.log';                           Args = @() }
-    @{ Nome = 'VIXRadar-Matinal';               Script = 'scripts\run_vixradar_matinal_claude.ps1';          Log = 'logs\routines\vixradar-matinal_{yyyyMMdd}.log';                    Args = @() }
-    @{ Nome = 'VIXRadar-Noturno';               Script = 'scripts\run_vixradar_noturno_claude.ps1';          Log = 'logs\routines\vixradar-noturno_{yyyyMMdd}.log';                    Args = @() }
+    @{ Nome = 'VIXRadar-Matinal';               Script = 'scripts\run_vixradar_matinal.ps1';          Log = 'logs\routines\vixradar-matinal_{yyyyMMdd}.log';                    Args = @() }
+    @{ Nome = 'VIXRadar-Noturno';               Script = 'scripts\run_vixradar_noturno.ps1';          Log = 'logs\routines\vixradar-noturno_{yyyyMMdd}.log';                    Args = @() }
     @{ Nome = 'VIXRadar-Reconciliacao-CVM';     Script = 'scripts\predictive\reconciliar_ipe_cvm.ps1';       Log = 'logs\routines\vixradar-reconciliacao-cvm_{yyyyMMdd_HHmmss}.log';   Args = @() }
     @{ Nome = 'VIXRadar-Sentinela';             Script = 'scripts\run_vixradar_sentinela.ps1';               Log = 'logs\routines\vixradar-sentinela_{yyyyMMdd}.log';                  Args = @() }
     @{ Nome = 'VIXRadar-Verificacao-Async';     Script = 'scripts\run_vixradar_verificacao_async.ps1';       Log = 'logs\routines\vixradar-verificacao-async_{yyyyMMdd}.log';          Args = @() }
@@ -138,3 +138,4 @@ Write-Host ('conferencia: ' + $pendentes + ' acao(oes) pendente(s) de re-apontam
 Write-Host 'para aplicar: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "<este script>" -Apply   (janela elevada)'
 if ($falhas -gt 0) { exit 1 }
 exit 0
+
