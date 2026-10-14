@@ -4,6 +4,23 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.268.js = v4.9.267 + ADDPREVIEWCORS1: a origem do preview de homologacao
+#   do frontend v2 entra na ALLOWED_ORIGINS. O Worker so devolvia
+#   Access-Control-Allow-Origin para vixradar.com, www.vixradar.com,
+#   radar-credito.pages.dev e radar-credito-staging.pages.dev, entao
+#   ui-v2-preview.radar-credito.pages.dev recebia 204 sem o header e nenhuma
+#   credencial autenticava la (medido em 14/10: o preflight OPTIONS do preview
+#   devolve Vary: Origin e nenhum Access-Control-Allow-Origin). Unica mudanca
+#   desta versao: +1 origem na lista. As quatro origens existentes ficaram
+#   iguais, sem wildcard, sem tocar em corsHeaders, extractToken, CORS ou em
+#   qualquer caminho de autenticacao, permissao, rotina ou agendamento.
+#   Prova local: preflight de ui-v2-preview.radar-credito.pages.dev passa a
+#   devolver Access-Control-Allow-Origin com a propria origem; origem fora da
+#   lista continua sem header.
+#   Teste de regressao novo: api/test/cors-preview-origin.test.mjs, prova de duas
+#   pontas (reprova 4 de 10 casos contra o bundle v4.9.267 e passa 10/10 no
+#   candidato). Suite do Worker no candidato: 52 arquivos, 520/520 verdes.
+#   Rollback: main = "v4.9.267.js".
 # v4.9.267.js = v4.9.266 + RLADMIN4 (rate limit no formulario admin_mercado).
 #   O POST ?action=admin_mercado com Content-Type application/x-www-form-urlencoded e campo
 #   `senha` retornava ANTES do gate RLADMIN2/RLADMIN3, que so inspeciona corpos JSON com

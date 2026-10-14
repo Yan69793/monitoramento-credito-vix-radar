@@ -3620,7 +3620,8 @@ var ALLOWED_ORIGINS = [
   "https://vixradar.com",
   "https://www.vixradar.com",
   "https://radar-credito.pages.dev",
-  "https://radar-credito-staging.pages.dev"
+  "https://radar-credito-staging.pages.dev",
+  "https://ui-v2-preview.radar-credito.pages.dev"
 ];
 function corsHeaders(request) {
   const origin = request && request.headers ? request.headers.get("Origin") || "" : "";
