@@ -27,6 +27,9 @@ param(
 )
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1')
+# ORCAMENTOFIN1 (2026-10-14): a secao 9 exercita Get-VixSentinelaResultado, que vive na lib de
+# cobertura (mesma funcao que a sentinela chama em producao - sem replica local da regra).
+. (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1')
 
 $script:ok = 0; $script:fal = 0
 function Assert([bool]$c, [string]$m) { if ($c) { $script:ok++; Write-Host ('  OK    ' + $m) } else { $script:fal++; Write-Host ('  FALHA ' + $m) } }
@@ -230,6 +233,42 @@ try {
     $dSem = Get-VixDisponivelSentinela -Custo (& $mk 600000) -Config $c8b
     Assert ($dSem -gt 320000) ("8d: sem SENTINELA_DIA vale so a sobra do dia (" + $dSem + "), prova de que o limite e que contem")
     Assert (([int64]$c8.TETO_DIA) -eq 2600000) '8e: o TETO_DIA global nao foi alterado'
+
+    # ============================================================
+    Write-Host '=== 9: ORCAMENTOFIN1 - desfecho da sentinela por trabalho, duas pontas ==='
+    # 9a: caso REAL de 13/10/2026 21:58 (cap 17.112 contra custo medido de 156.293): nenhum
+    # lote disparado, zero token, 8 deferidos TODOS por orcamento -> nao e entrega parcial.
+    $r9a = Get-VixSentinelaResultado -LotesOk 0 -LotesFalhaProvider 0 -SubmitOk 0 -SubmitFail 0 -SemResultado 0 -TokensAcum 0 -Deferidos 8 -DeferidosOrcamento 8 -DeferidosOutros 0 -Excedente 2
+    Assert ($r9a.Resultado -eq 'SEM_ORCAMENTO') ('9a: sem lote disparado e deferido so por orcamento -> SEM_ORCAMENTO (obtido ' + $r9a.Resultado + ')')
+    Assert ([int]$r9a.Exit -eq 0) ('9a: exit 0, nao 10 (obtido ' + $r9a.Exit + ')')
+
+    # 9b: PONTA BOA do mesmo caso - um lote entregue e cauda deferida por orcamento segue PARCIAL.
+    $r9b = Get-VixSentinelaResultado -LotesOk 1 -LotesFalhaProvider 0 -SubmitOk 2 -SubmitFail 0 -SemResultado 0 -TokensAcum 156293 -Deferidos 3 -DeferidosOrcamento 3 -DeferidosOutros 0 -Excedente 0
+    Assert ($r9b.Resultado -eq 'PARCIAL' -and [int]$r9b.Exit -eq 10) ('9b: rodou e ficou cauda -> PARCIAL/exit 10 (obtido ' + $r9b.Resultado + '/' + $r9b.Exit + ')')
+
+    # 9c: PONTA BOA (regressao de 13/10): gastou token mas nada foi analisado -> continua PARCIAL.
+    $r9c = Get-VixSentinelaResultado -LotesOk 1 -LotesFalhaProvider 0 -SubmitOk 0 -SubmitFail 0 -SemResultado 0 -TokensAcum 156293 -Deferidos 0 -DeferidosOrcamento 0 -DeferidosOutros 0 -Excedente 0
+    Assert ($r9c.Resultado -eq 'OK') ('9c: lote processado sem pendencia -> OK (obtido ' + $r9c.Resultado + ')')
+
+    # 9d: deferimento que NAO e orcamento (tempo/disjuntor/uso desconhecido) nunca vira SEM_ORCAMENTO.
+    $r9d = Get-VixSentinelaResultado -LotesOk 0 -LotesFalhaProvider 0 -TokensAcum 0 -Deferidos 4 -DeferidosOrcamento 0 -DeferidosOutros 4 -Excedente 0
+    Assert ($r9d.Resultado -eq 'PARCIAL' -and [int]$r9d.Exit -eq 10) ('9d: deferido por motivo que nao e orcamento segue PARCIAL/exit 10 (obtido ' + $r9d.Resultado + '/' + $r9d.Exit + ')')
+
+    # 9e: todos os lotes falharam por provedor -> exit 9, nunca OK.
+    $r9e = Get-VixSentinelaResultado -LotesOk 0 -LotesFalhaProvider 2 -TokensAcum 0 -Deferidos 0 -Excedente 0
+    Assert ($r9e.Resultado -eq 'FALLO_PROVEEDOR' -and [int]$r9e.Exit -eq 9) ('9e: todos os lotes falharam -> FALLO_PROVEEDOR/exit 9 (obtido ' + $r9e.Resultado + '/' + $r9e.Exit + ')')
+
+    # 9f: zerado e sem gatilho -> OK exit 0 (o caminho "plano vazio" nao regride).
+    $r9f = Get-VixSentinelaResultado -LotesOk 0 -LotesFalhaProvider 0 -TokensAcum 0 -Deferidos 0 -Excedente 0
+    Assert ($r9f.Resultado -eq 'OK' -and [int]$r9f.Exit -eq 0) ('9f: sem pendencia -> OK/exit 0 (obtido ' + $r9f.Resultado + '/' + $r9f.Exit + ')')
+
+    # 9g: a sentinela CHAMA a funcao pura (ligacao), e a cadeia de ifs paralela morreu.
+    $srcSentinela = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'run_vixradar_sentinela.ps1') -Raw -Encoding UTF8
+    Assert ($srcSentinela -match 'Get-VixSentinelaResultado') '9g: run_vixradar_sentinela.ps1 chama Get-VixSentinelaResultado'
+    Assert (-not ($srcSentinela -match "trabalhoZeroS")) '9h: a segunda copia inline da regra foi removida (sem trabalhoZeroS)'
+    $fnFonte = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1') -Raw -Encoding UTF8
+    Assert ($fnFonte -match 'function Get-VixSentinelaResultado') '9i: a regra vive em lib\vixradar-cobertura.ps1 (definicao unica)'
+    Assert ($srcSentinela -match 'Add-VixPendenteSentinela \$e ''cap_sentinela''') '9j: o deferido por orcamento continua indo para a fila pendente (recuperacao preservada)'
 }
 finally {
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue

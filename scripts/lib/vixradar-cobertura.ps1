@@ -159,6 +159,51 @@ function Get-VixDecisaoCapSentinela([int64]$Acum, [int64]$Cap, [int64]$CustoEsti
     return @{ Cabem = 1; Calibracao = $true; Motivo = 'calibracao_1_emissor' }
 }
 
+# ORCAMENTOFIN1 (2026-10-14): desfecho da SENTINELA em funcao pura, para o teste exercitar a
+# MESMA regra que a producao usa (licao da CORRECAO 5: guarda que nao exercita o codigo do
+# pipeline nao e guarda).
+#
+# O defeito que isto fecha: a execucao que NAO conseguiu disparar NENHUM lote por falta de
+# orcamento saia PARCIAL/exit 10 com tokens=0, analisados=0 e deferidos=8 - medido em
+# 13/10/2026 (cap da execucao 17.112 contra custo medido de 156.293). O Agendador marcava a
+# task como falha e o monitor lia ENTREGA_PARCIAL, que ele mesmo descreve como "a rotina rodou
+# e entregou parte" - o que nao aconteceu. O estado correto para esse caso e o MESMO que o
+# circuito fechado ja usa (SEM_ORCAMENTO, exit 0), com os emissores preservados na fila
+# pendente e backlog=True.
+#
+# PARCIAL/exit 10 continua valendo, sem nenhuma mudanca, para toda execucao que gastou token,
+# analisou, entregou em parte, ou deferiu por motivo que NAO seja orcamento (tempo, uso
+# desconhecido, disjuntor de provedor) - e para o excedente do teto do Worker.
+function Get-VixSentinelaResultado {
+    param(
+        [int]$LotesOk = 0,
+        [int]$LotesFalhaProvider = 0,
+        [int]$SubmitOk = 0,
+        [int]$SubmitFail = 0,
+        [int]$SemResultado = 0,
+        [int64]$TokensAcum = 0,
+        [int]$Deferidos = 0,
+        [int]$DeferidosOrcamento = 0,
+        [int]$DeferidosOutros = 0,
+        [int]$Excedente = 0
+    )
+    $lotesIntentados = $LotesOk + $LotesFalhaProvider
+    # Trabalho zero: nenhum lote processado, nenhum submit, nenhum lote sem resultado e nada
+    # gasto. E o estado em que a execucao nao tentou - nao o estado em que ela tentou e nao
+    # concluiu.
+    $trabalhoZero = (($LotesOk -eq 0) -and ($LotesFalhaProvider -eq 0) -and ($SubmitOk -eq 0) -and ($SubmitFail -eq 0) -and ($SemResultado -eq 0) -and ($TokensAcum -eq 0))
+    if ($trabalhoZero -and $DeferidosOrcamento -gt 0 -and $DeferidosOutros -eq 0) {
+        return @{ Resultado = 'SEM_ORCAMENTO'; Exit = 0; Motivo = 'cap_sentinela_sem_orcamento' }
+    }
+    if ($lotesIntentados -gt 0 -and $LotesOk -eq 0 -and $LotesFalhaProvider -gt 0) {
+        return @{ Resultado = 'FALLO_PROVEEDOR'; Exit = 9; Motivo = 'todos_os_lotes_falharam_por_provedor' }
+    }
+    if ($SemResultado -gt 0 -or $SubmitFail -gt 0 -or $Deferidos -gt 0 -or $Excedente -gt 0) {
+        return @{ Resultado = 'PARCIAL'; Exit = 10; Motivo = 'cobertura_incompleta' }
+    }
+    return @{ Resultado = 'OK'; Exit = 0; Motivo = 'sem_gatilho_ou_cobertura_completa' }
+}
+
 function Get-VixMediana([object[]]$Valores) {
     $v = @($Valores | Where-Object { $null -ne $_ } | ForEach-Object { [double]$_ } | Sort-Object)
     if ($v.Count -eq 0) { return $null }

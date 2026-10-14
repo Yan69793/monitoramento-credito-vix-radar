@@ -9,6 +9,64 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 14/10: correcoes dos 6 problemas de 13/10 (FINAL-14OUT1), com validacao de runtime pendente
+
+> **Status:** ABERTO pelas validacoes de runtime; codigo e testes fechados. Nada foi commitado, deployado, agendado ou executado. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-14.
+
+**P2, runtime pendente (Matinal 14/10 10:06).** Primeira execucao real com o coletor e com o motor alterado (failover do Codex inerte: `VIXRADAR_CODEX_FALLBACK_PROVIDER` vazio). Criterios: `COLETOR_PS: ativo=True`, `CAP_ESCALADA`/`CAP_EFETIVO`, `FIM` presente, `cap_excedido=0`, `FONTES_COLETOR`, nenhum emissor `ANALISADO` duas vezes, zero falso OK.
+
+**P2, runtime pendente (Sentinela 14/10 09:25).** Medir o desfecho novo (`ORCAMENTOFIN1`): esperado rodar 1 a 2 emissores com o orcamento do dia e, quando o dia estourar, sair `SEM_ORCAMENTO`/exit 0 em vez de `PARCIAL`/exit 10. Confirmar no log a linha `FIM: sentinela resultado=SEM_ORCAMENTO ... deferidos_orcamento=N motivo=cap_sentinela_sem_orcamento`.
+
+**P2, runtime pendente (Export 14/10 20:45).** `LastTaskResult` deve ser 0, duracao proxima de 200 s e `data/historico/2026-10-14` commitado, provando o KVTIMEOUT1 em execucao real.
+
+**P2, runtime pendente (Reconciliacao CVM 19/10 12:00).** `LastTaskResult` deve ser 0 com o `KVOUTPUT1` corrigido; confirmar que o FIM sai `ok` (e nao `parcial`) e que `radar:reconciliacao_cvm:latest` e publicado. O defeito nao causou perda de dado (o put ja dava 200 no log do wrangler): o que estava errado era o sinal de falha.
+
+**P2, decisao do operador.** Ligar `VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter` (CODEXFALLBACK-OR1) exige duas coisas que o gate atual NAO verifica: (a) saldo no OpenRouter - `Test-VixOpenRouterPronto` valida chave e modelo, nao credito, e a conta estava zerada em 12/09/2026; (b) responsabilidade pelo custo, que sai do provedor gratuito para o pago. Sem essa decisao o desvio fica inerte e o comportamento e o de antes.
+
+**P3.** `run_vixradar_verificacao_async.ps1` e `run_vixradar_agenda_semanal.ps1` ainda NAO tem o desvio Codex->OpenRouter: os dois chamam o Codex e o adapter no mesmo `if/elseif` sem `ProviderOverride`, entao precisam de refatoracao propria do batch (como a que a sentinela recebeu). A lib e a decisao ja estao prontas para os dois.
+
+**P3, medido e nao corrigido.** A Sentinela que roda com sucesso e deixa `excedente_worker > 0` (mais de 8 emissores com gatilho de fato novo) fecha `PARCIAL`/exit 10 mesmo entregando os 8 que o proprio teto permite. E o mesmo padrao do defeito corrigido em 14/10, mas na ponta de quem trabalhou - mexer nisso muda o contrato de cobertura e e decisao a parte.
+
+**P3, risco conhecido e nao deployado.** `painel_fresco` mede a escrita do estado, nao a analise concluida: em 14/10 as 04:29Z ele estava `true` com `painel_idade_min:454` e a cobertura real do dia 13/10 foi 2 de 104. O campo que mede analise (`painel_analise_fresca`, ANALISEVSSCRITA1) esta no working tree e depende de deploy do Worker, que nao foi autorizado.
+
+**P4, higiene do repositorio.** `scripts/test-vixfix-20261006.ps1` esta NAO RASTREADO e e coletado pelo `run-all-tests.ps1` (que enumera `test-*.ps1`): foi editado nesta sessao para prender a regra unica do desfecho da sentinela, mas segue fora do Git. Tambem ha uma dezena de `scripts/fix-*`/`scripts/session-*` nao rastreados de sessoes anteriores.
+
+**P2, achado de verificacao de 14/10 (nao e desta sessao, mas nao estava na fila).** O working tree carrega, desde 10/10, quatro correcoes do Worker **nao deployadas**: `CONTAGEMFONTE1` (identidade independente da ingestao CVM), `HEALTHBACKLOG1` (`verif_fila_pendentes`/`verif_fila_mais_antiga_h`/`api_disponivel`), `ANALISEVSSCRITA1` (`painel_analise_fresca`, o campo que separa escrita de estado de analise concluida) e `RLADMIN4`, que e **seguranca** - o formulario `admin_mercado` chega em `form-urlencoded` e retornava ANTES do gate de rate limit, deixando o `ADMIN_PASSWORD` sem throttle de brute force. Prova de que nao estao no ar: o health de producao (`v4.9.266`) nao traz `verif_fila_pendentes`, `cvm_ingestao_identidade_ok` nem `painel_analise_fresca`. Deploy exige autorizacao explicita e passa por `scripts/deploy-worker.ps1` (que aborta com `api/wrangler.toml` sujo, hoje o caso).
+
+## 13/10: Escalada seletiva por emissor implementada (COBERTURA-13OUT4), pronta e SEM homologacao operacional
+
+> **Status:** ABERTO. A escalada existe, esta testada offline e esta INERTE em producao (`VIXRADAR_COLETOR_PS=0`). Nenhuma rotina foi executada. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-13.
+
+**P1, decisao do operador.** `VIXRadar-Noturno` segue DESABILITADA (medido: `Disabled`, `LastTaskResult=10`, `Next=14/10 18:05`). Reabilitar hoje reproduz a noturna PARCIAL de 13/10, porque a escalada so liga junto com `VIXRADAR_COLETOR_PS`. Reabilitar: `Enable-ScheduledTask -TaskName "VIXRadar-Noturno"`.
+
+**P2.** Homologar a escalada numa execucao real dirigida (medir custo por emissor escalado e taxa de escalada) antes de ligar `VIXRADAR_COLETOR_PS`. Nada foi executado nesta sessao: zero token gasto, nenhum dry-run.
+
+**P2.** Orcamento da escalada nao cabe no cap da propria noturna: projetado com custo medido, os 62 MATERIAL da triagem custam ~679k no pacote barato contra cap 700k, sobrando 21k. A folga do dia cobre ~7 emissores FULL por dia contra 62 sinalizados; cobertura integral em fonte primaria exigiria ~11M/dia. Decidir linha de orcamento propria ou aceitar a cobertura parcial.
+
+**P3.** A sombra da triagem nunca rodou em execucao real: NAO HA MEDICAO DE REVOCACAO (nenhum `logs/routines/relevancia_sombra_*.jsonl` existe). Sem ela o filtro de relevancia nao pode ser ligado.
+
+**P3.** A Sentinela nao tem escalada por emissor: ela so roda lote que cabe no proprio cap, e o custo medido (147k a 156k) esta acima do cap de 120k. Nao reabilitar varredura por ela sem decisao de cap.
+
+**P3, medido e nao corrigido.** `Get-VixCustoEstimadoTier 'FULL'` vale 31.068,75 por emissor (media dos slots FULL da matinal de 13 a 19/09) e o custo medido de 13/10 no modo FULL foi ~178k, 5,7x maior. A reserva pre-lote da rotacao noturna usa a constante, entao ela seleciona mais FULL do que o cap consegue rodar e o excedente sai DEFERIDO - foi o que a noturna de 13/10 mostrou. A escalada NAO usa a constante sozinha: `ESCALADA_CUSTO_BASE` pega o maximo entre a constante e o historico medido do provedor. Corrigir a constante muda numero de outras suites (orcamento-sentinela, profundidade-noturna) e e decisao a parte.
+
+**P3.** Fila persistente medida com **92 entradas** (todas `cap_efetivo`, `tentativas=2`): recuperavel por prioridade, e agora tambem consumida pela escalada.
+
+**Achado corrigido de passagem (ENVIADOS1):** `$enviados` nunca era atribuido no motor, entao o ramo `DESCARTE_PARCIAL` estava morto e um dia podia fechar OK com evento parcialmente descartado pelo Worker. Corrigido e provado nas duas pontas.
+
+## 13/10: Cobertura analitica, estouro da Sentinela e modo coletor (COBERTURA-13OUT1/2/3), controles prontos, SEM homologacao
+
+> **Status:** ABERTO. Controle preventivo da Sentinela, triagem e filtro de relevancia em sombra e fontes do coletor implementados e testados; nada provado em execucao agendada. Nota completa em `105 - Cobertura Analitica e Sentinela 2026-10-13.md`. **Data:** 2026-10-13.
+
+**P1, decisao do operador.** `VIXRadar-Noturno` esta DESABILITADA desde 17:56 de 13/10. Reabilitar com `Enable-ScheduledTask -TaskName "VIXRadar-Noturno"`. A base nao esta atualizada para os 104 (noturna manual PARCIAL, 2 analisados, 90 deferidos).
+
+**P2.** Custo medido por emissor (147k a 178k) esta acima do cap da Sentinela (120k): ela nao admite mais emissor pelo Codex. Decidir entre subir o cap (nao alterado) ou aceitar. Teto do dia 2,6M comporta ~28 analises de IA por dia contra 104 emissores.
+
+**P2.** Escalada por emissor (pacote barato de ~11k, ferramenta so onde ha divergencia) nao implementada. Medicao em dry-run: o modo coletor sozinho deixa INCONCLUSIVO todo emissor com manchete fresca. Nao ligar `VIXRADAR_COLETOR_PS` antes. `VIXRADAR_COLETOR_PS=0` (User) esta sem motivo documentado. **IMPLEMENTADA em 13/10 (COBERTURA-13OUT4), ver o item no topo desta fila: existe e esta testada, segue inerte e sem homologacao.**
+
+**P3.** Medir a revocacao da sombra (`relevancia_sombra_AAAAMMDD.jsonl`, `Get-VixRevocacaoRelevancia`) por alguns dias uteis antes de ligar triagem ou filtro. Rating e mercado como gate exigem campo novo no Worker (deploy). Rodizio FULL semanal por risco.
+
+**Validacao operacional pendente:** procurar `CAP_PREVENTIVO` e `TRIAGEM_RESUMO ... sombra=1` no log da proxima execucao agendada.
+
 ## 29/09: `Szuchmacher-RetryVixMatinal` Disabled — comportamento esperado (decisao do operador), nao falha. Nada a corrigir.
 
 > **Status:** REGISTRADO, SEM ACAO. Diagnosticada como comportamento esperado; nenhuma alteracao feita e nenhuma planejada. **Data da Versao:** 2026-09-29. **Origem do Registro:** diagnostico pedido pelo operador sobre estado `Disabled`, 25 execucoes perdidas e `NextRun` de 30/09; resposta aceita, operador instruiu apenas registrar e encerrar (sem religar, recriar, alterar triggers, commit ou deploy).
@@ -3463,3 +3521,10 @@ Verificado em 14/08: token ativo mas `pages/projects` devolve Authentication err
 *Anterior: 2026-08-04 12h BRT (auditoria geral: P0 do painel admin e P1 do Worker corrigidos no repo, os dois aguardando deploy).*
 
 *Anterior: 2026-08-03 18h30 BRT (fila ZERADA: 4 P2 + 1 P4 + 2 P3 resolvidos. Shadow encerrado, Sonnet mantido. Ranking-Mensal: remover. Sessao SESSION-CLEANUP1 concluida.)*
+
+
+## 2026-10-14 ORCAMENTO-13OUT7 (aberto ate a Matinal das 10:06)
+Commit 18a3b33. Coletor ativo (COLETOR_PS=1 User) e Noturna reabilitada. Sentinela com SENTINELA_DIA=320000 e cap 170000, escalada FULL com pool proprio (matinal 360k, noturna 540k), TETO_DIA 2.6M intocado. Falta a primeira execucao real: conferir COLETOR_PS ativo, ESCALADA_DECISAO, CAP_ESCALADA, cap_excedido e nenhum INCONCLUSIVO como QUIETO. Rollback: VIXRADAR_COLETOR_PS=0 (User). Detalhe em status/ESTADO.md.
+
+## 2026-10-14 VALIDACAO-14OUT1
+Export-Historico 267014 em 13/10: o Agendador matou a instancia no limite de 25 min, mas o script terminou OK e commitou o historico. Causa: pre-voo do KV levou 26 min (20:45:12 a 21:11:11) porque npx wrangler kv key get roda sem timeout. Correcao pronta e validada, nao aplicada: tmp/operacional/vix-radar/fix-export/export-kv-timeout.patch. Verificador da Matinal real: tmp/operacional/vix-radar/verificar-rotina-real.ps1. Detalhe em status/ESTADO.md.

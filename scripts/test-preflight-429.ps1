@@ -6,6 +6,15 @@
 $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 
+# PROVIDERFIX (2026-10-14): esta suite prova o caminho do CLI Claude (Test-VixWebSearchProbe /
+# Invoke-VixWebSearchPreflight com stub de claude.cmd no PATH), que o gate CLAUDE-FREE so libera
+# sob provider de Claude. Com o provider ativo hoje em `codex` (medido: User=[codex], desde
+# 13/10), ela morria em exit 86 (BLOQUEADO_SEM_PROVIDER, gatilho=lib-ambient-Test-VixWebSearchProbe)
+# ANTES de exercitar qualquer caso - o ambiente da maquina nao e a variavel sob teste. A suite
+# declara, no escopo DESTE processo e so nele, o provider do caminho que ela exercita.
+$__providerOriginal = $env:VIXRADAR_LLM_PROVIDER
+$env:VIXRADAR_LLM_PROVIDER = 'claude-subscription'
+
 $script:okN = 0; $script:fal = 0
 function Assert([bool]$cond, [string]$msg) { if ($cond) { $script:okN++; Write-Host ('  OK    ' + $msg) } else { $script:fal++; Write-Host ('  FALHA ' + $msg) } }
 
@@ -182,12 +191,16 @@ try {
     $env:VIX_STUB_OUTFILE = Write-VixOutFile '{"is_error":true,"result":"unexpected internal failure","type":"result"}'
     $env:VIX_STUB_ERRFILE = Write-VixOutFile ('debug ANTHROPIC_API_KEY=' + $script:PrefixoFake + 'ant-api03-FAKESECRETVALUE123456789 Bearer abcd1234efgh')
     $env:VIX_STUB_EXIT = '1'
-    Remove-Item -Path (Join-Path $env:TEMP 'wsprobe_diag_*.log') -Force -ErrorAction SilentlyContinue
-    $antesF = @(Get-ChildItem -Path $env:TEMP -Filter 'wsprobe_diag_*.log' -ErrorAction SilentlyContinue | ForEach-Object Name)
+    # CLEANUP-PID1 (2026-10-14): o glob sem PID apagava diagnostico de OUTRA instancia da suite
+    # rodando em paralelo no mesmo %TEMP% (medido: execucao concomitante desta suite fez 14
+    # asserts serem pulados em silencio - o bloco F nao encontrava o proprio diagnostico).
+    # Escopo por PID: cada processo limpa somente o que ele mesmo criou.
+    Remove-Item -Path (Join-Path $env:TEMP ('wsprobe_diag_*_' + $PID + '.log')) -Force -ErrorAction SilentlyContinue
+    $antesF = @(Get-ChildItem -Path $env:TEMP -Filter ('wsprobe_diag_*_' + $PID + '.log') -ErrorAction SilentlyContinue | ForEach-Object Name)
     $rF = Test-VixWebSearchProbe
     Assert ($rF -eq $false) 'F: sonda falha (erro desconhecido)'
     Assert ($script:VixWsProbeMotivo -eq 'erro_desconhecido') ('F: motivo erro_desconhecido (obtido ' + $script:VixWsProbeMotivo + ')')
-    $diagsF = @(Get-ChildItem -Path $env:TEMP -Filter 'wsprobe_diag_*.log' -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin $antesF })
+    $diagsF = @(Get-ChildItem -Path $env:TEMP -Filter ('wsprobe_diag_*_' + $PID + '.log') -ErrorAction SilentlyContinue | Where-Object { $_.Name -notin $antesF })
     Assert ($diagsF.Count -ge 1) 'F: diagnostico foi gravado'
     if ($diagsF.Count -ge 1) {
         $conteudoF = Get-Content -LiteralPath $diagsF[0].FullName -Raw -Encoding UTF8
@@ -244,8 +257,10 @@ try {
 finally {
     Remove-Item Env:\VIX_STUB_OUTFILE, Env:\VIX_STUB_ERRFILE, Env:\VIX_STUB_EXIT, Env:\VIX_STUB_MARKER, Env:\VIX_STUB_CALLLOG -ErrorAction SilentlyContinue
     Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
-    Remove-Item -Path (Join-Path $env:TEMP 'wsprobe_*.txt') -Force -ErrorAction SilentlyContinue
-    Remove-Item -Path (Join-Path $env:TEMP 'wsprobe_diag_*.log') -Force -ErrorAction SilentlyContinue
+    # CLEANUP-PID1: escopo por PID - nao apagar artefato de outra instancia concorrente.
+    Remove-Item -Path (Join-Path $env:TEMP ('wsprobe_' + $PID + '.txt')) -Force -ErrorAction SilentlyContinue
+    Remove-Item -Path (Join-Path $env:TEMP ('wsprobe_diag_*_' + $PID + '.log')) -Force -ErrorAction SilentlyContinue
+    $env:VIXRADAR_LLM_PROVIDER = $__providerOriginal
 }
 
 Write-Host ''

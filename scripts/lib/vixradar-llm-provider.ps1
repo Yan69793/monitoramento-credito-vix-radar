@@ -35,6 +35,8 @@
 #   Test-VixLlmGateViolacao                 -> bool; classifica 9006 no monitor
 #   Get-VixLlmBloqueadoMsg [Gatilho]  -> string canonica (para o Write-Log do chamador)
 #   Get-VixClaudeFallbackOpenRouterHabilitado -> bool; CLAUDEFALLBACK-OR1, le VIXRADAR_CLAUDE_FALLBACK_PROVIDER
+#   Get-VixCodexFallbackOpenRouterHabilitado  -> bool; CODEXFALLBACK-OR1, le VIXRADAR_CODEX_FALLBACK_PROVIDER
+#   Get-VixCodexFailoverDecisao              -> 'failover'|'fail-closed'; decisao pura do desvio Codex->OpenRouter
 #   Stop-VixLlmBloqueado [Gatilho]    -> imprime a linha canonica e exit 86 (backstop)
 #
 # PowerShell 5.1, ASCII puro, sem dependencia de rede nem de credencial.
@@ -176,6 +178,56 @@ function Get-VixClaudeFallbackOpenRouterHabilitado {
     if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CLAUDE_FALLBACK_PROVIDER', 'User') }
     if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CLAUDE_FALLBACK_PROVIDER', 'Machine') }
     return ((('' + $v).Trim().ToLowerInvariant()) -eq 'openrouter')
+}
+
+# CODEXFALLBACK-OR1 (2026-10-14): o terceiro sentido do failover entre provedores. Existe
+# openrouter->claude-subscription (VIXRADAR_OPENROUTER_FALLBACK_PROVIDER, so 402 de credito)
+# e claude-subscription->openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER, CLAUDEFALLBACK-OR1).
+# Faltava o sentido do provedor ATIVO hoje: quando VIXRADAR_LLM_PROVIDER=codex e o Codex
+# fica inutilizavel (cota da assinatura, credencial recusada, modelo indisponivel ou
+# indisponibilidade persistente), a rotina inteira parava sem rede de seguranca. Esta
+# funcao liga o desvio opt-in, com a MESMA forma das outras duas: ausente, vazia ou
+# qualquer valor que nao seja o literal 'openrouter' mantem o comportamento fail-closed
+# que ja existia. Nenhuma credencial e lida aqui.
+function Get-VixCodexFallbackOpenRouterHabilitado {
+    $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CODEX_FALLBACK_PROVIDER', 'Process')
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CODEX_FALLBACK_PROVIDER', 'User') }
+    if (-not $v) { $v = [Environment]::GetEnvironmentVariable('VIXRADAR_CODEX_FALLBACK_PROVIDER', 'Machine') }
+    return ((('' + $v).Trim().ToLowerInvariant()) -eq 'openrouter')
+}
+
+# Decisao PURA do desvio Codex->OpenRouter (CODEXFALLBACK-OR1). Sem rede, sem segredo e sem
+# estado: o chamador informa o que mediu e recebe o roteamento.
+#
+#   'failover' = transfere SOMENTE ESTE LOTE para o adapter OpenRouter
+#   'fail-closed' = preserva exatamente o comportamento anterior (lote falha, disjuntor,
+#                   emissor volta pela fila)
+#
+# Classes elegiveis (as tres primeiras vem de Get-VixClasseFalhaProvider):
+#   cota                (inclui saldo/credito esgotado e limite de uso)
+#   auth                (credencial recusada/expirada)
+#   modelo_indisponivel (modelo inexistente/retirado = indisponibilidade de fato)
+#   transitoria         SOMENTE apos o limite de falhas consecutivas do provedor, que e o
+#                       que separa instabilidade momentanea de indisponibilidade persistente
+#
+# Recursao: com ProviderOverrideAtivo=$true a funcao nunca devolve 'failover'. Sem esta
+# guarda, o desvio Codex->OpenRouter chamaria de volta o caminho Codex quando o lote
+# desviado falhasse, e o conjunto viraria laco.
+function Get-VixCodexFailoverDecisao {
+    param(
+        [string]$Classe = '',
+        [int]$FalhasConsecutivas = 0,
+        [bool]$DestinoPronto = $false,
+        [bool]$Habilitado = $false,
+        [bool]$ProviderOverrideAtivo = $false,
+        [int]$LimitePersistencia = 2
+    )
+    if ($ProviderOverrideAtivo) { return 'fail-closed' }
+    if (-not $Habilitado) { return 'fail-closed' }
+    if (-not $DestinoPronto) { return 'fail-closed' }
+    if ($Classe -eq 'cota' -or $Classe -eq 'auth' -or $Classe -eq 'modelo_indisponivel') { return 'failover' }
+    if ($Classe -eq 'transitoria' -and $FalhasConsecutivas -ge $LimitePersistencia) { return 'failover' }
+    return 'fail-closed'
 }
 
 # BRIDGE-DEEPSEEK1 (2026-09-23): ponte temporaria autorizada pelo operador ate 2026-09-26, para

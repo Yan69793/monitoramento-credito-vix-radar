@@ -115,18 +115,27 @@ function Test-ClaudeAuthFailure([string[]]$outputLines) {
 # Identico ao padrao de run_vixradar_verificacao_async.ps1 (mesmas flags de economia/isolamento
 # ja validadas em producao). WebSearch/WebFetch apenas - este script nunca precisa de Bash
 # porque toda I/O com o Worker roda aqui em PowerShell, nao dentro da sessao do claude -p.
-function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada) {
+function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada, [string]$ProviderOverride = '') {
     $prevEAP = $ErrorActionPreference
     $ErrorActionPreference = 'Continue'
     $stderrFile = Join-Path $LogDir ('agendasem_stderr_' + $DateTag + '_' + $PID + '.txt')
     $raw = $null; $exitCode = 1
+    $providerFalhou = $false
+    # CODEXFALLBACK-OR1 (2026-10-14): ProviderOverride existe para o desvio de UM lote do Codex
+    # para o adapter OpenRouter quando o Codex fica inutilizavel (cota, credencial, modelo
+    # indisponivel ou indisponibilidade persistente). Vale so para esta invocacao; a decisao (e
+    # a guarda contra recursao) vive em Get-VixCodexFailoverDecisao.
+    $providerAgenda = if ($ProviderOverride) { $ProviderOverride.Trim().ToLowerInvariant() } elseif ($script:VixUsaCodex) { 'codex' } elseif ($script:VixUsaOpenRouter) { 'openrouter' } else { 'claude' }
+    $usaCodexA = ($providerAgenda -eq 'codex')
+    $usaOrA = ($providerAgenda -eq 'openrouter')
+    $providerOverrideAtivoA = [bool]$ProviderOverride
     $fallbackArgs = @()
     if ($ModelFallback -and $ModeloChamada -ne $ModelFallback) { $fallbackArgs = @('--fallback-model', $ModelFallback) }
     try {
         # Fase B D1 (2026-09-04): provider openrouter despacha para o adapter HTTP proprio
         # (lib\vixradar-openrouter.ps1), com as server tools web_search/web_fetch. Sem claude,
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter.
-        if ($script:VixUsaCodex) {
+        if ($usaCodexA) {
             $codexOutFile = Join-Path $LogDir ('agendasem_codex_' + $DateTag + '_' + $PID + '.txt')
             $promptText = Get-Content $promptPath -Raw -Encoding UTF8
             # CODEX-SKILLBLOCK1 (2026-10-09): ver run_vixradar_varredura.ps1/run_vixradar_sentinela.ps1.
@@ -148,9 +157,45 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$ModeloChamada) {
                 # [string] (ToString) descarta as note properties, igual a verificacao_async.
                 $codexText = [string](Get-Content -LiteralPath $codexOutFile -Raw -Encoding UTF8)
                 $raw = @(([ordered]@{ result=$codexText; is_error=$false; model='codex-subscription' } | ConvertTo-Json -Compress))
-            } else { $raw = @($codexRaw) }
+                if ([string]::IsNullOrWhiteSpace($codexText)) { $providerFalhou = $true; $exitCode = 1 } else {
+                    # CODEXFALLBACK-OR1: lote do Codex entregue zera o contador de falhas
+                    # consecutivas do provedor (separa instabilidade de indisponibilidade
+                    # persistente para a decisao de desvio).
+                    $script:VixCodexProviderFalhasConsecutivas = 0
+                }
+            } else { $providerFalhou = $true; $raw = @($codexRaw) }
             Remove-Item $codexOutFile -Force -ErrorAction SilentlyContinue
-        } elseif ($script:VixUsaOpenRouter) {
+            # CODEXFALLBACK-OR1 (2026-10-14): o provedor ativo e o Codex e ele nao tinha fallback.
+            # Desvio opt-in, fail-closed, de UM lote para o adapter OpenRouter. A regra pura
+            # (classes elegiveis + guarda contra recursao + destino pronto) vive em
+            # Get-VixCodexFailoverDecisao; aqui entram so os fatos medidos neste lote.
+            if ($providerFalhou) {
+                $script:VixCodexProviderFalhasConsecutivas = [int]$script:VixCodexProviderFalhasConsecutivas + 1
+                $__fxHabA = (Get-VixCodexFallbackOpenRouterHabilitado)
+                $__fxDestA = $false
+                if ($__fxHabA -and -not $providerOverrideAtivoA -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+                    $__fxBootA = Test-VixOpenRouterPronto
+                    $__fxDestA = [bool]$__fxBootA.ok
+                    if (-not $__fxDestA) { Write-Log ('FALLBACK_OPENROUTER_CODEX: habilitado, mas o destino nao esta pronto (' + $__fxBootA.motivo + '). Sem desvio; vale o fail-closed anterior.') }
+                }
+                $__errTxtA = ('' + (@($codexRaw) -join ' '))
+                if (Test-Path $stderrFile) { $__errTxtA += (' ' + (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue)) }
+                $__fxClsA = Get-VixClasseFalhaProvider $__errTxtA
+                $__fxDecA = Get-VixCodexFailoverDecisao -Classe $__fxClsA -FalhasConsecutivas $script:VixCodexProviderFalhasConsecutivas -DestinoPronto $__fxDestA -Habilitado $__fxHabA -ProviderOverrideAtivo $providerOverrideAtivoA
+                if ($__fxDecA -eq 'failover') {
+                    Write-Log ('FALLBACK_OPENROUTER_CODEX: codex classe=' + $__fxClsA + ' exit=' + $exitCode + ' tokens_codex=NAO_MENSURAVEL - transferindo somente este lote para openrouter (VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter).')
+                    $__fxRespA = Invoke-ClaudeBatch $promptPath $ModeloChamada -ProviderOverride 'openrouter'
+                    if ($__fxRespA) {
+                        # -1 = a agenda nao le usage do Codex; o chamador cobra a estimativa, nunca zero.
+                        $__fxRespA['TokensFalhaFallback'] = [int64]-1
+                        return $__fxRespA
+                    }
+                    Write-Log 'FALLBACK_OPENROUTER_CODEX: o adapter nao devolveu lote; seguindo o fail-closed do Codex.'
+                } else {
+                    Write-Log ('FALLBACK_OPENROUTER_CODEX: sem desvio (decisao=' + $__fxDecA + ' classe=' + $__fxClsA + ' habilitado=' + $__fxHabA + ' destino_pronto=' + $__fxDestA + ' override=' + $providerOverrideAtivoA + ').')
+                }
+            }
+        } elseif ($usaOrA) {
             $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
             $raw = @($__orResp.Linhas)
             $exitCode = $__orResp.ExitCode
@@ -310,6 +355,10 @@ Se nao achar nenhuma data para nenhum trimestre pedido de uma empresa, devolva
 # lote). Sem provider manual forcado, bloqueia com exit 86 antes do mutex e do preflight.
 $script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
 $script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
+# CODEXFALLBACK-OR1 (2026-10-14): contador de falhas CONSECUTIVAS do Codex nesta execucao.
+# E o que separa instabilidade momentanea (nao desvia: retry) de indisponibilidade persistente
+# (desvia), e vive no escopo do script porque a decisao e tomada lote a lote.
+$script:VixCodexProviderFalhasConsecutivas = 0
 $openRouterAdapterHabilitado = ($script:VixLibOpenRouterOk -and (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue) -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
 $codexAdapterHabilitado = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue))
 if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$openRouterAdapterHabilitado -CodexAdapterHabilitado:$codexAdapterHabilitado)) {
@@ -447,6 +496,22 @@ for ($i = 0; $i -lt $emissores.Count; $i += $chunkSizeEfetivo) {
 
         Write-Log ('Lote ' + $label + ': ' + $chunk.Count + ' empresa(s) - ' + (($chunk | ForEach-Object { $_.empresa }) -join ', '))
         $result = Invoke-ClaudeBatch $promptPath $Model
+        # CODEXFALLBACK-OR1 (2026-10-14): quando o lote do Codex foi desviado para o OpenRouter,
+        # a tentativa do Codex que falhou continua cobrada no consumo do dia. A agenda nao le
+        # usage do Codex, entao a cobranca e pela estimativa do lote (nunca zero) - regra
+        # CUSTOFALHA-TETO1/COBERTURA-13OUT1.
+        if ($result.ContainsKey('TokensFalhaFallback')) {
+            $__fxCobA = [int64]$result.TokensFalhaFallback
+            if ($__fxCobA -ge 0) {
+                if ($__fxCobA -gt 0) {
+                    $stats.tokens_total += $__fxCobA
+                    Write-Log ('FALLBACK_CODEX_COBRADO: ' + $__fxCobA + ' tokens medidos da tentativa codex que falhou antes do desvio; cobrados no consumo do dia. acum=' + $stats.tokens_total)
+                }
+            } else {
+                $stats.tokens_total += $estLote
+                Write-Log ('FALLBACK_CODEX_COBRADO: ESTIMADO_FALHA ' + $estLote + ' tokens da tentativa codex que falhou sem usage antes do desvio; cobrados no consumo do dia. acum=' + $stats.tokens_total)
+            }
+        }
         if ($result.Tokens -gt 0) {
             $stats.tokens_total += $result.Tokens
         } else {

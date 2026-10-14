@@ -253,11 +253,27 @@ Write-Log "RETRY EXIT: $exit"
 $conteudoPos = Get-Content $RotLog -Raw -Encoding UTF8
 $julgamentoPos = Test-VixLedgerEntregueNaJanela -Conteudo $conteudoPos -DataLog $dataLog -JanelaHora $JanelaHora -MinimoLedger $MinimoLedger
 if ($julgamentoPos.Entregue) {
-    Write-Log ("ENTREGA CONFIRMADA apos relancamento (ledger=" + $julgamentoPos.LedgerNaJanela + "/" + $MinimoLedger + " fim_na_janela=" + $julgamentoPos.FimComContagemSuficiente + ", exit=" + $exit + ").")
+    # RETRY-COBERTURA1 (2026-10-14): a prova de entrega e a COBERTURA dentro da janela
+    # (ledger OK| efetivo >= minimo) ou um FIM cujo proprio texto reporte essa cobertura.
+    # O exit code continua NAO sendo prova - mas quando ele contradiz a cobertura, isso
+    # fica escrito, para ninguem ler "entrega confirmada" com um exit de falha ao lado.
+    $__baseEntrega = if ($julgamentoPos.EfetivosNaJanela -ge $MinimoLedger) { 'ledger_efetivo' } else { 'fim_com_cobertura' }
+    if ($exit -ne 0) {
+        Write-Log ("ENTREGA CONFIRMADA apos relancamento por cobertura (base=$__baseEntrega efetivos=" + $julgamentoPos.EfetivosNaJanela + "/" + $MinimoLedger + "), com exit=" + $exit + " que NAO contradiz a cobertura: a prova e o ledger na janela, nao o codigo de saida.")
+    } else {
+        Write-Log ("ENTREGA CONFIRMADA apos relancamento (base=$__baseEntrega ledger=" + $julgamentoPos.LedgerNaJanela + "/" + $MinimoLedger + " efetivos=" + $julgamentoPos.EfetivosNaJanela + " fim_na_janela=" + $julgamentoPos.FimComContagemSuficiente + ", exit=" + $exit + ").")
+    }
     exit 0
 }
 $ultimaLinha = (($conteudoPos -split "`r?`n") | Where-Object { $_ -match 'ERRO|RUNNER_FIM|ABORTANDO' } | Select-Object -Last 1)
-$motivoFalha = 'Relancamento de ' + $RoutineId + ' nao confirmou entrega (exit=' + $exit + ', ledger=' + $julgamentoPos.LedgerNaJanela + '/' + $MinimoLedger + '). Ultima linha relevante: ' + $ultimaLinha
+if ($exit -eq 0) {
+    # Conclusao do processo nao e recuperacao: o relancamento terminou "bem" e mesmo assim
+    # nao ha cobertura na janela. Os dois desfechos sao nomeados de forma diferente de
+    # proposito (este aqui nao pode ser lido como sucesso).
+    $motivoFalha = 'Relancamento de ' + $RoutineId + ' CONCLUIU SEM RECUPERAR (exit=0, ledger=' + $julgamentoPos.LedgerNaJanela + '/' + $MinimoLedger + ' efetivos=' + $julgamentoPos.EfetivosNaJanela + '). Ultima linha relevante: ' + $ultimaLinha
+} else {
+    $motivoFalha = 'Relancamento de ' + $RoutineId + ' nao confirmou entrega (exit=' + $exit + ', ledger=' + $julgamentoPos.LedgerNaJanela + '/' + $MinimoLedger + ' efetivos=' + $julgamentoPos.EfetivosNaJanela + '). Ultima linha relevante: ' + $ultimaLinha
+}
 Write-Log ('SEM ENTREGA APOS RELANCAMENTO: ' + $motivoFalha)
 Send-VixRetryAlerta -Motivo $motivoFalha -Causa 'sem_entrega' -Severidade 'critico'
 exit 1

@@ -123,6 +123,27 @@ exit 0
         return $p
     }
 
+    function New-VixStubRunnerFalhaHerdada() {
+        # RETRY-COBERTURA1 (2026-10-14): reproduz LITERALMENTE o caso de 13/10/2026. O FIM do
+        # relancamento declara resultado=FALHA (sem_analise_efetiva) e nao analisou ninguem
+        # (`analisados_execucao=0 skip_execucao=0`), mas o "Total do dia" carrega o credito da
+        # execucao ANTERIOR (`ledger analisados=2 skip=12 deferidos=90` -> 104/104). O retry
+        # antigo lia so esse Total/ledger do dia e declarava ENTREGA CONFIRMADA com exit=6.
+        $dataFmt = Get-Date -Format 'yyyy-MM-dd'
+        $p = Join-Path $tmp 'stub_runner_falha_herdada.ps1'
+        $body = @"
+param([string]`$RoutineId, [string]`$Fallback429 = 'ChavePaga')
+`$logFile = '$($logDirTeste -replace "'", "''")\' + `$RoutineId + '_$dataTag.log'
+`$ts = '$dataFmt 21:30:52'
+"@
+        $body += "`n" + @'
+Add-Content -Path $logFile -Value ($ts + ' FIM: noturno concluido FALHA (sem_analise_efetiva). Total do dia 104/104 (ledger analisados=2 skip=12 deferidos=90). analisados_execucao=0 skip_execucao=0 deferidos_execucao=0 submits_aceitos=0 submit_ok=0 submit_fail=0 tokens=0 cap_efetivo=700000 lotes=0 lotes_com_trabalho=0 resultado=FALHA pendentes_obrigatorios=0') -Encoding UTF8
+exit 6
+'@
+        Set-Content -LiteralPath $p -Value $body -Encoding UTF8
+        return $p
+    }
+
     Write-Host '--- 2a: relancamento SEM ledger (exit 0) -> alerta, exit 1 ---'
     Remove-Item -Path (Join-Path $logDirTeste '*') -Force -ErrorAction SilentlyContinue
     $stubSemLedger = New-VixStubRunner 'sem_ledger'
@@ -151,6 +172,31 @@ exit 0
     $conteudoRet2b = Get-Content -LiteralPath $retLog2b -Raw -Encoding UTF8
     Assert ($conteudoRet2b -match 'ENTREGA CONFIRMADA apos relancamento') '2b: log do retry registra ENTREGA CONFIRMADA'
     Assert (-not ($conteudoRet2b -match 'ALERTA \(SemAlerta')) '2b: nenhum alerta acionado (entrega confirmada)'
+
+    Write-Host '--- 2c: RETRY-COBERTURA1 - relancamento com FALHA e cobertura zero NAO confirma (caso de 13/10) ---'
+    Remove-Item -Path (Join-Path $logDirTeste '*') -Force -ErrorAction SilentlyContinue
+    $stubFalhaHerdada = New-VixStubRunnerFalhaHerdada
+    Set-Content -LiteralPath $logInicial -Value ($tsAntigo + ' INICIO: noturno 103 emissores (fixture 2c)') -Encoding UTF8
+    (Get-Item $logInicial).LastWriteTime = (Get-Date).AddMinutes(-30)
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $retryScript -RoutineId vixradar-noturno -RunnerOverride $stubFalhaHerdada -LogDirOverride $logDirTeste -SemAlerta | Out-Null
+    $exit2c = $LASTEXITCODE
+    $retLog2c = Join-Path $logDirTeste ('retry-vixradar-noturno_' + $dataTag + '.log')
+    $conteudoRet2c = Get-Content -LiteralPath $retLog2c -Raw -Encoding UTF8
+    Assert ($exit2c -eq 1) ('2c: exit 1 - o retry NAO confirma entrega quando o FIM declara FALHA e nada foi analisado (obtido ' + $exit2c + ')')
+    Assert (-not ($conteudoRet2c -match 'ENTREGA CONFIRMADA')) '2c: log do retry NAO pode dizer ENTREGA CONFIRMADA (defeito de 13/10)'
+    Assert ($conteudoRet2c -match 'SEM ENTREGA APOS RELANCAMENTO') '2c: log do retry registra SEM ENTREGA APOS RELANCAMENTO'
+    Assert ($conteudoRet2c -match 'nao confirmou entrega|CONCLUIU SEM RECUPERAR') '2c: o desfecho do relancamento e nomeado (concluir nao e recuperar)'
+
+    Write-Host '--- 2d: RETRY-COBERTURA1 - FIM antigo (ledger analisados= sem contagem de execucao) segue valendo ---'
+    $c2d = "2026-09-03 19:00:00 FIM: noturno concluido. Total do dia 103/103 (ledger analisados=60 skip=43 deferidos=0). submits_aceitos=103`n"
+    $r2d = Test-VixLedgerEntregueNaJanela -Conteudo $c2d -DataLog $dataLog -JanelaHora 18 -MinimoLedger 90
+    Assert ($r2d.Entregue -eq $true) ('2d: formato antigo sem analisados_execucao continua confirmando (obtido ' + $r2d.Entregue + ')')
+
+    Write-Host '--- 2e: RETRY-COBERTURA1 - resultado=FALHA com contagem alta NAO vira prova de entrega ---'
+    $c2e = "2026-09-03 19:00:00 FIM: noturno concluido FALHA (sem_analise_efetiva). Total do dia 104/104. analisados_execucao=0 skip_execucao=0 resultado=FALHA`n"
+    $r2e = Test-VixLedgerEntregueNaJanela -Conteudo $c2e -DataLog $dataLog -JanelaHora 18 -MinimoLedger 90
+    Assert ($r2e.Entregue -eq $false) ('2e: FALHA explicita nao confirma entrega (obtido ' + $r2e.Entregue + ')')
+    Assert ($r2e.Parcial -eq $true) '2e: FALHA segue classificada como nao-OK (Parcial)'
 
     # ============================================================
     # Parte 3: MOTORRETRY1 - o retry relanca o MOTOR, por rotina.

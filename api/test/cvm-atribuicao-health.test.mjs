@@ -137,3 +137,62 @@ describe("CFG-02 P2 - T3 invariante de soma da cobertura de atribuicao", () => {
     expect(_coberturaAtribuicaoAcervo(null)).toEqual({ cnpj: 0, nome: 0, quarentena: 0, sem_dono: 0 });
   });
 });
+
+// CONTAGEMFONTE1 (2026-10-09). A conta CFG-02 (`recebidos = atribuidos + quarentena +
+// descartados`) e verdadeira por CONSTRUCAO: `recebidos` e definido como a soma dos
+// proprios baldes, entao nunca acusa perda na ingestao. Estes testes cobrem a identidade
+// que PODE falhar, medida contra a FONTE: linhas_fonte = aceitos + ignorados, e
+// aceitos = recebidos - descartados.
+describe("CONTAGEMFONTE1 - identidade independente da fonte (nao tautologica)", () => {
+  const COBERTURA = { cnpj: 700, nome: 100, quarentena: 50, sem_dono: 50 }; // recebidos = 900
+  const CONTAGEM_OK = { linhas_fonte: 1000, aceitos: 900, malformadas: 20, ignorados_categoria: 60, ignorados_entrega_antiga: 10, ignorados_janela: 10 };
+
+  beforeEach(async () => {
+    await env.RADAR_KV.delete(META_KEY);
+    await env.RADAR_KV.delete("cvm:documentos");
+  });
+
+  it("identidade fecha: linhas_fonte = aceitos + ignorados e aceitos = recebidos", async () => {
+    await seedMeta({ documentos: 900, descartados_allowlist: 0, descartados_teto: 0, cobertura: COBERTURA, contagem_fonte: CONTAGEM_OK });
+    const b = await health();
+    expect(b.cvm_ingestao_recebidos).toBe(900);
+    expect(b.cvm_ingestao_linhas_fonte).toBe(1000);
+    expect(b.cvm_ingestao_aceitos).toBe(900);
+    expect(b.cvm_ingestao_ignorados).toBe(100);
+    expect(b.cvm_ingestao_identidade_ok).toBe(true);
+  });
+
+  it("identidade ACUSA perda silenciosa (ponta ruim: 1 linha desaparecida)", async () => {
+    await seedMeta({
+      documentos: 900,
+      descartados_allowlist: 0,
+      descartados_teto: 0,
+      cobertura: COBERTURA,
+      contagem_fonte: Object.assign({}, CONTAGEM_OK, { linhas_fonte: 1001 })
+    });
+    const b = await health();
+    // A conta tautologica continua "fechando" (900 = 800 + 100 + 0), mas a identidade
+    // contra a fonte acusa. E exatamente o que a identidade antiga nao conseguia fazer.
+    expect(b.cvm_ingestao_recebidos).toBe(b.cvm_ingestao_atribuidos + b.cvm_ingestao_quarentena + b.cvm_ingestao_descartados);
+    expect(b.cvm_ingestao_identidade_ok).toBe(false);
+  });
+
+  it("identidade ACUSA divergencia entre acervo e cobertura (ponta ruim)", async () => {
+    await seedMeta({
+      documentos: 900,
+      descartados_allowlist: 0,
+      descartados_teto: 0,
+      cobertura: COBERTURA,
+      contagem_fonte: Object.assign({}, CONTAGEM_OK, { aceitos: 899 })
+    });
+    const b = await health();
+    expect(b.cvm_ingestao_identidade_ok).toBe(false);
+  });
+
+  it("meta legado (sem contagem_fonte): null, nunca verde falso", async () => {
+    await seedMeta({ documentos: 900, descartados_allowlist: 0, descartados_teto: 0, cobertura: COBERTURA });
+    const b = await health();
+    expect(b.cvm_ingestao_linhas_fonte).toBeNull();
+    expect(b.cvm_ingestao_identidade_ok).toBeNull();
+  });
+});

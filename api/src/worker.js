@@ -7981,6 +7981,9 @@ async function avaliarFrescorCVM(env2222) {
   out.motivo_rebase = meta.motivo_rebase || null;
   out.descartados_allowlist = meta.descartados_allowlist != null ? meta.descartados_allowlist : null;
   out.descartados_allowlist_categoria = meta.descartados_allowlist_categoria || null;
+  // CONTAGEMFONTE1 (2026-10-09): contadores independentes da fonte entregues ao health
+  // (ver o writer do sync do ZIP). Ausente em meta legado -> null, nunca verde falso.
+  out.contagem_fonte = (meta.contagem_fonte && typeof meta.contagem_fonte === "object") ? meta.contagem_fonte : null;
   out.base_presente = meta.base_presente !== false;
   out.ultimo_sync_ok_em = meta.ultimo_sync_ok_em || meta.sincronizado_em || null;
   out.ok = meta.ok === true;
@@ -8375,18 +8378,26 @@ async function syncCVMZipHistorico(env2222) {
     const trintaDiasAtras = new Date(Date.now() - 35 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
     const hoje = obterAgoraBRT().toISOString().split("T")[0];
     const docs = [];
+    // CONTAGEMFONTE1 (2026-10-09): contadores INDEPENDENTES do que a FONTE entregou, para a
+    // reconciliacao do health deixar de ser tautologica. Antes, `recebidos` era DEFINIDO como
+    // a soma dos proprios baldes (`_cvmCobTotalBruto + allowlist + teto`), entao
+    // `recebidos = atribuidos + quarentena + descartados` valia por algebra e nunca podia
+    // detectar perda na ingestao (10.283 = 867 + 9.416 + 0 era verdade por definicao).
+    // Com estes contadores, `linhas_fonte = aceitos + ignorados + malformadas` e verificavel
+    // contra a fonte real, e uma perda silenciosa passa a acender.
+    const _contagemFonte = { linhas_fonte: lines.length - 1, malformadas: 0, ignorados_categoria: 0, ignorados_entrega_antiga: 0, ignorados_janela: 0, aceitos: 0 };
     // O limite da carteira nao filtra a coleta. Se medisse so os 103 emissores,
     // um dia em que a CVM publicou
     // normalmente mas nenhum emissor nosso protocolou pareceria fonte parada.
     let maxEntregaFonte = null;
     for (let i = 1; i < lines.length; i++) {
       const cols = lines[i].split(";");
-      if (cols.length < 6) continue;
+      if (cols.length < 6) { _contagemFonte.malformadas++; continue; }
       const entrega = (cols[iEntrega] || "").trim();
       if (/^\d{4}-\d{2}-\d{2}$/.test(entrega) && (maxEntregaFonte === null || entrega > maxEntregaFonte)) maxEntregaFonte = entrega;
       const cat = (cols[iCat] || "").trim();
-      if (!CVM_CATEGORIAS.includes(cat)) continue;
-      if (entrega < trintaDiasAtras) continue;
+      if (!CVM_CATEGORIAS.includes(cat)) { _contagemFonte.ignorados_categoria++; continue; }
+      if (entrega < trintaDiasAtras) { _contagemFonte.ignorados_entrega_antiga++; continue; }
       // SUBSTRINGDONO1 (2026-08-25): a ingestao passa a usar o MESMO arbitro do
       // leitor. Antes tinha criterio proprio, e criterio proprio foi a doenca:
       //   - matchPrincipal truncava o nome do emissor em 8 caracteres e procurava
@@ -8415,9 +8426,10 @@ async function syncCVMZipHistorico(env2222) {
       // Documento de CNPJ desconhecido fica gravado, sem dono, e alimenta a fila de
       // revisao. E a diferenca entre "nao sei de quem e" e "nunca vi".
       const dataRef = (cols[iData] || "").trim();
-      if (dataRef > hoje || dataRef < trintaDiasAtras) continue;
+      if (dataRef > hoje || dataRef < trintaDiasAtras) { _contagemFonte.ignorados_janela++; continue; }
       docs.push({ e: (cols[iNome] || "").trim(), j: iCnpj >= 0 ? (cols[iCnpj] || "").trim() : "", d: dataRef, de: entrega, c: cat, a: (cols[iAssunto] || "").trim(), l: (cols[iLink] || "").trim() });
     }
+    _contagemFonte.aceitos = docs.length;
     docs.sort((a, b) => b.d.localeCompare(a.d));
     // TETO DE VOLUME, com numero medido e nao com "deveria caber".
     // Base: data/cvm-referencia/ipe_janela_2026-08-25.json.gz, a mesma janela de 35
@@ -8461,6 +8473,10 @@ async function syncCVMZipHistorico(env2222) {
       descartados_allowlist: 0,
       descartados_allowlist_categoria: {},
       descartados_teto: descartadosPorTeto,
+      // CONTAGEMFONTE1 (2026-10-09): contadores independentes da fonte, para o health poder
+      // provar `linhas_fonte = aceitos + ignorados + malformadas` em vez de repetir a soma
+      // dos proprios baldes (identidade tautologica).
+      contagem_fonte: _contagemFonte,
       origem: "sync_automatico"
     });
     return { ok: true, documentos: docs.length, empresas: empresasUnicas, ultimo: docs[0]?.d || null, last_modified: _lastModRaw, last_modified_iso: _lastModIso, max_data_entrega: maxEntregaFonte, log };
@@ -9580,18 +9596,40 @@ async function carregarEstadoCompartilhado(env2222, semana) {
 // L9252), porque a virada de semana ISO pode deixar o blob novo vazio por
 // horas ate a proxima rotina escrever.
 async function _lerUpdatedAtEstado(env2222, agoraBRT) {
-  if (!env2222.RADAR_KV) return null;
+  const f = await _lerFreshnessEstado(env2222, agoraBRT);
+  return f.updated_at;
+}
+// ANALISEVSESCRITA1 (2026-10-10): `updated_at` de topo avanca em QUALQUER escrita do estado,
+// inclusive deferimento por teto (`_token_cap_deferred`) e ajuste administrativo. Entao
+// `painel_fresco` pode ficar true num dia em que NENHUMA analise foi concluida - medido em
+// 10/10/2026: a matinal deferiu 22/22 com 0 analises e `painel_atualizado_em` avancou assim
+// mesmo. O carimbo da analise REAL ja existe e e outro: `_ultima_analise_at`, gravado so por
+// `_carimbarAnaliseReal` (nunca por deferido/skip). Aqui ele e lido junto, no mesmo passe e
+// nas mesmas duas semanas, sem `normalizarMojibake` (o custo real do health e o parse, que
+// ja acontecia; varrer as chaves de `results` nao acrescenta leitura de KV).
+async function _lerFreshnessEstado(env2222, agoraBRT) {
+  const vazio = { updated_at: null, ultima_analise: null, deferidos: 0, total: 0 };
+  if (!env2222.RADAR_KV) return vazio;
   const semanas = [semanaISO(agoraBRT), semanaISO(new Date(agoraBRT.getTime() - 7 * 864e5))];
-  let maisRecente = null;
-  for (const semana of semanas) {
+  let maisRecente = null, ultimaAnalise = null, deferidos = 0, total = 0;
+  for (let i = 0; i < semanas.length; i++) {
     try {
-      const raw = await env2222.RADAR_KV.get(chaveEstadoCompartilhado(semana), "text");
+      const raw = await env2222.RADAR_KV.get(chaveEstadoCompartilhado(semanas[i]), "text");
       if (!raw) continue;
       const p = JSON.parse(raw);
       if (p?.updated_at && (!maisRecente || p.updated_at > maisRecente)) maisRecente = p.updated_at;
+      const results = (p && p.results && typeof p.results === "object") ? p.results : null;
+      if (!results) continue;
+      for (const emp of Object.keys(results)) {
+        const r = results[emp];
+        if (!r || typeof r !== "object") continue;
+        const ts = r._ultima_analise_at;
+        if (ts && (!ultimaAnalise || ts > ultimaAnalise)) ultimaAnalise = ts;
+        if (i === 0) { total++; if (r._token_cap_deferred === true) deferidos++; }
+      }
     } catch { }
   }
-  return maisRecente;
+  return { updated_at: maisRecente, ultima_analise: ultimaAnalise, deferidos: deferidos, total: total };
 }
 // FEEDRETRO1 (2026-09-04): duas leituras publicas do feed, complementares.
 // _calcularEventoMaisNovoFeed faz um scan real (mesma formula do
@@ -20837,6 +20875,12 @@ async function __coreFetch(request, env2222, ctx) {
         } catch (e) { console.error("[health] verificador_real_ok:", e?.message ?? String(e)); }
       }
       var _filaVerifAtrasada = false;
+      // HEALTHBACKLOG1 (2026-10-09): o backlog era DOBRADO num booleano (_verificadorRealOk).
+      // `verificador_ok:true` nao diz se ha 1 ou 500 itens esperando, nem ha quanto tempo.
+      // O numero ja era calculado aqui e descartado. Expor em campos proprios (aditivos, sem
+      // mexer em `ok` nem em `_verificadorRealOk`) tira o ponto cego sem mudar contrato.
+      var _filaVerifPendentes = null;
+      var _filaVerifMaisAntigaH = null;
       if (env2222.RADAR_KV) {
         try {
           // VERIFSLA1 (2026-08-11): prazo subiu de 12h para 20h. O ciclo real e maior que 12h.
@@ -20854,6 +20898,14 @@ async function __coreFetch(request, env2222, ctx) {
           var _filaVerifPend = _lfvPendRes.itens || [];
           var _filaVerifLimite = Date.now() - 20 * 60 * 60 * 1e3;
           _filaVerifAtrasada = _filaVerifPend.some(function(it) { return new Date(it.criado_em || 0).getTime() < _filaVerifLimite; });
+          // HEALTHBACKLOG1: backlog visivel - quantos itens e a idade do mais antigo.
+          _filaVerifPendentes = _filaVerifPend.length;
+          var _filaMaisAntigaMs = 0;
+          for (var _fp = 0; _fp < _filaVerifPend.length; _fp++) {
+            var _cri = new Date(_filaVerifPend[_fp].criado_em || 0).getTime();
+            if (isFinite(_cri) && _cri > 0) { var _idadeMs = Date.now() - _cri; if (_idadeMs > _filaMaisAntigaMs) _filaMaisAntigaMs = _idadeMs; }
+          }
+          _filaVerifMaisAntigaH = _filaVerifPend.length > 0 ? Math.round(_filaMaisAntigaMs / 36e5) : 0;
           if (_lfvPendRes.indice_erro) console.error("[verif][indice-quarentena][health] fila verificada com indice em erro (fail-closed, itens nao entregues):", _lfvPendRes.indice_erro);
         } catch (e) { console.error("[health] fila_verif_atrasada:", e?.message ?? String(e)); }
       }
@@ -20971,6 +21023,21 @@ async function __coreFetch(request, env2222, ctx) {
         quarentena: (_cvmCob.quarentena || 0) + (_cvmCob.sem_dono || 0),
         descartados: _cvmDescartadosAllowlist + _cvmDescartadosTeto
       } : { recebidos: null, atribuidos: null, quarentena: null, descartados: null };
+      // CONTAGEMFONTE1 (2026-10-09): identidade INDEPENDENTE. `recebidos` acima e a soma dos
+      // proprios baldes - vale por algebra e nunca acusa perda. `linhas_fonte` vem do arquivo
+      // lido da CVM, entao:
+      //   (a) linhas_fonte = aceitos + ignorados(malformadas/categoria/entrega/ janela)
+      //   (b) aceitos       = recebidos - descartados  (o acervo persistido bate com a conta)
+      // sao checagens reais. Meta legado (sem contagem_fonte) devolve null - nunca verde falso.
+      var _cvmContagemFonte = (_cvmFrescor.contagem_fonte && typeof _cvmFrescor.contagem_fonte === "object") ? _cvmFrescor.contagem_fonte : null;
+      var _cvmLinhasFonte = (_cvmContagemFonte && _cvmContagemFonte.linhas_fonte != null) ? _cvmContagemFonte.linhas_fonte : null;
+      var _cvmIngestaoIgnorados = _cvmContagemFonte ? ((_cvmContagemFonte.malformadas || 0) + (_cvmContagemFonte.ignorados_categoria || 0) + (_cvmContagemFonte.ignorados_entrega_antiga || 0) + (_cvmContagemFonte.ignorados_janela || 0)) : null;
+      var _cvmIngestaoAceitos = _cvmContagemFonte ? (_cvmContagemFonte.aceitos || 0) : null;
+      var _cvmIngestaoIdentidadeOk = null;
+      if (_cvmLinhasFonte != null && _cvmIngestao.recebidos != null) {
+        _cvmIngestaoIdentidadeOk = (_cvmLinhasFonte === _cvmIngestaoAceitos + _cvmIngestaoIgnorados)
+          && (_cvmIngestaoAceitos === _cvmIngestao.recebidos - _cvmIngestao.descartados);
+      }
       // PAINELFRESCOR1 (INCIDENTE-FRESHNESS2, 03/09/2026): ate aqui NENHUM campo
       // do health media a idade do PAINEL (o que o usuario ve na tela). `ok`
       // mede o servico (HEALTHSPLIT1) e `evento_mais_novo`/`avanco_feed` medem a
@@ -20983,16 +21050,31 @@ async function __coreFetch(request, env2222, ctx) {
       // Deliberadamente FORA de `_okHealth`, mesma licao do HEALTHSPLIT1: ok
       // mede o servico, isto mede pontualidade operacional, canal proprio.
       var _painelAtualizadoEm = null, _painelIdadeMin = null, _painelFresco = null, _painelRegra = null, _painelExigidoDesde = null;
+      // ANALISEVSESCRITA1: escrita do estado != analise concluida. Ver _lerFreshnessEstado.
+      var _painelUltimaAnaliseEm = null, _painelAnaliseIdadeMin = null, _painelAnaliseFresca = null, _painelDeferidos = null, _painelTotalEmissores = null;
       try {
         var _agoraBRTPainel = obterAgoraBRT();
-        _painelAtualizadoEm = await _lerUpdatedAtEstado(env2222, _agoraBRTPainel);
+        var _freshnessPainel = await _lerFreshnessEstado(env2222, _agoraBRTPainel);
+        _painelAtualizadoEm = _freshnessPainel.updated_at;
+        _painelUltimaAnaliseEm = _freshnessPainel.ultima_analise;
+        _painelDeferidos = _freshnessPainel.deferidos;
+        _painelTotalEmissores = _freshnessPainel.total;
         var _painelEpoch = _epochOuNull(_painelAtualizadoEm);
         if (_painelEpoch !== null) _painelIdadeMin = Math.round((Date.now() - _painelEpoch) / 6e4);
+        var _painelAnaliseEpoch = _epochOuNull(_painelUltimaAnaliseEm);
+        if (_painelAnaliseEpoch !== null) _painelAnaliseIdadeMin = Math.round((Date.now() - _painelAnaliseEpoch) / 6e4);
         var _slaAtivo = _painelSlaAtivo(_agoraBRTPainel);
         if (_slaAtivo) {
           _painelRegra = _slaAtivo.regra;
           _painelExigidoDesde = _slaAtivo.exigidoDesde;
           _painelFresco = _painelEpoch !== null ? _painelEpoch >= _slaAtivo.floorMs : null;
+          // Tres casos, mesma convencao do painel_fresco (null = sem dado, false = conferido
+          // e stale): (a) sem estado nenhum -> null; (b) estado escrito MAS sem carimbo de
+          // analise real -> false, e o caso de 10/10/2026 (deferiu 22/22 e o painel parecia
+          // fresco); (c) carimbo presente -> comparacao com o SLA.
+          _painelAnaliseFresca = _painelAnaliseEpoch !== null
+            ? _painelAnaliseEpoch >= _slaAtivo.floorMs
+            : (_painelEpoch !== null ? false : null);
         }
       } catch (ePainel) {
         console.error("[health] painel_fresco:", ePainel && ePainel.message ? ePainel.message : String(ePainel));
@@ -21022,7 +21104,7 @@ async function __coreFetch(request, env2222, ctx) {
       if (!_healthUsr || _healthUsr.role !== "admin") {
         var _provAtivos = [!!env2222.RESEND_API_KEY, !!env2222.ANTHROPIC_API_KEY];
         var _provCount = _provAtivos.filter(Boolean).length;
-        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_sem_dono: _cvmCob.sem_dono, cvm_ingestao_recebidos: _cvmIngestao.recebidos, cvm_ingestao_atribuidos: _cvmIngestao.atribuidos, cvm_ingestao_quarentena: _cvmIngestao.quarentena, cvm_ingestao_descartados: _cvmIngestao.descartados, cvm_ingestao_descartados_sem_dono: _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : null, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
+        return resp({ ok: _okHealth, fonte_externa_ok: _fonteExternaOk, versao: WORKER_VERSAO, ts: (/* @__PURE__ */ new Date()).toISOString(), bindings: { kv: !!env2222.RADAR_KV, rate_limiter: !!env2222.RATE_LIMITER_DO, telemetria: !!env2222.RADAR_USAGE_EVENTS }, providers_configurados: _provCount + "/" + _provAtivos.length, admin_email_ok: _adminEmailOk, sentry_ok: _sentryOk, verificador_ok: _verificadorRealOk, verif_orfaos_ativos: _orfaosAtivos, verif_fila_pendentes: _filaVerifPendentes, verif_fila_mais_antiga_h: _filaVerifMaisAntigaH, verif_fila_atrasada: _filaVerifAtrasada, api_disponivel: true, cvm_fonte_ok: _cvmFonteOk, cvm_fonte_idade_du: _cvmFrescor.idade_du, cvm_fonte_idade_dias: _cvmFrescor.idade_dias != null ? _cvmFrescor.idade_dias : null, cvm_fonte_ciclos_perdidos: _cvmFrescor.ciclos_perdidos != null ? _cvmFrescor.ciclos_perdidos : null, cvm_fonte_cadencia: _cvmFrescor.cadencia || "semanal", cvm_fonte_proxima_prevista: _cvmFrescor.proxima_prevista || null, cvm_fonte_motivo: _cvmFrescor.motivo, cvm_fonte_last_modified: _cvmFrescor.last_modified || null, cvm_fonte_falhas_consecutivas: _cvmFrescor.falhas_consecutivas != null ? _cvmFrescor.falhas_consecutivas : 0, cvm_fonte_falha_dura: _cvmFrescor.falha_dura === true, cvm_fonte_degrada_servico: _cvmDegrada, cvm_fonte_ultimo_sync_ok_em: _cvmFrescor.ultimo_sync_ok_em || null, reconciliacao_zip_ok: _cvmFrescor.reconciliacao_zip_ok === true, reconciliacao_zip_motivo: _cvmFrescor.reconciliacao_zip_motivo || null, reconciliacao_zip_idade_dias: _cvmFrescor.reconciliacao_zip_idade_dias, cvm_atribuicao_por_cnpj: _cvmCob.cnpj, cvm_atribuicao_por_nome: _cvmCob.nome, cvm_atribuicao_quarentena: _cvmCob.quarentena, cvm_atribuicao_sem_dono: _cvmCob.sem_dono, cvm_ingestao_recebidos: _cvmIngestao.recebidos, cvm_ingestao_atribuidos: _cvmIngestao.atribuidos, cvm_ingestao_quarentena: _cvmIngestao.quarentena, cvm_ingestao_descartados: _cvmIngestao.descartados, cvm_ingestao_descartados_sem_dono: _cvmFrescor.descartados_allowlist != null ? _cvmFrescor.descartados_allowlist : null, cvm_atribuicao_cobertura_pct: _cvmCobPct, cvm_atribuicao_descartados_teto: _cvmFrescor.descartados_teto != null ? _cvmFrescor.descartados_teto : 0, cvm_ingestao_linhas_fonte: _cvmLinhasFonte, cvm_ingestao_aceitos: _cvmIngestaoAceitos, cvm_ingestao_ignorados: _cvmIngestaoIgnorados, cvm_ingestao_identidade_ok: _cvmIngestaoIdentidadeOk, painel_atualizado_em: _painelAtualizadoEm, painel_idade_min: _painelIdadeMin, painel_fresco: _painelFresco, painel_regra: _painelRegra, painel_exigido_desde: _painelExigidoDesde, painel_ultima_analise_em: _painelUltimaAnaliseEm, painel_analise_idade_min: _painelAnaliseIdadeMin, painel_analise_fresca: _painelAnaliseFresca, painel_emissores_deferidos: _painelDeferidos, painel_emissores_total: _painelTotalEmissores, feed_evento_mais_novo: _feedEventoMaisNovo, feed_idade_du: _feedIdadeDu, feed_fresco: _feedFresco, feed_ultimo_evento_novo_em: _feedUltimoNovoEm }, 200, request, { "Cache-Control": "no-store" });
       }
       const probePrimario = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_stub" };
       const probeExa = { ok: !!env2222.OPENROUTER_API_KEY, provider: "openrouter_exa_stub" };
@@ -21037,6 +21119,11 @@ async function __coreFetch(request, env2222, ctx) {
         painel_fresco: _painelFresco,
         painel_regra: _painelRegra,
         painel_exigido_desde: _painelExigidoDesde,
+        painel_ultima_analise_em: _painelUltimaAnaliseEm,
+        painel_analise_idade_min: _painelAnaliseIdadeMin,
+        painel_analise_fresca: _painelAnaliseFresca,
+        painel_emissores_deferidos: _painelDeferidos,
+        painel_emissores_total: _painelTotalEmissores,
         openrouter_saldo_usd: null,
         versao_nota: WORKER_DEPLOY_NOTE,
         openrouter: !!env2222.OPENROUTER_API_KEY,
@@ -21068,6 +21155,21 @@ async function __coreFetch(request, env2222, ctx) {
         const _amFd = await request.formData();
         const _fdAction = (_amFd.get("action") || "").toString();
         if (_fdAction === "admin_mercado") {
+          // RLADMIN4 (2026-10-09): o gate RLADMIN2/RLADMIN3 (JSON com `admin_senha`) roda
+          // DEPOIS deste return, e o formulario admin_mercado chega com content-type
+          // form-urlencoded e campo `senha` - logo ficava SEM throttle. Brute force do
+          // ADMIN_PASSWORD sem custo; a senha certa devolve a pagina admin autenticada (e,
+          // ate esta correcao, embutida no HTML). Mesma semantica do caminho JSON
+          // (ADMINRL-FIX1): senha CORRETA pula (o painel dispara varios POSTs em paralelo),
+          // senha ERRADA entra no checkRateLimitV2 por IP.
+          const _amSenha = (_amFd.get("senha") || "").toString();
+          const _amSenhaCorreta = _amSenha.length > 0 && _amSenha === env2222.ADMIN_PASSWORD;
+          if (!_amSenhaCorreta) {
+            const _amRl = await checkRateLimitV2(env2222, request, "critica");
+            if (!_amRl.allowed) {
+              return resp({ ok: false, erro: mensagemRateLimit(_amRl), _rate_limit: { camada: _amRl.camada, retry_after_sec: _amRl.retry_after_sec, tenant: _amRl.tenant, autenticado: _amRl.autenticado } }, 429, request);
+            }
+          }
           return await handleAdminMercado(url, env2222, request, _amFd);
         }
         if (_fdAction === "aprovar_email" || _fdAction === "rejeitar_email") {

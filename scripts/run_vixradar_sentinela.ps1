@@ -47,6 +47,10 @@
 #  10 PARCIAL: sobrou emissor com gatilho sem analise (deferido por teto/tempo/uso
 #     desconhecido, sem resultado ou submit recusado). COBERTURA-13OUT1 (13/10/2026): o
 #     deferimento por teto deixou de sair 0, porque cobertura incompleta nao e sucesso.
+#     ORCAMENTOFIN1 (14/10/2026): a excecao e a execucao que nao disparou NENHUM lote por
+#     falta de orcamento - essa sai SEM_ORCAMENTO/exit 0, igual ao circuito fechado, porque
+#     ela nao tentou e nao entregou parte de nada. A regra e pura e unica em
+#     Get-VixSentinelaResultado (lib\vixradar-cobertura.ps1).
 #
 # PowerShell 5.1: sem ternario, sem ?? e sem ?., BOM UTF-8 obrigatorio, exit e nao
 # return (o Task Scheduler le o exit code do processo).
@@ -687,7 +691,15 @@ function Invoke-VixProcessoComArquivos {
     return @{ Exit = $code; TimedOut = (-not $exited) }
 }
 
-function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$TimeoutMin, [string]$Tier = '') {
+function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$TimeoutMin, [string]$Tier = '', [string]$ProviderOverride = '') {
+    # CODEXFALLBACK-OR1 (2026-10-14): ProviderOverride existe para o desvio de UM lote do
+    # Codex para o adapter OpenRouter quando o Codex fica inutilizavel (cota, credencial,
+    # modelo indisponivel ou indisponibilidade persistente). Vale so para esta invocacao;
+    # a decisao (e a guarda contra recursao) vive em Get-VixCodexFailoverDecisao.
+    $providerSentinela = if ($ProviderOverride) { $ProviderOverride.Trim().ToLowerInvariant() } elseif ($script:VixUsaCodex) { 'codex' } elseif ($script:VixUsaOpenRouter) { 'openrouter' } else { 'claude' }
+    $usaCodexS = ($providerSentinela -eq 'codex')
+    $usaOrS = ($providerSentinela -eq 'openrouter')
+    $providerOverrideAtivoS = [bool]$ProviderOverride
     # SENTINELA-HANG1: timeout de verdade, com morte da arvore de processos.
     #
     # O desenho antigo era `Get-Content | claude -p`, pipeline sem timeout nenhum.
@@ -715,7 +727,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
         # sem auth Anthropic, sem escalacao paga. Retry bounded interno ao adapter (tem timeout
         # de parede proprio, VIXRADAR_OPENROUTER_TIMEOUT_MIN); falha deixa os emissores intactos
         # no backlog, mesmo efeito do timeout do claude.
-        if ($script:VixUsaCodex) {
+        if ($usaCodexS) {
             $codexResultFile = Join-Path $LogDir ('sentinela_codex_result_' + $DateTag + '_' + $PID + '.txt')
             $codexStdoutFile = Join-Path $LogDir ('sentinela_codex_stdout_' + $DateTag + '_' + $PID + '.jsonl')
             Remove-Item $codexResultFile,$codexStdoutFile -Force -ErrorAction SilentlyContinue
@@ -740,8 +752,12 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
             $usoCodexS = @{ mensuravel = $false }
             if (Test-Path -LiteralPath $codexStdoutFile) { $usoCodexS = Get-VixCodexUsageJsonl (Get-Content -LiteralPath $codexStdoutFile -Encoding UTF8) }
             $usageEnv = $null
+            # CODEXFALLBACK-OR1: custo medido da tentativa do Codex, para o desvio nao perder a
+            # contabilidade. -1 = desconhecido (consumo desconhecido nunca vira zero no chamador).
+            $__fxTokS = [int64]-1
             if ($usoCodexS.mensuravel) {
                 $parcCodexS = ConvertTo-VixParcelasCodex $usoCodexS
+                $__fxTokS = [int64]$parcCodexS.input + [int64]$parcCodexS.output + [int64]$parcCodexS.cache_creation
                 $usageEnv = [ordered]@{ input_tokens = $parcCodexS.input; output_tokens = $parcCodexS.output; cache_creation_input_tokens = 0; cache_read_input_tokens = 0 }
                 Write-Log ('USAGE_CODEX: eventos=' + $usoCodexS.eventos + ' input_total=' + $usoCodexS.input_total + ' cached_input=' + $usoCodexS.cached + ' output=' + $usoCodexS.output + ' reasoning=' + $usoCodexS.reasoning)
             }
@@ -759,6 +775,9 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
                     $envOk = [ordered]@{result=$codexText;is_error=$false;model='codex-subscription'}
                     if ($usageEnv) { $envOk.usage = $usageEnv }
                     $raw=@(($envOk|ConvertTo-Json -Compress))
+                    # CODEXFALLBACK-OR1: lote entregue zera o contador de falhas consecutivas
+                    # do provedor (separa instabilidade de indisponibilidade persistente).
+                    $script:VixCodexProviderFalhasConsecutivas = 0
                 }
             } else {
                 $falhaTransporte=$true
@@ -774,7 +793,33 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
                 $falhaMsg = $falhaMsg + ' classe=' + $clsS.Classe
             }
             Remove-Item $codexResultFile,$codexStdoutFile -Force -ErrorAction SilentlyContinue
-        } elseif ($script:VixUsaOpenRouter) {
+            # CODEXFALLBACK-OR1 (2026-10-14): o Codex e o provedor ativo e nao tinha fallback.
+            # Desvio opt-in, fail-closed, de UM lote para o adapter OpenRouter. A regra pura
+            # (classes elegiveis + guarda contra recursao + destino pronto) vive em
+            # Get-VixCodexFailoverDecisao; aqui entram so os fatos medidos neste lote.
+            if ($falhaTransporte) {
+                $script:VixCodexProviderFalhasConsecutivas = [int]$script:VixCodexProviderFalhasConsecutivas + 1
+                $__fxHabS = (Get-VixCodexFallbackOpenRouterHabilitado)
+                $__fxDestS = $false
+                if ($__fxHabS -and -not $providerOverrideAtivoS -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+                    $__fxBootS = Test-VixOpenRouterPronto
+                    $__fxDestS = [bool]$__fxBootS.ok
+                    if (-not $__fxDestS) { Write-Log ('FALLBACK_OPENROUTER_CODEX: habilitado, mas o destino nao esta pronto (' + $__fxBootS.motivo + '). Sem desvio; vale o fail-closed anterior.') }
+                }
+                $__fxDecS = Get-VixCodexFailoverDecisao -Classe $script:VixSentUltimaClasseFalha -FalhasConsecutivas $script:VixCodexProviderFalhasConsecutivas -DestinoPronto $__fxDestS -Habilitado $__fxHabS -ProviderOverrideAtivo $providerOverrideAtivoS
+                if ($__fxDecS -eq 'failover') {
+                    Write-Log ('FALLBACK_OPENROUTER_CODEX: codex classe=' + $script:VixSentUltimaClasseFalha + ' tokens_codex=' + $(if ($__fxTokS -ge 0) { '' + $__fxTokS } else { 'NAO_MENSURAVEL' }) + ' - transferindo somente este lote para openrouter (VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter).')
+                    $__fxRespS = Invoke-ClaudeBatchSentinela $promptPath $Model $TimeoutMin $Tier -ProviderOverride 'openrouter'
+                    if ($__fxRespS) {
+                        $__fxRespS['TokensFalhaFallback'] = $__fxTokS
+                        return $__fxRespS
+                    }
+                    Write-Log 'FALLBACK_OPENROUTER_CODEX: o adapter nao devolveu lote; seguindo o fail-closed do Codex.'
+                } else {
+                    Write-Log ('FALLBACK_OPENROUTER_CODEX: sem desvio (decisao=' + $__fxDecS + ' classe=' + $script:VixSentUltimaClasseFalha + ' habilitado=' + $__fxHabS + ' destino_pronto=' + $__fxDestS + ' override=' + $providerOverrideAtivoS + ').')
+                }
+            }
+        } elseif ($usaOrS) {
             # SENTINELA-SEARCHBUDGET2 (2026-09-29): 8 buscas/emissor = 40 resultados
             # com max_results=5 e deixou EcoRodovias sem RESULTADO quando a F3 exigiu
             # fallback apos PDF CVM ilegivel. A Sentinela trabalha com lotes pequenos e
@@ -853,7 +898,7 @@ function Invoke-ClaudeBatchSentinela([string]$promptPath, [string]$Model, [int]$
     # sentinela al 01:03:22 nao logue AVISO/FIM, apenas o error e exit 0). O adapter ja
     # reporta FalhaTransporte/FalhaMsg; a deteccion de auth Anthropic no aplica aqui.
     $authFailureFinal = $false
-    if (-not $script:VixUsaOpenRouter -and -not $script:VixUsaCodex) {
+    if (-not $usaOrS -and -not $usaCodexS) {
         $authFailureFinal = (Test-VixClaudeAuthFailure $textOut)
     }
     return @{ Output = $textOut; Tokens = $tokens; AuthFailure = $authFailureFinal; TimedOut = $timedOut; FalhaTransporte = $falhaTransporte; FalhaMsg = $falhaMsg }
@@ -891,6 +936,12 @@ $usoDesconhecido = $false
 $submitOk     = 0
 $submitFail   = 0
 $deferidos    = 0
+# ORCAMENTOFIN1 (2026-10-14): a sentinela precisa distinguir "nao tentei porque nao havia
+# orcamento" de "tentei e a cobertura ficou incompleta". Os dois apareciam como PARCIAL/exit 10.
+# O contador abaixo separa os deferimentos por ORCAMENTO (teto de tokens da execucao,
+# cap_sentinela) dos demais (tempo, uso desconhecido, disjuntor de provedor).
+$deferidosOrcamento = 0
+$deferidosOutros    = 0
 $buscasTotal  = 0
 $semResultado = 0
 $lotesOk = 0
@@ -979,6 +1030,7 @@ $inicioExec = Get-Date
 foreach ($job in $jobs) {
     if ($tokensAcum -ge $TokenHardCap) {
         $deferidos += $job.Chunk.Count
+        $deferidosOrcamento += $job.Chunk.Count
         foreach ($e in $job.Chunk) { Add-VixPendenteSentinela $e 'cap_sentinela' }
         Write-Log ('CAP: teto de ' + $TokenHardCap + ' tokens atingido. ' + $job.Chunk.Count + ' emissores deferidos no lote ' + $job.Label + ' - voltam na proxima execucao pelo mesmo gatilho.')
         continue
@@ -987,6 +1039,7 @@ foreach ($job in $jobs) {
     # guarda a execucao seguia disparando lote com o acumulado congelado (fail-open).
     if ($usoDesconhecido) {
         $deferidos += $job.Chunk.Count
+        $deferidosOutros += $job.Chunk.Count
         foreach ($e in $job.Chunk) { Add-VixPendenteSentinela $e 'uso_desconhecido' }
         Write-Log ('CAP_USO_DESCONHECIDO: cap fechado por lote anterior sem usage. ' + $job.Chunk.Count + ' emissores deferidos no lote ' + $job.Label + '.')
         continue
@@ -995,6 +1048,7 @@ foreach ($job in $jobs) {
     # cota, credencial) ou duas falhas seguidas: nenhum lote novo chama o provedor nesta execucao.
     if ($disjuntorS.aberto) {
         $deferidos += $job.Chunk.Count
+        $deferidosOutros += $job.Chunk.Count
         foreach ($e in $job.Chunk) { Add-VixPendenteSentinela $e 'falha_provider' }
         Write-Log ('DISJUNTOR_PROVIDER: aberto (' + $disjuntorS.motivo + ') - lote ' + $job.Label + ' nao chamado, ' + $job.Chunk.Count + ' emissores deferidos.')
         continue
@@ -1002,6 +1056,7 @@ foreach ($job in $jobs) {
     $decorridoMin = ((Get-Date) - $inicioExec).TotalMinutes
     if ($decorridoMin -ge $TempoMaxMin) {
         $deferidos += $job.Chunk.Count
+        $deferidosOutros += $job.Chunk.Count
         foreach ($e in $job.Chunk) { Add-VixPendenteSentinela $e 'cap_tempo' }
         Write-Log ('CAP_TEMPO: ' + [math]::Round($decorridoMin, 1) + ' min decorridos (teto ' + $TempoMaxMin + '). ' + $job.Chunk.Count + ' emissores deferidos no lote ' + $job.Label + ' - voltam na proxima execucao pelo mesmo gatilho.')
         continue
@@ -1023,6 +1078,7 @@ foreach ($job in $jobs) {
         }
         if ($cabemS -le 0) {
             $deferidos += $job.Chunk.Count
+            $deferidosOrcamento += $job.Chunk.Count
             foreach ($e in $job.Chunk) { Add-VixPendenteSentinela $e 'cap_sentinela' }
             Write-Log ('CAP_ESTIMADO: ' + $job.Chunk.Count + ' emissor(es) do lote ' + $job.Label + ' nao cabem (custo_emissor=' + $cpeS.Custo + ' fonte=' + $cpeS.Fonte + ' acum=' + $tokensAcum + ' cap=' + $TokenHardCap + '). Deferidos para a fila pendente; matinal/noturna priorizam.')
             continue
@@ -1031,6 +1087,7 @@ foreach ($job in $jobs) {
             $foraS = @($job.Chunk | Select-Object -Skip $cabemS)
             $job.Chunk = @($job.Chunk | Select-Object -First $cabemS)
             $deferidos += $foraS.Count
+            $deferidosOrcamento += $foraS.Count
             foreach ($e in $foraS) { Add-VixPendenteSentinela $e 'cap_sentinela' }
             Write-Log ('CAP_LOTE_REDUZIDO: lote ' + $job.Label + ' roda ' + $cabemS + ', ' + $foraS.Count + ' deferido(s) (custo_emissor=' + $cpeS.Custo + ' fonte=' + $cpeS.Fonte + ').')
         }
@@ -1053,6 +1110,26 @@ foreach ($job in $jobs) {
     # piso de 4 min para nao nascer expirado quando a janela ja esta quase no fim.
     $restanteMin = [int]([math]::Max(4, $TempoMaxMin - ((Get-Date) - $inicioExec).TotalMinutes))
     $res = Invoke-ClaudeBatchSentinela $promptPath $job.Model $restanteMin $job.Tier
+    # CODEXFALLBACK-OR1 (2026-10-14): lote desviado do Codex para o OpenRouter. A tentativa do
+    # Codex que falhou continua cobrada no consumo do dia: medida quando houve usage, estimada
+    # quando nao houve (consumo desconhecido nunca vira zero, CUSTOFALHA-TETO1).
+    if ($res.ContainsKey('TokensFalhaFallback')) {
+        $__fxCobS = [int64]$res.TokensFalhaFallback
+        if ($__fxCobS -ge 0) {
+            if ($__fxCobS -gt 0) {
+                $tokensFalhaProvider += $__fxCobS
+                Write-Log ('FALLBACK_CODEX_COBRADO: ' + $__fxCobS + ' tokens medidos da tentativa codex que falhou antes do desvio; cobrados no consumo do dia.')
+            }
+        } else {
+            $__fxEstS = [int64]$estLoteS
+            if ($__fxEstS -le 0) { $__fxEstS = [int64]$TokenHardCap }
+            if ($__fxEstS -gt 0) {
+                $tokensFalhaProvider += $__fxEstS
+                $tokensEstimadosFalha += $__fxEstS
+                Write-Log ('FALLBACK_CODEX_COBRADO: ESTIMADO_FALHA ' + $__fxEstS + ' tokens da tentativa codex que falhou sem usage antes do desvio; cobrados no consumo do dia.')
+            }
+        }
+    }
     if ($res.FalhaTransporte) { $lotesFalhaProvider++ }
     # FALHATRANSPORTE-TOKENS1 (2026-10-09): lote que falhou por provedor/transporte nao
     # analisou emissor nenhum - o token que ele consumiu e desperdicio, nao trabalho. Em
@@ -1244,25 +1321,25 @@ Write-State $workerLm $zipLmParaEstado $sobrou $novoStreak
 # E. EXIT CODE / HEALTH (2026-09-07): sucesso real so com pelo menos um lote processado.
 # Cap/defer planejado segue exit 0; TODOS os lotes falhando por provedor/transporte nao
 # pode virar sucesso falso. exit 9 = disparou mas nao processou nenhum lote.
-$lotesIntentados = $lotesOk + $lotesFalhaProvider
-$resultadoFim = 'OK'
-$exitFim = 0
-if ($lotesIntentados -gt 0 -and $lotesOk -eq 0 -and $lotesFalhaProvider -gt 0) {
-    $resultadoFim = 'FALLO_PROVEEDOR'
-    $exitFim = 9
-} elseif ($semResultado -gt 0 -or $submitFail -gt 0 -or $deferidos -gt 0 -or $excedente -gt 0) {
-    # COBERTURA-13OUT1: deferido por teto/tempo/uso desconhecido/disjuntor e excedente do Worker
-    # tambem sao analise com gatilho que nao aconteceu. Em 13/10 as duas execucoes sairam
-    # resultado=OK com deferidos=4 e deferidos=1 e backlog=True.
-    $resultadoFim = 'PARCIAL'
-    $exitFim = 10
+#
+# ORCAMENTOFIN1 (2026-10-14): a classificacao virou funcao PURA na lib
+# (Get-VixSentinelaResultado, lib\vixradar-cobertura.ps1) e esta chamada e a UNICA fonte dela -
+# a cadeia de ifs que existia aqui era uma segunda copia da mesma regra, e guarda que nao
+# exercita o codigo do pipeline nao e guarda. O que mudou de comportamento: execucao que nao
+# disparou NENHUM lote por falta de orcamento sai SEM_ORCAMENTO/exit 0 (mesmo estado do
+# circuito fechado), em vez de PARCIAL/exit 10 - que e o estado de "rodou e entregou parte".
+$__resFimS = Get-VixSentinelaResultado -LotesOk $lotesOk -LotesFalhaProvider $lotesFalhaProvider -SubmitOk $submitOk -SubmitFail $submitFail -SemResultado $semResultado -TokensAcum $tokensAcum -Deferidos $deferidos -DeferidosOrcamento $deferidosOrcamento -DeferidosOutros $deferidosOutros -Excedente $excedente
+$resultadoFim = $__resFimS.Resultado
+$exitFim = [int]$__resFimS.Exit
+if ($resultadoFim -eq 'SEM_ORCAMENTO') {
+    Write-Log ('COBERTURA_INCOMPLETA_SEM_ORCAMENTO: ' + $deferidosOrcamento + ' emissor(es) com gatilho nao couberam no orcamento do dia e foram para a fila pendente; matinal/noturna priorizam. nenhum lote foi disparado nesta execucao.')
 }
 
 # COBERTURA-13OUT1: tokens= continua sendo so o MEDIDO (trabalho). Lote entregue sem usage vai
 # em uso_desconhecido=N, que lib\vixradar-custo.ps1 transforma em NAO_MENSURAVEL no circuito do
 # dia (fail-closed), em vez do zero silencioso de antes. Lote que falhou sem usage foi cobrado
 # por estimativa dentro de tokens_falha_provider (tokens_estimados_falha mostra quanto).
-Write-Log ('FIM: sentinela resultado=' + $resultadoFim + '. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou + ' lotes_ok=' + $lotesOk + ' lotes_falha_provider=' + $lotesFalhaProvider + ' tokens_falha_provider=' + $tokensFalhaProvider + ' uso_desconhecido=' + $lotesUsoDesconhecido + ' tokens_estimados_falha=' + $tokensEstimadosFalha + ' provider=' + $providerExecS + ' disjuntor_provider=' + $(if ($disjuntorS.aberto) { 'ABERTO:' + $disjuntorS.motivo } else { 'fechado' }))
+Write-Log ('FIM: sentinela resultado=' + $resultadoFim + '. tokens=' + $tokensAcum + ' analisados=' + $submitOk + ' submit_fail=' + $submitFail + ' deferidos=' + $deferidos + ' deferidos_orcamento=' + $deferidosOrcamento + ' deferidos_outros=' + $deferidosOutros + ' sem_resultado=' + $semResultado + ' excedente_worker=' + $excedente + ' buscas=' + $buscasTotal + ' backlog=' + $sobrou + ' lotes_ok=' + $lotesOk + ' lotes_falha_provider=' + $lotesFalhaProvider + ' tokens_falha_provider=' + $tokensFalhaProvider + ' uso_desconhecido=' + $lotesUsoDesconhecido + ' tokens_estimados_falha=' + $tokensEstimadosFalha + ' motivo=' + $__resFimS.Motivo + ' provider=' + $providerExecS + ' disjuntor_provider=' + $(if ($disjuntorS.aberto) { 'ABERTO:' + $disjuntorS.motivo } else { 'fechado' }))
 exit $exitFim
 
 } finally {

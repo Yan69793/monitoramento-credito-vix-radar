@@ -133,10 +133,16 @@ function Get-VixWsProbeClassificacao {
     return [PSCustomObject]@{ Motivo = 'erro_desconhecido'; ResetAt = $null }
 }
 
-function Test-VixWebSearchProbe([string]$McpConfigFile) {
+function Test-VixWebSearchProbe([string]$McpConfigFile, [datetime]$Agora = (Get-Date)) {
     # GATE CLAUDE-FREE (2026-09-04): sonda custa ~2k tokens e invoca claude. Scheduler
     # nunca passa -ForceClaude, entao este caminho inteiro esta cortado sem provider.
     if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-ambient-Test-VixWebSearchProbe' }
+    # -Agora (RESETCLOCK1, 2026-10-14): o horario de reset do 429 e calculado contra "agora" em
+    # ConvertTo-VixWsProbeResetAt, e quem DECIDE esperar e Invoke-VixWebSearchPreflight, que ja tem
+    # relogio injetavel ($RelogioFunc). Sem passar o mesmo relogio para os dois lados, a sonda
+    # classificava o reset contra o relogio real e o preflight comparava contra o relogio
+    # injetado - medido em teste: 41 dias de diferenca entre a classificacao e a decisao de
+    # espera. O default preserva o comportamento de producao (relogio real).
     # Probe de WebSearch: busca trivial para validar que a ferramenta de busca
     # esta funcional antes de queimar tokens em lotes. Em 27/07 todas as buscas
     # retornavam "WebSearch indisponivel (modelo deepseek-v4-flash)" e os emissores
@@ -216,7 +222,7 @@ function Test-VixWebSearchProbe([string]$McpConfigFile) {
             ) -join "`n"
             $diagnostico | Out-File -FilePath $probeErrFile -Encoding UTF8
 
-            $classificacao = Get-VixWsProbeClassificacao -Saida $saida -StderrTxt $stderrTxt
+            $classificacao = Get-VixWsProbeClassificacao -Saida $saida -StderrTxt $stderrTxt -Agora $Agora
             $script:VixWsProbeMotivo = $classificacao.Motivo
             $script:VixWsProbe429ResetAt = $classificacao.ResetAt
         }
@@ -251,7 +257,7 @@ function Invoke-VixWebSearchPreflight {
         [scriptblock]$RelogioFunc = { Get-Date }
     )
 
-    if (Test-VixWebSearchProbe -McpConfigFile $McpConfigFile) {
+    if (Test-VixWebSearchProbe -McpConfigFile $McpConfigFile -Agora (& $RelogioFunc)) {
         return [PSCustomObject]@{ Ok = $true; Motivo = 'ok'; Escalou = $false; ExitCode = 0; EsperouMin = 0 }
     }
     $motivo = $script:VixWsProbeMotivo
@@ -261,7 +267,7 @@ function Invoke-VixWebSearchPreflight {
         for ($i = 1; $i -le $MaxResondasRateLimit; $i++) {
             Write-Log ('PRE-FLIGHT: rate limit transitorio, re-sondando (' + $i + '/' + $MaxResondasRateLimit + ') em ' + $FatiaSeg + 's')
             & $SleepFunc $FatiaSeg
-            if (Test-VixWebSearchProbe -McpConfigFile $McpConfigFile) {
+            if (Test-VixWebSearchProbe -McpConfigFile $McpConfigFile -Agora (& $RelogioFunc)) {
                 return [PSCustomObject]@{ Ok = $true; Motivo = 'ok'; Escalou = $false; ExitCode = 0; EsperouMin = [Math]::Round($i * $FatiaSeg / 60.0, 1) }
             }
         }
@@ -288,7 +294,7 @@ function Invoke-VixWebSearchPreflight {
                     $restanteSeg -= $fatia
                 }
                 $esperouMin = [Math]::Round($waitMin, 1)
-                if (Test-VixWebSearchProbe -McpConfigFile $McpConfigFile) {
+                if (Test-VixWebSearchProbe -McpConfigFile $McpConfigFile -Agora (& $RelogioFunc)) {
                     Write-Log ('PRE-FLIGHT: WebSearch funcional apos espera de ' + $esperouMin + ' min')
                     return [PSCustomObject]@{ Ok = $true; Motivo = 'ok'; Escalou = $false; ExitCode = 0; EsperouMin = $esperouMin }
                 }
@@ -348,6 +354,19 @@ function Invoke-VixWebSearchPreflight {
 }
 
 function Test-VixHeadlessTools {
+    # PARAMTOPO1 (2026-10-14): o bloco param TEM de ser a PRIMEIRA instrucao do corpo. Ele
+    # estava depois do `if` do gate CLAUDE-FREE, e isso nao e estilo: sem o param no topo, o
+    # Windows PowerShell 5.1 nao reconhece a assinatura da funcao - medido, o console mostra
+    # `The term 'param' is not recognized...` apontando para este arquivo e a funcao executa
+    # SEM receber $ClaudeArgsStreamJson (a sonda chama `claude` sem `-p` e le um stream vazio).
+    # Era a causa dos 4 asserts J1/J2 vermelhos no baseline desde 12/09/2026, rotulados como
+    # "ferramenta headless indisponivel ao subagente" quando o defeito era a propria assinatura.
+    # Ordem obrigatoria a partir daqui: param -> campos -> gate e o resto.
+    param(
+        [Parameter(Mandatory)][string[]]$ClaudeArgsStreamJson,
+        [string]$ProjectRoot,
+        [string]$ModeloSonda = 'claude-haiku-4-5-20251001'
+    )
     # GATE CLAUDE-FREE (2026-09-04): prova real invoca claude de verdade. Mesma regra
     # das demais: sem provider manual forcado, nada de tocar no CLI.
     if (-not (Test-VixLlmPermiteClaude)) { Stop-VixLlmBloqueado 'lib-ambient-Test-VixHeadlessTools' }
@@ -360,14 +379,10 @@ function Test-VixHeadlessTools {
     # Get-VixRunnerClaudeArgs -OutputFormat stream-json (contem -p, --verbose,
     # --permission-mode, --allowedTools, --add-dir, --tools/--mcp-config).
     # Nao altera nada fora de %TEMP%; nao toca o repo.
-    param(
-        [Parameter(Mandatory)][string[]]$ClaudeArgsStreamJson,
-        [string]$ProjectRoot,
-        [string]$ModeloSonda = 'claude-haiku-4-5-20251001'
-    )
     $resultado = [PSCustomObject]@{
         Ok = $false; ToolsFaltando = @(); PermissionDenials = @(); ProvaPS = $false
         ProvaLeitura = $false; ProvaEscrita = $false; ProvaBusca = $false; Erro = $null
+        SemAutenticacao = $false
     }
     $tmp = Join-Path $env:TEMP ('vixheadless_' + $PID + '_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null
@@ -400,8 +415,15 @@ function Test-VixHeadlessTools {
         $isErrorFinal = $null
         $permissionDenials = @()
         $textoFinal = ''
+        $evidenciaBruta = ''
         if (Test-Path -LiteralPath $outFile) {
-            foreach ($linha in (Get-Content -LiteralPath $outFile -Encoding UTF8)) {
+            $linhasBrutas = @(Get-Content -LiteralPath $outFile -Encoding UTF8)
+            # AUTH-FREE1 (2026-10-14): guardar a evidencia crua ANTES do parse. O parse por
+            # linha pode falhar (linha enorme, chave repetida) e sem a evidencia crua nao ha
+            # como separar "o CLI nao autenticou" de "o CLI respondeu fora do formato".
+            $evidenciaBruta = (($linhasBrutas -join "`n"))
+            if ($evidenciaBruta.Length -gt 8000) { $evidenciaBruta = $evidenciaBruta.Substring(0, 8000) }
+            foreach ($linha in $linhasBrutas) {
                 if (-not $linha) { continue }
                 try { $obj = $linha | ConvertFrom-Json -ErrorAction Stop } catch { continue }
                 if ($obj.type -eq 'system' -and $obj.subtype -eq 'init' -and $null -eq $toolsInit) {
@@ -415,8 +437,23 @@ function Test-VixHeadlessTools {
             }
         }
 
+        # AUTH-FREE1 (2026-10-14): separar "o CLI nao autenticou" de "o CLI respondeu fora do
+        # formato". Medido em 14/10: "Failed to authenticate: OAuth session expired and could
+        # not be refreshed", com 0 token consumido (a sonda ja era gratuita nesse caso, mas a
+        # causa ficava invisivel atras do rotulo de formato). O veredito NAO muda (segue
+        # Ok=$false); o que muda e o chamador poder nomear a causa em vez de deduzir defeito.
+        # ATENCAO: o CLI emite `system/init` LOCAL (com a lista de ferramentas) ANTES de tentar
+        # autenticar. Por isso a deteccao roda nos dois caminhos: aqui, quando o init faltou, e
+        # de novo depois da classificacao de ferramentas, para nao trocar uma medicao real de
+        # disponibilidade por um simples "sem credencial".
+        $semAuth = [bool]($evidenciaBruta -match '(?i)authentication_failed|Failed to authenticate|OAuth session expired|not logged in')
         if ($null -eq $toolsInit) {
-            $resultado.Erro = 'system/init nao encontrado no stream (claude nao respondeu no formato esperado)'
+            if ($semAuth) {
+                $resultado.SemAutenticacao = $true
+                $resultado.Erro = 'cli_sem_autenticacao: o CLI Claude nao autenticou nesta maquina'
+            } else {
+                $resultado.Erro = 'system/init nao encontrado no stream (claude nao respondeu no formato esperado)'
+            }
             return $resultado
         }
         # 'Agent' e o nome de USUARIO/doc do dispatch de subagente; no evento
@@ -459,6 +496,12 @@ function Test-VixHeadlessTools {
         $resultado.Ok = ($faltando.Count -eq 0) -and ($permissionDenials.Count -eq 0) -and
             $resultado.ProvaPS -and $resultado.ProvaLeitura -and $resultado.ProvaEscrita -and $resultado.ProvaBusca -and
             ($isErrorFinal -ne $true)
+        # AUTH-FREE1: com o init presente a classificacao de ferramentas ja foi medida (e o
+        # chamador a usa); a credencial ausente e anotada a parte, sem apagar a medicao.
+        if ($semAuth) {
+            $resultado.SemAutenticacao = $true
+            $resultado.Erro = 'cli_sem_autenticacao: o CLI Claude nao autenticou nesta maquina (classificacao de ferramentas medida no init local)'
+        }
     } catch {
         $resultado.Erro = $_.Exception.Message
     } finally {

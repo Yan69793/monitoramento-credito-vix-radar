@@ -57,7 +57,7 @@ skills também não é varredura: ler `.claude/SKILLS-ROUTER.md` primeiro, índi
 
 ## Memória canônica
 
-Vault Obsidian: `E:\Diretorio\Claude\SISTEMAS\VIX-Radar\Obsidian VIX Radar\`
+Vault Obsidian: `E:\Diretorio\Claude\Monitoramento de Credito\Obsidian VIX Radar\`
 Começar por `00 - Índice (MOC).md` e `03 - Estado Atual.md`.
 Se conflito chat vs Obsidian: Obsidian prevalece.
 Nunca deixar informação crítica só no chat — gravar no Obsidian ao final.
@@ -229,14 +229,17 @@ Claude Desktop e as duas Remote Routines saíram de cena. O
 task, sem retries): para reconstruir, rodar o cutover.
 
 **Provider único de LLM: env User `VIXRADAR_LLM_PROVIDER`.** Ausente ou `none` =
-bloqueado. `claude-subscription` = **ATIVO desde 12/09/2026** (medido: valor
-setado no escopo User): `Test-VixLlmPermiteClaude` libera este valor direto, sem
-exigir `-ForceClaude`, e as 5 rotinas LLM chamam o Claude CLI nativo, autenticado
-pela assinatura Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
+bloqueado. `codex` = **valor ATIVO desde 13/10/2026** (remetido em 14/10/2026:
+`User=[codex]`). O texto anterior dizia `claude-subscription` e "nenhum dos dois é o
+valor ativo hoje"; as duas afirmações estavam erradas nesta data e foram medidas de
+novo - a divergência já constava de `status/ESTADO.md` no checkpoint de 13/10.
+`claude-subscription` continua suportado: `Test-VixLlmPermiteClaude` libera este valor
+direto, sem exigir `-ForceClaude`, e as rotinas LLM chamam o Claude CLI nativo,
+autenticado pela assinatura Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
 `claude-manual` = Claude só com `-ForceClaude` explícito do operador, nunca pelo
-scheduler. `openrouter` e `codex` continuam implementados como caminhos gated
-(exigem `OpenRouterAdapterHabilitado`/`CodexAdapterHabilitado` no chamador), mas
-nenhum dos dois é o valor ativo hoje. `deepseek` = reservado, ainda bloqueado.
+scheduler. `openrouter` e `codex` são caminhos gated
+(exigem `OpenRouterAdapterHabilitado`/`CodexAdapterHabilitado` no chamador).
+`deepseek` = reservado, ainda bloqueado.
 Quando o valor ativo for `openrouter`, `VIXRADAR_OPENROUTER_FALLBACK_PROVIDER=claude-subscription`
 habilita fallback somente para HTTP 402 de crédito, usando o Sonnet da assinatura
 sem chave API paga.
@@ -258,6 +261,28 @@ fail-closed original sem mudança de comportamento, provado por
 decisão em si tem suíte própria, `scripts/test-claude-fallback-openrouter.ps1`. Isto
 não reabre `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`: OpenRouter é provider distinto, já
 documentado acima como caminho gated.
+
+**CODEXFALLBACK-OR1 (2026-10-14): o terceiro sentido do failover, e o provedor de hoje.**
+Faltava o sentido do valor ATIVO: com `VIXRADAR_LLM_PROVIDER=codex`, o Codex não tinha para
+onde desviar, e uma cota esgotada da assinatura Codex parava a rotina inteira. A variável
+`VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter` (env User, mesma precedência Process>User>Machine)
+habilita o desvio de **um lote** para o adapter OpenRouter. A decisão é pura e única em
+`Get-VixCodexFailoverDecisao` (`scripts/lib/vixradar-llm-provider.ps1`) e o chamador entrega
+apenas o que mediu: classe da falha por `Get-VixClasseFalhaProvider` (`cota` — inclui saldo —,
+`auth`, `modelo_indisponivel`) ou indisponibilidade persistente (`transitoria` só depois de 2
+falhas consecutivas do provedor). Nunca desvia para `parse-content`/`duro`, nunca sem adapter
+pronto (`Test-VixOpenRouterPronto`), nunca com `ProviderOverrideAtivo` — guarda contra recursão.
+Está ligado em `run_vixradar_varredura.ps1` (matinal e noturna) e em
+`run_vixradar_sentinela.ps1`, e o custo da tentativa que falhou continua cobrado no dia
+(medido quando o Codex publicou usage, estimado quando não publicou). **Estado em 14/10/2026:
+INERTE**, medido `VIXRADAR_CODEX_FALLBACK_PROVIDER` vazio nos escopos User e Process, ou seja,
+comportamento idêntico ao anterior enquanto o operador não optar. Duas ressalvas declaradas:
+(1) `Test-VixOpenRouterPronto` valida chave e modelo, **não saldo** — ligar a variável assume
+crédito no OpenRouter, que em 12/09/2026 estava zerado; (2) `verificacao_async` e
+`agenda_semanal` ainda não têm o desvio (pendência registrada em `PENDENCIAS.md`). Suítes:
+`scripts/test-codex-fallback-openrouter.ps1` (decisão + ligação), regressão em
+`test-mva-failover-quota-backlog.ps1` e `test-quota-esgotada-failclosed.ps1`.
+Isto também não reabre `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`.
 
 Sem provider habilitado, a rotina grava a linha canônica `BLOQUEADO_SEM_PROVIDER`
 e sai com **exit 86** antes de mutex, sonda, auth ou claude. O gate vive em

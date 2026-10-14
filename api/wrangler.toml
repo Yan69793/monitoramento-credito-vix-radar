@@ -1,9 +1,25 @@
 # ═══════════════════════════════════════════════════════════════════════
-# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.266)
+# RADAR DE CRÉDITO PRIVADO, wrangler.toml  (main = v4.9.267)
 # ═══════════════════════════════════════════════════════════════════════
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.267.js = v4.9.266 + RLADMIN4 (rate limit no formulario admin_mercado).
+#   O POST ?action=admin_mercado com Content-Type application/x-www-form-urlencoded e campo
+#   `senha` retornava ANTES do gate RLADMIN2/RLADMIN3, que so inspeciona corpos JSON com
+#   `admin_senha`: brute force do ADMIN_PASSWORD sem throttle, e a senha certa devolvia a
+#   pagina de painel autenticada. Agora a senha ERRADA entra no checkRateLimitV2 por IP
+#   (mesma camada `critica`/burst do caminho JSON, ADMINRL-FIX1) e responde 429 com
+#   _rate_limit; a senha CORRETA segue sem throttle, para o painel nao se auto-bloquear
+#   com os POSTs paralelos que ele mesmo dispara. Nenhum contrato existente mudou.
+#   Entram junto as tres correcoes de observabilidade ja validadas pela suite do Worker:
+#   CONTAGEMFONTE1 (contadores independentes da fonte no sync do ZIP, para a reconciliacao
+#   do health deixar de ser identidade tautologica: linhas_fonte = aceitos + ignorados +
+#   malformadas), HEALTHBACKLOG1 (fila de verificacao passa a publicar pendentes e idade do
+#   item mais antigo, hoje dobrada num booleano) e ANALISEVSESCRITA1 (escrita do estado deixa
+#   de ser lida como analise concluida: painel_analise_fresca/painel_ultima_analise_em).
+#   Suite do Worker no candidato: 51 arquivos, 510/510 verdes.
+#   Rollback: main = "v4.9.266.js".
 # v4.9.266.js = v4.9.265 + SESSION-ONE: sessao unica por conta. O login passa a
 #   emitir um sid (crypto.randomUUID) e gravar esse sid como a sessao ativa do
 #   usuario no UsuarioDO (op setSessaoAtiva); verificarJWT so aceita token cujo

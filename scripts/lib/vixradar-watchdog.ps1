@@ -163,23 +163,35 @@ function Test-VixLedgerEntregueNaJanela {
                 }
             }
             $fimEfetivo = $true
+            # RETRY-COBERTURA1 (2026-10-14): a ORDEM importa. As contagens de EXECUCAO
+            # (analisados_execucao/skip_execucao) medem o que ESTA invocacao fez; `ledger
+            # analisados=` mede o DIA inteiro e inclui o DEFERIDO de execucoes anteriores.
+            # Quando as duas existem, a de execucao decide. Sem isso, um relancamento que nao
+            # analisou ninguem herdava o credito do dia - medido em 13/10/2026: o retry das 21:30
+            # leu `ledger analisados=2 skip=12` de uma execucao ANTERIOR, ignorou
+            # `analisados_execucao=0 skip_execucao=0` da propria e declarou ENTREGA CONFIRMADA
+            # com exit=6 e cobertura zero. Formato com `ledger analisados=` sozinho (log antigo)
+            # segue valendo.
+            $mExecA = [regex]::Match($resto, 'analisados_execucao=(\d+)')
+            $mExecS = [regex]::Match($resto, 'skip_execucao=(\d+)')
             $mLed = [regex]::Match($resto, 'ledger analisados=(\d+)\s+skip=(\d+)')
-            if ($mLed.Success) {
+            if ($mExecA.Success -or $mExecS.Success) {
+                $aExec = 0
+                $sExec = 0
+                if ($mExecA.Success) { $aExec = [int]$mExecA.Groups[1].Value }
+                if ($mExecS.Success) { $sExec = [int]$mExecS.Groups[1].Value }
+                $fimEfetivo = (($aExec + $sExec) -gt 0)
+            } elseif ($mLed.Success) {
                 $fimEfetivo = (([int]$mLed.Groups[1].Value + [int]$mLed.Groups[2].Value) -gt 0)
-            } else {
-                $mExecA = [regex]::Match($resto, 'analisados_execucao=(\d+)')
-                $mExecS = [regex]::Match($resto, 'skip_execucao=(\d+)')
-                if ($mExecA.Success -or $mExecS.Success) {
-                    $aExec = 0
-                    $sExec = 0
-                    if ($mExecA.Success) { $aExec = [int]$mExecA.Groups[1].Value }
-                    if ($mExecS.Success) { $sExec = [int]$mExecS.Groups[1].Value }
-                    $fimEfetivo = (($aExec + $sExec) -gt 0)
-                } elseif (($mSubOk = [regex]::Match($resto, 'submit_ok=(\d+)')).Success) {
-                    $fimEfetivo = ([int]$mSubOk.Groups[1].Value -gt 0)
-                }
+            } elseif (($mSubOk = [regex]::Match($resto, 'submit_ok=(\d+)')).Success) {
+                $fimEfetivo = ([int]$mSubOk.Groups[1].Value -gt 0)
             }
-            if (($n -ge $MinimoLedger) -and $fimEfetivo) { $fimComContagemSuficiente = $true }
+            # RETRY-COBERTURA1: um FIM que declara resultado=FALHA nao e entrega, mesmo com
+            # contagem >= minimo. O FIM passou a declarar o proprio desfecho (COBERTURA-13OUT1),
+            # e um FALHA pode carregar o Total do dia herdado (sem_analise_efetiva de 13/10 saiu
+            # com 'Total do dia 104/104'). O ledger efetivo dentro da janela continua valendo
+            # sozinho - e o sinal autoritativo (ROTINACEGA2).
+            if (($n -ge $MinimoLedger) -and $fimEfetivo -and $ultimoResultado -ne 'FALHA') { $fimComContagemSuficiente = $true }
         }
     }
     # FIMFALSO1 (2026-09-12): a ULTIMA linha FIM do dia marcou trabalho zero

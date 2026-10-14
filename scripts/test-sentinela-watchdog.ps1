@@ -102,8 +102,20 @@ else { Write-Host ('AGENDA SHADOW OK: ' + $stA3.motivo) }
 $sentinelaSrc = Get-Content (Join-Path $scriptDir 'run_vixradar_sentinela.ps1') -Raw -Encoding UTF8
 if (-not ($sentinelaSrc.Contains('-Emissores $job.Chunk.Count') -and $sentinelaSrc.Contains('-BuscasPorEmissor 12'))) { $falhas += 'SENTINELA SEARCHBUDGET: adapter sem tamanho/budget real do lote' }
 else { Write-Host 'SENTINELA SEARCHBUDGET OK: tamanho e budget do lote chegam ao adapter' }
-if (-not ($sentinelaSrc.Contains("$resultadoFim = 'PARCIAL'") -and $sentinelaSrc.Contains('$exitFim = 10'))) { $falhas += 'SENTINELA PARCIAL: resultado parcial ainda pode sair exit 0' }
-else { Write-Host 'SENTINELA PARCIAL OK: parcial sai nao-zero' }
+# ORCAMENTOFIN1 (2026-10-14): a classificacao do desfecho saiu do script e virou funcao pura
+# (Get-VixSentinelaResultado, lib\vixradar-cobertura.ps1). A guarda passa a prender as DUAS
+# pontas: a sentinela chama a funcao, e a lib define o mapeamento. PARCIAL continua saindo 10;
+# o unico estado nao-OK com exit 0 e o SEM_ORCAMENTO (execucao que nao disparou nenhum lote por
+# falta de orcamento), explicito e nomeado.
+$coberturaSrc = Get-Content (Join-Path $scriptDir 'lib\vixradar-cobertura.ps1') -Raw -Encoding UTF8
+if (-not (
+    $sentinelaSrc.Contains('Get-VixSentinelaResultado') -and
+    $coberturaSrc.Contains("Resultado = 'PARCIAL'; Exit = 10") -and
+    $coberturaSrc.Contains("Resultado = 'FALLO_PROVEEDOR'; Exit = 9") -and
+    $coberturaSrc.Contains("Resultado = 'SEM_ORCAMENTO'; Exit = 0") -and
+    $sentinelaSrc.Contains('$exitFim = [int]$__resFimS.Exit')
+)) { $falhas += 'SENTINELA PARCIAL: resultado parcial ainda pode sair exit 0' }
+else { Write-Host 'SENTINELA PARCIAL OK: parcial sai nao-zero (regra unica em Get-VixSentinelaResultado)' }
 
 Remove-Item -Recurse -Force $tmpRoot -ErrorAction SilentlyContinue
 if ($falhas.Count -gt 0) {

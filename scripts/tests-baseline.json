@@ -1,11 +1,4 @@
 {
   "_doc": "Falhas conhecidas da suite de scripts/, cada uma com motivo e data. O runner (run-all-tests.ps1) trata estas como esperadas: verde hoje, vermelho em qualquer regressao NOVA. Baseline so encolhe, por edicao explicita, e uma entrada que ficar verde e reportada como obsoleta. Nunca usar para esconder defeito sem motivo escrito.",
-  "test-preflight-429.ps1": {
-    "motivo": "7 asserts do caso A/C (limite de sessao com reset dentro do teto). Classificador e parser provados corretos isoladamente (Motivo=session_limit, ResetAt=22:40, waitMin=27); a espera nao acontece no caminho do preflight e o motivo nao foi estabelecido. Investigar com instrumentacao no ramo de session_limit, nao por deducao.",
-    "desde": "2026-09-12"
-  },
-  "test-headless-tools.ps1": {
-    "motivo": "4 asserts (J1/J2) sobre ferramenta headless disponivel ao subagente. Falha pre-existente, nao relacionada ao provider nem ao monitor.",
-    "desde": "2026-09-12"
-  }
+  "_baseline_vazio_desde": "2026-10-14 - as duas entradas (test-preflight-429.ps1 e test-headless-tools.ps1) ficaram VERDES e foram removidas por edicao explicita. Causa de cada uma, medida: (a) test-preflight-429.ps1 morria em exit 86 (BLOQUEADO_SEM_PROVIDER, provider=codex ativo desde 13/10) antes de rodar qualquer caso; a suite agora declara o provider do caminho que exercita (claude-subscription) no escopo do processo. Com o gate corrigido, os 7 asserts de A/C reprovavam por incoerencia real de relogio: a sonda classificava o RESET do 429 contra o relogio real (Get-Date) enquanto o preflight decidia esperar contra o relogio injetado ($RelogioFunc) - medido: 41 dias de diferenca. Corrigido em lib\\vixradar-ambient-check.ps1 com Test-VixWebSearchProbe -Agora, alimentado por (& $RelogioFunc) nos tres pontos de sonda do preflight. Tambem escopado por PID o cleanup de %TEMP%, que apagava artefato de instancia concorrente. (b) test-headless-tools.ps1 morria no mesmo gate exit 86; com a suite declarando o provider, a Parte J nao pode rodar porque o CLI Claude desta maquina NAO autentica (medido: 'Failed to authenticate: OAuth session expired and could not be refreshed', 0 token consumido, CLAUDE-FREE-MIGRATION). A Parte J virou pulo CONDICIONAL e nomeado (SemAutenticacao exposto por Test-VixHeadlessTools), e a Parte I (offline, valor real) segue no gate contando asserts."
 }

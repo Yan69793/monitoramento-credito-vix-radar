@@ -266,7 +266,9 @@ Assert-Cob ($var -match 'Get-VixResultadoRotina' -and $var -match "' resultado='
 Assert-Cob ($var -match 'Get-VixEmissoresQueCabem' -and $var -match 'CAP_LOTE_REDUZIDO') 'I4 pre-lote do motor usa custo por emissor e encolhe o lote'
 Assert-Cob ($var -match 'DISJUNTOR_PROVIDER' -and $var -match 'motivo = ''falha_provider''') 'I5 motor tem disjuntor de provedor e defere com motivo proprio'
 Assert-Cob ($sen -match 'Get-VixCodexUsageJsonl' -and $sen -match "uso_desconhecido=' \+ \`$lotesUsoDesconhecido") 'I6 sentinela le o usage do JSONL e declara uso_desconhecido no FIM'
-Assert-Cob ($sen -match "\`$deferidos -gt 0" -and $sen -match '\$resultadoFim = ''PARCIAL''') 'I7 sentinela com deferidos fecha PARCIAL'
+$cobLib = Get-Content -LiteralPath (Join-Path $Scripts 'lib\vixradar-cobertura.ps1') -Raw -Encoding UTF8
+Assert-Cob ($sen -match 'Get-VixSentinelaResultado' -and $sen -match '-Deferidos \$deferidos' -and $sen -match '-DeferidosOrcamento \$deferidosOrcamento' -and $cobLib -match "\`$Deferidos -gt 0" -and $cobLib -match "Resultado = 'PARCIAL'; Exit = 10") 'I7 sentinela com deferidos fecha PARCIAL (regra unica em Get-VixSentinelaResultado)'
+Assert-Cob ($cobLib -match 'function Get-VixSentinelaResultado') 'I7b a regra do desfecho vive na lib (definicao unica, sem copia no motor)'
 Assert-Cob ($sen -match "modeloPrompt = 'codex-subscription'") 'I8 sentinela nao manda mais rotulo Claude ao Codex'
 Assert-Cob ($sen -match 'Get-VixDecisaoCapSentinela' -and $sen -match 'CAP_CALIBRACAO' -and $sen -match 'CAP_PREVENTIVO' -and $sen -notmatch 'Get-VixDefaultLimitadoAoCap') 'I9 sentinela decide pelo controle preventivo e nao mascara a estimativa'
 

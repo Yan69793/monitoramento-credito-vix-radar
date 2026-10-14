@@ -630,6 +630,35 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                     $providerClasse = $__clsProv.Classe; $providerSemPerspectiva = [bool]$__clsProv.SemPerspectiva
                     if ($exitCode -eq 0) { $exitCode = 1 }
                     Write-Log ('PROVIDER_FALHOU: codex exit=' + $LASTEXITCODE + ' classe=' + $providerClasse + ' sem_perspectiva=' + $providerSemPerspectiva + ' (resultado vazio ou processo falhou)')
+                    # CODEXFALLBACK-OR1 (2026-10-14): o provedor ativo e o Codex e ele nao tinha
+                    # nenhum fallback. Aqui mora o desvio opt-in para o adapter OpenRouter, com a
+                    # MESMA forma dos outros dois sentidos (VIXRADAR_CLAUDE_FALLBACK_PROVIDER e
+                    # VIXRADAR_OPENROUTER_FALLBACK_PROVIDER): sem a var, sem adapter pronto ou ja
+                    # dentro de um override, nada muda. A regra e pura e vive em
+                    # Get-VixCodexFailoverDecisao (lib\vixradar-llm-provider.ps1); aqui entram
+                    # apenas os fatos medidos neste lote.
+                    $script:VixCodexProviderFalhasConsecutivas = [int]$script:VixCodexProviderFalhasConsecutivas + 1
+                    $__fxHabilitado = (Get-VixCodexFallbackOpenRouterHabilitado)
+                    $__fxDestino = $false
+                    if ($__fxHabilitado -and -not $providerOverrideAtivo -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue)) {
+                        $__fxBoot = Test-VixOpenRouterPronto
+                        $__fxDestino = [bool]$__fxBoot.ok
+                        if (-not $__fxDestino) { Write-Log ('FALLBACK_OPENROUTER_CODEX: habilitado, mas o destino nao esta pronto (' + $__fxBoot.motivo + '). Sem desvio; vale o fail-closed anterior.') }
+                    }
+                    $__fxDec = Get-VixCodexFailoverDecisao -Classe $providerClasse -FalhasConsecutivas $script:VixCodexProviderFalhasConsecutivas -DestinoPronto $__fxDestino -Habilitado $__fxHabilitado -ProviderOverrideAtivo $providerOverrideAtivo
+                    if ($__fxDec -eq 'failover') {
+                        # Custo da tentativa que falhou: medido quando o Codex publicou usage,
+                        # -1 (desconhecido) quando nao publicou. O chamador cobra os dois, nunca zero.
+                        $__fxTokens = [int64]-1
+                        if ($__usoCodex.uso.mensuravel) { $__fxTokens = [int64]$__usoCodex.parcelas.trabalho }
+                        Write-Log ('FALLBACK_OPENROUTER_CODEX: codex classe=' + $providerClasse + ' exit=' + $exitCode + ' tokens_codex=' + $(if ($__fxTokens -ge 0) { '' + $__fxTokens } else { 'NAO_MENSURAVEL' }) + ' - transferindo somente este lote para openrouter (VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter).')
+                        $__fxResp = Invoke-ClaudeBatch -promptPath $promptPath -Model $Model -Emissores $Emissores -Tier $Tier -ProviderOverride 'openrouter'
+                        if ($__fxResp) {
+                            $__fxResp['TokensFalhaFallback'] = $__fxTokens
+                            return $__fxResp
+                        }
+                        Write-Log 'FALLBACK_OPENROUTER_CODEX: o adapter nao devolveu lote; seguindo o fail-closed do Codex.'
+                    }
                     if ($__usoCodex.uso.mensuravel) {
                         $usoMensuravel = $true
                         $raw = @(([ordered]@{ result = ''; is_error = $true; model = 'codex-subscription'; usage = [ordered]@{ input_tokens = $__usoCodex.parcelas.input; output_tokens = $__usoCodex.parcelas.output; cache_creation_input_tokens = 0; cache_read_input_tokens = 0 } }) | ConvertTo-Json -Compress)
@@ -643,6 +672,10 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                     break
                 }
                 if ($exitCode -eq 0 -and (Test-Path -LiteralPath $codexOutFile)) {
+                    # CODEXFALLBACK-OR1: lote do Codex entregue zera o contador de falhas
+                    # consecutivas do provedor (e o que separa instabilidade de indisponibilidade
+                    # persistente para a decisao de desvio).
+                    $script:VixCodexProviderFalhasConsecutivas = 0
                     # CODEX-PSDECOR1 (2026-10-09): Get-Content -Raw devolve uma string COM note
                     # properties (PSPath/PSParentPath/PSChildName/PSDrive/PSProvider/ReadCount).
                     # ConvertTo-Json DESCE nelas: o envelope vira
@@ -2080,6 +2113,28 @@ try {
                         if ($result.Output) { $result.Output | ForEach-Object { Write-Log ('OUT: ' + $_) } }
 
         $bt = $result.Tokens
+        # CODEXFALLBACK-OR1 (2026-10-14): quando o lote do Codex foi desviado para o OpenRouter,
+        # a tentativa do Codex que falhou continua cobrada no consumo do dia. Medida quando o
+        # Codex publicou usage; estimada (estLote) quando nao publicou - consumo desconhecido
+        # nunca vira zero (regra CUSTOFALHA-TETO1/COBERTURA-13OUT1).
+        if ($result.ContainsKey('TokensFalhaFallback')) {
+            $__fxCobrado = [int64]$result.TokensFalhaFallback
+            if ($__fxCobrado -ge 0) {
+                # Custo MEDIDO da tentativa que falhou: consumo real, nao estimativa.
+                if ($__fxCobrado -gt 0) {
+                    $stats.tokens_total += $__fxCobrado
+                    Write-Log ('FALLBACK_CODEX_COBRADO: ' + $__fxCobrado + ' tokens medidos da tentativa codex que falhou antes do desvio; cobrados no consumo do dia. acum=' + $stats.tokens_total)
+                }
+            } else {
+                # Consumo desconhecido da tentativa que falhou: cobrado pela estimativa, nunca zero.
+                $__fxEst = [int64]$estLote
+                if ($__fxEst -gt 0) {
+                    $stats.tokens_total += $__fxEst
+                    $stats.tokens_estimados_falha += $__fxEst
+                    Write-Log ('FALLBACK_CODEX_COBRADO: ESTIMADO_FALHA ' + $__fxEst + ' tokens da tentativa codex que falhou sem usage antes do desvio; cobrados no consumo do dia. acum=' + $stats.tokens_total)
+                }
+            }
+        }
         if (-not $result.UsoMensuravel) {
             $stats.tokens_mensuraveis = $false
             $stats.tokens_hard_hit = $true

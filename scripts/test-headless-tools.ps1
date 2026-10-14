@@ -13,6 +13,15 @@ $ErrorActionPreference = 'Continue'
 . (Join-Path $PSScriptRoot 'lib\vixradar-ambient-check.ps1')
 . (Join-Path $PSScriptRoot 'lib\vixradar-runner-args.ps1')
 
+# PROVIDERFIX (2026-10-14): esta suite prova o caminho do CLI Claude (Get-VixRunnerClaudeArgs e
+# Test-VixHeadlessTools), que o gate CLAUDE-FREE so libera sob provider de Claude. Com o provider
+# ativo hoje em `codex` (medido: User=[codex], desde 13/10), ela morria em exit 86
+# (BLOQUEADO_SEM_PROVIDER, gatilho=lib-ambient-Test-VixHeadlessTools) ANTES de exercitar
+# qualquer coisa - o ambiente da maquina nao e a variavel sob teste. A suite passa a declarar,
+# no escopo DESTE processo e so nele, o provider do caminho que ela exercita, e restaura no fim.
+$__providerOriginal = $env:VIXRADAR_LLM_PROVIDER
+$env:VIXRADAR_LLM_PROVIDER = 'claude-subscription'
+
 $script:okN = 0; $script:fal = 0
 function Assert([bool]$cond, [string]$msg) { if ($cond) { $script:okN++; Write-Host ('  OK    ' + $msg) } else { $script:fal++; Write-Host ('  FALHA ' + $msg) } }
 
@@ -49,6 +58,7 @@ Assert ($idxTools -ge 0 -and $argsNovos[$idxTools + 1] -ne 'WebSearch,WebFetch')
 if ($PularCLI) {
     Write-Host ''
     Write-Host ('RESULTADO (so Parte I): ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)')
+    $env:VIXRADAR_LLM_PROVIDER = $__providerOriginal
     if ($script:fal -gt 0) { exit 1 }
     exit 0
 }
@@ -62,10 +72,31 @@ Write-Host '--- J1: linha NOVA (--tools default + dontAsk + allowedTools) tem qu
 $streamArgsNovos = Get-VixRunnerClaudeArgs -Cfg $cfgNoturno -McpConfigFile $mcpEmpty -OutputFormat 'stream-json'
 $rJ1 = Test-VixHeadlessTools -ClaudeArgsStreamJson $streamArgsNovos -ProjectRoot (Resolve-Path (Join-Path $PSScriptRoot '..'))
 Write-Host ('  Ok=' + $rJ1.Ok + ' ToolsFaltando=[' + ($rJ1.ToolsFaltando -join ',') + '] PermissionDenials=' + $rJ1.PermissionDenials.Count + ' PS=' + $rJ1.ProvaPS + ' Leitura=' + $rJ1.ProvaLeitura + ' Escrita=' + $rJ1.ProvaEscrita + ' Busca=' + $rJ1.ProvaBusca + ' Erro=' + $rJ1.Erro)
-Assert ($rJ1.Ok -eq $true) ('J1: linha nova PASSA a sonda headless (obtido Ok=' + $rJ1.Ok + ')')
-Assert ($rJ1.ToolsFaltando.Count -eq 0) 'J1: nenhuma ferramenta faltando'
-Assert ($rJ1.PermissionDenials.Count -eq 0) 'J1: nenhuma permissao negada'
-Assert ($rJ1.ProvaPS -and $rJ1.ProvaLeitura -and $rJ1.ProvaEscrita -and $rJ1.ProvaBusca) 'J1: shell, leitura, escrita e busca via subagente confirmados'
+
+# CLI-AUSENTE1 (2026-10-14): a Parte J1 invoca o CLI Claude DE VERDADE e so pode passar com uma
+# credencial Claude valida. Medido nesta maquina em 14/10: o CLI responde
+# "Failed to authenticate: OAuth session expired and could not be refreshed" com 0 token
+# consumido - nao ha assinatura Claude ativa (CLAUDE-FREE-MIGRATION; o provider das rotinas e
+# codex desde 13/10). Sem esta guarda a suite ficava vermelha por falta de credencial, o que
+# nao e defeito de codigo nem prova de nada.
+#
+# J1 e PULADO (condicional e nomeado). J2 NAO e pulado: a lista de ferramentas que ele julga vem
+# do evento `system/init` LOCAL do CLI, emitido ANTES da autenticacao - logo J2 mede de verdade o
+# classificador de disponibilidade de ferramenta sem precisar de credencial. Nunca se marca OK
+# sem prova: assert pulado nao conta, assert executado conta.
+$j1Pulado = $false
+if ($rJ1.SemAutenticacao) {
+    $j1Pulado = $true
+    Write-Host ''
+    Write-Host 'PULADO (J1): sonda headless nao executavel - o CLI Claude desta maquina nao autentica.'
+    Write-Host ('  evidencia medida na propria sonda: ' + $rJ1.Erro)
+    Write-Host '  motivo: sem assinatura Claude ativa (CLAUDE-FREE-MIGRATION); provider das rotinas = codex.'
+} else {
+    Assert ($rJ1.Ok -eq $true) ('J1: linha nova PASSA a sonda headless (obtido Ok=' + $rJ1.Ok + ')')
+    Assert ($rJ1.ToolsFaltando.Count -eq 0) 'J1: nenhuma ferramenta faltando'
+    Assert ($rJ1.PermissionDenials.Count -eq 0) 'J1: nenhuma permissao negada'
+    Assert ($rJ1.ProvaPS -and $rJ1.ProvaLeitura -and $rJ1.ProvaEscrita -and $rJ1.ProvaBusca) 'J1: shell, leitura, escrita e busca via subagente confirmados'
+}
 
 Write-Host '--- J2: linha ANTIGA (--tools WebSearch,WebFetch) tem que REPROVAR ---'
 $argsAntigos = @('-p', '--permission-mode', 'bypassPermissions', '--output-format', 'stream-json', '--verbose',
@@ -83,6 +114,7 @@ $gitDepois = (& git -C $PSScriptRoot\.. status --porcelain) -join "`n"
 Assert ($gitAntes -eq $gitDepois) 'git status identico antes e depois (nenhuma sonda tocou o repo)'
 
 Write-Host ''
-Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)')
+Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)' + $(if ($j1Pulado) { ', J1 PULADO (sem autenticacao no CLI)' } else { '' }))
+$env:VIXRADAR_LLM_PROVIDER = $__providerOriginal
 if ($script:fal -gt 0) { exit 1 }
 exit 0

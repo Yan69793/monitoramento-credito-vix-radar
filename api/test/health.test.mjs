@@ -611,3 +611,69 @@ describe("receber_analise: BUSCADEGRADADA1 - busca web degradada nao certifica s
     expect(d._last_scanned_at).toBe(new Date(AGORA_FAKE).toISOString()); // = "...T14:00:00.000Z"
   });
 });
+
+// ANALISEVSESCRITA1 (2026-10-10): `updated_at` de topo avanca em QUALQUER escrita do estado,
+// inclusive deferimento por teto (`_token_cap_deferred`). O caso medido em 10/10/2026: a
+// matinal deferiu 22/22 emissores com 0 analises e `painel_atualizado_em` avancou assim mesmo,
+// entao `painel_fresco` dizia true num dia sem uma unica analise concluida. O carimbo certo ja
+// existia e e outro: `_ultima_analise_at`, gravado so por `_carimbarAnaliseReal`. Estes testes
+// separam escrita de analise e travam a convencao null (sem dado) / false (conferido e stale).
+describe("GET / painel_analise_fresca (escrita != analise concluida)", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  const QUINTA = "2026-10-08T14:00:00.000Z"; // 11:00 BRT quinta: SLA da matinal ativo
+
+  async function semearEstado(results, updatedAt) {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(QUINTA));
+    const chaveAtual = chaveEstadoParaInstante(QUINTA);
+    const chaveAnterior = chaveEstadoParaInstante(new Date(new Date(QUINTA).getTime() - 7 * 864e5).toISOString());
+    await env.RADAR_KV.delete(chaveAtual);
+    await env.RADAR_KV.delete(chaveAnterior);
+    if (updatedAt !== undefined && updatedAt !== null) {
+      await env.RADAR_KV.put(chaveAtual, JSON.stringify({ week: chaveAtual.replace("radar:estado:", ""), updated_at: updatedAt, results }));
+    }
+  }
+
+  it("escrita por DEFERIMENTO nao conta como analise concluida", async () => {
+    const results = {};
+    for (let i = 0; i < 22; i++) results["E" + String(i).padStart(2, "0")] = { _token_cap_deferred: true, _last_scanned_at: QUINTA, _status: "DEFERIDO" };
+    await semearEstado(results, QUINTA);
+    const b = await (await SELF.fetch("https://example.com/")).json();
+    expect(b.painel_atualizado_em).toBe(QUINTA);
+    expect(b.painel_fresco).toBe(true); // a rotina escreveu o estado
+    expect(b.painel_ultima_analise_em).toBeNull();
+    expect(b.painel_analise_fresca).toBe(false); // ...mas nada foi analisado
+    expect(b.painel_emissores_deferidos).toBe(22);
+    expect(b.painel_emissores_total).toBe(22);
+  });
+
+  it("analise real recente deixa as duas frescuras verdadeiras", async () => {
+    await semearEstado({ DASA: { _ultima_analise_at: QUINTA, _ultimo_tier: "FULL", _last_scanned_at: QUINTA } }, QUINTA);
+    const b = await (await SELF.fetch("https://example.com/")).json();
+    expect(b.painel_ultima_analise_em).toBe(QUINTA);
+    expect(b.painel_analise_fresca).toBe(true);
+    expect(b.painel_fresco).toBe(true);
+    expect(b.painel_emissores_deferidos).toBe(0);
+    expect(b.painel_emissores_total).toBe(1);
+  });
+
+  it("analise antiga com escrita nova: fresco por escrita, stale por analise", async () => {
+    const antigo = "2026-09-30T14:00:00.000Z";
+    await semearEstado({ DASA: { _ultima_analise_at: antigo, _last_scanned_at: QUINTA, _token_cap_deferred: true } }, QUINTA);
+    const b = await (await SELF.fetch("https://example.com/")).json();
+    expect(b.painel_fresco).toBe(true);
+    expect(b.painel_ultima_analise_em).toBe(antigo);
+    expect(b.painel_analise_fresca).toBe(false);
+  });
+
+  it("sem estado nenhum: null nos tres campos, nunca false", async () => {
+    await semearEstado({}, null);
+    const b = await (await SELF.fetch("https://example.com/")).json();
+    expect(b.painel_atualizado_em).toBeNull();
+    expect(b.painel_ultima_analise_em).toBeNull();
+    expect(b.painel_analise_fresca).toBeNull();
+  });
+});
