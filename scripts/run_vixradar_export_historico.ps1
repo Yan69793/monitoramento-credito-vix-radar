@@ -100,6 +100,45 @@ function ConvertTo-UriComponent([string]$s) {
     return $sb.ToString()
 }
 
+# KVTIMEOUT1 (2026-10-14): `npx wrangler kv key get` rodava SEM timeout. Em 13/10/2026 o pre-voo
+# ficou 26 min parado (20:45:12 -> 21:11:11, contra 7 s nos outros dias), o Agendador encerrou a
+# tarefa no limite de 25 min (LastTaskResult 267014) e o resto do script ainda correu em ritmo normal.
+# Agora cada chamada tem teto, a arvore de processos e encerrada no estouro, e o estouro volta como
+# 'timed out' no stderr, que Get-VixWranglerFalhaClase ja classifica como transitorio (nunca como
+# ausencia de serie). Disjuntor: 3 estouros seguidos desligam as chamadas seguintes desta execucao.
+$KvTimeoutSeg = 90
+$script:KvTimeoutsSeguidos = 0
+function Invoke-WranglerKvGetComTimeout([string]$Key, [string]$StderrFile) {
+    if ($script:KvTimeoutsSeguidos -ge 3) {
+        Set-Content -LiteralPath $StderrFile -Value 'wrangler kv timed out (disjuntor aberto: 3 estouros seguidos nesta execucao)' -Encoding ASCII
+        return [pscustomobject]@{ Code = 124; Raw = '' }
+    }
+    $outFile = $StderrFile + '.out'
+    # npx resolve para npx.ps1 nesta maquina; Start-Process so executa o npx.cmd (Win32)
+    $npxCmd = (Get-Command npx.cmd -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
+    if (-not $npxCmd) { Set-Content -LiteralPath $StderrFile -Value 'npx.cmd ausente no PATH' -Encoding ASCII; return [pscustomobject]@{ Code = 127; Raw = '' } }
+    $args2 = 'wrangler kv key get "' + $Key + '" --namespace-id ' + $NamespaceId + ' --remote'
+    $p = Start-Process -FilePath $npxCmd -ArgumentList $args2 -WorkingDirectory $ApiDir -NoNewWindow -PassThru -RedirectStandardOutput $outFile -RedirectStandardError $StderrFile
+    $null = $p.Handle   # PS 5.1: sem o handle em cache o ExitCode volta nulo apos WaitForExit(ms)
+    if (-not $p.WaitForExit($KvTimeoutSeg * 1000)) {
+        & taskkill.exe /PID $p.Id /T /F 2>&1 | Out-Null
+        $script:KvTimeoutsSeguidos++
+        Set-Content -LiteralPath $StderrFile -Value ('wrangler kv timed out apos ' + $KvTimeoutSeg + 's') -Encoding ASCII
+        Remove-Item -LiteralPath $outFile -Force -ErrorAction SilentlyContinue
+        return [pscustomobject]@{ Code = 124; Raw = '' }
+    }
+    $script:KvTimeoutsSeguidos = 0
+    $code = $p.ExitCode
+    if (Test-Path -LiteralPath $StderrFile) {   # remove codigos ANSI do stderr (o log nao deve guardar escape)
+        $errTxt = Get-Content -LiteralPath $StderrFile -Raw -Encoding UTF8 -ErrorAction SilentlyContinue
+        if ($errTxt) { Set-Content -LiteralPath $StderrFile -Value ($errTxt -replace ([string][char]27 + '\[[0-9;]*m'), '') -Encoding UTF8 }
+    }
+    $raw = ''
+    if (Test-Path -LiteralPath $outFile) { $raw = (Get-Content -LiteralPath $outFile -Raw -Encoding UTF8 -ErrorAction SilentlyContinue) }
+    Remove-Item -LiteralPath $outFile -Force -ErrorAction SilentlyContinue
+    return [pscustomobject]@{ Code = $code; Raw = $raw }
+}
+
 function Get-KvValue([string]$Key) {
     # Retorna [pscustomobject]@{ Valor; Estado; Motivo }. Estado: ok|ausente|transitorio|auth|outro.
     # 'ausente' = chave nao existe (sem serie legitima); 'transitorio' = transporte falhou apos
@@ -114,8 +153,9 @@ function Get-KvValue([string]$Key) {
             $intento++
             $raw = ''
             Push-Location $ApiDir
-            $raw = (& npx wrangler kv key get $Key --namespace-id $NamespaceId --remote 2>$stderrFile | Out-String)
-            $code = $LASTEXITCODE
+            $r = Invoke-WranglerKvGetComTimeout $Key $stderrFile
+            $raw = $r.Raw
+            $code = $r.Code
             Pop-Location
             if ($code -eq 0 -and -not [string]::IsNullOrWhiteSpace($raw)) { break }
             if (Test-Path $stderrFile) { $errFull = (Get-Content $stderrFile -Raw -ErrorAction SilentlyContinue) } else { $errFull = '' }
