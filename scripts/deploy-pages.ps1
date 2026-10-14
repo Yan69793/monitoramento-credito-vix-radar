@@ -35,7 +35,22 @@ param(
   # producao, pulando o gate anti-regressao de forma consciente. Existe para o
   # caso legitimo de publicar com a rede/Cloudflare fora. Assumindo o risco: se
   # producao estiver a frente, este deploy REGRIDE versao e conteudo.
-  [switch]$Offline
+  [switch]$Offline,
+  # PUSH-GATE1 (2026-10-10): push passa a ser opt-in. Antes o passo 6 rodava
+  # `git push origin HEAD` sempre, publicando no GitHub sem autorizacao na rodada.
+  # Sem -Push o deploy publica (wrangler), commita local e imprime o comando exato.
+  [switch]$Push,
+  # APPROVED-COMMIT1 (2026-10-10): publica a superficie app/ mesmo suja, de forma
+  # consciente. Existe para o caso legitimo; sem ela o gate confere que o que sobe
+  # bate com o commit aprovado (HEAD).
+  [switch]$AllowDirtyBundle,
+  # APPROVED-BUNDLE-SHA1 (2026-10-10): -AllowDirtyBundle NAO autoriza sozinho.
+  # Ele passa a exigir -ApprovedSha com o SHA-256 do bundle final, para que a
+  # publicacao dependa de conteudo identificavel, e nao apenas de "arvore suja".
+  [string]$ApprovedSha = '',
+  # Calcula e imprime o SHA-256 do bundle final e sai sem deployar nem commitar.
+  # E o passo que gera o valor a ser aprovado e passado em -ApprovedSha.
+  [switch]$PrintBundleSha
 )
 
 $ErrorActionPreference = "Stop"
@@ -178,11 +193,21 @@ $trackedFiles = @(
   "app/version.json",
   "app/deploy_zip/index.html",
   "app/deploy_zip/version.json",
-  "scripts/deploy-pages.ps1"
+  "scripts/deploy-pages.ps1",
+  "app/_headers",
+  "app/_routes.json",
+  "app/robots.txt",
+  "app/landing-demo.json",
+  "app/js",
+  "app/admin"
 )
 $dirty = git diff --name-only -- $trackedFiles 2>$null
-if ($DryRun) {
-  Write-Host "Gate working tree: pulado (-DryRun nao commita)" -ForegroundColor DarkGray
+# APPROVED-BUNDLE-SHA1 (2026-10-10): a lista suja e preservada mesmo quando o gate
+# e pulado, para virar registro auditavel da publicacao aprovada por hash.
+$dirtyParaRegistro = @($dirty)
+if ($DryRun -or $AllowDirtyBundle) {
+  $motivoPulo = if ($DryRun) { "-DryRun nao commita" } else { "-AllowDirtyBundle+ApprovedSha" }
+  Write-Host ("Gate working tree: pulado (" + $motivoPulo + ")") -ForegroundColor DarkGray
   $dirty = $null
 }
 if ($dirty) {
@@ -190,12 +215,13 @@ if ($dirty) {
   Fail "Working tree sujo nos arquivos do deploy. Faça commit ou stash antes de deployar:`n$dirtyList"
 }
 $stagedDirty = git diff --cached --name-only -- $trackedFiles 2>$null
-if ($DryRun) { $stagedDirty = $null }
+$dirtyParaRegistro = @($dirtyParaRegistro) + @($stagedDirty)
+if ($DryRun -or $AllowDirtyBundle) { $stagedDirty = $null }
 if ($stagedDirty) {
   $stagedList = ($stagedDirty | ForEach-Object { "  $_" }) -join "`n"
   Fail "Arquivos staged mas nao commitados. Commit ou unstage antes de deployar:`n$stagedList"
 }
-if (-not $DryRun) { Write-Host "Gate working tree: limpo" -ForegroundColor Green }
+if (-not $DryRun -and -not $AllowDirtyBundle) { Write-Host "Gate working tree: limpo" -ForegroundColor Green }
 
 # --- 1. CACHE_VERSION ------------------------------------------------------
 $html = Get-Content $indexSrc -Raw
@@ -233,7 +259,9 @@ Write-Host "Gate de conteudo: sem drift bloqueante (conteudo igual ou bump em vo
 
 # --- 2. Sincroniza deploy_zip (raiz vence) ---------------------------------
 Copy-Item -Force $indexSrc (Join-Path $zipDir "index.html")
-foreach ($f in @("_headers","_routes.json","landing-demo.json","robots.txt")) {
+# VXFAVICON1 (2026-10-14): sem favicon real, /favicon.ico caia no fallback de SPA e
+# devolvia o index.html inteiro (178 KB) como icone.
+foreach ($f in @("_headers","_routes.json","landing-demo.json","robots.txt","favicon.ico","favicon.svg")) {
   $srcF = Join-Path $appDir $f
   if (Test-Path $srcF) { Copy-Item -Force $srcF (Join-Path $zipDir $f) }
 }
@@ -474,6 +502,65 @@ Write-Host "Gate 3.4: rotas de acesso ao painel admin OK (atalho, modulo, botao,
 # Revalida o pacote final imediatamente antes da saida DryRun ou do upload.
 Assert-PagesBundle
 
+# --- 3.5 GATE DE APROVACAO POR HASH DO BUNDLE (APPROVED-BUNDLE-SHA1) -------
+# Entrou em 2026-10-10. Antes, -AllowDirtyBundle pulava o gate da arvore de trabalho
+# e publicava qualquer conteudo nao commitado sem nenhum vinculo com commit ou hash
+# aprovado. Publicacao agora depende de conteudo IDENTIFICAVEL: o bundle final (tudo
+# que o wrangler envia, menos version.json) e resumido num SHA-256. version.json fica
+# de fora porque carrega deployed_at, que so nasce no passo 4; ele e derivado de $ver,
+# entao a propria $ver entra no digest. -AllowDirtyBundle exige -ApprovedSha igual a
+# esse resumo; sem isso o deploy RECUSA (fail-closed). Arvore limpa segue igual, e se
+# -ApprovedSha for informado nesse caminho ele tambem e conferido.
+function Get-VixPagesBundleSha {
+  param([string]$Dir, [string]$Versao)
+  $sha = [System.Security.Cryptography.SHA256]::Create()
+  $ms = New-Object System.IO.MemoryStream
+  try {
+    $cab = [Text.Encoding]::UTF8.GetBytes("version=" + $Versao + "`n")
+    $ms.Write($cab, 0, $cab.Length)
+    $arquivos = @(Get-ChildItem -Path $Dir -Recurse -File -Force |
+      Where-Object { $_.Name -ne 'version.json' } |
+      Sort-Object { $_.FullName.ToLowerInvariant() })
+    foreach ($a in $arquivos) {
+      $rel = ($a.FullName.Substring($Dir.Length).TrimStart('\') -replace '\\', '/')
+      $rb = [Text.Encoding]::UTF8.GetBytes($rel + "`n")
+      $ms.Write($rb, 0, $rb.Length)
+      $conteudo = [System.IO.File]::ReadAllBytes($a.FullName)
+      $ms.Write($conteudo, 0, $conteudo.Length)
+      $lf = [Text.Encoding]::UTF8.GetBytes("`n")
+      $ms.Write($lf, 0, $lf.Length)
+    }
+    $h = $sha.ComputeHash($ms.ToArray())
+    return (($h | ForEach-Object { $_.ToString('x2') }) -join '')
+  } finally {
+    $ms.Dispose()
+    $sha.Dispose()
+  }
+}
+
+$bundleSha = Get-VixPagesBundleSha -Dir $zipDir -Versao $ver
+if ($PrintBundleSha) {
+  Write-Host ("BUNDLE_SHA=" + $bundleSha) -ForegroundColor Cyan
+  Write-Host "Nada foi deployado nem commitado (-PrintBundleSha). Aprove este hash e repita o deploy com ele." -ForegroundColor Cyan
+  exit 0
+}
+if ($AllowDirtyBundle) {
+  if (-not $ApprovedSha) {
+    Fail ("-AllowDirtyBundle exige -ApprovedSha (fail-closed): bundle sujo nao se publica sem hash aprovado.`n" +
+          "O bundle atual tem SHA-256 " + $bundleSha + ".`n" +
+          "Rode com -PrintBundleSha para obter o hash, aprove-o e repita com -ApprovedSha " + $bundleSha + ".")
+  }
+  if ($ApprovedSha.ToLowerInvariant() -ne $bundleSha.ToLowerInvariant()) {
+    Fail ("-ApprovedSha NAO bate com o bundle atual. Aprovado=" + $ApprovedSha + " atual=" + $bundleSha + ". O que subiria nao e o que foi aprovado; nada foi deployado.")
+  }
+  Write-Host ("Gate de aprovacao: bundle " + $bundleSha + " aprovado por hash, com " + $dirtyParaRegistro.Count + " arquivo(s) nao commitado(s) registrado(s)") -ForegroundColor Yellow
+  foreach ($f in $dirtyParaRegistro) { Write-Host ("  (nao commitado) " + $f) -ForegroundColor DarkYellow }
+} elseif ($ApprovedSha -and $ApprovedSha.ToLowerInvariant() -ne $bundleSha.ToLowerInvariant()) {
+  Fail ("-ApprovedSha informado NAO bate com o bundle limpo. Aprovado=" + $ApprovedSha + " atual=" + $bundleSha + ".")
+} else {
+  Write-Host ("Gate de aprovacao: bundle " + $bundleSha + " (arvore limpa, conteudo do HEAD)") -ForegroundColor DarkGray
+}
+
 if ($DryRun) {
   Write-Host "`nDRY-RUN: sync feito e todos os gates passaram. NADA foi deployado, NADA foi commitado." -ForegroundColor Cyan
   Write-Host "Rode sem -DryRun para publicar." -ForegroundColor Cyan
@@ -605,13 +692,18 @@ try {
     Write-Host "  commit criado" -ForegroundColor Green
   }
 
-  git push origin HEAD
-  if ($LASTEXITCODE -ne 0) {
-    Write-Host "`nDEPLOY OK mas o PUSH FALHOU, o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
-    Write-Host "O canonical-test vai acusar drift ate o push passar. Resolva e rode: git push origin HEAD" -ForegroundColor Red
-    exit 3
+  if ($Push) {
+    git push origin HEAD
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "`nDEPLOY OK mas o PUSH FALHOU, o GitHub ainda nao sabe que producao esta em $ver." -ForegroundColor Red
+      Write-Host "O canonical-test vai acusar drift ate o push passar. Resolva e rode: git push origin HEAD" -ForegroundColor Red
+      exit 3
+    }
+    Write-Host "  push OK" -ForegroundColor Green
+  } else {
+    Write-Host "`nPUSH NAO EXECUTADO (PUSH-GATE1): producao esta em $ver e o commit local ja existe, mas o GitHub ainda nao sabe." -ForegroundColor Yellow
+    Write-Host "Confira o commit e publique quando autorizado: git push origin HEAD" -ForegroundColor Yellow
   }
-  Write-Host "  push OK" -ForegroundColor Green
 } finally {
   Pop-Location
 }
