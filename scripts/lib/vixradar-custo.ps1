@@ -272,13 +272,21 @@ function Get-VixDisponivelSentinela($Custo, $Config) {
 
 # Extrai as 4 parcelas do envelope usage do claude -p (--output-format json).
 function Get-VixUsageParcelas($json) {
-    $r = @{ input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0; trabalho = [int64]0 }
+    $r = @{ input = [int64]0; output = [int64]0; cache_creation = [int64]0; cache_read = [int64]0; cache_codex = [int64]0; trabalho = [int64]0 }
     if ($null -eq $json -or -not $json.usage) { return $r }
     $u = $json.usage
     if ($u.input_tokens) { $r.input = [int64]$u.input_tokens }
     if ($u.output_tokens) { $r.output = [int64]$u.output_tokens }
     if ($u.cache_creation_input_tokens) { $r.cache_creation = [int64]$u.cache_creation_input_tokens }
     if ($u.cache_read_input_tokens) { $r.cache_read = [int64]$u.cache_read_input_tokens }
+    # CACHECODEX-VISIVEL1-FIX (2026-10-14): o envelope do Codex passou a carregar a parcela de
+    # cache em campo PROPRIO (`cache_codex_input_tokens`). Antes o motor montava o envelope com
+    # `cache_read_input_tokens = 0` e o `cache_codex` medido no JSONL (1.036.416 em 14/10) era
+    # descartado aqui: o metrics fechava `tokens_cache_codex=0` enquanto o FIM publicava
+    # `codex_cached_input=1036416`, duas leituras do mesmo fato que nao batiam.
+    # A regua do cap NAO muda: no Codex o cache ja esta DENTRO de `input`, entao esta parcela
+    # nao entra em `trabalho` - somar aqui seria contar duas vezes o mesmo token.
+    if ($null -ne $u.PSObject.Properties['cache_codex_input_tokens'] -and $u.cache_codex_input_tokens) { $r.cache_codex = [int64]$u.cache_codex_input_tokens }
     $r.trabalho = $r.input + $r.output + $r.cache_creation
     return $r
 }

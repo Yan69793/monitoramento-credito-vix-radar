@@ -221,6 +221,11 @@ function Get-VixHistoricoCustoPorEmissor([string]$LogDir, [string]$Provider, [in
     $corte = $Agora.Date.AddDays(-1 * $Dias)
     foreach ($f in @(Get-ChildItem -LiteralPath $LogDir -Filter '*_metrics_*.json' -File -ErrorAction SilentlyContinue)) {
         if ($f.Name -match 'verificacao|agenda') { continue }
+        # ORCAMENTO-CLASSE1 (2026-10-14): arquivo de DRY-RUN fica FORA do historico de custo.
+        # Ele e medicao dirigida (-MaxEmissores), nao lote de producao: as tres amostras baratas
+        # que derrubaram a mediana de 14/10 (7.870 / 10.946 / 21.250 por emissor) eram todas
+        # `_dryrun_`. Medir o proximo lote por um lote que nao vai existir subestima o cap.
+        if ($f.Name -match '_dryrun') { continue }
         if ($f.Name -notmatch '_metrics_(\d{8})') { continue }
         $d = [datetime]::MinValue
         if (-not [datetime]::TryParseExact($Matches[1], 'yyyyMMdd', $null, [Globalization.DateTimeStyles]::None, [ref]$d)) { continue }
@@ -273,6 +278,204 @@ function Get-VixEmissoresQueCabem([int64]$Acum, [int64]$Cap, [int64]$CustoPorEmi
     $k = [int][Math]::Floor($resto / [double]$CustoPorEmissor)
     if ($k -gt $Chunk) { $k = $Chunk }
     if ($k -lt 0) { $k = 0 }
+    return $k
+}
+
+# ---------------------------------------------------------------------------------------
+# 3b. ESTIMATIVA POR CLASSE DE LOTE + ADMISSAO FAIL-CLOSED (ORCAMENTO-CLASSE1, 2026-10-14)
+# ---------------------------------------------------------------------------------------
+# DEFEITO MEDIDO (noturna manual de 14/10/2026, 02:28-02:46 BRT): o lote FULL de 16 emissores
+# foi admitido com estimativa de 497.104 tokens (`custo_emissor=31.069`, fonte
+# `historico_mediana_n5+piso`) e custou 1.193.101 contra cap de 700.000 - 2,4x a estimativa -
+# fechando o dia com `cap_excedido=1`. Duas causas independentes, as duas visiveis no metrics:
+#   (1) CLASSE DE LOTE MISTURADA. O mesmo provedor roda lote BARATO (coletor, sem ferramenta:
+#       7.870 a 21.250 por emissor em 13/10) e lote FULL (com ferramenta: 178.306 por emissor
+#       em 13/10 e 74.569 em 14/10). `Get-VixHistoricoCustoPorEmissor` devolvia as duas
+#       populacoes numa lista so e a MEDIANA de 5 amostras (7.870 / 10.946 / 21.250 / 167.768 /
+#       178.306) caiu em 21.250 - um lote barato -, subestimando o FULL por 8x antes do piso.
+#   (2) DRY-RUN NO HISTORICO. As tres amostras baratas eram de arquivos `_dryrun_`, medicao
+#       dirigida com `-MaxEmissores`, nunca lote de producao.
+# Correcao: modelo de custo POR CLASSE, com dois parametros (fixo por chamada + variavel por
+# emissor) ajustado como ENVELOPE SUPERIOR de todas as amostras da classe - nunca a mediana.
+# A estimativa de um lote nunca fica abaixo de nenhuma medicao da classe e leva margem
+# declarada. Lote cuja estimativa conservadora nao cabe no saldo NAO e admitido: encolhe
+# (fragmentacao adaptativa) ou defere. Nada de elevar teto, zerar contador nem esconder
+# estouro inevitavel do provedor.
+
+$script:VixMargemLoteClasse = 1.25
+
+# Classe de custo do lote. Nao e o rotulo do tier: a MATINAL rotula os proprios lotes como FULL
+# mas roda sem ferramenta (pacote barato), e a escalada e FULL com ferramenta por evidencia do
+# dia. Quem sabe a classe e o chamador; a funcao so normaliza.
+function Get-VixClasseLote {
+    param([string]$Tier = 'LIGHT', [bool]$Barato = $false, [bool]$Escalada = $false)
+    if ($Escalada) { return 'ESCALADA' }
+    if ($Barato) { return 'BARATO' }
+    $t = ('' + $Tier).Trim().ToUpperInvariant()
+    if ($t -eq 'LIGHT') { return 'LIGHT' }
+    return 'FULL'
+}
+
+function Get-VixAmostraCampo($Amostra, [string]$Nome) {
+    if ($null -eq $Amostra) { return $null }
+    if ($Amostra -is [System.Collections.IDictionary]) { return $Amostra[$Nome] }
+    if ($null -ne $Amostra.PSObject.Properties[$Nome]) { return $Amostra.$Nome }
+    return $null
+}
+
+# Amostras de UMA classe do provedor. Arquivo `_dryrun` fica fora (nao e lote de producao) e
+# amostra sem campo `classe` usa o `fila` do metrics (full/light/escalada) - a taxonomia que o
+# motor ja grava. `trabalho` nao numerico (NAO_MENSURAVEL) nao entra.
+function Get-VixHistoricoCustoClasse([string]$LogDir, [string]$Provider, [string]$Classe, [int]$Dias = 7, [datetime]$Agora = (Get-Date)) {
+    $alvo = ('' + $Classe).Trim().ToUpperInvariant()
+    $out = New-Object System.Collections.Generic.List[object]
+    if (-not $LogDir -or -not (Test-Path -LiteralPath $LogDir)) { return $out.ToArray() }
+    $corte = $Agora.Date.AddDays(-1 * $Dias)
+    foreach ($f in @(Get-ChildItem -LiteralPath $LogDir -Filter '*_metrics_*.json' -File -ErrorAction SilentlyContinue)) {
+        if ($f.Name -match 'verificacao|agenda') { continue }
+        if ($f.Name -match '_dryrun') { continue }
+        if ($f.Name -notmatch '_metrics_(\d{8})') { continue }
+        $d = [datetime]::MinValue
+        if (-not [datetime]::TryParseExact($Matches[1], 'yyyyMMdd', $null, [Globalization.DateTimeStyles]::None, [ref]$d)) { continue }
+        if ($d -lt $corte) { continue }
+        $m = $null
+        try { $m = Get-Content -LiteralPath $f.FullName -Raw -Encoding UTF8 | ConvertFrom-Json } catch { continue }
+        if (-not $m -or -not $m.PSObject.Properties['provider'] -or ('' + $m.provider) -ne $Provider) { continue }
+        foreach ($l in @($m.lotes_detalhe)) {
+            if ($null -eq $l) { continue }
+            $cls = ''
+            if ($null -ne $l.PSObject.Properties['classe']) { $cls = ('' + $l.classe).Trim().ToUpperInvariant() }
+            else {
+                $fl = ''
+                if ($null -ne $l.PSObject.Properties['fila']) { $fl = ('' + $l.fila).Trim().ToLowerInvariant() }
+                if ($fl -eq 'escalada') { $cls = 'ESCALADA' } elseif ($fl -eq 'light') { $cls = 'LIGHT' } elseif ($fl -eq 'full') { $cls = 'FULL' }
+            }
+            if ($cls -ne $alvo) { continue }
+            $n = 0; $t = [int64]0
+            if (-not [int]::TryParse(('' + $l.emissores), [ref]$n) -or $n -le 0) { continue }
+            if (-not [int64]::TryParse(('' + $l.trabalho), [ref]$t) -or $t -le 0) { continue }
+            $out.Add(@{ emissores = $n; trabalho = $t; per_emissor = [int64][Math]::Ceiling([double]$t / [double]$n) })
+        }
+    }
+    return $out.ToArray()
+}
+
+# Envelope superior de custo da classe: custo(n) = a + b*n, com b = MAIOR coeficiente angular
+# entre dois tamanhos distintos observados e a = maior residuo compativel com TODAS as amostras.
+# Propriedade garantida (provada no teste): a + b*n >= trabalho de CADA amostra. Ou seja, o
+# modelo nunca estima abaixo de um lote ja medido da mesma classe. Sem escala observada (uma
+# amostra, ou lotes do mesmo tamanho) a inclinacao vira o PIOR custo por emissor observado - o
+# lado seguro do erro. Sem amostra nenhuma, o default do provedor.
+function Get-VixModeloLoteClasse {
+    param(
+        [object[]]$Amostras = @(),
+        [int64]$DefaultEmissor = 0,
+        [int64]$PisoEmissor = 0,
+        [double]$Margem = -1
+    )
+    $mg = $Margem
+    if ($mg -lt 1) { $mg = [double]$script:VixMargemLoteClasse }
+    if ($mg -lt 1) { $mg = 1.0 }
+    $am = New-Object System.Collections.Generic.List[object]
+    foreach ($x in @($Amostras)) {
+        $n = 0; $t = [int64]0
+        if (-not [int]::TryParse(('' + (Get-VixAmostraCampo $x 'emissores')), [ref]$n) -or $n -le 0) { continue }
+        if (-not [int64]::TryParse(('' + (Get-VixAmostraCampo $x 'trabalho')), [ref]$t) -or $t -le 0) { continue }
+        $am.Add(@{ emissores = $n; trabalho = $t })
+    }
+    $a0 = 0.0; $b = 0.0; $fonte = 'default'
+    if ($am.Count -eq 0) {
+        $b = [double]$DefaultEmissor
+        $fonte = 'default'
+    } else {
+        $bMax = 0.0
+        for ($i = 0; $i -lt $am.Count; $i++) {
+            for ($j = 0; $j -lt $am.Count; $j++) {
+                if ($i -eq $j) { continue }
+                $ni = [int]$am[$i]['emissores']; $nj = [int]$am[$j]['emissores']
+                if ($ni -le $nj) { continue }
+                $s = ([double]$am[$i]['trabalho'] - [double]$am[$j]['trabalho']) / [double]($ni - $nj)
+                if ($s -gt $bMax) { $bMax = $s }
+            }
+        }
+        if ($bMax -le 0) {
+            foreach ($x in $am) {
+                $pe = [double]$x['trabalho'] / [double]$x['emissores']
+                if ($pe -gt $bMax) { $bMax = $pe }
+            }
+        }
+        $b = $bMax
+        foreach ($x in $am) {
+            $i0 = [double]$x['trabalho'] - ($b * [double]$x['emissores'])
+            if ($i0 -gt $a0) { $a0 = $i0 }
+        }
+        $fonte = 'classe_n' + $am.Count
+    }
+    # Tamanho do MENOR lote ja medido da classe. Nao e decoracao: com os parametros ajustados
+    # numa unica amostra o envelope passa pela origem e o custo por emissor fica constante - o
+    # que vale para o tamanho medido e MENTE para lote MENOR que ele. Medido em 14/10: o envelope
+    # do lote de 2 estimava 222.883 para 1 emissor, enquanto o ajuste do dia real (237.117 fixos
+    # + 59.749 por emissor) da 296.866. Encolher abaixo do medido e exatamente o caminho pelo qual
+    # a estimativa voltaria a mentir; por isso a admissao nunca encolhe abaixo daqui.
+    $nMin = 0; $tMin = [int64]0
+    foreach ($x in $am) {
+        if ($nMin -eq 0 -or [int]$x['emissores'] -lt $nMin) { $nMin = [int]$x['emissores']; $tMin = [int64]$x['trabalho'] }
+    }
+    return @{
+        a = $a0; b = $b; margem = $mg; fonte = $fonte; n_amostras = $am.Count
+        n_min = $nMin; t_min = $tMin
+        piso_emissor = [int64]$PisoEmissor; default_emissor = [int64]$DefaultEmissor
+    }
+}
+
+function Get-VixEstimativaLoteClasse {
+    param($Modelo, [int]$Emissores = 0, [double]$Margem = -1)
+    if ($null -eq $Modelo -or $Emissores -le 0) { return [int64]0 }
+    $mg = $Margem
+    if ($mg -lt 1) { $mg = [double]$Modelo.margem }
+    if ($mg -lt 1) { $mg = 1.0 }
+    $bruto = ((([double]$Modelo.a) + (([double]$Modelo.b) * [double]$Emissores)) * $mg)
+    $piso = ([double]$Modelo.piso_emissor) * [double]$Emissores
+    if ($piso -gt $bruto) { $bruto = $piso }
+    return [int64][Math]::Ceiling($bruto)
+}
+
+# Par (custo por emissor, estimativa do lote, fonte) para o log. O campo `custo_emissor` do
+# log continua significando custo por emissor, agora HONESTO para o tamanho do lote: em um
+# envelope com custo fixo, dividir o total pelo numero de emissores do lote cheio e um numero
+# que nao vale para um lote menor - e foi com esse numero que 14/10 estourou.
+function Get-VixEstimativaClasseResumo {
+    param($Modelo, [int]$Emissores = 0)
+    $est = Get-VixEstimativaLoteClasse -Modelo $Modelo -Emissores $Emissores
+    $pe = [int64]0
+    if ($Emissores -gt 0) { $pe = [int64][Math]::Ceiling([double]$est / [double]$Emissores) }
+    $fonte = ''
+    if ($null -ne $Modelo) { $fonte = '' + $Modelo.fonte }
+    if ($null -ne $Modelo -and [double]$Modelo.margem -gt 1) { $fonte = $fonte + '+margem' + [int][Math]::Round(([double]$Modelo.margem * 100)) }
+    return @{ Custo = $pe; Est = $est; Fonte = $fonte }
+}
+
+# Quantos emissores cabem no saldo, com o ENVELOPE do lote - nao com um custo por emissor
+# constante. A diferenca e material: em um envelope com custo fixo de chamada o custo por
+# emissor DECRESCE com o tamanho, entao dividir o saldo pelo custo por emissor do lote cheio
+# superestima quantos cabem e estoura o cap exatamente no caso que este codigo existe para
+# barrar (com a = 237k, b = 59.7k e cap 700k dariam 7 emissores por 93.2k quando o lote de 7
+# custa 819k). A estimativa cresce com o tamanho, entao o primeiro que nao cabe fecha a conta.
+function Get-VixEmissoresQueCabemModelo {
+    param($Modelo, [int64]$Acum = 0, [int64]$Cap = 0, [int]$Chunk = 0, [double]$Margem = -1)
+    if ($Chunk -le 0) { return 0 }
+    $resto = $Cap - $Acum
+    if ($resto -le 0) { return 0 }
+    # Piso do tamanho de lote: nunca abaixo do MENOR lote ja medido da classe (quando ele cabe no
+    # chunk). Abaixo dele o envelope deixa de valer - foi assim que o lote de 1 emissor voltaria a
+    # caber por 222.883 enquanto custa 296.866. Sem amostra nenhuma (n_min = 0) o default do
+    # provedor ja e o valor de 1 emissor e o encolhimento livre e seguro.
+    $i0 = 1
+    if ($null -ne $Modelo -and [int]$Modelo.n_min -gt 1 -and [int]$Modelo.n_min -le $Chunk) { $i0 = [int]$Modelo.n_min }
+    $k = 0
+    for ($i = $i0; $i -le $Chunk; $i++) {
+        if ((Get-VixEstimativaLoteClasse -Modelo $Modelo -Emissores $i -Margem $Margem) -le $resto) { $k = $i } else { break }
+    }
     return $k
 }
 
@@ -450,6 +653,319 @@ function Select-VixOrdemComPendentes([object[]]$Emissores, $Fila) {
     }
     foreach ($k in $ordemOriginal) { if (-not $usados.ContainsKey($k)) { $saida.Add($porChave[$k]); $usados[$k] = $true } }
     return $saida.ToArray()
+}
+
+# ---------------------------------------------------------------------------------------
+# 6b. ROTACAO PERSISTENTE (ROTACAO-14OUT1, 2026-10-14)
+# ---------------------------------------------------------------------------------------
+# Os 104 emissores precisam de um dono de fila que sobreviva a execucao. Ordenar so por idade
+# (o que a profundidade noturna ja faz) e justo, mas nao tem POSICAO: reinicio, concorrencia e
+# reentrada reembaralham, e nada garante que o trecho sempre cortado pelo cap nao seja sempre o
+# mesmo. Aqui vive o estado que falta:
+#   - `ordem`: fila justa do ciclo atual (chaves normalizadas, unicas, ordem preservada);
+#   - `posicao`: indice do proximo a servir. Quem foi deferido por ORCAMENTO nao sai da fila e
+#     continua na frente (o cursor nao passa por ele); quem foi SERVIDO sai;
+#   - `servidos`: quem ja fechou no ciclo atual (auditoria + deteccao de reinicio indevido);
+#   - `candidatos_dia`: teto operacional de candidatos NAO prioritarios por dia (default 40),
+#     zerado quando o DIA muda - nunca quando a execucao reinicia;
+#   - o ciclo so reinicia quando a fila ZERA. Reiniciar com fila viva perderia posicao e
+#     repetiria quem ja foi servido, que e a definicao de reinicializacao indevida.
+# Escrita atomica (tmp + Replace + .bak), mesma familia da fila pendente.
+function Get-VixRotacaoPath([string]$LogDir) { return (Join-Path $LogDir 'rotacao_ciclo.json') }
+
+# Read-modify-write sob mutex nomeado: a fila do ciclo e estado COMPARTILHADO entre execucoes
+# (restart da noturna, catch-up do Agendador). Sem o lock, duas passadas que leram o mesmo
+# estado gravariam por cima uma da outra e a segunda apagaria o avanco da primeira - a mesma
+# classe de defeito que o RACEKV1 fechou no estado do Worker.
+function Invoke-VixRotacaoSob([string]$Path, [scriptblock]$Acao) {
+    $mtx = New-Object System.Threading.Mutex($false, 'Global\vixradar-rotacao-ciclo-v1')
+    $tem = $false
+    try {
+        try { $tem = $mtx.WaitOne(30000) } catch [System.Threading.AbandonedMutexException] { $tem = $true }
+        if (-not $tem) { throw 'mutex da rotacao ocupado por mais de 30s' }
+        $c = Read-VixRotacaoCiclo $Path
+        $res = & $Acao $c
+        if ($null -ne $res) {
+            # A acao devolve o envelope de Update-VixRotacaoCiclo: grava-se o CICLO de dentro dele.
+            # Gravar o envelope produziria arquivo vazio, porque `$envelope.ordem` e $null e o
+            # `@($null)` do PowerShell conta 1 - o ciclo seria reiniciado em toda execucao.
+            $cicloFinal = $res
+            if ($null -ne $res.PSObject.Properties['Ciclo']) { $cicloFinal = $res.Ciclo }
+            Write-VixRotacaoCiclo -Path $Path -Ciclo $cicloFinal | Out-Null
+        }
+        return $res
+    } finally {
+        if ($tem) { try { $mtx.ReleaseMutex() } catch { } }
+        $mtx.Dispose()
+    }
+}
+
+function New-VixRotacaoCiclo {
+    return @{ versao = 1; ciclo_id = ''; inicio = ''; posicao = 0; ordem = @(); servidos = @{}; dia_candidatos = ''; candidatos_dia = 0; atualizado_em = '' }
+}
+
+function Read-VixRotacaoCiclo([string]$Path) {
+    $c = New-VixRotacaoCiclo
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $c }
+    $j = $null
+    try { $j = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json } catch { return $c }
+    if ($null -eq $j) { return $c }
+    foreach ($campo in @('ciclo_id', 'inicio', 'dia_candidatos', 'atualizado_em')) {
+        if ($null -ne $j.PSObject.Properties[$campo]) { $c[$campo] = '' + $j.$campo }
+    }
+    $p = 0
+    if ($null -ne $j.PSObject.Properties['posicao'] -and [int]::TryParse(('' + $j.posicao), [ref]$p) -and $p -ge 0) { $c.posicao = $p }
+    $cd = 0
+    if ($null -ne $j.PSObject.Properties['candidatos_dia'] -and [int]::TryParse(('' + $j.candidatos_dia), [ref]$cd) -and $cd -ge 0) { $c.candidatos_dia = $cd }
+    if ($null -ne $j.PSObject.Properties['ordem']) {
+        $l = New-Object System.Collections.Generic.List[string]
+        foreach ($k in @($j.ordem)) { $kk = '' + $k; if ($kk -and -not $l.Contains($kk)) { $l.Add($kk) } }
+        $c.ordem = $l.ToArray()
+    }
+    if ($null -ne $j.PSObject.Properties['servidos'] -and $null -ne $j.servidos) {
+        foreach ($pr in @($j.servidos.PSObject.Properties)) { $c.servidos[$pr.Name] = '' + $pr.Value }
+    }
+    return $c
+}
+
+function Write-VixRotacaoCiclo([string]$Path, $Ciclo) {
+    if (-not $Path -or $null -eq $Ciclo) { return $null }
+    $ordem = New-Object System.Collections.Generic.List[string]
+    foreach ($k in @($Ciclo.ordem)) { $kk = '' + $k; if ($kk -and -not $ordem.Contains($kk)) { $ordem.Add($kk) } }
+    $doc = [ordered]@{
+        versao = 1
+        ciclo_id = ('' + $Ciclo.ciclo_id)
+        inicio = ('' + $Ciclo.inicio)
+        posicao = [int]$Ciclo.posicao
+        ordem = $ordem.ToArray()
+        servidos = [ordered]@{}
+        dia_candidatos = ('' + $Ciclo.dia_candidatos)
+        candidatos_dia = [int]$Ciclo.candidatos_dia
+        total_na_fila = $ordem.Count
+        total_servidos = @($Ciclo.servidos.Keys).Count
+        atualizado_em = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+    }
+    foreach ($k in @(@($Ciclo.servidos.Keys) | Sort-Object)) { $doc.servidos['' + $k] = '' + $Ciclo.servidos[$k] }
+    $tmp = $Path + '.tmp-' + $PID
+    [IO.File]::WriteAllText($tmp, ($doc | ConvertTo-Json -Depth 6), (New-Object System.Text.UTF8Encoding($false)))
+    if (Test-Path -LiteralPath $Path) { [IO.File]::Replace($tmp, $Path, ($Path + '.bak')) } else { [IO.File]::Move($tmp, $Path) }
+    return $doc
+}
+
+# Devolve os candidatos da execucao: PRIORITARIOS primeiro (risco, EWS, analise vencida,
+# pendencia viva - nunca limitados pela cota de rotacao) e depois a fila do ciclo, ate o teto
+# diario de candidatos nao prioritarios. Puro: nao escreve nada.
+function Select-VixRotacaoCandidatos {
+    param(
+        [object[]]$Emissores = @(),
+        [object[]]$ChavesPrioritarias = @(),
+        $Ciclo = $null,
+        [int]$LimiteDiario = 40,
+        [string]$DiaTag = ''
+    )
+    $cat = New-VixRotacaoCiclo
+    if ($null -ne $Ciclo) { $cat = $Ciclo }
+    $porChave = @{}
+    $ordemEntrada = New-Object System.Collections.Generic.List[string]
+    foreach ($e in @($Emissores)) {
+        if ($null -eq $e) { continue }
+        $k = ConvertTo-VixChaveEmissor ('' + $e.empresa)
+        if (-not $k -or $porChave.ContainsKey($k)) { continue }
+        $porChave[$k] = $e
+        $ordemEntrada.Add($k)
+    }
+    $prior = @{}
+    foreach ($ck in @($ChavesPrioritarias)) {
+        $k = ConvertTo-VixChaveEmissor ('' + $ck)
+        if ($k) { $prior[$k] = $true }
+    }
+    $saida = New-Object System.Collections.Generic.List[object]
+    $usados = @{}
+    foreach ($k in $ordemEntrada) {
+        if ($prior.ContainsKey($k) -and -not $usados.ContainsKey($k)) { $saida.Add($porChave[$k]); $usados[$k] = $true }
+    }
+    $ordemCiclo = New-Object System.Collections.Generic.List[string]
+    # Quem JA fechou no ciclo atual nao volta para a rotacao (o turno dele ja foi dado); quem e
+    # PRIORIDADE continua entrando SEMPRE, porque prioridade e por risco e nao consome turno de
+    # rotacao - e o plano/ledger do dia e que impede reanalise no mesmo dia.
+    $serv = @{}
+    if ($null -ne $cat.servidos) { foreach ($k in @($cat.servidos.Keys)) { $serv['' + $k] = $true } }
+    $visto = @{}
+    foreach ($k in @($cat.ordem)) {
+        $kk = '' + $k
+        if (-not $kk -or $visto.ContainsKey($kk)) { continue }
+        $visto[$kk] = $true
+        if (-not $porChave.ContainsKey($kk)) { continue }
+        if ($prior.ContainsKey($kk)) { continue }
+        if ($serv.ContainsKey($kk)) { continue }
+        $ordemCiclo.Add($kk)
+    }
+    foreach ($k in $ordemEntrada) {
+        if ($prior.ContainsKey($k)) { continue }
+        if ($visto.ContainsKey($k)) { continue }
+        if ($serv.ContainsKey($k)) { continue }
+        $visto[$k] = $true
+        $ordemCiclo.Add($k)
+    }
+    $n = $ordemCiclo.Count
+    $ring = New-Object System.Collections.Generic.List[string]
+    if ($n -gt 0) {
+        $pos = [int]$cat.posicao
+        if ($pos -lt 0 -or $pos -ge $n) { $pos = 0 }
+        for ($i = 0; $i -lt $n; $i++) { $ring.Add($ordemCiclo[($pos + $i) % $n]) }
+    }
+    $jaHoje = 0
+    if ($DiaTag -and ('' + $cat.dia_candidatos) -eq ('' + $DiaTag)) { $jaHoje = [int]$cat.candidatos_dia }
+    $restantes = [int]$LimiteDiario - $jaHoje
+    if ($restantes -lt 0) { $restantes = 0 }
+    $consumidos = New-Object System.Collections.Generic.List[string]
+    $c = 0
+    foreach ($k in $ring) {
+        if ($c -ge $restantes) { break }
+        if ($usados.ContainsKey($k)) { continue }
+        $saida.Add($porChave[$k]); $usados[$k] = $true; $consumidos.Add($k); $c++
+    }
+    $adiados = New-Object System.Collections.Generic.List[string]
+    foreach ($k in $ordemEntrada) { if (-not $usados.ContainsKey($k) -and -not $serv.ContainsKey($k)) { $adiados.Add($k) } }
+    $priorSel = New-Object System.Collections.Generic.List[string]
+    foreach ($k in $ordemEntrada) { if ($prior.ContainsKey($k)) { $priorSel.Add($k) } }
+    return [pscustomobject]@{
+        Candidatos = $saida.ToArray()
+        Ring = $ring.ToArray()
+        PriorChaves = $priorSel.ToArray()
+        ConsumidosChaves = $consumidos.ToArray()
+        AdiadosCota = $adiados.ToArray()
+        CotaRestante = $restantes
+        JaHoje = $jaHoje
+    }
+}
+
+# Atualiza o ciclo com o desfecho da execucao. Devolve o ciclo novo e a auditoria
+# (perdidos/duplicados/reiniciou). `Servidos` = quem FECHOU (analisado/skip); `Consumidos` =
+# quem foi oferecido como candidato de rotacao nesta execucao. Quem foi oferecido e nao fechou
+# (deferido por cap) continua na fila, na frente.
+function Update-VixRotacaoCiclo {
+    param(
+        $Ciclo = $null,
+        [string[]]$Presentes = @(),
+        [string[]]$Servidos = @(),
+        [string[]]$Consumidos = @(),
+        [string[]]$Ring = @(),
+        [string]$DiaTag = '',
+        [datetime]$Agora = (Get-Date)
+    )
+    $c = New-VixRotacaoCiclo
+    if ($null -ne $Ciclo) { $c = $Ciclo }
+    if (('' + $c.dia_candidatos) -ne ('' + $DiaTag)) { $c.dia_candidatos = '' + $DiaTag; $c.candidatos_dia = 0 }
+    $serv = @{}
+    foreach ($k in @($Servidos)) { $kk = ConvertTo-VixChaveEmissor ('' + $k); if ($kk) { $serv[$kk] = $true } }
+    $cons = @{}
+    foreach ($k in @($Consumidos)) { $kk = ConvertTo-VixChaveEmissor ('' + $k); if ($kk) { $cons[$kk] = $true } }
+    $pres = New-Object System.Collections.Generic.List[string]
+    $vistoPres = @{}
+    foreach ($k in @($Presentes)) {
+        $kk = ConvertTo-VixChaveEmissor ('' + $k)
+        if (-not $kk -or $vistoPres.ContainsKey($kk)) { continue }
+        $vistoPres[$kk] = $true
+        $pres.Add($kk)
+    }
+    # Fecha o ciclo: os servidos desta execucao entram no mapa do CICLO (nao so no do dia) e a
+    # fila resultante e a ordem atual menos TODOS os servidos do ciclo - nao so os desta passada.
+    # Sem isto, quem fechou em execucao anterior do MESMO ciclo voltava para a fila pela regra de
+    # "nao perder fila", a fila nunca zerava e o reinicio do ciclo (unico ponto permitido) nao
+    # acontecia.
+    $diaServ = $Agora.ToUniversalTime().ToString('yyyy-MM-dd')
+    foreach ($kk in @($serv.Keys)) { $c.servidos[$kk] = $diaServ }
+    $servCiclo = @{}
+    foreach ($kk in @($c.servidos.Keys)) { $servCiclo['' + $kk] = $true }
+    $ordem = New-Object System.Collections.Generic.List[string]
+    $naOrdem = @{}
+    foreach ($k in @($c.ordem)) {
+        $kk = '' + $k
+        if (-not $kk -or $naOrdem.ContainsKey($kk)) { continue }
+        if ($servCiclo.ContainsKey($kk)) { continue }
+        $naOrdem[$kk] = $true
+        $ordem.Add($kk)
+    }
+    foreach ($kk in $pres) {
+        if ($servCiclo.ContainsKey($kk)) { continue }
+        if ($naOrdem.ContainsKey($kk)) { continue }
+        $naOrdem[$kk] = $true
+        $ordem.Add($kk)
+    }
+    $reiniciou = $false
+    if ($ordem.Count -eq 0 -and $servCiclo.Count -gt 0) {
+        $reiniciou = $true
+        $c.ciclo_id = $Agora.ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        $c.inicio = $c.ciclo_id
+        $c.servidos = @{}
+        foreach ($kk in $pres) { if (-not $naOrdem.ContainsKey($kk)) { $naOrdem[$kk] = $true; $ordem.Add($kk) } }
+    }
+    # Cursor = primeiro item do ANEL que ainda NAO fechou. Quem foi oferecido e nao fechou
+    # (deferido por orcamento) continua na frente: e isso que impede starvation, e e por isso
+    # que o teste le `servidos` e nao `consumidos` aqui.
+    $proximo = ''
+    foreach ($k in @($Ring)) {
+        $kk = '' + $k
+        if (-not $serv.ContainsKey($kk)) { $proximo = $kk; break }
+    }
+    $pos = 0
+    if ($proximo) {
+        for ($i = 0; $i -lt $ordem.Count; $i++) { if ($ordem[$i] -eq $proximo) { $pos = $i; break } }
+    }
+    $c.posicao = $pos
+    $c.ordem = $ordem.ToArray()
+    $c.candidatos_dia = [int]$c.candidatos_dia + @($cons.Keys).Count
+    $contagem = @{}
+    $duplicados = 0
+    foreach ($k in @($c.ordem)) { if ($contagem.ContainsKey($k)) { $duplicados++ } else { $contagem[$k] = $true } }
+    $perdidos = 0
+    foreach ($kk in $pres) { if (-not $contagem.ContainsKey($kk) -and -not $c.servidos.ContainsKey($kk)) { $perdidos++ } }
+    return [pscustomobject]@{
+        Ciclo = $c; Reiniciou = $reiniciou; Perdidos = $perdidos; Duplicados = $duplicados
+        NaFila = @($c.ordem).Count; ServidosCiclo = @($c.servidos.Keys).Count
+        Posicao = $pos; CandidatosDia = [int]$c.candidatos_dia
+    }
+}
+
+# ---------------------------------------------------------------------------------------
+# 6c. RECONCILIACAO DE COBERTURA (COBERTURA-RECON1, 2026-10-14)
+# ---------------------------------------------------------------------------------------
+# Defeito medido em 14/10: 16 analises publicadas e SO 11 registros de cobertura - nao havia
+# denominador comum, porque o contrato so registrava quem estava PENDENTE. Sem isso ninguem
+# podia afirmar se faltava cobertura ou se faltava registro. Aqui a regra e unica e explicita:
+#   ledger ANALISADO = contrato ANALISADO + contrato INCONCLUSIVO   (analise publicada)
+#   ledger SKIP      = contrato REUTILIZADO                          (analise reaproveitada)
+#   ledger DEFERIDO  = contrato DEFERIDO                             (nao analisado, registrado)
+#   TRIADOS          >= emissores do plano                           (triagem universal)
+#   rotacao_perdidos = 0                                             (ninguem fora da fila)
+# Divergencia NAO e sucesso: quem chama soma ao erro e a rotina nao pode fechar OK.
+function Test-VixCoberturaReconciliacao {
+    param(
+        [int]$LedgerAnalisados = 0,
+        [int]$LedgerSkips = 0,
+        [int]$LedgerDeferidos = 0,
+        [int]$ContratoAnalisado = 0,
+        [int]$ContratoInconclusivo = 0,
+        [int]$ContratoResolvido = 0,
+        [int]$ContratoReutilizado = 0,
+        [int]$ContratoDeferido = 0,
+        [int]$Triados = 0,
+        [int]$PlanoTotal = 0,
+        [int]$RotacaoPerdidos = 0,
+        [bool]$ExigirTriagem = $false
+    )
+    $d = @()
+    # RESOLVIDO conta como publicacao: e um emissor que estava pendente e fechou com submit aceito
+    # e cobertura verificada. Fora da conta, o dia em que a fila de recheck e resolvida seria lido
+    # como falta de cobertura - falso alarme do mesmo tamanho do defeito original.
+    $publicados = $ContratoAnalisado + $ContratoInconclusivo + $ContratoResolvido
+    if ($publicados -ne $LedgerAnalisados) { $d += ('analisados:ledger=' + $LedgerAnalisados + ' contrato=' + $publicados) }
+    if ($ContratoReutilizado -ne $LedgerSkips) { $d += ('skips:ledger=' + $LedgerSkips + ' contrato=' + $ContratoReutilizado) }
+    if ($ContratoDeferido -ne $LedgerDeferidos) { $d += ('deferidos:ledger=' + $LedgerDeferidos + ' contrato=' + $ContratoDeferido) }
+    if ($ExigirTriagem -and $Triados -lt $PlanoTotal) { $d += ('triados:' + $Triados + '<' + $PlanoTotal) }
+    if ($RotacaoPerdidos -gt 0) { $d += ('rotacao_perdidos:' + $RotacaoPerdidos) }
+    return @{ ok = ($d.Count -eq 0); divergencias = $d }
 }
 
 # ---------------------------------------------------------------------------------------
