@@ -9,29 +9,32 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
-## 14/10: correcoes dos 6 problemas de 13/10 (FINAL-14OUT1), com validacao de runtime pendente
+## 14/10: publicacao das correcoes dos 6 problemas de 13/10 (PUBLICACAO-14OUT1)
 
-> **Status:** ABERTO pelas validacoes de runtime; codigo e testes fechados. Nada foi commitado, deployado, agendado ou executado. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-14.
+> **Status:** PUBLICADO e validado em producao (Worker `v4.9.267`, commits `502f878` e `8d648a6`); runtime das rotinas agendadas pendente. Bloco completo em `status/ESTADO.md` e [[109 - Publicacao das Correcoes Validadas 2026-10-14]]. **Data:** 2026-10-14.
+
+**FECHADO em 14/10 (PUBLICACAO-14OUT1).** Os itens abaixo sairam da fila com prova objetiva: (a) as quatro correcoes do Worker nao deployadas entraram em producao no `v4.9.267` (`versao viva: v4.9.267 OK`), incluindo **RLADMIN4**, comprovado ao vivo (4 POSTs `form-urlencoded` com senha errada -> `200`,`200`,`200`,**`429` camada `burst`**); (b) `verificacao_async` e `agenda_semanal` ganharam o desvio Codex->OpenRouter por lote (`test-codex-fallback-openrouter` 58/58, inerte); (c) `ANALISEVSSCRITA1` deixou de depender de deploy (`painel_analise_fresca`, `painel_ultima_analise_em` e `painel_emissores_deferidos` visiveis no health); (d) `scripts/test-vixfix-20261006.ps1` entrou no Git no commit `502f878`; (e) as duas suites do baseline ficaram verdes e o baseline ficou vazio; (f) `test-preflight-429` e `test-headless-tools` tiveram causa raiz nomeada e corrigida. Nenhum teto, cap, agendamento ou credencial foi alterado.
 
 **P2, runtime pendente (Matinal 14/10 10:06).** Primeira execucao real com o coletor e com o motor alterado (failover do Codex inerte: `VIXRADAR_CODEX_FALLBACK_PROVIDER` vazio). Criterios: `COLETOR_PS: ativo=True`, `CAP_ESCALADA`/`CAP_EFETIVO`, `FIM` presente, `cap_excedido=0`, `FONTES_COLETOR`, nenhum emissor `ANALISADO` duas vezes, zero falso OK.
 
 **P2, runtime pendente (Sentinela 14/10 09:25).** Medir o desfecho novo (`ORCAMENTOFIN1`): esperado rodar 1 a 2 emissores com o orcamento do dia e, quando o dia estourar, sair `SEM_ORCAMENTO`/exit 0 em vez de `PARCIAL`/exit 10. Confirmar no log a linha `FIM: sentinela resultado=SEM_ORCAMENTO ... deferidos_orcamento=N motivo=cap_sentinela_sem_orcamento`.
 
-**P2, runtime pendente (Export 14/10 20:45).** `LastTaskResult` deve ser 0, duracao proxima de 200 s e `data/historico/2026-10-14` commitado, provando o KVTIMEOUT1 em execucao real.
+**P2, runtime pendente (Export 14/10 20:45).** `LastTaskResult` deve ser 0, duracao proxima de 200 s e `data/historico/2026-10-14` commitado, provando o KVTIMEOUT1 em execucao real. Medido no fechamento: `data/historico/2026-10-14` ainda NAO existe (o mais novo e `2026-10-13`, 4 arquivos).
 
 **P2, runtime pendente (Reconciliacao CVM 19/10 12:00).** `LastTaskResult` deve ser 0 com o `KVOUTPUT1` corrigido; confirmar que o FIM sai `ok` (e nao `parcial`) e que `radar:reconciliacao_cvm:latest` e publicado. O defeito nao causou perda de dado (o put ja dava 200 no log do wrangler): o que estava errado era o sinal de falha.
 
-**P2, decisao do operador.** Ligar `VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter` (CODEXFALLBACK-OR1) exige duas coisas que o gate atual NAO verifica: (a) saldo no OpenRouter - `Test-VixOpenRouterPronto` valida chave e modelo, nao credito, e a conta estava zerada em 12/09/2026; (b) responsabilidade pelo custo, que sai do provedor gratuito para o pago. Sem essa decisao o desvio fica inerte e o comportamento e o de antes.
-
-**P3.** `run_vixradar_verificacao_async.ps1` e `run_vixradar_agenda_semanal.ps1` ainda NAO tem o desvio Codex->OpenRouter: os dois chamam o Codex e o adapter no mesmo `if/elseif` sem `ProviderOverride`, entao precisam de refatoracao propria do batch (como a que a sentinela recebeu). A lib e a decisao ja estao prontas para os dois.
+**P2, decisao do operador.** Ligar `VIXRADAR_CODEX_FALLBACK_PROVIDER=openrouter` (CODEXFALLBACK-OR1) exige duas coisas que o gate atual NAO verifica: (a) saldo no OpenRouter - `Test-VixOpenRouterPronto` valida chave e modelo, nao credito, e a conta estava zerada em 12/09/2026; (b) responsabilidade pelo custo, que sai do provedor gratuito para o pago. Sem essa decisao o desvio fica inerte e o comportamento e o de antes. **As cinco rotinas ja estao cobertas** (matinal, noturna, sentinela, verificacao_async e agenda_semanal): ligar a var e o unico passo que falta.
 
 **P3, medido e nao corrigido.** A Sentinela que roda com sucesso e deixa `excedente_worker > 0` (mais de 8 emissores com gatilho de fato novo) fecha `PARCIAL`/exit 10 mesmo entregando os 8 que o proprio teto permite. E o mesmo padrao do defeito corrigido em 14/10, mas na ponta de quem trabalhou - mexer nisso muda o contrato de cobertura e e decisao a parte.
 
-**P3, risco conhecido e nao deployado.** `painel_fresco` mede a escrita do estado, nao a analise concluida: em 14/10 as 04:29Z ele estava `true` com `painel_idade_min:454` e a cobertura real do dia 13/10 foi 2 de 104. O campo que mede analise (`painel_analise_fresca`, ANALISEVSSCRITA1) esta no working tree e depende de deploy do Worker, que nao foi autorizado.
+**P2, ambiente (novo em 14/10, nao e do produto).** `git commit` fica pendurado dentro do hook: a Gate 3 do `pre-commit` materializa cada blob com `git cat-file blob :<path>` e o `git cat-file` bloqueia no IPC do `git fsmonitor--daemon` (medido: PID 9852, iniciado em 13/10; o hook sozinho, sem commit em curso, passa em segundos com os mesmos 36 arquivos). Contorno que funcionou sem desabilitar hook nem usar `--no-verify`: `GIT_CONFIG_COUNT=1`, `GIT_CONFIG_KEY_0=core.fsmonitor`, `GIT_CONFIG_VALUE_0=false` no escopo do processo. Corrigir na raiz: encerrar o daemon (`git fsmonitor--daemon stop`) ou decidir sobre `core.fsmonitor` no repositorio. Nao mexido nesta sessao por ser configuracao de outra sessao/operador.
 
-**P4, higiene do repositorio.** `scripts/test-vixfix-20261006.ps1` esta NAO RASTREADO e e coletado pelo `run-all-tests.ps1` (que enumera `test-*.ps1`): foi editado nesta sessao para prender a regra unica do desfecho da sentinela, mas segue fora do Git. Tambem ha uma dezena de `scripts/fix-*`/`scripts/session-*` nao rastreados de sessoes anteriores.
+**P3, novo em 14/10.** `cvm_ingestao_linhas_fonte`/`aceitos`/`ignorados`/`identidade_ok` chegam `null` no health porque a meta do sync da CVM ainda e legado (`CONTAGEMFONTE1` so grava a identidade independente a partir do proximo sync). O `null` e o desenho (nunca verde falso), mas a identidade so fica provada no proximo ciclo da fonte (cadencia semanal, proxima prevista 18/10).
 
-**P2, achado de verificacao de 14/10 (nao e desta sessao, mas nao estava na fila).** O working tree carrega, desde 10/10, quatro correcoes do Worker **nao deployadas**: `CONTAGEMFONTE1` (identidade independente da ingestao CVM), `HEALTHBACKLOG1` (`verif_fila_pendentes`/`verif_fila_mais_antiga_h`/`api_disponivel`), `ANALISEVSSCRITA1` (`painel_analise_fresca`, o campo que separa escrita de estado de analise concluida) e `RLADMIN4`, que e **seguranca** - o formulario `admin_mercado` chega em `form-urlencoded` e retornava ANTES do gate de rate limit, deixando o `ADMIN_PASSWORD` sem throttle de brute force. Prova de que nao estao no ar: o health de producao (`v4.9.266`) nao traz `verif_fila_pendentes`, `cvm_ingestao_identidade_ok` nem `painel_analise_fresca`. Deploy exige autorizacao explicita e passa por `scripts/deploy-worker.ps1` (que aborta com `api/wrangler.toml` sujo, hoje o caso).
+**P3, divergencia de documento.** `PENDENCIAS.md`/notas antigas ainda dizem que `VIXRadar-Noturno` esta `Disabled`; a medicao de 14/10 (`Get-ScheduledTask`) mostra `Ready`, `NextRun=14/10 18:05`. A reabilitacao foi feita em ORCAMENTO-13OUT7. Prevalecer a medicao.
+
+> **Nota:** o bloco original de FINAL-14OUT1 (abaixo, itens 14/10 sem publicacao) fica como historico das causas ja fechadas no codigo.
+
 
 ## 13/10: Escalada seletiva por emissor implementada (COBERTURA-13OUT4), pronta e SEM homologacao operacional
 

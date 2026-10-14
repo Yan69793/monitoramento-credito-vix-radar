@@ -272,15 +272,16 @@ apenas o que mediu: classe da falha por `Get-VixClasseFalhaProvider` (`cota` —
 `auth`, `modelo_indisponivel`) ou indisponibilidade persistente (`transitoria` só depois de 2
 falhas consecutivas do provedor). Nunca desvia para `parse-content`/`duro`, nunca sem adapter
 pronto (`Test-VixOpenRouterPronto`), nunca com `ProviderOverrideAtivo` — guarda contra recursão.
-Está ligado em `run_vixradar_varredura.ps1` (matinal e noturna) e em
-`run_vixradar_sentinela.ps1`, e o custo da tentativa que falhou continua cobrado no dia
-(medido quando o Codex publicou usage, estimado quando não publicou). **Estado em 14/10/2026:
-INERTE**, medido `VIXRADAR_CODEX_FALLBACK_PROVIDER` vazio nos escopos User e Process, ou seja,
-comportamento idêntico ao anterior enquanto o operador não optar. Duas ressalvas declaradas:
-(1) `Test-VixOpenRouterPronto` valida chave e modelo, **não saldo** — ligar a variável assume
-crédito no OpenRouter, que em 12/09/2026 estava zerado; (2) `verificacao_async` e
-`agenda_semanal` ainda não têm o desvio (pendência registrada em `PENDENCIAS.md`). Suítes:
-`scripts/test-codex-fallback-openrouter.ps1` (decisão + ligação), regressão em
+Está ligado nas **cinco rotinas de IA**: `run_vixradar_varredura.ps1` (matinal e noturna),
+`run_vixradar_sentinela.ps1`, `run_vixradar_verificacao_async.ps1` e
+`run_vixradar_agenda_semanal.ps1` (as duas últimas ganharam `-ProviderOverride` próprio do
+batch em 14/10), e o custo da tentativa que falhou continua cobrado no dia (medido quando o
+Codex publicou usage, estimado quando não publicou). **Estado em 14/10/2026: INERTE**, medido
+`VIXRADAR_CODEX_FALLBACK_PROVIDER` vazio nos escopos User e Process, ou seja, comportamento
+idêntico ao anterior enquanto o operador não optar. Ressalva declarada: `Test-VixOpenRouterPronto`
+valida chave e modelo, **não saldo** — ligar a variável assume crédito no OpenRouter, que em
+12/09/2026 estava zerado. Suítes: `scripts/test-codex-fallback-openrouter.ps1` (decisão +
+ligação nas 4 pontas de código das 5 rotinas, 58 asserts), regressão em
 `test-mva-failover-quota-backlog.ps1` e `test-quota-esgotada-failclosed.ps1`.
 Isto também não reabre `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`.
 
