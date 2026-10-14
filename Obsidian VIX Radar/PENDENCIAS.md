@@ -9,6 +9,15 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 14/10: VXV2-1 publicado (frontend v202.64) e CORS do preview resolvido (Worker v4.9.268), com duas pendencias medidas
+
+> **Status:** PUBLICADO e validado. Worker `v4.9.268` e frontend `v202.64` em producao, `origin/main` = `72a9c07`, v1 padrao e v2 por flag. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-14.
+
+- **P2, LCP de producao acima do piso.** `vixradar.com` mede LCP 2572 a 2712 ms contra o piso de 2,5 s, com performance 92 a 93; o mesmo bundle no preview mede LCP 2208 a 2258 ms e performance 97, e o TTFB do dominio proprio e maior (0,126 a 0,196 s contra 0,101 a 0,127 s). Nao e regressao (a v202.63 media 5,5 s e 68), mas o piso nao foi atingido no dominio de producao.
+- **P2, `Sair` nao revoga o token no servidor.** Medido: apos o logout, o token copiado antes continua aceito (`favorito_listar` -> HTTP 200). Exige action de logout no Worker que invalide o `sid` no UsuarioDO.
+- **P3, `Get-VixPagesBundleSha` varia com a edicao do PowerShell** (pwsh 7 x 5.1), entao o hash aprovado nao serve como impressao digital portavel.
+- **P3, `deploy-pages.ps1`**: sem gate de versao do wrangler (usa o que o npx resolver) e `git push origin HEAD` manda o commit do deploy para o branch de trabalho em vez de `main`.
+
 ## 14/10: publicacao das correcoes dos 6 problemas de 13/10 (PUBLICACAO-14OUT1)
 
 ## 14/10: redesign Institutional Intelligence 2030 (VXV2-1), homologado no preview, publicacao de producao PENDENTE de decisao
