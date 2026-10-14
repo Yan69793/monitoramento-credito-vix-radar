@@ -35,7 +35,9 @@ $paths    = @(
   (Join-Path $root "app/deploy_zip/index.html"),
   (Join-Path $root "app/js/admin-bootstrap.js"),
   (Join-Path $root "app/js/admin-router.js"),
-  (Join-Path $root "app/js/api.js")
+  (Join-Path $root "app/js/api.js"),
+  # VXADMINLAZY1 (2026-10-14): o import sob demanda do admin-bootstrap mora aqui.
+  (Join-Path $root "app/js/vx/main.js")
 )
 # Modulos admin adicionais que carregam ?v= (se existirem no bundle)
 foreach ($m in @("shared","modules","engajamento","metricas","fase3")) {

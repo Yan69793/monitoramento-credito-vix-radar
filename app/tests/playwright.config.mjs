@@ -11,6 +11,8 @@ const isLinux = process.platform === 'linux';
 
 export default defineConfig({
   testDir: './tests',
+  // Specs vx-* rodam no playwright.vx.config.mjs (stage com o layout do deploy).
+  testIgnore: /vx-.*\.spec\.mjs$/,
   fullyParallel: false,
   workers: 1,
   retries: 0,

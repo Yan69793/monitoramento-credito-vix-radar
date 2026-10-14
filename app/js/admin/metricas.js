@@ -5,7 +5,7 @@
  * Enhancement layer over core adminCarregarMetricas with skeleton + error.
  */
 
-import { esc, skeletonBlock, wrapWhenReady } from './shared.js?v=202.63';
+import { esc, skeletonBlock, wrapWhenReady } from './shared.js?v=202.64';
 
 /* ── Styles ───────────────────────────────────────────────── */
 function injectMetStyles() {

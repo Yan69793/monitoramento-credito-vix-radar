@@ -1,0 +1,41 @@
+{
+  "descricao": "Fontes self-hosted do VIX Radar (Inter, JetBrains Mono, Cormorant Garamond). Subconjunto latin.",
+  "itens": [
+    {
+      "arquivo": "inter-latin-wght-normal.woff2",
+      "pacote": "@fontsource-variable/inter@5.2.8",
+      "licenca": "OFL-1.1",
+      "bytes": 48256,
+      "sha384": "sha384-l0ql7Q1zqvX5klAVRwYjcMVCkCxg5dMTdghsIlC3pYkX6wwEHerh2bP/4yAao3Im",
+      "origem": "registry.npmjs.org (npm pack)",
+      "obtido_em": "2026-10-14"
+    },
+    {
+      "arquivo": "jetbrains-mono-latin-wght-normal.woff2",
+      "pacote": "@fontsource-variable/jetbrains-mono@5.2.8",
+      "licenca": "OFL-1.1",
+      "bytes": 40404,
+      "sha384": "sha384-g2p3DONsRgB71ryU0/Vwr5KWy0Mcp8CSPjzC+3EhRMPKkz5MLtwxpE6GK3i2I9E2",
+      "origem": "registry.npmjs.org (npm pack)",
+      "obtido_em": "2026-10-14"
+    },
+    {
+      "arquivo": "cormorant-garamond-latin-400-normal.woff2",
+      "pacote": "@fontsource/cormorant-garamond@5.2.8",
+      "licenca": "OFL-1.1",
+      "bytes": 22908,
+      "sha384": "sha384-hmFos/kDycVbLoABu+85Jh5/m+sRpsTrnP4rtEa1TmtB4WGUeND48miOflK3SN8a",
+      "origem": "registry.npmjs.org (npm pack)",
+      "obtido_em": "2026-10-14"
+    },
+    {
+      "arquivo": "cormorant-garamond-latin-500-normal.woff2",
+      "pacote": "@fontsource/cormorant-garamond@5.2.8",
+      "licenca": "OFL-1.1",
+      "bytes": 23320,
+      "sha384": "sha384-//G9emgFKjd7/w4xXDC555ud7kRxwOf2NH2aQYl5sUtFWWULAvn+POTPvYM7tjZ8",
+      "origem": "registry.npmjs.org (npm pack)",
+      "obtido_em": "2026-10-14"
+    }
+  ]
+}

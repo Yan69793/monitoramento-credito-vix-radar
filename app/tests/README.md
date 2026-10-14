@@ -35,3 +35,16 @@ npx lhci collect && npx lhci upload # lighthouse baseline (sem thresholds)
 - `workers: 1`, `retries: 0` (baseline deterministica), versoes fixadas via `package-lock.json`.
 - `permissions: contents: read` — o workflow nunca commita nada.
 - Artefatos preservados: `playwright-report/`, screenshots, `.lighthouseci/` (para definir thresholds depois), evidencia axe.
+
+## Redesign v2 e carga critica (VXV2-1, VXLCP2)
+- `npx playwright test --config playwright.vx.config.mjs`: fase 0.5 da v1, v2 atras de flag, caminho critico da landing e
+  acessibilidade, nos 3 viewports (1440, 390, 360). API interceptada por fixtures (`tests/vx-fixtures.mjs`), nada sai da maquina.
+  Serve `.vx-stage` (`node vx-stage.mjs`), o mesmo layout que o deploy publica.
+- `npx playwright test --config playwright.auth.config.mjs`: login, sessao, expiracao, sessao unica, isolamento e acesso nao
+  autorizado PONTA A PONTA, com o Worker REAL (`api/src/worker.js`) em workerd local (`vx-auth-worker.mjs`, exige `npm ci` em
+  `api/`). Contas de teste geradas a cada execucao; nenhum byte sai da maquina. Nao substitui login em producao.
+- `node vx-inp.mjs [saida.json]`: INP de laboratorio (CPU 4x). `node vx-serve.mjs <pasta> <porta>`: servidor com brotli, para medir
+  Lighthouse comparavel a producao (o http-server nao comprime e superestima o LCP).
+- LCP medido no PREVIEW real (`scripts/deploy-pages-preview.ps1 -Publicar`), nunca so no local: o Lighthouse soma requisicao que
+  termina antes do LCP, e a ordem das requisicoes muda com a rede real.
+- Rollback do frontend: `scripts/rollback-pages.ps1` (testado por `scripts/test-rollback-pages.ps1`).

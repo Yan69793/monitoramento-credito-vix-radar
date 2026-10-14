@@ -11,6 +11,17 @@ Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degra
 
 ## 14/10: publicacao das correcoes dos 6 problemas de 13/10 (PUBLICACAO-14OUT1)
 
+## 14/10: redesign Institutional Intelligence 2030 (VXV2-1), homologado no preview, publicacao de producao PENDENTE de decisao
+
+> **Status:** ABERTO. Frontend v202.64 (v1 padrao, v2 atras de flag) homologado no preview, producao intocada em v202.63. Nada commitado nem publicado. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-14.
+
+- **P1, decisao do operador (gate de autenticacao).** A autenticacao foi provada ponta a ponta contra o Worker real em workerd local (18 testes, contas geradas na hora), mas nao em producao nem no preview: a origem do preview nao esta em `ALLOWED_ORIGINS` do Worker, entao nenhuma credencial autentica la. Publicar com essa evidencia, ou liberar a origem do preview no Worker (mudanca de Worker, fora do escopo desta entrega) e testar com conta de teste do operador.
+- **P2, `Sair` nao invalida o token no servidor.** `#btn-sair` so limpa o navegador. Token copiado antes continua valido ate expirar ou novo login. Precisa de action de logout no Worker que invalide o `sid`. Teste de caracterizacao em `app/tests/tests/vx-auth-e2e.spec.mjs`.
+- **P3, JWT em `localStorage`.** Legivel por qualquer script da pagina. Cookie HttpOnly exige mudanca de Worker e de CORS.
+- **P3, legibilidade de fonte.** Lighthouse 49,7% de texto legivel (piso de 11 px). Subir o piso para 12 px e decisao de design.
+- **P3, guardas que ja falhavam no HEAD e estao fora de CI e de hook:** `scripts/check-frontend-allclear.mjs` (1 frase nova de ausencia sem classificacao) e `scripts/test-escape-fe05.mjs` (funcao de escape chamada `h`).
+
+
 > **Status:** PUBLICADO e validado em producao (Worker `v4.9.267`, commits `502f878` e `8d648a6`); runtime das rotinas agendadas pendente. Bloco completo em `status/ESTADO.md` e [[109 - Publicacao das Correcoes Validadas 2026-10-14]]. **Data:** 2026-10-14.
 
 **FECHADO em 14/10 (PUBLICACAO-14OUT1).** Os itens abaixo sairam da fila com prova objetiva: (a) as quatro correcoes do Worker nao deployadas entraram em producao no `v4.9.267` (`versao viva: v4.9.267 OK`), incluindo **RLADMIN4**, comprovado ao vivo (4 POSTs `form-urlencoded` com senha errada -> `200`,`200`,`200`,**`429` camada `burst`**); (b) `verificacao_async` e `agenda_semanal` ganharam o desvio Codex->OpenRouter por lote (`test-codex-fallback-openrouter` 58/58, inerte); (c) `ANALISEVSSCRITA1` deixou de depender de deploy (`painel_analise_fresca`, `painel_ultima_analise_em` e `painel_emissores_deferidos` visiveis no health); (d) `scripts/test-vixfix-20261006.ps1` entrou no Git no commit `502f878`; (e) as duas suites do baseline ficaram verdes e o baseline ficou vazio; (f) `test-preflight-429` e `test-headless-tools` tiveram causa raiz nomeada e corrigida. Nenhum teto, cap, agendamento ou credencial foi alterado.
