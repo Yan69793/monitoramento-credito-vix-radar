@@ -727,7 +727,7 @@ foreach ($rot in $RotinasVigiadas) {
     # ou script quebrou antes do gate. Fail-closed: vira 9001, nunca silencio.
     if ($LlmBloqueado -and ($BloqueadasLog -contains $rot.nome)) {
         $txtRot = ''
-        if (Test-Path $logRot) { try { $txtRot = Get-Content $logRot -Raw -Encoding UTF8 -ErrorAction SilentlyContinue } catch { $txtRot = '' } }
+        try { $txtRot = Get-VixLogDiaConteudo $logRot } catch { $txtRot = '' }
         $rodouBlq = ($txtRot -match 'BLOQUEADO_SEM_PROVIDER') -or ($txtRot -match '(?m)(?<!SHADOW_)FIM:') -or ((Get-VixEmissoresUnicos $txtRot) -ge 1)
         if ($rodouBlq) {
             Write-Log "ROTINA BLOQUEADA esperado: $($rot.rotulo) | $alvoTxt executor rodou o ciclo (sentinel ou entrega)"
@@ -782,11 +782,13 @@ foreach ($rot in $RotinasVigiadas) {
     $submitOk  = -1
     $codigoParcialR = $false
 
-    if (-not (Test-Path $logRot)) {
+    # LOGFALLBACK1 (2026-10-15): log do dia = principal + _fallback_<pid>.log (lib do vigia).
+    # Em 15/10 o FIM e 103 das 104 linhas OK| da noturna ficaram so no fallback.
+    if (@(Get-VixLogDiaArquivos $logRot).Count -eq 0) {
         $motivoR = "$alvoTxt sem log de execucao, a rotina nao chegou a iniciar"
     } else {
         $conteudoR = ''
-        try { $conteudoR = Get-Content $logRot -Raw -Encoding UTF8 -ErrorAction Stop } catch { $conteudoR = '' }
+        try { $conteudoR = Get-VixLogDiaConteudo $logRot } catch { $conteudoR = '' }
         # FIMREAL1 (2026-08-13): o regex antigo procurava 'submit_ok=N' no arquivo
         # inteiro e o formato da linha FIM mudou:
         #   ate ~08-11:  'FIM: submit_ok=103 total_plano=103'

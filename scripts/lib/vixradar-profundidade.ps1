@@ -162,8 +162,13 @@ function Get-VixFullConfirmadosDoLedger([string]$LogDir, [string]$Rotina, [datet
     $out = @()
     $tag = $Data.ToString('yyyyMMdd')
     $p = Join-Path $LogDir ('vixradar-' + $Rotina + '_' + $tag + '.log')
-    if (-not (Test-Path -LiteralPath $p)) { return ,$out }
-    foreach ($linha in @(Get-Content -LiteralPath $p -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+    # LOGFALLBACK1 (2026-10-15): principal + _fallback_<pid>.log do dia, pela regra unica da lib
+    # do vigia quando carregada (motor). Sem ela, le so o principal como antes.
+    $linhasDia = @()
+    if (Get-Command 'Get-VixLogDiaLinhas' -ErrorAction SilentlyContinue) { $linhasDia = @(Get-VixLogDiaLinhas $p) }
+    elseif (Test-Path -LiteralPath $p) { $linhasDia = @(Get-Content -LiteralPath $p -Encoding UTF8 -ErrorAction SilentlyContinue) }
+    if ($linhasDia.Count -eq 0) { return ,$out }
+    foreach ($linha in $linhasDia) {
         if ($linha -match '^[\d-]+\s+[\d:]+\s+OK\|([^|]+)\|FULL\|[^|]*\|[^|]*\|true\|ANALISADO\|') {
             $out += [string]$Matches[1]
         }

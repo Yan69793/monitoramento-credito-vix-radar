@@ -169,7 +169,9 @@ function Send-VixRetryAlerta([string]$Motivo, [string]$Causa, [string]$Severidad
 # alerta via action=notificar_rotina (mesmo canal do watch-vixradar-health.ps1,
 # ROTINAGAP1), com dedup do Worker por rotina/dia (NOTIFYRL1). Sem relancamento:
 # app fechado nao vai entregar de novo; o alerta e a acao correta.
-if (-not (Test-Path $RotLog)) {
+# LOGFALLBACK1 (2026-10-15): o log do dia e o principal MAIS os _fallback_<pid>.log que o
+# Write-Log grava quando outro processo segura o principal (lib/vixradar-watchdog.ps1).
+if (@(Get-VixLogDiaArquivos $RotLog).Count -eq 0) {
     $motivo = 'Rotina ' + $RoutineId + ' nao deixou log ate ' + (Get-Date -Format 'HH:mm') + ' BRT (janela do dia ja passou). Sessao Claude Desktop pode nao ter disparado (app fechado ou cron perdido).'
     Write-Log "SEM LOG: $RotLog nao existe, rotina nao iniciou. ALERTA."
     Send-VixRetryAlerta -Motivo $motivo -Causa 'sem_log' -Severidade 'critico'
@@ -185,7 +187,7 @@ if (-not (Test-Path $RotLog)) {
 # agora nenhuma linha fora da janela agendada conta como prova de entrega -
 # sem isto, uma dry-run de madrugada ou uma recuperacao manual anterior no
 # MESMO arquivo de log podia mascarar a falta de entrega da execucao real.
-$conteudo = Get-Content $RotLog -Raw -Encoding UTF8
+$conteudo = Get-VixLogDiaConteudo $RotLog
 $dataLog = [datetime]::ParseExact($DateTag, 'yyyyMMdd', $null)
 $julgamento = Test-VixLedgerEntregueNaJanela -Conteudo $conteudo -DataLog $dataLog -JanelaHora $JanelaHora -MinimoLedger $MinimoLedger
 if ($julgamento.Entregue) {
@@ -250,7 +252,7 @@ Write-Log "RETRY EXIT: $exit"
 # qualquer defeito futuro do mesmo tipo). Reconfere pelo MESMO ledger/janela
 # de antes do relancamento, e alerta sempre que nao entregou - mesmo com
 # exit 0.
-$conteudoPos = Get-Content $RotLog -Raw -Encoding UTF8
+$conteudoPos = Get-VixLogDiaConteudo $RotLog
 $julgamentoPos = Test-VixLedgerEntregueNaJanela -Conteudo $conteudoPos -DataLog $dataLog -JanelaHora $JanelaHora -MinimoLedger $MinimoLedger
 if ($julgamentoPos.Entregue) {
     # RETRY-COBERTURA1 (2026-10-14): a prova de entrega e a COBERTURA dentro da janela

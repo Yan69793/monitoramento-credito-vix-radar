@@ -207,7 +207,7 @@ if (-not (Get-Command Get-VixLockState -ErrorAction SilentlyContinue)) { Write-S
 # do dia) e a MESMA do retry e do monitor, carregada da lib do vigia. Sem ela o motor nao sabe
 # quem ja foi entregue hoje, e adivinhar foi o que travou a noturna de 14/10: falha fechada.
 . (Join-Path $PSScriptRoot 'lib\vixradar-watchdog.ps1')
-foreach ($fn in @('Get-VixIdempotenciaEntregas', 'Get-VixReconciliacaoUniverso', 'Get-VixLedgerLinhaEntrega')) {
+foreach ($fn in @('Get-VixIdempotenciaEntregas', 'Get-VixReconciliacaoUniverso', 'Get-VixLedgerLinhaEntrega', 'Get-VixLogDiaLinhas')) {
     if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-watchdog.ps1'); exit 1 }
 }
 . (Join-Path $PSScriptRoot 'lib\vixradar-profundidade.ps1')
@@ -476,8 +476,9 @@ function Update-VixLock {
 # nao representam um reinicio e podem divergir de linhas ja persistidas.
 function Get-VixResumoLedger([string]$Path) {
     $vistos = @{}
-    if (Test-Path -LiteralPath $Path) {
-        foreach ($linha in @(Get-Content -LiteralPath $Path -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+    # LOGFALLBACK1: principal + _fallback_<pid>.log do dia, pela regra unica da lib do vigia.
+    if (@(Get-VixLogDiaArquivos $Path).Count -gt 0) {
+        foreach ($linha in @(Get-VixLogDiaLinhas $Path)) {
             if ($linha -match '^(?:[\d-]+\s+[\d:]+\s+)?(?:OK|DRYRUN)\|([^|]+)\|[^|]*\|[^|]*\|[^|]*\|[^|]*\|(SKIP|ANALISADO|DEFERIDO)\|') {
                 $vistos[(Get-NomeNormalizado $Matches[1])] = $Matches[2]
             }
@@ -1821,8 +1822,10 @@ try {
     # Nao depende mais de VIXRADAR_COBERTURA_DIARIA: e correcao de defeito, nao controle novo.
     $jaProcessados = @{}
     $script:VixIdemReabertos = 0
-    if (-not $Force -and -not $DryRun -and (Test-Path $LogFile)) {
-        $linhasOk = @(Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|' })
+    # LOGFALLBACK1 (2026-10-15): o ledger do dia e o log principal MAIS os _fallback_<pid>.log
+    # (Get-VixLogDiaLinhas, lib do vigia). Em 15/10 103 das 104 linhas OK| foram para o fallback.
+    if (-not $Force -and -not $DryRun -and @(Get-VixLogDiaArquivos $LogFile).Count -gt 0) {
+        $linhasOk = @(Get-VixLogDiaLinhas $LogFile | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|' })
         $__idem = Get-VixIdempotenciaEntregas -Linhas $linhasOk
         foreach ($__nIdem in @($__idem.Entregues)) { $jaProcessados[(Get-NomeNormalizado $__nIdem)] = $true }
         $script:VixIdemReabertos = @($__idem.ReabertosDeferido).Count + @($__idem.ReabertosSubmitFalho).Count
@@ -2959,7 +2962,7 @@ try {
     $__reconDia = $null
     if (-not $DryRun -and -not $script:VixCobFallbackModo) {
         try {
-            $__reconDia = Get-VixReconciliacaoUniverso -Universo @($plano.emissores | ForEach-Object { '' + $_.empresa }) -Linhas @(Get-Content -LiteralPath $LogFile -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|' })
+            $__reconDia = Get-VixReconciliacaoUniverso -Universo @($plano.emissores | ForEach-Object { '' + $_.empresa }) -Linhas @(Get-VixLogDiaLinhas $LogFile | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|' })
             Write-Log ('RECONCILIACAO_DIA: universo=' + $__reconDia.Universo + ' entregues=' + $__reconDia.Entregues + ' deferidos=' + $__reconDia.Deferidos + ' submit_falho=' + $__reconDia.SubmitFalho + ' sem_registro=' + $__reconDia.SemRegistro + ' soma=' + $__reconDia.Soma + ' fecha=' + [int]$__reconDia.Fecha + ' completo=' + [int]$__reconDia.Completo + ' fora_do_universo=' + $__reconDia.ForaDoUniverso + $(if ($__reconDia.SemRegistro -gt 0) { ' sem_registro_nomes=' + ((@($__reconDia.SemRegistroNomes) | Select-Object -First 10) -join ',') } else { '' }))
         } catch { Write-Log ('RECONCILIACAO_DIA_ERRO: ' + $_.Exception.Message) }
     }

@@ -52,11 +52,12 @@ function Test-EntregaPorLog([datetime]$Alvo, [string]$LogDir, [string]$Prefixo, 
     if ($MinFim -lt 1) { $MinFim = 1 }
     $alvoTxt = $Alvo.ToString('yyyy-MM-dd')
     $logPath = Join-Path $LogDir ($Prefixo + '_' + $Alvo.ToString('yyyyMMdd') + '.log')
-    if (-not (Test-Path $logPath)) {
+    # LOGFALLBACK1: principal + _fallback_<pid>.log do dia (Get-VixLogDiaArquivos, mais abaixo).
+    if (@(Get-VixLogDiaArquivos $logPath).Count -eq 0) {
         return [pscustomobject]@{ alvoTxt = $alvoTxt; logPath = $logPath; submitOk = -1; motivo = ("$alvoTxt sem log de execucao - a $Rotulo nao chegou a iniciar na janela agendada") }
     }
     $conteudo = ''
-    try { $conteudo = Get-Content $logPath -Raw -Encoding UTF8 -ErrorAction Stop } catch { $conteudo = '' }
+    try { $conteudo = Get-VixLogDiaConteudo $logPath } catch { $conteudo = '' }
     # Mesma exclusao de SHADOW_FIM: do ROTINACEGA1 (monitor-tasks.ps1) - classe do Obs15
     # do task-observer (vigia que casa substring dentro de linha AVISO).
     $fims = [regex]::Matches($conteudo, '(?m)(?<!SHADOW_)FIM:')
@@ -178,6 +179,67 @@ function Get-VixReconciliacaoUniverso([string[]]$Universo = @(), [string[]]$Linh
         Soma = $soma; ForaDoUniverso = $fora; Fecha = (($soma -eq $univ.Count) -and $cont.sem_registro -eq 0 -and $univ.Count -gt 0)
         Completo = (($cont.entregue -eq $univ.Count) -and $univ.Count -gt 0); SemRegistroNomes = $semReg.ToArray(); NaoEntregues = $nao.ToArray()
     }
+}
+
+# LOGFALLBACK1 (2026-10-15): o log do DIA e o arquivo principal MAIS os `_fallback_<pid>.log`.
+# Medido na noturna de 15/10: das 01:36:47 em diante outro processo segurou
+# vixradar-noturno_20261015.log, o Write-Log esgotou as 8 tentativas (LOGLOCK1-REC) e gravou
+# 103 das 104 linhas OK| e a linha FIM em vixradar-noturno_20261015_fallback_22888.log. Todo
+# leitor lia so o principal: RECONCILIACAO_DIA saiu entregues=1 sem_registro=103, e a
+# execucao seguinte reprocessaria Movida e Totvs (ja ANALISADO) sem ver os 101 DEFERIDO.
+# Regra unica de leitura: todo leitor do log do dia (idempotencia e reconciliacao do motor,
+# retry, monitor, vigia por FIM) passa por aqui. O fallback casa por nome exato
+# `<base>_fallback_<digitos>.log` (o `_dryrun.log` e o `cobfallback` nao entram no noturno).
+function Get-VixLogDiaArquivos([string]$LogFile) {
+    $arqs = New-Object System.Collections.Generic.List[string]
+    if ([string]::IsNullOrWhiteSpace($LogFile)) { return $arqs.ToArray() }
+    if (Test-Path -LiteralPath $LogFile -PathType Leaf) { $arqs.Add($LogFile) }
+    $dir = Split-Path -Parent $LogFile
+    if (-not $dir) { $dir = '.' }
+    $base = [IO.Path]::GetFileNameWithoutExtension($LogFile)
+    if (-not (Test-Path -LiteralPath $dir -PathType Container)) { return $arqs.ToArray() }
+    $rx = '^' + [regex]::Escape($base) + '_fallback_\d+\.log$'
+    $fb = @(Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $rx } | Sort-Object Name)
+    foreach ($f in $fb) { $arqs.Add($f.FullName) }
+    return $arqs.ToArray()
+}
+
+# Linhas do log do dia, unidas e em ordem cronologica. Sem fallback devolve o principal tal
+# qual (comportamento anterior, byte a byte). Com fallback: linha identica que ja veio de um
+# arquivo anterior nao entra de novo (sem duplicar), e a ordem e por carimbo
+# 'yyyy-MM-dd HH:mm:ss' com desempate por arquivo e posicao - a ULTIMA linha FIM continua
+# sendo a ultima de verdade, que e o que FIMFALSO1/COBERTURA-13OUT1 leem. Linha sem carimbo
+# (stack trace) herda o carimbo da anterior do mesmo arquivo e fica colada nela.
+function Get-VixLogDiaLinhas([string]$LogFile) {
+    $arqs = @(Get-VixLogDiaArquivos $LogFile)
+    if ($arqs.Count -eq 0) { return @() }
+    if ($arqs.Count -eq 1) { return @(Get-Content -LiteralPath $arqs[0] -Encoding UTF8 -ErrorAction SilentlyContinue) }
+    $vistas = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $itens = New-Object System.Collections.Generic.List[object]
+    $rxTs = [regex]'^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}) '
+    for ($fi = 0; $fi -lt $arqs.Count; $fi++) {
+        $doArq = @(Get-Content -LiteralPath $arqs[$fi] -Encoding UTF8 -ErrorAction SilentlyContinue)
+        $tsAnt = ''
+        $novas = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+        for ($li = 0; $li -lt $doArq.Count; $li++) {
+            $txt = '' + $doArq[$li]
+            $mt = $rxTs.Match($txt)
+            if ($mt.Success) { $tsAnt = $mt.Groups[1].Value }
+            if ($fi -gt 0 -and $vistas.Contains($txt)) { continue }
+            [void]$novas.Add($txt)
+            $itens.Add([pscustomobject]@{ Ts = $tsAnt; F = $fi; I = $li; Txt = $txt })
+        }
+        foreach ($n in $novas) { [void]$vistas.Add($n) }
+    }
+    return @($itens | Sort-Object -Property Ts, F, I | ForEach-Object { $_.Txt })
+}
+
+# Conteudo do dia como texto unico, para os leitores que trabalham com -Raw (retry, monitor,
+# Test-EntregaPorLog). String vazia quando nao ha arquivo nenhum.
+function Get-VixLogDiaConteudo([string]$LogFile) {
+    $l = @(Get-VixLogDiaLinhas $LogFile)
+    if ($l.Count -eq 0) { return '' }
+    return (($l -join "`r`n") + "`r`n")
 }
 
 # INCIDENTE-FRESHNESS2 (A4/H, 03/09/2026): FIM:/RUNNER_FIM: e o ledger OK| so contam
