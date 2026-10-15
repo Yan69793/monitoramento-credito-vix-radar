@@ -9,6 +9,16 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 15/10: IDEMEFETIVA1, DEFERIDO travava a noturna o dia inteiro
+
+> **Status:** CORRIGIDO, commit local sem push, sem deploy, sem executar rotina. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-15.
+
+- **Correcao.** Regra unica de entrega efetiva (`Get-VixLedgerLinhaEntrega` em `scripts/lib/vixradar-watchdog.ps1`) usada por motor, retry e monitor. DEFERIDO e submit recusado reabrem, entrega efetiva nunca reprocessa, nao depende de `VIXRADAR_COBERTURA_DIARIA`. Reconciliacao por execucao e `RECONCILIACAO_DIA` contra os 104 do plano.
+- **Causa raiz.** Quatro copias da mesma regra. As correcoes de 04/09 e 06/10 entraram so no vigia e no monitor, o motor ficou com a regra antiga. As 4 divergencias de 14/10 eram de escopo (ledger do dia contra contrato do dia que a matinal tambem escreve).
+- **Guarda.** `scripts/test-idempotencia-entrega-efetiva.ps1` (49 asserts, executa o bloco real extraido do motor, reprova o codigo antigo em 33) e guardas estaticas contra copia local da regra. Ativacao do controle diario so por `scripts/cobertura-diaria-ativacao.ps1` (validacao com recibo e hash, rollback), provada por `scripts/test-cobertura-diaria-ativacao.ps1`.
+- **P1, aberto.** Confirmar na proxima noturna real as linhas `IDEMPOTENCIA_ENTREGA` e `RECONCILIACAO_DIA` (homologacao autorizada separadamente). Push do commit local.
+- **P3, aberto.** `Get-VixIdempotenciaProcessados` (lib da cobertura diaria, sessao COBDIARIA1) ficou sem uso no motor e e uma quarta copia da regra; aposentar junto com o commit do COBDIARIA1.
+
 ## 14/10: VXV2-1 publicado (frontend v202.64) e CORS do preview resolvido (Worker v4.9.268), com duas pendencias medidas
 
 > **Status:** PUBLICADO e validado. Worker `v4.9.268` e frontend `v202.64` em producao, `origin/main` = `72a9c07`, v1 padrao e v2 por flag. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-14.

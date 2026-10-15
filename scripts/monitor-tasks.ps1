@@ -696,15 +696,11 @@ function Get-VixEmissoresUnicos([string]$conteudo) {
         if (-not $m.Success) { continue }
         $nome = $m.Groups[1].Value.Trim()
         if (-not $nome) { continue }
-        # DEFERIDO-NAO-E-SUCESSO1 (2026-10-06): DEFERIDO nao conta como entrega.
-        # Status ausente (ledger antigo) conta, para nao reprocessar historico.
-        $statusOk = ''
-        $idxOk = $linhaRaw.IndexOf('OK|')
-        if ($idxOk -ge 0) {
-            $camposOk = $linhaRaw.Substring($idxOk) -split '\|'
-            if ($camposOk.Count -ge 7) { $statusOk = $camposOk[6].Trim() }
-        }
-        if ($statusOk -eq 'DEFERIDO') { continue }
+        # DEFERIDO-NAO-E-SUCESSO1 (2026-10-06) + IDEMEFETIVA1 (2026-10-15): a regra de entrega
+        # e a da lib (Get-VixLedgerLinhaEntrega), a mesma do motor e do retry. DEFERIDO e submit
+        # recusado nao contam; status ausente (ledger antigo) conta.
+        $okR = Get-VixLedgerLinhaEntrega $linhaRaw
+        if ($null -eq $okR -or -not $okR.Efetiva) { continue }
         [void]$vistos.Add($nome)
     }
     return $vistos.Count

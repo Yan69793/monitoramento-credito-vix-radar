@@ -203,11 +203,18 @@ function Get-RoutineKey {
 # identidade (pid + inicio_utc). Ver lib\vixradar-lock.ps1.
 . (Join-Path $PSScriptRoot 'lib\vixradar-lock.ps1')
 if (-not (Get-Command Get-VixLockState -ErrorAction SilentlyContinue)) { Write-Safe 'ERRO: lib\vixradar-lock.ps1 ausente ou sem Get-VixLockState'; exit 1 }
+# IDEMEFETIVA1 (2026-10-15): a regra de "entrega efetiva" do ledger (idempotencia, reconciliacao
+# do dia) e a MESMA do retry e do monitor, carregada da lib do vigia. Sem ela o motor nao sabe
+# quem ja foi entregue hoje, e adivinhar foi o que travou a noturna de 14/10: falha fechada.
+. (Join-Path $PSScriptRoot 'lib\vixradar-watchdog.ps1')
+foreach ($fn in @('Get-VixIdempotenciaEntregas', 'Get-VixReconciliacaoUniverso', 'Get-VixLedgerLinhaEntrega')) {
+    if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-watchdog.ps1'); exit 1 }
+}
 . (Join-Path $PSScriptRoot 'lib\vixradar-profundidade.ps1')
 # COBERTURA-13OUT1 (2026-10-13): contexto enxuto do Codex, consumo medido do JSONL, orcamento
 # por emissor, disjuntor de provedor, resultado OK/PARCIAL/FALHA e fila pendente persistente.
 . (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1')
-foreach ($fn in @('Get-VixCodexArgsBase', 'Get-VixCodexPreambulo', 'Get-VixCodexUsageJsonl', 'ConvertTo-VixParcelasCodex', 'Get-VixCustoPorEmissor', 'Get-VixEmissoresQueCabem', 'Get-VixHistoricoCustoPorEmissor', 'Get-VixClasseFalhaProvider', 'New-VixDisjuntorProvider', 'Update-VixDisjuntorProvider', 'Get-VixResultadoRotina', 'Add-VixFilaPendente', 'Remove-VixFilaPendente', 'Read-VixFilaPendente', 'Select-VixOrdemComPendentes', 'Get-VixEscaladaDecisao', 'Select-VixEscaladaOrdenada', 'Test-VixEscaladaRetem', 'Test-VixAnaliseConcluida', 'Get-VixClasseLote', 'Get-VixHistoricoCustoClasse', 'Get-VixModeloLoteClasse', 'Get-VixEstimativaLoteClasse', 'Get-VixEstimativaClasseResumo', 'Get-VixEmissoresQueCabemModelo', 'Read-VixRotacaoCiclo', 'Write-VixRotacaoCiclo', 'Invoke-VixRotacaoSob', 'Select-VixRotacaoCandidatos', 'Update-VixRotacaoCiclo', 'Test-VixCoberturaReconciliacao')) {
+foreach ($fn in @('Get-VixCodexArgsBase', 'Get-VixCodexPreambulo', 'Get-VixCodexUsageJsonl', 'ConvertTo-VixParcelasCodex', 'Get-VixCustoPorEmissor', 'Get-VixEmissoresQueCabem', 'Get-VixHistoricoCustoPorEmissor', 'Get-VixClasseFalhaProvider', 'New-VixDisjuntorProvider', 'Update-VixDisjuntorProvider', 'Get-VixResultadoRotina', 'Add-VixFilaPendente', 'Remove-VixFilaPendente', 'Read-VixFilaPendente', 'Select-VixOrdemComPendentes', 'Get-VixEscaladaDecisao', 'Select-VixEscaladaOrdenada', 'Test-VixEscaladaRetem', 'Test-VixAnaliseConcluida', 'Get-VixClasseLote', 'Get-VixHistoricoCustoClasse', 'Get-VixModeloLoteClasse', 'Get-VixEstimativaLoteClasse', 'Get-VixEstimativaClasseResumo', 'Get-VixEmissoresQueCabemModelo', 'Read-VixRotacaoCiclo', 'Write-VixRotacaoCiclo', 'Invoke-VixRotacaoSob', 'Select-VixRotacaoCandidatos', 'Update-VixRotacaoCiclo', 'Test-VixCoberturaReconciliacao', 'Test-VixReconciliacaoExecucao')) {
     if (-not (Get-Command $fn -ErrorAction SilentlyContinue)) { Write-Safe ('ERRO: funcao ' + $fn + ' ausente em lib\vixradar-cobertura.ps1'); exit 1 }
 }
 # MVA-WIRING1 (2026-09-16): import EXPLICITO da lib de provider. O motor JA consome funcoes
@@ -1339,7 +1346,13 @@ function Write-Ledger([string]$emp, [string]$tier, [string]$classif, [int]$nEv, 
     # o Worker devolveu nesta submissao.
     $pfx = if ($DryRun) { 'DRYRUN|' } else { 'OK|' }
     Write-Log ($pfx + $emp + '|' + $tier + '|' + $classif + '|' + $nEv + '|' + $subOk.ToString().ToLower() + '|' + $status + '|' + $nAvancoData)
+    # IDEMEFETIVA1: o que ESTA execucao escreveu no ledger, para a reconciliacao por execucao.
+    if (-not $DryRun) { $script:VixLedgerExec[(Get-NomeNormalizado $emp)] = $status }
 }
+$script:VixLedgerExec = @{}
+$script:VixContratoExec = @{}
+$script:VixIdemReabertos = 0
+$script:VixElegiveisExec = -1
 
 # CLAUDE-FREE-MIGRATION (2026-09-04): Claude nao e mais requisito operacional. Sem provider
 # manual forcado (VIXRADAR_LLM_PROVIDER='claude-manual' + -ForceClaude), esta rotina bloqueia
@@ -1691,7 +1704,10 @@ function Set-VixContratoEstado {
         faltantes = @($Faltantes)
         triado = $jaTriado
         updated_at = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+        rotina = $Perfil.modo
     }
+    # IDEMEFETIVA1: o que ESTA execucao escreveu no contrato (a reconciliacao e por execucao).
+    $script:VixContratoExec[$k] = $Estado
 }
 # Chaves de PRIORIDADE da rotacao (ROTACAO-14OUT1): risco nao entra na cota diaria. Fontes, todas
 # do proprio registro do sistema, nenhuma inferencia nova: (a) recheck de cobertura aberto no
@@ -1795,15 +1811,30 @@ try {
         Write-Log ('CREDITO_DIA: ' + $creditados.Count + ' emissores ja analisados hoje por outra rotina (SKIP): ' + (($creditados | ForEach-Object { $_.empresa + '<' + (@($_.motivos)[0] -replace '^analisado_hoje_por_', '') + '>' }) -join ', '))
     }
 
-    # Idempotencia por ledger do dia (v4.9.151): reinicio nao reprocessa quem ja tem OK|.
+    # Idempotencia por ledger do dia (v4.9.151): reinicio nao reprocessa quem ja foi ENTREGUE.
+    # IDEMEFETIVA1 (2026-10-15): so trava quem tem entrega efetiva hoje (ANALISADO ou SKIP com
+    # submit aceito), pela regra unica da lib do vigia. Incidente de 14/10: a regra antiga ("toda
+    # linha OK| e trabalho feito") contou os 72 DEFERIDO por orcamento das 02:28 como processados,
+    # e a noturna das 18:05 e os retries de 21:30 e 23:20 fecharam com `Fila aplicada: 0` e exit 6
+    # com cap livre. DEFERIDO e submit recusado voltam a ser elegiveis e entram na MESMA fila, sob
+    # o MESMO cap: reabrir nao aumenta orcamento nenhum, so impede que o orcamento livre fique parado.
+    # Nao depende mais de VIXRADAR_COBERTURA_DIARIA: e correcao de defeito, nao controle novo.
     $jaProcessados = @{}
+    $script:VixIdemReabertos = 0
     if (-not $Force -and -not $DryRun -and (Test-Path $LogFile)) {
-        $linhasOk = Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|([^|]+)\|' }
-        foreach ($linha in $linhasOk) { if ($linha -match 'OK\|([^|]+)\|') { $jaProcessados[(Get-NomeNormalizado $Matches[1])] = $true } }
-        if ($jaProcessados.Count -gt 0) { Write-Log ('Idempotencia: ' + $jaProcessados.Count + ' emissores ja processados hoje, pulando') }
+        $linhasOk = @(Get-Content $LogFile -Encoding UTF8 | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|' })
+        $__idem = Get-VixIdempotenciaEntregas -Linhas $linhasOk
+        foreach ($__nIdem in @($__idem.Entregues)) { $jaProcessados[(Get-NomeNormalizado $__nIdem)] = $true }
+        $script:VixIdemReabertos = @($__idem.ReabertosDeferido).Count + @($__idem.ReabertosSubmitFalho).Count
+        Write-Log ('IDEMPOTENCIA_ENTREGA: entregues_hoje=' + @($__idem.Entregues).Count + ' reabertos_deferido=' + @($__idem.ReabertosDeferido).Count + ' reabertos_submit_falho=' + @($__idem.ReabertosSubmitFalho).Count + ' (so entrega efetiva trava reinicio)')
+        if ($jaProcessados.Count -gt 0) { Write-Log ('Idempotencia: ' + $jaProcessados.Count + ' emissores ja entregues hoje, pulando') }
     } elseif ($Force) {
         Write-Log 'AVISO: -Force ativo. Trava de idempotencia ignorada.'
     }
+    # Elegiveis desta execucao = plano menos quem ja foi entregue hoje. E o denominador honesto do
+    # resultado e da triagem: execucao que nao tem nada a fazer porque tudo ja foi entregue nao e
+    # "sem_analise_efetiva", e execucao com elegiveis que nao entrega nada continua sendo FALHA.
+    $script:VixElegiveisExec = @($plano.emissores | Where-Object { -not $jaProcessados.ContainsKey((Get-NomeNormalizado ('' + $_.empresa))) }).Count
 
     $janIni = '' + $plano.emissores[0].janela_inicio
     $janFim = '' + $plano.emissores[0].janela_fim
@@ -2909,12 +2940,36 @@ try {
     $stats.contrato_resolvido = $__estContrato['RESOLVIDO']
     $stats.contrato_reutilizado = $__estContrato['REUTILIZADO']
     $stats.contrato_deferido = $__estContrato['DEFERIDO']
-    $__recon = Test-VixCoberturaReconciliacao -LedgerAnalisados $ledgerResumo.analisados -LedgerSkips $ledgerResumo.skips -LedgerDeferidos $ledgerResumo.deferidos `
-        -ContratoAnalisado $stats.contrato_analisado -ContratoInconclusivo $stats.contrato_inconclusivo -ContratoResolvido $__estContrato['RESOLVIDO'] -ContratoReutilizado $stats.contrato_reutilizado -ContratoDeferido $stats.contrato_deferido `
-        -Triados $__triadosContrato -PlanoTotal $planoTotal -RotacaoPerdidos ([int]$stats.rotacao_perdidos) -ExigirTriagem ([bool]($script:VixTriagemAtiva -or $script:VixTriagemSombra))
+    # IDEMEFETIVA1 (2026-10-15): reconciliacao no escopo da EXECUCAO, emissor por emissor (ver
+    # Test-VixReconciliacaoExecucao). Os contadores do contrato acima seguem publicados no FIM
+    # como estavam (sao o retrato do dia), mas nao decidem mais a divergencia: ledger do dia contra
+    # contrato do dia misturava execucoes anteriores e a matinal, e produziu 4 divergencias falsas
+    # em 14/10 enquanto nao havia nenhum emissor sem registro.
+    $__triPorChave = @{}
+    foreach ($__kTr in @($contratoCobertura.Keys)) {
+        $__eTr = $contratoCobertura[$__kTr]; $__tTr = $false
+        if ($__eTr -is [System.Collections.IDictionary]) { if ($__eTr.Contains('triado')) { $__tTr = [bool]$__eTr['triado'] } }
+        elseif ($null -ne $__eTr.PSObject.Properties['triado']) { $__tTr = [bool]$__eTr.triado }
+        $__triPorChave[$__kTr] = $__tTr
+    }
+    $__elegChaves = @($plano.emissores | ForEach-Object { Get-NomeNormalizado ('' + $_.empresa) } | Where-Object { -not $jaProcessados.ContainsKey($_) })
+    $__recon = Test-VixReconciliacaoExecucao -LedgerExec $script:VixLedgerExec -ContratoExec $script:VixContratoExec -TriadoPorChave $__triPorChave -Elegiveis $__elegChaves `
+        -RotacaoPerdidos ([int]$stats.rotacao_perdidos) -ExigirTriagem ([bool]($script:VixTriagemAtiva -or $script:VixTriagemSombra))
+    # Conta do DIA contra o universo do plano: cada emissor em exatamente uma classe, soma = plano.
+    $__reconDia = $null
+    if (-not $DryRun -and -not $script:VixCobFallbackModo) {
+        try {
+            $__reconDia = Get-VixReconciliacaoUniverso -Universo @($plano.emissores | ForEach-Object { '' + $_.empresa }) -Linhas @(Get-Content -LiteralPath $LogFile -Encoding UTF8 -ErrorAction SilentlyContinue | Where-Object { $_ -match '^[\d-]+ [\d:]+ OK\|' })
+            Write-Log ('RECONCILIACAO_DIA: universo=' + $__reconDia.Universo + ' entregues=' + $__reconDia.Entregues + ' deferidos=' + $__reconDia.Deferidos + ' submit_falho=' + $__reconDia.SubmitFalho + ' sem_registro=' + $__reconDia.SemRegistro + ' soma=' + $__reconDia.Soma + ' fecha=' + [int]$__reconDia.Fecha + ' completo=' + [int]$__reconDia.Completo + ' fora_do_universo=' + $__reconDia.ForaDoUniverso + $(if ($__reconDia.SemRegistro -gt 0) { ' sem_registro_nomes=' + ((@($__reconDia.SemRegistroNomes) | Select-Object -First 10) -join ',') } else { '' }))
+        } catch { Write-Log ('RECONCILIACAO_DIA_ERRO: ' + $_.Exception.Message) }
+    }
+    # IDEMEFETIVA1: denominador do resultado = elegiveis desta execucao (plano menos entregues hoje).
+    # Tudo entregue antes = nada a fazer, nao FALHA; elegivel sem entrega nenhuma = FALHA, como antes.
+    $__planoResultado = $planoTotal
+    if (-not $script:VixCobFallbackModo -and $script:VixElegiveisExec -ge 0) { $__planoResultado = [int]$script:VixElegiveisExec }
     if ($__recon.ok) {
         $stats.cobertura_reconciliacao = 'ok'
-        Write-Log ('COBERTURA_RECONCILIACAO: OK ledger(analisados=' + $ledgerResumo.analisados + ' skip=' + $ledgerResumo.skips + ' deferidos=' + $ledgerResumo.deferidos + ') contrato(analisado=' + $stats.contrato_analisado + ' inconclusivo=' + $stats.contrato_inconclusivo + ' reutilizado=' + $stats.contrato_reutilizado + ' deferido=' + $stats.contrato_deferido + ' triados=' + $__triadosContrato + '/' + $planoTotal + ')')
+        Write-Log ('COBERTURA_RECONCILIACAO: OK execucao(ledger analisados=' + $__recon.analisados + ' skip=' + $__recon.skips + ' deferidos=' + $__recon.deferidos + ', todos com contrato da execucao, triados=' + $__recon.triados + '/' + $__recon.elegiveis + ' elegiveis) dia(ledger analisados=' + $ledgerResumo.analisados + ' skip=' + $ledgerResumo.skips + ' deferidos=' + $ledgerResumo.deferidos + ')')
     } else {
         $stats.cobertura_reconciliacao = 'divergente'
         $stats.cobertura_divergencias = @($__recon.divergencias).Count
@@ -3017,7 +3072,7 @@ try {
             # configuracao), pendencias obrigatorias e os contadores de consumo novos.
             provider = $__providerExec
             pendentes_obrigatorios = $pendentesObrigatorios
-            cobertura = (Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $planoTotal -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros ($stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail + $stats.descartes_inesperados + $stats.cobertura_divergencias)).Resultado
+            cobertura = (Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $__planoResultado -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros ($stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail + $stats.descartes_inesperados + $stats.cobertura_divergencias)).Resultado
             deferidos_provider = $stats.deferred_provider
             deferidos_escalada = $stats.deferred_escalada
             tokens_estimados_falha = $stats.tokens_estimados_falha
@@ -3069,7 +3124,7 @@ try {
     # COBERTURA-13OUT1: o resultado sai ANTES da linha FIM para ela nao declarar "concluido"
     # sem qualificar. Mesma conta repetida abaixo para o ROTINA_RESUMO (os valores nao mudam).
     $__errosPre = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail + $stats.descartes_inesperados + $stats.cobertura_divergencias
-    $__resPre = Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $planoTotal -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros $__errosPre
+    $__resPre = Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $__planoResultado -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros $__errosPre
     $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } elseif ($trabalhoZero) { 'FIM_INVALIDO: ' } else { 'FIM: ' }
     $fimVerbo = if ($trabalhoZero) { 'INVALIDO (trabalho zero)' } elseif ($__resPre.Resultado -eq 'OK' -or $__resPre.Resultado -eq 'DRYRUN') { 'concluido' } else { 'concluido ' + $__resPre.Resultado + ' (' + $__resPre.Motivo + ')' }
     # FEEDRETRO1 FASE2 (2026-09-04): eventos_avanco_data pode ser 0 legitimamente num dia
@@ -3109,7 +3164,11 @@ try {
         ' rotacao_limite_dia=' + $stats.rotacao_limite_dia + ' rotacao_candidatos_dia=' + $stats.rotacao_candidatos_dia +
         ' rotacao_na_fila=' + $stats.rotacao_na_fila + ' rotacao_servidos_ciclo=' + $stats.rotacao_servidos_ciclo +
         ' rotacao_reiniciou=' + $stats.rotacao_reiniciou + ' rotacao_perdidos=' + $stats.rotacao_perdidos + ' rotacao_duplicados=' + $stats.rotacao_duplicados +
-        ' disjuntor_provider=' + $(if ($__disjuntor.aberto) { 'ABERTO:' + $__disjuntor.motivo } else { 'fechado' }))
+        ' disjuntor_provider=' + $(if ($__disjuntor.aberto) { 'ABERTO:' + $__disjuntor.motivo } else { 'fechado' }) +
+        # IDEMEFETIVA1: "Total do dia N/D" e contagem de REGISTRO (soma DEFERIDO, e o que o
+        # check-ledger-noturno.ps1 confere). A entrega de verdade do dia sai aqui, pela regra unica.
+        $(if ($null -ne $__reconDia) { ' entregues_dia=' + $__reconDia.Entregues + '/' + $__reconDia.Universo + ' nao_entregues_dia=' + ($__reconDia.Universo - $__reconDia.Entregues) + ' reconciliacao_dia=' + $(if ($__reconDia.Fecha) { 'fecha' } else { 'nao_fecha' }) } else { '' }) +
+        ' elegiveis_execucao=' + $__planoResultado + ' reabertos_idempotencia=' + $script:VixIdemReabertos)
 
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     $errosTotal = $stats.silent_fail + $stats.skip_fail + $stats.batch_fail + $stats.submit_fail + $stats.deferred_fail + $stats.descartes_inesperados + $stats.cobertura_divergencias
@@ -3118,11 +3177,11 @@ try {
     # DEFERIDO e FALHA nao. Se o plano tinha trabalho (planoTotal>0) e nada
     # foi efetivamente analisado, o resultado e no maximo PARCIAL, mesmo com
     # errosTotal=0 (ex.: todos DEFERIDOS com submit aceito e sem batch_fail).
-    $semAnaliseEfetiva = (-not $DryRun) -and ($stats.analisados -eq 0) -and ($stats.skip_ok -eq 0) -and ($planoTotal -gt 0)
+    $semAnaliseEfetiva = (-not $DryRun) -and ($stats.analisados -eq 0) -and ($stats.skip_ok -eq 0) -and ($__planoResultado -gt 0)
     # COBERTURA-13OUT1: regra unica (lib) para OK/PARCIAL/FALHA. Em 13/10 a matinal fechou
     # ROTINA_RESUMO "OK" com 17 de 21 emissores DEFERIDO por cap. Pendencia obrigatoria agora
     # impede OK; nenhuma analise efetiva com plano nao vazio e FALHA (antes saia PARCIAL).
-    $__resRot = Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $planoTotal -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros $errosTotal
+    $__resRot = Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $__planoResultado -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros $errosTotal
     $resultadoTxt = $__resRot.Resultado
     Write-Log ('COBERTURA_RESULTADO: ' + $resultadoTxt + ' motivo=' + $__resRot.Motivo + ' pendentes_obrigatorios=' + $pendentesObrigatorios + ' (deferidos_nao_rotacao=' + ([int]$stats.deferred - [int]$stats.deferred_rotacao) + ' deferidos_submit_falho=' + $stats.deferred_fail + ' recheck=' + $stats.cobertura_deferidos + ' submit_fail=' + $stats.submit_fail + ') analisados=' + $stats.analisados + ' skip=' + $stats.skip_ok + ' plano=' + $planoTotal)
     Write-Log ('ROTINA_RESUMO|' + $Perfil.id + '|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)

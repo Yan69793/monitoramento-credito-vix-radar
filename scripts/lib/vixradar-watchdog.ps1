@@ -73,6 +73,113 @@ function Test-EntregaSentinela([datetime]$Alvo, [string]$LogDir) {
     return Test-EntregaPorLog -Alvo $Alvo -LogDir $LogDir -Prefixo 'vixradar-sentinela' -Rotulo 'Sentinela'
 }
 
+# IDEMEFETIVA1 (2026-10-15): REGRA UNICA de "entrega efetiva" de uma linha do ledger.
+# Causa raiz do incidente de 14/10 (noturna 18:05 e retries 21:30/23:20 com `Fila aplicada: 0`
+# e exit 6 com cap livre): a regra "linha OK| = trabalho feito" existia em QUATRO copias (motor,
+# vigia, monitor, lib da cobertura diaria). As correcoes DEFERIDO-NAO-E-ENTREGA1 (04/09) e
+# DEFERIDO-NAO-E-SUCESSO1 (06/10) entraram so no vigia e no monitor; a copia do MOTOR continuou
+# lendo toda linha OK| como processada e travou os 72 DEFERIDO das 02:28 o dia inteiro. Agora as
+# quatro pontas chamam esta funcao e a regra muda num lugar so.
+#
+# Formato: OK|empresa|tier|classe|n_eventos|submit|status|n_avanco_data
+#   Efetiva = status ANALISADO ou SKIP E submit aceito ('true').
+#   DEFERIDO nunca e entrega. ANALISADO/SKIP com submit 'false' nao e entrega (o Worker nao
+#   recebeu). Linha legada sem campo de status conta como entrega, para nao reprocessar
+#   historico. DRYRUN| nunca e linha de ledger real (devolve $null).
+function Get-VixLedgerLinhaEntrega([string]$Linha) {
+    $s = '' + $Linha
+    $m = [regex]::Match($s, '^(?:\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} )?OK\|([^|]+)\|')
+    if (-not $m.Success) { return $null }
+    $nome = $m.Groups[1].Value.Trim()
+    if (-not $nome) { return $null }
+    $campos = $s.Substring($s.IndexOf('OK|')) -split '\|'
+    $status = ''
+    $submit = ''
+    if ($campos.Count -ge 7) { $status = $campos[6].Trim().ToUpperInvariant(); $submit = $campos[5].Trim().ToLowerInvariant() }
+    $efetiva = $false
+    $classe = 'outro'
+    if (-not $status) { $efetiva = $true; $classe = 'legado' }
+    elseif ($status -eq 'DEFERIDO') { $classe = 'deferido' }
+    elseif ($status -eq 'ANALISADO' -or $status -eq 'SKIP') {
+        if ($submit -eq 'true') { $efetiva = $true; $classe = 'entregue' } else { $classe = 'submit_falho' }
+    }
+    return [pscustomobject]@{ Empresa = $nome; Status = $status; Submit = $submit; Efetiva = $efetiva; Classe = $classe }
+}
+
+# Chave de emissor do ledger: sem acento, minuscula, espaco unico. Mesma forma de
+# ConvertTo-VixChaveEmissor (lib\vixradar-cobertura.ps1), repetida aqui porque esta lib e
+# carregada sozinha pelo retry e pelo monitor.
+function ConvertTo-VixChaveLedger([string]$Nome) {
+    $norm = ('' + $Nome).Normalize([Text.NormalizationForm]::FormD)
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($ch in $norm.ToCharArray()) {
+        if ([Globalization.CharUnicodeInfo]::GetUnicodeCategory($ch) -ne [Globalization.UnicodeCategory]::NonSpacingMark) { [void]$sb.Append($ch) }
+    }
+    return ($sb.ToString().Trim().ToLowerInvariant() -replace '\s+', ' ')
+}
+
+# Idempotencia do motor (IDEMEFETIVA1). Trava reinicio SO para quem tem entrega efetiva hoje;
+# basta UMA linha efetiva no dia (um DEFERIDO posterior nao desfaz entrega ja feita, e um
+# ANALISADO aceito nunca e reanalisado no mesmo dia). Reabre DEFERIDO e submit falho.
+# Entregues devolve o NOME como escrito no ledger (o motor normaliza com a regra dele).
+function Get-VixIdempotenciaEntregas([string[]]$Linhas = @()) {
+    $ent = [ordered]@{}; $def = [ordered]@{}; $sf = [ordered]@{}
+    foreach ($ln in @($Linhas)) {
+        $r = Get-VixLedgerLinhaEntrega $ln
+        if ($null -eq $r) { continue }
+        $k = ConvertTo-VixChaveLedger $r.Empresa
+        if ($r.Efetiva) { if (-not $ent.Contains($k)) { $ent[$k] = $r.Empresa } }
+        elseif ($r.Classe -eq 'deferido') { if (-not $def.Contains($k)) { $def[$k] = $r.Empresa } }
+        elseif ($r.Classe -eq 'submit_falho') { if (-not $sf.Contains($k)) { $sf[$k] = $r.Empresa } }
+    }
+    $reabDef = New-Object System.Collections.Generic.List[string]
+    foreach ($k in @($def.Keys)) { if (-not $ent.Contains($k)) { $reabDef.Add($def[$k]) } }
+    $reabSf = New-Object System.Collections.Generic.List[string]
+    foreach ($k in @($sf.Keys)) { if (-not $ent.Contains($k)) { $reabSf.Add($sf[$k]) } }
+    $lista = New-Object System.Collections.Generic.List[string]
+    foreach ($k in @($ent.Keys)) { $lista.Add($ent[$k]) }
+    return [pscustomobject]@{ Entregues = $lista.ToArray(); ReabertosDeferido = $reabDef.ToArray(); ReabertosSubmitFalho = $reabSf.ToArray() }
+}
+
+# Reconciliacao do DIA contra o universo do plano (IDEMEFETIVA1). Cada emissor do universo cai
+# em exatamente UMA classe, pela melhor evidencia do dia: entregue > submit_falho > deferido >
+# sem_registro. A soma das quatro e o universo por construcao; `Fecha` exige zero sem_registro.
+# Linha de ledger de emissor fora do universo vai para ForaDoUniverso (nao some, nao soma).
+function Get-VixReconciliacaoUniverso([string[]]$Universo = @(), [string[]]$Linhas = @()) {
+    $melhor = @{}
+    $rank = @{ entregue = 3; legado = 3; submit_falho = 2; deferido = 1; outro = 0 }
+    foreach ($ln in @($Linhas)) {
+        $r = Get-VixLedgerLinhaEntrega $ln
+        if ($null -eq $r) { continue }
+        $k = ConvertTo-VixChaveLedger $r.Empresa
+        $c = $r.Classe
+        if ($c -eq 'legado') { $c = 'entregue' }
+        if (-not $melhor.ContainsKey($k) -or $rank[$c] -gt $rank[$melhor[$k]]) { $melhor[$k] = $c }
+    }
+    $cont = [ordered]@{ entregue = 0; submit_falho = 0; deferido = 0; sem_registro = 0 }
+    $semReg = New-Object System.Collections.Generic.List[string]
+    $nao = New-Object System.Collections.Generic.List[string]
+    $univ = @{}
+    foreach ($n in @($Universo)) {
+        $k = ConvertTo-VixChaveLedger $n
+        if (-not $k -or $univ.ContainsKey($k)) { continue }
+        $univ[$k] = $true
+        $c = 'sem_registro'
+        if ($melhor.ContainsKey($k) -and $melhor[$k] -ne 'outro') { $c = $melhor[$k] }
+        $cont[$c]++
+        if ($c -eq 'sem_registro') { $semReg.Add(('' + $n)) }
+        if ($c -ne 'entregue') { $nao.Add(('' + $n) + ':' + $c) }
+    }
+    $fora = 0
+    foreach ($k in @($melhor.Keys)) { if (-not $univ.ContainsKey($k)) { $fora++ } }
+    $soma = $cont.entregue + $cont.submit_falho + $cont.deferido + $cont.sem_registro
+    return [pscustomobject]@{
+        Universo = $univ.Count; Entregues = $cont.entregue; SubmitFalho = $cont.submit_falho; Deferidos = $cont.deferido; SemRegistro = $cont.sem_registro
+        Soma = $soma; ForaDoUniverso = $fora; Fecha = (($soma -eq $univ.Count) -and $cont.sem_registro -eq 0 -and $univ.Count -gt 0)
+        Completo = (($cont.entregue -eq $univ.Count) -and $univ.Count -gt 0); SemRegistroNomes = $semReg.ToArray(); NaoEntregues = $nao.ToArray()
+    }
+}
+
 # INCIDENTE-FRESHNESS2 (A4/H, 03/09/2026): FIM:/RUNNER_FIM: e o ledger OK| so contam
 # como entrega dentro da JANELA REAL da rotina do dia (noturno >= 18:00, matinal >=
 # 10:00 BRT). Sem isto, uma linha remanescente de um dry-run de madrugada, ou de uma
@@ -108,6 +215,7 @@ function Test-VixLedgerEntregueNaJanela {
     $vistos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $vistosEfetivos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $vistosDeferidos = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
+    $vistosSubmitFalho = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::OrdinalIgnoreCase)
     $fimComContagemSuficiente = $false
     $ultimoFimInvalido = $false
     $ultimoResultado = ''
@@ -123,18 +231,16 @@ function Test-VixLedgerEntregueNaJanela {
         if (-not [datetime]::TryParseExact($lm.Groups[1].Value + ' ' + $lm.Groups[2].Value, 'yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$ts)) { continue }
         if ($ts -lt $limite) { continue }
         $resto = $lm.Groups[3].Value
-        $okM = [regex]::Match($resto, '^OK\|([^|]+)\|')
-        if ($okM.Success) {
-            $nomeOk = $okM.Groups[1].Value.Trim()
+        # IDEMEFETIVA1 (2026-10-15): classificacao pela regra unica. Ate aqui ANALISADO/SKIP com
+        # submit 'false' contava como efetivo: 104 linhas recusadas pelo Worker confirmavam entrega.
+        $okR = $null
+        if ($resto.StartsWith('OK|')) { $okR = Get-VixLedgerLinhaEntrega $resto }
+        if ($null -ne $okR) {
+            $nomeOk = $okR.Empresa
             [void]$vistos.Add($nomeOk)
-            $statusOk = ''
-            $idxOk = $linhaRaw.IndexOf('OK|')
-            if ($idxOk -ge 0) {
-                $camposOk = $linhaRaw.Substring($idxOk) -split '\|'
-                if ($camposOk.Count -ge 7) { $statusOk = $camposOk[6].Trim() }
-            }
-            if ($statusOk -eq 'DEFERIDO') { [void]$vistosDeferidos.Add($nomeOk) }
-            else { [void]$vistosEfetivos.Add($nomeOk) }
+            if ($okR.Efetiva) { [void]$vistosEfetivos.Add($nomeOk) }
+            elseif ($okR.Classe -eq 'deferido') { [void]$vistosDeferidos.Add($nomeOk) }
+            else { [void]$vistosSubmitFalho.Add($nomeOk) }
             continue
         }
         if ($resto -match '(?<!SHADOW_)FIM_INVALIDO:') { $ultimoFimInvalido = $true; continue }
@@ -211,6 +317,7 @@ function Test-VixLedgerEntregueNaJanela {
         LedgerNaJanela            = $vistos.Count
         EfetivosNaJanela          = $vistosEfetivos.Count
         DeferidosNaJanela         = $vistosDeferidos.Count
+        SubmitFalhoNaJanela       = $vistosSubmitFalho.Count
         FimComContagemSuficiente = $fimComContagemSuficiente
         LimiteUsado               = $limite
         UltimoResultado           = $ultimoResultado
@@ -345,13 +452,12 @@ function Get-VixLedgerEmissoresNaJanela {
         $ts = [datetime]::MinValue
         if (-not [datetime]::TryParseExact($lm.Groups[1].Value + ' ' + $lm.Groups[2].Value, 'yyyy-MM-dd HH:mm:ss', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::None, [ref]$ts)) { continue }
         $nome = $lm.Groups[3].Value.Trim()
-        # Status pelo indice do campo, nao por regex rigido: o campo 8 (n_avanco_data)
-        # entrou em 04/09 e outro pode entrar depois. Split tolera linha curta.
-        $campos = $linhaRaw.Substring($linhaRaw.IndexOf('OK|')) -split '\|'
-        $status = ''
-        if ($campos.Count -ge 7) { $status = $campos[6].Trim() }
+        # IDEMEFETIVA1: status e submit pela regra unica (Get-VixLedgerLinhaEntrega). Submit
+        # recusado tambem nao conta como processado (o Worker nao recebeu nada).
+        $okR = Get-VixLedgerLinhaEntrega $linhaRaw
         if ($ts -lt $JanelaInicio) { [void]$fora.Add($nome); continue }
-        if ($status -eq 'DEFERIDO') { [void]$deferidos.Add($nome); continue }
+        if ($null -ne $okR -and $okR.Classe -eq 'deferido') { [void]$deferidos.Add($nome); continue }
+        if ($null -eq $okR -or -not $okR.Efetiva) { continue }
         [void]$dentro.Add($nome)
     }
     # .ToArray() de proposito: @() sobre List generica estoura o binder do PS 5.1.

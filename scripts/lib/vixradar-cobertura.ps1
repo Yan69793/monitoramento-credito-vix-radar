@@ -968,6 +968,53 @@ function Test-VixCoberturaReconciliacao {
     return @{ ok = ($d.Count -eq 0); divergencias = $d }
 }
 
+# IDEMEFETIVA1 (2026-10-15): a reconciliacao acima e regra certa aplicada no ESCOPO errado. O motor
+# a alimentava com o ledger do DIA inteiro (todas as execucoes da rotina, inclusive as anteriores
+# ao contrato existir) contra o contrato do DIA (que a matinal tambem escreve, e onde registro
+# legado nao tem `estado`). Medido em 14/10 18:05/21:30/23:20: `analisados:ledger=16 contrato=0 |
+# skips:ledger=16 contrato=1 | deferidos:ledger=72 contrato=21 | triados:22<104` - as quatro
+# divergencias eram de escopo (16/16/72 vinham da execucao das 02:28, anterior ao contrato; os 21
+# DEFERIDO eram da matinal das 10:08), nenhuma era emissor sem registro. A conta do dia contra os
+# 104 do universo e Get-VixReconciliacaoUniverso (lib do vigia); aqui o escopo e a EXECUCAO:
+# toda linha de ledger escrita por ela tem de ter o registro de contrato correspondente escrito
+# por ela, emissor por emissor (nao so total), e todo elegivel desta execucao tem de ter passado
+# pela triagem. Devolve as mesmas chaves do Test-VixCoberturaReconciliacao.
+#   LedgerExec   : chave -> status do ledger (ANALISADO | SKIP | DEFERIDO), ultimo desta execucao
+#   ContratoExec : chave -> estado do contrato gravado nesta execucao (ultimo)
+#   TriadoPorChave / Elegiveis : triagem universal sobre os elegiveis (plano - entregues hoje)
+function Test-VixReconciliacaoExecucao {
+    param(
+        [hashtable]$LedgerExec = @{},
+        [hashtable]$ContratoExec = @{},
+        [hashtable]$TriadoPorChave = @{},
+        [string[]]$Elegiveis = @(),
+        [int]$RotacaoPerdidos = 0,
+        [bool]$ExigirTriagem = $false
+    )
+    $aceitos = @{ ANALISADO = @('ANALISADO', 'INCONCLUSIVO', 'RESOLVIDO'); SKIP = @('REUTILIZADO'); DEFERIDO = @('DEFERIDO') }
+    $cont = @{ ANALISADO = 0; SKIP = 0; DEFERIDO = 0 }
+    $semContrato = New-Object System.Collections.Generic.List[string]
+    $estadoErrado = New-Object System.Collections.Generic.List[string]
+    foreach ($k in @($LedgerExec.Keys)) {
+        $st = ('' + $LedgerExec[$k]).ToUpperInvariant()
+        if (-not $aceitos.ContainsKey($st)) { continue }
+        $cont[$st]++
+        if (-not $ContratoExec.ContainsKey($k)) { $semContrato.Add($k + ':' + $st); continue }
+        $est = ('' + $ContratoExec[$k]).ToUpperInvariant()
+        if ($aceitos[$st] -notcontains $est) { $estadoErrado.Add($k + ':' + $st + '>' + $est) }
+    }
+    $semTriagem = 0
+    if ($ExigirTriagem) {
+        foreach ($k in @($Elegiveis)) { if (-not ($TriadoPorChave.ContainsKey($k) -and [bool]$TriadoPorChave[$k])) { $semTriagem++ } }
+    }
+    $d = @()
+    if ($semContrato.Count -gt 0) { $d += ('ledger_sem_contrato=' + $semContrato.Count + '[' + ((@($semContrato) | Select-Object -First 5) -join ',') + ']') }
+    if ($estadoErrado.Count -gt 0) { $d += ('estado_divergente=' + $estadoErrado.Count + '[' + ((@($estadoErrado) | Select-Object -First 5) -join ',') + ']') }
+    if ($semTriagem -gt 0) { $d += ('triados:' + (@($Elegiveis).Count - $semTriagem) + '<' + @($Elegiveis).Count) }
+    if ($RotacaoPerdidos -gt 0) { $d += ('rotacao_perdidos:' + $RotacaoPerdidos) }
+    return @{ ok = ($d.Count -eq 0); divergencias = $d; analisados = $cont.ANALISADO; skips = $cont.SKIP; deferidos = $cont.DEFERIDO; elegiveis = @($Elegiveis).Count; triados = (@($Elegiveis).Count - $semTriagem) }
+}
+
 # ---------------------------------------------------------------------------------------
 # 7. Triagem deterministica (COBERTURA-13OUT1, parte 2): IA so onde ha fato novo a interpretar
 # ---------------------------------------------------------------------------------------
