@@ -1,5 +1,17 @@
 # Estado do projeto — VIX Radar
 
+## 15/10/2026 19:45, auditoria pos-JANELADELTA1 e LOTEFILA1 corrigido local (SEM commit, SEM deploy, SEM rotina)
+
+**JANELADELTA1 em producao.** Plano noturno lido ao vivo as 19:25 (`listar_plano_rotina`, so leitura, `worker_version v4.9.269`): 104/104 com `horas_stale_base=ultima_analise` e `janela_delta_inicio` igual a ultima analise menos 2 dias (ex. CEMIG analise 312,8h, varredura 1,1h, janela 30/09; na regra antiga seria 13/10). Nenhuma rotina de analise rodou depois do deploy das 19:12, entao eficacia em analise real segue NAO OBSERVADA. Proxima chance: retry 21:30 ou Noturna 16/10 18:05.
+
+**Os 9 SKIP com noticia.** Nenhum foi avaliado por IA depois das 18:05. BRK teve analise da sentinela as 11:26 so pela CVM (`buscas=0`). Manchetes lidas no `coleta_cache_20261015.json`: Rumo e ruido de palavra comum (19 de 19), VLI e LWSA sem credito, Embraer/CPFL/Iguatemi corporativo sem estresse, Usiminas e Gerdau com pressao setorial do aco (Citi corta alvo, BTG alerta crise prolongada), BRK com Procon e condenacoes judiciais pequenas. Nenhum fato critico de credito descoberto.
+
+**Os 79 DEFERIDOS de 15/10 18:05**, idade da ultima analise pelo plano vivo: 15 abaixo de 2 dias, 10 de 2 a 5, 6 de 5 a 10, 33 de 10 a 15, 15 acima de 15. Prioritarios: Light (EWS 50, 11,4 d), CSN 42, Aegea 40, Simpar e Dasa 38, Cosan, MRV e Hapvida 36 (8 a 11 d); Minerva e Santos Brasil 16,1 d com recheck pendente. Os 7 pendentes obrigatorios sao 5 emissores (Eneva, CBA, Cogna analisados INCONCLUSIVO; Minerva e Santos Brasil DEFERIDO por escalada sem orcamento).
+
+**LOTEFILA1 (defeito, corrigido local).** Matinal de 15/10 rodou 1 de 20 com 378.584 do cap livres e perdeu a GPA sem registro. Detalhe, prova e guarda em `PENDENCIAS.md`. `test-lotefila1-15out` 20/0, `run-all-tests` 62/62, lint RISCO 0, check-claude-free exit 0.
+
+**Portao.** HTTP 200, `ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`, `v4.9.269`.
+
 ## 15/10/2026, IDEMEFETIVA1: DEFERIDO deixa de travar a noturna, commit local SEM push e SEM deploy
 
 **Causa raiz.** A regra "linha `OK|` do ledger = trabalho feito" existia em quatro copias (motor, vigia do retry, monitor, lib da cobertura diaria). As correcoes de 04/09 (DEFERIDO-NAO-E-ENTREGA1) e 06/10 (DEFERIDO-NAO-E-SUCESSO1) entraram no vigia e no monitor, e a copia do motor seguiu contando DEFERIDO como processado. Em 14/10 a execucao das 02:28 deferiu 72 por orcamento, e a noturna das 18:05 e os retries de 21:30 e 23:20 fecharam com `Idempotencia: 104 emissores ja processados hoje`, `Fila aplicada: 0` e exit 6 com cap de 700.000 livre. O bloco antigo do motor, executado contra o log real, reproduz exatamente essa linha, com e sem a lib COBDIARIA em sombra. As quatro divergencias da `COBERTURA_RECONCILIACAO` eram de escopo, nao de cobertura: ledger do dia inteiro (16/16/72 vinham das 02:28, anteriores ao contrato) contra contrato do dia (os 21 DEFERIDO eram da matinal das 10:08).

@@ -9,6 +9,20 @@ status: ativo
 
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
 
+## 15/10: LOTEFILA1, fila de lotes descartava retido de escalada e fechava o cap pela estimativa
+
+> **Status:** CORRIGIDO local (`scripts/run_vixradar_varredura.ps1`), sem commit, sem push, sem deploy, sem executar rotina. **Data:** 2026-10-15 19:45.
+
+- **Sintoma.** Matinal de 15/10 10:06, cap 400.000: 1 lote rodou (GPA, 21.416 tokens), os outros 19 do top EWS (Oi, Kora, Raizen 55, Light 50, CSN 42, Aegea 40...) sairam DEFERIDO com 378.584 livres. E a GPA, analisada, ficou sem ledger: `RECONCILIACAO_DIA ... sem_registro=1 ... sem_registro_nomes=Pão de Açúcar (GPA)`. Matinal de outubro: 0 analisados em 09, 10, 14 e 15/10.
+- **Causa raiz D1.** A montagem da rodada de escalada ficava no fim do corpo do laco de lotes. Todo `continue` (CAP pre-lote, disjuntor) pulava por cima, e quando o ultimo lote barato saia assim o retido (GPA, `escalar=1 ews_critico_55`) nao tinha lote, ledger nem fila.
+- **Causa raiz D2.** O ramo `CAP_LOTE_REDUZIDO` deferia o resto do lote e fechava a faixa (`$capAtingido`) pela ESTIMATIVA (312.500/emissor, default codex com margem) antes de o lote rodar. A fila seguinte nunca era reavaliada contra o consumo real.
+- **Correcao.** Montagem da escalada como primeiro passo do laco, laco so termina com ela montada. Resto do lote encolhido volta a frente da fila e a `$jobs`, passa pela mesma admissao com o acumulado real; a faixa so fecha quando um lote inteiro nao cabe. Cap e estimativa intocados.
+- **Guarda.** `scripts/test-lotefila1-15out.ps1` 20/0 em PS 5.1: AST do laco real com duas pontas (motor de HEAD reprova D1 e D2, atual aprova), replay da matinal com as funcoes reais de admissao (antiga reproduz 1 roda e 19 DEFERIDOS, nova roda mais sem nunca admitir acima do cap, estimativa exata nao inventa orcamento), ancora no log real. `test-cobertura-escalada` G6 atualizado ao novo laco. `run-all-tests` 62/62, lint RISCO 0, check-claude-free exit 0. Backup `BACKUPS/operacional/vix-radar/lotefila1-20261015-192930`.
+- **Correcao de registro.** O item P2 de JANELADELTA1 abaixo diz que BRK saiu SKIP sem analise no dia. A sentinela analisou BRK as 11:26 (`ALVO ... cvm_delta_1`, `OK| BRK Ambiental eventos=5`), mas com `buscas=0`, entao a imprensa de 14 e 15/10 (Procon, condenacoes no TJ-AL) nao passou por IA. Sao 8 sem analise nenhuma e 1 analisado so pela CVM.
+- **P2, aberto.** Homologar na proxima matinal real (16/10 10:06): esperado mais de 1 ANALISADO no top EWS, `RECONCILIACAO_DIA ... sem_registro=0` e `ESCALADA_LOTE` quando houver retido. Commit apos homologacao.
+- **P3, aberto (decisao do operador).** Estimativa de custo da matinal e da noturna esta 7 a 15 vezes acima do real no Codex (BARATO 26.770 estimado contra cerca de 3.700 medido na noturna; FULL da matinal 312.500 contra 21.416). E isso que segura a noturna em 9 emissores e 77 em rotacao. Recalibrar e mudanca de limite, nao foi feita.
+- **P3, aberto.** Coletor por nome comum gera falso MATERIAL: as 19 manchetes "novas" da Rumo em 15/10 sao todas a palavra "rumo" (futebol, metro, bolsa). A sentinela tem o mesmo padrao de lote reduzido (`run_vixradar_sentinela.ps1`), nao medido como defeito.
+
 ## 15/10: IDEMEFETIVA1, DEFERIDO travava a noturna o dia inteiro
 
 > **Status:** CORRIGIDO, commit local sem push, sem deploy, sem executar rotina. Bloco completo em `status/ESTADO.md`. **Data:** 2026-10-15.

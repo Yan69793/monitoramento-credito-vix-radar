@@ -247,7 +247,7 @@ Assert-Esc ($mot.Contains('Test-VixEscaladaRetem -Ativa ([bool]$script:VixEscala
 Assert-Esc ($mot.Contains("if (`$script:VixColetorAtivo -and -not `$script:VixColetorObrigatorio -and (`$null -ne (Get-Command 'Get-VixEscaladaDecisao'")) 'G3b escalada fica inerte sob provedor sem ferramenta (deepseek), onde escalar nao teria como abrir a fonte'
 Assert-Esc ($mot.Contains('$__escaladaFila.Add(')) 'G4 emissor com gatilho entra na fila de escalada'
 Assert-Esc ($mot.Contains('$stats.escalada_retidos++')) 'G5 emissor retido na rodada barata nao e contado como analisado'
-Assert-Esc ($mot.Contains('while ($__filaLotes.Count -gt 0) {') -and $mot.Contains('if ($__filaLotes.Count -eq 0 -and -not $__escaladaMontada) {')) 'G6 a rodada de escalada entra na MESMA fila de lotes (sem caminho paralelo)'
+Assert-Esc ($mot.Contains('while ($__filaLotes.Count -gt 0 -or -not $__escaladaMontada) {') -and $mot.Contains('if ($__filaLotes.Count -eq 0 -and -not $__escaladaMontada) {')) 'G6 a rodada de escalada entra na MESMA fila de lotes (sem caminho paralelo)'
 Assert-Esc ($mot.Contains("`$__je['Escalada'] = `$true") -and $mot.Contains("`$__je['CustoTrabalho'] = [double]`$__custoEscalada")) 'G7 lote de escalada se identifica e carrega o custo honesto'
 Assert-Esc ($mot.Contains('$jobs.Add($__je)')) 'G8 lote de escalada entra em $jobs (o aborto por auth alcanca os restantes)'
 Assert-Esc ($mot.Contains('escalada_sem_orcamento') -and $mot.Contains('deferred_escalada')) 'G9 corte de escalada por cap tem motivo e contador proprios'

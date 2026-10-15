@@ -2196,7 +2196,45 @@ try {
     if ($script:VixEscaladaAtiva) { Write-Log ('ESCALADA_CUSTO_BASE: ' + [int64][Math]::Ceiling($__custoEscalada) + '/emissor (constante FULL e maximo do historico do provedor n=' + $__histCusto.Count + ')') }
     $__filaLotes = New-Object System.Collections.Generic.List[object]
     foreach ($__j0 in $jobs) { $__filaLotes.Add($__j0) }
-    while ($__filaLotes.Count -gt 0) {
+    # LOTEFILA1 (2026-10-15): a montagem da escalada vivia no FIM do corpo do laco, e todo
+    # `continue` (CAP pre-lote, disjuntor aberto) pulava por cima dela. Quando o ULTIMO lote
+    # barato saia por `continue`, o laco terminava com a escalada nunca montada e o emissor
+    # retido sumia: nem ANALISADO, nem DEFERIDO. Medido na matinal de 15/10 10:08: GPA retida
+    # (ESCALADA_DECISAO escalar=1), 4 lotes por `CAP pre-lote`, `RECONCILIACAO_DIA ...
+    # sem_registro=1 ... sem_registro_nomes=Pao de Acucar (GPA)`. A montagem agora e o primeiro
+    # passo do laco e o laco so termina com a escalada montada.
+    while ($__filaLotes.Count -gt 0 -or -not $__escaladaMontada) {
+        # COBERTURA-13OUT4: a rodada barata acabou (fila vazia) e ainda nao houve rodada de
+        # escalada. Monta os lotes FULL dos emissores retidos e devolve os lotes para a MESMA
+        # fila, entao eles passam por orcamento, disjuntor, retry, portao de ausencia, submit,
+        # ledger e fila pendente sem nenhum caminho paralelo. Entra em $jobs tambem, senao o
+        # aborto por auth (Get-JobIndex) nao os enxergaria e eles ficariam sem desfecho.
+        # Modelo e skill sao os do tier FULL; o custo-base e o medido, nunca o da rodada barata.
+        if ($__filaLotes.Count -eq 0 -and -not $__escaladaMontada) {
+            $__escaladaMontada = $true
+            $__escOrd = @(Select-VixEscaladaOrdenada -Itens $__escaladaFila.ToArray())
+            $stats.escalada_pendentes = $__escOrd.Count
+            if ($__escOrd.Count -gt 0) {
+                $__escEmissores = @($__escOrd | ForEach-Object { $_.Emp })
+                $__escSkill = if ($Perfil.modo -eq 'noturno') { Join-Path $ScriptsDir 'noturno-batch-sonnet.md' } else { $Perfil.skill }
+                $__jobsEsc = @(New-VixJobsPorTier -Selecionados $__escEmissores -Tier 'FULL' -Chunk $script:VixEscaladaChunk -Model $ModelSonnet -Skill $__escSkill -Provedor 'claude-sonnet-routine')
+                foreach ($__je in $__jobsEsc) {
+                    $__je['Escalada'] = $true
+                    # Nome proprio no log: sem ele a escalada apareceria como 'full-N', igual ao
+                    # FULL da rotacao noturna, e as duas coisas sao diferentes (a escalada e por
+                    # evidencia do dia, a rotacao e por risco da semana).
+                    $__je['Name'] = 'escalada'
+                    $__je['CustoTrabalho'] = [double]$__custoEscalada
+                    $jobs.Add($__je)
+                    $__filaLotes.Add($__je)
+                }
+                $__escaladaLotes = $__jobsEsc.Count
+                Write-Log ('ESCALADA_LOTE: ' + $__escOrd.Count + ' emissor(es) retido(s) na rodada barata em ' + $__escaladaLotes + ' lote(s) FULL custo_base=' + [int64][Math]::Ceiling($__custoEscalada) + '/emissor; gatilhos=' + ((@($__escOrd | Group-Object Motivo | ForEach-Object { $_.Name + '=' + $_.Count })) -join ','))
+            } elseif ($script:VixEscaladaAtiva) {
+                Write-Log 'ESCALADA_LOTE: nenhum emissor retido na rodada barata - nada a escalar'
+            }
+            if ($__filaLotes.Count -eq 0) { continue }
+        }
         $job = $__filaLotes[0]
         $__filaLotes.RemoveAt(0)
         $ji++
@@ -2240,18 +2278,30 @@ try {
             continue
         }
         if ($__cabem -lt $job.Chunk.Count) {
-            # Lote encolhido para caber no que resta do cap: roda os de maior prioridade e defere
-            # o resto do lote, em vez de estourar o teto (14/10) ou deferir o lote inteiro.
+            # Lote encolhido para caber no que resta do cap: roda os de maior prioridade, em vez de
+            # estourar o teto (14/10) ou deferir o lote inteiro.
+            # LOTEFILA1 (2026-10-15): o resto do lote era DEFERIDO aqui e a faixa fechava
+            # ($capAtingido) com base so na ESTIMATIVA, antes de o lote rodar. Toda a fila seguinte
+            # caia em `CAP pre-lote` sem reavaliar contra o consumo real. Matinal de 15/10: estimativa
+            # 312.500/emissor, lote reduzido a 1 (GPA), consumo real 21.416, e os 19 emissores de
+            # maior EWS (Oi, Kora, Raizen 55, Light 50, CSN 42...) DEFERIDOS com 378.584 do cap de
+            # 400.000 livres. O resto volta para a FRENTE da fila (mantem a ordem de prioridade) e
+            # passa de novo pela mesma admissao, com o acumulado real. Termina: cada passada roda
+            # pelo menos 1 emissor ou defere o lote inteiro e fecha a faixa no ramo de cima.
             $__fora = @($job.Chunk | Select-Object -Skip $__cabem)
             $job.Chunk = @($job.Chunk | Select-Object -First $__cabem)
-            foreach ($e in $__fora) { $pendingDeferred.Add([pscustomobject]@{ emissor = $e; tier = $job.Tier; motivo = $__motivoEscalada }) }
-            if ($job.Escalada) { $stats.escalada_sem_orcamento += $__fora.Count }
-            $stats.tokens_hard_hit = $true
-            if ($job.Escalada) { $capEscaladaFechado = $true } else { $capAtingido = $true }
+            $__resto = [ordered]@{}
+            foreach ($__kJ in @($job.Keys)) { $__resto[$__kJ] = $job[$__kJ] }
+            $__resto['Chunk'] = $__fora
+            $__filaLotes.Insert(0, $__resto)
+            # Entra em $jobs logo depois do lote atual: o aborto por auth (Get-JobIndex) defere tudo
+            # que vem depois do lote que falhou, e o resto nao pode ficar fora desse alcance.
+            $__idxJ = Get-JobIndex $jobs $job
+            if ($__idxJ -ge 0) { $jobs.Insert($__idxJ + 1, $__resto) } else { $jobs.Add($__resto) }
             # Fragmentacao adaptativa: a estimativa e reavaliada para o lote que VAI rodar.
             $__resumoEst = Get-VixEstimativaClasseResumo -Modelo $__modelo -Emissores $__cabem
             $__cpe = @{ Custo = [int64]$__resumoEst.Custo; Fonte = $__cpe.Fonte }
-            Write-Log ('CAP_LOTE_REDUZIDO: lote ' + $job.Name + '-' + $ji + ' roda ' + $__cabem + ' emissor(es), ' + $__fora.Count + ' deferido(s) (' + $__cpe.Custo + '/emissor fonte=' + $__cpe.Fonte + ' acum=' + $stats.tokens_total + ' cap=' + $__capLote + ')')
+            Write-Log ('CAP_LOTE_REDUZIDO: lote ' + $job.Name + '-' + $ji + ' roda ' + $__cabem + ' emissor(es), ' + $__fora.Count + ' de volta a frente da fila para reavaliar com o consumo real (' + $__cpe.Custo + '/emissor fonte=' + $__cpe.Fonte + ' acum=' + $stats.tokens_total + ' cap=' + $__capLote + ')')
         }
         $estLote = [int64]$__resumoEst.Est
         Write-Log ('EST_LOTE: ' + $job.Name + '-' + $ji + ' emissores=' + $job.Chunk.Count + ' custo_emissor=' + $__cpe.Custo + ' fonte=' + $__cpe.Fonte + ' est=' + $estLote + ' acum=' + $stats.tokens_total + ' cap=' + $TokenHardCap)
@@ -2760,37 +2810,6 @@ try {
                 Write-Log ('ESCALADA_ABORTO: ' + $__escaladaFila.Count + ' emissor(es) retido(s) para escalada sem rodada FULL por causa do aborto - seguem DEFERIDO com o motivo do aborto, sem sumir do ledger')
             }
             break
-        }
-
-        # COBERTURA-13OUT4: a rodada barata acabou (fila vazia) e ainda nao houve rodada de
-        # escalada. Monta os lotes FULL dos emissores retidos e devolve os lotes para a MESMA
-        # fila, entao eles passam por orcamento, disjuntor, retry, portao de ausencia, submit,
-        # ledger e fila pendente sem nenhum caminho paralelo. Entra em $jobs tambem, senao o
-        # aborto por auth (Get-JobIndex) nao os enxergaria e eles ficariam sem desfecho.
-        # Modelo e skill sao os do tier FULL; o custo-base e o medido, nunca o da rodada barata.
-        if ($__filaLotes.Count -eq 0 -and -not $__escaladaMontada) {
-            $__escaladaMontada = $true
-            $__escOrd = @(Select-VixEscaladaOrdenada -Itens $__escaladaFila.ToArray())
-            $stats.escalada_pendentes = $__escOrd.Count
-            if ($__escOrd.Count -gt 0) {
-                $__escEmissores = @($__escOrd | ForEach-Object { $_.Emp })
-                $__escSkill = if ($Perfil.modo -eq 'noturno') { Join-Path $ScriptsDir 'noturno-batch-sonnet.md' } else { $Perfil.skill }
-                $__jobsEsc = @(New-VixJobsPorTier -Selecionados $__escEmissores -Tier 'FULL' -Chunk $script:VixEscaladaChunk -Model $ModelSonnet -Skill $__escSkill -Provedor 'claude-sonnet-routine')
-                foreach ($__je in $__jobsEsc) {
-                    $__je['Escalada'] = $true
-                    # Nome proprio no log: sem ele a escalada apareceria como 'full-N', igual ao
-                    # FULL da rotacao noturna, e as duas coisas sao diferentes (a escalada e por
-                    # evidencia do dia, a rotacao e por risco da semana).
-                    $__je['Name'] = 'escalada'
-                    $__je['CustoTrabalho'] = [double]$__custoEscalada
-                    $jobs.Add($__je)
-                    $__filaLotes.Add($__je)
-                }
-                $__escaladaLotes = $__jobsEsc.Count
-                Write-Log ('ESCALADA_LOTE: ' + $__escOrd.Count + ' emissor(es) retido(s) na rodada barata em ' + $__escaladaLotes + ' lote(s) FULL custo_base=' + [int64][Math]::Ceiling($__custoEscalada) + '/emissor; gatilhos=' + ((@($__escOrd | Group-Object Motivo | ForEach-Object { $_.Name + '=' + $_.Count })) -join ','))
-            } elseif ($script:VixEscaladaAtiva) {
-                Write-Log 'ESCALADA_LOTE: nenhum emissor retido na rodada barata - nada a escalar'
-            }
         }
     }
 
