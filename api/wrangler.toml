@@ -4,7 +4,18 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
-# v4.9.268.js = v4.9.267 + ADDPREVIEWCORS1: a origem do preview de homologacao
+# v4.9.269.js = v4.9.268 + JANELADELTA1: janela_delta_inicio do plano de rotina
+#   (inicio da busca de fato novo no prompt e na triagem do motor) passa a partir
+#   da ultima ANALISE real (_hsA.carimbo, o mesmo de horas_stale) e nao de
+#   _last_scanned_at, que SKIP e deferimento (inclusive rotacao_semanal) renovam
+#   toda noite. Emissor deferido N noites buscava so desde o ultimo deferimento
+#   menos 2 dias. Sem carimbo de analise, janela externa inteira (fail-closed).
+#   Tiering intocado (SKIP sem_delta_30h segue no relogio de varredura, decisao
+#   de 19/09). Teste novo: api/test/janela-delta-analise.test.mjs, 5 de 6 falham
+#   contra v4.9.268 (expected '2026-10-13' to be '2026-10-08') e 6/6 passam no
+#   candidato. Suite do Worker no candidato: 53 arquivos, 526/526 verdes.
+#   Rollback: main = "v4.9.268.js".
+# v4.9.268.js =v4.9.267 + ADDPREVIEWCORS1: a origem do preview de homologacao
 #   do frontend v2 entra na ALLOWED_ORIGINS. O Worker so devolvia
 #   Access-Control-Allow-Origin para vixradar.com, www.vixradar.com,
 #   radar-credito.pages.dev e radar-credito-staging.pages.dev, entao

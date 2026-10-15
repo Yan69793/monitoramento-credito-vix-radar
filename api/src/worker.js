@@ -12688,10 +12688,16 @@ async function montarPlanoRotina(env2222, opts) {
         };
       });
     }
+    // JANELADELTA1 (2026-10-15): a conta partia de lastTs, relogio de VARREDURA, que SKIP e
+    // deferimento (inclusive a cauda de rotacao semanal) renovam toda noite sem analisar. Emissor
+    // deferido N noites, quando analisado, buscava so desde (ultimo deferimento - 2d), e o que saiu
+    // entre a ultima analise real e esse ponto ficava fora do prompt e da triagem do motor. Agora
+    // parte do mesmo carimbo de analise de horas_stale (_hsA). Sem carimbo de analise, falha fechado
+    // na janela externa inteira. O tiering continua no relogio de varredura (EMISSORSTALE2, item 1).
     var janelaDeltaInicio = janelaInicio;
-    if (lastTs) {
+    if (_hsA.carimbo) {
       try {
-        var _deltaStr = new Date(new Date(lastTs).getTime() - 2 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+        var _deltaStr = new Date(new Date(_hsA.carimbo).getTime() - 2 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
         if (_deltaStr > janelaInicio) janelaDeltaInicio = _deltaStr;
       } catch (_eDelta) { }
     }
