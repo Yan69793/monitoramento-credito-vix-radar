@@ -264,7 +264,7 @@ class SelecaoSemVazamento(unittest.TestCase):
                 h1 = 1 - y if parte == "teste" else y
                 h4 = 1 - y if parte == "validacao" else y
                 idx[parte].append(len(linhas))
-                linhas.append({"cnpj": "c%02d" % j, "y180": y, "B2": 0.5, "H1": h1, "H4": h4})
+                linhas.append({"cnpj": "c%02d" % j, "T": date(2023, 1 + j % 12, 28), "y180": y, "B2": 0.5, "H1": h1, "H4": h4})
         def prever(_modelo, xx):
             return [0.9 if row[0] >= 0.5 else 0.1 for row in xx]
         with patch.object(MO, "ajustar_logit", return_value={"beta": [0, 1]}), \
@@ -278,6 +278,66 @@ class SelecaoSemVazamento(unittest.TestCase):
         self.assertAlmostEqual(resultado["melhor_sinal_unico"]["brier"], 0.81)
 
 
+class G3Precisao(unittest.TestCase):
+    """G3-PRECISAO1 e G3-BLOCOS1: o gate so passa com IC estreito, e o IC do gate e o mais largo dos dois bootstraps."""
+
+    def test_ic_estreito_contendo_1_passa(self):
+        self.assertTrue(M.g3(0.1, 0.05, (0.92, 1.08))[0])
+
+    def test_ic_largo_contendo_1_reprova_como_nao_informativo(self):
+        # caso ruim: na regra antiga passava, porque (0.4, 1.6) contem 1 e o skill e positivo
+        passa, motivos = M.g3(0.1, 0.05, (0.4, 1.6))
+        self.assertFalse(passa)
+        self.assertEqual(len(motivos), 1)
+        self.assertIn("nao informativo", motivos[0])
+
+    def test_limite_exato_da_largura(self):
+        self.assertTrue(M.g3(0.1, 0.05, (0.9, 1.1))[0])
+        self.assertFalse(M.g3(0.1, 0.05, (0.9, 1.11))[0])
+
+    def test_ic_indefinido_reprova(self):
+        self.assertFalse(M.g3(0.1, 0.05, (None, None))[0])
+
+    def test_conservador_escolhe_o_mais_largo_e_indefinido_vence(self):
+        self.assertEqual(M.ic_mais_conservador((0.95, 1.05), (0.8, 1.3)), (0.8, 1.3))
+        self.assertEqual(M.ic_mais_conservador((0.8, 1.3), (0.95, 1.05)), (0.8, 1.3))
+        self.assertEqual(M.ic_mais_conservador((0.95, 1.05), (None, None)), (None, None))
+
+    def test_blocos_de_6_meses(self):
+        linhas = [{"T": date(2023, m, 28)} for m in range(1, 13)] + [{"T": date(2024, 1, 31)}]
+        bl = BT._blocos_de_meses(linhas, list(range(len(linhas))))
+        self.assertEqual(sorted(len(v) for v in bl.values()), [1, 6, 6])
+
+    def _ajustar(self, ic_cnpj, ic_blocos):
+        linhas, idx = [], {"treino": [], "validacao": [], "teste": []}
+        for parte, n in (("treino", 40), ("validacao", 20), ("teste", 24)):
+            for j in range(n):
+                idx[parte].append(len(linhas))
+                linhas.append({"cnpj": "c%02d" % j, "T": date(2023 + j // 12, 1 + j % 12, 28), "y180": j % 2, "B2": 0.5, "H1": j % 2})
+        with patch.object(MO, "ajustar_logit", return_value={"beta": [0, 1]}), \
+             patch.object(MO, "prever_logit", side_effect=lambda _m, xx: [0.9 if r[0] >= 0.5 else 0.1 for r in xx]), \
+             patch.object(MO, "platt", return_value=(0, 1)), \
+             patch.object(MO, "aplicar_platt", side_effect=lambda _, ps: ps), \
+             patch.object(M, "brier_skill", return_value=0.3), \
+             patch.object(M, "bootstrap_cluster", side_effect=[ic_cnpj + (100,), ic_blocos + (100,)]):
+            return BT.ajustar_g3(linhas, idx, ["H1"])
+
+    def test_gate_usa_blocos_quando_mais_largos(self):
+        r = self._ajustar((0.95, 1.05), (0.6, 1.4))
+        self.assertEqual(r["inclinacao_ic95_gate"], [0.6, 1.4])
+        self.assertFalse(r["passa"])
+        self.assertEqual(r["n_blocos"], 4)
+        self.assertFalse(r["libera_probabilidade"])
+
+    def test_gate_passa_quando_os_dois_estreitos(self):
+        r = self._ajustar((0.95, 1.05), (0.93, 1.06))
+        self.assertTrue(r["passa"])
+        self.assertEqual(r["inclinacao_ic95_gate"], [0.93, 1.06])
+        # mesmo aprovado, G3 e condicional e nao libera probabilidade
+        self.assertTrue(r["condicional_a_selecao"])
+        self.assertFalse(r["libera_probabilidade"])
+
+
 class PipelineSintetico(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -289,6 +349,11 @@ class PipelineSintetico(unittest.TestCase):
         self.assertIn("H1", self.r["aprovados_g2"])
         self.assertFalse(self.r["hipoteses"]["H4"]["g2"]["passa"])
         self.assertFalse(self.r["evidencia_de_eficacia"])
+
+    def test_g3_nunca_libera_probabilidade(self):
+        self.assertFalse(self.r["exibir_probabilidade"])
+        self.assertFalse(self.r["g3"]["libera_probabilidade"])
+        self.assertTrue(self.r["g3"]["condicional_a_selecao"])
 
     def test_embargo_nunca_entra_e_formulacao_fora(self):
         self.assertEqual(self.r["painel"]["por_particao"]["embargo"]["n"], 0)

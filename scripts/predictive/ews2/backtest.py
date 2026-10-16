@@ -27,7 +27,7 @@ import metricas as M  # noqa: E402
 import modelo as MO  # noqa: E402
 import painel as P  # noqa: E402
 
-VERSAO_PIPELINE = "ews2-backtest-v0.1 (2026-10-16)"
+VERSAO_PIPELINE = "ews2-backtest-v0.2 (2026-10-16, G3 condicional + largura + blocos)"
 
 
 def montar(dados, rotulos, fim_obs=C.JANELA_FIM):
@@ -147,13 +147,18 @@ def rodar(dados, rotulos, grupos=None, fim_obs=C.JANELA_FIM, origem="sintetico")
     g3 = {"estado": "nao_calculado", "motivo": "nenhum sinal aprovado em G2"}
     if aprovados:
         g3 = ajustar_g3(linhas, idx, aprovados[:MO.MAX_SINAIS_G3], grupos)
+    g3.update(_g3_condicional())
     return {"versao_pipeline": VERSAO_PIPELINE, "origem_dados": origem, "evidencia_de_eficacia": origem != "sintetico",
+            "exibir_probabilidade": False,
             "painel": P.resumo(linhas), "n_eventos": m["n_eventos"], "n_episodios": m["n_episodios"], "n_incidentes": m["n_incidentes"],
             "securitizadoras_fora": len(m["securitizadoras"]), "formulacao_fora": m["formulacao"],
             "linhas_por_particao": {p: len(v) for p, v in idx.items()}, "g1c": g1c, "hipoteses": hip, "aprovados_g2": aprovados, "g3": g3,
             "declaracoes": ["IC95 por cluster de CNPJ (sem mapeamento FRE de controle: cada CNPJ e seu proprio cluster)" if not grupos else "IC95 por cluster de controle (FRE)",
                             "H5 depende de COTAHIST e Selic; sem eles sai 'sem_dado'", "H2a/H2b sem ITR usam so DFP",
-                            "mapeamento de contas do H6/B1/B2 e proposta (dados.CONTAS), a congelar como G0-v1-anexo-contas antes de metrica real"]}
+                            "mapeamento de contas do H6/B1/B2 e proposta (dados.CONTAS), a congelar como G0-v1-anexo-contas antes de metrica real",
+                            "G3 condicional a selecao do G2 no mesmo teste: nunca libera probabilidade; produto exibe sinais e severidade",
+                            "G3 exige IC95 da inclinacao com largura <= %.2f (congelado antes do teste); acima disso e nao informativo" % M.IC_INCLINACAO_LARGURA_MAX,
+                            "IC do gate G3 = o mais largo entre cluster de CNPJ e blocos de %d meses (dependencia no tempo)" % M.BLOCO_MESES]}
 
 
 def ajustar_g3(linhas, idx, sinais, grupos=None):
@@ -180,9 +185,16 @@ def ajustar_g3(linhas, idx, sinais, grupos=None):
     cl = defaultdict(list)
     for j, i in enumerate(te):
         cl[(grupos or {}).get(linhas[i]["cnpj"], linhas[i]["cnpj"])].append(j)
-    li, ls, _ = M.bootstrap_cluster(cl, lambda ii: MO.inclinacao_calibracao([p[k] for k in ii], [yt[k] for k in ii]))
+
+    def incl(ii):
+        return MO.inclinacao_calibracao([p[k] for k in ii], [yt[k] for k in ii])
+    li, ls, _ = M.bootstrap_cluster(cl, incl)
+    # G3-BLOCOS1: mesma estatistica reamostrando blocos de meses consecutivos do teste. O gate usa o IC mais largo.
+    blocos = _blocos_de_meses(linhas, te)
+    lb, lsb, _ = M.bootstrap_cluster(blocos, incl)
+    ic_gate = M.ic_mais_conservador((li, ls), (lb, lsb))
     bs0, bs2 = M.brier_skill(p, yt, p0), M.brier_skill(p, yt, p2)
-    passa, motivos = M.g3(bs0, bs2, (li, ls))
+    passa, motivos = M.g3(bs0, bs2, ic_gate)
     # Escolha do melhor sinal unico pela VALIDACAO; o TESTE so mensura o vencedor.
     melhor = None
     for s in sinais:
@@ -196,8 +208,27 @@ def ajustar_g3(linhas, idx, sinais, grupos=None):
             melhor = (s, b_valid, b_test)
     return {"estado": "calculado", "sinais": sinais, "beta": mod["beta"], "platt": list(ab), "brier": M.brier(p, yt), "brier_b0": M.brier(p0, yt),
             "brier_b2": M.brier(p2, yt), "brier_skill_b0": bs0, "brier_skill_b2": bs2, "inclinacao_ic95": [li, ls],
-            "passa": passa, "motivos": motivos, "melhor_sinal_unico": {"sinal": melhor[0], "brier": melhor[2], "brier_validacao": melhor[1]},
+            "inclinacao_ic95_blocos": [lb, lsb], "inclinacao_ic95_gate": list(ic_gate), "largura_ic_gate": M.largura_ic(ic_gate),
+            "largura_max": M.IC_INCLINACAO_LARGURA_MAX, "bloco_meses": M.BLOCO_MESES, "n_blocos": len(blocos),
+            "passa": passa, "motivos": motivos, **_g3_condicional(),
+            "melhor_sinal_unico": {"sinal": melhor[0], "brier": melhor[2], "brier_validacao": melhor[1]},
             "n": {"treino": len(tr), "validacao": len(va), "teste": len(te)}}
+
+
+def _blocos_de_meses(linhas, idx_te):
+    """{bloco: posicoes em idx_te}. Bloco = meses consecutivos nao sobrepostos de BLOCO_MESES, pela data T da linha."""
+    bl = defaultdict(list)
+    for j, i in enumerate(idx_te):
+        t = linhas[i]["T"]
+        bl[(t.year * 12 + t.month - 1) // M.BLOCO_MESES].append(j)
+    return bl
+
+
+def _g3_condicional():
+    """G3-CONDICIONAL1 (decisao do operador, 16/10/2026, nota 122 secao 4.1): o G3 mede no mesmo teste os sinais que o
+    G2 escolheu olhando o teste, entao e otimista por construcao. Ele e reportado, mas nunca libera probabilidade."""
+    return {"condicional_a_selecao": True, "libera_probabilidade": False,
+            "nota_condicional": "G3 condicional a selecao do G2 no mesmo teste; nao libera probabilidade exibivel (decisao 16/10/2026)"}
 
 
 def main(argv=None):

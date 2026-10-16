@@ -11,6 +11,13 @@ N_BOOT = 1000
 RR_LI_MIN = 1.5
 ANTECEDENCIA_MIN = 60
 ALFA = 0.05
+# G3-PRECISAO1 (decisao do operador, 16/10/2026, nota 122 secao 4.2): congelado ANTES de abrir o teste. Largura maxima
+# do IC95 da inclinacao de calibracao; acima dela o G3 e "nao informativo", nunca "aprovado". 0.2 e o alvo padrao de
+# precisao da inclinacao em Riley et al. (pmvalsampsize, csciwidth=0.2). Sem isso, IC largo contem 1 por falta de dado.
+IC_INCLINACAO_LARGURA_MAX = 0.2
+# G3-BLOCOS1 (mesma decisao, secao 4.3): sensibilidade de dependencia no tempo. Bootstrap em blocos nao sobrepostos de
+# meses consecutivos; 6 meses porque o alvo e de 180 dias e linhas mensais vizinhas compartilham a mesma janela.
+BLOCO_MESES = 6
 
 
 def razao_de_risco(sinal, y):
@@ -153,7 +160,24 @@ def g2(rr_li, antecedencia_mediana, prauc_sinal, prauc_b2, p_holm):
     return (not motivos), motivos
 
 
-def g3(bs_b0, bs_b2, incl_ic):
+def largura_ic(ic):
+    return None if (not ic or ic[0] is None or ic[1] is None) else ic[1] - ic[0]
+
+
+def ic_mais_conservador(*ics):
+    """Entre ICs da mesma estatistica, o mais largo (o que menos afirma). IC incompleto vence, porque nada se mediu."""
+    validos = [ic for ic in ics if ic is not None]
+    if not validos:
+        return (None, None)
+    for ic in validos:
+        if largura_ic(ic) is None:
+            return (None, None)
+    return max(validos, key=largura_ic)
+
+
+def g3(bs_b0, bs_b2, incl_ic, largura_max=IC_INCLINACAO_LARGURA_MAX):
+    """Gate G3 puro. incl_ic deve ser o IC mais conservador entre cluster de CNPJ e blocos de meses.
+    Devolve (passa, motivos). IC largo demais reprova como nao informativo, mesmo contendo 1."""
     motivos = []
     if bs_b0 is None or bs_b0 <= 0:
         motivos.append("Brier skill contra B0 nao e positivo")
@@ -161,6 +185,10 @@ def g3(bs_b0, bs_b2, incl_ic):
         motivos.append("Brier skill contra B2 nao e positivo")
     if not incl_ic or incl_ic[0] is None or not (incl_ic[0] <= 1 <= incl_ic[1]):
         motivos.append("IC95 da inclinacao de calibracao nao contem 1")
+    w = largura_ic(incl_ic)
+    if w is None or w > largura_max + 1e-9:  # tolerancia de ponto flutuante (1.1 - 0.9 = 0.20000000000000007)
+        motivos.append("nao informativo: IC95 da inclinacao com largura %s acima do maximo congelado %.2f"
+                       % ("indefinida" if w is None else "%.3f" % w, largura_max))
     return (not motivos), motivos
 
 

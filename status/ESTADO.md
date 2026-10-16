@@ -1,5 +1,9 @@
 # Estado do projeto — VIX Radar
 
+## 16/10/2026 tarde, EWS 2.0: G3 endurecido por decisao do operador (SEM commit, SEM push, SEM deploy)
+
+G3 condicional (nunca libera probabilidade), largura maxima do IC95 da inclinacao 0,20 congelada e bootstrap em blocos de 6 meses com o IC mais largo no gate. `metricas.py` e `backtest.py` (`ews2-backtest-v0.2`), suite ews2 40 passed, 6 dos testes novos reprovam o codigo anterior. Aguardando revisao do operador antes do commit. Nota 122, secao 4.1.
+
 ## 16/10/2026 14:50, frontend v202.66 publicado: RESEARCHTOGGLE1 e METRICASFOLD1 (SEM push)
 
 Botao "Ocultar research" voltou a funcionar e mostra a contagem. Com Metricas aberta o painel do emissor rola inteiro e a lista de eventos nao fica mais espremida. `deploy-pages.ps1` EXIT=0, producao `version.json` v202.66, codigo novo servido em vixradar.com, health `ok:true` (Worker v4.9.270 intocado). Commits locais `cd717da` e `cd08d91`, push pendente de autorizacao. Detalhe em `PENDENCIAS.md`.
