@@ -76,21 +76,38 @@ Assert ($srcRec -match '\$exitCode = 2') '6c: cobertura parcial sai exit 2'
 Assert ($srcRec -match 'FIM: parcial') '6d: FIM parcial quando falha (nunca FIM ok mascarado)'
 Assert (-not ($srcRec -match '\$exitCode = 0\s*\r?\n\} catch')) '6e: nenhum zeramento de exit antes do catch'
 
+# CIRUNNER1 (2026-10-16): os cenarios 7 e 8 medem o ESTADO DA MAQUINA de producao (pasta de
+# quarentena fora do git e tarefas do Agendador). No runner do GitHub nenhum dos dois existe e a
+# suite reprovava por ambiente desde 13/10. Pulo nomeado SO quando GITHUB_ACTIONS=true e o
+# artefato esta ausente; na maquina local a ausencia continua reprovando.
+$emCI = ($env:GITHUB_ACTIONS -eq 'true')
+$script:puladosCI = @()
+
 Write-Host '--- 7: lock orfao validado por PID, idade e ownership ---'
 $qdir = Join-Path (Split-Path $PSScriptRoot -Parent) '_backup_vixfix_20261006_012704\locks_orfaos'
+if ($emCI -and -not (Test-Path (Join-Path $qdir 'MANIFEST.txt'))) {
+  $script:puladosCI += '7'
+  Write-Host '  PULADO 7: quarentena local ausente no runner de CI (estado de maquina)'
+} else {
 Assert (Test-Path (Join-Path $qdir 'MANIFEST.txt')) '7a: manifest da quarentena existe (prova de validacao)'
 $manif = Get-Content (Join-Path $qdir 'MANIFEST.txt') -Encoding UTF8
 Assert ($manif.Count -eq 15) ('7b: 15 locks quarentenados (obtido ' + $manif.Count + ')')
 Assert ((Get-ChildItem logs/routines/*.lock -ErrorAction SilentlyContinue | Where-Object { ((Get-Date) - $_.LastWriteTime).TotalHours -gt 24 } | Measure-Object).Count -eq 0) '7c: nenhum .lock orfao antigo em logs/routines (transiente de teste com <24h nao conta)'
 Assert ($manif -match 'pid=' -and $manif -match 'ageH=') '7d: manifest registra PID e idade (ownership validada)'
+}
 
 Write-Host '--- 8: WakeToRun coerente nas 5 tarefas ---'
+if ($emCI -and -not (Get-ScheduledTask -TaskName 'VIXRadar-Sentinela' -ErrorAction SilentlyContinue)) {
+  $script:puladosCI += '8'
+  Write-Host '  PULADO 8: tarefas VIXRadar ausentes no Agendador do runner de CI (estado de maquina)'
+} else {
 foreach ($n in @('VIXRadar-Coleta-Volatilidade','VIXRadar-Export-Historico','VIXRadar-Sentinela','VIXRadar-Verificacao-Async','Szuchmacher-RetryVixNoturno')) {
   $t = Get-ScheduledTask -TaskName $n -ErrorAction SilentlyContinue
   Assert (($null -ne $t) -and ($t.Settings.WakeToRun -eq $true)) ("8: $n WakeToRun=True")
 }
+}
 
 Write-Host ''
-Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:falN) + ' asserts OK, ' + $script:falN + ' falha(s)')
+Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:falN) + ' asserts OK, ' + $script:falN + ' falha(s)' + $(if ($script:puladosCI.Count -gt 0) { ', PULADOS em CI: ' + ($script:puladosCI -join ',') } else { '' }))
 if ($script:falN -gt 0) { exit 1 }
 exit 0

@@ -32,6 +32,18 @@ $cfgNoturno = @{
     RequiresWebSearch = $true
 }
 $mcpEmpty = Join-Path (Join-Path $PSScriptRoot '..') 'logs\routines\mcp-empty.json'
+# CIRUNNER1 (2026-10-16): logs/ fica fora do git, entao no runner do GitHub o mcp-empty.json
+# operativo nao existe e Get-VixRunnerClaudeArgs (corretamente) omite --strict-mcp-config. A
+# Parte I prova o montador de argumentos, nao o disco da maquina: sem o arquivo operativo, a
+# suite usa uma copia propria em %TEMP% com o mesmo conteudo vazio.
+$mcpTemp = $null
+if (-not (Test-Path -LiteralPath $mcpEmpty)) {
+    $mcpTemp = Join-Path $env:TEMP ('vixheadless_mcp_' + $PID)
+    New-Item -ItemType Directory -Force -Path $mcpTemp | Out-Null
+    $mcpEmpty = Join-Path $mcpTemp 'mcp-empty.json'
+    '{"mcpServers":{}}' | Set-Content -LiteralPath $mcpEmpty -Encoding ASCII
+    Write-Host ('  info  mcp-empty.json operativo ausente, usando copia temporaria ' + $mcpEmpty)
+}
 $argsNovos = Get-VixRunnerClaudeArgs -Cfg $cfgNoturno -McpConfigFile $mcpEmpty
 $argsTexto = $argsNovos -join ' '
 Write-Host ('  linha: ' + $argsTexto)
@@ -85,7 +97,14 @@ Write-Host ('  Ok=' + $rJ1.Ok + ' ToolsFaltando=[' + ($rJ1.ToolsFaltando -join '
 # classificador de disponibilidade de ferramenta sem precisar de credencial. Nunca se marca OK
 # sem prova: assert pulado nao conta, assert executado conta.
 $j1Pulado = $false
-if ($rJ1.SemAutenticacao) {
+$jPuladoCli = $false
+if ($rJ1.CliAusente) {
+    # CIRUNNER1: sem o executavel nao ha init local, entao nem J1 nem J2 medem nada. Pulo nomeado,
+    # nenhum assert conta como OK.
+    $j1Pulado = $true; $jPuladoCli = $true
+    Write-Host ''
+    Write-Host ('PULADO (J1 e J2): ' + $rJ1.Erro)
+} elseif ($rJ1.SemAutenticacao) {
     $j1Pulado = $true
     Write-Host ''
     Write-Host 'PULADO (J1): sonda headless nao executavel - o CLI Claude desta maquina nao autentica.'
@@ -98,6 +117,7 @@ if ($rJ1.SemAutenticacao) {
     Assert ($rJ1.ProvaPS -and $rJ1.ProvaLeitura -and $rJ1.ProvaEscrita -and $rJ1.ProvaBusca) 'J1: shell, leitura, escrita e busca via subagente confirmados'
 }
 
+if (-not $jPuladoCli) {
 Write-Host '--- J2: linha ANTIGA (--tools WebSearch,WebFetch) tem que REPROVAR ---'
 $argsAntigos = @('-p', '--permission-mode', 'bypassPermissions', '--output-format', 'stream-json', '--verbose',
     '--add-dir', 'E:\Diretorio\Claude\Monitoramento de Credito\scripts', '--add-dir', 'C:\Users\User\.claude\scheduled-tasks',
@@ -107,6 +127,8 @@ Write-Host ('  Ok=' + $rJ2.Ok + ' ToolsFaltando=[' + ($rJ2.ToolsFaltando -join '
 Assert ($rJ2.Ok -eq $false) ('J2: linha antiga REPROVA a sonda headless (obtido Ok=' + $rJ2.Ok + ')')
 Assert ($rJ2.ToolsFaltando.Count -gt 0) ('J2: aponta ferramenta(s) faltando (obtido [' + ($rJ2.ToolsFaltando -join ',') + '])')
 Assert ($rJ2.ToolsFaltando -contains 'PowerShell/Bash') 'J2: falta especificamente PowerShell/Bash (mesmo defeito de 02/09)'
+}
+if ($mcpTemp) { Remove-Item -Recurse -Force -LiteralPath $mcpTemp -ErrorAction SilentlyContinue }
 
 Write-Host ''
 Write-Host '=== Conferindo que nada mudou no repo (git status antes == depois) ==='
@@ -114,7 +136,7 @@ $gitDepois = (& git -C $PSScriptRoot\.. status --porcelain) -join "`n"
 Assert ($gitAntes -eq $gitDepois) 'git status identico antes e depois (nenhuma sonda tocou o repo)'
 
 Write-Host ''
-Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)' + $(if ($j1Pulado) { ', J1 PULADO (sem autenticacao no CLI)' } else { '' }))
+Write-Host ('RESULTADO: ' + $script:okN + '/' + ($script:okN + $script:fal) + ' asserts OK, ' + $script:fal + ' falha(s)' + $(if ($jPuladoCli) { ', J1 e J2 PULADOS (CLI ausente)' } elseif ($j1Pulado) { ', J1 PULADO (sem autenticacao no CLI)' } else { '' }))
 $env:VIXRADAR_LLM_PROVIDER = $__providerOriginal
 if ($script:fal -gt 0) { exit 1 }
 exit 0

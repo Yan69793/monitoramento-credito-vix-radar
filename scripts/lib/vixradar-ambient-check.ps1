@@ -382,7 +382,16 @@ function Test-VixHeadlessTools {
     $resultado = [PSCustomObject]@{
         Ok = $false; ToolsFaltando = @(); PermissionDenials = @(); ProvaPS = $false
         ProvaLeitura = $false; ProvaEscrita = $false; ProvaBusca = $false; Erro = $null
-        SemAutenticacao = $false
+        SemAutenticacao = $false; CliAusente = $false
+    }
+    # CIRUNNER1 (2026-10-16): sem o executavel `claude` no PATH (runner do GitHub, maquina sem
+    # CLI) o `& claude` lancava CommandNotFound, caia no catch e o chamador nao conseguia separar
+    # "CLI ausente" de "CLI respondeu errado". O veredito nao muda (Ok segue $false, fail-closed);
+    # so a causa passa a ter nome.
+    if (-not (Get-Command claude -ErrorAction SilentlyContinue)) {
+        $resultado.CliAusente = $true
+        $resultado.Erro = 'cli_ausente: executavel claude nao encontrado no PATH'
+        return $resultado
     }
     $tmp = Join-Path $env:TEMP ('vixheadless_' + $PID + '_' + [guid]::NewGuid().ToString('N').Substring(0, 8))
     New-Item -ItemType Directory -Force -Path $tmp | Out-Null

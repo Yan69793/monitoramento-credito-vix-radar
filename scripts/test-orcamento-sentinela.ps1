@@ -199,16 +199,31 @@ try {
     # entre os dois continua reprovando, inclusive alteracao silenciosa do teto.
     $cfgPath = Join-Path (Split-Path $PSScriptRoot -Parent) 'logs\routines\custo-config.json'
     if ($CustoConfigPath) { $cfgPath = $CustoConfigPath }
-    $cfgJson = Get-Content -LiteralPath $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    # CIRUNNER1 (2026-10-16): o arquivo operativo vive em logs/ (fora do git) e nao existe no
+    # runner do GitHub, onde 7a-7d, 7a3 e 7h reprovavam por ambiente desde 13/10. So nesse caso
+    # (GITHUB_ACTIONS=true e arquivo ausente) as comparacoes com o operativo sao puladas e
+    # nomeadas; as que leem so o repo continuam valendo. Na maquina local a ausencia reprova.
+    $cfgPresente = Test-Path -LiteralPath $cfgPath
+    $pularOperativo = (($env:GITHUB_ACTIONS -eq 'true') -and -not $cfgPresente)
+    if ($pularOperativo) {
+        Write-Host '  PULADO 7a-7d, 7a3, 7h: custo-config.json operativo ausente no runner de CI (estado de maquina)'
+        $cfgJson = $null
+    } else {
+        Assert $cfgPresente ('7-pre: arquivo operativo existe (' + $cfgPath + ')')
+        $cfgJson = Get-Content -LiteralPath $cfgPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    }
     $decl = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'custo-teto-declarado.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+    if (-not $pularOperativo) {
     Write-Host ('  info  operativo TETO_DIA=' + $cfgJson.TETO_DIA + ' RESERVA_NOTURNO=' + $cfgJson.RESERVA_NOTURNO + ' RESERVA_VERIFICACAO=' + $cfgJson.RESERVA_VERIFICACAO + ' MARGEM_MINIMA=' + $cfgJson.MARGEM_MINIMA)
     Write-Host ('  info  declarado TETO_DIA=' + $decl.TETO_DIA + ' (ultima decisao ' + (@($decl.historico)[-1]).data + ')')
     Assert ([int64]$cfgJson.TETO_DIA -eq [int64]$decl.TETO_DIA) ('7a: TETO_DIA operativo = ' + $cfgJson.TETO_DIA + ' (declarado ' + $decl.TETO_DIA + ')')
     Assert ([int64]$cfgJson.RESERVA_NOTURNO -eq [int64]$decl.RESERVA_NOTURNO) ('7b: RESERVA_NOTURNO = ' + $cfgJson.RESERVA_NOTURNO + ' (declarado ' + $decl.RESERVA_NOTURNO + ')')
     Assert ([int64]$cfgJson.RESERVA_VERIFICACAO -eq [int64]$decl.RESERVA_VERIFICACAO) ('7c: RESERVA_VERIFICACAO = ' + $cfgJson.RESERVA_VERIFICACAO + ' (declarado ' + $decl.RESERVA_VERIFICACAO + ')')
     Assert ([int64]$cfgJson.MARGEM_MINIMA -eq [int64]$decl.MARGEM_MINIMA) ('7d: MARGEM_MINIMA = ' + $cfgJson.MARGEM_MINIMA + ' (declarado ' + $decl.MARGEM_MINIMA + ')')
-    Assert ((@($decl.historico)[-1]).TETO_DIA -eq $decl.TETO_DIA -and ('' + (@($decl.historico)[-1]).motivo).Length -gt 20) '7a2: a declaracao traz data e motivo da ultima mudanca do teto'
     Assert (('' + $cfgJson._doc) -match [regex]::Escape('' + $decl.TETO_DIA)) '7a3: o _doc do arquivo operativo registra o valor em vigor'
+    Assert ([int64]$cfgJson.SENTINELA_DIA -eq [int64]$decl.SENTINELA_DIA -and [int64]$decl.SENTINELA_DIA -gt 0) '7h: SENTINELA_DIA operativo bate com o declarado'
+    }
+    Assert ((@($decl.historico)[-1]).TETO_DIA -eq $decl.TETO_DIA -and ('' + (@($decl.historico)[-1]).motivo).Length -gt 20) '7a2: a declaracao traz data e motivo da ultima mudanca do teto'
     $libSrc = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'lib\vixradar-custo.ps1') -Raw -Encoding UTF8
     # O default da lib e o FALLBACK de arquivo ilegivel. Ele fica em 1300000 de proposito: se o
     # arquivo operativo some, o teto cai, nunca sobe. A divergencia com o operativo e esperada e
@@ -217,7 +232,6 @@ try {
     Assert (1300000 -le [int64]$decl.TETO_DIA) '7e2: fallback da lib e mais conservador que o teto declarado (arquivo ilegivel reduz o teto)'
     Assert ($libSrc -match 'RESERVA_NOTURNO = 700000') '7f: a reserva da noite na biblioteca continua 700000'
     Assert (-not ($src -match 'Set-Content[^\r\n]*custo-config')) '7g: a sentinela nao grava o arquivo de teto'
-    Assert ([int64]$cfgJson.SENTINELA_DIA -eq [int64]$decl.SENTINELA_DIA -and [int64]$decl.SENTINELA_DIA -gt 0) '7h: SENTINELA_DIA operativo bate com o declarado'
 
     Write-Host ''
     Write-Host '=== 8: limite diario proprio da sentinela (ORCAMENTO-13OUT7), duas pontas ==='
