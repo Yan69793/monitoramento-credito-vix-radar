@@ -31,6 +31,10 @@ foreach ($_def in (Get-MotorFuncDefs $MotorPath @('Get-NomeNormalizado', 'Get-Vi
 # COBERTURA-13OUT1 (2026-10-13): Get-VixCodexUsageProbe do motor delega a leitura do JSONL do Codex
 # para lib\vixradar-cobertura.ps1 (o motor faz dot-source dela no boot).
 . (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1')
+# LOGFALLBACK1 (2026-10-15): Get-VixResumoLedger le o dia por Get-VixLogDiaArquivos/Get-VixLogDiaLinhas
+# da lib do vigia (o motor faz dot-source dela no boot e falha fechado sem ela). Sem esta linha
+# D4/D4b liam ledger vazio e reprovavam.
+. (Join-Path $PSScriptRoot 'lib\vixradar-watchdog.ps1')
 # LOCKIDENT1 (2026-10-09): Get-VixLockState saiu do motor para lib\vixradar-lock.ps1, para que o
 # motor e o retry julguem "execucao viva" pela MESMA implementacao (o retry julgava por mtime do
 # log, que o proprio preflight corrompe). A funcao passa a ser carregada da lib.

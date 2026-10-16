@@ -1216,14 +1216,99 @@ function Get-VixFontesColetor($Coleta, [string]$DeltaInicio = '') {
 # portao de ausencia continua reprovando; (2) se a IA diz "sem eventos" mas o coletor viu manchete
 # nova que cita o emissor, nao soma e marca divergencia, o emissor fica INCONCLUSIVO e volta na
 # fila (a IA nao pode calar o que a coleta viu); (3) nunca duplica consulta ja declarada.
+# RECHECKDIVERG1 (2026-10-15). Medido em 15/10: 33 de 35 analises baratas viraram INCONCLUSIVO
+# por DIVERGENCIACOMPROVA1 - o coletor viu manchete nova citando o emissor e a IA disse "sem
+# evento" - inclusive quando a IA tinha LIDO a manchete e a classificado sem efeito de credito.
+# A divergencia nao distinguia "a IA calou o que o coletor viu" de "a IA leu e respondeu". A
+# pendencia nunca fechava, nem depois de FULL (GPA, CBA, Cogna, Santos Brasil). Agora cada
+# manchete nova recebe um id deterministico (mesmo texto -> mesmo id, no prompt e na conferencia)
+# e a IA deve devolver um veredito por id. Divergencia passa a ser: manchete nova SEM veredito,
+# ou veredito 'evento' sem evento no resultado. A IA continua sem poder calar o que o coletor viu.
+function Get-VixMancheteId($e) {
+    if ($null -eq $e) { return '' }
+    $base = (('' + $e.data).Trim() + '|' + ('' + $e.dominio).Trim().ToLowerInvariant() + '|' + ('' + $e.titulo).Trim().ToLowerInvariant())
+    $sha = [System.Security.Cryptography.SHA1]::Create()
+    try { $h = $sha.ComputeHash([System.Text.Encoding]::UTF8.GetBytes($base)) } finally { $sha.Dispose() }
+    return ('m' + (($h[0..4] | ForEach-Object { $_.ToString('x2') }) -join ''))
+}
+
+# Ids das manchetes que exigem veredito: exatamente o conjunto que a conferencia usa (triagem com
+# CvmNovos 0 e HorasDesdeIA 0, mesma chamada do motor depois do lote). Calcular por outro caminho
+# faria prompt e conferencia divergirem e o emissor travaria por id que a IA nunca recebeu.
+function Get-VixManchetesExigemVeredito($Coleta, [string]$DeltaInicio = '') {
+    if ($null -eq $Coleta) { return @() }
+    $tri = $null
+    try { $tri = Get-VixTriagemEmissor -Coleta $Coleta -DeltaInicio $DeltaInicio -CvmNovos 0 -HorasDesdeIA 0 -Ews 0 } catch { $tri = $null }
+    if ($null -eq $tri) { return @() }
+    return @(@($tri.Novas) | ForEach-Object { Get-VixMancheteId $_ } | Where-Object { $_ } | Select-Object -Unique)
+}
+
+function Test-VixVereditosManchetes($Res, $Novas) {
+    $out = @{ Completo = $false; Exigidos = 0; Cobertos = 0; SemVeredito = @(); EventoSemEvento = @() }
+    $ids = @(@($Novas) | ForEach-Object { Get-VixMancheteId $_ } | Where-Object { $_ } | Select-Object -Unique)
+    $out.Exigidos = $ids.Count
+    if ($ids.Count -eq 0) { $out.Completo = $true; return $out }
+    $mapa = @{}
+    if ($null -ne $Res -and $null -ne $Res.PSObject.Properties['vereditos_manchetes']) {
+        foreach ($v in @($Res.vereditos_manchetes)) {
+            if ($null -eq $v) { continue }
+            $id = ('' + $v.id).Trim().ToLowerInvariant()
+            $ve = ('' + $v.veredito).Trim().ToLowerInvariant()
+            $mo = ('' + $v.motivo).Trim()
+            if (-not $id -or $ve -notin @('sem_efeito_credito', 'evento', 'ruido_homonimo') -or -not $mo) { continue }
+            $mapa[$id] = $ve
+        }
+    }
+    $nEv = 0
+    if ($null -ne $Res) { $nEv = @($Res.eventos).Count }
+    foreach ($id in $ids) {
+        if (-not $mapa.ContainsKey($id)) { $out.SemVeredito += $id; continue }
+        if ($mapa[$id] -eq 'evento' -and $nEv -eq 0) { $out.EventoSemEvento += $id; continue }
+        $out.Cobertos++
+    }
+    $out.Completo = ($out.SemVeredito.Count -eq 0 -and $out.EventoSemEvento.Count -eq 0)
+    return $out
+}
+
+# RECHECKDIVERG1: o Codex devolve fontes com provedor, query, HTTP 200 e classificacao ok, mas
+# sem `timestamp`, e o portao estrutural (PROVAFALSA1) as recusa por campo vazio. O orquestrador
+# carimba o horario MEDIDO do lote, com origem declarada. Nunca carimba fonte degradada, sem
+# query, sem provedor codex ou sem HTTP 2xx/null declarado: essas continuam sem prova.
+function Set-VixTimestampLoteCodex($Res, [string]$Ts) {
+    $n = 0
+    if ($null -eq $Res -or -not $Ts -or $null -eq $Res.PSObject.Properties['fontes_consultadas']) { return $n }
+    foreach ($f in @($Res.fontes_consultadas)) {
+        if ($null -eq $f -or $null -eq $f.PSObject) { continue }
+        $prov = ('' + $f.provedor).Trim().ToLowerInvariant()
+        if (-not $prov.StartsWith('codex')) { continue }
+        if (('' + $f.timestamp).Trim()) { continue }
+        if (-not ('' + $f.query).Trim()) { continue }
+        if (('' + $f.classificacao).Trim().ToLowerInvariant() -notin @('ok', 'efetiva', 'sucesso', 'valida')) { continue }
+        $http = 0
+        $temHttp = ($null -ne $f.PSObject.Properties['status_http'])
+        if (-not $temHttp) { continue }
+        if ($null -ne $f.status_http -and (-not [int]::TryParse(('' + $f.status_http), [ref]$http) -or $http -lt 200 -or $http -ge 300)) { continue }
+        if ($null -ne $f.PSObject.Properties['timestamp']) { $f.timestamp = $Ts } else { $f | Add-Member -NotePropertyName 'timestamp' -NotePropertyValue $Ts -Force }
+        $f | Add-Member -NotePropertyName '_timestamp_origem' -NotePropertyValue 'orquestrador_lote' -Force
+        $n++
+    }
+    return $n
+}
+
 function Add-VixFontesColetorAoResultado($Res, $Coleta, [string]$DeltaInicio = '', $Novas = @()) {
-    $out = @{ Adicionadas = 0; Divergencia = $false; Motivo = '' }
+    $out = @{ Adicionadas = 0; Divergencia = $false; Motivo = ''; Vereditos = 0 }
     if ($null -eq $Res -or $null -eq $Coleta) { $out.Motivo = 'sem_coleta'; return $out }
     if ($null -ne $Coleta.PSObject.Properties['disponivel'] -and -not $Coleta.disponivel) { $out.Motivo = 'coleta_incompleta'; return $out }
     $nEv = @($Res.eventos).Count
     $cls = '' + $Res.classificacao_geral
     if ($nEv -eq 0 -and $cls -in @('NENHUM', 'ECO', '') -and @($Novas).Count -gt 0) {
-        $out.Divergencia = $true; $out.Motivo = ('divergencia_ia_sem_evento_coletor_viu_' + @($Novas).Count); return $out
+        $__ver = Test-VixVereditosManchetes $Res $Novas
+        if (-not $__ver.Completo) {
+            $out.Divergencia = $true
+            $out.Motivo = ('divergencia_ia_sem_evento_coletor_viu_' + @($Novas).Count + '_sem_veredito_' + @($__ver.SemVeredito).Count + '_evento_sem_evento_' + @($__ver.EventoSemEvento).Count)
+            return $out
+        }
+        $out.Vereditos = [int]$__ver.Cobertos
     }
     $atuais = @($Res.fontes_consultadas)
     $jaTem = @{}

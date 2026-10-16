@@ -58,6 +58,7 @@ if ($viva) {
     Write-Host ('  N/A   B2..B4 rotina do dia viva agora (' + (@($r6.J.recusado) -join ',') + '): o portao recusou, como deve; ciclo de ativacao nao avaliado')
 } else {
     Assert-Atv (($r6.Exit -eq 0) -and ('' + $r6.J.flag_depois.process) -eq '1') ('B2 validado e confirmado: ativa (process=' + $r6.J.flag_depois.process + ')')
+    if (-not (($r6.Exit -eq 0) -and ('' + $r6.J.flag_depois.process) -eq '1')) { Write-Host ('        diagnostico B2: exit=' + $r6.Exit + ' recusado=' + (@($r6.J.recusado) -join ',') + ' saida=' + (('' + $r6.Txt) -replace '\s+', ' ').Substring(0, [Math]::Min(400, ('' + $r6.Txt).Length))) }
     $regs = @(Get-ChildItem -LiteralPath $bk -Recurse -Filter 'estado_anterior.json')
     $reg = $null; if ($regs.Count -eq 1) { $reg = Get-Content -LiteralPath $regs[0].FullName -Raw | ConvertFrom-Json }
     Assert-Atv (($null -ne $reg) -and ($reg.escopo -eq 'Process') -and (-not [bool]$reg.existia)) 'B3 rollback gravado ANTES de mudar, com o valor anterior (ausente)'

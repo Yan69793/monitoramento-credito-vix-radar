@@ -17,6 +17,8 @@
 # em script. O Worker nao contabiliza token local (registrarCustoAnalise so cobre o que
 # o proprio Worker chama), entao este circuito e local e por arquivo.
 
+. (Join-Path $PSScriptRoot 'vixradar-verificacao-metrics.ps1')
+
 function Get-VixCustoConfig([string]$LogDir) {
     $cfg = @{ TETO_DIA = 1300000; RESERVA_VERIFICACAO = 150000; RESERVA_NOTURNO = 700000; MARGEM_MINIMA = 100000; SENTINELA_DIA = 320000 }
     $p = Join-Path $LogDir 'custo-config.json'
@@ -120,6 +122,35 @@ function Get-VixSentinelaUsoDesconhecido([string]$LogDir, [string]$DateTag) {
     return $n
 }
 
+# CUSTOFIM1 (2026-10-15): o <rotina>_metrics_<data>.json e UM arquivo por dia e a execucao
+# seguinte da mesma rotina o sobrescreve. Em 15/10 a noturna das 18:05 apagou os 442.685 da
+# noturna das 01:30 e o CUSTO_DIA passou a ler 602.323 onde o dia tinha gastado 1.045.008, o
+# que deixaria a proxima execucao passar do TETO_DIA. Cada execucao real deixa a propria linha
+# FIM no log do dia (principal ou _fallback_<pid>.log, LOGFALLBACK1), que e append-only. Aqui a
+# soma dos tokens= de todas as linhas FIM reais do dia; o chamador usa max(metrics, soma), que
+# nunca conta a mesma execucao duas vezes (o metrics e sempre uma das parcelas da soma).
+# Dry-run tem log proprio (_dryrun_<pid>.log) e metrics proprio, ja somado a parte: fica fora.
+function Get-VixRotinaLogConsumo([string]$LogDir, [string]$Rotina, [string]$DateTag) {
+    $total = [int64]0; $runs = 0
+    $base = 'vixradar-' + $Rotina + '_' + $DateTag
+    $arqs = @()
+    if (Test-Path -LiteralPath $LogDir -PathType Container) {
+        $rx = '^' + [regex]::Escape($base) + '(_fallback_\d+)?\.log$'
+        $arqs = @(Get-ChildItem -LiteralPath $LogDir -File -ErrorAction SilentlyContinue | Where-Object { $_.Name -match $rx } | Sort-Object Name)
+    }
+    $vistas = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
+    $rxFim = '^\S+ \S+ FIM: ' + [regex]::Escape($Rotina) + ' concluido .*?\btokens=(\d+)\b'
+    foreach ($a in $arqs) {
+        foreach ($line in @(Get-Content -LiteralPath $a.FullName -Encoding UTF8 -ErrorAction SilentlyContinue)) {
+            if ($line -match $rxFim) {
+                if (-not $vistas.Add($line)) { continue }
+                $total += [int64]$Matches[1]; $runs++
+            }
+        }
+    }
+    return @{ tokens = $total; execucoes = $runs }
+}
+
 function Get-VixCustoDia([string]$LogDir, [string]$DateTag, $Config) {
     if (-not $Config) { $Config = Get-VixCustoConfig $LogDir }
     $rotinas = @(
@@ -141,6 +172,23 @@ function Get-VixCustoDia([string]$LogDir, [string]$DateTag, $Config) {
         # Arquivo PRESENTE e ilegivel = uso desconhecido: fail-closed, nunca zero.
         if ((Test-Path -LiteralPath $mf) -and ($null -eq $m)) { $mensuravel = $false; $naoMensuraveis += ($r.nome + ':ilegivel') }
         $p = Get-VixParcelas $m
+        # Recupera FIMs reais perdidos por sobrescrita do JSON; max(), nunca soma duas vezes.
+        if ($r.nome -eq 'verificacao') {
+            $logVerif = Get-VixVerificacaoLogConsumo (Join-Path $LogDir ('vixradar-verificacao-async_' + $DateTag + '.log'))
+            if ([int64]$logVerif.tokens -gt [int64]$p.trabalho) {
+                $p.trabalho = [int64]$logVerif.tokens
+                $p.regua = $p.regua + '+resgate_log'
+            }
+            if ($logVerif.desconhecido) { $p.mensuravel = $false }
+        }
+        # CUSTOFIM1: matinal e noturno somam todas as execucoes reais do dia pelo FIM do log.
+        if ($r.nome -eq 'matinal' -or $r.nome -eq 'noturno') {
+            $logRot = Get-VixRotinaLogConsumo $LogDir $r.nome $DateTag
+            if ([int64]$logRot.tokens -gt [int64]$p.trabalho) {
+                $p.trabalho = [int64]$logRot.tokens
+                $p.regua = $p.regua + '+resgate_log_x' + $logRot.execucoes
+            }
+        }
         if ($p.mensuravel -eq $false) { $mensuravel = $false; $naoMensuraveis += ($r.nome + ':nao_mensuravel') }
         # Dry-run gasta token de verdade (assinatura) e conta no dia, em arquivo separado da
         # execucao real. DRYRUN-METRICS-SOBRESCREVE1 (02/09): eram um unico

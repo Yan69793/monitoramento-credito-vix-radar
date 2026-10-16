@@ -178,8 +178,12 @@ $realPri = Join-Path $realDir 'vixradar-noturno_20261015.log'
 $realUniv = Join-Path $realDir 'cobertura_diaria_20261015.json'
 if ((Test-Path -LiteralPath $realPri) -and (Test-Path -LiteralPath (Join-Path $realDir 'vixradar-noturno_20261015_fallback_22888.log')) -and (Test-Path -LiteralPath $realUniv)) {
     $univReal = @((Get-Content -LiteralPath $realUniv -Raw -Encoding UTF8 | ConvertFrom-Json).universo | ForEach-Object { '' + $_ })
-    $okAntR = @(Get-LinhasLeituraAntiga $realPri | Where-Object { $_ -match $rxOk })
-    $okNovR = @(Get-VixLogDiaLinhas $realPri | Where-Object { $_ -match $rxOk })
+    # O replay e da execucao das 01:30-02:28, a que sofreu o desvio. O mesmo arquivo do dia recebe
+    # as execucoes seguintes (a noturna de 18:05 acrescentou 101 linhas OK|), entao o recorte por
+    # horario e o que mantem a prova presa ao caso medido (TRIADOMERGE1, 15/10).
+    $corteR = '2026-10-15 03:00:00'
+    $okAntR = @(Get-LinhasLeituraAntiga $realPri | Where-Object { $_ -match $rxOk -and $_.Substring(0, 19) -lt $corteR })
+    $okNovR = @(Get-VixLogDiaLinhas $realPri | Where-Object { $_ -match $rxOk -and $_.Substring(0, 19) -lt $corteR })
     $rA = Get-VixReconciliacaoUniverso -Universo $univReal -Linhas $okAntR
     $rN = Get-VixReconciliacaoUniverso -Universo $univReal -Linhas $okNovR
     Write-Host ('  real antigo: universo=' + $rA.Universo + ' entregues=' + $rA.Entregues + ' deferidos=' + $rA.Deferidos + ' sem_registro=' + $rA.SemRegistro + ' fecha=' + [int]$rA.Fecha)

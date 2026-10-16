@@ -235,8 +235,13 @@ function Format-VixColetorEvidenciaTexto {
         $linhas += 'EVIDENCIA_VAZIA: nenhuma publicacao recente encontrada nas tres familias. Nao ha fato novo a classificar; e proibido inventar evento.'
         return ($linhas -join "`n")
     }
+    # RECHECKDIVERG1: id deterministico da manchete (lib de cobertura), o mesmo que a conferencia
+    # do veredito recalcula. Sem a lib carregada a linha sai como antes, sem id.
+    $__temId = ($null -ne (Get-Command 'Get-VixMancheteId' -ErrorAction SilentlyContinue))
     foreach ($e in $Coleta.evidencias) {
-        $linhas += ('[' + $e.familia + ' ' + $e.familia_nome + '] ' + $e.data + ' | ' + $e.veiculo + ' (' + $e.dominio + ') | ' + $e.titulo)
+        $__id = ''
+        if ($__temId) { $__id = 'id=' + (Get-VixMancheteId $e) + ' ' }
+        $linhas += ('[' + $e.familia + ' ' + $e.familia_nome + '] ' + $__id + $e.data + ' | ' + $e.veiculo + ' (' + $e.dominio + ') | ' + $e.titulo)
     }
     return ($linhas -join "`n")
 }

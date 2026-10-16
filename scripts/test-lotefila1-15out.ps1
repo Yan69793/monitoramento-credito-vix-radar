@@ -75,7 +75,7 @@ if (-not $MotorAntigo) {
     $git = Get-Command git -ErrorAction SilentlyContinue
     if ($git) {
         Push-Location $Projeto
-        try { $txt = & git show 'HEAD:scripts/run_vixradar_varredura.ps1' 2>$null; if ($LASTEXITCODE -eq 0) { [IO.File]::WriteAllText($tmpAntigo, (($txt) -join "`r`n"), (New-Object Text.UTF8Encoding($true))) } } finally { Pop-Location }
+        try { $txt = & git show '098a63b~1:scripts/run_vixradar_varredura.ps1' 2>$null; if ($LASTEXITCODE -eq 0) { [IO.File]::WriteAllText($tmpAntigo, (($txt) -join "`r`n"), (New-Object Text.UTF8Encoding($true))) } } finally { Pop-Location }
     }
     $MotorAntigo = $tmpAntigo
 }
@@ -141,7 +141,8 @@ Assert-Lf ($novE.rodou -eq $antE.rodou -and $novE.max_admitido -le $cap) 'B6 est
 Write-Host '== C ancora no log real de 15/10 =='
 $logM = Join-Path $LogDir 'vixradar-matinal_20261015.log'
 if (Test-Path -LiteralPath $logM) {
-    $l = Get-Content -LiteralPath $logM -Encoding UTF8
+    # Recorte na execucao de 10:06: o log do dia ganhou a matinal de recuperacao das 22:12.
+    $l = @(Get-Content -LiteralPath $logM -Encoding UTF8 | Where-Object { $_.Length -ge 19 -and $_.Substring(0, 19) -lt '2026-10-15 10:10:00' })
     Assert-Lf (@($l | Where-Object { $_ -match 'ESCALADA_DECISAO\|P.o de A.+car \(GPA\)\|escalar=1' }).Count -eq 1) 'C1 GPA foi retida para escalada na matinal real'
     Assert-Lf (@($l | Where-Object { $_ -match 'ESCALADA_LOTE:' }).Count -eq 0) 'C2 a escalada nunca foi montada na matinal real (sintoma D1)'
     Assert-Lf (@($l | Where-Object { $_ -match 'sem_registro=1 .*GPA' }).Count -eq 1) 'C3 RECONCILIACAO_DIA real acusa GPA sem registro'

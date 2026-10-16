@@ -40,6 +40,7 @@ $MetricsFile    = Join-Path $LogDir ('verificacao_async_metrics_' + $DateTag + '
 # dry-run tem o proprio arquivo (hora no nome). Get-VixCustoDia soma os _dryrun*.json do dia.
 $MetricsOut     = $MetricsFile
 if ($DryRun) { $MetricsOut = [regex]::Replace($MetricsFile, '\.json$', ('_dryrun_' + (Get-Date -Format 'HHmmss') + '.json')) }
+$MetricsRunId = [Guid]::NewGuid().ToString('N')
 $McpConfigFile  = Join-Path $LogDir 'mcp-empty.json'
 
 $ModelVerificador = 'claude-sonnet-4-6'
@@ -783,7 +784,7 @@ try {
         Write-Log 'FIM: fila vazia, nada a fazer'
         $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         Write-Log ('ROTINA_RESUMO|vixradar-verificacao-async|local|' + $inicioIso + '|' + $fimIso + '|OK|0|0|0|' + $versaoWorker)
-        @{ data = $DateTag; total_fila = 0; lotes = 0; dryrun = [bool]$DryRun } | ConvertTo-Json | Set-Content $MetricsOut -Encoding UTF8
+        Save-VixVerificacaoMetrics -Path $MetricsOut -Novas ([ordered]@{ data = $DateTag; total_fila = 0; lotes = 0; dryrun = [bool]$DryRun; tokens_trabalho = [int64]0 }) -LogFile $LogFile -ExecucaoId $MetricsRunId -DryRun:$DryRun
         exit 0
     }
 
@@ -1075,7 +1076,7 @@ try {
     }
 
     $metricsOut = $MetricsOut
-    [ordered]@{
+    $metricsVerif = [ordered]@{
         data = $DateTag; rotina = 'verificacao-async'; dryrun = [bool]$DryRun; total_fila = $stats.total_fila; lotes = $stats.lotes
         reservados = $stats.reservados; ja_reservados = $stats.ja_reservados; protecao_ativa = $stats.protecao_ativa
         aprovados = $stats.aprovados; rejeitados = $stats.rejeitados; confirmados = $stats.confirmados
@@ -1083,8 +1084,10 @@ try {
         falhas_provider = $stats.falhas_provider; truncados = $stats.truncados; pareceres_incompletos = $stats.pareceres_incompletos; max_tokens_verificacao = $MaxTokensVerificacao
         tokens_total_est = $stats.tokens_total; tokens_trabalho = $stats.tokens_total
         tokens_input = $stats.input; tokens_output = $stats.output; tokens_cache_creation = $stats.cache_creation; tokens_cache_read = $stats.cache_read
+        tokens_desconhecidos = $stats.tokens_desconhecidos
         auth_escalou = $script:AuthEscalou
-    } | ConvertTo-Json | Set-Content $metricsOut -Encoding UTF8
+    }
+    Save-VixVerificacaoMetrics -Path $metricsOut -Novas $metricsVerif -LogFile $LogFile -ExecucaoId $MetricsRunId -DryRun:$DryRun
 
     $fimTag = if ($DryRun) { 'FIM_DRYRUN: ' } else { 'FIM: ' }
     Write-Log ($fimTag + 'fila=' + $stats.total_fila + ' reservados=' + $stats.reservados + ' ja_reservados=' + $stats.ja_reservados + ' lotes=' + $stats.lotes + ' aprovados=' + $stats.aprovados + ' rejeitados=' + $stats.rejeitados + ' submit_ok=' + $stats.confirmados + ' erros_parse=' + $stats.erros_parse + ' refusals=' + $stats.refusals + ' tokens=' + $stats.tokens_total + ' cache_read=' + $stats.cache_read + ' meta=' + $TokenTarget + ' hard=' + $TokenHardCap + ' hard_hit=' + $stats.token_hard_hit + ' deferred=' + $stats.deferred + ' tokens_desconhecidos=' + $stats.tokens_desconhecidos + ' auth_escalou=' + $script:AuthEscalou + ' falhas_provider=' + $stats.falhas_provider + ' truncados=' + $stats.truncados + ' pareceres_incompletos=' + $stats.pareceres_incompletos + ' max_tokens=' + $MaxTokensVerificacao)

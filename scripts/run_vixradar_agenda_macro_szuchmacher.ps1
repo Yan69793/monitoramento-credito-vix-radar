@@ -208,22 +208,37 @@ if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-openrouter.ps1')) {
     $script:VixLibOpenRouterOk = $false
 }
 Assert-VixLibFunctions @('Assert-VixLibFunctions', 'Get-VixLlmProvider', 'Test-VixLlmProviderPermiteRotina')
+# AGENDAMACRO-CODEX1 (2026-10-15): o provider ativo e 'codex' desde 13/10 e este driver so
+# aceitava 'openrouter' - toda sexta saia BLOQUEADO_SEM_PROVIDER exit 86 (09/10) sem atualizar
+# a agenda. Ramo Codex no mesmo desenho de run_vixradar_agenda_semanal.ps1 (codex exec --search,
+# sandbox read-only, args de contexto minimo e preambulo headless da lib de cobertura). O ramo
+# OpenRouter e o gate de provider seguem intactos; provider global e auth nao mudam aqui.
+if (Test-Path (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1')) { . (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1') }
 
 # GATE provedor-agnostico. Nenhum claude e invocado neste caminho: a pesquisa vai pelo
-# adapter OpenRouter. Provider diferente de 'openrouter' para a rotina com exit 86.
+# adapter OpenRouter ou pelo Codex CLI. Outro provider para a rotina com exit 86.
 $script:VixUsaOpenRouter = (Test-VixUsaLlmAdapterHttp)
+$script:VixUsaCodex = ((Get-VixLlmProvider) -eq 'codex')
 $__adapterOk = $script:VixLibOpenRouterOk -and
     ($null -ne (Get-Command 'Invoke-VixOpenRouterLote' -ErrorAction SilentlyContinue)) -and
     ($null -ne (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue))
-if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$__adapterOk)) {
+$__codexOk = ($null -ne (Get-Command 'codex' -ErrorAction SilentlyContinue)) -and
+    ($null -ne (Get-Command 'Get-VixCodexArgsBase' -ErrorAction SilentlyContinue)) -and
+    ($null -ne (Get-Command 'Get-VixCodexPreambulo' -ErrorAction SilentlyContinue)) -and
+    ($null -ne (Get-Command 'Get-VixCodexUsageJsonl' -ErrorAction SilentlyContinue))
+if (-not (Test-VixLlmProviderPermiteRotina -ForceClaude:$ForceClaude -OpenRouterAdapterHabilitado:$__adapterOk -CodexAdapterHabilitado:$__codexOk)) {
     Write-Log (Get-VixLlmBloqueadoMsg 'run_vixradar_agenda_macro_szuchmacher.ps1')
     exit $VixLlmBloqueadoExit
 }
-if (-not $script:VixUsaOpenRouter) {
-    Write-Log ('ERRO FATAL: este driver so opera sob provider openrouter (motor provedor-agnostico); provider efetivo = ' + (Get-VixLlmProvider))
+if (-not $script:VixUsaOpenRouter -and -not $script:VixUsaCodex) {
+    Write-Log ('ERRO FATAL: este driver so opera sob provider openrouter ou codex (motor provedor-agnostico); provider efetivo = ' + (Get-VixLlmProvider))
     exit $VixLlmBloqueadoExit
 }
-if (-not $__adapterOk) {
+if ($script:VixUsaCodex -and -not $__codexOk) {
+    Write-Log 'ERRO FATAL: provider codex sem Codex CLI ou sem lib de cobertura (Get-VixCodexArgsBase) - bloqueio'
+    exit $VixLlmBloqueadoExit
+}
+if ($script:VixUsaOpenRouter -and -not $__adapterOk) {
     Write-Log 'ERRO FATAL: adapter OpenRouter ausente ou incompleto (scripts/lib/vixradar-openrouter.ps1) - provider openrouter sem adapter = bloqueio'
     exit $VixLlmBloqueadoExit
 }
@@ -235,9 +250,15 @@ if (-not $__mutex.WaitOne(0)) {
 }
 
 $inicioIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-Write-Log ('INICIO: atualizar-agenda-macro-szuchmacher | janela=' + $Inicio + '..' + $Fim + ' | provider=openrouter | motor=adapter-http')
-Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
-Write-Log 'PROVE_NAO_CLAUDE: nenhuma CLI de agente foi invocada nesta execucao - a pesquisa vai pelo adapter HTTP OpenRouter (gate Test-VixLlmProviderPermiteRotina)'
+if ($script:VixUsaCodex) {
+    Write-Log ('INICIO: atualizar-agenda-macro-szuchmacher | janela=' + $Inicio + '..' + $Fim + ' | provider=codex | motor=codex-cli')
+    Write-Log 'AUTH_MODO: codex (assinatura Codex CLI, sem OpenRouter e sem auth Anthropic). busca_web=True'
+    Write-Log 'PROVE_NAO_CLAUDE: nenhuma CLI Claude foi invocada nesta execucao - a pesquisa vai pelo Codex CLI (gate Test-VixLlmProviderPermiteRotina)'
+} else {
+    Write-Log ('INICIO: atualizar-agenda-macro-szuchmacher | janela=' + $Inicio + '..' + $Fim + ' | provider=openrouter | motor=adapter-http')
+    Write-Log ('AUTH_MODO: ' + (Get-VixLlmEndpointDescricao) + ' (adapter HTTP, sem claude, sem auth Anthropic). busca_web=' + (Test-VixLlmEndpointTemBusca))
+    Write-Log 'PROVE_NAO_CLAUDE: nenhuma CLI de agente foi invocada nesta execucao - a pesquisa vai pelo adapter HTTP OpenRouter (gate Test-VixLlmProviderPermiteRotina)'
+}
 
 $exitCode = 0
 try {
@@ -324,9 +345,31 @@ $promptPath = Join-Path $LogDir ('agendamacro_prompt_' + $DateTag + '.txt')
 Set-Content -Path $promptPath -Value $promptTexto -Encoding UTF8
 Write-Log ('Prompt: ' + $promptPath + ' (' + $promptTexto.Length + ' chars)')
 
-$__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
+if ($script:VixUsaCodex) {
+    # AGENDAMACRO-CODEX1: mesmo envelope que o adapter devolve ({result, model, usage}) numa linha
+    # JSON, para o parse abaixo ser um so. Usage do JSONL do Codex; sem usage = NAO_MENSURAVEL.
+    $__cxOut = Join-Path $LogDir ('agendamacro_codex_' + $DateTag + '_' + $PID + '.txt')
+    $__cxErr = Join-Path $LogDir ('agendamacro_stderr_' + $DateTag + '_' + $PID + '.txt')
+    $__cxPrompt = (Get-VixCodexPreambulo) + "`r`n`r`n" + $promptTexto
+    $__cxBase = @(Get-VixCodexArgsBase)
+    $__cxRaw = @($__cxPrompt | codex @__cxBase --search exec --json --ephemeral --sandbox read-only --ignore-user-config --ignore-rules --skip-git-repo-check -C $env:TEMP -o $__cxOut - 2>>$__cxErr)
+    $__cxExit = $LASTEXITCODE
+    $__cxTexto = ''
+    if (Test-Path -LiteralPath $__cxOut) { $__cxTexto = [string](Get-Content -LiteralPath $__cxOut -Raw -Encoding UTF8) }
+    Remove-Item -LiteralPath $__cxOut -Force -ErrorAction SilentlyContinue
+    $__cxUso = Get-VixCodexUsageJsonl $__cxRaw
+    $__cxTok = if ($__cxUso.mensuravel) { '' + ([int64]$__cxUso.input_total + [int64]$__cxUso.output) } else { 'NAO_MENSURAVEL' }
+    $__cxMsg = 'codex exit=' + $__cxExit
+    if ($__cxExit -eq 0 -and [string]::IsNullOrWhiteSpace($__cxTexto)) { $__cxExit = 1; $__cxMsg = 'codex sem resposta final (-o vazio)' }
+    $__cxEnv = [ordered]@{ result = $__cxTexto; is_error = ($__cxExit -ne 0); model = 'codex-subscription'; stop_reason = 'end_turn'
+        usage = [ordered]@{ input_tokens = [int64]$__cxUso.input_total; output_tokens = [int64]$__cxUso.output; cache_read_input_tokens = [int64]$__cxUso.cached } }
+    $__orResp = [PSCustomObject]@{ ExitCode = $__cxExit; Msg = $__cxMsg; Modelo = 'codex-subscription'; Intentos = 1; FallbackUsado = $false; Tokens = $__cxTok
+        Linhas = @(($__cxEnv | ConvertTo-Json -Compress -Depth 4)) }
+} else {
+    $__orResp = Invoke-VixOpenRouterLote -PromptPath $promptPath -Tier 'FULL'
+}
 if ([int]$__orResp.ExitCode -ne 0) {
-    Write-Log ('ERRO: lote OpenRouter falhou (' + $__orResp.Msg + ')')
+    Write-Log ('ERRO: lote do provider falhou (' + $__orResp.Msg + ')')
     $fimIso = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
     Write-Log ('FIM: atualizar-agenda-macro-szuchmacher | status=ERRO_ADAPTER | janela=' + $Inicio + '..' + $Fim)
     Write-Log ('ROTINA_RESUMO|agenda-macro-szuchmacher|local|' + $inicioIso + '|' + $fimIso + '|FALHA|0|1|0|')
