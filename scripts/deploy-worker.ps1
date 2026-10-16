@@ -325,7 +325,16 @@ $mainAtual = $m.Groups[2].Value
 
 if ($mainAtual -ne $bundle) {
   $tomlNovo = [regex]::Replace($tomlRaw, '(?m)^(\s*main\s*=\s*")([^"]+)(")', "`${1}$bundle`${3}")
-  Set-Content -NoNewline -Path $toml -Value $tomlNovo
+  # FILELOCK1: o Desktop Commander pode manter leitura aberta do toml.
+  # Abrir para escrita com compartilhamento de leitura preserva o arquivo sem encerrar processos.
+  $tomlBytes = [System.Text.UTF8Encoding]::new($false).GetBytes($tomlNovo)
+  $tomlStream = [System.IO.File]::Open($toml, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Write, [System.IO.FileShare]::ReadWrite)
+  try {
+    $tomlStream.SetLength(0)
+    $tomlStream.Write($tomlBytes, 0, $tomlBytes.Length)
+    $tomlStream.Flush($true)
+  } finally { $tomlStream.Dispose() }
+  if ([System.IO.File]::ReadAllText($toml) -ne $tomlNovo) { Fail "FILELOCK1: verificacao da escrita do wrangler.toml falhou" }
   Write-Host "wrangler.toml main: $mainAtual -> $bundle" -ForegroundColor Cyan
 } else {
   Write-Host "wrangler.toml main ja aponta $bundle" -ForegroundColor DarkGray
