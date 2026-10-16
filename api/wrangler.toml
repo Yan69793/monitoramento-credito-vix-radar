@@ -4,6 +4,11 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.270.js = v4.9.269 + EWS2SHADOW1: integra adaptador EWS 2.0 somente em
+#   op=predictive_v1 (lab admin); usa KV ews2:latest e ews2:flag, flag AUSENTE=OFF.
+#   G1a/G1b/G1c/G2 obrigatorios, G3 para probabilidade; sem previsao ou alerta
+#   publico, sem escrita no KV. Worker testado: 54 arquivos, 531/531 verde.
+#   Rollback: main = "v4.9.269.js" (ou flag ews2:flag ativo=false).
 # v4.9.269.js = v4.9.268 + JANELADELTA1: janela_delta_inicio do plano de rotina
 #   (inicio da busca de fato novo no prompt e na triagem do motor) passa a partir
 #   da ultima ANALISE real (_hsA.carimbo, o mesmo de horas_stale) e nao de

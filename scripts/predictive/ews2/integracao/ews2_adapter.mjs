@@ -17,7 +17,7 @@ export function validarPayload(p) {
   if (p.schema !== SCHEMA) erros.push("schema diferente de " + SCHEMA);
   if (!/^[0-9a-f]{64}$/.test(String(p.sha256_rotulos || ""))) erros.push("sha256_rotulos invalido");
   const h = p.homologacao || {};
-  for (const g of ["g1a", "g1b", "g1c"]) if (h[g] !== true) erros.push("homologacao." + g + " nao aprovada");
+  for (const g of ["g1a", "g1b", "g1c", "g2"]) if (h[g] !== true) erros.push("homologacao." + g + " nao aprovada");
   if (!Array.isArray(p.sinais_aprovados) || p.sinais_aprovados.length === 0) erros.push("sem sinal aprovado em G2");
   else for (const s of p.sinais_aprovados) if (!SINAIS.includes(s)) erros.push("sinal desconhecido: " + s);
   if (p.exibir_probabilidade === true && h.g3 !== true) erros.push("probabilidade exibivel exige G3 aprovado");

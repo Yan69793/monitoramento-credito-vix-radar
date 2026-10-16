@@ -6,6 +6,7 @@
 // adicionar no_bundle=true/--no-bundle sem primeiro vendorizar o SDK, senao
 // o import quebra silenciosamente no deploy seguinte. Ver wrangler.toml.
 import * as Sentry from "@sentry/cloudflare";
+import { fundir as fundirEws2Lab } from "./ews2_adapter.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -20759,7 +20760,10 @@ async function __coreFetch(request, env2222, ctx) {
         if (!_pvAdm.ok) return resp({ ok: false, erro: _pvAdm.erro || "Acesso restrito.", lab_interno: true }, _pvAdm.status || 403, request);
         const pv1 = await env2222.RADAR_KV.get("predictive_v1:latest", "json").catch(() => null);
         if (!pv1) return resp({ ok: false, source: "not_found", lab_interno: true, auth_via: _pvAdm.via, mensagem: "Pipeline preditivo lab ainda n\xE3o executado." }, 200, request);
-        return resp({ ok: true, source: "kv", lab_interno: true, user_facing: false, auth_via: _pvAdm.via, ...pv1 }, 200, request);
+        const ews2Latest = await env2222.RADAR_KV.get("ews2:latest", "json").catch(() => null);
+        const ews2Flag = await env2222.RADAR_KV.get("ews2:flag", "json").catch(() => null);
+        const pv2 = fundirEws2Lab(pv1, ews2Latest, ews2Flag);
+        return resp({ ok: true, source: "kv", lab_interno: true, user_facing: false, auth_via: _pvAdm.via, ...pv2 }, 200, request);
       }
       if (op === "reprocessar_audit_pending") {
         const _rapTk = extractToken(request);

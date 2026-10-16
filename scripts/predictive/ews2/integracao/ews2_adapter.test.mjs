@@ -16,6 +16,7 @@ test("payload valido passa; defeitos sao nomeados", () => {
   const r = validarPayload({ ...bom(), homologacao: { g1a: true, g1b: false, g1c: true } });
   assert.equal(r.ok, false);
   assert.ok(r.erros.some((e) => e.includes("g1b")));
+  assert.equal(validarPayload({ ...bom(), homologacao: { ...bom().homologacao, g2: false } }).ok, false);
   assert.equal(validarPayload({ ...bom(), sinais_aprovados: [] }).ok, false);
   assert.equal(validarPayload({ ...bom(), exibir_probabilidade: true }).ok, false); // sem G3
   assert.equal(validarPayload({ ...bom(), sha256_rotulos: "x" }).ok, false);
