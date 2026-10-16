@@ -5,7 +5,7 @@
  * Imports from shared.js; wraps core usoCarregar/usoMudarVisao with skeleton + error handling.
  */
 
-import { esc, skeletonBlock, wrapWhenReady } from './shared.js?v=202.66';
+import { esc, skeletonBlock, wrapWhenReady } from './shared.js?v=202.67';
 
 /* ── Styles ───────────────────────────────────────────────── */
 function injectEngStyles() {
