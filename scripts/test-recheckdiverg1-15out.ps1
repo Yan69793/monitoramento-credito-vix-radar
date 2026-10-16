@@ -81,7 +81,15 @@ if ((Test-Path -LiteralPath $log14) -and (Test-Path -LiteralPath $cache14)) {
 Write-Host '== B: casos de 15/10 com veredito por manchete =='
 $log15 = Join-Path $LogDir 'vixradar-noturno_20261015.log'
 $cache15 = Join-Path $LogDir 'coleta_cache_20261015.json'
-foreach ($e in @('Klabin', 'Ultrapar', 'TIM Brasil')) {
+$logM = Join-Path $LogDir 'vixradar-matinal_20261015.log'
+# CIRUNNER1 (2026-10-16): B e C1-C5 leem logs reais de logs\routines, que nao sao versionados.
+# Pulo nomeado SO quando GITHUB_ACTIONS=true e os logs estao ausentes; localmente a ausencia
+# continua reprovando (o assert 'dados reais disponiveis' abaixo).
+$emCI = ($env:GITHUB_ACTIONS -eq 'true')
+$pularB = $emCI -and -not ((Test-Path -LiteralPath $log15) -and (Test-Path -LiteralPath $cache15))
+$pularC = $emCI -and -not ((Test-Path -LiteralPath $logM) -and (Test-Path -LiteralPath $log15))
+if ($pularB) { Write-Host '  PULADO B: log/cache de 15/10 ausente no runner de CI (estado de maquina)' }
+foreach ($e in @($(if ($pularB) { @() } else { @('Klabin', 'Ultrapar', 'TIM Brasil') }))) {
     $res = Get-RdResultado $log15 '2026-10-15 22:3' $e
     $col = Get-RdColeta $cache15 $e
     $delta = Get-RdDelta $log15 '2026-10-15 22:2' $e '2026-10-12'
@@ -126,7 +134,7 @@ foreach ($e in @('Klabin', 'Ultrapar', 'TIM Brasil')) {
 
 if (-not $antiga) {
     Write-Host '== C: timestamp do lote nas fontes Codex (GPA FULL 15/10 22:19, CBA FULL 18:17) =='
-    $logM = Join-Path $LogDir 'vixradar-matinal_20261015.log'
+    if ($pularC) { Write-Host '  PULADO C1-C5: logs de 15/10 ausentes no runner de CI (estado de maquina)' } else {
     $gpa = Get-RdResultado $logM '2026-10-15 22:19' '(GPA)'
     if ($null -ne $gpa) {
         $famAntes = Resolve-VixCoberturaFamilias $gpa
@@ -145,6 +153,7 @@ if (-not $antiga) {
         $certCba = Test-VixAusenciaCertificavel $cba
         Assert-Rd ($certCba.permitir_sem_eventos -eq $false) 'C5 CBA com fetch degradado segue sem certificacao' ('motivo=' + $certCba.motivo)
     } else { Assert-Rd $false 'C CBA FULL de 18:17 localizado' '' }
+    }
     # C6 fonte sem provedor codex (rodada barata) nao ganha timestamp.
     $sem = [pscustomobject]@{ fontes_consultadas = @([pscustomobject]@{ familia = 'emissor'; resultado = 'Manchete' }) }
     Assert-Rd ((Set-VixTimestampLoteCodex -Res $sem -Ts '2026-10-16T00:00:00Z') -eq 0) 'C6 fonte sem provedor/query/HTTP nao e carimbada' ''

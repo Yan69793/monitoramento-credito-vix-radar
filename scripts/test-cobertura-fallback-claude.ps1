@@ -251,6 +251,15 @@ $depoisH1 = @(Get-ChildItem -LiteralPath $LogReal -Filter ('*cobfallback*' + $ho
 Assert-Cf ($h1.Exit -eq 0 -and $h1.Out -match 'COBFALLBACK_INERTE' -and $depoisH1.Count -eq $antesH.Count) ('H1 sem flag: exit ' + $h1.Exit + ', COBFALLBACK_INERTE, nenhum arquivo cobfallback criado')
 $h2 = Invoke-MotorFilho @('-Rotina', 'matinal', '-CoberturaFallbackClaude', '-DryRun') @{ VIXRADAR_COBERTURA_FALLBACK_CLAUDE = '1' }
 Assert-Cf ($h2.Exit -eq 1) ('H2 modo sobre a matinal recusado (exit ' + $h2.Exit + ')')
+# CIRUNNER1 (2026-10-16): H3/H4 passam do gate do topo e o motor escreve em $ProjectRoot, que e
+# caminho fixo de producao (E:\...). No runner do GitHub o drive nao existe, cada Write-Log tenta
+# 8 vezes com backoff e a suite estourava os 180s do CI. Pulo nomeado SO quando GITHUB_ACTIONS=true
+# e a raiz de producao esta ausente; na maquina local a ausencia continua reprovando.
+$emCI = ($env:GITHUB_ACTIONS -eq 'true')
+$raizProd = 'E:\Diretorio\Claude\Monitoramento de Credito'
+if ($emCI -and -not (Test-Path -LiteralPath $raizProd)) {
+    Write-Host '  PULADO H3/H4: raiz de producao fixa do motor ausente no runner de CI (estado de maquina)'
+} else {
 # Com a flag ligada o gate do topo passa; provider 'none' no processo filho tem de bloquear no gate
 # de provider (exit 86), antes de mutex, lock, rede, auth ou token. Arquivos que o filho cria (log
 # do dry-run e transcript, com o PID dele no nome) sao removidos em seguida.
@@ -261,6 +270,7 @@ foreach ($c in $criados) { if ($c.Name -like '*.log') { $logH3 += (Get-Content -
 Assert-Cf ($h3.Exit -eq 86 -and $h3.Out -notmatch 'COBFALLBACK_INERTE') ('H3 com flag: passa o gate do topo e o provider none bloqueia com exit 86 (exit ' + $h3.Exit + ')')
 Assert-Cf ($logH3 -notmatch 'COBFALLBACK_PREPARO' -and $logH3 -notmatch 'LOCK_OK') 'H4 bloqueio 86 acontece antes do preparo e do lock'
 foreach ($c in $criados) { Remove-Item -LiteralPath $c.FullName -Force -ErrorAction SilentlyContinue }
+}
 
 Write-Host 'I. evidencia individual dos 104, DEFERIDO nunca verificado, falha do Claude sem ocultar pendencia'
 $AgoraI = [datetime]::SpecifyKind([datetime]'2026-10-14T15:00:00', [DateTimeKind]::Utc)
