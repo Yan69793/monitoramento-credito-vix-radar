@@ -1,8 +1,10 @@
-# Contrato de integração reversível do EWS 2.0 ao VIX Radar (preparado em 16/10/2026, NÃO ativado)
+# Contrato de integração reversível do EWS 2.0 ao VIX Radar (modo sombra publicado em 16/10/2026, não ativado)
 
-Estado: preparação. Nenhuma linha de `api/`, `app/`, rotina ou KV de produção foi alterada (G0-v1 item 11 proíbe
-durante a validação). Este contrato, o adaptador puro `ews2_adapter.mjs` e os testes `node --test` ficam fora do
-Worker até a homologação da base e a autorização do operador. Produto não mostra nada do EWS 2.0 antes do G4.
+Estado atual: EWS2SHADOW1 implantado no Worker `v4.9.270` em 16/10/2026, somente no laboratório
+administrativo `op=predictive_v1`, por autorização do operador. `ews2:flag` ausente no KV remoto (404):
+integração desativada; nenhuma previsão experimental foi exposta, nem alterados EWS público, app ou rotinas.
+O gate G1-eq passou (30/30), mas G1a/G1b/G1c/G2/G3/G4 e eficácia preditiva real seguem sem homologação.
+Código: `api/src/worker.js` e pontes `api/{src/,}ews2_adapter.mjs`; rollback do Worker: `v4.9.269`.
 
 ## Fluxo quando autorizado
 
@@ -18,12 +20,13 @@ Worker até a homologação da base e a autorização do operador. Produto não 
 5. `op=predictive_v1` continua sob `_exigeLabPreditivoAdmin`: só admin vê. Exposição ao usuário final é G4
    (6 meses de sombra, cada alerta gravado antes do evento), fora deste contrato.
 
-## Ponto único de ligação no Worker (a fazer em PR própria, depois da autorização)
+## Ponto único de ligação no Worker (implementado em `v4.9.270`, somente admin)
 
-Em `op=predictive_v1` (api/src/worker.js, hoje linha ~20756), depois de ler `predictive_v1:latest`:
-`const ews2 = await KV.get("ews2:latest","json"); const flag = await KV.get("ews2:flag","json"); return resp({...fundir(pv1, ews2, flag)})`.
-Importação do adaptador como módulo do bundle (esbuild do Wrangler resolve). Teste em `api/test/ews2-adapter.test.mjs`
-no padrão `@cloudflare/vitest-pool-workers`, mesma suíte do deploy. Deploy pelo `deploy-worker.ps1` como sempre.
+Em `op=predictive_v1`, após autenticação administrativa e leitura de `predictive_v1:latest`, o Worker
+lê as chaves `ews2:latest` e `ews2:flag` com fallback `null` e aplica `fundirEws2Lab` (fail-closed).
+As pontes `api/src/ews2_adapter.mjs` e `api/ews2_adapter.mjs` apontam ao mesmo módulo canônico.
+Teste de integração: `api/test/ews2-shadow.test.mjs` (5/5, Workers Vitest); suíte total 531/531.
+Deploy oficial: `scripts/deploy-worker.ps1 -Version v4.9.270` (aprovado, produção e Git sincronizados).
 
 ## Rollback (três níveis, do mais barato ao mais caro)
 
