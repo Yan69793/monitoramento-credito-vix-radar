@@ -1,0 +1,120 @@
+{
+ "arquivos": [
+  {
+   "arquivo": "medir_universo_candidatos.py",
+   "bytes": 3507,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\medir_universo_candidatos.py",
+   "sha256": "b7149679847124f8030460a1490e4994e183388c4e6548e20d51af4b0637f9d5",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "auditar_g0v2.py",
+   "bytes": 6201,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\auditar_g0v2.py",
+   "sha256": "63261b495c0237a930c67b5b5d9f8b63aee6da4d860dd6e3c612d1105beb4a92",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "dimensionar_g1b.py",
+   "bytes": 4549,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\dimensionar_g1b.py",
+   "sha256": "fbbcc09f5d5f82e56c89e3bbb38bc6b915f8978d11b70d5fd77c846466939032",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "medir_lacunas_nao_fr.py",
+   "bytes": 7791,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\medir_lacunas_nao_fr.py",
+   "sha256": "b5e197f22f1c906073281d44815fe44bdcd1fa1d467f9210bbf93323b7cfee84",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "dimensionar_g1b_com_S.py",
+   "bytes": 3725,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\dimensionar_g1b_com_S.py",
+   "sha256": "2959ed8efa28785f0777da23493caf0d38252e58d24a68e54c2a7e59571686c7",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "investigar_S_A2.py",
+   "bytes": 11013,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\investigar_S_A2.py",
+   "sha256": "9b941cd3cb7f56e0214d0007ef1dfe84c8291b1ff08f9d97094b3836e3f3d846",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "reconciliar_511.py",
+   "bytes": 5988,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\reconciliar_511.py",
+   "sha256": "cf121857b1eaffad13b866bed2c2cebab2bec3b0ac81f216e042c3b5a2d1514c",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "custo_segunda_leitura_G.py",
+   "bytes": 2108,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\custo_segunda_leitura_G.py",
+   "sha256": "f287e83753a9d92df5b1d1d8404f83d7be95e85342ef9e57ed27f76b540050aa",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "test_g1b_regra.py",
+   "bytes": 12313,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\test_g1b_regra.py",
+   "sha256": "0d83e5b96d07d029582e60da4b07d2e43cca049d9be9657f54b1775e08d3b21f",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "g1b_v2.py",
+   "bytes": 5553,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\g1b_v2.py",
+   "sha256": "e77674e2cb8f928b4410ff05a0767d525117fc6854fca7040894918c0536909e",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "test_g1b_validade.py",
+   "bytes": 14378,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\test_g1b_validade.py",
+   "sha256": "8c176d8ba724a9eea4d38998280657bc767b174e349b5737115a46d6b4ccd4d5",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "evidencia_validade.py",
+   "bytes": 2075,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\evidencia_validade.py",
+   "sha256": "82235536bdc9b6cec2cc760a17e82b106805c4c5f4e9b5cbf1bef03c7a18979a",
+   "tipo": "script"
+  },
+  {
+   "arquivo": "lacunas_nao_fr.json",
+   "bytes": 162979,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\lacunas_nao_fr.json",
+   "sha256": "e22692e457def8704e37721fc68035b705943915868b08faebc9fb5e09206a68",
+   "tipo": "dado de entrada"
+  },
+  {
+   "arquivo": "investigacao_S_A2.json",
+   "bytes": 97773,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\investigacao_S_A2.json",
+   "sha256": "45ef13c3b2afc279b3a9404c51b7c6c6cd38f16f157235c1bf843b9cb4f379cc",
+   "tipo": "dado de entrada"
+  },
+  {
+   "arquivo": "reconciliacao_511.json",
+   "bytes": 2397,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\reconciliacao_511.json",
+   "sha256": "f2be234228d9ea137fddaf36781e0362345f0e50aa81068e18cdfadd581e307b",
+   "tipo": "dado de entrada"
+  },
+  {
+   "arquivo": "dimensionamento_g1b.json",
+   "bytes": 2078,
+   "origem": "E:\\Diretorio\\Claude\\tmp\\operacional\\vix-radar\\ews-g0v2\\dimensionamento_g1b.json",
+   "sha256": "3a413f1c0fa8ef21108d51359ec7d7a92ebb4650945a17aeed119c4d95547779",
+   "tipo": "dado de entrada"
+  }
+ ],
+ "copiado_em": "2026-10-15",
+ "nota": "116",
+ "operacao": "copia byte a byte, origem mantida",
+ "protocolo": "G0-v2"
+}

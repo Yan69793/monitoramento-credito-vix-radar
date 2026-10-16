@@ -1,0 +1,5763 @@
+{
+ "camadas": {
+  "E": 269,
+  "X": 47,
+  "A": 2,
+  "F": 402,
+  "W": 2505,
+  "uniao": 3200
+ },
+ "L1_nao_fr_abertura_longe_de_tudo": {
+  "chaves": 1064,
+  "cnpjs": 252,
+  "por_categoria": {
+   "assembleia": 1063,
+   "reuniao da administracao": 182,
+   "comunicado ao mercado": 146,
+   "dados economico-financeiros": 12,
+   "aviso aos acionistas": 9,
+   "aviso aos debenturistas": 6,
+   "escrituras e aditamentos de debentures": 6,
+   "comunicacao sobre demandas societarias": 5,
+   "pedidos de falencia": 2,
+   "sentenca de falencia": 1
+  }
+ },
+ "L1z_cnpj_sem_candidato_algum": {
+  "chaves": 100,
+  "cnpjs": 47
+ },
+ "PF_pedidos_de_falencia": {
+  "total": 4,
+  "no_universo": 4,
+  "longe_30d_de_tudo": 2,
+  "itens": [
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2012-12-06",
+    "assunto": "Distribuição de Pedido de Falência junto ao Cartório da 3ª Vara Empresarial do TJRJ",
+    "dist_candidato_dias": 34,
+    "no_universo": true,
+    "protocolo": ""
+   },
+   {
+    "cnpj": "82.981.671/0001-45",
+    "data": "2013-07-12",
+    "assunto": "Pedido de Autofalência",
+    "dist_candidato_dias": 578,
+    "no_universo": true,
+    "protocolo": ""
+   },
+   {
+    "cnpj": "11.395.624/0001-71",
+    "data": "2019-06-06",
+    "assunto": "Pedido de Falência",
+    "dist_candidato_dias": 0,
+    "no_universo": true,
+    "protocolo": "022500IPE060620190104362212-47"
+   },
+   {
+    "cnpj": "60.637.238/0001-54",
+    "data": "2022-09-28",
+    "assunto": "Pedido de Falência",
+    "dist_candidato_dias": 8,
+    "no_universo": true,
+    "protocolo": "012319IPE290520150104483210-71"
+   }
+  ]
+ },
+ "L2_cat_a_longe_de_tudo": {
+  "abertura": {
+   "total": 9,
+   "cnpjs": 8,
+   "gap_maior_365": 2,
+   "gap_maior_365_cnpjs": 1
+  },
+  "assunto_vazio": {
+   "total": 871,
+   "cnpjs": 34,
+   "gap_maior_365": 679,
+   "gap_maior_365_cnpjs": 30
+  }
+ },
+ "L2_primeiro_por_cnpj_gap_maior_365": [
+  {
+   "cnpj": "82.981.671/0001-45",
+   "data": "2013-05-16",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 521,
+   "protocolo": "",
+   "silencio_cat_a_dias": 49
+  },
+  {
+   "cnpj": "82.636.986/0001-55",
+   "data": "2013-12-11",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 411,
+   "protocolo": "",
+   "silencio_cat_a_dias": 41
+  },
+  {
+   "cnpj": "82.981.812/0001-20",
+   "data": "2014-07-14",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 403,
+   "protocolo": "",
+   "silencio_cat_a_dias": 257
+  },
+  {
+   "cnpj": "24.956.666/0001-86",
+   "data": "2014-09-15",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 466,
+   "protocolo": "",
+   "silencio_cat_a_dias": 101
+  },
+  {
+   "cnpj": "61.065.298/0001-02",
+   "data": "2015-02-10",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 466,
+   "protocolo": "",
+   "silencio_cat_a_dias": 57
+  },
+  {
+   "cnpj": "89.463.822/0001-12",
+   "data": "2016-03-02",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 1057,
+   "protocolo": "020060IPE020720150104243112-69",
+   "silencio_cat_a_dias": 79
+  },
+  {
+   "cnpj": "00.354.053/0001-00",
+   "data": "2016-05-18",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 369,
+   "protocolo": "015083IPE180520160104250809-35",
+   "silencio_cat_a_dias": 49
+  },
+  {
+   "cnpj": "61.192.373/0001-04",
+   "data": "2016-08-23",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 424,
+   "protocolo": "004758IPE311020150104260509-57",
+   "silencio_cat_a_dias": 228
+  },
+  {
+   "cnpj": "84.683.671/0001-94",
+   "data": "2017-02-16",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 379,
+   "protocolo": "011991IPE160220170104278209-50",
+   "silencio_cat_a_dias": 30
+  },
+  {
+   "cnpj": "76.535.764/0001-43",
+   "data": "2017-07-17",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 392,
+   "protocolo": "011312IPE170720170104293313-04",
+   "silencio_cat_a_dias": 28
+  },
+  {
+   "cnpj": "02.762.115/0001-49",
+   "data": "2017-12-14",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 384,
+   "protocolo": "017914IPE131220170104308311-70",
+   "silencio_cat_a_dias": 27
+  },
+  {
+   "cnpj": "02.950.811/0001-89",
+   "data": "2018-02-06",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 413,
+   "protocolo": "020478IPE230120180104313711-88",
+   "silencio_cat_a_dias": 60
+  },
+  {
+   "cnpj": "09.112.685/0001-32",
+   "data": "2018-11-07",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 449,
+   "protocolo": "021342IPE071120180104341112-54",
+   "silencio_cat_a_dias": 21
+  },
+  {
+   "cnpj": "03.014.553/0001-91",
+   "data": "2019-01-24",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 738,
+   "protocolo": "019330IPE240120190104348909-36",
+   "silencio_cat_a_dias": 86
+  },
+  {
+   "cnpj": "61.092.037/0001-81",
+   "data": "2019-07-18",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 486,
+   "protocolo": "005762IPE170720190104366404-89",
+   "silencio_cat_a_dias": 31
+  },
+  {
+   "cnpj": "33.200.049/0001-47",
+   "data": "2019-12-05",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 373,
+   "protocolo": "006700IPE291120190104380411-37",
+   "silencio_cat_a_dias": 30
+  },
+  {
+   "cnpj": "60.500.139/0001-26",
+   "data": "2020-04-02",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 496,
+   "protocolo": "010472IPE310320200104392301-85",
+   "silencio_cat_a_dias": 14
+  },
+  {
+   "cnpj": "22.266.175/0001-88",
+   "data": "2020-04-29",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 450,
+   "protocolo": "020621IPE160320200104395010-35",
+   "silencio_cat_a_dias": 75
+  },
+  {
+   "cnpj": "04.032.433/0001-80",
+   "data": "2020-10-13",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 484,
+   "protocolo": "019100IPE131020200104411712-27",
+   "silencio_cat_a_dias": 58
+  },
+  {
+   "cnpj": "08.534.605/0001-74",
+   "data": "2020-10-30",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 380,
+   "protocolo": "021636IPE291020200104413413-57",
+   "silencio_cat_a_dias": 8
+  },
+  {
+   "cnpj": "67.571.414/0001-41",
+   "data": "2020-12-23",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 370,
+   "protocolo": "020702IPE211220200104418811-58",
+   "silencio_cat_a_dias": 12
+  },
+  {
+   "cnpj": "86.550.951/0001-50",
+   "data": "2021-03-01",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 377,
+   "protocolo": "019658IPE230220210104425612-88",
+   "silencio_cat_a_dias": 104
+  },
+  {
+   "cnpj": "43.185.362/0001-07",
+   "data": "2021-03-03",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 1041,
+   "protocolo": "006815IPE020320210104425811-73",
+   "silencio_cat_a_dias": 40
+  },
+  {
+   "cnpj": "33.035.536/0001-00",
+   "data": "2021-10-07",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 528,
+   "protocolo": "007811IPE300920210104447605-22",
+   "silencio_cat_a_dias": 31
+  },
+  {
+   "cnpj": "10.678.505/0001-63",
+   "data": "2022-01-07",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 791,
+   "protocolo": "022721IPE011120210104456810-45",
+   "silencio_cat_a_dias": 71
+  },
+  {
+   "cnpj": "60.851.615/0001-53",
+   "data": "2023-09-15",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 421,
+   "protocolo": "001520IPE100720230104518404-49",
+   "silencio_cat_a_dias": 95
+  },
+  {
+   "cnpj": "60.398.369/0004-79",
+   "data": "2023-12-22",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 387,
+   "protocolo": "009393IPE011220230104528212-56",
+   "silencio_cat_a_dias": 17
+  },
+  {
+   "cnpj": "61.065.751/0001-80",
+   "data": "2024-01-18",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 486,
+   "protocolo": "016306IPE180120240104530913-16",
+   "silencio_cat_a_dias": 29
+  },
+  {
+   "cnpj": "00.776.574/0001-56",
+   "data": "2024-09-03",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 593,
+   "protocolo": "020990IPE030920240104553811-69",
+   "silencio_cat_a_dias": 1
+  },
+  {
+   "cnpj": "50.564.053/0001-03",
+   "data": "2026-09-09",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 576,
+   "protocolo": "012190IPE250720260160242687-72",
+   "silencio_cat_a_dias": 279
+  }
+ ],
+ "L2_retomada_apos_silencio_cat_a_maior_365": [
+  {
+   "cnpj": "00.354.053/0001-00",
+   "data": "2015-07-14",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 60,
+   "protocolo": "015083IPE140720150104219909-85",
+   "silencio_cat_a_dias": null
+  },
+  {
+   "cnpj": "67.571.414/0001-41",
+   "data": "2020-04-09",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 112,
+   "protocolo": "020702IPE280220200104393008-58",
+   "silencio_cat_a_dias": 848
+  },
+  {
+   "cnpj": "67.571.414/0001-41",
+   "data": "2020-04-09",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 112,
+   "protocolo": "020702IPE211120190104393009-58",
+   "silencio_cat_a_dias": 848
+  },
+  {
+   "cnpj": "67.571.414/0001-41",
+   "data": "2020-04-09",
+   "assunto": "",
+   "dias_desde_episodio_anterior": 112,
+   "protocolo": "020702IPE030120200104393009-26",
+   "silencio_cat_a_dias": 848
+  }
+ ],
+ "L1s_abertura_estrita": {
+  "chaves": 381,
+  "cnpjs": 125,
+  "em_cnpj_sem_candidato": 32,
+  "itens": [
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-01-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "01.832.635/0001-18",
+    "data": "2011-01-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Examinar a proposta da Emissora de autorizar o Agente Fiduciário a não decretar o vencimento antecipado no fechamento do exercício de 2010||",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Examinar a proposta da Emissora de autorizar o Agente Fiduciário a não decretar o vencimento antecipado no fechamento do exercício de 2010,|",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "01.832.635/0001-18",
+    "data": "2011-02-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Examinar a proposta da Emissora de autorizar o Agente Fiduciário a não decretar o vencimento antecipado no fechamento do exercício de 2010||",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.079.117/0001-05",
+    "data": "2011-03-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Comunicado esclarecimento pedido de falência",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "08.364.948/0001-38",
+    "data": "2011-04-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-05-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação pela não decretação do vencimento antecipado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "82.981.929/0001-03",
+    "data": "2011-05-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Pedido de recuperação judicial, formulado e ajuizado pela Diretoria",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "82.981.929/0001-03",
+    "data": "2011-06-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Pedido de recuperação judicial, formulado e ajuizado pela Diretoria em caráter de urgência",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "89.463.822/0001-12",
+    "data": "2011-07-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a alteração do cronograma de pagamento do valor principal das debêntures objeto da Emissão, o qual está previsto na cláusula 5.4 da Escr",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "82.981.812/0001-20",
+    "data": "2011-07-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Contratação de escritório de advocacia para defesa dos interesses dos debenturistas, tendo em vista o pedido de recuperação judicial",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "contratação de escritório de advocacia para defesa dos interesses dos debenturistas, tendo em vista o pedido de recuperação judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "02.724.983/0001-34",
+    "data": "2011-07-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-07-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.486.650/0001-83",
+    "data": "2011-07-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre pedido de medida cautelar pela ProCADE",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "02.724.983/0001-34",
+    "data": "2011-07-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.953.509/0001-47",
+    "data": "2011-09-16",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração da hipótese de vencimento antecipado das Debêntures, prevista na alínea \"n\" do item 4.13.1. da Escritura de Emissão, relativa aos ",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-10-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2012-01-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não decretação do vencimento antecipado das debentures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "43.425.008/0001-02",
+    "data": "2012-02-29",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "4ª Emissão Pública de Debêntures Simples da Companhia: i) aprovação prévia da cisão parcial da Companhia ii) não decretar o vencimento antec",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "5ª Emissão Pública de Debêntures Conversíveis da Companhia: i) aprovação prévia da cisão parcial da Companhia ii) não decretar o vencimento ",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "6ª Emissão Pública de Debêntures Não Conversíveis da Companhia: i) aprovação prévia da cisão parcial da Companhia ii) não decretar o vencime",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "7ª Emissão Pública de Debêntures da Companhia: i) aprovação prévia da cisão parcial da Companhia ii) não decretar o vencimento antecipado da",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "8ª Emissão Pública de Debêntures Não Conversíveis da Companhia: i) aprovação prévia da cisão parcial da Companhia ii) não decretar o vencime",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "08.807.432/0001-10",
+    "data": "2012-03-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "Aprovar a propositura pela SESES de Medida Cautelar com pedido de concessão de liminar para antecipação de tutela e concessão de fiança pela",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "82.981.812/0001-20",
+    "data": "2012-03-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimentos sobre a Decretação da Falência da Companhia",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2012-04-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar o Agente Fiduciário a Não decretar o Vencimento Antecipado pelo prazo de 60 dias da realização da AGD||Desobrigar a Emissora de Ob",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar o Agente Fiduciário a Não decretar o Vencimento Antecipado pelo prazo de 60 dias da realização da AGD||Desobrigar a Emissora de Ob",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2012-04-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não decretar o vencimento antecipado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "60.631.090/0001-40",
+    "data": "2012-05-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "pedido de recuperação Judicial",
+      "prot": ""
+     },
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "pedido de recuperação Judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "60.631.090/0001-40",
+    "data": "2012-05-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "dados economico-financeiros",
+      "assunto": "Balancete para pedido de recuperação Judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2012-06-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Adesão ao Standstill e Alteração de datas de Pagamento da 3a. Emissão de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "76.255.926/0001-90",
+    "data": "2012-09-18",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovada, por maioria, a ratificação da eleição do Sr. Yoshihide Kimura para o cargo de membro do Conselho de Administração da Companhia, pa",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "33.014.556/0001-96",
+    "data": "2012-10-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Requerimento de Falência Apresentado por Athenabanco",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.695.227/0001-93",
+    "data": "2012-10-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração da descrição, definição e componentes dos índices e limites financeiros da escritura||Alteração da redação da clausula 5.1 da escr",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2012-10-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Suspensão dos efeitos da ocorrência da hipótese de vencimento antecipado",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-11-01",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração na Escritura||Saída do Novo Mercado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração na Escritura||Saída do Novo Mercado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "08.807.432/0001-10",
+    "data": "2012-11-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Exercício do direito de declarar o vencimento antecipado das Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "02.558.115/0001-21",
+    "data": "2012-11-16",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre medida cautelar da Anatel",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-11-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração na Escritura||Saída do Novo Mercado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração na Escritura||Saída do Novo Mercado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2012-11-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar Agente Fiduciário não Decretar Vencimento Antecipado por 90 dias",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-11-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração na Escritura||Saída do Novo Mercado||Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2012-12-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "pedidos de falencia",
+      "assunto": "Distribuição de Pedido de Falência junto ao Cartório da 3ª Vara Empresarial do TJRJ",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "82.636.986/0001-55",
+    "data": "2012-12-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do pedido de recuperação judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2012-12-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Discussão e deliberação, pelos Debenturistas, em conjunto com a Companhia, da ocorrência do não atendimento pela Emissora dos Índices Financ",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-12-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração do quórum de deliberação para as hipóteses de vencimento antecipado||Alteração na Escritura||Saída do Novo Mercado não configurar ",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Alteração do quórum de deliberação para as hipóteses de vencimento antecipado||Alteração na Escritura||Saída do Novo Mercado não configurar ",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2013-01-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não Decretação de Vencimento Antecipado até 30 de Março de 2013",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2013-02-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do Pedido de Recuperação Judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2013-02-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do Pedido de Recuperação Judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2013-03-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não Decretação de Vencimento Antecipado até 29 de Março de 2013",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2013-03-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Cisão parcial da acionista controladora da Contax e a não aplicação de vencimento antecipado",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Cisão parcial da acionista controladora da Contax e a não aplicação de vencimento antecipado",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.025.305/0001-46",
+    "data": "2013-04-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "89.463.822/0001-12",
+    "data": "2013-05-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "24.956.666/0001-86",
+    "data": "2013-07-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do Pedido de Recuperação Judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "82.981.671/0001-45",
+    "data": "2013-07-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "pedidos de falencia",
+      "assunto": "Pedido de Autofalência",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "03.378.521/0001-75",
+    "data": "2013-08-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "ACD nº F-024/2013 (LIGHT S.A. e LIGHT S.E.S.A.) - Endosso da Garantia - Ação Cautelar Antecipatória de Execução Fiscal - PGFN.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "60.444.437/0001-46",
+    "data": "2013-08-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "ACD nº F-024/2013 (Light S.E.S.A.) - Endosso da Garantia - Ação Cautelar Antecipatória de Execução Fiscal - PGFN.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "89.723.993/0001-33",
+    "data": "2013-10-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não aprovada a proposta da ordem do dia foi autorizado o agente fiduciario tomar providencias para recuperação do crédito confirgurado venci",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2013-10-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2013-11-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2013-11-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "07.957.093/0001-96",
+    "data": "2013-12-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i)Ratificação do pedido de recuperação judicial da Companhia, promovido, em medida de urgência, na Comarca da Capital do Estado do Rio de J",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.065.298/0001-02",
+    "data": "2014-02-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação da decisão da administração de ajuizar o pedido de Recuperação Judicial.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "09.112.685/0001-32",
+    "data": "2014-02-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação do ajuizamento de pedido de recuperação judicial da Companhia (ii) destituição e eleição de membros do Conselho de Administr",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "10.215.988/0001-60",
+    "data": "2014-03-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "escrituras e aditamentos de debentures",
+      "assunto": "Alteração de Determinada Condição de Vencimento Antecipado||Alteração de Índice Financeiro",
+      "prot": ""
+     },
+     {
+      "cat": "escrituras e aditamentos de debentures",
+      "assunto": "Alteração de Condição de Vencimento Antecipado||Alteração de Covenants Financeiro",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "84.683.762/0001-20",
+    "data": "2014-04-01",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do pedido de Recuperação Judicial da Companhia.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2014-04-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não decretação do vencimento antecipado.",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Não decretação do vencimento antecipado",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Não decretação do vencimento antecipado",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "02.998.301/0001-81",
+    "data": "2014-04-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) captação de recursos pela Companhia||(ii) (a)autorização expressa para que o Conselho de Administração, no uso de suas atribuições, deli",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "02.107.946/0001-87",
+    "data": "2014-05-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "aviso aos debenturistas",
+      "assunto": "Pagamento no dia 15/05/2014 de juros e amortização (vencimento antecipado) da 8ª emissão de debêntures da Telemar Participações S/A.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-09-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "07.047.251/0001-70",
+    "data": "2014-09-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "1. Cláusula de vencimento antecipado da Escritura da 3ª  emissão de debêntures simples||2. Outros assuntos de interesse geral",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-10-16",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-11-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "10.826.798/0001-89",
+    "data": "2014-11-11",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "ocorrência de eventos que podem acarretar na declaração de vencimento antecipado||outros assuntos de interesse dos debenturistas",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2014-11-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "10.826.798/0001-89",
+    "data": "2014-12-01",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "ocorrência de eventos que podem acarretar na declaração de vencimento antecipado||outros assuntos de interesse dos debenturistas",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "00.359.742/0001-08",
+    "data": "2014-12-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do ajuizamento de pedido de recuperação judicial da Companhia.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "76.627.504/0001-06",
+    "data": "2014-12-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do ajuizamento de pedido de recuperação judicial da Companhia.",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.410.395/0001-95",
+    "data": "2014-12-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do pedido de recuperação judicial",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "76.627.504/0001-06",
+    "data": "2014-12-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar acerca da ratificaçao do ajuizamento de pedido de recuperaçao judicial da Companhia, realizada em regime de urgência pelos adminis",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-12-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Proposta da Emissora de dispensa de atendimento dos índices financeiros dispostos na cláusula 5.1.1 (xix) da Escritura de Emissão, confor",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "00.359.742/0001-08",
+    "data": "2014-12-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar acerca da ratificação do ajuizamento de pedido de recuperação judicial da Companhia, realizado em regime de urgência pelos adminis",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-01-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2015-01-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não decretação de vencimento antecipado",
+      "prot": ""
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-03-16",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "006173IPE241220140104207908-16"
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-03-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "006173IPE140420150104209305-10"
+     }
+    ]
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2015-04-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "005770IPE140520150104212106-69"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.387.241/0001-60",
+    "data": "2015-04-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017450IPE280420150104212207-52"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017450IPE270420150304212110-03"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.387.241/0001-60",
+    "data": "2015-04-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "aviso aos debenturistas",
+      "assunto": "Pagamento de juros e amortização da 1ª Série da 9ª Emissão de Debêntures referente ao vencimento antecipado da emissão, conforme deliberação",
+      "prot": "017450IPE280420150204212211-86"
+     },
+     {
+      "cat": "aviso aos debenturistas",
+      "assunto": "Pagamento de juros e amortização da 2ª Série da 9ª Emissão de Debêntures referente ao vencimento antecipado da emissão, conforme deliberação",
+      "prot": "017450IPE280420150304212211-88"
+     },
+     {
+      "cat": "aviso aos debenturistas",
+      "assunto": "Pagamento de juros e amortização referente ao vencimento antecipado da 9ª Emissão - 1ª Série",
+      "prot": "017450IPE290420150104212311-47"
+     },
+     {
+      "cat": "aviso aos debenturistas",
+      "assunto": "Pagamento de juros e amortização referente ao vencimento antecipado da 9ª Emissão - 2ª Série",
+      "prot": "017450IPE290420150104212311-51"
+     }
+    ]
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2015-05-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "005770IPE140520150104213810-69"
+     }
+    ]
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2015-05-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "005770IPE280520150104215209-31"
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-06-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "006173IPE080120150104217306-74"
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-06-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "006173IPE090720150104217806-13"
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-07-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "006173IPE140420150204210807-15"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.853.896/0001-40",
+    "data": "2015-09-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre a dispensa da declaração de vencimento antecipado em virtude da alienação, pela Marfrig, da unidade de negócios Moy Park",
+      "prot": "020788IPE250920150104225611-17"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre a dispensa da declaração de vencimento antecipado em virtude da alienação, pela Marfrig, da unidade de negócios Moy Park",
+      "prot": "020788IPE250920150104225611-36"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.853.896/0001-40",
+    "data": "2015-09-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Dispensa da declaração de vencimento antecipado por conta da alienação da Moy Park",
+      "prot": "020788IPE250920150104227208-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.826.798/0001-89",
+    "data": "2015-11-10",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "a ocorrência dos eventos elencados na cláusula 5.1 da Escritura de Emissão, que podem acarretar na declaração do vencimento antecipado||inad",
+      "prot": "021865IPE191120150104231806-72"
+     }
+    ]
+   },
+   {
+    "cnpj": "11.284.204/0001-18",
+    "data": "2015-11-13",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023604IPE041120150104232109-16"
+     }
+    ]
+   },
+   {
+    "cnpj": "13.407.573/0001-86",
+    "data": "2016-01-18",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Pedido de Falência da Leader",
+      "prot": "22578 IPE180120160104238705-86"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-02-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre o vencimento antecipado ou não da Emissão, em razão da ocorrência do Evento de Vencimento Antecipado previsto na cláusul",
+      "prot": "022560IPE040320160104241710-57"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-02-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "7ª Emissão De Debêntures||Declaração, ou não do vencimento antecipado das Debêntures tendo em vista o rebaixamento da classificação de risco",
+      "prot": "017949IPE100320160104242305-08"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-02-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE140320160104242611-08"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE140320160104242611-12"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-02-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE140320160104242911-77"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE140320160104242911-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "07.689.002/0001-89",
+    "data": "2016-02-29",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "NOTA DA EMBRAER EM RELAÇÃO AO PEDIDO DE RECUPERAÇÃO JUDICIAL DA REPUBLIC AIRWAYS",
+      "prot": "020087IPE290220160104242910-64"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-03-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "7ª Emissão De Debêntures||Declaração, ou não do vencimento antecipado das Debêntures tendo em vista o rebaixamento da classificação de risco",
+      "prot": "017949IPE100320160204242405-95"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-03-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre o vencimento antecipado ou não da 2ª Emissão",
+      "prot": "022560IPE040320160104243311-01"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-03-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "7ª Emissão de Debêntures||Declaração ou não do vencimento antecipado das Debêntures tendo em vista o rebaixamento da classificação de risco",
+      "prot": "017949IPE210320160104244011-34"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-03-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE140320160104244310-58"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE140320160104244310-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.781.143/0001-39",
+    "data": "2016-03-14",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019607IPE140320160104244310-88"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019607IPE280320160204244310-92"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-03-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre vencimento antecipado ou não da 2ª Emissão de Debentures da Cia.",
+      "prot": "022560IPE050420160104244309-50"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-03-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "7ª Emissão de Debêntures||Declaração ou não do vencimento antecipado das Debêntures tendo em vista o rebaixamento da classificação de risco",
+      "prot": "017949IPE060420160104244604-95"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-03-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE280320160104244609-31"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE280320160104244609-36"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE280320160104244609-43"
+     }
+    ]
+   },
+   {
+    "cnpj": "00.861.626/0001-92",
+    "data": "2016-03-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019577IPE271120150104245008-95"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019577IPE150120160104245008-99"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-03-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "017892IPE280320160204244609-39"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.781.143/0001-39",
+    "data": "2016-03-28",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019607IPE280320160104245710-75"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-04-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre vencimento antecipado ou não da 2ª Emissão de Debentures da Cia.",
+      "prot": "022560IPE050420160104246611-51"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.977.751/0001-49",
+    "data": "2016-04-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "considerar ou não antecipadamente vencidas as obrigações decorrentes das Debêntures caso o controle acionário majoritário da Emissora venha ",
+      "prot": "019925IPE120420160104247210-79"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-04-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre o vencimento antecipado ou não da Emissão",
+      "prot": "022560IPE140420160104247410-93"
+     }
+    ]
+   },
+   {
+    "cnpj": "76.535.764/0001-43",
+    "data": "2016-04-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "011312IPE150420160104247511-02"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.159.965/0001-33",
+    "data": "2016-04-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023175IPE140420160104248510-54"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-04-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE050420160204246511-02"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE050420160204246511-03"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE050420160204246512-68"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Declaração, ou não, do vencimento antecipado das Debêntures",
+      "prot": "019062IPE050420160404245010-92"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Declaração, ou não, do vencimento antecipado das Debêntures",
+      "prot": "019062IPE050420160304245010-98"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.977.751/0001-49",
+    "data": "2016-05-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "dispensa da eventual obrigação de um concorrente de realizar a OPA da poison pill (\"Concorrente\")||dispensa da poison pill||vencimento antec",
+      "prot": "019925IPE020520160104249211-08"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-05-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre o vencimento antecipado ou não da Emissão, em razão da ocorrência do Evento de Vencimento Antecipado previsto na Cláusula 6.",
+      "prot": "022560IPE020520160104249211-72"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-05-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Decisão tomada na Assembleia Geral de Debenturistas realizada em 5/5/2016 sobre a não decretação do vencimento antecipado de debêntures emit",
+      "prot": "019062IPE050520160104249605-81"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-05-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre o vencimento antecipado ou não da Emissão, em razão da ocorrência do Evento de Vencimento Antecipado previsto na Cláusula 6.",
+      "prot": "022560IPE090520160104249911-48"
+     }
+    ]
+   },
+   {
+    "cnpj": "22.266.175/0001-88",
+    "data": "2016-05-13",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão",
+      "prot": "020621IPE310320160204246710-97"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-05-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Não Decretação do Vencimento Antecipado da Emissão",
+      "prot": "022560IPE160520160104250611-14"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-05-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023329IPE030620160104250708-63"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023329IPE030620160104250708-71"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-06-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023329IPE170620160104252709-72"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-06-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023329IPE170620160104252806-54"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-06-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE280420160204248810-43"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE050520160204249512-20"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE050520160204249512-21"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-06-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Declaração ou não do vencimento antecipado das Debêntures tendo em vista o rebaixamento da classificação de risco||Termo de Não Instalação d",
+      "prot": "017949IPE100320160304243909-74"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "7ª Emissão de Debêntures||Declaração ou não do vencimento antecipado das Debêntures tendo em vista o rebaixamento da classificação de risco",
+      "prot": "017949IPE060420160204246610-87"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.111.246/0001-90",
+    "data": "2016-06-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de esclarecimento sobre requerimento de falência",
+      "prot": "011207IPE290620160104255007-47"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.111.246/0001-90",
+    "data": "2016-06-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de esclarecimento sobre requerimento de falência",
+      "prot": "011207IPE300620160104255111-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-07-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023329IPE040720160104255511-96"
+     }
+    ]
+   },
+   {
+    "cnpj": "76.535.764/0001-43",
+    "data": "2016-07-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para a administração da Companhia tomar as providências e praticar os atos necessários com relação à recuperação judicial da Com",
+      "prot": "011312IPE220720160104257312-70"
+     },
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Ratificação do Pedido de Recuperação Judicial",
+      "prot": "011312IPE220720160104257309-02"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2016-08-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "não decretação de vencimento antecipado||prorrogação do prazo de pagamento da parcela do Valor Nominal Unitário",
+      "prot": "014923IPE290620160104260609-52"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2016-08-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Proposta de Admninistração da Cia para Declaração ou não do Vencimento Antecipado (não observância das disposições dos Itens I e XVII da Clá",
+      "prot": "023434IPE090920160104260711-33"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2016-08-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Declaração ou não do vencimento antecipado das debêntures em razão da não observância das cláusulas 6.26.2, I e XVII, e 7.1, XV da Escritura",
+      "prot": "023434IPE090920160204260709-81"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-09-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para alteração da remuneração da Pentágono S.A. Distribuidora de Títulos e Valores Mobiliários, na qualidade de agente fiduciári",
+      "prot": "023329IPE160920160204262206-16"
+     }
+    ]
+   },
+   {
+    "cnpj": "97.837.181/0001-47",
+    "data": "2016-09-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Aprovada a declaração de inadimplemento para vencimento antecipado das debêntures para pagamento em 26.09.2016||2. Ratificada a mudança d",
+      "prot": "021091IPE230920160104263606-78"
+     },
+     {
+      "cat": "aviso aos debenturistas",
+      "assunto": "Vencimento Antecipado das Debêntures e Pagamento",
+      "prot": "021091IPE230920160104263606-85"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2016-10-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Suspensão da deliberação com retomada em 28/11/2016, às 10 hrs.||Vencimento Antecipado de Debêntures",
+      "prot": "023434IPE281020160104267107-01"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Suspensão da deliberação e retomada em 28/11/2016, às 11 horas.||Vencimento Antecipado de Debêntures",
+      "prot": "023434IPE281020160104267107-13"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.998.301/0001-81",
+    "data": "2016-11-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Examinar, discutir e deliberar s/: autorização para que a Alienação do Controle Indireto seja concluída sem que acarrete o vencimento an",
+      "prot": "018368IPE251120160104269909-47"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-12-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE040120170204264910-74"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE040120170204264910-75"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE040120170204264910-76"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE040120170104272311-96"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE040120170104272311-97"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019062IPE040120170104272311-99"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-12-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão",
+      "prot": "023329IPE170620160204253811-38"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2017-02-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(1) Liberação dos Recursos da Conta Reserva Serviço da Dívida para Emissora||(2) Liberação dos Recursos da Conta Provisionamento do Serviço ",
+      "prot": "023329IPE020220170104276810-71"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2017-02-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures - Suspensão AGD para 18/01/2017 às 11h",
+      "prot": "019062IPE040120170204273914-05"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures - Suspensão AGD para 18/01/2017 às 14h15",
+      "prot": "019062IPE040120170204273914-07"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures - Suspensão AGD para 18/01/2017 às 14h15",
+      "prot": "019062IPE040120170204273914-14"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.958.695/0001-78",
+    "data": "2017-02-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alterar a periodicidade do pagamento da Remuneração das Debêntures||Não decretação de vencimento antecipado da Emissão||Prorrogar pagamento ",
+      "prot": "011592IPE310520160104278711-56"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.958.695/0001-78",
+    "data": "2017-03-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "anuência à Vila Velha S.A. Administração e Participações para alienar fiduciariamente ou empenhar as ações de emissão da Companhia||anuência",
+      "prot": "011592IPE080220170104279710-63"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.870.455/0005-80",
+    "data": "2017-03-09",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023736IPE090320170104280207-27"
+     }
+    ]
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2017-04-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "005770IPE190420170104282810-48"
+     }
+    ]
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2017-04-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "005770IPE190420170104283006-89"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2017-04-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Liberação dos Recursos da Conta Reserva Serviço da Dívida para Emissora||(iv) Alterar as Datas e Percentuais de Anortização das Debêntur",
+      "prot": "023329IPE180420170104284311-20"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.364.948/0001-38",
+    "data": "2017-05-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "solicitação de esclarecimento sobre requerimento de falência",
+      "prot": "021490IPE190520170104287411-05"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.159.965/0001-33",
+    "data": "2017-06-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Declaração ou não de vencimento antecipado das Debêntures nos termos das Cláusulas 7.1, 7.3 e 8.1",
+      "prot": "023175IPE290520170104289106-75"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2017-06-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Desistencia de Pedido de Falência",
+      "prot": "011975IPE090620170104289508-68"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.795.050/0001-09",
+    "data": "2017-07-06",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Consentimento prévio para a incorporação pela Neoenergia da Elektro e consequente alteração dos controles das CIAs sem que ocasione na Hipót",
+      "prot": "019852IPE270720170104292211-37"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Consentimento prévio para a incorporação pela Neoenergia da Elektro e consequente alteração dos controles das CIAs sem que ocasione na Hipót",
+      "prot": "019852IPE270720170104292211-39"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2017-07-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022560IPE030820170104293309-51"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.795.050/0001-09",
+    "data": "2017-08-09",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Consentimento prévio para a incorporação pela Neoenergia da Elektro e consequente alteração dos controles das CIAs sem que ocasione na Hipót",
+      "prot": "019852IPE270720170204294311-06"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2017-09-13",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "alteração da data de vencimento das Debêntures e dos prazos de pagamento de amortização do valor nominal unitário das Debêntures||alteração ",
+      "prot": "019100IPE130920170104299112-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.835.932/0001-08",
+    "data": "2017-09-13",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1.Alteração nas definições de \"EBITDA\" e de \"Resultado Financeiro\" previstas no item gg da Cláusula Eventos de Inadimplemento e Vencimento A",
+      "prot": "014362IPE280920170104299106-09"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "1.Alteração nas definições de \"EBITDA\" e de \"Resultado Financeiro\" previstas no item gg da Cláusula Eventos de Inadimplemento e Vencimento A",
+      "prot": "014362IPE280920170104299106-19"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.835.932/0001-08",
+    "data": "2017-10-31",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Alteração nas definições de \"EBITDA\" e de \"Resultado Financeiro\" previstas na alínea \"gg\" da Cláusula Eventos de Inadimplemento e Vencime",
+      "prot": "014362IPE280920170204300610-28"
+     }
+    ]
+   },
+   {
+    "cnpj": "11.395.624/0001-71",
+    "data": "2017-11-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022500IPE161120170104306311-40"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-02-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação pedido de falência",
+      "prot": "011975IPE200220180104315106-90"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.838.723/0001-27",
+    "data": "2018-04-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Revogação Medida Cautelar (MAPA)",
+      "prot": "016292IPE180120180104320812-88"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-05-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de pedido de falência",
+      "prot": "011975IPE290520180104324906-40"
+     }
+    ]
+   },
+   {
+    "cnpj": "05.336.882/0001-84",
+    "data": "2018-07-18",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "mudança de controle||Vencimento Antecipado de Debêntures",
+      "prot": "022683IPE180720180104329911-37"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-07-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de pedido de falência",
+      "prot": "011975IPE270720180104330806-85"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-08-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de pedido de falência",
+      "prot": "011975IPE060820180104331806-01"
+     },
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de pedido de falência",
+      "prot": "011975IPE060820180104331806-07"
+     }
+    ]
+   },
+   {
+    "cnpj": "05.336.882/0001-84",
+    "data": "2018-08-08",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para alteração de controle societário||Vencimento Antecipado de Debêntures",
+      "prot": "022683IPE240820180104332007-25"
+     }
+    ]
+   },
+   {
+    "cnpj": "00.336.701/0001-04",
+    "data": "2018-08-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Informações sobre pedido de medida cautelar feito pelo Sinditelebrasil para suspender contratos da Telebras",
+      "prot": "011258IPE100820180104332205-23"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2018-08-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022560IPE270820180104332207-92"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-08-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenant",
+      "prot": "019100IPE050920180104333211-47"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenant",
+      "prot": "019100IPE050920180104333211-51"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenant",
+      "prot": "019100IPE050920180104333211-52"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "deliberar sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenant",
+      "prot": "019100IPE050920180104333211-54"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-08-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de pedido de falência",
+      "prot": "011975IPE210820180104333306-60"
+     }
+    ]
+   },
+   {
+    "cnpj": "05.336.882/0001-84",
+    "data": "2018-08-24",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização alteração de controle acionário||Vencimento Antecipado de Debêntures",
+      "prot": "022683IPE240820180104333608-35"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-08-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização ao Agente Fiduciário para implementar as matérias acima||Contratação de assessor legal para a defesa dos interesses dos Debentur",
+      "prot": "023434IPE300820180104334212-07"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-09-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação pelos Debenturistas sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices ",
+      "prot": "019100IPE050920180104334812-37"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação pelos Debenturistas sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices ",
+      "prot": "019100IPE050920180104334812-40"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenants\")",
+      "prot": "019100IPE140920180104334812-44"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenants\")",
+      "prot": "019100IPE140920180104334812-49"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices financeiros (\"covenants\")",
+      "prot": "019100IPE140920180104334812-52"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "decretação ou não do vencimento antecipado das Debêntures em virtude da não observância, pela Companhia, dos índices financeiros (\"covenants",
+      "prot": "019100IPE140920180104334812-56"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2018-09-13",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE280920180104335605-40"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE280920180104335605-43"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-09-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação pelos Debenturistas sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices ",
+      "prot": "019100IPE140920180104335710-78"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação pelos Debenturistas sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices ",
+      "prot": "019100IPE140920180104335710-82"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-09-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação pelos Debenturistas sobre a decretação ou não do vencimento antecipado das Debêntures em virtude da não observância dos índices ",
+      "prot": "019100IPE190920180104336212-68"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-09-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização ao Agente Fiduciário para implementar as matérias acima||Contratação de assessor legal para a defesa dos interesses dos Debentur",
+      "prot": "023434IPE200920180104336311-19"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-09-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre o pedido de falência desta CIA, e sua controlada, Azevedo &amp Travassos Engenharia.",
+      "prot": "011975IPE270920180104337006-98"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2018-09-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE280920180104337111-77"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.695.227/0001-93",
+    "data": "2018-10-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "(i) a alteração da hipótese de vencimento antecipado resultante de alteração do controle acionário||(ii) a exclusão da hipótese de venciment",
+      "prot": "014176IPE101020180104338310-88"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-10-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização ao Agente Fiduciário para implementar as matérias acima||Contratação de assessor legal para a defesa dos interesses dos Debentur",
+      "prot": "023434IPE221020180104339510-18"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-11-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023434IPE221120180104342611-78"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-12-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023434IPE171220180104345110-98"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.200.049/0001-47",
+    "data": "2019-01-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificar a deliberação tomada na Reunião do Conselho de Administração da Companhia, realizada em 23/11/2018, que aprovou o Requerimento de ",
+      "prot": "006700IPE040120190104346909-19"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.200.049/0001-47",
+    "data": "2019-01-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificar a decisão tomada pelo Conselho de Administração, na reunião realizada no dia 23.11.2018 que, em caráter de urgência, aprovou a pro",
+      "prot": "006700IPE040120190104347310-83"
+     }
+    ]
+   },
+   {
+    "cnpj": "60.500.139/0001-26",
+    "data": "2019-01-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Ratificar o pedido de recuperação judicial da Companhia||(ii) Autorizar os administradores da Companhia a tomarem as providências e prat",
+      "prot": "010472IPE100120190104347506-87"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.531.501/0001-58",
+    "data": "2019-02-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022268IPE160420190104351010-07"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2019-02-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Solicitação de Pedido de Falência",
+      "prot": "011975IPE140220190104351006-83"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.531.501/0001-58",
+    "data": "2019-02-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022268IPE160420190204350910-46"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-02-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110320190104352105-19"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110320190104352105-21"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-03-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110320190104353613-04"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-03-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110420190104355110-68"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110420190104355110-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-04-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão, conforme alínea \"z\" da cláusula 4.15.1 da Escritura de Emissão",
+      "prot": "019186IPE170420190104355708-98"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão, conforme alínea \"z\" da cláusula 4.15.1 da Escritura de Emissão",
+      "prot": "019186IPE170420190104355709-05"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2019-04-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019100IPE170620190104355911-42"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019100IPE170620190104355911-43"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-04-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110420190104356608-59"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-04-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão, conforme alínea \"z\" da cláusula 4.15.1 da Escritura de Emissão",
+      "prot": "019186IPE170420190104357310-46"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-04-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão, conforme alínea \"z\" da cláusula 4.15.1 da Escritura de Emissão",
+      "prot": "019186IPE090520190104358006-29"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão, conforme alínea \"z\" da cláusula 4.15.1 da Escritura de Emissão",
+      "prot": "019186IPE090520190104358006-76"
+     }
+    ]
+   },
+   {
+    "cnpj": "31.001.230/0001-07",
+    "data": "2019-04-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "024597IPE260420190104358106-58"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-05-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a declaração, ou não, de vencimento antecipado da Emissão, conforme alínea \"z\" da cláusula 4.15.1 da Escritura de Emissão",
+      "prot": "019186IPE090520190104359409-94"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-05-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110620190104360910-22"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110620190104360910-24"
+     }
+    ]
+   },
+   {
+    "cnpj": "75.609.123/0001-23",
+    "data": "2019-05-31",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "ATA DA ASSEMBLEIA GERAL DE DEBÊNTURES DA 5ª EMISSÃO - Standstill",
+      "prot": "023280IPE290520190104361610-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-06-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE110620190104362711-40"
+     }
+    ]
+   },
+   {
+    "cnpj": "75.609.123/0001-23",
+    "data": "2019-06-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "ATA DA ASSEMBLEIA GERAL DE DEBÊNTURES DA 7ª EMISSÃO - Standstill",
+      "prot": "023280IPE240620190104364010-89"
+     }
+    ]
+   },
+   {
+    "cnpj": "75.609.123/0001-23",
+    "data": "2019-06-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "ATA DA ASSEMBLEIA GERAL DE DEBÊNTURES DA 5ª EMISSÃO - Standstill",
+      "prot": "023280IPE240620190104364112-52"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "ATA DA ASSEMBLEIA GERAL DE DEBÊNTURES DA 6ª EMISSÃO - Standstill",
+      "prot": "023280IPE240620190104364112-58"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-07-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE120820190204367205-12"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2019-07-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "autorização para o Agente Fiduciário firmar documentos e tomar quaisquer medidas necessárias, a fim de refletir as deliberações tomadas no â",
+      "prot": "019100IPE160820190104367211-91"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "autorização para o Agente Fiduciário firmar documentos e tomar quaisquer medidas necessárias, a fim de refletir as deliberações tomadas no â",
+      "prot": "019100IPE160820190104367211-94"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "autorização para o Agente Fiduciário firmar documentos e tomar quaisquer medidas necessárias, a fim de refletir as deliberações tomadas no â",
+      "prot": "019100IPE160820190104367211-96"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "autorização para o Agente Fiduciário firmar documentos e tomar quaisquer medidas necessárias, a fim de refletir as deliberações tomadas no â",
+      "prot": "019100IPE160820190104367211-92"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "providências a serem adotadas pelo Agente Fiduciário, em função do evento de vencimento antecipado da Emissão",
+      "prot": "019100IPE160820190104367211-94"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "autorização para o Agente Fiduciário firmar documentos e tomar quaisquer medidas necessárias, a fim de refletir as deliberações tomadas no â",
+      "prot": "019100IPE160820190104367211-96"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-07-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE120820190104367511-02"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-08-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE120820190104368911-17"
+     }
+    ]
+   },
+   {
+    "cnpj": "31.001.230/0001-07",
+    "data": "2019-08-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "024597IPE240920190104368908-36"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-08-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE090920190104370306-74"
+     }
+    ]
+   },
+   {
+    "cnpj": "60.851.615/0001-53",
+    "data": "2019-08-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Ratificação do pedido de Recuperação Judicial",
+      "prot": "001520IPE090920190104370606-58"
+     }
+    ]
+   },
+   {
+    "cnpj": "60.851.615/0001-53",
+    "data": "2019-09-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar a Administração da Companhia a tomar as providências e praticar os atos necessários para RJ||Ratificar o pedido de Recuperação Jud",
+      "prot": "001520IPE090920190104371805-03"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-09-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE260920190104371911-25"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE260920190104371911-27"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-09-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Reestruturação das debêntures||Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE200920190104372711-30"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-09-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Reestruturação das Debêntures||Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE200920190104372809-93"
+     }
+    ]
+   },
+   {
+    "cnpj": "31.001.230/0001-07",
+    "data": "2019-09-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "024597IPE240920190104373209-46"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-09-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE260920190104373410-40"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-09-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Reestruturação das Debêntures||Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE200920190104373509-31"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-10-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Reestruturação das Debêntures||Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE041020190104374209-58"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-10-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE111120190104376110-17"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE111120190104376110-23"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2019-11-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "autorizar o Agente Fiduciário a firmar documentos e tomar quaisquer medidas necessárias, a fim de refletir as deliberações tomadas no âmbito",
+      "prot": "019100IPE071120190104377612-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-11-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE111120190104378010-92"
+     }
+    ]
+   },
+   {
+    "cnpj": "07.401.436/0001-31",
+    "data": "2019-12-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022810IPE211120190104380111-12"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-12-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE171220190104380811-24"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-12-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE171220190104381711-18"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.545.826/0001-07",
+    "data": "2020-01-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre Pedido de Falência",
+      "prot": "016101IPE080120200104383807-27"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-01-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE160120200104385009-98"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-01-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE070220200104385111-49"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE070220200104385111-11"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2020-02-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar os Administradores da Companhia a praticarem todos os atos necessários em decorrência do item i acima, bem como ratificar todos os",
+      "prot": "019100IPE030220200104386411-69"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-02-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE030220200104386511-51"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-02-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE070220200104386810-94"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-02-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE100220200104387112-88"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-03-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE020320200104389304-72"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE020320200104389304-58"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-03-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "a postergação dos pagamentos da amortização das Debêntures||a postergação dos pagamentos da remuneração das Debêntures||autorização para que",
+      "prot": "022560IPE060420200104391011-32"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-03-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE090420200104391511-33"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-03-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE090420200204391511-08"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-04-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE060420200104392713-41"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE060420200104392713-02"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE060420200104392713-12"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-04-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE090420200104393011-25"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-04-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(ii) não decretação de vencimento antecipado pela ocorrência de qualquer das hipóteses previstas na Cláusula 6.1 (iii), (iv), (xiii), (xvi),",
+      "prot": "022560IPE090420200104393011-81"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE090420200104393012-00"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE090420200104393011-82"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-04-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE240420200104394511-39"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura||(ii) a postergação dos pagamentos da amo",
+      "prot": "022560IPE240420200104394511-42"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE240420200104394512-01"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-05-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE040520200104395512-26"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE040520200104395512-61"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE040520200104395512-65"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-05-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE050520200104395613-45"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE050520200104395613-45"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE050520200104395613-42"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-05-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE290520200104398012-01"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE290520200104398012-51"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE290520200104398012-35"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.083.200/0001-18",
+    "data": "2020-06-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "1- Outorga de Garantia||2- Standstill BNDES",
+      "prot": "015539IPE220520200104398511-00"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-06-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE040620200104398611-17"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE040620200104398611-53"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE040620200104398611-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-06-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE050620200104399106-87"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE050620200104399106-50"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE090620200104399110-87"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE090620200104399110-86"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-06-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE100620200104399212-16"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures||(ii) a postergação dos pagamentos da amortização das Debêntures||(iii) a rat",
+      "prot": "022560IPE100620200104399212-30"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures||(ii) a postergação dos pagamentos da amortização das Debêntures||(iii) a rat",
+      "prot": "022560IPE100620200104399212-38"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.035.536/0001-00",
+    "data": "2020-06-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar a administração da Companhia a tomar as providências e praticar os atos necessários com relação ao referido processo, bem como rat",
+      "prot": "007811IPE030720200104399712-42"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar a administração da Companhia a tomar as providências e praticar os atos necessários com relação ao referido processo, bem como rat",
+      "prot": "007811IPE030720200104399712-07"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-06-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE060720200104400111-01"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE060720200104400111-16"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-06-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE190620200104400111-57"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme láusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de mai",
+      "prot": "022560IPE190620200104400111-41"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE190620200104400111-72"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-06-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE180620200104400508-58"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE180620200104400508-82"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-06-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE250620200104400712-22"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE250620200104400712-28"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE250620200104400712-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2020-06-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização da transferência de controle acionário||Vencimento Antecipado de Debêntures",
+      "prot": "014923IPE150520200104400707-32"
+     }
+    ]
+   },
+   {
+    "cnpj": "13.584.310/0001-42",
+    "data": "2020-07-01",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023957IPE100620200104401311-93"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-07-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE030720200104401512-16"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE030720200104401512-56"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-07-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019011IPE060720200104401810-96"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2020-07-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) ratificação da aprovação prévia de flexibilização dos termos e condições da garantia relacionada ao Contrato de Cessão Fiduciária Recebí",
+      "prot": "022560IPE060720200104401811-54"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE060720200104401811-65"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a postergação dos pagamentos da remuneração das Debêntures, conforme Cláusula 4.3 da Escritura, devidos em 12 de abril de 2020, 12 de ma",
+      "prot": "022560IPE060720200104401811-34"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.328.280/0001-97",
+    "data": "2020-07-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "a adesão ao Standstill do BNDES||Aprovação da 8ª (oitava) emissão (\"Emissão\") de debêntures simples||autorização à Diretoria da Companhia pa",
+      "prot": "017485IPE170420200204394511-75"
+     }
+    ]
+   },
+   {
+    "cnpj": "49.669.856/0001-43",
+    "data": "2020-07-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização ao Agente Fiduciário, para assinar os documentos necessários para fins de formalização das deliberações supracitadas||Contrataçã",
+      "prot": "021440IPE170720200104402911-69"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização ao Agente Fiduciário, para assinar os documentos necessários para fins de formalização das deliberações supracitadas||Contrataçã",
+      "prot": "021440IPE170720200104402911-61"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização ao Agente Fiduciário, para assinar os documentos necessários para fins de formalização das deliberações supracitadas||Contrataçã",
+      "prot": "021440IPE170720200104402911-88"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-07-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE240720200104403611-63"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE240720200104403611-41"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-08-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE070820200104405211-79"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE070820200104405212-28"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-08-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE210820200104406410-69"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE210820200104406410-86"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-09-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE040920200104407811-82"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE040920200104407811-45"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-09-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE110920200104408513-40"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE110920200104408513-40"
+     }
+    ]
+   },
+   {
+    "cnpj": "18.593.815/0001-97",
+    "data": "2020-09-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "024236IPE110920200104408914-58"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "024236IPE110920200104408914-41"
+     }
+    ]
+   },
+   {
+    "cnpj": "18.593.815/0001-97",
+    "data": "2020-09-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "024236IPE180920200104409211-87"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-09-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE300920200104410412-00"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE300920200104410411-69"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2020-11-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019771IPE161120200104413809-39"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019771IPE161120200104413809-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-11-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE301020200104413812-23"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE301020200104413812-23"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-11-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE091120200104414411-34"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE091120200104414411-26"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2020-11-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019771IPE011220200104415807-37"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019771IPE011220200104415807-11"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-11-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE231120200104415906-37"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE231120200104415906-48"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2020-12-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019771IPE011220200104416708-95"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2020-12-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "Renovação StandStill do BNDES do MetrôRio",
+      "prot": "018775IPE071220200104417306-86"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-12-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE071220200104417408-91"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE071220200104417409-46"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.324.624/0001-18",
+    "data": "2020-12-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "Renovação StandStill do BNDES",
+      "prot": "022144IPE071220200104417508-28"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-12-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE111220200104417911-68"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE111220200104417911-48"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-12-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE151220200104418010-99"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE151220200104418011-45"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2020-12-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "VLT - Renovação StandStill do BNDES",
+      "prot": "018775IPE171220200104418609-56"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-01-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE150120210104421111-25"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE150120210104421111-35"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-01-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE200120210104422112-22"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE200120210104422112-38"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-02-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE260220210104425312-40"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE260220210104425312-45"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-03-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE040320210104426009-38"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE040320210104426009-45"
+     }
+    ]
+   },
+   {
+    "cnpj": "17.281.106/0001-03",
+    "data": "2021-04-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "Acordo Coletivo de Trabalho -ACT e Participação nos Lucros -PLdos colaboradores, com pagamento em 2021||Remuneração global da Administração ",
+      "prot": "019445IPE240320210104429210-46"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-04-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE060420210104429407-23"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE060420210104429407-19"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-05-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE060520210104432305-32"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE060520210104432305-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-06-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE070620210104435506-41"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE070620210104435506-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-07-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE290620210104438309-56"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE290620210104438309-82"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-07-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE060720210104438408-07"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE060720210104438408-52"
+     }
+    ]
+   },
+   {
+    "cnpj": "01.027.058/0001-91",
+    "data": "2021-07-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "021733IPE290720210104440611-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-01-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE240120220104458706-25"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.873.873/0001-10",
+    "data": "2022-02-02",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberar sobre a assinatura pelo Agente Fiduciário e pela Companhia de todos os documentos||Vencimento Antecipado de Debêntures",
+      "prot": "021903IPE020220220104459411-75"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.291.077/0001-93",
+    "data": "2022-02-11",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019232IPE030320220104460306-98"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-02-14",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE110220220104460609-04"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-02-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE220220220104461413-49"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-03-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE030320220104462908-44"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE310320220104462910-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-04-04",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE310320220104465511-26"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE180420220104465511-86"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.950.811/0001-89",
+    "data": "2022-04-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre decretação de falência de SPE",
+      "prot": "020478IPE050420220104465613-30"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.950.811/0001-89",
+    "data": "2022-04-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre decretação de falência de SPE",
+      "prot": "020478IPE110420220104466212-42"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.291.077/0001-93",
+    "data": "2022-05-02",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "019232IPE270520220104468310-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-05-27",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE270520220104470811-05"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-07-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE010720220104474705-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.541.368/0001-16",
+    "data": "2022-07-05",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Medida cautelar",
+      "prot": "003328IPE050720220104474711-23"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-07-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE150720220104475712-41"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2022-09-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "escrituras e aditamentos de debentures",
+      "assunto": "Ajuste em clausula de vencimento antecipado",
+      "prot": "019771IPE020920220104481207-65"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-10-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "022721IPE300920220104483711-38"
+     }
+    ]
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2022-10-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "006173IPE251020220104486006-76"
+     }
+    ]
+   },
+   {
+    "cnpj": "15.141.799/0001-03",
+    "data": "2022-11-24",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre ação cautelar",
+      "prot": "003069IPE241120220104488905-42"
+     }
+    ]
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-01-12",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "027065IPE310120230104493811-52"
+     }
+    ]
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-01-13",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "027065IPE151220220104493905-91"
+     }
+    ]
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-01-27",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "027065IPE260120230104495305-93"
+     }
+    ]
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-02-14",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "027065IPE140220230104497112-99"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.041.460/0001-93",
+    "data": "2023-03-06",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Pedido de recuperação judicial pela Oi S.A. - Em Recuperação Judicial",
+      "prot": "027022IPE060320230104499105-47"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.149.503/0001-06",
+    "data": "2023-03-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "023426IPE130420230104500814-90"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-03-31",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) concessão de anuência prévia, para eventual alteração do controle acionário da Emissora, de modo a evitar a eventual incidência de Hipót",
+      "prot": "025372IPE310320230104501611-77"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-04-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovação, ou não, da anuência prévia de eventual alteração do controle acionário da Companhia, de modo a não decretar o Vencimento Antecipa",
+      "prot": "025372IPE030420230104501912-42"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-04-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) concessão de anuência prévia, para eventual alteração do controle acionário da Emissora, de modo a evitar a eventual incidência da Hipót",
+      "prot": "025372IPE110420230104502711-76"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i)  aprovação, ou não, da anuência prévia de eventual alteração do controle acionário da Cia, de modo a não decretar o Vencimento Antecipad",
+      "prot": "025372IPE110420230104502713-69"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-04-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) concessão de anuência prévia, para eventual alteração do controle acionário da Emissora, de modo a evitar a eventual incidência de Hipót",
+      "prot": "025372IPE310320230204501611-77"
+     }
+    ]
+   },
+   {
+    "cnpj": "12.300.288/0001-07",
+    "data": "2023-05-12",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "CIÊNCIA DO PEDIDO DE  RECUPERAÇÃO JUDICIAL DA LIGHT S.A",
+      "prot": "025097IPE120520230104505811-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2023-05-22",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia, todos os demais  atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE120620230104506811-48"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2023-05-23",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE130620230104506905-96"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE140620230104506905-70"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE130620230104506906-12"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.370.282/0001-70",
+    "data": "2023-05-23",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia, todos  os demais atos eventualmente necessários de forma a refle",
+      "prot": "024740IPE140620230104506905-90"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "024740IPE130620230104506905-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "60.444.437/0001-46",
+    "data": "2023-05-26",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "19ª Emissão de Debêntures||Aprovação da contratação de assessor legal, para perseguição do credito decorrente da Emissão, atuando na defesa ",
+      "prot": "008036IPE230520230104507210-03"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "20ª Emissão de Debêntures||Aprovação da contratação de assessor legal, para perseguição do credito decorrente da Emissão, atuando na defesa ",
+      "prot": "008036IPE240520230104507210-35"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2023-06-19",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE140620230104509610-40"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE130620230104509610-47"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "026808IPE120620230104509610-80"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.370.282/0001-70",
+    "data": "2023-06-19",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para o Agente Fiduciário praticar, em conjunto com a Companhia,  todos os demais atos eventualmente necessários de forma a refle",
+      "prot": "024740IPE140620230104509610-52"
+     }
+    ]
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2023-09-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Afastamento do Vencimento Antecipado de Debêntures",
+      "prot": "026832IPE110920230104518011-75"
+     }
+    ]
+   },
+   {
+    "cnpj": "05.303.439/0001-07",
+    "data": "2023-09-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovação da concessão de prazo de standstill pelos Debenturistas à Emissora||Viabilizar o ambiente de negociação que permita à Emissora a n",
+      "prot": "026301IPE050920230104518107-20"
+     }
+    ]
+   },
+   {
+    "cnpj": "60.500.139/0001-26",
+    "data": "2024-01-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "sentenca de falencia",
+      "assunto": "Sentença concessiva do pedido de falência",
+      "prot": "010472IPE061020230104529407-35"
+     }
+    ]
+   },
+   {
+    "cnpj": "16.670.085/0001-55",
+    "data": "2024-01-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Premissa de valor residual e notícia veiculada no valor econômico sobre chapter 11 da Gol linhas aéreas",
+      "prot": "019739IPE290120240104532005-98"
+     }
+    ]
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2024-01-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovação da concessão de anuência prévia pelos Debenturistas, afastando a Hipóteses de Vencimento Antecipado",
+      "prot": "026832IPE200220240104532011-20"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.016.348/0001-53",
+    "data": "2024-02-23",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovação da concessão de autorização prévia para a transação de alteração do controle indireto acionário.||Vencimento Antecipado de Debêntu",
+      "prot": "024767IPE230220240104534509-83"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.164.253/0001-87",
+    "data": "2024-02-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a ratificação da eleição realizada em reunião do Conselho de Administração em 18 de janeiro de 2024 de 2 (dois) membros independentes do",
+      "prot": "019569IPE280220240104535011-26"
+     }
+    ]
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2024-04-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "026832IPE080420240104539013-58"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2024-04-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de abril de ",
+      "prot": "022560IPE110420240104539311-41"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) deliberar sobre a postergação dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de abril d",
+      "prot": "022560IPE110420240104539311-42"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2024-05-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de abril de ",
+      "prot": "022560IPE090520240104542111-36"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de abril de ",
+      "prot": "022560IPE090520240104542111-30"
+     }
+    ]
+   },
+   {
+    "cnpj": "16.404.287/0001-55",
+    "data": "2024-06-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "013986IPE060620240104545012-01"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2024-08-07",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre estender a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de ",
+      "prot": "022560IPE070820240104551111-13"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a extensão da suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 ",
+      "prot": "022560IPE070820240104551111-67"
+     }
+    ]
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2024-08-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "A não decretação da Hipótese de Vencimento Antecipado",
+      "prot": "026832IPE190820240104552406-44"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-08-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar nova suspensão temporária dos efeitos do vencimento antecipado automático das Debêntures previsto no item \"f\" da cláusula 5.20 da Es",
+      "prot": "018775IPE300820240104553412-39"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2024-09-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a extensão da suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 ",
+      "prot": "022560IPE030920240104553812-13"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a extensão da suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 ",
+      "prot": "022560IPE030920240104553812-34"
+     }
+    ]
+   },
+   {
+    "cnpj": "42.771.949/0001-35",
+    "data": "2024-09-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Aprovar a não decretação do vencimento antecipado, conforme cláusula 6.2 da Escritura de Emissão, em decorrência da celebração do Contra",
+      "prot": "024058IPE130820240104554611-10"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-09-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar nova suspensão temporária dos efeitos do vencimento antecipado automático das Debêntures previsto no item \"f\" da cláusula 5.20 da Es",
+      "prot": "018775IPE300920240104556510-35"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-10-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar nova suspensão temporária dos efeitos do vencimento antecipado automático das Debêntures previsto no item \"f\" da cláusula 5.20 da Es",
+      "prot": "018775IPE111020240104557611-64"
+     }
+    ]
+   },
+   {
+    "cnpj": "00.873.894/0001-24",
+    "data": "2024-10-29",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alterar escritura de emissão no item 6.2.1 - Vencimento Antecipado",
+      "prot": "027383IPE251020240104559411-33"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-11-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar nova suspensão temporária dos efeitos do vencimento antecipado automático das Debêntures previsto no item \"f\" da cláusula 5.20 da Es",
+      "prot": "018775IPE081120240104560411-54"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.773.135/0001-00",
+    "data": "2024-11-18",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "025224IPE061220240104561411-15"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-11-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar nova suspensão temporária dos efeitos do vencimento antecipado automático das Debêntures previsto no item \"f\" da cláusula 5.20 da Es",
+      "prot": "018775IPE221120240104561811-79"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-12-20",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar nova suspensão temporária dos efeitos do vencimento antecipado automático das Debêntures",
+      "prot": "018775IPE201220240204564612-08"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.262.121/0001-13",
+    "data": "2024-12-24",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "027430IPE241220240104565008-80"
+     },
+     {
+      "cat": "escrituras e aditamentos de debentures",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "027430IPE241220240104565008-72"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-01-08",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da amortização programada de janeiro e fevereiro de 2025, com retomada prevista para março de",
+      "prot": "022560IPE080120250104566512-02"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada de janeiro e fevereiro de 2025, com retomada em 12 de março de 2025",
+      "prot": "022560IPE080120250104566512-49"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.281.836/0001-37",
+    "data": "2025-02-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "reuniao da administracao",
+      "assunto": "(i) Eleição de Membro da Diretoria da Companhia e||(ii) Aprovação de Standstill do Contrato do BNDES.",
+      "prot": "020443IPE170220250104570511-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.773.135/0001-00",
+    "data": "2025-02-28",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "025224IPE280220250104571613-09"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-03-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura||(ii) Deliberar sobre a su",
+      "prot": "022560IPE110320250104572711-39"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura||(ii) Deliberar sobre a po",
+      "prot": "022560IPE110320250104572711-06"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.170.849/0001-15",
+    "data": "2025-03-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberação sobre a constituição de garantia real em favor dos debenturistas da 5ª emissão, por meio da cessão fiduciária de direitos so",
+      "prot": "026026IPE210320250104573712-76"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.170.849/0001-15",
+    "data": "2025-04-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i)  a alteração da redação do Evento de Vencimento Antecipado||(ii)  a autorização para que o Agente Fiduciário pratique, em conjunto com a",
+      "prot": "026026IPE050520250104575812-01"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i)  a alteração da redação do Evento de Vencimento Antecipado previsto no item (xiii)  da Cláusula 6.1. da Escritura de Emissão||(ii)  a au",
+      "prot": "026026IPE050520250104575811-55"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-04-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos para os dias 12 de maio de 2025 e 12 de junho de 2025, co",
+      "prot": "022560IPE170420250151879491-46"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-04-22",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de maio de 2",
+      "prot": "022560IPE170420250101155518-03"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.170.849/0001-15",
+    "data": "2025-05-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) a alteração da redação do Evento de Vencimento Antecipado previsto no item (xiii) da Cláusula 6.1. da Escritura de Emissão e||(ii) a aut",
+      "prot": "026026IPE050520250177121420-61"
+     }
+    ]
+   },
+   {
+    "cnpj": "02.998.611/0001-04",
+    "data": "2025-05-09",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Atualização sobre a mediação com a Fazenda Pública do Estado de São Paulo",
+      "prot": "018376IPE090520250117241406-73"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-07-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre suspender amortizações devidas em 12/07/25 e 12/08/25 e retomar pagamentos da amortização programada em 12/09/25||(ii) D",
+      "prot": "022560IPE100720250164562344-24"
+     }
+    ]
+   },
+   {
+    "cnpj": "08.467.115/0001-00",
+    "data": "2025-07-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "aprovar a concessão de consentimento prévio, de forma que não seja caracterizada uma Hipótese de Vencimento Antecipado Não Automático em raz",
+      "prot": "020648IPE040820250199739423-57"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "aprovar a concessão de consentimento prévio, de forma que não seja caracterizada uma hipótese de Evento de Vencimento Antecipado em razão da",
+      "prot": "020648IPE040820250198996127-42"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "aprovar a concessão de consentimento prévio, de forma que não seja 2 caracterizada uma hipótese de Evento de Vencimento Antecipado em razão ",
+      "prot": "020648IPE060820250129544196-43"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "aprovar a concessão de consentimento prévio, de forma que não seja caracterizada uma hipótese de Evento de Vencimento Antecipado em razão da",
+      "prot": "020648IPE060820250105023484-28"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-09-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura||(ii) Deliberar sobre a li",
+      "prot": "022560IPE090920250113875205-60"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura||(ii) Deliberar sobre a po",
+      "prot": "022560IPE090920250103621524-65"
+     }
+    ]
+   },
+   {
+    "cnpj": "27.967.244/0001-02",
+    "data": "2025-10-06",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Aprovar a concessão de consentimento prévio, de forma que não seja caracterizada uma hipótese de Evento de Vencimento Antecipado, em razão d",
+      "prot": "024481IPE061020250134993452-77"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2025-10-09",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "autorização para o Agente Fiduciário praticar todos os demais atos eventualmente necessários de forma a refletir as deliberações tomadas de ",
+      "prot": "026808IPE031020250137419668-92"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-11-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão do pagamento da Amortização Programada previsto na Cláusula 4.2.2 da Escritura devido em 12 de novembro de 2",
+      "prot": "022560IPE111120250107380172-34"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão do pagamento da Amortização Programada previsto na Cláusula 4.2.2 da Escritura devido em 12 de novembro de 2",
+      "prot": "022560IPE111120250188335810-14"
+     }
+    ]
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2025-11-12",
+    "sem_candidato": true,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Vencimento Antecipado de Debêntures",
+      "prot": "026808IPE041120250176310270-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.164.253/0001-87",
+    "data": "2025-12-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Atualização sobre o processo de Chapter 11",
+      "prot": "019569IPE031220250179721327-43"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2025-12-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de dezembro ",
+      "prot": "022560IPE111220250143366068-18"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar o Agente Fiduciário, na qualidade de representante dos Debenturistas, em conjunto com a Companhia, adote e pratique todos e quaisq",
+      "prot": "022560IPE111220250112661331-84"
+     }
+    ]
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2025-12-15",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Decisão judicial sobre pedido de tutela de urgência requerido por Assaí na Medida Cautelar.",
+      "prot": "025372IPE151220250167915544-02"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-02-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de março de ",
+      "prot": "022560IPE250220260130639369-27"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão dos pagamentos da Amortização Programada previstos na Cláusula 4.2.2 da Escritura devidos em 12 de março de ",
+      "prot": "022560IPE250220260100884780-60"
+     }
+    ]
+   },
+   {
+    "cnpj": "12.648.266/0001-24",
+    "data": "2026-03-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para os administradores tomarem as providências e praticarem os atos necessários, com vistas a dar continuidade e garantir a efe",
+      "prot": "024961IPE300420260177848656-84"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para os administradores tomarem as providências e praticarem os atos necessários, com vistas a dar continuidade e garantir a efe",
+      "prot": "024961IPE300420260184379779-68"
+     }
+    ]
+   },
+   {
+    "cnpj": "10.760.260/0001-19",
+    "data": "2026-04-13",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Deliberação sobre Evento de Vencimento Antecipado",
+      "prot": "023310IPE050520250143266838-91"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.527.023/0001-23",
+    "data": "2026-04-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para os administradores tomarem as providências e praticarem os atos necessários, com vistas a dar continuidade e garantir a efe",
+      "prot": "026271IPE300420260121195408-08"
+     }
+    ]
+   },
+   {
+    "cnpj": "12.648.266/0001-24",
+    "data": "2026-04-30",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorização para os administradores tomarem as providências e praticarem os atos necessários, com vistas a dar continuidade e garantir a efe",
+      "prot": "024961IPE300420260178508387-50"
+     }
+    ]
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2026-05-06",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Cessação do vencimento antecipado",
+      "prot": "018775IPE030320260158564204-43"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Cessação do vencimento antecipado",
+      "prot": "018775IPE030320260166662969-02"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-05-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a suspensão da Amortização Programada devida em 12/05/2026 e sua retomada a partir de 12/06/2026.||2. Deliberar sobre a p",
+      "prot": "022560IPE110520260158122783-41"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "1. Deliberar sobre a suspensão da Amortização Programada de 12/05/2026 e retomada dos pagamentos a partir de 12/06/2026.||2. Deliberar sobre",
+      "prot": "022560IPE110520260169474745-86"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-06-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "4ª Emissão 1ª Série - Deliberar sobre a suspensão da Amortização Programada de 12/06/2026 (Cláusula 4.2.2 da Escritura), com retomada dos pa",
+      "prot": "022560IPE110620260145276617-56"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "4ª Emissão 3ª Série - Deliberar sobre a suspensão da Amortização Programada de 12/06/2026 (Cláusula 4.2.2 da Escritura) e sua retomada a par",
+      "prot": "022560IPE110620260189183314-21"
+     }
+    ]
+   },
+   {
+    "cnpj": "26.982.634/0001-80",
+    "data": "2026-06-12",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Conversão||Vencimento Antecipado de Debêntures",
+      "prot": "027197IPE120620260101021108-96"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-07-10",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "aprovadas no âmbito desta assembleia.||(i) Deliberar sobre a suspensão do pagamento da Amortização Programada||(ii) Deliberar sobre a limita",
+      "prot": "022560IPE100720260115549392-88"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão do pagamento da Amortização Programada||(ii) Deliberar sobre a postergação do pagamento da Remuneração das D",
+      "prot": "022560IPE100720260172791749-50"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-07-21",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "para dar efeito e implementar as deliberações aprovadas no âmbito desta assembleia.||(i) Deliberar sobre a suspensão do pagamento da Amortiz",
+      "prot": "022560IPE210720260115667854-60"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "de 10 de julho de 2026, e a retomada dos pagamentos da Amortização Programada a partir de 05 de agosto de 2026, sendo certo que na oportunid",
+      "prot": "022560IPE210720260119716333-70"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-08-03",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão da Amortização Programada de 05/08/2026 e 12/09/2026 (Cláusula 4.2.2 da Escritura), com retomada a partir de",
+      "prot": "022560IPE030820260108353128-12"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "(i) Deliberar sobre a suspensão da Amortização Programada de 05/08/2026 e 12/09/2026 (Cláusula 4.2.2 da Escritura), com retomada a partir de",
+      "prot": "022560IPE030820260140976216-61"
+     }
+    ]
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2026-08-11",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar o Agente Fiduciário, na qualidade de representante dos Debenturistas, em conjunto com a Companhia, a adotar e praticar todos e qua",
+      "prot": "022560IPE110820260167242277-37"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Autorizar o Agente Fiduciário, na qualidade de representante dos Debenturistas, em conjunto com a Companhia, a adotar e praticar todos e qua",
+      "prot": "022560IPE110820260113456849-32"
+     }
+    ]
+   },
+   {
+    "cnpj": "33.041.260/0652-90",
+    "data": "2026-09-17",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "assembleia",
+      "assunto": "Alterar o caput do artigo 5º do Estatuto Social da Companhia para refletir o aumento de capital da Companhia aprovado em reunião do Conselho",
+      "prot": "006505IPE191020260174081288-55"
+     },
+     {
+      "cat": "assembleia",
+      "assunto": "Alterar o caput do artigo 5º do Estatuto Social da Companhia para refletir o aumento de capital da Companhia aprovado em reunião do Conselho",
+      "prot": "006505IPE191020260107428908-49"
+     }
+    ]
+   },
+   {
+    "cnpj": "31.553.627/0001-01",
+    "data": "2026-09-25",
+    "sem_candidato": false,
+    "docs": [
+     {
+      "cat": "comunicado ao mercado",
+      "assunto": "Esclarecimento sobre Pedido de Recuperação Judicial",
+      "prot": "025461IPE250920260161748712-52"
+     }
+    ]
+   }
+  ]
+ }
+}

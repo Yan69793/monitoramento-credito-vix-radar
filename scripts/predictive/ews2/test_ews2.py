@@ -1,0 +1,283 @@
+"""Duas pontas do pipeline EWS 2.0 (sem dado real). Rodar:
+python -I -m unittest discover -s scripts/predictive/ews2 -p "test_ews2*.py" -v
+"""
+import math
+import os
+import random
+import sys
+import tempfile
+import unittest
+from datetime import date, timedelta
+
+AQUI = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, AQUI)
+import backtest as BT  # noqa: E402
+import calendario as C  # noqa: E402
+import dados as D  # noqa: E402
+import eventos as EV  # noqa: E402
+import features as F  # noqa: E402
+import guarda_treino as GT  # noqa: E402
+import metricas as M  # noqa: E402
+import modelo as MO  # noqa: E402
+import painel as P  # noqa: E402
+import sintetico as S  # noqa: E402
+
+
+class Calendario(unittest.TestCase):
+    def test_ultimo_dia_util(self):
+        self.assertEqual(C.ultimo_dia_util_do_mes(2026, 5), date(2026, 5, 29))  # 31/05/2026 e domingo
+        self.assertEqual(C.ultimo_dia_util_do_mes(2024, 12), date(2024, 12, 31))
+        self.assertEqual(C.ultimo_dia_util_do_mes(2023, 12), date(2023, 12, 29))  # 31/12/2023 domingo
+        self.assertEqual(C.pascoa(2026), date(2026, 4, 5))
+
+    def test_particao_e_embargo(self):
+        self.assertEqual(C.particao(date(2019, 12, 31)), "treino")
+        self.assertEqual(C.particao(date(2020, 1, 1)), "validacao")
+        self.assertEqual(C.particao(date(2022, 2, 1)), "embargo")
+        self.assertEqual(C.particao(date(2022, 4, 1)), "teste")
+        self.assertTrue(C.horizonte_fechado(date(2019, 6, 28)))
+        self.assertFalse(C.horizonte_fechado(date(2019, 9, 30)))   # cruza para a validacao
+        self.assertFalse(C.horizonte_fechado(date(2026, 6, 30)))   # alem de 30/09/2026
+
+    def test_datas_observacao_mensais(self):
+        ds = C.datas_observacao(date(2011, 1, 1), date(2011, 12, 31))
+        self.assertEqual(len(ds), 12)
+        self.assertTrue(all(C.dia_util(d) for d in ds))
+
+
+class Vigencia(unittest.TestCase):
+    def test_vigente_usa_so_ate_T_menos_1_e_maior_versao(self):
+        vs = [{"dt_refer": date(2019, 12, 31), "versao": 1, "dt_receb": date(2020, 3, 20)},
+              {"dt_refer": date(2019, 12, 31), "versao": 2, "dt_receb": date(2020, 5, 10)},
+              {"dt_refer": date(2020, 12, 31), "versao": 1, "dt_receb": date(2021, 3, 30)}]
+        self.assertEqual(D.vigente(vs, date(2020, 3, 21))["versao"], 1)
+        self.assertIsNone(D.vigente(vs, date(2020, 3, 20)))            # recebido em T nao vale (T-1)
+        self.assertEqual(D.vigente(vs, date(2020, 6, 1))["versao"], 2)
+        self.assertEqual(D.vigente(vs, date(2021, 4, 1))["dt_refer"], date(2020, 12, 31))
+
+
+class Contas(unittest.TestCase):
+    def test_codigo_so_vale_com_descricao(self):
+        self.assertTrue(D.conta_valida("2.01.04", "Empréstimos e Financiamentos"))
+        self.assertFalse(D.conta_valida("2.01.04", "Capitalização"))
+        self.assertTrue(D.conta_valida("2.01", "Passivo Circulante"))
+        self.assertFalse(D.conta_valida("2.01", "Passivos Financeiros ao Valor Justo através do Resultado"))
+        self.assertTrue(D.conta_valida("6.01", "Caixa Líquido das Atividades Operacionais"))
+        self.assertFalse(D.conta_valida("6.01", "Caixa Líquido Atividades Seguradora/Resseguradora"))
+        self.assertFalse(D.conta_valida("9.99", "Ativo Total"))
+
+
+class Features(unittest.TestCase):
+    def doc(self, d, cat="comunicado ao mercado", assunto="x", tipo="", esp=""):
+        return {"cnpj": "c", "nome_n": "n", "cat_n": cat, "tipo_n": tipo, "especie_n": esp, "assunto_n": assunto, "data": d, "protocolo": "", "link": ""}
+
+    def test_h1_respeita_T_menos_1(self):
+        t = date(2020, 6, 30)
+        em_T = [self.doc(t, "assembleia", "agd", tipo="debenturistas")]
+        em_T1 = [self.doc(t - timedelta(days=1), "assembleia", "agd", tipo="debenturistas")]
+        antigo = [self.doc(t - timedelta(days=181), "assembleia", "agd", tipo="debenturistas")]
+        for docs, esperado in ((em_T, 0), (em_T1, 1), (antigo, 0)):
+            self.assertEqual(F.h1(docs, [d["data"] for d in docs], t), esperado)
+
+    def test_h4_exige_as_duas_familias(self):
+        t = date(2020, 6, 30)
+        a = [self.doc(t - timedelta(days=10), assunto="renuncia de diretor financeiro")]
+        b = [self.doc(t - timedelta(days=10), assunto="renuncia de conselheiro")]
+        self.assertEqual(F.h4(a, [a[0]["data"]], t), 1)
+        self.assertEqual(F.h4(b, [b[0]["data"]], t), 0)
+
+    def test_h3_silencio_duas_pontas(self):
+        t = date(2020, 6, 30)
+        base = [self.doc(t - timedelta(days=100 + 7 * k)) for k in range(100)]  # ~100 docs em 2 anos => media 12,5/tri
+        self.assertEqual(F.h3(base, [d["data"] for d in base], t), 1)       # 0 nos 90 dias
+        cheio = base + [self.doc(t - timedelta(days=k)) for k in range(1, 40)]
+        cheio.sort(key=lambda d: d["data"])
+        self.assertEqual(F.h3(cheio, [d["data"] for d in cheio], t), 0)
+        self.assertIsNone(F.h3(base[:5], [d["data"] for d in base[:5]], t))  # media < 3: sem sinal
+
+    def test_h6_e_b1_b2(self):
+        vs = [{"dt_refer": date(2019, 12, 31), "versao": 1, "dt_receb": date(2020, 3, 1), "parecer_enfase": False, "acoes": None,
+               "contas": {"1": 1000.0, "1.01.01": 50.0, "1.01.02": 50.0, "2": 1000.0, "2.01": 300.0, "2.02": 200.0, "2.01.04": 150.0, "6.01": 50.0}}]
+        razao, alerta = F.h6(vs, date(2020, 6, 30))
+        self.assertAlmostEqual(razao, 1.0)
+        self.assertEqual(alerta, 1)
+        vs[0]["contas"]["2.01.04"] = 149.0
+        self.assertEqual(F.h6(vs, date(2020, 6, 30))[1], 0)
+        b1, b2 = F.b1_b2(vs, date(2020, 6, 30))
+        self.assertEqual(b1, -1000.0)
+        self.assertAlmostEqual(b2, 0.5)
+        self.assertEqual(F.h6(vs, date(2020, 2, 1)), (None, None))  # antes de receber: sem demonstrativo
+
+    def test_h2a_atraso(self):
+        t = date(2021, 6, 30)
+        ok = [{"dt_refer": date(2020, 12, 31), "versao": 1, "dt_receb": date(2021, 3, 31)}]
+        atr = [{"dt_refer": date(2020, 12, 31), "versao": 1, "dt_receb": date(2021, 4, 1)}]
+        self.assertEqual(F.h2a(ok, [], t), 0)
+        self.assertEqual(F.h2a(atr, [], t), 1)
+        self.assertEqual(F.h2b([{"dt_refer": date(2020, 12, 31), "versao": 2, "dt_receb": date(2021, 4, 1)}], [], t), 1)
+
+    def test_h5_merton_ingenuo(self):
+        t = date(2021, 6, 30)
+        precos = [(t - timedelta(days=400) + timedelta(days=k), 10.0 * math.exp(0.001 * k + 0.02 * math.sin(k))) for k in range(400)]
+        vs = [{"dt_refer": date(2020, 12, 31), "versao": 1, "dt_receb": date(2021, 3, 1), "parecer_enfase": False,
+               "acoes": {"integralizadas": 1e6, "tesouraria": 0}, "contas": {"2.01": 2e6, "2.02": 2e6}}]
+        dd, alerta = F.h5(precos, vs, {date(2021, 1, 1): 0.1}, t)
+        self.assertIsNotNone(dd)
+        self.assertIn(alerta, (0, 1))
+        self.assertEqual(F.h5(precos[:50], vs, {date(2021, 1, 1): 0.1}, t), (None, None))  # < 120 pregoes
+
+
+class Eventos(unittest.TestCase):
+    def test_episodios_30_dias_e_dedup(self):
+        rot = [{"id": "a", "cnpj": "c", "classe1": "evento_proprio", "data_evento1": "2020-01-10"},
+               {"id": "b", "cnpj": "c", "classe1": "evento_proprio", "data_evento1": "2020-01-10"},
+               {"id": "d", "cnpj": "c", "classe1": "continuacao", "origem_data_entrega": "2020-02-05"},
+               {"id": "e", "cnpj": "c", "classe1": "evento_proprio", "data_evento1": "2020-06-01"},
+               {"id": "f", "cnpj": "c", "classe1": "nao_evento"}]
+        evs = EV.eventos_de_rotulos(rot)
+        self.assertEqual(len(evs), 3)
+        eps = EV.episodios(evs)
+        self.assertEqual(len(eps), 2)
+        self.assertEqual(len(eps[0]["eventos"]), 2)
+
+    def test_prevalencia_24m(self):
+        eps = EV.episodios(EV.eventos_de_rotulos([{"id": "a", "cnpj": "c", "classe1": "evento_proprio", "data_evento1": "2020-01-10"}]))
+        docs = {"c": [{"data": date(2018, 6, 1), "cat_n": "informacoes de companhias em recuperacao judicial ou extrajudicial"}]}
+        self.assertTrue(EV.marcar_prevalencia(eps, docs)[0]["prevalente"])
+        docs = {"c": [{"data": date(2017, 6, 1), "cat_n": "informacoes de companhias em recuperacao judicial ou extrajudicial"}]}
+        self.assertFalse(EV.marcar_prevalencia(eps, docs)[0]["prevalente"])
+
+    def test_censura_item4(self):
+        per = [{"dt_reg": date(2010, 1, 1), "dt_cancel": date(2018, 5, 5), "motivo_cancel": "Cancelamento Voluntário"}]
+        self.assertEqual(len(EV.censuras(per, [])), 1)
+        self.assertEqual(len(EV.censuras(per, [{"inicio": date(2018, 3, 1)}])), 0)  # evento 180d antes: conta como evento
+
+
+class Painel(unittest.TestCase):
+    def test_sai_do_risco_no_episodio_e_alvo_no_horizonte(self):
+        cad = {"c": [{"dt_reg": date(2010, 1, 1), "dt_cancel": None, "motivo_cancel": "", "setor_ativ": "s"}]}
+        eps = {"c": [{"cnpj": "c", "inicio": date(2015, 6, 15), "ultimo": date(2015, 6, 15), "fim": date(2016, 6, 14), "prevalente": False}]}
+        datas = [date(2015, 1, 30), date(2015, 3, 31), date(2015, 8, 31), date(2016, 7, 29)]
+        ls = P.linhas_painel(["c"], datas, eps, cad, {"c": date(2011, 3, 1)}, set(), set())
+        por = {l["T"]: l for l in ls}
+        self.assertEqual(por[date(2015, 1, 30)]["y180"], 1)
+        self.assertEqual(por[date(2015, 3, 31)]["y180"], 1)
+        self.assertNotIn(date(2015, 8, 31), por)   # dentro do episodio: fora do risco
+        self.assertEqual(por[date(2016, 7, 29)]["y180"], 0)
+        self.assertEqual(P.linhas_painel(["c"], datas, eps, cad, {"c": date(2015, 2, 1)}, set(), set())[0]["T"], date(2015, 3, 31))
+
+
+class Modelo(unittest.TestCase):
+    def test_logit_recupera_coeficientes(self):
+        rng = random.Random(1)
+        X, y = [], []
+        for _ in range(4000):
+            x = rng.gauss(0, 1)
+            p = 1 / (1 + math.exp(-(-1.0 + 1.5 * x)))
+            X.append([x])
+            y.append(1 if rng.random() < p else 0)
+        m = MO.ajustar_logit(X, y)
+        self.assertTrue(m["convergiu"])
+        self.assertAlmostEqual(m["beta"][0], -1.0, delta=0.15)
+        self.assertAlmostEqual(m["beta"][1], 1.5, delta=0.15)
+
+    def test_platt_e_inclinacao(self):
+        p = [0.1, 0.2, 0.8, 0.9] * 50
+        y = [0, 0, 1, 1] * 50
+        a, b = MO.platt(p, y)
+        self.assertGreater(b, 0)
+        self.assertGreater(MO.inclinacao_calibracao(p, y), 0)
+
+
+class Metricas(unittest.TestCase):
+    def test_pr_auc_duas_pontas(self):
+        y = [1, 0, 1, 0, 0, 0, 1, 0]
+        self.assertAlmostEqual(M.pr_auc([1, 0, 1, 0, 0, 0, 1, 0], y), 1.0)
+        self.assertLess(M.pr_auc([0, 1, 0, 1, 1, 1, 0, 1], y), 0.5)
+        self.assertIsNone(M.pr_auc([1, 2], [0, 0]))
+
+    def test_razao_de_risco_e_falsos(self):
+        s = [1, 1, 1, 1, 0, 0, 0, 0]
+        y = [1, 1, 0, 0, 1, 0, 0, 0]
+        self.assertAlmostEqual(M.razao_de_risco(s, y), 2.0)
+        self.assertAlmostEqual(M.falsos_alertas_por_100(s, y), 25.0)
+
+    def test_holm(self):
+        adj = M.holm({"a": 0.01, "b": 0.04, "c": 0.03, "d": None})
+        self.assertAlmostEqual(adj["a"], 0.03)
+        self.assertAlmostEqual(adj["c"], 0.06)
+        self.assertAlmostEqual(adj["b"], 0.06)
+        self.assertIsNone(adj["d"])
+
+    def test_g2_duas_pontas(self):
+        self.assertTrue(M.g2(1.6, 70, 0.3, 0.1, 0.01)[0])
+        self.assertFalse(M.g2(1.4, 70, 0.3, 0.1, 0.01)[0])
+        self.assertFalse(M.g2(1.6, 59, 0.3, 0.1, 0.01)[0])
+        self.assertFalse(M.g2(1.6, 70, 0.1, 0.3, 0.01)[0])
+        self.assertFalse(M.g2(1.6, 70, 0.3, 0.1, 0.05)[0])
+
+    def test_bootstrap_cluster_deterministico(self):
+        cl = {i: [i] for i in range(40)}
+        v = [float(i) for i in range(40)]
+        a = M.bootstrap_cluster(cl, lambda ii: sum(v[k] for k in ii) / len(ii), n_boot=200)
+        b = M.bootstrap_cluster(cl, lambda ii: sum(v[k] for k in ii) / len(ii), n_boot=200)
+        self.assertEqual(a, b)
+        self.assertLess(a[0], 19.5)
+        self.assertGreater(a[1], 19.5)
+
+    def test_antecedencia(self):
+        r = M.antecedencia([("c", date(2020, 6, 1))], {"c": [date(2019, 1, 1), date(2020, 1, 1), date(2020, 3, 1)]})
+        self.assertEqual(r["mediana"], 152)
+
+
+class Guarda(unittest.TestCase):
+    def test_sem_registro_bloqueia(self):
+        ok, mot = GT.avaliar(None, "x")
+        self.assertFalse(ok)
+        self.assertIn("ausente", mot[0])
+
+    def test_registro_completo_libera_e_sha_errado_bloqueia(self):
+        reg = {"g1a_passa": True, "g1b_passa": True, "g1c_passa": True, "sha256_rotulos": "a" * 64, "arquivo_rotulos": "x.csv",
+               "autorizado_por_operador": True, "autorizado_em": "2026-10-20", "protocolo": "G0-v3"}
+        self.assertTrue(GT.avaliar(reg, "a" * 64)[0])
+        self.assertFalse(GT.avaliar(reg, "b" * 64)[0])
+        reg2 = dict(reg, g1b_passa=False)
+        self.assertFalse(GT.avaliar(reg2, "a" * 64)[0])
+        reg3 = dict(reg, autorizado_por_operador=False)
+        self.assertFalse(GT.avaliar(reg3, "a" * 64)[0])
+
+    def test_estado_real_hoje_bloqueia(self):
+        self.assertFalse(GT.estado()["ok"])
+
+    def test_backtest_real_sem_homologacao_sai_sem_ler(self):
+        with self.assertRaises(SystemExit):
+            BT.main(["--real", "--rotulos", "inexistente.csv"])
+
+
+class PipelineSintetico(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # mesma configuracao da prova de pipeline registrada (semente 7, 120 empresas): determinista, ~80 s
+        d = S.gerar(semente=7, n_empresas=120)
+        cls.r = BT.rodar(d, d["rotulos"], origem="sintetico")
+
+    def test_sinal_plantado_passa_e_sinal_nulo_nao(self):
+        self.assertIn("H1", self.r["aprovados_g2"])
+        self.assertFalse(self.r["hipoteses"]["H4"]["g2"]["passa"])
+        self.assertFalse(self.r["evidencia_de_eficacia"])
+
+    def test_embargo_nunca_entra_e_formulacao_fora(self):
+        self.assertEqual(self.r["painel"]["por_particao"]["embargo"]["n"], 0)
+        self.assertNotIn("embargo", self.r["linhas_por_particao"])
+
+    def test_vazamento_temporal_horizonte_fechado(self):
+        # nenhuma linha usavel de treino tem T + 180 cruzando 01/01/2020
+        d = S.gerar(semente=3, n_empresas=20)
+        m = BT.montar(d, d["rotulos"])
+        for l in m["linhas"]:
+            if l["usavel_180"] and l["particao"] == "treino":
+                self.assertLess(l["T"] + timedelta(days=180), C.TREINO_FIM)
+
+
+if __name__ == "__main__":
+    unittest.main()

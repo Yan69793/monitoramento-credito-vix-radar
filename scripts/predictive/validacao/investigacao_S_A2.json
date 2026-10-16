@@ -1,0 +1,3459 @@
+{
+ "S": {
+  "chaves": 331,
+  "cnpjs": 122,
+  "chaves_multi_doc": 176,
+  "cadeias_30d": 207,
+  "tamanho_cadeias": {
+   "1": 144,
+   "2": 35,
+   "3": 12,
+   "4": 8,
+   "5": 4,
+   "6": 1,
+   "7": 2,
+   "9": 1
+  },
+  "classes": {
+   "agd_vencimento": 171,
+   "clausula": 72,
+   "abertura_propria": 52,
+   "falencia_requerida": 16,
+   "outro": 9,
+   "regulatorio": 6,
+   "terceiro": 5
+  },
+  "classes_nao_prevalentes": {
+   "agd_vencimento": 144,
+   "clausula": 54,
+   "abertura_propria": 23,
+   "falencia_requerida": 13,
+   "outro": 8,
+   "regulatorio": 6,
+   "terceiro": 5
+  },
+  "prevalentes": 78,
+  "cnpj_com_E": 162,
+  "itens": [
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-01-03",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "61.079.117/0001-05",
+    "data": "2011-03-03",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Comunicado esclarecimento pedido de fal�ncia"
+   },
+   {
+    "cnpj": "08.364.948/0001-38",
+    "data": "2011-04-20",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "82.981.929/0001-03",
+    "data": "2011-05-30",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 54,
+    "assunto": "Pedido de recupera��o judicial, formulado e ajuizado pela Diretoria"
+   },
+   {
+    "cnpj": "82.981.929/0001-03",
+    "data": "2011-06-28",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 83,
+    "assunto": "Pedido de recupera��o judicial, formulado e ajuizado pela Diretoria em car�ter de urg�ncia"
+   },
+   {
+    "cnpj": "89.463.822/0001-12",
+    "data": "2011-07-20",
+    "n_docs": 6,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 630,
+    "assunto": "(i) a altera��o do cronograma de pagamento do valor principal das deb�ntures objeto da Emiss�o, o qual est� pr"
+   },
+   {
+    "cnpj": "82.981.812/0001-20",
+    "data": "2011-07-21",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 77,
+    "assunto": "Contrata��o de escrit�rio de advocacia para defesa dos interesses dos debenturistas, tendo em vista o pedido d"
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-07-25",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.724.983/0001-34",
+    "data": "2011-07-25",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 311,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "61.486.650/0001-83",
+    "data": "2011-07-27",
+    "n_docs": 1,
+    "classe": "regulatorio",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Esclarecimento sobre pedido de medida cautelar pela ProCADE"
+   },
+   {
+    "cnpj": "02.724.983/0001-34",
+    "data": "2011-07-28",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 308,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.953.509/0001-47",
+    "data": "2011-09-16",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Altera��o da hip�tese de vencimento antecipado das Deb�ntures, prevista na al�nea \"n\" do item 4.13.1. da Escri"
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2011-10-21",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "08.807.432/0001-10",
+    "data": "2012-03-06",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Aprovar a propositura pela SESES de Medida Cautelar com pedido de concess�o de liminar para antecipa��o de tut"
+   },
+   {
+    "cnpj": "82.981.812/0001-20",
+    "data": "2012-03-19",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 319,
+    "assunto": "Esclarecimentos sobre a Decreta��o da Fal�ncia da Companhia"
+   },
+   {
+    "cnpj": "60.631.090/0001-40",
+    "data": "2012-05-14",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 94,
+    "assunto": "pedido de recupera��o Judicial"
+   },
+   {
+    "cnpj": "60.631.090/0001-40",
+    "data": "2012-05-15",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 93,
+    "assunto": "Balancete para pedido de recupera��o Judicial"
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2012-06-12",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Ades�o ao Standstill e Altera��o de datas de Pagamento da 3a. Emiss�o de Deb�ntures"
+   },
+   {
+    "cnpj": "76.255.926/0001-90",
+    "data": "2012-09-18",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Aprovada, por maioria, a ratifica��o da elei��o do Sr. Yoshihide Kimura para o cargo de membro do Conselho de "
+   },
+   {
+    "cnpj": "61.695.227/0001-93",
+    "data": "2012-10-18",
+    "n_docs": 5,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 2044,
+    "assunto": "Altera��o da descri��o, defini��o e componentes dos �ndices e limites financeiros da escritura||Altera��o dos "
+   },
+   {
+    "cnpj": "33.014.556/0001-96",
+    "data": "2012-10-18",
+    "n_docs": 1,
+    "classe": "terceiro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Requerimento de Fal�ncia Apresentado por Athenabanco"
+   },
+   {
+    "cnpj": "03.467.321/0001-99",
+    "data": "2012-10-25",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Suspens�o dos efeitos da ocorr�ncia da hip�tese de vencimento antecipado"
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-11-01",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Altera��o na Escritura||Sa�da do Novo Mercado||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "08.807.432/0001-10",
+    "data": "2012-11-12",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Exerc�cio do direito de declarar o vencimento antecipado das Deb�ntures"
+   },
+   {
+    "cnpj": "02.558.115/0001-21",
+    "data": "2012-11-16",
+    "n_docs": 1,
+    "classe": "regulatorio",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Esclarecimento sobre medida cautelar da Anatel"
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-11-21",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Altera��o na Escritura||Sa�da do Novo Mercado||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-11-29",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Altera��o na Escritura||Sa�da do Novo Mercado||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2012-12-06",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 34,
+    "assunto": "Distribui��o de Pedido de Fal�ncia junto ao Cart�rio da 3� Vara Empresarial do TJRJ"
+   },
+   {
+    "cnpj": "82.636.986/0001-55",
+    "data": "2012-12-07",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 42,
+    "assunto": "Ratifica��o do pedido de recupera��o judicial"
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2012-12-17",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Discuss�o e delibera��o, pelos Debenturistas, em conjunto com a Companhia, da ocorr�ncia do n�o atendimento pe"
+   },
+   {
+    "cnpj": "36.461.242/0001-20",
+    "data": "2012-12-19",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Altera��o do qu�rum de delibera��o para as hip�teses de vencimento antecipado||Altera��o na Escritura||Sa�da d"
+   },
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2013-02-21",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 43,
+    "assunto": "Ratifica��o do Pedido de Recupera��o Judicial"
+   },
+   {
+    "cnpj": "33.412.081/0001-96",
+    "data": "2013-02-28",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 50,
+    "assunto": "Ratifica��o do Pedido de Recupera��o Judicial"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2013-03-12",
+    "n_docs": 7,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 1003,
+    "assunto": "Cis�o parcial da acionista controladora da Contax e a n�o aplica��o de vencimento antecipado"
+   },
+   {
+    "cnpj": "03.025.305/0001-46",
+    "data": "2013-04-29",
+    "n_docs": 21,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": ""
+   },
+   {
+    "cnpj": "89.463.822/0001-12",
+    "data": "2013-05-22",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 42,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "24.956.666/0001-86",
+    "data": "2013-07-11",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 35,
+    "assunto": "Ratifica��o do Pedido de Recupera��o Judicial"
+   },
+   {
+    "cnpj": "82.981.671/0001-45",
+    "data": "2013-07-12",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 578,
+    "assunto": "Pedido de Autofal�ncia"
+   },
+   {
+    "cnpj": "60.444.437/0001-46",
+    "data": "2013-08-09",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 3533,
+    "assunto": "ACD n� F-024/2013 (Light S.E.S.A.) - Endosso da Garantia - A��o Cautelar Antecipat�ria de Execu��o Fiscal - PG"
+   },
+   {
+    "cnpj": "03.378.521/0001-75",
+    "data": "2013-08-09",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 3533,
+    "assunto": "ACD n� F-024/2013 (LIGHT S.A. e LIGHT S.E.S.A.) - Endosso da Garantia - A��o Cautelar Antecipat�ria de Execu��"
+   },
+   {
+    "cnpj": "89.723.993/0001-33",
+    "data": "2013-10-03",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 641,
+    "assunto": "N�o aprovada a proposta da ordem do dia foi autorizado o agente fiduciario tomar providencias para recupera��o"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2013-10-25",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2013-11-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2013-11-27",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "07.957.093/0001-96",
+    "data": "2013-12-06",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 36,
+    "assunto": "(i)Ratifica��o do pedido de recupera��o judicial da Companhia, promovido, em medida de urg�ncia, na Comarca da"
+   },
+   {
+    "cnpj": "61.065.298/0001-02",
+    "data": "2014-02-04",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 95,
+    "assunto": "Ratifica��o da decis�o da administra��o de ajuizar o pedido de Recupera��o Judicial."
+   },
+   {
+    "cnpj": "09.112.685/0001-32",
+    "data": "2014-02-06",
+    "n_docs": 5,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 100,
+    "assunto": "(i) ratifica��o do ajuizamento de pedido de recupera��o judicial da Companhia (ii) destitui��o e elei��o de me"
+   },
+   {
+    "cnpj": "10.215.988/0001-60",
+    "data": "2014-03-25",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Aprovar a celebra��o do 7� aditamento da escritura de emiss�o"
+   },
+   {
+    "cnpj": "84.683.762/0001-20",
+    "data": "2014-04-01",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 57,
+    "assunto": "Ratifica��o do pedido de Recupera��o Judicial da Companhia."
+   },
+   {
+    "cnpj": "02.998.301/0001-81",
+    "data": "2014-04-30",
+    "n_docs": 7,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(i) capta��o de recursos pela Companhia||(ii) (a)autoriza��o expressa para que o Conselho de Administra��o, no"
+   },
+   {
+    "cnpj": "02.107.946/0001-87",
+    "data": "2014-05-14",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre a prorroga��o do vencimento de obriga��es financeiras da 10� emiss�o de deb�ntures."
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-09-15",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "07.047.251/0001-70",
+    "data": "2014-09-19",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Cl�usula de vencimento antecipado da Escritura da 3�  emiss�o de deb�ntures simples||2. Outros assuntos de "
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-10-16",
+    "n_docs": 9,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-11-03",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.826.798/0001-89",
+    "data": "2014-11-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "ocorr�ncia de eventos que podem acarretar na declara��o de vencimento antecipado||outros assuntos de interesse"
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2014-11-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.826.798/0001-89",
+    "data": "2014-12-01",
+    "n_docs": 6,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "ocorr�ncia de eventos que podem acarretar na declara��o de vencimento antecipado||outros assuntos de interesse"
+   },
+   {
+    "cnpj": "76.627.504/0001-06",
+    "data": "2014-12-12",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 102,
+    "assunto": "Ratifica��o do ajuizamento de pedido de recupera��o judicial da Companhia."
+   },
+   {
+    "cnpj": "00.359.742/0001-08",
+    "data": "2014-12-12",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 102,
+    "assunto": "Ratifica��o do ajuizamento de pedido de recupera��o judicial da Companhia."
+   },
+   {
+    "cnpj": "61.410.395/0001-95",
+    "data": "2014-12-17",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 44,
+    "assunto": "Ratifica��o do pedido de recupera��o judicial"
+   },
+   {
+    "cnpj": "76.627.504/0001-06",
+    "data": "2014-12-18",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 108,
+    "assunto": "Deliberar acerca da ratifica�ao do ajuizamento de pedido de recupera�ao judicial da Companhia, realizada em re"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2014-12-23",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Proposta da Emissora de dispensa de atendimento dos �ndices financeiros dispostos na cl�usula 5.1.1 (xix) d"
+   },
+   {
+    "cnpj": "00.359.742/0001-08",
+    "data": "2014-12-26",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 116,
+    "assunto": "Deliberar acerca da ratifica��o do ajuizamento de pedido de recupera��o judicial da Companhia, realizado em re"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-01-05",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-03-16",
+    "n_docs": 7,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-03-30",
+    "n_docs": 6,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2015-04-27",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 247,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.387.241/0001-60",
+    "data": "2015-04-28",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.387.241/0001-60",
+    "data": "2015-04-29",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Pagamento de juros e amortiza��o da 1� S�rie da 9� Emiss�o de Deb�ntures referente ao vencimento antecipado da"
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2015-05-14",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 230,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2015-05-28",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 216,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-06-18",
+    "n_docs": 5,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-06-23",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2015-07-21",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.853.896/0001-40",
+    "data": "2015-09-10",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre a dispensa da declara��o de vencimento antecipado em virtude da aliena��o, pela Marfrig, da un"
+   },
+   {
+    "cnpj": "03.853.896/0001-40",
+    "data": "2015-09-25",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Dispensa da declara��o de vencimento antecipado por conta da aliena��o da Moy Park"
+   },
+   {
+    "cnpj": "10.826.798/0001-89",
+    "data": "2015-11-10",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "a ocorr�ncia dos eventos elencados na cl�usula 5.1 da Escritura de Emiss�o, que podem acarretar na declara��o "
+   },
+   {
+    "cnpj": "11.284.204/0001-18",
+    "data": "2015-11-13",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "13.407.573/0001-86",
+    "data": "2016-01-18",
+    "n_docs": 1,
+    "classe": "terceiro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Pedido de Fal�ncia da Leader"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-02-17",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(i) Deliberar sobre o vencimento antecipado ou n�o da Emiss�o, em raz�o da ocorr�ncia do Evento de Vencimento "
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-02-23",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "7� Emiss�o De Deb�ntures||Declara��o, ou n�o do vencimento antecipado das Deb�ntures tendo em vista o rebaixam"
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-02-26",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-02-29",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "07.689.002/0001-89",
+    "data": "2016-02-29",
+    "n_docs": 2,
+    "classe": "terceiro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Corre��o de informa��o"
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-03-02",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "7� Emiss�o De Deb�ntures||Declara��o, ou n�o do vencimento antecipado das Deb�ntures tendo em vista o rebaixam"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-03-04",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "deliberar sobre o vencimento antecipado ou n�o da 2� Emiss�o"
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-03-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "7� Emiss�o de Deb�ntures||Declara��o ou n�o do vencimento antecipado das Deb�ntures tendo em vista o rebaixame"
+   },
+   {
+    "cnpj": "04.781.143/0001-39",
+    "data": "2016-03-14",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-03-14",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-03-14",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre vencimento antecipado ou n�o da 2� Emiss�o de Debentures da Cia."
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-03-17",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Declara��o ou n�o do vencimento antecipado das Deb�ntures tendo em vista o rebaixamento da classifica��o de ri"
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-03-17",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "00.861.626/0001-92",
+    "data": "2016-03-21",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.762.121/0001-04",
+    "data": "2016-03-24",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.781.143/0001-39",
+    "data": "2016-03-28",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-04-06",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre vencimento antecipado ou n�o da 2� Emiss�o de Debentures da Cia."
+   },
+   {
+    "cnpj": "06.977.751/0001-49",
+    "data": "2016-04-12",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "considerar ou n�o antecipadamente vencidas as obriga��es decorrentes das Deb�ntures caso o controle acion�rio "
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-04-14",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre o vencimento antecipado ou n�o da Emiss�o"
+   },
+   {
+    "cnpj": "76.535.764/0001-43",
+    "data": "2016-04-15",
+    "n_docs": 3,
+    "classe": "terceiro",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 66,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "08.159.965/0001-33",
+    "data": "2016-04-25",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 327,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-04-29",
+    "n_docs": 5,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-05-02",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "deliberar sobre o vencimento antecipado ou n�o da Emiss�o, em raz�o da ocorr�ncia do Evento de Vencimento Ante"
+   },
+   {
+    "cnpj": "06.977.751/0001-49",
+    "data": "2016-05-02",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "deliberar sobre os custos para obten��o das ren�ncias de credores ao direito de declararem o vencimento anteci"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2016-05-09",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "deliberar sobre o vencimento antecipado ou n�o da Emiss�o, em raz�o da ocorr�ncia do Evento de Vencimento Ante"
+   },
+   {
+    "cnpj": "22.266.175/0001-88",
+    "data": "2016-05-13",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 997,
+    "assunto": "Deliberar sobre a declara��o, ou n�o, de vencimento antecipado da Emiss�o"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-05-17",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 472,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-06-06",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 452,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-06-07",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 451,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-06-09",
+    "n_docs": 5,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "33.111.246/0001-90",
+    "data": "2016-06-29",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 513,
+    "assunto": "Solicita��o de esclarecimento sobre requerimento de fal�ncia"
+   },
+   {
+    "cnpj": "01.417.222/0001-77",
+    "data": "2016-06-29",
+    "n_docs": 8,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "5� Emiss�o de Deb�ntures||Anu�ncia pr�via dos debenturistas para n�o declarar o vencimento antecipado das Deb�"
+   },
+   {
+    "cnpj": "33.111.246/0001-90",
+    "data": "2016-06-30",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 512,
+    "assunto": "Solicita��o de esclarecimento sobre requerimento de fal�ncia"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-07-04",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 424,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "76.535.764/0001-43",
+    "data": "2016-07-22",
+    "n_docs": 4,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 32,
+    "assunto": "Autoriza��o para a administra��o da Companhia tomar as provid�ncias e praticar os atos necess�rios com rela��o"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2016-08-25",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 700,
+    "assunto": "Proposta de Admninistra��o da Cia para Declara��o ou n�o do Vencimento Antecipado (n�o observ�ncia das disposi"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2016-08-29",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 696,
+    "assunto": "Declara��o ou n�o do vencimento antecipado das deb�ntures em raz�o da n�o observ�ncia das cl�usulas 6.26.2, I "
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-09-09",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 357,
+    "assunto": "Autoriza��o para altera��o da remunera��o da Pent�gono S.A. Distribuidora de T�tulos e Valores Mobili�rios, na"
+   },
+   {
+    "cnpj": "97.837.181/0001-47",
+    "data": "2016-09-23",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Aprovada a declara��o de inadimplemento para vencimento antecipado das deb�ntures para pagamento em 26.09.2"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2016-10-28",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 636,
+    "assunto": "Suspens�o da delibera��o com retomada em 28/11/2016, �s 10 hrs.||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.998.301/0001-81",
+    "data": "2016-11-25",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(i) Examinar, discutir e deliberar s/: autoriza��o para que a Aliena��o do Controle Indireto seja conclu�da se"
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2016-12-19",
+    "n_docs": 6,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2016-12-20",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 255,
+    "assunto": "Deliberar sobre a declara��o, ou n�o, de vencimento antecipado da Emiss�o"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2017-02-02",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 211,
+    "assunto": "(i) Libera��o do pagamento no dia 15 de fevereiro de 2017, da parcela de 7,5000% do Valor Nominal Unit�rio Atu"
+   },
+   {
+    "cnpj": "04.031.960/0001-70",
+    "data": "2017-02-14",
+    "n_docs": 5,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures - Suspens�o AGD para 18/01/2017 �s 11h"
+   },
+   {
+    "cnpj": "33.958.695/0001-78",
+    "data": "2017-03-03",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "anu�ncia � Vila Velha S.A. Administra��o e Participa��es para alienar fiduciariamente ou empenhar as a��es de "
+   },
+   {
+    "cnpj": "03.870.455/0005-80",
+    "data": "2017-03-09",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2017-04-03",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 460,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "56.643.018/0001-66",
+    "data": "2017-04-05",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 462,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.502.676/0001-37",
+    "data": "2017-04-18",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 136,
+    "assunto": "(i) medidas a serem tomadas em rela��o aos esclarecimentos que ser�o prestados pela Emissora sobre o seu plano"
+   },
+   {
+    "cnpj": "08.364.948/0001-38",
+    "data": "2017-05-19",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "solicita��o de esclarecimento sobre requerimento de fal�ncia"
+   },
+   {
+    "cnpj": "08.159.965/0001-33",
+    "data": "2017-06-05",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 733,
+    "assunto": "Declara��o ou n�o de vencimento antecipado das Deb�ntures nos termos das Cl�usulas 7.1, 7.3 e 8.1"
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2017-06-09",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 1417,
+    "assunto": "Desistencia de Pedido de Fal�ncia"
+   },
+   {
+    "cnpj": "03.795.050/0001-09",
+    "data": "2017-07-06",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Consentimento pr�vio para a incorpora��o pela Neoenergia da Elektro e consequente altera��o dos controles das "
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2017-07-18",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.795.050/0001-09",
+    "data": "2017-08-09",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Consentimento pr�vio para a incorpora��o pela Neoenergia da Elektro e consequente altera��o dos controles das "
+   },
+   {
+    "cnpj": "10.835.932/0001-08",
+    "data": "2017-09-13",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1.Altera��o nas defini��es de \"EBITDA\" e de \"Resultado Financeiro\" previstas no item 7.2, inciso XVI da Escrit"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2017-09-13",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 642,
+    "assunto": "aprova��o da constitui��o da Garantia Real pelos demais credores financeiros da Companhia||autoriza��o para qu"
+   },
+   {
+    "cnpj": "10.835.932/0001-08",
+    "data": "2017-10-31",
+    "n_docs": 6,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Consentimento pr�vio para a incorpora��o pela Neoenergia da Elektro e consequente altera��o do controle direto"
+   },
+   {
+    "cnpj": "11.395.624/0001-71",
+    "data": "2017-11-24",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 47,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-02-20",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 1161,
+    "assunto": "Solicita��o pedido de fal�ncia"
+   },
+   {
+    "cnpj": "01.838.723/0001-27",
+    "data": "2018-04-18",
+    "n_docs": 2,
+    "classe": "regulatorio",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Not�cia divulgada na m�dia"
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-05-29",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 1063,
+    "assunto": "Solicita��o de pedido de fal�ncia"
+   },
+   {
+    "cnpj": "05.336.882/0001-84",
+    "data": "2018-07-18",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "mudan�a de controle||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-07-27",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 1004,
+    "assunto": "Solicita��o de pedido de fal�ncia"
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-08-06",
+    "n_docs": 2,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 994,
+    "assunto": "Solicita��o de pedido de fal�ncia"
+   },
+   {
+    "cnpj": "05.336.882/0001-84",
+    "data": "2018-08-08",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o para altera��o de controle societ�rio||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "09.054.385/0001-44",
+    "data": "2018-08-10",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(ii) do bloqueio das Contas Vinculadas Receb�veis Cart�o||(iii) da proibi��o da realiza��o de Antecipa��o de R"
+   },
+   {
+    "cnpj": "00.336.701/0001-04",
+    "data": "2018-08-10",
+    "n_docs": 3,
+    "classe": "regulatorio",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Informa��es sobre pedido da Oi de suspens�o do contrato com a Dataprev."
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-08-20",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 301,
+    "assunto": "deliberar sobre a decreta��o ou n�o do vencimento antecipado das Deb�ntures em virtude da n�o observ�ncia dos "
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-08-21",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 979,
+    "assunto": "Solicita��o de pedido de fal�ncia"
+   },
+   {
+    "cnpj": "05.336.882/0001-84",
+    "data": "2018-08-24",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o altera��o de controle acion�rio||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-08-30",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 35,
+    "assunto": "Autoriza��o ao Agente Fiduci�rio para implementar as mat�rias acima||Contrata��o de assessor legal para a defe"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-09-06",
+    "n_docs": 8,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 284,
+    "assunto": "Delibera��o pelos Debenturistas sobre a decreta��o ou n�o do vencimento antecipado das Deb�ntures em virtude d"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2018-09-13",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-09-14",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 276,
+    "assunto": "Delibera��o pelos Debenturistas sobre a decreta��o ou n�o do vencimento antecipado das Deb�ntures em virtude d"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2018-09-19",
+    "n_docs": 13,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 271,
+    "assunto": "Delibera��o pelos Debenturistas sobre a dispensa de manuten��o, pela Companhia, dos �ndices financeiros (\"cove"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-09-20",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 56,
+    "assunto": "Autoriza��o ao Agente Fiduci�rio para implementar as mat�rias acima||Contrata��o de assessor legal para a defe"
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2018-09-27",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 942,
+    "assunto": "Esclarecimento sobre o pedido de fal�ncia desta CIA, e sua controlada, Azevedo &amp Travassos Engenharia."
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2018-09-28",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "61.695.227/0001-93",
+    "data": "2018-10-10",
+    "n_docs": 5,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 139,
+    "assunto": ""
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-10-22",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 88,
+    "assunto": "Autoriza��o ao Agente Fiduci�rio para implementar as mat�rias acima||Contrata��o de assessor legal para a defe"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-11-22",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 119,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2018-12-17",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 144,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "33.200.049/0001-47",
+    "data": "2019-01-04",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 38,
+    "assunto": "Ratificar a delibera��o tomada na Reuni�o do Conselho de Administra��o da Companhia, realizada em 23/11/2018, "
+   },
+   {
+    "cnpj": "33.200.049/0001-47",
+    "data": "2019-01-08",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 42,
+    "assunto": "Ratificar a decis�o tomada pelo Conselho de Administra��o, na reuni�o realizada no dia 23.11.2018 que, em car�"
+   },
+   {
+    "cnpj": "60.500.139/0001-26",
+    "data": "2019-01-10",
+    "n_docs": 3,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 48,
+    "assunto": "(i) Ratificar o pedido de recupera��o judicial da Companhia||(ii) Autorizar os administradores da Companhia a "
+   },
+   {
+    "cnpj": "61.351.532/0001-68",
+    "data": "2019-02-14",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 802,
+    "assunto": "Solicita��o de Pedido de Fal�ncia"
+   },
+   {
+    "cnpj": "10.531.501/0001-58",
+    "data": "2019-02-14",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.531.501/0001-58",
+    "data": "2019-02-22",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-02-25",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-03-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-03-27",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-04-02",
+    "n_docs": 7,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Deliberar sobre a declara��o, ou n�o, de vencimento antecipado da Emiss�o, conforme al�nea \"z\" da cl�usula "
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2019-04-04",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 74,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-04-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-04-18",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Deliberar sobre a declara��o, ou n�o, de vencimento antecipado da Emiss�o, conforme al�nea \"z\" da cl�usula "
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-04-25",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Deliberar sobre a declara��o, ou n�o, de vencimento antecipado da Emiss�o, conforme al�nea \"z\" da cl�usula "
+   },
+   {
+    "cnpj": "31.001.230/0001-07",
+    "data": "2019-04-26",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Termo de n�o instala��o por falta de qu�rum"
+   },
+   {
+    "cnpj": "01.616.929/0001-02",
+    "data": "2019-05-09",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "1. Deliberar sobre a declara��o, ou n�o, de vencimento antecipado da Emiss�o, conforme al�nea \"z\" da cl�usula "
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-05-24",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "75.609.123/0001-23",
+    "data": "2019-05-31",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "ATA DA ASSEMBLEIA GERAL DE DEB�NTURES DA 5� EMISS�O - Standstill"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-06-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "75.609.123/0001-23",
+    "data": "2019-06-24",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "ATA DA ASSEMBLEIA GERAL DE DEB�NTURES DA 7� EMISS�O - Standstill"
+   },
+   {
+    "cnpj": "75.609.123/0001-23",
+    "data": "2019-06-25",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "ATA DA ASSEMBLEIA GERAL DE DEB�NTURES DA 5� EMISS�O - Standstill"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-07-26",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2019-07-26",
+    "n_docs": 7,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 39,
+    "assunto": "autoriza��o para o Agente Fiduci�rio firmar documentos e tomar quaisquer medidas necess�rias, a fim de refleti"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-07-29",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "31.001.230/0001-07",
+    "data": "2019-08-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-08-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-08-26",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 74,
+    "assunto": "Reestrutura��o das Deb�ntures"
+   },
+   {
+    "cnpj": "60.851.615/0001-53",
+    "data": "2019-08-29",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 34,
+    "assunto": "Ratifica��o do pedido de Recupera��o Judicial"
+   },
+   {
+    "cnpj": "60.851.615/0001-53",
+    "data": "2019-09-10",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 46,
+    "assunto": "Autorizar a Administra��o da Companhia a tomar as provid�ncias e praticar os atos necess�rios para RJ||Ratific"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-09-11",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-09-19",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 50,
+    "assunto": "Reestrutura��o das deb�ntures||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-09-20",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 49,
+    "assunto": "Reestrutura��o das Deb�ntures||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "31.001.230/0001-07",
+    "data": "2019-09-24",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-09-26",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-09-27",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 42,
+    "assunto": "Reestrutura��o das Deb�ntures||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-10-04",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 35,
+    "assunto": "Reestrutura��o das Deb�ntures||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-10-23",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2019-11-07",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 143,
+    "assunto": "autorizar o Agente Fiduci�rio a firmar documentos e tomar quaisquer medidas necess�rias, a fim de refletir as "
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2019-11-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "07.401.436/0001-31",
+    "data": "2019-12-02",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-12-09",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 31,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-12-18",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 40,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "01.545.826/0001-07",
+    "data": "2020-01-08",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 1071,
+    "assunto": "Esclarecimento sobre Pedido de Fal�ncia"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-01-20",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 73,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-01-21",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "04.032.433/0001-80",
+    "data": "2020-02-03",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 231,
+    "assunto": "Autorizar os Administradores da Companhia a praticarem todos os atos necess�rios em decorr�ncia do item i acim"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-02-04",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 88,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-02-07",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-02-10",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 94,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-03-03",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 116,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-03-25",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-03-26",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-04-09",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "01.083.200/0001-18",
+    "data": "2020-06-03",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 741,
+    "assunto": "1- Outorga de Garantia||2- Standstill BNDES"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-06-09",
+    "n_docs": 5,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 214,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "33.035.536/0001-00",
+    "data": "2020-06-15",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 49,
+    "assunto": "Autorizar a administra��o da Companhia a tomar as provid�ncias e praticar os atos necess�rios com rela��o ao r"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-06-19",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-06-23",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 228,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "61.101.895/0001-45",
+    "data": "2020-06-25",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o da transfer�ncia de controle acion�rio||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "13.584.310/0001-42",
+    "data": "2020-07-01",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-07-03",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 238,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.222.736/0001-30",
+    "data": "2020-07-06",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.328.280/0001-97",
+    "data": "2020-07-07",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "a ades�o ao Standstill do BNDES||Aprova��o da 8� (oitava) emiss�o (\"Emiss�o\") de deb�ntures simples||autoriza�"
+   },
+   {
+    "cnpj": "49.669.856/0001-43",
+    "data": "2020-07-17",
+    "n_docs": 3,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 42,
+    "assunto": "Autoriza��o ao Agente Fiduci�rio, para assinar os documentos necess�rios para fins de formaliza��o das deliber"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-07-24",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 259,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-08-09",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 275,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-08-21",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 287,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-09-04",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 301,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-09-11",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 308,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "18.593.815/0001-97",
+    "data": "2020-09-15",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "18.593.815/0001-97",
+    "data": "2020-09-18",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-09-30",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 327,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-11-03",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 361,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2020-11-03",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-11-09",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 367,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2020-11-23",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-11-24",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 382,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2020-12-02",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2020-12-08",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 897,
+    "assunto": "Renova��o StandStill do BNDES do Metr�Rio"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-12-09",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 397,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.324.624/0001-18",
+    "data": "2020-12-10",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre anu�ncia para pagamento."
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-12-14",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 402,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2020-12-15",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 403,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2020-12-21",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 884,
+    "assunto": "VLT - Renova��o StandStill do BNDES"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-01-15",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 434,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-01-25",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 444,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-02-26",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 476,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-03-05",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 483,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "17.281.106/0001-03",
+    "data": "2021-04-06",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Acordo Coletivo de Trabalho -ACT e Participa��o nos Lucros -PLdos colaboradores, com pagamento em 2021||Remune"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-04-08",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 517,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-05-07",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 546,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-06-08",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 578,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-07-06",
+    "n_docs": 5,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 606,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2021-07-07",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 607,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "01.027.058/0001-91",
+    "data": "2021-07-29",
+    "n_docs": 5,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 393,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-01-26",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 810,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "08.873.873/0001-10",
+    "data": "2022-02-02",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Deliberar sobre a assinatura pelo Agente Fiduci�rio e pela Companhia de todos os documentos||Vencimento Anteci"
+   },
+   {
+    "cnpj": "02.291.077/0001-93",
+    "data": "2022-02-11",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-02-14",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 829,
+    "assunto": "Negocia��o com ARTESP"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-02-22",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 837,
+    "assunto": "Termo de n�o Instala��o - Aditamento SPA"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-03-09",
+    "n_docs": 6,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 852,
+    "assunto": "Negocia��o com ARTESP"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-04-04",
+    "n_docs": 8,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 878,
+    "assunto": "Aditamento SPA"
+   },
+   {
+    "cnpj": "02.950.811/0001-89",
+    "data": "2022-04-05",
+    "n_docs": 1,
+    "classe": "falencia_requerida",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 1932,
+    "assunto": "Esclarecimento sobre decreta��o de fal�ncia de SPE"
+   },
+   {
+    "cnpj": "02.950.811/0001-89",
+    "data": "2022-04-11",
+    "n_docs": 2,
+    "classe": "falencia_requerida",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 1938,
+    "assunto": "Esclarecimento sobre decreta��o de fal�ncia de SPE"
+   },
+   {
+    "cnpj": "02.291.077/0001-93",
+    "data": "2022-05-02",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-05-27",
+    "n_docs": 6,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 931,
+    "assunto": "Aditamento SPA"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-07-05",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 970,
+    "assunto": "Negocia��o ARTESP"
+   },
+   {
+    "cnpj": "33.541.368/0001-16",
+    "data": "2022-07-05",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Medida cautelar"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-07-15",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 980,
+    "assunto": "Aditamento SPA"
+   },
+   {
+    "cnpj": "02.919.555/0001-67",
+    "data": "2022-09-08",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Ajuste em clausula de vencimento antecipado"
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2022-10-03",
+    "n_docs": 4,
+    "classe": "agd_vencimento",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 1060,
+    "assunto": "Aditamento SPA"
+   },
+   {
+    "cnpj": "92.781.335/0001-02",
+    "data": "2022-10-26",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "15.141.799/0001-03",
+    "data": "2022-11-24",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Esclarecimento sobre a��o cautelar"
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-01-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-01-13",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-01-27",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "62.070.362/0001-06",
+    "data": "2023-02-14",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.041.460/0001-93",
+    "data": "2023-03-06",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Pedido de recupera��o judicial pela Oi S.A. - Em Recupera��o Judicial"
+   },
+   {
+    "cnpj": "09.149.503/0001-06",
+    "data": "2023-03-23",
+    "n_docs": 8,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Waiver"
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-03-31",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 908,
+    "assunto": "(i) concess�o de anu�ncia pr�via, para eventual altera��o do controle acion�rio da Emissora, de modo a evitar "
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-04-11",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 897,
+    "assunto": "(i) concess�o de anu�ncia pr�via, para eventual altera��o do controle acion�rio da Emissora, de modo a evitar "
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2023-04-28",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 880,
+    "assunto": "(i) concess�o de anu�ncia pr�via, para eventual altera��o do controle acion�rio da Emissora, de modo a evitar "
+   },
+   {
+    "cnpj": "12.300.288/0001-07",
+    "data": "2023-05-12",
+    "n_docs": 1,
+    "classe": "terceiro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "CI�NCIA DO PEDIDO DE  RECUPERA��O JUDICIAL DA LIGHT S.A"
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2023-05-22",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Consentimento para realiza��o de opera��o que resulte em altera��o de  controle acion�rio indireto da Companhi"
+   },
+   {
+    "cnpj": "04.370.282/0001-70",
+    "data": "2023-05-23",
+    "n_docs": 5,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o para o Agente Fiduci�rio praticar, em conjunto com a Companhia, todos  os demais atos eventualment"
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2023-05-23",
+    "n_docs": 6,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o para o Agente Fiduci�rio praticar, em conjunto com a Companhia,  todos os demais atos eventualment"
+   },
+   {
+    "cnpj": "60.444.437/0001-46",
+    "data": "2023-05-26",
+    "n_docs": 4,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 44,
+    "assunto": "15� Emiss�o de Deb�ntures||Delibera��o pelos Debenturistas sobre Aprovar a altera��o da Escritura de Emiss�o a"
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2023-06-19",
+    "n_docs": 7,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o para o Agente Fiduci�rio praticar, em conjunto com a Companhia,  todos os demais atos eventualment"
+   },
+   {
+    "cnpj": "04.370.282/0001-70",
+    "data": "2023-06-19",
+    "n_docs": 3,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Autoriza��o para o Agente Fiduci�rio praticar, em conjunto com a Companhia,  todos os demais atos eventualment"
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2023-09-11",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 375,
+    "assunto": "Afastamento do Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "05.303.439/0001-07",
+    "data": "2023-09-12",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 86,
+    "assunto": "Aprova��o da concess�o de prazo de standstill pelos Debenturistas � Emissora||Viabilizar o ambiente de negocia"
+   },
+   {
+    "cnpj": "60.500.139/0001-26",
+    "data": "2024-01-03",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 1867,
+    "assunto": "Senten�a concessiva do pedido de fal�ncia"
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2024-01-29",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 235,
+    "assunto": "Aprova��o da concess�o de anu�ncia pr�via pelos Debenturistas, afastando a Hip�teses de Vencimento Antecipado"
+   },
+   {
+    "cnpj": "16.670.085/0001-55",
+    "data": "2024-01-29",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Premissa de valor residual e not�cia veiculada no valor econ�mico sobre chapter 11 da Gol linhas a�reas"
+   },
+   {
+    "cnpj": "06.016.348/0001-53",
+    "data": "2024-02-23",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Aprova��o da concess�o de autoriza��o pr�via para a transa��o de altera��o do controle indireto acion�rio.||Ve"
+   },
+   {
+    "cnpj": "06.164.253/0001-87",
+    "data": "2024-02-28",
+    "n_docs": 3,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 34,
+    "assunto": "(i) a ratifica��o da elei��o realizada em reuni�o do Conselho de Administra��o em 18 de janeiro de 2024 de 2 ("
+   },
+   {
+    "cnpj": "38.482.780/0001-26",
+    "data": "2024-04-08",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 165,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "16.404.287/0001-55",
+    "data": "2024-06-07",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-08-30",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 255,
+    "assunto": "Aprovar nova suspens�o tempor�ria dos efeitos do vencimento antecipado autom�tico das Deb�ntures previsto no i"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-09-30",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 224,
+    "assunto": "Aprovar nova suspens�o tempor�ria dos efeitos do vencimento antecipado autom�tico das Deb�ntures previsto no i"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-10-11",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 213,
+    "assunto": "Aprovar nova suspens�o tempor�ria dos efeitos do vencimento antecipado autom�tico das Deb�ntures previsto no i"
+   },
+   {
+    "cnpj": "00.873.894/0001-24",
+    "data": "2024-10-29",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Alterar escritura de emiss�o no item 6.2.1 - Vencimento Antecipado"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-11-08",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 185,
+    "assunto": "Aprovar nova suspens�o tempor�ria dos efeitos do vencimento antecipado autom�tico das Deb�ntures previsto no i"
+   },
+   {
+    "cnpj": "08.773.135/0001-00",
+    "data": "2024-11-18",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 83,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-11-22",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 171,
+    "assunto": "Aprovar nova suspens�o tempor�ria dos efeitos do vencimento antecipado autom�tico das Deb�ntures previsto no i"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2024-12-20",
+    "n_docs": 1,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 143,
+    "assunto": "Aprovar nova suspens�o tempor�ria dos efeitos do vencimento antecipado autom�tico das Deb�ntures"
+   },
+   {
+    "cnpj": "08.262.121/0001-13",
+    "data": "2024-12-24",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "02.281.836/0001-37",
+    "data": "2025-02-17",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 929,
+    "assunto": "Elei��o de membro da Diretoria."
+   },
+   {
+    "cnpj": "08.773.135/0001-00",
+    "data": "2025-02-28",
+    "n_docs": 3,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 54,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "08.170.849/0001-15",
+    "data": "2025-03-21",
+    "n_docs": 6,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(i) Delibera��o sobre a constitui��o de garantia real em favor dos debenturistas da 5� emiss�o, por meio da ce"
+   },
+   {
+    "cnpj": "08.170.849/0001-15",
+    "data": "2025-04-11",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(i)  a altera��o da reda��o do Evento de Vencimento Antecipado||(ii)  a autoriza��o para que o Agente Fiduci�r"
+   },
+   {
+    "cnpj": "08.170.849/0001-15",
+    "data": "2025-05-06",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "(i) a altera��o da reda��o do Evento de Vencimento Antecipado previsto no item (xiii) da Cl�usula 6.1. da Escr"
+   },
+   {
+    "cnpj": "02.998.611/0001-04",
+    "data": "2025-05-09",
+    "n_docs": 2,
+    "classe": "regulatorio",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Atualiza��o sobre a media��o com a Fazenda P�blica do Estado de S�o Paulo"
+   },
+   {
+    "cnpj": "08.467.115/0001-00",
+    "data": "2025-07-11",
+    "n_docs": 8,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "aprovar a concess�o de consentimento pr�vio, de forma que n�o seja caracterizada uma Hip�tese de Vencimento An"
+   },
+   {
+    "cnpj": "27.967.244/0001-02",
+    "data": "2025-10-06",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Aprovar a concess�o de consentimento pr�vio, de forma que n�o seja caracterizada uma hip�tese de Evento de Ven"
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2025-10-09",
+    "n_docs": 1,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "autoriza��o para o Agente Fiduci�rio praticar todos os demais atos eventualmente necess�rios de forma a reflet"
+   },
+   {
+    "cnpj": "04.368.898/0001-06",
+    "data": "2025-11-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "06.164.253/0001-87",
+    "data": "2025-12-03",
+    "n_docs": 1,
+    "classe": "outro",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 359,
+    "assunto": "Atualiza��o sobre o processo de Chapter 11"
+   },
+   {
+    "cnpj": "06.057.223/0001-71",
+    "data": "2025-12-15",
+    "n_docs": 1,
+    "classe": "regulatorio",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 82,
+    "assunto": "Decis�o judicial sobre pedido de tutela de urg�ncia requerido por Assa� na Medida Cautelar."
+   },
+   {
+    "cnpj": "12.648.266/0001-24",
+    "data": "2026-03-30",
+    "n_docs": 8,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 160,
+    "assunto": ""
+   },
+   {
+    "cnpj": "10.760.260/0001-19",
+    "data": "2026-04-13",
+    "n_docs": 2,
+    "classe": "clausula",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Delibera��o sobre a n�o declara��o de vencimento antecipado das deb�ntures da 4� emiss�o em raz�o de evento pr"
+   },
+   {
+    "cnpj": "12.648.266/0001-24",
+    "data": "2026-04-30",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 191,
+    "assunto": "Autoriza��o para os administradores tomarem as provid�ncias e praticarem os atos necess�rios, com vistas a dar"
+   },
+   {
+    "cnpj": "09.527.023/0001-23",
+    "data": "2026-04-30",
+    "n_docs": 2,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 191,
+    "assunto": "Autoriza��o para os administradores tomarem as provid�ncias e praticarem os atos necess�rios, com vistas a dar"
+   },
+   {
+    "cnpj": "03.758.318/0001-24",
+    "data": "2026-05-06",
+    "n_docs": 2,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": true,
+    "dist_E": 359,
+    "assunto": "Cessa��o do vencimento antecipado"
+   },
+   {
+    "cnpj": "26.982.634/0001-80",
+    "data": "2026-06-12",
+    "n_docs": 1,
+    "classe": "agd_vencimento",
+    "prevalente": false,
+    "cnpj_com_E": false,
+    "dist_E": null,
+    "assunto": "Convers�o||Vencimento Antecipado de Deb�ntures"
+   },
+   {
+    "cnpj": "33.041.260/0652-90",
+    "data": "2026-09-17",
+    "n_docs": 8,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 32,
+    "assunto": "Termo de n�o instala��o da Assembleia Geral de Debenturistas da 10� emiss�o de debentures"
+   },
+   {
+    "cnpj": "31.553.627/0001-01",
+    "data": "2026-09-25",
+    "n_docs": 4,
+    "classe": "abertura_propria",
+    "prevalente": true,
+    "cnpj_com_E": true,
+    "dist_E": 136,
+    "assunto": "Elei��o de Membros do Conselho de Administra��o"
+   }
+  ]
+ },
+ "A2": {
+  "chaves": 11,
+  "itens": [
+   {
+    "cnpj": "82.981.671/0001-45",
+    "data": "2012-01-20",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 39,
+    "prevalente": true,
+    "assunto": "Informa��es resumidas sobre processamento de recupera��o judicial da Companhia"
+   },
+   {
+    "cnpj": "33.111.246/0001-90",
+    "data": "2012-09-05",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 33,
+    "prevalente": true,
+    "assunto": "DEFERIMENTO DA RECUPERA��O JUDICIAL"
+   },
+   {
+    "cnpj": "07.957.093/0001-96",
+    "data": "2013-12-18",
+    "n_docs_cat_a": 2,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 48,
+    "prevalente": true,
+    "assunto": "Defini��o Final do Administrador da Recupera��o Judicial"
+   },
+   {
+    "cnpj": "00.354.053/0001-00",
+    "data": "2015-07-14",
+    "n_docs_cat_a": 1,
+    "origem": "retomada",
+    "dias_desde_E_anterior": 60,
+    "prevalente": false,
+    "assunto": ""
+   },
+   {
+    "cnpj": "09.538.973/0001-53",
+    "data": "2017-08-04",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 163,
+    "prevalente": true,
+    "assunto": "Peti��o conjunta com Bancos - Pedido de Prorroga��o de prazo para negocia��o com Bancos"
+   },
+   {
+    "cnpj": "43.185.362/0001-07",
+    "data": "2018-11-22",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 209,
+    "prevalente": true,
+    "assunto": "Conhecimento e Provimento do Agravo Instrumento matendo a comarca de Manaus competente para processamento da R"
+   },
+   {
+    "cnpj": "02.373.517/0001-51",
+    "data": "2019-03-22",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 239,
+    "prevalente": true,
+    "assunto": "Pedido de prorroga��o do \"Stay Period\""
+   },
+   {
+    "cnpj": "10.678.505/0001-63",
+    "data": "2019-12-17",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 39,
+    "prevalente": true,
+    "assunto": "Decis�o de Deferimento do Pedido de Recupera��o Judicial"
+   },
+   {
+    "cnpj": "67.571.414/0001-41",
+    "data": "2020-04-09",
+    "n_docs_cat_a": 3,
+    "origem": "retomada",
+    "dias_desde_E_anterior": 112,
+    "prevalente": false,
+    "assunto": ""
+   },
+   {
+    "cnpj": "00.776.574/0001-56",
+    "data": "2025-02-26",
+    "n_docs_cat_a": 2,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 769,
+    "prevalente": true,
+    "assunto": "Peti��o Inicial"
+   },
+   {
+    "cnpj": "38.199.406/0001-18",
+    "data": "2026-05-14",
+    "n_docs_cat_a": 1,
+    "origem": "abertura",
+    "dias_desde_E_anterior": 303,
+    "prevalente": true,
+    "assunto": "Decis�o-Deferimento/ Processamento da Recupera��o Extrajudicial"
+   }
+  ]
+ },
+ "F_W_com_S_A2_na_uniao": {
+  "chaves_de_G_a_30d_de_S_ou_A2": 0,
+  "N_F": 402,
+  "N_W": 2505
+ }
+}

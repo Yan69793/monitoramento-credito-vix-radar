@@ -1,0 +1,125 @@
+{
+ "camadas": {
+  "E": 269,
+  "X": 47,
+  "A": 2,
+  "S": 207,
+  "A2": 11
+ },
+ "S_chaves_brutas": 331,
+ "soma_camadas": 536,
+ "uniao_distinta": 511,
+ "uniao_E_X_A": 293,
+ "sobreposicao_exata": {
+  "E&X": 25
+ },
+ "pares_ate_30d_na_uniao": {
+  "total": 18,
+  "por_origem": {
+   "A2+S": 2,
+   "E": 7,
+   "E+E/X": 1,
+   "E+X": 6,
+   "E/X+X": 2
+  }
+ },
+ "S_A2_novo_ou_desdobramento": {
+  "S": {
+   "contra_toda_a_uniao": {
+    "181_a_730": 28,
+    "31_a_180": 76,
+    "ate_30": 1,
+    "mais_de_730": 13,
+    "sem_candidato_anterior": 89
+   },
+   "contra_E_X_A": {
+    "181_a_730": 22,
+    "31_a_180": 34,
+    "mais_de_730": 14,
+    "sem_candidato_anterior": 137
+   }
+  },
+  "A2": {
+   "contra_toda_a_uniao": {
+    "181_a_730": 2,
+    "31_a_180": 7,
+    "ate_30": 1,
+    "mais_de_730": 1
+   },
+   "contra_E_X_A": {
+    "181_a_730": 3,
+    "31_a_180": 7,
+    "mais_de_730": 1
+   }
+  }
+ },
+ "volume": {
+  "E": {
+   "chaves": 269,
+   "docs_no_dia": 733,
+   "media_docs_no_dia": 2.725,
+   "docs_contexto_180d": 11087,
+   "media_contexto_180d": 41.22
+  },
+  "X": {
+   "chaves": 47,
+   "docs_no_dia": 111,
+   "media_docs_no_dia": 2.362,
+   "docs_contexto_180d": 2761,
+   "media_contexto_180d": 58.74
+  },
+  "A": {
+   "chaves": 2,
+   "docs_no_dia": 3,
+   "media_docs_no_dia": 1.5,
+   "docs_contexto_180d": 16,
+   "media_contexto_180d": 8
+  },
+  "S": {
+   "chaves": 207,
+   "docs_no_dia": 499,
+   "media_docs_no_dia": 2.411,
+   "docs_contexto_180d": 8773,
+   "media_contexto_180d": 42.38
+  },
+  "A2": {
+   "chaves": 11,
+   "docs_no_dia": 19,
+   "media_docs_no_dia": 1.727,
+   "docs_contexto_180d": 501,
+   "media_contexto_180d": 45.55
+  },
+  "uniao": {
+   "chaves": 511,
+   "docs_no_dia": 1300,
+   "media_docs_no_dia": 2.544,
+   "docs_contexto_180d": 21729,
+   "media_contexto_180d": 42.52
+  },
+  "F": {
+   "chaves": 402,
+   "docs_no_dia": 897,
+   "media_docs_no_dia": 2.231,
+   "docs_contexto_180d": 23447,
+   "media_contexto_180d": 58.33
+  },
+  "W": {
+   "chaves": 2505,
+   "docs_no_dia": 6172,
+   "media_docs_no_dia": 2.464,
+   "docs_contexto_180d": 131686,
+   "media_contexto_180d": 52.57
+  }
+ },
+ "etapa1": {
+  "chaves": 1261,
+  "docs_no_dia_estimados": 3099
+ },
+ "F_W": {
+  "N_F": 402,
+  "N_W": 2505,
+  "chaves_de_G_a_30d_de_S_ou_A2": 0,
+  "F_inter_W": 0,
+  "G_inter_uniao": 0
+ }
+}
