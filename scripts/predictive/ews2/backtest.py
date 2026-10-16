@@ -183,18 +183,20 @@ def ajustar_g3(linhas, idx, sinais, grupos=None):
     li, ls, _ = M.bootstrap_cluster(cl, lambda ii: MO.inclinacao_calibracao([p[k] for k in ii], [yt[k] for k in ii]))
     bs0, bs2 = M.brier_skill(p, yt, p0), M.brier_skill(p, yt, p2)
     passa, motivos = M.g3(bs0, bs2, (li, ls))
-    # regra de simplicidade: melhor sinal unico
+    # Escolha do melhor sinal unico pela VALIDACAO; o TESTE so mensura o vencedor.
     melhor = None
     for s in sinais:
         ms = MO.ajustar_logit([[float(linhas[i][s] or 0)] for i in tr], y(tr))
-        abs_ = MO.platt(MO.prever_logit(ms, [[float(linhas[i][s] or 0)] for i in va]), y(va))
-        ps = MO.aplicar_platt(abs_, MO.prever_logit(ms, [[float(linhas[i][s] or 0)] for i in te]))
-        b = M.brier(ps, yt)
-        if melhor is None or b < melhor[1]:
-            melhor = (s, b)
+        x_valid = [[float(linhas[i][s] or 0)] for i in va]
+        abs_ = MO.platt(MO.prever_logit(ms, x_valid), y(va))
+        b_valid = M.brier(MO.aplicar_platt(abs_, MO.prever_logit(ms, x_valid)), y(va))
+        if melhor is None or b_valid < melhor[1]:
+            x_test = [[float(linhas[i][s] or 0)] for i in te]
+            b_test = M.brier(MO.aplicar_platt(abs_, MO.prever_logit(ms, x_test)), yt)
+            melhor = (s, b_valid, b_test)
     return {"estado": "calculado", "sinais": sinais, "beta": mod["beta"], "platt": list(ab), "brier": M.brier(p, yt), "brier_b0": M.brier(p0, yt),
             "brier_b2": M.brier(p2, yt), "brier_skill_b0": bs0, "brier_skill_b2": bs2, "inclinacao_ic95": [li, ls],
-            "passa": passa, "motivos": motivos, "melhor_sinal_unico": {"sinal": melhor[0], "brier": melhor[1]},
+            "passa": passa, "motivos": motivos, "melhor_sinal_unico": {"sinal": melhor[0], "brier": melhor[2], "brier_validacao": melhor[1]},
             "n": {"treino": len(tr), "validacao": len(va), "teste": len(te)}}
 
 

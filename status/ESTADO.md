@@ -1,5 +1,103 @@
 # Estado do projeto — VIX Radar
 
+## 16/10/2026 14:50, frontend v202.66 publicado: RESEARCHTOGGLE1 e METRICASFOLD1 (SEM push)
+
+Botao "Ocultar research" voltou a funcionar e mostra a contagem. Com Metricas aberta o painel do emissor rola inteiro e a lista de eventos nao fica mais espremida. `deploy-pages.ps1` EXIT=0, producao `version.json` v202.66, codigo novo servido em vixradar.com, health `ok:true` (Worker v4.9.270 intocado). Commits locais `cd717da` e `cd08d91`, push pendente de autorizacao. Detalhe em `PENDENCIAS.md`.
+
+## 16/10/2026 11:30, EWS 2.0: G1-eq APROVADO (30/30, regra congelada e estendida), PORTOES DE ROTULAGEM ABERTOS, etapa 1 NAO rotulada
+
+**Refazimento autorizado pelo operador (teto 4M Claude):** i0001, i0002 e i0005 no executor v0.2 e i0030 concluido, 2.801.882 tokens, um braco por invocacao com teto conferido antes de cada um (`tmp/operacional/vix-radar/ews-etapa1/refazer-g1eq-autorizado-20261016.ps1`, resumo em `g1eq/refazer_autorizado_20261016.json`). `g1eq.py avaliar` EXIT=0: 30/30, 0 divergencia binaria, 0 de data em 2 pares ep-ep, estendido 1 divergencia de evento (i0020, na tolerancia), nenhum executor antigo. `rotular_etapa1.py portoes` EXIT=0 (P1-P4 abertos, P3 pela autorizacao gravada as 07:10).
+
+**Tarde, autorizacao REATIVADA a pedido do operador, com segundo rotulador configuravel.** `segundo_rotulador=codex`, `modelo_segundo=gpt-6.1-sol` (tambem em `VIXRADAR_ROTULADOR_CODEX_MODELO` User), `teto_tokens_lote=2000000`, que vale tambem para o `continuar-apos-g1eq` (min com o teto da linha de comando). Opcoes `gemini`, `openrouter` (pago, aceite explicito) e `claude` (mesmo fornecedor, aceite explicito) em `llm_cli.py`, validadas no P3. `portoes` EXIT=0, suite de validacao 195/195. Etapa 1 NAO rotulada. Nota 122, secao 3.1.
+
+**11:35, autorizacao SUSPENSA por decisao do operador (substituido acima).** `autorizacao_rotulagem_etapa1.json` renomeado para `.json.suspensa` (mesmo hash, nada apagado). `portoes` voltou a EXIT=86 so por P3. Reativar: renomear de volta, depois de definir `VIXRADAR_ROTULADOR_CODEX_MODELO` e teto por lote.
+
+**Atencao (antes da suspensao).** Com os portoes abertos, `rotular_etapa1.py rodar` rotularia a etapa 1 sem nova trava, e `continuar-apos-g1eq-20261016.ps1` chama isso com `--teto-tokens 999999999`. Nada rodou (sem processo, sem task, sem `rotulos_etapa1.csv`). Segunda leitura segue bloqueada sem `VIXRADAR_ROTULADOR_CODEX_MODELO`. Alcance do G1-eq: equivalencia entre dois modos de leitura do MESMO modelo em 30 itens (2 evento_proprio), nao acuracia do rotulo.
+
+## 16/10/2026 11:10, EWS 2.0: auditoria independente, G1-eq-ext e trava do Codex (SEM commit, SEM push, SEM deploy, SEM rotulo)
+
+**Classificacao da auditoria: NAO VALIDADO.** Nenhum rotulo real, nenhum sinal calculado. Producao saudavel (v4.9.269, v202.65).
+
+**G1-eq.** Reavaliado sem chamada a modelo: 29/30 completos, veredito congelado `incompleto`. Regra estendida proposta (nota 122): eventos derivados pela regua de `eventos.py` divergem em 1 par (i0020, na tolerancia), executor antigo em i0001, i0002, i0005, i0030. Portao novo P4 fail-closed. `rotular_etapa1.py portoes` EXIT=86 (P2 e P4).
+
+**Segundo rotulador.** Corrigido envio de modelo Claude ao Codex. Execucao real exige `VIXRADAR_ROTULADOR_CODEX_MODELO` e janela 00h30-08h30 BRT sem rotina rodando. Uma chamada real ao Codex disparada pela prova contra o codigo antigo (10:57, resposta `{}`), teste blindado.
+
+**Decisoes do operador:** aprovar G1-eq-ext, autorizar ~3,6M tokens para i0001/i0002/i0005/i0030, definir modelo do Codex, tratar as 3 limitacoes do G3 antes de `backtest.py --real`.
+
+## 16/10/2026 02:30, EWS 2.0: G0-v3 CONGELADA E CONFERIDA, G1-eq EM EXECUCAO, etapa 1 NAO rotulada (SEM commit, SEM push, SEM deploy, SEM servico pago, Codex nao chamado)
+
+**Correcao do item abaixo (01:40).** A G0-v3 ja estava congelada quando ele foi escrito: `guarda_g0v3.py` `EXIT=0` (`0f1b0af5...`, 27.326 bytes, `recuperar_g0v3.py` `f0b7e403...`), regerada por `gerar_g0v3.py` com o mesmo hash, trava 10/10 nas duas pontas. Detalhe na nota 121.
+
+**G1-eq.** Executor novo (`llm_cli.py`, `rotular_g0v3.py`, `leitura_integral_g0v3.py`, `g1eq.py`, 24 testes). `claude -p` com OAuth do CLI expirado; roda pelo modo assinatura-token das rotinas (`VIXRADAR_ANTHROPIC_AUTH_TOKEN` -> `CLAUDE_CODE_OAUTH_TOKEN`), modelo `claude-sonnet-5-5`. Dois defeitos do executor achados em execucao e corrigidos (v0.2): renderizacao de escaneado por caminho relativo (transcricao vazia gravada, apagada) e braco integral sem acesso ao indice de 24 meses. Resultado: PARCIAL. 7 de 30 itens com os dois bracos (i0001 a i0006 completos, i0007 so progressivo); sessao Claude bateu o limite as 02:35 (volta 04h); cadeia detached continua e avalia o gate sozinha (log em data/validacao/etapa1_g0v2/g1eq/encadeado.log). Gate nao decidido.
+
+**Base.** Documentos do dia dos 1.261 itens baixados (fim 02:12). Integridade completa: 3.714 sha256 conferidos, 0 divergentes, 0 originais ou textos ausentes. Contexto de 180 dias segue baixando (autorizado). Rotulagem da etapa 1 pronta e bloqueada por portoes (`rotular_etapa1.py portoes` `EXIT=86`: G1-eq e autorizacao do operador).
+
+**Pipeline preditivo e integracao.** `scripts/predictive/ews2/` (painel, features H1-H8, benchmarks, logit+Platt, metricas, Holm, G2/G3, backtest cronologico), 29 testes; prova so em sintetico (H1 plantado aprovado, H4 nulo refutado), nao e evidencia de eficacia. Guarda de treino `EXIT=1` sem homologacao. Adaptador de integracao com flag desligada e rollback, `node --test` 5/5, Worker intocado.
+
+**Proxima autorizacao indispensavel.** Gravar data/validacao/autorizacao_rotulagem_etapa1.json (rotuladores Claude e Codex) so DEPOIS de o G1-eq passar; sem ela a etapa 1 nao e rotulada. Treino so apos G1a, G1b e G1c e registro de homologacao.
+
+## 16/10/2026 01:40, EWS 2.0: STATUS_G1 = BLOQUEADO por aprovacao da G0-v3 (SEM rotulo, SEM commit, SEM push, SEM deploy, SEM servico pago)
+
+**Diagnostico medido.** Leitura integral do G0-v2: ~884 mil tokens por item estimados (189 mil medidos no piloto). So o dia ja estoura: "informacoes de companhias em recuperacao" tem 593 mil caracteres em media, maximo de 6,65 milhoes de tokens num item. `medir_contexto_etapa1.py`.
+
+**Solucao pronta, nao aprovada.** `recuperar_g0v3.py`: indice integral sem filtro de categoria, inicio e ancoras de todo documento do dia e dos 180 dias (50 termos fixos, nao RX_LARGO), paginas sob pedido em 3 rodadas, todo trecho conferido contra o texto integral. Piloto: 189 mil para 46 mil tokens por item, pacote deterministico (sha256 igual nos 10). Nao e equivalente ao G0-v2 (le inicio e ancoras, nao tudo), entao virou G0-v3: nota 120, bloco gerado do v2 congelado por `gerar_g0v3.py` (2 linhas trocadas, 7 acrescentadas), sha256 proposto `0f1b0af52d5a192a610e6c274710ceaea05584d8f59197b4f3031b2a261735fa`, 27.326 bytes, com gate G1-eq (30 itens, recuperacao contra leitura integral fatiada, tolerancia 1, limite unilateral 95% 14,9%).
+
+**Trava.** `guarda_g0v3.py` sai `EXIT=1` ("G0-v3 nao congelada: rotulagem bloqueada"). G0-v2 e anexo intactos. Testes: recuperacao 17, trava G0-v3 7, suite inteira 138/138.
+
+**Downloads.** Dia dos 1.261 itens em curso (900 registros, 12 inacessiveis, viram `incerto` com motivo `inacessivel` pela regra do item 2). Contexto completo encadeado para comecar sozinho depois (`ews-etapa1/encadear_contexto.ps1`), ~22 h. Sorteio da etapa 1 preservado.
+
+**Proxima decisao do operador.** Aprovar a G0-v3 (nota 120) ou corrigir os parametros propostos. Sem isso, nenhum rotulo, nenhum G1a, nenhum G1b.
+
+## 16/10/2026, EWS 2.0 etapa 1: sorteio feito, download em curso, ROTULAGEM NAO INICIADA por impedimento de escala (SEM commit, SEM push, SEM deploy, SEM treino)
+
+**Autorizado pelo operador:** so a etapa 1, Claude primeiro e Codex segundo (cegos), sem CAPTCHA. Acesso RAD verificado: HTTP 200, `%PDF-`, sem reCAPTCHA. Guarda `EXIT=0` antes e depois, bloco e anexo intocados.
+
+**Sorteio feito.** `etapa1_g0v2.py lista`: 1.261 itens (511 uniao + 210 F + 540 W), permutacoes F `c19134e7...` e W `919dc3a8...`, ids cegos, mapa de camadas privado, refazer recusado (`EXIT=1`). Em `data/validacao/etapa1_g0v2/`.
+
+**Download.** Piloto 400 documentos (607 s, 235 MB): 7 inacessiveis e 11 sem texto, todos registrados com sha256 e proveniencia. Documentos do dia (3.086) baixando em segundo plano, 467 no ultimo conteudo medido. Os 7 documentos RAD pedidos (casos com ressalva) baixados e lidos, leituras provisorias na nota 119 (Conpel 569477 era escaneado, lido pela pagina).
+
+**Impedimento medido.** O item 2 exige ler o contexto de 180 dias. Prompt literal medido em 10 itens: media 189 mil tokens, pico 528 mil. Extrapolado: ~240 milhoes de tokens por avaliador, ~22 h de download e ~30 GB para 47.462 documentos. Cabe nem na assinatura (teto diario das rotinas 2,6 milhoes) nem em janela de 200 mil em metade dos itens. Nao encurtei o contexto, o bloco esta congelado. Nenhum rotulo gerado.
+
+**Proxima decisao do operador.** Como o rotulador recebe o contexto de 180 dias (opcoes e consequencias na secao 5 da nota 119). Nada de G1a ou G1b calculado.
+
+## 16/10/2026, EWS 2.0: anexo-guia G0-v2 CONGELADO (SEM commit, SEM push, SEM deploy, SEM download, SEM rotulo, SEM sorteio)
+
+**Congelamento.** Autorizado pelo operador (decisoes 1 a 3 da nota 117: P1-P5, D1, D2), so o bloco do anexo. SHA-256 `6d3b0da7912d5ce323235fbac6b3038140bb0dc841f28de4c2828184cac8ac73`, 20.866 bytes, igual por dois metodos (guarda `--hash-anexo` e SHA256 do .NET). Registrado na nota 117 e em `ANEXO_SHA256`/`ANEXO_BYTES` da guarda. Bloco G0-v2 intocado: `5e91fe1104f057266cd0c40f9e5a88b14f44b3afe81526520f0d992cacb3bc7c`, 24.777 bytes. Os 8 casos com ressalva seguem provisorios, sem uso como gabarito (item A.4 do bloco do anexo).
+
+**Guarda, duas pontas.** Estado real `EXIT=0`, `ok:true`, protocolo e anexo `ok`, manifesto 16/16. Copia do anexo com P5 encurtada: `EXIT=1`, `"anexo-guia alterado depois do congelamento"`. O congelamento expôs um defeito na guarda: hash passado explicitamente herdava os 20.866 bytes da constante e reprovava texto sintetico (3 testes vermelhos). Corrigido com sentinela. Testes da guarda 41/41, suite Python 114/114.
+
+**Registro de entradas (item 5).** `registrar_entradas_g0v2.py` gravou `data/validacao/registro_entradas_g0v2_20261016.json` (sha256 `652e172e...f1c3`): zips IPE, cadastro, Python 3.11.9, N_F 402, N_W 2.505, lista F `f441784a...483e`, lista W `adcd2a28...bc94`. Confere `EXIT=0`, adulterado `EXIT=1`, sobrescrita recusada. Permutacoes vazias, sorteio nao autorizado.
+
+**G1a.** Codigo, testes e preflight prontos. Preflight hoje: guarda `true`, anexo `ok`, bloqueado so por CSV do primeiro e do segundo rotulador ausentes e permutacoes nao sorteadas. Nenhuma pendencia tecnica conhecida, nenhum kappa ou sinal calculado, nenhuma capacidade preditiva demonstrada.
+
+**Proxima autorizacao indispensavel.** Download dos documentos da primeira etapa (decisao 3 da nota 116) junto com a escolha dos rotuladores (decisao 2), porque rotular exige os dois.
+
+## 16/10/2026 00:30, EWS 2.0: guarda corrigida, anexo-guia validado e proposto, G1a pronto (SEM commit, SEM push, SEM deploy, SEM download, SEM rotulo)
+
+**Guarda G0-v2 (risco fechado).** `guarda_g0v2.py` devolvia `ok:true` com anexo `nao_congelado`. Agora o global so passa com anexo `ok`; medido depois da correcao: `EXIT=1`, `{"ok":false,"motivos":["anexo-guia nao congelado (ANEXO_SHA256 vazio): rotulagem bloqueada pelo item 2"]}`. Diagnosticos separados, `--hash-anexo` para o registro. Testes 19 -> 31, duas pontas no estado real. Bloco G0-v2 intocado (`5e91fe11...`, 24.777 bytes, conferido antes e depois).
+
+**Anexo 117 validado contra o bloco.** P1-P5 batem (frase de abertura da secao C ajustada). D1 tinha frase contraria ao item 2 e ao caso 111-9, reescrita; 5 casos da secao E contrariavam a D1 e passaram a `continuacao` com origem; B.5 ganhou trecho literal e ausencia de quitacao. D2 compativel. Hash proposto do anexo: 20.866 bytes, `6d3b0da7912d5ce323235fbac6b3038140bb0dc841f28de4c2828184cac8ac73`. NAO congelado, decisoes 1-3 da nota 117 pendentes do operador.
+
+**8 casos com ressalva.** Reconferidos com os documentos baixados em 15/10 e o indice IPE local, sem download: LAMSA e a duvida de indice da Nutriplant resolvidas; os outros 6 apontam o documento exato (protocolo RAD) que falta, 6 obrigatorios e 18 de contexto. Lista na nota 118 e na coluna Ressalva da 117.
+
+**G1a pronto.** `g1a_v2.py` + `test_g1a_v2.py` (23 testes sinteticos) + `preflight_g1a.py` (criterios de entrada; hoje `EXIT=1` por guarda reprovando e CSVs de rotulo ausentes). Suite Python inteira: `Ran 104 tests ... OK`. Camadas regeradas por comando iguais as de 15/10 (uniao 293, G 2.944, reconciliacao 511 byte a byte). Manifesto 16/16 e origens em tmp 16/16. Nenhum sinal calculado, nenhuma capacidade preditiva demonstrada.
+
+**Proxima autorizacao indispensavel.** Aprovar o anexo-guia (decisoes 1, 2 e 3 da nota 117) para congelar com o hash acima. Download, rotuladores e commit ficam atras dela. Rollback em `BACKUPS/operacional/vix-radar/ews-g0v2-20261016/`.
+
+**Portao.** `curl.exe -s https://radar-credito-api.prospects-intel.workers.dev`: `{"ok":true,"fonte_externa_ok":true,"versao":"v4.9.269",...,"bindings":{"kv":true,"rate_limiter":true,"telemetria":true},...,"sentry_ok":true,"verificador_ok":true,...}` `HTTP:200 TEMPO:3.087913s`.
+
+## 15/10/2026 22:40, recuperacao das rotinas de 15/10 executada (SEM commit, SEM push, SEM deploy)
+
+**Execucoes reais pelo Agendador** (`Start-ScheduledTask`, agendamentos intocados, uma instancia por rotina): Matinal 22:12 a 22:20 `PARCIAL`, 451.175 tokens, 2 ANALISADO (Oi resolvido com evento, GPA INCONCLUSIVO), 18 DEFERIDO por cap de escalada, `RECONCILIACAO_DIA sem_registro=0 fecha=1`. Agenda Macro 22:15 `status=OK`, 5 eventos, sem publicacao. Noturna 22:22 a 22:36 `PARCIAL`, 684.841 tokens, 25 travados pela idempotencia, 79 reabertos: Minerva FULL resolvida com evento (vencimento de debentures 15/10), Santos Brasil FULL INCONCLUSIVO, 6 SKIP, 71 DEFERIDO `cap_efetivo`; `COBERTURA_RECONCILIACAO: OK triados=79/79`, `RECONCILIACAO_DIA entregues=33 deferidos=71 fecha=1`.
+
+**Correcoes locais.** CUSTOFIM1 (`lib/vixradar-custo.ps1`, `CUSTO_DIA` soma todas as execucoes do dia pelo FIM, guarda `test-custofim1-15out` 8/0 novo e 2/6 antigo), AGENDAMACRO-CODEX1 (driver da Agenda Macro aceita `codex`), MAXEMISSORESREAL1 (`-MaxEmissores` vale fora de DryRun, sem prova real). LOTEFILA1 e TRIADOMERGE1 homologados em execucao real.
+
+**Consumo do dia.** `CUSTO_DIA 20261015: matinal=472591 noturno=1729849 verificacao=39564 sentinela=147588 TOTAL_CONSUMO=2389592 TETO=2600000 MARGEM=210408`. Agenda Macro 123.451 tokens Codex fora do circuito (como no OpenRouter). Nenhum teto alterado.
+
+**RECHECKDIVERG1 corrigido local as 23:20 (Fase 1 do plano de rotinas).** Veredito por manchete no prompt barato, divergencia so sem veredito, timestamp do lote nas fontes Codex. `test-recheckdiverg1-15out` 34/0 (lib antiga reprova B2), `run-all-tests` 64/64. DryRun real: Santos Brasil e Ultrapar fecharam `ANALISADO NENHUM divergencia=0` por 23.663 tokens. Homologacao real pendente na Matinal de 16/10. Plano completo (fila unica, SLA 120h, FULL por gatilho, rotinas a cortar) em `C:\Users\User\.claude\plans\snuggly-floating-bengio.md`, Fases 2 a 5 nao iniciadas.
+
+**Achado original RECHECKDIVERG1 (22:40).** Pendencias de recheck nao fecham com mais execucao: a divergencia IA x coletor e a ausencia de `timestamp` nas fontes do Codex mantem INCONCLUSIVO mesmo apos FULL (GPA, CBA, Cogna, Santos Brasil). Detalhe em `PENDENCIAS.md`. Auditoria por emissor dos 79 deferidos das 18:05 em `E:\Diretorio\Claude\tmp\operacional\vix-radar\recuperacao-20261015\auditoria-deferidos-1805.csv`.
+
 ## 15/10/2026 19:45, auditoria pos-JANELADELTA1 e LOTEFILA1 corrigido local (SEM commit, SEM deploy, SEM rotina)
 
 **JANELADELTA1 em producao.** Plano noturno lido ao vivo as 19:25 (`listar_plano_rotina`, so leitura, `worker_version v4.9.269`): 104/104 com `horas_stale_base=ultima_analise` e `janela_delta_inicio` igual a ultima analise menos 2 dias (ex. CEMIG analise 312,8h, varredura 1,1h, janela 30/09; na regra antiga seria 13/10). Nenhuma rotina de analise rodou depois do deploy das 19:12, entao eficacia em analise real segue NAO OBSERVADA. Proxima chance: retry 21:30 ou Noturna 16/10 18:05.
@@ -11,6 +109,61 @@
 **LOTEFILA1 (defeito, corrigido local).** Matinal de 15/10 rodou 1 de 20 com 378.584 do cap livres e perdeu a GPA sem registro. Detalhe, prova e guarda em `PENDENCIAS.md`. `test-lotefila1-15out` 20/0, `run-all-tests` 62/62, lint RISCO 0, check-claude-free exit 0.
 
 **Portao.** HTTP 200, `ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`, `v4.9.269`.
+
+## 15/10/2026 19:12, JANELADELTA1 DEPLOYADO: Worker v4.9.269 em producao
+
+Autorizado pelo operador. `deploy-worker.ps1 -Version v4.9.269`, exit 0: suite no gate 53 arquivos, 526/526; Version ID `e5dc119d-3f0d-47ec-8720-12bdd084501a`; versao viva confirmada na tentativa 2; commits `c683521` (fonte, teste, changelog) e `bc4c40b` (bundle), push OK, `origin/main` = HEAD. Portao: HTTP 200, `ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`, `versao:v4.9.269`. Rollback: `main = "v4.9.268.js"`. Prova em producao PENDENTE: a proxima rotina deve receber `janela_delta_inicio` igual a ultima analise menos 2 dias para emissor deferido.
+
+## 15/10/2026 19:05, JANELADELTA1 corrigido na fonte do Worker (SEM deploy, SEM commit) e G0-v2 do EWS em rascunho
+
+**JANELADELTA1.** `janela_delta_inicio` saia do relogio de varredura, que SKIP e deferimento renovam, e nao da ultima analise. Emissor deferido varias noites buscava fato novo so desde o ultimo deferimento menos 2 dias. Corrigido em `api/src/worker.js` (janela a partir do carimbo de analise de `horas_stale`; sem carimbo, janela externa inteira; tiering intocado). Prova: `api/test/janela-delta-analise.test.mjs` 5 falham em v4.9.268 (`expected '2026-10-13' to be '2026-10-08'`) e 6/6 passam corrigido; suite inteira em copia isolada 53 arquivos, 526 testes verdes. Backup `BACKUPS/operacional/vix-radar/janeladelta1-20261015-185414`. Producao segue v4.9.268 com o defeito ate deploy autorizado.
+
+**TRIADOMERGE1.** Reconferido offline nesta sessao em PS 5.1: `test-triado-merge-15out` 11/0, `test-cobertura-contrato` 29/0, `test-triagem-ativa-14out` 56/0. Nenhuma execucao real depois da correcao (proxima chance: retry 15/10 21:30 ou Noturna 16/10 18:05). Homologacao em producao PENDENTE.
+
+**EWS 2.0.** G1 da G0-v1 reprovado (nota 115) porque o `Assunto` do IPE nao carrega titularidade, natureza da cautelar, continuacao nem o primeiro documento. Rascunho G0-v2 na nota 116: rotulagem manual de 293 candidatos medidos por comando, mais amostra estratificada da camada de revocacao (2.907 FR com termo de credito fora de qualquer candidato, 402 no estrato forte e 2.505 no fraco), com tamanho calculado para a meta de 10% de eventos perdidos depois de medir K (de 750 a 2.325 itens, cerca de 1.165 a 1.565 se K ficar entre 60 e 100). G1a com kappa binario ponderado, 20 dos 60 vindos de G e adjudicacao pelo operador. A amostra simples de 150 da primeira versao do rascunho reprovaria sempre, mesmo sem achar evento. Pronto para aprovacao do operador, nao congelado, nenhum sinal calculado, treino nao liberado. `unittest` da validacao 50/0.
+
+**Portao.** `GET /` HTTP 200, `ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`, `v4.9.268`.
+
+## 15/10/2026 18:40, auditoria da Noturna de 15/10 18:05 e TRIADOMERGE1: corrigido local, SEM commit, SEM push, SEM deploy
+
+**Execucao medida.** `VIXRadar-Noturno` pelo Agendador as 18:05:00, `LastTaskResult=10`, FIM 18:20:06, HEAD `02ba057`. `IDEMPOTENCIA_ENTREGA: entregues_hoje=3 reabertos_deferido=101` (Camil, Movida e Totvs travados, os 101 DEFERIDO da madrugada reabertos). `RECONCILIACAO_DIA: universo=104 entregues=25 deferidos=79 submit_falho=0 sem_registro=0 soma=104 fecha=1`. Nenhum emissor ANALISADO duas vezes no dia (9 linhas, 9 distintos, log principal + fallback). Consumo `tokens=602323` contra cap 700.000, `cap_excedido=0`; `tokens_hard_hit=true` significa que o cap barrou trabalho, nao que foi estourado. Lotes: full-1 2 emissores 377.481 (319.744 em cache Codex), light-2 7 emissores 25.899, escalada-3 2 emissores 198.943. FIM `PARCIAL (pendentes_obrigatorios=7)`: 5 recheck (Eneva, CBA, Cogna, Minerva, Santos Brasil por divergencia IA x coletor) e 2 escalada sem orcamento. 79 DEFERIDO, 77 por rotacao. Criterios (1), (2), (3), (5) e (6) de IDEMEFETIVA1 e a leitura unida de LOGFALLBACK1 ficaram provados em execucao real. O criterio (4) falhou com `COBERTURA_RECONCILIACAO: DIVERGENTE - triados:92<101`, que e o defeito abaixo.
+
+**TRIADOMERGE1 (defeito, corrigido local).** `Merge-VixContratoCobertura` (motor) reescrevia a entrada do contrato sem o campo `triado`, que o `Set-VixContratoEstado` trata como pegajoso. Todo emissor triado que passava por `RECHECK_PENDENTE` ou `RECHECK_RESOLVIDO` perdia a prova da triagem, e o `Set` seguinte ja lia o campo ausente. No contrato real de 15/10 os 11 emissores sem `triado` sao exatamente os 11 que passaram por esse merge (9 desta execucao, mais Movida e Totvs da madrugada), todos com linha `TRIAGEM|` no log. Divergencia falsa, falha fechada (nao gerou OK falso), mas impede a reconciliacao de fechar em qualquer dia com recheck. Correcao: o merge carrega o `triado` anterior quando existe e nunca o cria. Backup `BACKUPS/operacional/vix-radar/triadomerge1-20261015-182800`.
+
+**Prova.** `scripts/test-triado-merge-15out.ps1` 11 OK/0 em PS 5.1 e pwsh 7, com replay do log real das 18:05: motor antigo reproduz `triados:92<101`, motor novo fecha 101/101 sem divergencia. Regressao PS 5.1: `test-cobertura-contrato` 29/0, `test-cobertura-orcamento-14out` 103/0, `test-idempotencia-entrega-efetiva` 49/0, `test-cobertura-diaria` 97/0, `test-triagem-ativa-14out` 56/0, `test-log-fallback-ledger` 40/0; lint-encoding RISCO 0; check-claude-free exit 0.
+
+**Suites corrigidas.** (a) `test-triagem-ativa-14out.ps1` saia `12 OK, 0 falha(s)`, exit 0, desde IDEMEFETIVA1: `$script:VixContratoExec` nao inicializado abortava a suite em U2 e o `try` so tinha `finally`, entao 44 asserts nunca rodavam com verde aparente. Inicializado e com `catch` que conta a excecao como falha. (b) `test-log-fallback-ledger.ps1` R1/R4 reprovavam porque o log real do dia ganhou a execucao das 18:05; o replay passou a recortar ate 03:00, a execucao que sofreu o desvio. (c) `test-varredura-defeitos.ps1` D4/D4b reprovavam desde LOGFALLBACK1: `Get-VixResumoLedger` passou a depender de `lib/vixradar-watchdog.ps1`, que a suite nao carregava (o motor carrega e falha fechado sem ela; o FIM real das 18:05 contou o ledger certo). (d) `test-cobertura-diaria-ativacao.ps1` ganhou linha de diagnostico no B2. Ela mostrou que B2-B4 so falham quando o PS 5.1 e lancado por `Start-Process` a partir do pwsh 7: `Get-FileHash` nao e reconhecido por heranca de `PSModulePath`. Artefato de lancamento, nao de codigo; o Agendador chama `powershell.exe` limpo e o gate falha fechado (exit 2). `run-all-tests.ps1` chamado direto: **61 suites, 61 verdes, 0 vermelhas**. Portao: `GET /` HTTP 200, `ok:true`, `kv:true`, `telemetria:true`, `sentry_ok:true`, `v4.9.268`.
+
+**Limites deliberados, nao defeitos.** Cobertura de 9 analises para 81 MATERIAL e orcamento (cap 700.000, FULL Codex ~190k/emissor), nenhum teto alterado. 10 SKIP por `sem_delta_30h` do Worker tinham 1 a 20 manchetes novas no coletor desde 13/10 (`COBDIARIA|...|skip|NOVIDADE|...|estado=PENDENTE_IA`); o Worker mede delta por estado proprio, nao por imprensa, e so o controle diario (COBDIARIA, desligado por decisao do operador) trataria isso.
+
+**PENDENTE.** Homologacao em execucao real: a proxima noturna com recheck deve logar `COBERTURA_RECONCILIACAO: OK`. Se o retry `Szuchmacher-RetryVixNoturno` de 15/10 21:30 relancar a noturna, ela ja carrega o motor corrigido. Commit e push dependem de autorizacao.
+
+## 15/10/2026, LOGFALLBACK1: corrigido e commitado local (`02ba057`), SEM push e SEM deploy, homologacao PENDENTE da Noturna de 15/10 18:05
+
+**Correcao.** O log do dia passou a ser o principal MAIS os `_fallback_<pid>.log` (`Get-VixLogDiaArquivos`, `Get-VixLogDiaLinhas`, `Get-VixLogDiaConteudo` em `scripts/lib/vixradar-watchdog.ps1`). Motor (idempotencia, `RECONCILIACAO_DIA`, resumo do ledger), vigia do retry, monitor e credito FULL semanal passam a ler por essa funcao. Commit seletivo: 5 arquivos de producao (motor so com 4 trechos) mais `scripts/test-log-fallback-ledger.ps1`. Mudancas de outras sessoes no motor e demais arquivos ficaram fora.
+
+**Prova (powershell.exe 5.1).** `test-log-fallback-ledger.ps1` 40 OK, 0 FALHA, exit 0. `test-idempotencia-entrega-efetiva.ps1` 49 OK, 0 FALHA. lint-encoding RISCO 0, check-claude-free exit 0. Replay dos logs reais de 15/10: leitura antiga `entregues=1 deferidos=0 sem_registro=103 fecha=0`; leitura nova `universo=104 entregues=3 deferidos=101 submit_falho=0 sem_registro=0 soma=104 fecha=1`. Movida e Totvs (mais Camil SKIP) travados, 101 DEFERIDO reabrem. Nenhum teto alterado, nenhuma rotina executada.
+
+**PENDENTE.** Prova em execucao real na Noturna de 18:05 (`IDEMPOTENCIA_ENTREGA`, `RECONCILIACAO_DIA`, `entregues_dia=`, PARCIAL sem OK falso). A reabertura de DEFERIDO so e exercitada se houver reexecucao no mesmo dia. COBDIARIA segue desligada. Push pendente. Ressalva herdada: a selecao parou em 2 emissores por estimativa FULL de 250.000 contra custo real de 221.343, nao por falha.
+
+## 15/10/2026 02:30, IDEMEFETIVA1: homologacao real PARCIAL (Noturna disparada 01:30:23), achado novo LOGFALLBACK1
+
+**Execucao medida.** `VIXRADAR-Noturno` disparada pelo Agendador em 15/10 01:30:23 (nao por esta sessao), instancia unica (PIDs 29012/22888), HEAD `611158c`. Fim 02:27:55, `LastTaskResult=10` (PARCIAL). Nenhuma segunda instancia foi iniciada.
+
+**O que ficou provado.**
+- `IDEMPOTENCIA_ENTREGA: entregues_hoje=0 reabertos_deferido=0 reabertos_submit_falho=0` (01:31:08).
+- `Fila aplicada: 2` com cap 700.000. O sintoma de 14/10 (`Fila aplicada: 0`) nao voltou.
+- FIM `PARCIAL (pendentes_obrigatorios=1)`, nunca OK com pendente. `COBERTURA_RESULTADO: PARCIAL`. `COBERTURA_DIARIA|20261015|PARCIAL|verificados=26/104|...|pendentes_ia=78` em sombra, sem OK falso.
+- Consumo: `tokens=442685` contra cap 700.000 (`tokens_hard_hit=false`) e TETO_DIA 2.600.000. Nenhum fallback e nenhum teto alterado.
+- Reconciliacao individual, unindo log principal e fallback: 104 emissores distintos, 2 ANALISADO (Movida INCONCLUSIVO, Totvs ECO), 1 SKIP (Camil), 101 DEFERIDO, 0 duplicado, 104 submit `true`.
+
+**O que NAO ficou provado.** A reabertura de DEFERIDO nao foi exercitada: o log do dia comecou sem DEFERIDO e nao houve reexecucao no mesmo dia. `RECONCILIACAO_DIA` saiu `entregues=1 deferidos=0 sem_registro=103 fecha=0`, e `COBERTURA_RECONCILIACAO` saiu DIVERGENTE. As duas sao falsas, por causa do achado abaixo, e falharam fechado.
+
+**Achado novo, LOGFALLBACK1 (P1, sem correcao).** De 01:36:47 em diante, outro processo segurou `vixradar-noturno_20261015.log`. O `Write-Log` esgotou 8 tentativas e passou a gravar em `vixradar-noturno_20261015_fallback_22888.log`, onde estao 103 das 104 linhas `OK|`. Quem segurou o handle nao foi identificado. As leituras desta sessao terminaram as 01:34:20, com `ReadAllText`, que nao mantem o arquivo aberto, e as 02:28 o log ja abria para escrita. Idempotencia (`run_vixradar_varredura.ps1:1985`), `RECONCILIACAO_DIA` (`:3254`), vigia do retry e monitor leem so `$LogFile` e ignoram `_fallback_*.log`. Consequencia para hoje: a proxima execucao do dia 15/10 (retry ou 18:05) enxerga so `Camil SKIP` e **reprocessaria Movida e Totvs**, violando a regra de nao reanalisar entrega efetiva. Os 101 DEFERIDO tambem ficam invisiveis, entao a reabertura continuaria sem prova.
+
+**Orcamento.** Os 101 DEFERIDO saem com `motivo=rotacao_semanal` e a linha diz "o cap NAO foi a causa", mas a selecao parou em 2 porque a estimativa e `full=250000/emissor (fonte=classe_n2)`: 2 emissores somam 500.000 e um terceiro passaria de 700.000. O custo real foi 442.685 para 2, ou seja 221.343 por emissor, com 379.776 de cache Codex. E insuficiencia por estimativa de orcamento, nao falha operacional.
+
+**Veredito: PARCIALMENTE HOMOLOGADO.** Bloqueia a homologacao completa: (1) LOGFALLBACK1, os leitores do ledger precisam unir o fallback ou a escrita nao pode desviar dele; (2) a prova da reabertura de DEFERIDO depende de uma reexecucao no mesmo dia depois dessa correcao. COBDIARIA segue DESLIGADA. Nada commitado nem deployado nesta verificacao.
 
 ## 15/10/2026, IDEMEFETIVA1: DEFERIDO deixa de travar a noturna, commit local SEM push e SEM deploy
 
@@ -26,6 +179,37 @@
 
 **PENDENTE.** Prova em execucao real (a proxima noturna agendada deve logar `IDEMPOTENCIA_ENTREGA` e `RECONCILIACAO_DIA`), homologacao a ser autorizada separadamente. Decisao do operador sobre ligar o controle diario pelo script. Push.
 
+## ESTADO VIVO - 14/10/2026 (verificacao)
+
+Frontend producao: v202.65 (GET https://vixradar.com/version.json). Git pasta principal HEAD = origin/main = 762b2a9.
+
+Noturna real: ultima em 14/10 02:28 com LastTaskResult=10; proxima ja existente no Agendador 18:05. O DryRun controlado de 2 emissores mediu 495572/700000 tokens e cap_excedido=0, mas a homologacao da Noturna real permanece PENDENTE. Nenhum novo agendamento ou rotina manual foi criado.
+
+Origem: version.json de producao, Git local, Agendador e log DryRun 14/10. Obsoleto apos novo deploy, commit remoto ou nova execucao real; registros historicos abaixo preservados.
+
+
+## 15/10/2026 01:20, IDEMEFETIVA1: pre-homologacao OK, homologacao PENDENTE da Noturna oficial de 15/10 18:05
+
+**Pre-execucao, medido.** Agendador `VIXRadar-Noturno` -> `preflight-and-run.ps1` -> `run_vixradar_noturno.ps1` -> `run_vixradar_varredura.ps1` da arvore de trabalho (sha `12B5397E85A9`), que carrega `lib/vixradar-watchdog.ps1` (sha `3E8621AB228B`) e falha fechado sem `Get-VixIdempotenciaEntregas`/`Get-VixReconciliacaoUniverso`/`Get-VixLedgerLinhaEntrega`. Idempotencia trava so ANALISADO/SKIP com submit `true`; DEFERIDO e submit falho reabrem, SEM depender de `VIXRADAR_COBERTURA_DIARIA` (o bloco antigo sob COBDIARIA saiu do motor). Parse 0 erro nos 5 arquivos. Suites PS 5.1: `test-idempotencia-entrega-efetiva` 49/0, `test-cobertura-diaria` 97/0, `test-cobertura-fallback-claude` 91/0, `test-cobertura-diaria-ativacao` 10/0; `run-all-tests` 59/59; lint-encoding RISCO 0; check-claude-free 0. Tetos inalterados (TETO_DIA 2.600.000 operativo = declarado, RESERVA_NOTURNO 700.000, SENTINELA_DIA 320.000, `CLAUDE_FALLBACK_DIA` ausente). Env User: `VIXRADAR_COBERTURA_DIARIA`, `..._FALLBACK_CLAUDE`, `VIXRADAR_CODEX_FALLBACK_PROVIDER` vazios; `VIXRADAR_LLM_PROVIDER=codex`; triagem `sombra`. Rollback: `BACKUPS/operacional/vix-radar/idemefetiva1-20261015-005537` (6 arquivos, versao pre-IDEMEFETIVA1). Nada disparado manualmente.
+
+**Ressalva de desenho.** O log da Noturna e por dia (`vixradar-noturno_20261015.log`). A execucao das 18:05 comeca sem linha DEFERIDO de hoje, entao ela prova a ausencia de regressao, mas a REABERTURA so e exercitada se houver reexecucao no mesmo dia (retry 21:30 depois de PARCIAL). A prova offline da reabertura e o teste contra o log real de 14/10.
+
+**Criterios pos-execucao (HOMOLOGADA so com todos).** (1) linha `IDEMPOTENCIA_ENTREGA:` presente; (2) `Fila aplicada: N` com N > 0 enquanto houver elegivel e cap; (3) FIM com resultado coerente: PARCIAL quando houver DEFERIDO por orcamento, nunca OK com pendente; (4) reconciliacao dos 104 por emissor (entregue + deferido + pendente = universo, sem perdido nem duplicado) e `COBERTURA_RECONCILIACAO` sem divergencia; (5) `cap_excedido=0` e consumo dentro do TETO_DIA; (6) se o retry 21:30 rodar, `reabertos_deferido` > 0 e nenhum emissor ANALISADO duas vezes; (7) `COBERTURA_DIARIA|20261015|...` sem OK falso. BLOQUEADA se `Fila aplicada: 0` com elegiveis e cap livre, ou OK com pendente.
+
+## 14/10/2026, COBDIARIA1: controle diario de verificacao por emissor, local, SOMBRA, SEM commit e SEM deploy
+
+**O que mudou.** Verificacao diaria passou a ser separada de analise de IA. Lib nova `scripts/lib/vixradar-cobertura-diaria.ps1` com ledger `logs/routines/cobertura_diaria_YYYYMMDD.json` (um registro por emissor, estado, evidencia individual com familia/query/timestamp/HTTP, provider/modelo/tier, historico), transicao monotona (verificado nunca rebaixa; terminal sem evidencia DO DIA e recusado), resumo com omitidos, cascata pura (recoleta 0 token, IA primaria barata, FULL, Claude por ultimo com opt-in `VIXRADAR_COBERTURA_FALLBACK_CLAUDE=1` + teto `CLAUDE_FALLBACK_DIA` declarado em `custo-config.json`, ausente = desligado, senao INSUFICIENCIA), reserva da cobertura obrigatoria e fechamento com incidente `incidente_cobertura_YYYYMMDD.json` + alerta. CLI `scripts/check-cobertura-diaria.ps1` (so leitura, exit 0/10/20). Motor `run_vixradar_varredura.ps1` com ganchos (backup `BACKUPS/operacional/vix-radar/cobdiaria1-20261014-180600`, sha antes `9E2DA9D8...`), editado DEPOIS da Noturna das 18:05 carregar.
+
+**Modo.** Padrao SOMBRA: grava ledger, linhas `COBDIARIA|` e relatorio local. `VIXRADAR_COBERTURA_DIARIA=1` (nao aplicado) liga: obrigatorio do dia na frente e fora da cota, reserva de 400.000 para a matinal quando a noturna roda antes das 12h sem matinal no dia, DEFERIDO volta a ser elegivel na idempotencia, fechamento com incidente e alerta `notificar_rotina`.
+
+**Achados medidos.** (a) Noturna 14/10 18:05: `Fila aplicada: 0` com cap 700.000 livre porque a idempotencia contou as 72 linhas DEFERIDO das 02:28 como processadas (teste N1/N2 contra o log real: 104 travados na regra antiga, 32 travados e 72 reabertos na nova). (b) Triagem 08-14/10: 89 de 109 decisoes MATERIAL por revalidacao de IA, 9 por manchete nova, 6 por CVM, 1 estado aberto, 4 quietos; coleta indisponivel 0. (c) Envelope FULL Codex medido: a=237.114 + 59.749/emissor; cabem 5 FULL em 700k, 12 em 1,24M, 16 em 2,45M. (d) Classe BARATO sem nenhuma amostra de producao (so dry-run 21.892/2 e 23.608/3), entao o custo barato do motor sai 0 e a cascata fica fail-closed (INSUFICIENCIA) ate a primeira medicao real.
+
+**Testes.** `test-cobertura-diaria.ps1` 97 OK/0 em PS 5.1 e pwsh 7; `run-all-tests` 56/56; regressao cobertura (orcamento 103, triagem 56, contrato 29, recuperacao 72, escalada 96, analitica 133) verde; lint-encoding RISCO 0 (164 .ps1); check-claude-free exit 0; health `ok:true v4.9.268`.
+
+**Primeiro ledger real (retry 14/10 23:20, motor novo, sombra).** `COBERTURA_DIARIA|20261014|PARCIAL|verificados=0/104|omitidos=102|pendentes_ia=2|insuficiencia=2`, `COBDIARIA_IDEMPOTENCIA_SOMBRA: 72 emissor(es) so DEFERIDO hoje seguem travados`, `Fila aplicada: 0`, exit 6 do motor e resultado 1 do retry (SEM ENTREGA, causa idempotencia, nenhum `COBDIARIA_ERRO`). Sem falso OK. Executor do fallback Claude feito em sessao paralela (`*-VixCobFallback*`, `test-cobertura-fallback-claude.ps1` 91/91), inerte.
+
+**PENDENTE (autorizacao).** Cobertura 104/104 NAO comprovada em execucao real. Ligar `VIXRADAR_COBERTURA_DIARIA=1`; declarar `CLAUDE_FALLBACK_DIA` e `UNIVERSO_MINIMO` se quiser o fallback Claude e o piso; executor real do fallback Claude para a lista de pendentes nao existe (so a decisao); sentinela e verificacao-async nao escrevem no ledger; commit.
+
 ## 14/10/2026, VXV2-1 PUBLICADO: Worker v4.9.268 (CORS do preview) e frontend v202.64 (v1 padrao, v2 por flag)
 
 **Publicado.** Worker `v4.9.268` com `https://ui-v2-preview.radar-credito.pages.dev` acrescentada a `ALLOWED_ORIGINS` (ADDPREVIEWCORS1): unica mudanca da versao, sem wildcard e sem tocar em autenticacao. Frontend `v202.64` no Pages (`deployed_at 2026-10-14T10:28:30Z`), v1 segue padrao e a v2 entra so por flag (`?ui=v2`, `?ui_eventos=v2`, `?ui_empresas=v2`), com `?ui=v1` desligando. Commits: `f5eac23` (fonte do Worker + teste de regressao + changelog), `4559506` (bundle do Worker), `8e22f75` (deploy-pages.ps1 reconciliado + favicon), `bbc0fa2` (redesign), `72a9c07` (deploy do frontend). `origin/main` = `72a9c07`.
@@ -37,6 +221,22 @@
 **LCP em producao NAO atingiu o piso de 2,5 s (P2, nao e regressao).** Lighthouse mobile contra `vixradar.com`, 6 execucoes: LCP 2572 a 2712 ms, FCP 2507 a 2578 ms, CLS 0,036 a 0,043, performance 92 a 93, acessibilidade 100, boas praticas 96, SEO 100. O MESMO bundle, medido na mesma janela contra o preview: LCP 2208 a 2258 ms, FCP 1919 a 1945 ms, performance 97. TTFB medido: producao 0,126 a 0,196 s contra preview 0,101 a 0,127 s, entao a diferenca e de host, nao de conteudo. A producao anterior (v202.63) media LCP 5,5 s e performance 68 na mesma regua: ha ganho grande e nenhuma regressao, mas o piso segue nao atingido em `vixradar.com`.
 
 **Achados de ferramenta, nao do produto.** (a) `Get-VixPagesBundleSha` nao e estavel entre edicoes do PowerShell: o mesmo diretorio da `e370d162...` no pwsh 7 e `4afffaef...` no Windows PowerShell 5.1, e o hash registrado na homologacao (`a05f26a7...`) nao se reproduz em nenhuma combinacao de fim de linha, edicao ou favicon, ainda que o conteudo seja provadamente igual ao publicado. (b) `rollback-pages.ps1` faz `git archive | tar -x` e falha com `Cannot connect to C: resolve failed` quando o `tar` do MSYS precede o do Windows, que e o padrao dentro do Git-Bash. (c) `deploy-pages.ps1` nao tem gate de versao do wrangler (o `deploy-worker.ps1` tem, CFG-01): o deploy usou 4.125.0 resolvido pelo npx, nao o 4.118.0 declarado. (d) `deploy-pages.ps1` faz `git push origin HEAD`, entao rodando de um branch de trabalho o commit do deploy vai para um branch novo em vez de `main`.
+
+## 14/10/2026, triagem deterministica preparada para ativacao (TRIAGEM-HOMOLOG1), local, SEM aplicar, SEM commit e SEM deploy
+
+**Escopo e autorizacao.** Sessao de preparacao a partir do checkpoint local de 14/10 03:07-03:47 (`HEAD=origin/main=33e30ec`). Os cinco arquivos da tarefa sao `scripts/run_vixradar_varredura.ps1` (M, `9e2da9d8b57a`), `scripts/lib/vixradar-cobertura.ps1` (M, `68d3ca4a5cae`), `scripts/lib/vixradar-custo.ps1` (M, `894811716416`), `scripts/test-triagem-ativa-14out.ps1` (novo, `b413949f0370`) e `scripts/test-cobertura-orcamento-14out.ps1` (novo, `8d5571d727c8`). Nenhuma rotina executada, nenhum token externo consumido, nenhum agendamento, credencial, teto ou cap alterado. `scripts/deploy-pages.ps1` e `scripts/upload_volatilidade_kv.ps1` (sujos desde 10/10) sao de outra sessao e **nao** foram tocados.
+
+**1. ESTADO CONFIRMADO, NAO REINFERIDO.** Sem execucao concorrente: nenhum `*.lock` em `logs/routines`, nenhum processo `run_vixradar*`/`preflight-and-run` vivo, `logs/routines/rotacao_ciclo.json` inexistente. Producao medida: Worker `v4.9.267` vivo (`GET /` -> HTTP 200, `ok:true`, `painel_emissores_deferidos=72`, `painel_ultima_analise_em=2026-10-14T05:43:49Z`), frontend `v202.63`. `VIXRADAR_TRIAGEM_DETERMINISTICA` User = `sombra` (Machine vazia): **ativacao nao aplicada**. Noturna oficial de 14/10 02:28 (`VIXRadar-Noturno`, `LastRun=02:28:32`, `LastResult=10`): `FIM ... PARCIAL (pendentes_obrigatorios=72). Total do dia 104/104 (analisados=16 skip=16 deferidos=72)`, `TRIAGEM_RESUMO: candidatos=88 sombra=1 material_ia=85 tokens_llm=0`, `cap_excedido=1`. `logs/routines/cobertura_20261014.json` com 11 emissores, todos RESOLVIDO, sem campo `triado` (o defeito de 16 analises para 11 coberturas que a COBERTURA-RECON1 corrige). A divida dos 72 e de **orcamento/teto**, nao de triagem.
+
+**2. PACOTE DE HOMOLOGACAO PREPARADO E VERIFICADO.** `BACKUPS/operacional/vix-radar/triagem-ativa-homolog-20261014-040034/` com `arquivos\` (os 5 arquivos), `estado\` (cobertura, fila pendente, relevancia sombra, metrics, log da noturna, `custo-config.json`, `custo-teto-declarado.json`), `env-antes.json` e `MANIFEST.sha256` (**13/13 `sha256sum -c` OK**). Tres scripts autossuficientes, ASCII, PS 5.1, saida final em JSON unico: `ATIVAR-TRIAGEM.ps1` (dry-run `ok=true`), `ROLLBACK-TRIAGEM.ps1` (dry-run com `-RestaurarArquivos`: 5/5 hashes conferidos), `VALIDAR-TRIAGEM.ps1` (9 criterios).
+
+**3. LEITURA PELA TAREFA AGENDADA, PROVADA POR DUAS VIAS.** O motor le `VIXRADAR_TRIAGEM_DETERMINISTICA` de Process com fallback para User (`run_vixradar_varredura.ps1:1854-1855`); modo ATIVO exige flag `1` **e** a lib do coletor presente. E `scripts/preflight-and-run.ps1` (TASKENV1, linhas 61-69) copia **todo `VIXRADAR_*` do escopo User para Process** antes de spawnar o alvo, ponte deterministica que nao depende de refresh do Agendador. Confirmacao independente: a noturna de 02:28 (processo do Agendador) registrou `COLETOR_PS: ativo=True` (User=[1]) e `TRIAGEM_RESUMO ... sombra=1` (User=[sombra]) com Machine vazia.
+
+**4. GATES FINAIS AFETADOS, EVIDENCIA FRESCA SOBRE OS HASHES ACIMA.** `test-triagem-ativa-14out.ps1` **56 OK/0 falhas** e `test-cobertura-orcamento-14out.ps1` **103 OK/0 falhas**, ambos exit 0 em Windows PowerShell 5.1 **e** pwsh 7; `lint-encoding` **RISCO 0** (160 `.ps1` + 5 shell, exit 0); `check-claude-free` exit 0; parse PS 5.1 dos 5 arquivos **erros=0**. `run-all-tests` **53/53** (evidencia da sessao anterior em `tmp/operacional/vix-radar/14out-cob-orc/runall-final-54suites.txt`); a bateria completa nao foi repetida. O `VALIDAR-TRIAGEM.ps1` foi provado contra o estado sombra atual e retornou **REPROVADO** com 6 falhas reais, provando que discrimina; esse controle negativo revelou e corrigiu dois defeitos do proprio verificador (extracao por `StartsWith` sobre log prefixado por timestamp e regex de campo sem ancora).
+
+**5. WORKER/FRONTEND SEM DEPLOY.** Mudanca 100% em `.ps1`. O Worker `v4.9.267` ja trata `_tier=LIGHT` (`api/src/worker.js:10126 -> _coberturaMin = 3`) e aceita `provedor` livre; o contrato `triado/estado` e arquivo local. `api/src/worker.js` limpo e `app/version.json` = `v202.63`. Nenhum deploy de Worker ou frontend necessario.
+
+**PENDENTE_VALIDACAO_RUNTIME (nao antecipar resultado).** A ativacao **nao** foi aplicada. Decisao pendente de autorizacao: gravar `VIXRADAR_TRIAGEM_DETERMINISTICA=1` (User) depois da Matinal de 14/10 10:06 e antes da Noturna 18:05, para a **Noturna ser a unica execucao oficial ativa** (so ela exercita a fila rotativa). Criterios verificaveis no `VALIDAR-TRIAGEM.ps1 -Rotina noturno -Data 20261014 -Health`: 104/104 triados; prioridade de risco preservada; fila rotativa persistente; zero perdidos/duplicados; `COBERTURA_RECONCILIACAO: OK`; ausencia de falso RESOLVIDO; consumo contabilizado com cache Codex visivel; `cap_excedido=0`; publicacao confirmada no Worker. Reversao pronta: `ROLLBACK-TRIAGEM.ps1 -Aplicar` (variavel User volta para `sombra`) e `-Aplicar -RestaurarArquivos` (re-poem os 5 arquivos com hash conferido), sem apagar dado legitimo. Risco de documento: o MOC `00 - Indice (MOC).md` esta com a tabela "Estado atual" defasada (Worker v4.9.232/frontend v202.35) frente ao real; divergencia de documento, nao do sistema.
 
 ## 14/10/2026, publicacao das correcoes validadas (PUBLICACAO-14OUT1), Worker v4.9.267 em producao, validado
 
@@ -79,6 +279,7 @@
 **Reconciliacao do `deploy-pages.ps1`.** A versao da arvore principal (PUSH-GATE1, APPROVED-COMMIT1, APPROVED-BUNDLE-SHA1, `-PrintBundleSha`, gate de arvore suja ampliado para `app/js` e `app/admin`) foi preservada integralmente, mais a copia de `favicon.ico` e `favicon.svg`. Diferenca para o arquivo da arvore principal: so essa linha (verificado com `diff`). Parse 5.1 sem erros. O bundle final tem SHA-256 `a05f26a7b5fc10578f2828d605818a3e3142d729e7ba75bdf6b7faf0a7edd17b`.
 
 **Pendencias.** (1) Decisao do operador sobre o gate de autenticacao, ver acima. (2) Dados de campo (CrUX) nao medidos. (3) Em Empresas, Delta EWS e taxa ANBIMA so aparecem depois de abrir o emissor (`op=serie` e por emissor). (4) Para publicar: commit por caminho explicito, push sem force, `deploy-pages.ps1` (producao v202.63 para v202.64), validar `version.json`, health, assets, v1 padrao e v2 por flag. Rollback pronto: `scripts/rollback-pages.ps1 -Ref <commit de v202.63> -VersaoEsperada v202.63 -Branch main -Producao -Publicar`.
+
 
 ## 14/10/2026, finalizacao dos 6 problemas de 13/10 (FINAL-14OUT1), local, SEM commit, SEM deploy e SEM alterar producao
 

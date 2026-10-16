@@ -25,6 +25,7 @@ import sys
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, AQUI)
+sys.path.insert(1, os.path.join(AQUI, "..", "ews2"))  # eventos.py: regua dos eventos derivados
 import guarda_g0v3 as G3  # noqa: E402
 import leitura_integral_g0v3 as LI  # noqa: E402
 import llm_cli as L  # noqa: E402
@@ -75,10 +76,48 @@ def _binaria(c):
     return 1 if c == EP else 0
 
 
+def eventos_derivados(rotulo):
+    """Datas de evento que a base de eventos (ews2/eventos.eventos_de_rotulos) criaria a partir deste rotulo.
+    Mesma regua do pipeline, importada dele: evento_proprio na data rotulada, continuacao na data de entrega da
+    origem, adicionais na data_ou_origem; incerto, nao_evento e evento_terceiro nao criam evento."""
+    if not rotulo:
+        return []
+    import eventos as EV  # ews2/eventos.py, regua unica
+    linha = {"cnpj": "x", "id": "x", "classe_final": rotulo.get("classe") or "",
+             "data_evento_final": rotulo.get("data_evento") or "",
+             "origem_data_entrega": ((rotulo.get("origem") or {}).get("data_entrega") or ""),
+             "adicionais_json": json.dumps(rotulo.get("adicionais") or [], ensure_ascii=False)}
+    return sorted(e["data"].isoformat() for e in EV.eventos_de_rotulos([linha]))
+
+
+def avaliar_estendido(pares, completos, tol_eventos=TOL_DATA):
+    """Proposta G1-eq-ext (adendo, NAO congelada). Duas lacunas da regra congelada, achadas na auditoria de 16/10:
+    (1) ela so compara data entre pares evento_proprio, entao divergencia que muda o evento derivado (incerto contra
+    continuacao com origem, origem com data diferente, adicional so de um lado) passa sem contar; (2) ela aceita par
+    gerado por versao antiga do executor. Aqui: os eventos derivados de cada braco precisam ser iguais (tolerancia 1),
+    e todo par precisa ter as duas versoes atuais do executor. Usado pelo portao P4 de rotular_etapa1 (fail-closed)."""
+    dif_eventos = [p["id"] for p in completos if (p.get("eventos_prog") or []) != (p.get("eventos_int") or [])]
+    antigos = [p["id"] for p in pares if p.get("versao_progressiva") != RO.VERSAO_EXECUTOR or p.get("versao_integral") != LI.VERSAO_EXECUTOR]
+    completo = len(completos) == len(pares) and len(pares) > 0
+    passa = completo and not antigos and len(dif_eventos) <= tol_eventos
+    motivos = []
+    if not completo:
+        motivos.append("incompleto: %d de %d pares" % (len(completos), len(pares)))
+    if antigos:
+        motivos.append("pares com executor antigo: %s" % ",".join(antigos))
+    if len(dif_eventos) > tol_eventos:
+        motivos.append("eventos derivados divergem em %d pares (tolerancia %d)" % (len(dif_eventos), tol_eventos))
+    return {"regra": "G1-eq-ext proposta 2026-10-16 (nao congelada)", "dif_eventos_derivados": dif_eventos,
+            "n_dif_eventos": len(dif_eventos), "tolerancia_eventos": tol_eventos, "pares_executor_antigo": antigos,
+            "passa": passa if completo else None, "motivos": motivos}
+
+
 def avaliar_pares(pares, tol_classe=TOL_CLASSE, tol_data=TOL_DATA):
     """Puro. pares: [{id, classe_prog, classe_int, data_prog, data_int, status_prog, status_int}].
-    Item com algum braco em erro de chamada nao conta como par e reprova a completude."""
-    completos = [p for p in pares if p.get("classe_prog") and p.get("classe_int")]
+    Item com algum braco em erro de chamada nao conta como par e reprova a completude.
+    `passa`/`veredito` sao a regra CONGELADA do bloco G0-v3; `estendido` e a proposta de adendo, a parte."""
+    completos = [p for p in pares if p.get("classe_prog") and p.get("classe_int")
+                 and p.get("status_prog") == "rotulado" and p.get("status_int") == "rotulado"]
     dif_classe = [p["id"] for p in completos if _binaria(p["classe_prog"]) != _binaria(p["classe_int"])]
     epep = [p for p in completos if p["classe_prog"] == EP and p["classe_int"] == EP]
     dif_data = [p["id"] for p in epep if (p.get("data_prog") or "") != (p.get("data_int") or "")]
@@ -88,7 +127,8 @@ def avaliar_pares(pares, tol_classe=TOL_CLASSE, tol_data=TOL_DATA):
             "dif_classe_binaria": dif_classe, "n_dif_classe": len(dif_classe), "tolerancia_classe": tol_classe,
             "pares_ep_ep": len(epep), "dif_data": dif_data, "n_dif_data": len(dif_data), "tolerancia_data": tol_data,
             "passa": passa if completo else None, "veredito": ("passa" if passa else "reprova") if completo else "incompleto",
-            "adjudicacao": [p["id"] for p in pares if "adjudicacao" in (p.get("status_prog"), p.get("status_int"))]}
+            "adjudicacao": [p["id"] for p in pares if "adjudicacao" in (p.get("status_prog"), p.get("status_int"))],
+            "estendido": avaliar_estendido(pares, completos)}
 
 
 def _ler(p):
@@ -111,7 +151,8 @@ def coletar(etapa, n=N_ITENS):
                       "tokens_int": L.total_tokens(b["tokens"]) if b and b.get("tokens") else None,
                       "n_fatias": (b or {}).get("n_fatias"), "n_rodadas_pedido": (a or {}).get("n_rodadas_pedido"),
                       "versao_integral": (b or {}).get("versao_executor", "integral-v0.1"), "versao_progressiva": (a or {}).get("versao_executor", "progressiva-v0.1"),
-                      "rodadas_pedido_int": (b or {}).get("n_rodadas_pedido")})
+                      "rodadas_pedido_int": (b or {}).get("n_rodadas_pedido"),
+                      "eventos_prog": eventos_derivados(ra), "eventos_int": eventos_derivados(rb)})
         tokens["progressiva"] += pares[-1]["tokens_prog"] or 0
         tokens["integral"] += pares[-1]["tokens_int"] or 0
     return pares, tokens

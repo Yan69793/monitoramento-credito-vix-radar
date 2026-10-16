@@ -7,6 +7,7 @@ import random
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import date, timedelta
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -252,6 +253,29 @@ class Guarda(unittest.TestCase):
     def test_backtest_real_sem_homologacao_sai_sem_ler(self):
         with self.assertRaises(SystemExit):
             BT.main(["--real", "--rotulos", "inexistente.csv"])
+
+
+class SelecaoSemVazamento(unittest.TestCase):
+    def test_melhor_sinal_escolhido_na_validacao_mesmo_se_pior_no_teste(self):
+        linhas, idx = [], {"treino": [], "validacao": [], "teste": []}
+        for parte, n in (("treino", 40), ("validacao", 20), ("teste", 20)):
+            for j in range(n):
+                y = j % 2
+                h1 = 1 - y if parte == "teste" else y
+                h4 = 1 - y if parte == "validacao" else y
+                idx[parte].append(len(linhas))
+                linhas.append({"cnpj": "c%02d" % j, "y180": y, "B2": 0.5, "H1": h1, "H4": h4})
+        def prever(_modelo, xx):
+            return [0.9 if row[0] >= 0.5 else 0.1 for row in xx]
+        with patch.object(MO, "ajustar_logit", return_value={"beta": [0, 1]}), \
+             patch.object(MO, "prever_logit", side_effect=prever), \
+             patch.object(MO, "platt", return_value=(0, 1)), \
+             patch.object(MO, "aplicar_platt", side_effect=lambda _, ps: ps), \
+             patch.object(M, "bootstrap_cluster", return_value=(0.5, 1.5, 100)):
+            resultado = BT.ajustar_g3(linhas, idx, ["H1", "H4"])
+        self.assertEqual(resultado["melhor_sinal_unico"]["sinal"], "H1")
+        self.assertAlmostEqual(resultado["melhor_sinal_unico"]["brier_validacao"], 0.01)
+        self.assertAlmostEqual(resultado["melhor_sinal_unico"]["brier"], 0.81)
 
 
 class PipelineSintetico(unittest.TestCase):

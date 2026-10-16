@@ -65,7 +65,208 @@ class GatePuro(unittest.TestCase):
 
     def test_adjudicacao_listada(self):
         pares = [par(i, "nao_evento", "nao_evento") for i in range(1, 30)] + [par(30, "evento_proprio", "evento_proprio", "2020-01-01", "2020-01-01", sa="adjudicacao")]
-        self.assertEqual(GQ.avaliar_pares(pares)["adjudicacao"], ["i0030"])
+        r = GQ.avaliar_pares(pares)
+        self.assertEqual(r["adjudicacao"], ["i0030"])
+        self.assertEqual(r["n_completos"], 29)
+        self.assertIsNone(r["passa"])
+        self.assertEqual(r["veredito"], "incompleto")
+
+
+def rot(classe, data=None, origem=None, adicionais=None):
+    return {"classe": classe, "data_evento": data, "origem": ({"protocolo": "1", "data_entrega": origem} if origem else None),
+            "adicionais": adicionais or []}
+
+
+def parx(i, ra, rb, va=None, vb=None):
+    """Par completo com eventos derivados pela regua do pipeline e versoes do executor (atuais por padrao)."""
+    return {"id": "i%04d" % i, "classe_prog": ra["classe"], "classe_int": rb["classe"], "data_prog": ra.get("data_evento"),
+            "data_int": rb.get("data_evento"), "status_prog": "rotulado", "status_int": "rotulado",
+            "eventos_prog": GQ.eventos_derivados(ra), "eventos_int": GQ.eventos_derivados(rb),
+            "versao_progressiva": va or RO.VERSAO_EXECUTOR, "versao_integral": vb or LI.VERSAO_EXECUTOR}
+
+
+class EventosDerivados(unittest.TestCase):
+    """Mesma regua de ews2/eventos.eventos_de_rotulos."""
+
+    def test_cada_classe_gera_o_evento_certo(self):
+        self.assertEqual(GQ.eventos_derivados(rot("evento_proprio", "2020-03-01")), ["2020-03-01"])
+        self.assertEqual(GQ.eventos_derivados(rot("continuacao", "2025-09-25", origem="2025-09-24")), ["2025-09-24"])
+        self.assertEqual(GQ.eventos_derivados(rot("continuacao", None, origem="2025-09-24")), ["2025-09-24"])
+        self.assertEqual(GQ.eventos_derivados(rot("continuacao")), [])
+        for c in ("incerto", "nao_evento", "evento_terceiro"):
+            self.assertEqual(GQ.eventos_derivados(rot(c)), [])
+        ad = [{"classe": "evento_proprio", "data_ou_origem": "2021-01-05", "protocolo": "2", "trecho": "t"}]
+        self.assertEqual(GQ.eventos_derivados(rot("nao_evento", adicionais=ad)), ["2021-01-05"])
+        self.assertEqual(GQ.eventos_derivados(None), [])
+
+
+class GateEstendido(unittest.TestCase):
+    """Duas pontas da proposta G1-eq-ext. A regra congelada nao muda (veredito/passa)."""
+
+    def base(self, n=28):
+        return [parx(i, rot("nao_evento"), rot("nao_evento")) for i in range(1, n + 1)]
+
+    def test_aceita_concordancia_e_data_evento_diferente_com_mesma_origem(self):
+        # caso i0007/i0013 reais: data_evento difere, origem igual -> mesmo evento derivado, nao conta
+        pares = self.base() + [parx(29, rot("continuacao", "2025-09-25", origem="2025-09-25"), rot("continuacao", None, origem="2025-09-25")),
+                               parx(30, rot("evento_proprio", "2020-01-01"), rot("evento_proprio", "2020-01-01"))]
+        r = GQ.avaliar_pares(pares)
+        self.assertTrue(r["passa"])
+        self.assertTrue(r["estendido"]["passa"], r["estendido"])
+        self.assertEqual(r["estendido"]["n_dif_eventos"], 0)
+
+    def test_reprova_duas_divergencias_de_evento_que_a_congelada_aprova(self):
+        # caso i0020 real: incerto contra continuacao com origem. Duas dessas a congelada aprova, a estendida reprova.
+        pares = self.base() + [parx(29, rot("incerto"), rot("continuacao", origem="2025-01-08")),
+                               parx(30, rot("continuacao", origem="2019-01-01"), rot("continuacao", origem="2019-06-01"))]
+        r = GQ.avaliar_pares(pares)
+        self.assertTrue(r["passa"])  # regra congelada: classe binaria igual, nenhum par ep-ep
+        self.assertFalse(r["estendido"]["passa"])
+        self.assertEqual(r["estendido"]["dif_eventos_derivados"], ["i0029", "i0030"])
+
+    def test_uma_divergencia_de_evento_cabe_na_tolerancia(self):
+        pares = self.base(29) + [parx(30, rot("incerto"), rot("continuacao", origem="2025-01-08"))]
+        self.assertTrue(GQ.avaliar_pares(pares)["estendido"]["passa"])
+
+    def test_reprova_par_de_executor_antigo(self):
+        pares = self.base(29) + [parx(30, rot("nao_evento"), rot("nao_evento"), va="progressiva-v0.1")]
+        r = GQ.avaliar_pares(pares)
+        self.assertTrue(r["passa"])
+        self.assertFalse(r["estendido"]["passa"])
+        self.assertEqual(r["estendido"]["pares_executor_antigo"], ["i0030"])
+
+    def test_incompleto_nao_decide(self):
+        pares = self.base(29) + [par(30, "nao_evento", None, sb="erro_chamada")]
+        self.assertIsNone(GQ.avaliar_pares(pares)["estendido"]["passa"])
+
+
+class JanelaCodex(unittest.TestCase):
+    def utc(self, h, m=0):
+        import datetime as dt
+        return dt.datetime(2026, 10, 17, h, m, tzinfo=dt.timezone.utc)
+
+    def test_livre_de_madrugada_sem_rotina(self):
+        self.assertTrue(L.janela_codex_livre(self.utc(6), [])[0])  # 03h00 BRT
+
+    def test_fechada_fora_da_janela_com_rotina_ou_sem_consulta(self):
+        self.assertFalse(L.janela_codex_livre(self.utc(13), [])[0])  # 10h00 BRT, Matinal
+        self.assertFalse(L.janela_codex_livre(self.utc(21), [])[0])  # 18h00 BRT, Noturna
+        self.assertFalse(L.janela_codex_livre(self.utc(3, 29), [])[0])  # 00h29 BRT, limite inferior
+        self.assertFalse(L.janela_codex_livre(self.utc(11, 30), [])[0])  # 08h30 BRT, limite superior aberto
+        self.assertFalse(L.janela_codex_livre(self.utc(6), ["VIXRadar-Noturno"])[0])
+        self.assertFalse(L.janela_codex_livre(self.utc(6), None)[0])
+
+    def test_execucao_real_sem_modelo_fixado_e_recusada(self):
+        # subprocess trocado por armadilha: o teste nunca dispara o Codex, nem contra codigo antigo sem trava
+        orig = L.subprocess.run
+
+        def armadilha(*a, **k):
+            raise AssertionError("subprocess chamado: Codex seria executado")
+        L.subprocess.run = armadilha
+        try:
+            with self.assertRaises(L.LimiteDeCota):
+                L.chamar_codex("p", "s", {"type": "object"}, modelo=None, executar=True)
+        finally:
+            L.subprocess.run = orig
+
+    def test_modelo_claude_nunca_chega_ao_codex(self):
+        with self.assertRaises(ValueError):
+            L.chamar_codex("p", "s", modelo="claude-sonnet-5-5", executar=False)
+        r = L.chamar("p", "s", {"type": "object"}, provider="codex", modelo="claude-sonnet-5-5", executar=False)
+        self.assertNotIn("claude-sonnet-5-5", r["argv"])
+
+
+class OutrosProvedores(unittest.TestCase):
+    """Gemini e OpenRouter: interpretacao pura e garantia de que nada roda sem executar=True."""
+
+    def armar(self):
+        orig_run = L.subprocess.run
+        import urllib.request
+        orig_open = urllib.request.urlopen
+
+        def armadilha(*a, **k):
+            raise AssertionError("rede ou processo chamado")
+        L.subprocess.run = armadilha
+        urllib.request.urlopen = armadilha
+
+        def desarmar():
+            L.subprocess.run = orig_run
+            urllib.request.urlopen = orig_open
+        self.addCleanup(desarmar)
+
+    def test_dry_run_nao_chama_nada(self):
+        self.armar()
+        self.assertEqual(L.chamar_gemini("p", "s", {"type": "object"}, modelo="g")["classe"], "dry_run")
+        self.assertEqual(L.chamar_openrouter("p", "s", modelo="deepseek/x")["classe"], "dry_run")
+        a = L.chamar_gemini("p", "s", modelo="g")["argv"]
+        self.assertIn("--admin-policy", a)
+        self.assertTrue(os.path.exists(a[a.index("--admin-policy") + 1]))
+
+    def test_sem_modelo_recusa_antes_de_chamar(self):
+        self.armar()
+        with self.assertRaises(L.LimiteDeCota):
+            L.chamar_gemini("p", "s", modelo=None, executar=True)
+        with self.assertRaises(L.LimiteDeCota):
+            L.chamar_openrouter("p", "s", modelo="sem-barra", executar=True)
+
+    def test_chave_openrouter_nunca_no_registro(self):
+        r = L.chamar_openrouter("p", "s", modelo="deepseek/x")
+        self.assertNotIn("Bearer", json.dumps(r))
+
+    def test_politica_nega_toda_ferramenta(self):
+        txt = open(L.GEMINI_POLITICA, encoding="utf-8").read()
+        self.assertIn('toolName = "*"', txt)
+        self.assertIn('decision = "deny"', txt)
+
+    def test_interpreta_gemini(self):
+        ok = json.dumps({"response": 'x {"classe":"nao_evento"} y', "stats": {"models": {"m": {"tokens": {"prompt": 100, "cached": 40, "candidates": 5, "thoughts": 2}}}}})
+        r = L.interpretar_saida_gemini(ok, "", 0)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["usage"], {"input": 60, "output": 7, "cache_read": 40, "cache_creation": 0})
+        self.assertEqual(L.interpretar_saida_gemini("", "Quota exceeded: rate_limit_error", 1)["classe"], "limite")
+        self.assertFalse(L.interpretar_saida_gemini(json.dumps({"response": "sem json"}), "", 0)["ok"])
+        # saida real de 16/10 11:44, Gemini sem login: tem que parar o lote (auth), nao virar erro de item
+        self.assertEqual(L.interpretar_saida_gemini("", "Error authenticating: FatalCancellationError: Authentication cancelled by user.", 130)["classe"], "auth")
+
+    def test_interpreta_openrouter(self):
+        ok = json.dumps({"model": "deepseek/x", "choices": [{"message": {"content": '{"classe":"incerto"}'}}],
+                         "usage": {"prompt_tokens": 50, "completion_tokens": 3, "prompt_tokens_details": {"cached_tokens": 10}}})
+        r = L.interpretar_saida_openrouter(ok, 200)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["usage"]["input"], 40)
+        self.assertEqual(L.interpretar_saida_openrouter("{}", 402)["classe"], "limite")
+        self.assertEqual(L.interpretar_saida_openrouter("{}", 401)["classe"], "auth")
+
+    def test_fornecedor(self):
+        self.assertEqual(L.fornecedor("openrouter", "anthropic/claude-x"), "anthropic")
+        self.assertEqual(L.fornecedor("openrouter", "deepseek/x"), "deepseek")
+        self.assertEqual(L.fornecedor("codex", "gpt-x"), "openai")
+        self.assertEqual(L.fornecedor("claude", "claude-opus-5-5"), "anthropic")
+
+
+class PortaoP4(unittest.TestCase):
+    def montar(self, resultado):
+        import rotular_etapa1 as RE
+        d = tempfile.mkdtemp()
+        os.makedirs(os.path.join(d, "g1eq"))
+        with open(os.path.join(d, "g1eq", "resultado_g1eq.json"), "w", encoding="utf-8") as fh:
+            json.dump(resultado, fh)
+        aut = os.path.join(d, "aut.json")
+        with open(aut, "w", encoding="utf-8") as fh:
+            json.dump({"autorizado": True, "primeiro_rotulador": "claude", "segundo_rotulador": "codex",
+                       "modelo_segundo": "modelo-x", "teto_tokens_lote": 2000000}, fh)
+        return RE.portoes(d, aut)
+
+    def test_congelada_aprovada_sem_estendido_fica_fechado(self):
+        p = self.montar({"passa": True, "veredito": "passa", "n_completos": 30})
+        self.assertTrue(p["P2_g1eq"]["ok"])
+        self.assertFalse(p["P4_g1eq_estendido"]["ok"])
+        self.assertFalse(p["ok"])
+
+    def test_estendido_aprovado_abre_o_p4(self):
+        p = self.montar({"passa": True, "veredito": "passa", "n_completos": 30, "estendido": {"passa": True, "motivos": []}})
+        self.assertTrue(p["P4_g1eq_estendido"]["ok"])
+        self.assertEqual(p["ok"], p["P1_guarda_g0v3"]["ok"])
 
 
 class Fatiamento(unittest.TestCase):

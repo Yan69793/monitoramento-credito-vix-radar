@@ -1,12 +1,15 @@
-"""Rotulagem da ETAPA 1 (os 1.261 itens cegos), primeiro rotulador Claude e segundo rotulador Codex, pela G0-v3.
-PREPARADO, NAO EXECUTAVEL ate os tres portoes abaixo abrirem. Nenhum rotulo e gravado sem eles.
+"""Rotulagem da ETAPA 1 (os 1.261 itens cegos), primeiro rotulador Claude e segundo rotulador configuravel, pela G0-v3.
+PREPARADO, NAO EXECUTAVEL ate os quatro portoes abaixo abrirem. Nenhum rotulo e gravado sem eles.
 
 Portoes (medidos, nunca presumidos):
   P1  guarda_g0v3.estado()["ok"]  (bloco G0-v3, recuperar_g0v3.py, G0-v2 e anexo congelados e intactos)
   P2  g1eq/resultado_g1eq.json com "passa": true  (G1-eq aprovado, item 4 do bloco)
-  P3  data/validacao/autorizacao_rotulagem_etapa1.json gravado pelo operador:
-      {"autorizado": true, "data": "AAAA-MM-DD", "primeiro_rotulador": "claude", "segundo_rotulador": "codex", "modelo_claude": "..."}
+  P3  data/validacao/autorizacao_rotulagem_etapa1.json gravado pelo operador e valido (segundo_config):
+      {"autorizado": true, "data": "AAAA-MM-DD", "primeiro_rotulador": "claude", "modelo_claude": "...",
+       "segundo_rotulador": "codex|gemini|openrouter|claude", "modelo_segundo": "...", "teto_tokens_lote": N,
+       "aceita_mesmo_fornecedor": bool (so se o segundo for do fornecedor do primeiro), "openrouter_pago_autorizado": bool}
       Este script nunca cria esse arquivo.
+  P4  bloco `estendido` do G1-eq aprovado (proposta G1-eq-ext, nota 122)
 
 Saida (item 5 do bloco): CSV so-acrescenta data/validacao/rotulos_etapa1.csv com as colunas de preflight_g1a
 (id;cnpj;data;origem;classe1;data_evento1;protocolo;trecho;sha256_documento;data_download) mais origem_* e adicionais_json.
@@ -52,8 +55,50 @@ def portoes(etapa, autorizacao=AUTORIZACAO):
                      "n_completos": (g1r or {}).get("n_completos")},
          "P3_autorizacao": {"ok": bool(aut and aut.get("autorizado") is True and aut.get("primeiro_rotulador") and aut.get("segundo_rotulador")),
                             "arquivo": autorizacao, "presente": aut is not None}}
+    if aut is not None:
+        cfg, erros = segundo_config(aut)
+        p["P3_autorizacao"].update({"segundo": cfg, "erros": erros})
+        p["P3_autorizacao"]["ok"] = p["P3_autorizacao"]["ok"] and not erros
+    # P4 (adendo de 16/10, fail-closed ate o operador decidir): a regra congelada do G1-eq nao compara o evento que
+    # cada braco cria (continuacao/origem, adicionais, incerto contra continuacao) e aceita par de executor antigo.
+    # Sem o bloco `estendido` aprovado no resultado, a rotulagem nao comeca. Relaxar so por decisao registrada.
+    ext = (g1r or {}).get("estendido") or {}
+    p["P4_g1eq_estendido"] = {"ok": ext.get("passa") is True, "motivos": ext.get("motivos", ["resultado sem bloco estendido: reavaliar com g1eq.py avaliar"])}
     p["ok"] = all(v["ok"] for k, v in p.items() if k.startswith("P"))
     return p
+
+
+TETO_LOTE_PADRAO = 2_000_000
+
+
+def segundo_config(aut):
+    """Puro. Le e valida a escolha do segundo rotulador gravada pelo operador na autorizacao. Devolve (cfg, erros).
+    Campos: segundo_rotulador (codex|gemini|openrouter|claude), modelo_segundo, teto_tokens_lote,
+    aceita_mesmo_fornecedor (obrigatorio quando o fornecedor do segundo e o do primeiro), openrouter_pago_autorizado."""
+    aut = aut or {}
+    prov = str(aut.get("segundo_rotulador") or "").strip().lower()
+    modelo = str(aut.get("modelo_segundo") or "").strip() or (L.modelo_codex() if prov == "codex" else None)
+    erros = []
+    if prov not in L.PROVEDORES_SEGUNDO:
+        erros.append("segundo_rotulador invalido: %r (opcoes %s)" % (prov, ", ".join(L.PROVEDORES_SEGUNDO)))
+    if not modelo:
+        erros.append("modelo_segundo ausente")
+    primeiro = L.fornecedor("claude", aut.get("modelo_claude") or L.MODELO_PADRAO)
+    if prov in L.PROVEDORES_SEGUNDO and modelo and L.fornecedor(prov, modelo) == primeiro and aut.get("aceita_mesmo_fornecedor") is not True:
+        erros.append("segundo rotulador do mesmo fornecedor do primeiro (%s): exige aceita_mesmo_fornecedor=true, G0-v2 item 4" % primeiro)
+    if prov == "claude" and modelo and modelo == (aut.get("modelo_claude") or L.MODELO_PADRAO):
+        erros.append("segundo rotulador Claude com o MESMO modelo do primeiro nao mede nada: use outro modelo")
+    if prov == "gemini":
+        # medido 16/10 11:44: sem OAuth headless (exit 130) e o CLI carrega skills de ~/.agents/skills e ~/.gemini/skills
+        # no contexto, o que quebra a leitura cega. Bloqueado ate isolamento comprovado (nota 122, secao 3.1).
+        erros.append("gemini bloqueado: sem login headless e carrega skills do usuario no contexto (leitura cega nao garantida)")
+    if prov == "openrouter" and aut.get("openrouter_pago_autorizado") is not True:
+        erros.append("openrouter e pago por token: exige openrouter_pago_autorizado=true")
+    teto = aut.get("teto_tokens_lote")
+    if not isinstance(teto, int) or teto <= 0:
+        erros.append("teto_tokens_lote ausente ou invalido")
+    return {"provider": prov, "modelo": modelo, "teto_tokens_lote": teto if isinstance(teto, int) and teto > 0 else None,
+            "fornecedor": L.fornecedor(prov, modelo) if prov else None}, erros
 
 
 def _ler_csv(p):
@@ -95,6 +140,7 @@ def rodar(etapa, docs_dir, teto_tokens=2_000_000, max_itens=None, dry_run=False,
         return EXIT_BLOQUEADO
     aut = json.load(open(autorizacao, encoding="utf-8-sig"))
     modelo = aut.get("modelo_claude") or L.MODELO_PADRAO
+    teto_tokens = min(teto_tokens, segundo_config(aut)[0]["teto_tokens_lote"])  # teto do lote vem da autorizacao
     itens, man, meta = RO.carregar(etapa)
     mapa = json.load(open(os.path.join(etapa, "mapa_camadas.json"), encoding="utf-8"))
     import g1eq as GQ
@@ -142,17 +188,31 @@ def segunda(etapa, docs_dir, ids, dry_run=False, autorizacao=AUTORIZACAO):
     if not p["ok"]:
         print(json.dumps({"ok": False, "bloqueado": "portoes fechados", "portoes": p}, ensure_ascii=False, indent=1))
         return EXIT_BLOQUEADO
+    cfg, _ = segundo_config(json.load(open(autorizacao, encoding="utf-8-sig")))
+    if cfg["provider"] in ("gemini", "openrouter"):
+        os.environ[L.VAR_MODELO_SEGUNDO] = cfg["modelo"]
     itens, man, meta = RO.carregar(etapa)
     csv_p = os.path.join(etapa, "..", "rotulos_etapa1_segunda.csv")
     feitos = {r["id"] for r in _ler_csv(csv_p)}
     saida = os.path.join(etapa, "etapa1_execucao_segunda")
     guia = RO.guia_v3()
+    gasto = 0
     for iid in ids:
         if iid in feitos:
             continue
-        r = RO.rotular(itens[iid], man[iid], meta, docs_dir, saida, provider="codex", dry_run=dry_run, guia=guia)
+        if gasto >= cfg["teto_tokens_lote"]:
+            print(json.dumps({"parado": "teto de tokens do lote", "gasto": gasto, "teto": cfg["teto_tokens_lote"]}))
+            return EXIT_COTA
+        try:
+            # modelo explicito: sem ele, rotular() herdaria o padrao Claude e mandaria `-m claude-...` a outro fornecedor
+            r = RO.rotular(itens[iid], man[iid], meta, docs_dir, saida, modelo=cfg["modelo"], provider=cfg["provider"], dry_run=dry_run, guia=guia)
+        except L.LimiteDeCota as e:
+            print(json.dumps({"parado": "limite, janela, credencial ou modelo do segundo rotulador", "provider": cfg["provider"], "detalhe": str(e)[:200]}))
+            return EXIT_COTA
+        if not dry_run and r.get("tokens"):
+            gasto += L.total_tokens(r["tokens"])
         if dry_run:
-            print(json.dumps({"id": iid, "dry_run": True, "argv0": (r.get("codex_argv") or ["?"])[0]}))
+            print(json.dumps({"id": iid, "dry_run": True, "provider": cfg["provider"], "argv0": (r.get("codex_argv") or ["?"])[0]}))
             continue
         rot = r.get("rotulo") or {}
         orig = rot.get("origem") or {}
@@ -161,7 +221,7 @@ def segunda(etapa, docs_dir, ids, dry_run=False, autorizacao=AUTORIZACAO):
                                              "trecho": rot.get("trecho_evento") or orig.get("trecho") or "", "tipo": rot.get("tipo") or "",
                                              "origem_json": json.dumps(orig, ensure_ascii=False), "adicionais_json": json.dumps(rot.get("adicionais") or [], ensure_ascii=False),
                                              "motivo_incerto": rot.get("motivo_incerto") or "", "status": r.get("status"),
-                                             "falhas_trecho": " | ".join(r.get("falhas_trecho") or []), "provider": "codex", "modelo": r.get("modelo"),
+                                             "falhas_trecho": " | ".join(r.get("falhas_trecho") or []), "provider": cfg["provider"], "modelo": cfg["modelo"],
                                              "rotulado_em": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")})
         print(json.dumps({"id": iid, "status": r.get("status"), "classe2": rot.get("classe")}), flush=True)
     return 0

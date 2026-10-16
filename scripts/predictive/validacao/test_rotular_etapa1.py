@@ -28,7 +28,8 @@ class Portoes(unittest.TestCase):
 
     def _aut(self, ok=True):
         with open(self.aut, "w", encoding="utf-8") as fh:
-            json.dump({"autorizado": ok, "data": "2026-10-20", "primeiro_rotulador": "claude", "segundo_rotulador": "codex"}, fh)
+            json.dump({"autorizado": ok, "data": "2026-10-20", "primeiro_rotulador": "claude", "segundo_rotulador": "codex",
+                       "modelo_segundo": "modelo-x", "teto_tokens_lote": 2000000}, fh)
 
     def test_g1eq_incompleto_bloqueia_mesmo_autorizado(self):
         self._aut()
@@ -62,11 +63,21 @@ class Portoes(unittest.TestCase):
         self.assertFalse(RE.portoes(self.d, self.aut)["ok"])
 
     def test_tudo_aberto_libera_so_se_guarda_g0v3_ok(self):
-        self._g1eq(True)
+        # P4 (16/10): congelada aprovada so libera com o bloco estendido aprovado junto
+        with open(os.path.join(self.d, "g1eq", "resultado_g1eq.json"), "w", encoding="utf-8") as fh:
+            json.dump({"passa": True, "veredito": "passa", "n_completos": 30, "estendido": {"passa": True, "motivos": []}}, fh)
         self._aut()
         p = RE.portoes(self.d, self.aut)
         self.assertEqual(p["ok"], p["P1_guarda_g0v3"]["ok"])
-        self.assertTrue(p["P2_g1eq"]["ok"] and p["P3_autorizacao"]["ok"])
+        self.assertTrue(p["P2_g1eq"]["ok"] and p["P3_autorizacao"]["ok"] and p["P4_g1eq_estendido"]["ok"])
+
+    def test_congelada_aprovada_sem_estendido_bloqueia(self):
+        self._g1eq(True)
+        self._aut()
+        p = RE.portoes(self.d, self.aut)
+        self.assertTrue(p["P2_g1eq"]["ok"])
+        self.assertFalse(p["P4_g1eq_estendido"]["ok"])
+        self.assertFalse(p["ok"])
 
     def test_rodar_bloqueado_nao_grava_nada(self):
         rc = RE.rodar(self.d, self.d, dry_run=True, autorizacao=self.aut)
@@ -83,6 +94,42 @@ class Portoes(unittest.TestCase):
         self.assertEqual(l["sha256_documento"], "s")
         self.assertEqual(l["classe1"], "continuacao")
 
+
+
+class SegundoRotulador(unittest.TestCase):
+    """segundo_config: duas pontas para cada provedor. Puro, sem chamada."""
+    BASE = {"autorizado": True, "primeiro_rotulador": "claude", "modelo_claude": "claude-sonnet-5-5", "teto_tokens_lote": 2000000}
+
+    def cfg(self, **kw):
+        return RE.segundo_config(dict(self.BASE, **kw))
+
+    def test_aceita_codex_gemini_openrouter_e_claude_com_aceite(self):
+        for kw in ({"segundo_rotulador": "codex", "modelo_segundo": "gpt-x"},
+                   {"segundo_rotulador": "openrouter", "modelo_segundo": "deepseek/x", "openrouter_pago_autorizado": True},
+                   {"segundo_rotulador": "claude", "modelo_segundo": "claude-opus-5-5", "aceita_mesmo_fornecedor": True}):
+            c, erros = self.cfg(**kw)
+            self.assertEqual(erros, [], kw)
+            self.assertEqual(c["teto_tokens_lote"], 2000000)
+
+    def test_reprova_configuracoes_ruins(self):
+        casos = [({"segundo_rotulador": "codex"}, "modelo_segundo"),  # sem modelo (e sem variavel de usuario no teste)
+                 ({"segundo_rotulador": "grok", "modelo_segundo": "x"}, "invalido"),
+                 ({"segundo_rotulador": "claude", "modelo_segundo": "claude-opus-5-5"}, "mesmo fornecedor"),
+                 ({"segundo_rotulador": "claude", "modelo_segundo": "claude-sonnet-5-5", "aceita_mesmo_fornecedor": True}, "MESMO modelo"),
+                 ({"segundo_rotulador": "openrouter", "modelo_segundo": "deepseek/x"}, "pago"),
+                 ({"segundo_rotulador": "openrouter", "modelo_segundo": "anthropic/claude-x", "openrouter_pago_autorizado": True}, "mesmo fornecedor"),
+                 ({"segundo_rotulador": "codex", "modelo_segundo": "g", "teto_tokens_lote": 0}, "teto"),
+                 ({"segundo_rotulador": "gemini", "modelo_segundo": "gemini-x"}, "gemini bloqueado")]
+        orig = RE.L.modelo_codex
+        RE.L.modelo_codex = lambda: None
+        try:
+            for kw, trecho in casos:
+                base = dict(self.BASE)
+                base.update(kw)
+                _, erros = RE.segundo_config(base)
+                self.assertTrue(any(trecho in e for e in erros), (kw, erros))
+        finally:
+            RE.L.modelo_codex = orig
 
 if __name__ == "__main__":
     unittest.main()

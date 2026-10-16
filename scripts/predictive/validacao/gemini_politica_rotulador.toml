@@ -1,0 +1,8 @@
+# Politica do Gemini CLI para o segundo rotulador do EWS 2.0 (G0-v3). Passada por --admin-policy so nas chamadas do
+# rotulador, sem alterar ~/.gemini. Nega TODA ferramenta (busca web, leitura de arquivo, shell, MCP): o rotulador so
+# ve o que o prompt traz, como o Claude (--tools "") e o Codex (sandbox read-only, sem --search).
+# Referencia: https://geminicli.com/docs/reference/policy-engine (toolName "*" casa qualquer ferramenta).
+[[rule]]
+toolName = "*"
+decision = "deny"
+priority = 999
