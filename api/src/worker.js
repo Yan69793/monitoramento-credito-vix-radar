@@ -10938,6 +10938,22 @@ async function _verifEstadoAuto(env2222, id) {
   return null;
 }
 __name(_verifEstadoAuto, "_verifEstadoAuto");
+// FILAREMOVE1 (2026-10-17): instante (ms) em que o item da fila ficou elegivel para o motor.
+// E o criado_em, salvo quando o id ja tem tentativa nao-conclusiva com backoff vencido depois
+// dele: ai o item so voltou a ser trabalho em proxima_em. criado_em ausente ou invalido vira 0,
+// mantendo o fail-closed antigo do health (item sem data conta como atrasado).
+async function _verifFilaInicioElegivelMs(env2222, it) {
+  var base = new Date(it && it.criado_em || 0).getTime();
+  if (!isFinite(base)) base = 0;
+  if (!base || !it || !it.id) return base;
+  var reg = await lerTentativaVerificacao(env2222, it.id);
+  if (reg && reg.proxima_em) {
+    var t = new Date(reg.proxima_em).getTime();
+    if (isFinite(t) && t > base && t <= Date.now()) return t;
+  }
+  return base;
+}
+__name(_verifFilaInicioElegivelMs, "_verifFilaInicioElegivelMs");
 // CONCORVERIF1 (2026-08-18): claim/reserva de itens da fila, roda DENTRO do EstadoSemanaDO
 // (op "reservar", keyed por "fila:"+data), serializado pelo mesmo _fila FIFO da classe — por
 // isso e atomico de verdade, ao contrario de listar_fila_verificacao (leitura pura, sem reserva).
@@ -20908,12 +20924,18 @@ async function __coreFetch(request, env2222, ctx) {
           var _lfvPendRes = await listarFilaVerificacaoPendente(env2222, 7);
           var _filaVerifPend = _lfvPendRes.itens || [];
           var _filaVerifLimite = Date.now() - 20 * 60 * 60 * 1e3;
-          _filaVerifAtrasada = _filaVerifPend.some(function(it) { return new Date(it.criado_em || 0).getTime() < _filaVerifLimite; });
+          // FILAREMOVE1 (2026-10-17): a idade conta a partir de quando o item ficou ELEGIVEL,
+          // nao do criado_em original. Item que ja levou REPROVADO nao-conclusivo fica escondido
+          // pelo backoff (listarFilaVerificacaoPendente) e volta quando proxima_em vence; contar
+          // desde o criado_em somava as 24h de backoff legitimo ao atraso. Medido em 17/10: a
+          // Minerva voltou a 01:36Z e o health acusou 28h com o item elegivel ha 1h.
+          var _filaVerifInicios = await Promise.all(_filaVerifPend.map(function(it) { return _verifFilaInicioElegivelMs(env2222, it); }));
+          _filaVerifAtrasada = _filaVerifInicios.some(function(ms) { return ms < _filaVerifLimite; });
           // HEALTHBACKLOG1: backlog visivel - quantos itens e a idade do mais antigo.
           _filaVerifPendentes = _filaVerifPend.length;
           var _filaMaisAntigaMs = 0;
-          for (var _fp = 0; _fp < _filaVerifPend.length; _fp++) {
-            var _cri = new Date(_filaVerifPend[_fp].criado_em || 0).getTime();
+          for (var _fp = 0; _fp < _filaVerifInicios.length; _fp++) {
+            var _cri = _filaVerifInicios[_fp];
             if (isFinite(_cri) && _cri > 0) { var _idadeMs = Date.now() - _cri; if (_idadeMs > _filaMaisAntigaMs) _filaMaisAntigaMs = _idadeMs; }
           }
           _filaVerifMaisAntigaH = _filaVerifPend.length > 0 ? Math.round(_filaMaisAntigaMs / 36e5) : 0;
@@ -22408,7 +22430,20 @@ async function __coreFetch(request, env2222, ctx) {
           // ortogonal a resolucao do orfao (o resultado dela nao gate mais
           // nada abaixo — ver o comentario extenso em _resolverOrfaoPorConclusao
           // sobre por que fila-removal-como-prova quebrava o caminho comum).
-          await removerDaFilaVerificacao(env2222, it.data_fila, it.id);
+          // FILAREMOVE1 (2026-10-17): o retorno era ignorado. Em 16/10 01:36Z dois REPROVADO da
+          // Minerva na mesma chave diaria, com 1s de intervalo: o de 10-09 saiu, o de 10-08 ficou
+          // e reapareceu 24h depois como atraso. Agora a falha tenta de novo uma vez e, se
+          // persistir, aparece no log e na resposta (fila_remocao_falhas) em vez de sumir.
+          // id ausente (replay, sweep) nao e falha: so conta erro de leitura/escrita/DO.
+          var _cvRemFalhou = function(r) { return !r || (r.removido !== true && r.erro !== "sem_escrita_id_ausente"); };
+          var _cvRem = await removerDaFilaVerificacao(env2222, it.data_fila, it.id);
+          if (_cvRemFalhou(_cvRem)) {
+            var _cvRem2 = await removerDaFilaVerificacao(env2222, it.data_fila, it.id);
+            if (_cvRemFalhou(_cvRem2)) {
+              _cvResultado.fila_remocao_falhas = (_cvResultado.fila_remocao_falhas || 0) + 1;
+              console.error("[verif-async][FILAREMOVE1] item nao removido da fila apos veredicto", { id: it.id, data_fila: it.data_fila, erro1: _cvRem && _cvRem.erro || null, erro2: _cvRem2 && _cvRem2.erro || null });
+            }
+          }
           // SWEEP-ORFAOS1 (2026-09-06, P0): conclusao TERMINAL do EVENTO e o
           // unico fato que resolve um orfao, provado pelo retorno direto de
           // mesclarEventoVerificado/retratarEventoRejeitado (_cvProvaTerminal
