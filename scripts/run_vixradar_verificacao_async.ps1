@@ -213,9 +213,23 @@ function Get-VixColetorParaEmissor([string]$Empresa) {
 function Get-VixBlocoColetorVerificacao($Itens) {
     if (-not $script:VixColetorAtivo) { return '' }
     $linhas = @()
-    $linhas += 'COLETOR_PS_ATIVO: a evidencia abaixo foi coletada localmente pelo orquestrador para cada evento. PROIBIDO executar WebSearch, WebFetch, ferramenta de busca ou fetch. Use somente a evidencia fornecida e os dados do prompt do Worker.'
-    $linhas += 'FONTES: nao invente URL, titulo, veiculo, dominio, data ou resultado. fontes_validas so pode conter URL ja presente no evento ou no prompt do Worker.'
-    $linhas += 'COLETA_VAZIA: EVIDENCIA_VAZIA significa consulta concluida sem publicacao na janela. EVIDENCIA_INDISPONIVEL significa falha de coleta. Em qualquer um dos dois casos, retorne obrigatoriamente REPROVADO, confianca 0, fontes_validas [], com motivo fiel ao estado. Nao aprove nem corrija sem evidencia.'
+    if ($script:VixColetorObrigatorio) {
+        # Provider sem busca propria (deepseek): a coleta e a unica evidencia possivel.
+        $linhas += 'COLETOR_PS_ATIVO: a evidencia abaixo foi coletada localmente pelo orquestrador para cada evento. PROIBIDO executar WebSearch, WebFetch, ferramenta de busca ou fetch. Use somente a evidencia fornecida e os dados do prompt do Worker.'
+        $linhas += 'FONTES: nao invente URL, titulo, veiculo, dominio, data ou resultado. fontes_validas so pode conter URL ja presente no evento ou no prompt do Worker.'
+        $linhas += 'COLETA_VAZIA: EVIDENCIA_VAZIA significa consulta concluida sem publicacao na janela. EVIDENCIA_INDISPONIVEL significa falha de coleta. Em qualquer um dos dois casos, retorne obrigatoriamente REPROVADO, confianca 0, fontes_validas [], com motivo fiel ao estado. Nao aprove nem corrija sem evidencia.'
+    } else {
+        # COLETORVERIF1 (2026-10-17): com provider que tem busca propria (codex --search, claude
+        # WebSearch) o bloco estrito acima contradizia o prompt do Worker, que exige busca ativa e
+        # fonte primaria DISTINTA com URL. A coleta traz so manchete, sem URL, numa janela de 7 dias
+        # contada de hoje; proibindo a busca, nenhum APROVADO era possivel. O Codex obedecia e
+        # reprovou 100% (15/10 Oi e Minerva x2, 16/10 Oncoclinicas); o Claude desobedecia e buscava.
+        # Replay de 17/10: Minerva com o bloco estrito "a janela de sete dias nao cobre a data
+        # declarada", fontes_validas []; sem ele, parecer de merito com URL real.
+        $linhas += 'COLETOR_PS_ATIVO: as manchetes abaixo foram coletadas localmente pelo orquestrador como PONTO DE PARTIDA. Elas nao trazem URL e cobrem so os ultimos dias, entao nao bastam como fonte. Faca a busca ativa exigida pelas regras acima para confirmar o fato e preencher fontes_validas.'
+        $linhas += 'FONTES: nao invente URL, titulo, veiculo, dominio, data ou resultado. fontes_validas so pode conter URL que voce abriu ou encontrou na busca, ou que ja esta no evento.'
+        $linhas += 'COLETA_VAZIA: EVIDENCIA_VAZIA ou EVIDENCIA_INDISPONIVEL nao prova ausencia nem falsidade do fato, inclusive porque o evento pode ser anterior a janela da coleta. Busque normalmente e decida pelas regras acima.'
+    }
     foreach ($item in @($Itens)) {
         $coleta = Get-VixColetorParaEmissor ('' + $item.empresa)
         $linhas += ('EVENTO_COLETOR|id=' + $item.id + '|empresa=' + $item.empresa)
