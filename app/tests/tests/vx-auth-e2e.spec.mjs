@@ -190,7 +190,7 @@ test.describe('sessao unica e isolamento entre usuarios', () => {
     const c2 = await novoContexto(browser, info);
     await loginPelaTela(c2.page, contas.a); // mesma conta, outro navegador
     await c2.page.waitForFunction(() => !!localStorage.getItem('radar_jwt'));
-    await expect.poll(() => c2.dialogos.join('|')).toContain('sessão anterior desta conta foi encerrada');
+    expect(c2.dialogos.join('|')).not.toContain('sessão anterior desta conta foi encerrada'); // aviso removido, troca de sessao e silenciosa
     const t2 = (await armazenado(c2.page)).jwt;
     expect(t2).not.toBe(t1);
 
