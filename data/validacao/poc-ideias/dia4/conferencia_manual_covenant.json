@@ -1,0 +1,35 @@
+{
+ "conferido_por": "agente (Claude), lendo o trecho de origem de cada campo; nao e revisao do operador",
+ "data": "2026-10-17",
+ "adendo_apos_complemento_simpar_eneva": {
+  "covenants_conferidos_a_mais": 3,
+  "campos_corretos_a_mais": 9,
+  "como": "Simpar: limites 3,5 e 2,0 coincidem com a tabela do agente fiduciario (lim_esc_confere=True nos 8 trimestres). Eneva: texto da clausula (xii) lido, igual ou inferior a 4,5, e o primeiro regex omitia 'igual ou inferior', corrigido e coberto por teste",
+  "total_campos": "27 de 27 no nucleo (9 covenants x 3 campos), 7 de 10 escrituras com covenant extraido, Light corretamente sem covenant, 2 escaneadas sem texto",
+  "aviso_overfit": "os padroes foram ajustados nos mesmos documentos da amostra, entao o 27 de 27 nao e acuracia fora da amostra"
+ },
+ "campos_nucleo": {
+  "descricao": "indicador, operador e limite de cada covenant extraido",
+  "itens": [
+   {"emissor": "Azul", "emissao": 2, "indicador": "ok (Divida Liquida Ajustada sob EBITDA Ajustado)", "operador": "ok (<=)", "limite": "ok (3,75x)"},
+   {"emissor": "Pao de Acucar (GPA)", "emissao": 18, "indicador": "ok", "operador": "ok (<=)", "limite": "ok (3,25)"},
+   {"emissor": "Movida", "emissao": 9, "indicador": "ok (Divida Financeira Liquida/EBITDA)", "operador": "ok (<=)", "limite": "ok (3,50, step (b) 3,75 e (c) 4,00 capturados)"},
+   {"emissor": "Arteris", "emissao": 18, "indicador": "ok (Divida Liquida/(EBITDA Ajustado - Outorga))", "operador": "ok (<=)", "limite": "ok (4,50)"},
+   {"emissor": "Dasa", "emissao": 14, "indicador": "ok (Divida Liquida/EBITDA)", "operador": "ok (<)", "limite": "ok (4)"},
+   {"emissor": "Dasa", "emissao": 14, "indicador": "ok (EBITDA/Resultado Financeiro)", "operador": "ok (>)", "limite": "ok (1,5)"}
+  ],
+  "campos_corretos": 18,
+  "campos_conferidos": 18
+ },
+ "erros_e_omissoes": [
+  {"emissor": "Azul", "campo": "vencimento_antecipado", "extraido": "automatico", "correto": "nao_automatico", "fonte": "relatorio do agente: Evento de Vencimento Antecipado Nao Automatico, inciso (xviii) da Clausula 6.1.3"},
+  {"emissor": "Pao de Acucar (GPA)", "campo": "recall", "omitido": "Divida Liquida Consolidada nao superior ao Patrimonio Liquido (sem EBITDA, fora do padrao do extrator)"},
+  {"emissor": "Movida", "campo": "step_down", "observacao": "valores capturados, mas o periodo de vigencia de cada degrau nao; a margem usa o primeiro degrau (3,50)"},
+  {"emissor": "Azul", "campo": "periodicidade", "extraido": null, "observacao": "nao encontrada no contexto de 1.500 caracteres"}
+ ],
+ "negativos_corretos": [
+  {"emissor": "Light", "observacao": "2a emissao em recuperacao judicial, sem covenant financeiro (0 ocorrencias de EBITDA no texto)"}
+ ],
+ "sem_texto": ["Oncoclinicas (escritura escaneada)", "Marfrig (escritura escaneada)"],
+ "vencimento_antecipado_nao_conferido": ["GPA", "Movida", "Arteris", "Dasa"]
+}

@@ -1,0 +1,39 @@
+{
+ "versao": "portoes_dia1 v1",
+ "medido_em": "2026-10-17",
+ "fontes": {
+  "spread_local": {"arquivo": "data/historico/2026-10-11/series_full.json.gz", "sha256": "94c3b7d07fcde966fd51d18c5015bbf7fa5bec5e79e2f31186816c2559fb767a"},
+  "eventos": {"arquivo": "data/labels/eventos_credito.jsonl", "sha256": "5f8e78ae048a4d25b6d91bc3550ae33e23059e73c5b9f68ee4fa7a37da20554e"}
+ },
+ "poc2_spread_residual": {
+  "p1_temporal": "OK. Spread diario tem data propria. Arquivo publico ANBIMA so retem db260914 a db261016 (404 de 260911 para tras).",
+  "p2_historico": "REPROVA a premissa de 120 dias uteis: 114 dias, 0 de 79 emissores com 120. Com janela de 60, a primeira data avaliavel e fim de julho, depois do ultimo rotulo (2026-07-09).",
+  "p3_eventos": "Episodios incidentes na janela de spread: 8 (BRF, Marfrig, Multiplan, Aegea, CEMIG, Vale, Cosan, Itau), todos antes da primeira data avaliavel. Zero episodios avaliaveis.",
+  "decisao": "Implementa o prototipo e compara com z_spread de forma descritiva (alertas, sobreposicao, cobertura, estabilidade). Antecedencia e falso positivo: nao avaliaveis. Veredito maximo REVISAR."
+ },
+ "poc1_flow_at_risk": {
+  "p1_temporal": "PARCIAL. CDA nao traz data de entrega. 60% das linhas de debenture de 2026-03 (138.410 de 231.261) tinham DT_CONFID_APLIC (jun/2026) e so aparecem em detalhe hoje, o que seria vazamento em T de marco. Regra: linha confidencial so entra apos o prazo. Defasagem de 60 dias e premissa, sensibilidade 30 e 90. Informe diario: D+1 pela regra de publicacao do dataset.",
+  "p2_historico": "OK. CDA de 2025-09 a 2026-08 (12 meses) e informe diario de 2025-12 a 2026-10 baixados. Bloco 6 tem CNPJ do emissor mas so R$ 9,3 bi e 66 emissores. Debenture esta no bloco 4 sem CNPJ, so por CD_ATIVO e CD_ISIN, entao exige mapa codigo para emissor.",
+  "p3_eventos": "48 episodios incidentes desde 2025-10, mas 30 em 2026-W13 e W14 e 40 sem tag severa, ou seja, lote de rotulagem de documentos CVM e nao estresse. Com tag severa: Raizen, GPA, Cosan (mesmo grupo da Raizen), Oncoclinicas, Kora, Rede D'Or, Aegea. Cerca de 6 clusters independentes.",
+  "decisao": "Segue. Denominador de volume indisponivel em fonte publica, o que limita o veredito a REVISAR."
+ },
+ "poc5_covenant_margem": {
+  "p1_temporal": "OK. ITR 2021 a 2026 com DT_RECEB em 100% das versoes, 102 de 104 emissores cobertos, mediana de 17 trimestres. Escritura e relatorio do agente com Data_Entrega no IPE.",
+  "p2_historico": "OK. 100 emissores com documento de escritura desde 2022 (1.456 docs) e 87 com documento de agente fiduciario no IPE. Texto das escrituras ainda nao baixado.",
+  "p3_eventos": "Nao se aplica. A PoC mede distancia ao limite, nao detecta evento.",
+  "decisao": "Segue com 5 a 10 escrituras, download via link do IPE no Dia 4."
+ },
+ "poc6_diff_notas": {
+  "p1_temporal": "OK com DT_RECEB do ITR e Data_Entrega do IPE.",
+  "p2_historico": "OK para 5 emissores se o texto das notas estiver no RAD.",
+  "p3_eventos": "Usa H2 e H4 do EWS 2.0 como benchmark.",
+  "decisao": "Segue como demonstracao."
+ },
+ "poc3_placar": {
+  "decisao": "Segue. Nao depende de dado externo."
+ },
+ "nao_medido": {
+  "short_interest_btb": "Fonte e profundidade nao verificadas. Removido do PoC 2 e deixado como covariavel futura.",
+  "volume_reune": "A coluna % Reune do arquivo ANBIMA existe, mas nao e volume financeiro diario. Nao usada como denominador."
+ }
+}

@@ -1,0 +1,70 @@
+{
+ "alertas_residual": 114,
+ "alertas_residual_alta": 62,
+ "alertas_z_spread_na_janela_residual": 550,
+ "alertas_z_spread_nos_mesmos_emissor_dias_avaliaveis": 164,
+ "alertas_z_spread_todos_os_dias": 849,
+ "arquivo": "E:\\Diretorio\\Claude\\Monitoramento de Credito\\data\\historico\\2026-10-11\\series_full.json.gz",
+ "cobertura": 0.228,
+ "dias": 114,
+ "emissor_dias_avaliaveis": 1854,
+ "emissor_dias_instaveis": 1886,
+ "emissor_dias_possiveis": 8130,
+ "emissores": 73,
+ "emissores_sem_setor": [
+  "Aegea Saneamento",
+  "Algar Telecom",
+  "Arteris",
+  "BRK Ambiental",
+  "Comerc Energia",
+  "Unidas",
+  "Usina Pampa Sul",
+  "VLI"
+ ],
+ "primeira_data_avaliavel": "2026-06-30",
+ "residual_por_mes": [
+  [
+   "2026-07",
+   15
+  ],
+  [
+   "2026-08",
+   25
+  ],
+  [
+   "2026-09",
+   47
+  ],
+  [
+   "2026-10",
+   27
+  ]
+ ],
+ "sobreposicao_mesmo_emissor_dia": 15,
+ "taxa_alerta_residual": 0.0615,
+ "taxa_alerta_z_nos_mesmos_emissor_dias": 0.0885,
+ "ultima": "2026-10-09",
+ "versao": "spread_residual v1",
+ "z_por_mes": [
+  [
+   "2026-06",
+   2
+  ],
+  [
+   "2026-07",
+   71
+  ],
+  [
+   "2026-08",
+   101
+  ],
+  [
+   "2026-09",
+   231
+  ],
+  [
+   "2026-10",
+   145
+  ]
+ ]
+}

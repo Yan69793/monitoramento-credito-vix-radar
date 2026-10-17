@@ -1,0 +1,16 @@
+{
+ "episodios_avaliaveis": [],
+ "janela_rotulada_avaliavel": [
+  "2026-06-30",
+  "2026-07-09"
+ ],
+ "sensibilidade_so_mercado": {
+  "alertas": 228,
+  "cobertura": 0.445,
+  "emissor_dias_avaliaveis": 3620,
+  "emissor_dias_instaveis": 1490,
+  "primeira_data_avaliavel": "2026-06-30"
+ },
+ "vazamento_versao_correta_passa": true,
+ "vazamento_versao_vazada_reprovada": true
+}

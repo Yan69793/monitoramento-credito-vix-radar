@@ -1,0 +1,24 @@
+{
+ "conferido_por": "agente (Claude), lendo as clausulas das escrituras; nao e revisao do operador",
+ "data": "2026-10-17",
+ "natureza": "teste FORA DA AMOSTRA: o extrator foi ajustado nas 8 escrituras do dia 4 e aqui roda sem ajuste em 5 escrituras novas",
+ "covenants_reais_nas_5_escrituras": 8,
+ "encontrados": 7,
+ "itens": [
+  {"emissor": "Engie", "real": "Divida Total Consolidada/EBITDA <= 4,5", "extraido": "ebitda/resultado_financeiro > 4,5", "limite": "ok", "operador": "invertido (le o gatilho de vencimento, nao o limite mantido)", "indicador": "errado"},
+  {"emissor": "Engie", "real": "EBITDA Consolidado/Despesas Financeiras >= 2,0", "extraido": "ebitda/resultado_financeiro < 2,0", "limite": "ok", "operador": "invertido", "indicador": "ok"},
+  {"emissor": "Localiza", "real": "Divida Liquida/EBITDA <= 4,00 (nao superior)", "extraido": "divida_liquida/ebitda > 4,0", "limite": "ok", "operador": "invertido", "indicador": "ok"},
+  {"emissor": "Localiza", "real": "EBITDA/Despesas Financeiras Liquidas >= 1,5 (nao inferior)", "extraido": "ebitda/resultado_financeiro < 1,5", "limite": "ok", "operador": "invertido", "indicador": "ok"},
+  {"emissor": "Energisa", "real": "Divida Financeira Liquida/EBITDA <= 4,0", "extraido": "divida_liquida/ebitda <= 4,0", "limite": "ok", "operador": "ok", "indicador": "ok"},
+  {"emissor": "Sanepar", "real": "Divida Liquida/EBITDA <= 3,0", "extraido": "divida_liquida/ebitda <= 3,0", "limite": "ok", "operador": "ok", "indicador": "ok"},
+  {"emissor": "Sanepar", "real": "EBITDA/Despesa Financeira Liquida >= 1,5", "extraido": "ebitda/resultado_financeiro >= 1,5", "limite": "ok", "operador": "ok", "indicador": "ok"},
+  {"emissor": "Equatorial", "real": "Divida Liquida/EBITDA Ajustado <= 4,5x", "extraido": null, "motivo": "clausula escrita como 'que nao devera ser maior do que 4,5x', padrao nao coberto"}
+ ],
+ "campos_corretos": 16,
+ "campos_conferidos": 21,
+ "acuracia_campos": 0.762,
+ "recall_covenants": 0.875,
+ "criterio_congelado": 0.95,
+ "leitura": "a acuracia de 27 de 27 do dia 4 era de amostra ajustada. Fora dela cai para 76%. O erro dominante e o operador invertido quando a escritura descreve o gatilho de vencimento antecipado ('superior a', 'inferior a') em vez do limite mantido. No uso real o operador deveria vir do tipo de clausula, nao do verbo",
+ "ressalva": "3 escrituras do lote ficaram sem covenant extraido e sem conferencia (Auren, Raizen, Rumo); Algar, CSN, CCR, Cogna e Vamos tem extracao sem conferencia"
+}

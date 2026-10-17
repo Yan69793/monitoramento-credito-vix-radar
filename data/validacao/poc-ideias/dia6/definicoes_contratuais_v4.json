@@ -1,0 +1,795 @@
+{
+ "versao": "definicoes_contratuais v4",
+ "congelado_em": "2026-10-17",
+ "regra": "cada termo vem de uma definicao da escritura (linha citada) e casa conta CVM consolidada por codigo (regex) e, quando preciso, pela descricao normalizada. Com conta pai e filha casando, vale so a mais profunda. Fluxo = LTM (YTD + ano anterior - YTD do ano anterior). Ressalva declarada: os valores de 30/09/2025 foram vistos ao escolher as linhas; nenhuma razao foi comparada com o agente antes deste congelamento.",
+ "emissores": {
+  "Dasa": {
+   "escritura": {
+    "emissao": 14,
+    "linhas": {
+     "divida_liquida": 159,
+     "ebitda": 172,
+     "resultado_financeiro": 285
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "(a) emprestimos e financiamentos e (b) titulos de renda fixa"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[25]",
+      "ds": "derivativ",
+      "porque": "(c) saldo liquido de derivativos, passivo"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "derivativ",
+      "porque": "(c) saldo liquido de derivativos, ativo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "(2a,b) caixa e contas correntes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "(2c) aplicacoes financeiras"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.02\\.01\\.0[123]$",
+      "porque": "(2c) aplicacoes financeiras de longo prazo"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "lucro antes de despesas financeiras liquidas e IR/CS"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "pagamento baseado em acoes|plano de opc",
+      "porque": "despesas com plano de opcoes de compra de acoes"
+     }
+    ],
+    "despesa_financeira": [
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "juros.*emprest|emprest.*juros",
+      "porque": "(i)(a)(b) despesa de dividas, sem juros de arrendamento"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "derivativ",
+      "porque": "(i)(c) derivativos"
+     }
+    ],
+    "receita_financeira": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.06\\.01$",
+      "porque": "(ii) receitas de caixa e aplicacoes; o DRE nao detalha, usa o total como aproximacao declarada"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda",
+    "ebitda/resultado_financeiro": "ebitda / (despesa_financeira - receita_financeira)"
+   },
+   "reproducibilidade": "reproduzivel"
+  },
+  "Eneva": {
+   "escritura": {
+    "emissao": 2,
+    "linhas": {
+     "divida": 2185,
+     "divida_liquida": 2197,
+     "ebitda": 2202,
+     "despesas_financeiras": 2219
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e titulos de renda fixa"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[25]",
+      "ds": "derivativ",
+      "porque": "saldo dos derivativos vinculados a dividas (todos, sem como separar)"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "derivativ",
+      "porque": "idem, ativo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "caixa e equivalentes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "titulos e valores mobiliarios e aplicacoes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.02\\.01\\.0[123]$",
+      "porque": "aplicacoes de longo prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "vinculad|caucao|restrit",
+      "porque": "depositos vinculados e aplicacoes dadas em garantia"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "lucro liquido + IR + despesas financeiras - receitas financeiras"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "amortizacao e depreciacao"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda"
+   },
+   "reproducibilidade": "reproduzivel"
+  },
+  "Simpar": {
+   "escritura": {
+    "emissao": 6,
+    "linhas": {
+     "indices": "clausula 6.2 (xv), itens (i) a (v), linhas 1035 a 1050 do texto"
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "(iii) emprestimos e financiamentos de curto prazo, incluidas debentures"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     },
+     {
+      "s": -1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[14]",
+      "ds": "direito de uso",
+      "porque": "arrendamento por direito de uso nao e emprestimo nem titulo de divida"
+     },
+     {
+      "s": -1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[14]",
+      "ds": "floor plan",
+      "porque": "(iii)(b) Floor Plan subtraido, se estiver dentro de emprestimos"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[25]",
+      "ds": "derivativ",
+      "porque": "(iii) resultado das operacoes de hedge, passivo"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "derivativ",
+      "porque": "idem, ativo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "(iii)(a) caixa"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "(iii)(a) aplicacoes"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02\\.",
+      "ds": "derivativ",
+      "porque": "derivativo dentro de aplicacoes ja conta no hedge"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.02\\.01\\.0[123]\\.",
+      "ds": "titulos|aplica",
+      "porque": "(iii)(a) aplicacoes de longo prazo"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "(iv) lucro antes do resultado financeiro e tributos"
+     },
+     {
+      "s": -1,
+      "dem": "DRE",
+      "cd": "^3\\.04\\.06$",
+      "porque": "(iv) antes de equivalencias patrimoniais"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "(iv) depreciacoes, amortizacoes e imparidade"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "custo de venda de ativos",
+      "porque": "(iv) acrescido do custo de venda dos ativos utilizados na prestacao de servicos"
+     }
+    ],
+    "despesa_financeira": [
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "juros e variac.*empres",
+      "porque": "(v) encargos de divida e variacoes monetarias"
+     }
+    ],
+    "receita_financeira": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.06\\.01$",
+      "porque": "(v) rendas de aplicacoes; o DRE nao detalha, usa o total como aproximacao declarada"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda",
+    "ebitda/resultado_financeiro": "ebitda / (despesa_financeira - receita_financeira)"
+   },
+   "reproducibilidade": "reproduzivel"
+  },
+  "Engie Brasil Energia": {
+   "reproducibilidade": "reproduzivel",
+   "escritura": {
+    "emissao": 6,
+    "linhas": {
+     "ebitda_consolidado": 1066,
+     "divida_total_consolidada": 1072,
+     "despesas_financeiras_consolidadas": 1089
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e debentures, curto prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     }
+    ],
+    "caixa": [],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "resultado antes do resultado financeiro e dos tributos"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     }
+    ],
+    "despesa_financeira": [
+     {
+      "s": -1,
+      "dem": "DRE",
+      "cd": "^3\\.06\\.02$",
+      "porque": "Despesas Financeiras Consolidadas, bruta"
+     }
+    ],
+    "receita_financeira": []
+   },
+   "indices": {
+    "divida_liquida/ebitda": "divida total consolidada (BRUTA, sem caixa) / ebitda",
+    "ebitda/resultado_financeiro": "ebitda / despesas financeiras brutas"
+   },
+   "fora_do_alcance": []
+  },
+  "Sanepar": {
+   "reproducibilidade": "reproduzivel",
+   "base": "ind",
+   "escritura": {
+    "emissao": 14,
+    "linhas": {
+     "divida_liquida": 1715,
+     "despesa_financeira_liquida": 1722,
+     "ebitda": 1727
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e debentures, curto prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "so caixa e equivalentes de caixa"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.07$",
+      "porque": "resultado antes de IR e CS"
+     },
+     {
+      "s": -1,
+      "dem": "DRE",
+      "cd": "^3\\.06$",
+      "porque": "acrescido das despesas financeiras liquidas das receitas financeiras"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "contingenc|aposentadoria|previdenc|assistencia medica|plano de saude",
+      "porque": "provisoes para contingencias e planos de aposentadoria e assistencia medica sem efeito caixa"
+     }
+    ],
+    "despesa_financeira": [
+     {
+      "s": -1,
+      "dem": "DRE",
+      "cd": "^3\\.06\\.02$",
+      "porque": "despesa financeira bruta"
+     }
+    ],
+    "receita_financeira": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.06\\.01$",
+      "porque": "receita financeira bruta"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda, base INDIVIDUAL como escrito na clausula",
+    "ebitda/resultado_financeiro": "ebitda / (despesa - receita financeira)"
+   },
+   "fora_do_alcance": [
+    "a escritura diz despesa financeira 'consolidada' mas EBITDA 'individual'; usei individual nas duas"
+   ]
+  },
+  "Localiza": {
+   "reproducibilidade": "parcial",
+   "escritura": {
+    "emissao": 14,
+    "linhas": {
+     "indice_i": 919,
+     "divida_liquida": 931,
+     "ebitda": 941
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e debentures, curto prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[25]",
+      "ds": "derivativ",
+      "porque": "saldo liquido de derivativos, passivo"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "derivativ",
+      "porque": "saldo liquido de derivativos, ativo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "caixa e equivalentes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "aplicacoes financeiras"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "resultado antes do resultado financeiro e dos tributos"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda"
+   },
+   "fora_do_alcance": [
+    "contas a receber de cartao de credito deduzidas da divida",
+    "leasing operacional somado a divida",
+    "mutuos com partes relacionadas",
+    "EBITDA soma de volta custo de stock option, despesas nao recorrentes e impairment"
+   ]
+  },
+  "Energisa": {
+   "reproducibilidade": "parcial",
+   "escritura": {
+    "emissao": 9,
+    "linhas": {
+     "divida_financeira_liquida": 2150,
+     "ebitda": 2168
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e debentures, curto prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[25]",
+      "ds": "derivativ",
+      "porque": "saldo liquido de derivativos, passivo"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "derivativ",
+      "porque": "saldo liquido de derivativos, ativo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "caixa e equivalentes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "aplicacoes financeiras"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "resultado antes do resultado financeiro e dos tributos"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda"
+   },
+   "fora_do_alcance": [
+    "deficit de planos de previdencia e parcelamentos de impostos somados a divida",
+    "recursos a receber da Eletrobras (baixa renda e Luz para Todos), CCC e CDE deduzidos",
+    "EBITDA exclui participacao em coligadas e inclui acrescimo moratorio e subvencao"
+   ]
+  },
+  "Equatorial Energia": {
+   "reproducibilidade": "parcial",
+   "escritura": {
+    "emissao": 7,
+    "linhas": {
+     "indice": 1128,
+     "ebitda_ajustado": 1195
+    }
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e debentures, curto prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.0[12]\\.0[25]",
+      "ds": "derivativ",
+      "porque": "saldo liquido de derivativos, passivo"
+     },
+     {
+      "s": -1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "derivativ",
+      "porque": "saldo liquido de derivativos, ativo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "caixa e equivalentes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "aplicacoes financeiras"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.0[12]",
+      "ds": "vinculad|caucao|garantia",
+      "porque": "(e) valores mantidos em garantia por caucao"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "resultado antes do resultado financeiro e dos tributos"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda"
+   },
+   "fora_do_alcance": [
+    "valor presente da recuperacao judicial da Equatorial Para somado a divida",
+    "ativos regulatorios liquidos, subvencao baixa renda, depositos judiciais e sub-rogacao da CCC deduzidos",
+    "EBITDA ajustado com itens nao recorrentes"
+   ]
+  },
+  "Assaí Atacadista": {
+   "reproducibilidade": "parcial",
+   "escritura": {
+    "emissao": 10,
+    "clausula": "6.1.4 (i) e (ii), definicoes logo antes de 6.1.5"
+   },
+   "componentes": {
+    "divida": [
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.01\\.04$",
+      "porque": "emprestimos, financiamentos e debentures, curto prazo"
+     },
+     {
+      "s": 1,
+      "dem": "BPP",
+      "cd": "^2\\.02\\.01$",
+      "porque": "idem, longo prazo"
+     }
+    ],
+    "caixa": [
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.01$",
+      "porque": "caixa e equivalentes"
+     },
+     {
+      "s": 1,
+      "dem": "BPA",
+      "cd": "^1\\.01\\.02$",
+      "porque": "aplicacoes financeiras"
+     }
+    ],
+    "ebitda": [
+     {
+      "s": 1,
+      "dem": "DRE",
+      "cd": "^3\\.05$",
+      "porque": "resultado antes do resultado financeiro e dos tributos"
+     },
+     {
+      "s": 1,
+      "dem": "DFC",
+      "cd": "^6\\.01\\.01\\.",
+      "ds": "deprecia|amortiza",
+      "nao": "juros|emprest|empres|financiament|debent",
+      "porque": "depreciacao e amortizacao"
+     }
+    ]
+   },
+   "indices": {
+    "divida_liquida/ebitda": "(divida - caixa) / ebitda"
+   },
+   "fora_do_alcance": [
+    "contas a receber de cartao de credito, vale-alimentacao e multibeneficios, com desagio de 1,5%, deduzidas da divida",
+    "EBITDA so com receitas e despesas recorrentes; a redacao da clausula e ambigua sobre despesas gerais e de vendas"
+   ]
+  }
+ },
+ "correcoes_v2": [
+  "D&A: exclusao trocou financ por financiament, porque a descricao da Simpar e ativos nao financeiros (impairment) e a v1 a excluia sem querer",
+  "Simpar despesa_financeira: regex aceita empres. abreviado pela CVM (juros e variacoes mon. sobre empres.)",
+  "Simpar direito de uso e floor plan: codigo ^2.0[12].0[14] cobre o longo prazo 2.02.01; a v1 tinha ^2.0[12].04, que nao existe no longo prazo",
+  "Nenhuma correcao muda a intencao escrita em porque; todas sao casamento de texto ou codigo"
+ ],
+ "adicao_v3": "5 emissores novos mapeados das escrituras antes de ver qualquer razao; Dasa, Simpar e Eneva ficam identicos a v2. Regra de selecao de tabela do agente: por emissor e indicador, a tabela com mais trimestres",
+ "adicao_v4": "Assai (lote 3), classificada parcial antes de calcular; demais emissores identicos a v3"
+}

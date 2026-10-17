@@ -1,0 +1,353 @@
+{
+ "escrituras": {
+  "docs_escritura": 1456,
+  "emissores_com_doc_agente_fiduciario": 87,
+  "emissores_com_escritura_desde_2022": 100,
+  "top": [
+   [
+    "Sabesp",
+    46
+   ],
+   [
+    "Localiza",
+    45
+   ],
+   [
+    "Aegea Saneamento",
+    35
+   ],
+   [
+    "Rede D'Or",
+    35
+   ],
+   [
+    "Taesa",
+    33
+   ],
+   [
+    "Eletrobras",
+    32
+   ],
+   [
+    "Eneva",
+    31
+   ],
+   [
+    "CEMIG",
+    31
+   ],
+   [
+    "Cosan",
+    27
+   ],
+   [
+    "Movida",
+    27
+   ]
+  ]
+ },
+ "eventos": {
+  "classes": [
+   "CRITICO"
+  ],
+  "data_max_rotulo": "2026-07-09",
+  "empresas_sem_cnpj": {
+   "Aegea": 4,
+   "Kora Saude": 3,
+   "Kora Sa�de": 1,
+   "Oncoclinicas": 2
+  },
+  "episodios": 77,
+  "eventos": 380,
+  "fonte": "E:\\Diretorio\\Claude\\Monitoramento de Credito\\data\\labels\\eventos_credito.jsonl",
+  "incidentes": 54,
+  "incidentes_na_janela_cda": [
+   [
+    "Energisa",
+    "2026-04-01"
+   ],
+   [
+    "Neoenergia",
+    "2026-03-27"
+   ],
+   [
+    "BRF",
+    "2026-05-03"
+   ],
+   [
+    "Rumo",
+    "2026-04-17"
+   ],
+   [
+    "Engie Brasil Energia",
+    "2026-03-27"
+   ],
+   [
+    "Arteris",
+    "2026-04-02"
+   ],
+   [
+    "ISA Energia",
+    "2026-04-07"
+   ],
+   [
+    "Marfrig",
+    "2026-05-03"
+   ],
+   [
+    "EcoRodovias",
+    "2026-03-31"
+   ],
+   [
+    "Eneva",
+    "2026-03-27"
+   ],
+   [
+    "Rede D'Or",
+    "2026-04-22"
+   ],
+   [
+    "Simpar",
+    "2026-04-02"
+   ],
+   [
+    "Embraer",
+    "2026-04-06"
+   ],
+   [
+    "Multiplan",
+    "2026-03-25"
+   ],
+   [
+    "Multiplan",
+    "2026-05-07"
+   ],
+   [
+    "Iguá Saneamento",
+    "2026-04-22"
+   ],
+   [
+    "Aegea Saneamento",
+    "2026-04-02"
+   ],
+   [
+    "Aegea Saneamento",
+    "2026-06-09"
+   ],
+   [
+    "CSN Mineração",
+    "2026-03-27"
+   ],
+   [
+    "Azul",
+    "2026-03-25"
+   ],
+   [
+    "PRIO",
+    "2026-03-23"
+   ],
+   [
+    "Brava Energia",
+    "2026-04-06"
+   ],
+   [
+    "Oncoclínicas",
+    "2026-03-27"
+   ],
+   [
+    "Kora Saúde",
+    "2026-04-02"
+   ],
+   [
+    "Localiza",
+    "2026-03-24"
+   ],
+   [
+    "CEMIG",
+    "2026-05-07"
+   ],
+   [
+    "Movida",
+    "2026-04-02"
+   ],
+   [
+    "Compass Gás e Energia",
+    "2026-04-27"
+   ],
+   [
+    "Vamos",
+    "2026-04-02"
+   ],
+   [
+    "Auren Energia",
+    "2026-04-14"
+   ],
+   [
+    "Petrobras",
+    "2026-03-31"
+   ],
+   [
+    "CSN",
+    "2026-03-27"
+   ],
+   [
+    "Raízen",
+    "2026-03-11"
+   ],
+   [
+    "Vale",
+    "2026-03-31"
+   ],
+   [
+    "Vale",
+    "2026-05-12"
+   ],
+   [
+    "Vibra Energia",
+    "2026-04-14"
+   ],
+   [
+    "Pão de Açúcar (GPA)",
+    "2026-03-10"
+   ],
+   [
+    "Cosan",
+    "2026-03-11"
+   ],
+   [
+    "Cosan",
+    "2026-04-27"
+   ],
+   [
+    "Cosan",
+    "2026-06-09"
+   ],
+   [
+    "JSL",
+    "2026-04-02"
+   ],
+   [
+    "Banco Pan",
+    "2026-03-30"
+   ],
+   [
+    "Bradesco",
+    "2026-03-25"
+   ],
+   [
+    "Fleury",
+    "2026-03-23"
+   ],
+   [
+    "Itaú Unibanco",
+    "2026-05-08"
+   ],
+   [
+    "Sanepar",
+    "2026-03-23"
+   ],
+   [
+    "Tupy",
+    "2026-03-27"
+   ],
+   [
+    "Klabin",
+    "2026-03-27"
+   ]
+  ],
+  "incidentes_na_janela_spread": [
+   [
+    "BRF",
+    "2026-05-03"
+   ],
+   [
+    "Marfrig",
+    "2026-05-03"
+   ],
+   [
+    "Multiplan",
+    "2026-05-07"
+   ],
+   [
+    "Aegea Saneamento",
+    "2026-06-09"
+   ],
+   [
+    "CEMIG",
+    "2026-05-07"
+   ],
+   [
+    "Vale",
+    "2026-05-12"
+   ],
+   [
+    "Cosan",
+    "2026-06-09"
+   ],
+   [
+    "Itaú Unibanco",
+    "2026-05-08"
+   ]
+  ],
+  "prevalentes_na_janela_cda": [
+   [
+    "Light",
+    "2025-11-13"
+   ],
+   [
+    "Light",
+    "2026-03-06"
+   ],
+   [
+    "Light",
+    "2026-04-17"
+   ],
+   [
+    "Light",
+    "2026-06-12"
+   ],
+   [
+    "Raízen",
+    "2026-04-16"
+   ],
+   [
+    "Pão de Açúcar (GPA)",
+    "2026-05-05"
+   ]
+  ],
+  "sha256": "5f8e78ae048a4d25b6d91bc3550ae33e23059e73c5b9f68ee4fa7a37da20554e"
+ },
+ "gerado_em": "2026-10-17",
+ "itr": {
+  "anos": [
+   "2021",
+   "2022",
+   "2023",
+   "2024",
+   "2025",
+   "2026"
+  ],
+  "companhias": 879,
+  "emissores_alvo_cobertos": 102,
+  "trimestres_por_emissor_mediana": 17,
+  "versoes_sem_dt_receb": 0
+ },
+ "spread": {
+  "arquivo": "E:\\Diretorio\\Claude\\Monitoramento de Credito\\data\\historico\\2026-10-11\\series_full.json.gz",
+  "arquivo_publico_anbima_retencao": "medido 17/10: db260914..db261016 = 200, db260911 e anteriores = 404",
+  "dias_por_emissor_min_med_max": [
+   26,
+   114,
+   114
+  ],
+  "dias_uteis_total": 114,
+  "emissores": 79,
+  "emissores_com_120_dias": 0,
+  "emissores_com_troca_de_composicao": 47,
+  "fim": "2026-10-09",
+  "inicio": "2026-04-30",
+  "sha256": "94c3b7d07fcde966fd51d18c5015bbf7fa5bec5e79e2f31186816c2559fb767a",
+  "trocas_de_composicao_mediana": 1
+ },
+ "versao": "medir_dia1 v1"
+}

@@ -1,0 +1,29 @@
+{
+ "rotulado_por": "agente (Claude), lendo os trechos de trechos_rotulagem.py e o contexto de EBITDA, ANTES de rodar o extrator neste lote",
+ "data": "2026-10-17",
+ "escopo": "covenants de divida liquida/EBITDA e EBITDA/despesa ou resultado financeiro; outros indices (divida/PL, cobertura de ativos, divida/imobilizado) ficam fora",
+ "regra_step_down": "quando ha degraus, o rotulo usa o primeiro limite da clausula, igual ao criterio da Movida",
+ "covenants": {
+  "Assaí Atacadista": [["divida_liquida/ebitda", "<=", 3.0]],
+  "Brava Energia": [["divida_liquida/ebitda", "<=", 3.5]],
+  "BRK Ambiental": [["divida_liquida/ebitda", "<=", 6.5]],
+  "Aegea Saneamento": [["divida_liquida/ebitda", "<=", 3.5]],
+  "JSL": [["divida_liquida/ebitda", "<=", 3.5], ["ebitda/resultado_financeiro", ">=", 2.0]],
+  "Unidas": [["divida_liquida/ebitda", "<=", 3.0], ["ebitda/resultado_financeiro", ">=", 3.2]],
+  "Brisanet": [["divida_liquida/ebitda", "<=", 3.5]],
+  "Minerva Foods": [["divida_liquida/ebitda", "<=", 3.5]],
+  "CSN Mineração": [["divida_liquida/ebitda", "<=", 3.0]],
+  "São Martinho": [["divida_liquida/ebitda", "<=", 4.0]],
+  "Sabesp": [["divida_liquida/ebitda", "<=", 3.5], ["ebitda/resultado_financeiro", ">=", 1.5]],
+  "Santos Brasil": [["divida_liquida/ebitda", "<=", 3.0]],
+  "Hapvida": [["divida_liquida/ebitda", "<=", 3.0]],
+  "EcoRodovias": [], "MRV Engenharia": [], "Compass Gás e Energia": [], "Vale": [], "Taesa": [], "Suzano": [], "MRS Logística": [], "Natura &Co": []
+ },
+ "observacoes": {
+  "Minerva Foods": "covenant de incorrencia (so impede nova divida), redigido como excecao 'na hipotese em que... seja igual ou inferior a 3,50'",
+  "BRK Ambiental": "tabela de degraus com ponto decimal ('6.50x') e celulas 'For Menor ou igual a'",
+  "Sabesp": "OCR juntou 'igual ou' em 'igualou superior a 1,50'",
+  "Brava Energia": "tabela de degraus 3,50x ate 30/06/2024 e 3,00x depois",
+  "Unidas": "degraus 3,0 / 2,75 / 2,5"
+ }
+}

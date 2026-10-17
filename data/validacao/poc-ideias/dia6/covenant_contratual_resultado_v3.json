@@ -1,0 +1,1667 @@
+{
+ "comparacao": [
+  {
+   "apurado_af": 3.65,
+   "componentes_rs_mi": {
+    "caixa": 3583.0,
+    "despesa_financeira": 1945.1,
+    "divida": 12906.5,
+    "ebitda": 2487.2,
+    "receita_financeira": 289.4
+   },
+   "contratual_cvm": 3.75,
+   "dif_pct": 2.7,
+   "dt_receb_cvm": "2025-06-12",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.0875,
+   "margem_cvm": 0.0625,
+   "operador": "<",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.57,
+   "componentes_rs_mi": {
+    "caixa": 1414.7,
+    "despesa_financeira": 1777.2,
+    "divida": 8172.0,
+    "ebitda": 2553.3,
+    "receita_financeira": 321.5
+   },
+   "contratual_cvm": 2.65,
+   "dif_pct": 3.1,
+   "dt_receb_cvm": "2025-08-14",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.3575,
+   "margem_cvm": 0.3375,
+   "operador": "<",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.38,
+   "componentes_rs_mi": {
+    "caixa": 2553.2,
+    "despesa_financeira": 1722.4,
+    "divida": 8653.4,
+    "ebitda": 2564.5,
+    "receita_financeira": 334.9
+   },
+   "contratual_cvm": 2.38,
+   "dif_pct": 0.0,
+   "dt_receb_cvm": "2025-11-13",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.405,
+   "margem_cvm": 0.405,
+   "operador": "<",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.5,
+   "componentes_rs_mi": {
+    "caixa": 2667.5,
+    "despesa_financeira": 1469.5,
+    "divida": 7890.4,
+    "ebitda": 2047.2,
+    "receita_financeira": 437.0
+   },
+   "contratual_cvm": 2.55,
+   "dif_pct": 2.0,
+   "dt_receb_cvm": "2026-03-26",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.375,
+   "margem_cvm": 0.3625,
+   "operador": "<",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.31,
+   "componentes_rs_mi": {
+    "caixa": 3583.0,
+    "despesa_financeira": 1945.1,
+    "divida": 12906.5,
+    "ebitda": 2487.2,
+    "receita_financeira": 289.4
+   },
+   "contratual_cvm": 1.5,
+   "dif_pct": -35.1,
+   "dt_receb_cvm": "2025-06-12",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.54,
+   "margem_cvm": 0.0,
+   "operador": ">",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.47,
+   "componentes_rs_mi": {
+    "caixa": 1414.7,
+    "despesa_financeira": 1777.2,
+    "divida": 8172.0,
+    "ebitda": 2553.3,
+    "receita_financeira": 321.5
+   },
+   "contratual_cvm": 1.75,
+   "dif_pct": -29.1,
+   "dt_receb_cvm": "2025-08-14",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.6467,
+   "margem_cvm": 0.1667,
+   "operador": ">",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.48,
+   "componentes_rs_mi": {
+    "caixa": 2553.2,
+    "despesa_financeira": 1722.4,
+    "divida": 8653.4,
+    "ebitda": 2564.5,
+    "receita_financeira": 334.9
+   },
+   "contratual_cvm": 1.85,
+   "dif_pct": -25.4,
+   "dt_receb_cvm": "2025-11-13",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.6533,
+   "margem_cvm": 0.2333,
+   "operador": ">",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.09,
+   "componentes_rs_mi": {
+    "caixa": 2667.5,
+    "despesa_financeira": 1469.5,
+    "divida": 7890.4,
+    "ebitda": 2047.2,
+    "receita_financeira": 437.0
+   },
+   "contratual_cvm": 1.98,
+   "dif_pct": -5.3,
+   "dt_receb_cvm": "2026-03-26",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.3933,
+   "margem_cvm": 0.32,
+   "operador": ">",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.6,
+   "componentes_rs_mi": {
+    "caixa": 4875.0,
+    "divida": 19256.3,
+    "ebitda": 4326.5
+   },
+   "contratual_cvm": 3.32,
+   "dif_pct": 27.7,
+   "dt_receb_cvm": "2025-05-14",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4222,
+   "margem_cvm": 0.2622,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.7,
+   "componentes_rs_mi": {
+    "caixa": 3935.6,
+    "divida": 19236.3,
+    "ebitda": 4938.1
+   },
+   "contratual_cvm": 3.1,
+   "dif_pct": 14.8,
+   "dt_receb_cvm": "2025-08-13",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4,
+   "margem_cvm": 0.3111,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.7,
+   "componentes_rs_mi": {
+    "caixa": 4026.6,
+    "divida": 19541.8,
+    "ebitda": 5627.0
+   },
+   "contratual_cvm": 2.76,
+   "dif_pct": 2.2,
+   "dt_receb_cvm": "2025-11-11",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4,
+   "margem_cvm": 0.3867,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.6,
+   "componentes_rs_mi": {
+    "caixa": 2729.0,
+    "divida": 19734.5,
+    "ebitda": 6506.8
+   },
+   "contratual_cvm": 2.61,
+   "dif_pct": 0.4,
+   "dt_receb_cvm": "2026-03-05",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4222,
+   "margem_cvm": 0.42,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.3,
+   "componentes_rs_mi": {
+    "caixa": 13424.5,
+    "despesa_financeira": 5965.2,
+    "divida": 57760.0,
+    "ebitda": 18732.0,
+    "receita_financeira": 1721.4
+   },
+   "contratual_cvm": 2.37,
+   "dif_pct": 3.0,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.3429,
+   "margem_cvm": 0.3229,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.3,
+   "componentes_rs_mi": {
+    "caixa": 12424.3,
+    "despesa_financeira": 6287.5,
+    "divida": 57763.5,
+    "ebitda": 19275.1,
+    "receita_financeira": 1869.2
+   },
+   "contratual_cvm": 2.35,
+   "dif_pct": 2.2,
+   "dt_receb_cvm": "2025-08-12",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.3429,
+   "margem_cvm": 0.3286,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.2,
+   "componentes_rs_mi": {
+    "caixa": 12643.8,
+    "despesa_financeira": 6681.1,
+    "divida": 57170.9,
+    "ebitda": 19149.9,
+    "receita_financeira": 2012.4
+   },
+   "contratual_cvm": 2.33,
+   "dif_pct": 5.9,
+   "dt_receb_cvm": "2025-11-12",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.3714,
+   "margem_cvm": 0.3343,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.0,
+   "componentes_rs_mi": {
+    "caixa": 17095.6,
+    "despesa_financeira": 6708.7,
+    "divida": 58641.2,
+    "ebitda": 20741.0,
+    "receita_financeira": 2089.3
+   },
+   "contratual_cvm": 2.0,
+   "dif_pct": 0.0,
+   "dt_receb_cvm": "2026-03-30",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.4286,
+   "margem_cvm": 0.4286,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.4,
+   "componentes_rs_mi": {
+    "caixa": 13424.5,
+    "despesa_financeira": 5965.2,
+    "divida": 57760.0,
+    "ebitda": 18732.0,
+    "receita_financeira": 1721.4
+   },
+   "contratual_cvm": 4.41,
+   "dif_pct": 29.7,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.7,
+   "margem_cvm": 1.205,
+   "operador": ">=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.2,
+   "componentes_rs_mi": {
+    "caixa": 12424.3,
+    "despesa_financeira": 6287.5,
+    "divida": 57763.5,
+    "ebitda": 19275.1,
+    "receita_financeira": 1869.2
+   },
+   "contratual_cvm": 4.36,
+   "dif_pct": 36.2,
+   "dt_receb_cvm": "2025-08-12",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.6,
+   "margem_cvm": 1.18,
+   "operador": ">=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.0,
+   "componentes_rs_mi": {
+    "caixa": 12643.8,
+    "despesa_financeira": 6681.1,
+    "divida": 57170.9,
+    "ebitda": 19149.9,
+    "receita_financeira": 2012.4
+   },
+   "contratual_cvm": 4.1,
+   "dif_pct": 36.7,
+   "dt_receb_cvm": "2025-11-12",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.5,
+   "margem_cvm": 1.05,
+   "operador": ">=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.1,
+   "componentes_rs_mi": {
+    "caixa": 17095.6,
+    "despesa_financeira": 6708.7,
+    "divida": 58641.2,
+    "ebitda": 20741.0,
+    "receita_financeira": 2089.3
+   },
+   "contratual_cvm": 4.49,
+   "dif_pct": 44.8,
+   "dt_receb_cvm": "2026-03-30",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.55,
+   "margem_cvm": 1.245,
+   "operador": ">=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.51,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 2627.7,
+    "divida": 25840.6,
+    "ebitda": 7633.0,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 3.39,
+   "dif_pct": -3.4,
+   "dt_receb_cvm": "2025-05-07",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.22,
+   "margem_cvm": 0.2467,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.69,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 2986.2,
+    "divida": 27093.0,
+    "ebitda": 7543.7,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 3.59,
+   "dif_pct": -2.7,
+   "dt_receb_cvm": "2025-08-07",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.18,
+   "margem_cvm": 0.2022,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.85,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 3153.2,
+    "divida": 28960.8,
+    "ebitda": 7772.4,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 3.73,
+   "dif_pct": -3.1,
+   "dt_receb_cvm": "2025-11-06",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.1444,
+   "margem_cvm": 0.1711,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.84,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 3371.1,
+    "divida": 28659.4,
+    "ebitda": 7660.5,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 3.74,
+   "dif_pct": -2.6,
+   "dt_receb_cvm": "2026-03-06",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.1467,
+   "margem_cvm": 0.1689,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 4.13,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 2627.7,
+    "divida": 25840.6,
+    "ebitda": 7633.0,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 2.9,
+   "dif_pct": -29.8,
+   "dt_receb_cvm": "2025-05-07",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 1.065,
+   "margem_cvm": 0.45,
+   "operador": ">=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.34,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 2986.2,
+    "divida": 27093.0,
+    "ebitda": 7543.7,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 2.53,
+   "dif_pct": -24.3,
+   "dt_receb_cvm": "2025-08-07",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.67,
+   "margem_cvm": 0.265,
+   "operador": ">=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 3.14,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 3153.2,
+    "divida": 28960.8,
+    "ebitda": 7772.4,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 2.46,
+   "dif_pct": -21.7,
+   "dt_receb_cvm": "2025-11-06",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.57,
+   "margem_cvm": 0.23,
+   "operador": ">=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.77,
+   "componentes_rs_mi": {
+    "caixa": 0.0,
+    "despesa_financeira": 3371.1,
+    "divida": 28659.4,
+    "ebitda": 7660.5,
+    "receita_financeira": 0.0
+   },
+   "contratual_cvm": 2.27,
+   "dif_pct": -18.1,
+   "dt_receb_cvm": "2026-03-06",
+   "emissor": "Engie Brasil Energia",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.385,
+   "margem_cvm": 0.135,
+   "operador": ">=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 12.0,
+   "componentes_rs_mi": {
+    "caixa": 1848.6,
+    "despesa_financeira": 2520.9,
+    "divida": 6609.2,
+    "ebitda": 2950.7,
+    "receita_financeira": 2485.8
+   },
+   "contratual_cvm": 83.9,
+   "dif_pct": 599.2,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Sanepar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 7.0,
+   "margem_cvm": 54.9333,
+   "operador": ">=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 27.2,
+   "componentes_rs_mi": {
+    "caixa": 1396.3,
+    "despesa_financeira": 2783.7,
+    "divida": 6698.1,
+    "ebitda": 3023.5,
+    "receita_financeira": 2621.0
+   },
+   "contratual_cvm": 18.58,
+   "dif_pct": -31.7,
+   "dt_receb_cvm": "2025-08-07",
+   "emissor": "Sanepar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 17.1333,
+   "margem_cvm": 11.3867,
+   "operador": ">=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 69.4,
+   "componentes_rs_mi": {
+    "caixa": 5880.0,
+    "despesa_financeira": 2964.6,
+    "divida": 7255.7,
+    "ebitda": 2978.5,
+    "receita_financeira": 2899.5
+   },
+   "contratual_cvm": 45.76,
+   "dif_pct": -34.1,
+   "dt_receb_cvm": "2025-11-06",
+   "emissor": "Sanepar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 45.2667,
+   "margem_cvm": 29.5067,
+   "operador": ">=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 12.0,
+   "componentes_rs_mi": {
+    "caixa": 5608.1,
+    "despesa_financeira": 3079.9,
+    "divida": 7392.7,
+    "ebitda": 2944.0,
+    "receita_financeira": 3045.1
+   },
+   "contratual_cvm": 84.47,
+   "dif_pct": 603.9,
+   "dt_receb_cvm": "2026-02-26",
+   "emissor": "Sanepar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 7.0,
+   "margem_cvm": 55.3133,
+   "operador": ">=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 1.1,
+   "componentes_rs_mi": {
+    "caixa": 1848.6,
+    "despesa_financeira": 2520.9,
+    "divida": 6609.2,
+    "ebitda": 2950.7,
+    "receita_financeira": 2485.8
+   },
+   "contratual_cvm": 1.61,
+   "dif_pct": 46.4,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Sanepar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.0,
+   "margem_af": 0.6333,
+   "margem_cvm": 0.4633,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 1.2,
+   "componentes_rs_mi": {
+    "caixa": 1396.3,
+    "despesa_financeira": 2783.7,
+    "divida": 6698.1,
+    "ebitda": 3023.5,
+    "receita_financeira": 2621.0
+   },
+   "contratual_cvm": 1.75,
+   "dif_pct": 45.8,
+   "dt_receb_cvm": "2025-08-07",
+   "emissor": "Sanepar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.0,
+   "margem_af": 0.6,
+   "margem_cvm": 0.4167,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 0.3,
+   "componentes_rs_mi": {
+    "caixa": 5880.0,
+    "despesa_financeira": 2964.6,
+    "divida": 7255.7,
+    "ebitda": 2978.5,
+    "receita_financeira": 2899.5
+   },
+   "contratual_cvm": 0.46,
+   "dif_pct": 53.3,
+   "dt_receb_cvm": "2025-11-06",
+   "emissor": "Sanepar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.0,
+   "margem_af": 0.9,
+   "margem_cvm": 0.8467,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 0.4,
+   "componentes_rs_mi": {
+    "caixa": 5608.1,
+    "despesa_financeira": 3079.9,
+    "divida": 7392.7,
+    "ebitda": 2944.0,
+    "receita_financeira": 3045.1
+   },
+   "contratual_cvm": 0.61,
+   "dif_pct": 52.5,
+   "dt_receb_cvm": "2026-02-26",
+   "emissor": "Sanepar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.0,
+   "margem_af": 0.8667,
+   "margem_cvm": 0.7967,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "reproduzivel"
+  },
+  {
+   "apurado_af": 2.43,
+   "componentes_rs_mi": {
+    "caixa": 8169.6,
+    "divida": 41550.9,
+    "ebitda": 12320.9
+   },
+   "contratual_cvm": 2.71,
+   "dif_pct": 11.5,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Localiza",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.3925,
+   "margem_cvm": 0.3225,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 2.19,
+   "componentes_rs_mi": {
+    "caixa": 8249.2,
+    "divida": 40830.9,
+    "ebitda": 13264.0
+   },
+   "contratual_cvm": 2.46,
+   "dif_pct": 12.3,
+   "dt_receb_cvm": "2025-08-11",
+   "emissor": "Localiza",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.4525,
+   "margem_cvm": 0.385,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 2.21,
+   "componentes_rs_mi": {
+    "caixa": 11069.4,
+    "divida": 43409.2,
+    "ebitda": 13351.5
+   },
+   "contratual_cvm": 2.42,
+   "dif_pct": 9.5,
+   "dt_receb_cvm": "2025-11-13",
+   "emissor": "Localiza",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.4475,
+   "margem_cvm": 0.395,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 2.13,
+   "componentes_rs_mi": {
+    "caixa": 10592.8,
+    "divida": 42887.2,
+    "ebitda": 13753.4
+   },
+   "contratual_cvm": 2.35,
+   "dif_pct": 10.3,
+   "dt_receb_cvm": "2026-02-26",
+   "emissor": "Localiza",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.4675,
+   "margem_cvm": 0.4125,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.01,
+   "componentes_rs_mi": {
+    "caixa": 8584.6,
+    "divida": 36663.6,
+    "ebitda": 7868.9
+   },
+   "contratual_cvm": 3.57,
+   "dif_pct": 18.6,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Energisa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.2475,
+   "margem_cvm": 0.1075,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.07,
+   "componentes_rs_mi": {
+    "caixa": 8717.6,
+    "divida": 37814.3,
+    "ebitda": 8293.2
+   },
+   "contratual_cvm": 3.51,
+   "dif_pct": 14.3,
+   "dt_receb_cvm": "2025-08-07",
+   "emissor": "Energisa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.2325,
+   "margem_cvm": 0.1225,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.21,
+   "componentes_rs_mi": {
+    "caixa": 9494.8,
+    "divida": 41756.3,
+    "ebitda": 8635.4
+   },
+   "contratual_cvm": 3.74,
+   "dif_pct": 16.5,
+   "dt_receb_cvm": "2025-11-06",
+   "emissor": "Energisa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.1975,
+   "margem_cvm": 0.065,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.48,
+   "componentes_rs_mi": {
+    "caixa": 10473.2,
+    "divida": 45222.8,
+    "ebitda": 8874.8
+   },
+   "contratual_cvm": 3.92,
+   "dif_pct": 12.6,
+   "dt_receb_cvm": "2026-03-13",
+   "emissor": "Energisa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.13,
+   "margem_cvm": 0.02,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.2,
+   "componentes_rs_mi": {
+    "caixa": 10501.4,
+    "divida": 54310.2,
+    "ebitda": 11911.1
+   },
+   "contratual_cvm": 3.68,
+   "dif_pct": 15.0,
+   "dt_receb_cvm": "2025-05-14",
+   "emissor": "Equatorial Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.2889,
+   "margem_cvm": 0.1822,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.1,
+   "componentes_rs_mi": {
+    "caixa": 9408.2,
+    "divida": 55229.1,
+    "ebitda": 13169.5
+   },
+   "contratual_cvm": 3.48,
+   "dif_pct": 12.3,
+   "dt_receb_cvm": "2025-08-13",
+   "emissor": "Equatorial Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.3111,
+   "margem_cvm": 0.2267,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 3.4,
+   "componentes_rs_mi": {
+    "caixa": 15196.3,
+    "divida": 63268.1,
+    "ebitda": 13053.9
+   },
+   "contratual_cvm": 3.68,
+   "dif_pct": 8.2,
+   "dt_receb_cvm": "2025-11-12",
+   "emissor": "Equatorial Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.2444,
+   "margem_cvm": 0.1822,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  },
+  {
+   "apurado_af": 2.6,
+   "componentes_rs_mi": {
+    "caixa": 10481.9,
+    "divida": 55080.7,
+    "ebitda": 11275.6
+   },
+   "contratual_cvm": 3.96,
+   "dif_pct": 52.3,
+   "dt_receb_cvm": "2026-04-08",
+   "emissor": "Equatorial Energia",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4222,
+   "margem_cvm": 0.12,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30",
+   "reproducibilidade": "parcial"
+  }
+ ],
+ "concordancia": 0.271,
+ "definicoes_sha256": "6842fa32f52ba279785128e446b732169e8348686598507becc86a20ca93cba1",
+ "dentro_de_5pct": 13,
+ "mesmo_lado_do_limite": 48,
+ "pares": 48,
+ "por_classe": {
+  "parcial | divida_liquida/ebitda": {
+   "calculo_acima_do_agente": 12,
+   "dentro_de_5pct": 0,
+   "mesmo_lado": 12,
+   "pares": 12
+  },
+  "reproduzivel | divida_liquida/ebitda": {
+   "calculo_acima_do_agente": 16,
+   "dentro_de_5pct": 13,
+   "mesmo_lado": 20,
+   "pares": 20
+  },
+  "reproduzivel | ebitda/resultado_financeiro": {
+   "calculo_acima_do_agente": 6,
+   "dentro_de_5pct": 0,
+   "mesmo_lado": 16,
+   "pares": 16
+  }
+ },
+ "por_emissor_indicador": {
+  "Dasa | divida_liquida/ebitda": "4 de 4",
+  "Dasa | ebitda/resultado_financeiro": "0 de 4",
+  "Energisa | divida_liquida/ebitda": "0 de 4",
+  "Eneva | divida_liquida/ebitda": "2 de 4",
+  "Engie Brasil Energia | divida_liquida/ebitda": "4 de 4",
+  "Engie Brasil Energia | ebitda/resultado_financeiro": "0 de 4",
+  "Equatorial Energia | divida_liquida/ebitda": "0 de 4",
+  "Localiza | divida_liquida/ebitda": "0 de 4",
+  "Sanepar | divida_liquida/ebitda": "0 de 4",
+  "Sanepar | ebitda/resultado_financeiro": "0 de 4",
+  "Simpar | divida_liquida/ebitda": "3 de 4",
+  "Simpar | ebitda/resultado_financeiro": "0 de 4"
+ },
+ "serie_preventiva": {
+  "Dasa": [
+   {
+    "dt_receb": "2023-05-11",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-09",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.94,
+    "dt_receb": "2024-04-17",
+    "ebitda/resultado_financeiro": 1.53,
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.19,
+    "dt_receb": "2024-05-15",
+    "ebitda/resultado_financeiro": 1.68,
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.45,
+    "dt_receb": "2024-08-14",
+    "ebitda/resultado_financeiro": 1.08,
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.59,
+    "dt_receb": "2024-11-13",
+    "ebitda/resultado_financeiro": 1.8,
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.65,
+    "dt_receb": "2025-03-26",
+    "ebitda/resultado_financeiro": 1.49,
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.75,
+    "dt_receb": "2025-06-12",
+    "ebitda/resultado_financeiro": 1.5,
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.65,
+    "dt_receb": "2025-08-14",
+    "ebitda/resultado_financeiro": 1.75,
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.38,
+    "dt_receb": "2025-11-13",
+    "ebitda/resultado_financeiro": 1.85,
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.55,
+    "dt_receb": "2026-03-26",
+    "ebitda/resultado_financeiro": 1.98,
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.87,
+    "dt_receb": "2026-05-12",
+    "ebitda/resultado_financeiro": 2.2,
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.39,
+    "dt_receb": "2026-08-13",
+    "ebitda/resultado_financeiro": 1.67,
+    "ref": "2026-06-30"
+   }
+  ],
+  "Energisa": [
+   {
+    "dt_receb": "2023-05-11",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-09",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.08,
+    "dt_receb": "2024-03-15",
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.8,
+    "dt_receb": "2024-08-14",
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.61,
+    "dt_receb": "2024-08-07",
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.0,
+    "dt_receb": "2024-11-14",
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.43,
+    "dt_receb": "2025-03-18",
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.57,
+    "dt_receb": "2025-05-08",
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.51,
+    "dt_receb": "2025-08-07",
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.74,
+    "dt_receb": "2025-11-06",
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.92,
+    "dt_receb": "2026-03-13",
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.82,
+    "dt_receb": "2026-05-11",
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.72,
+    "dt_receb": "2026-08-06",
+    "ref": "2026-06-30"
+   }
+  ],
+  "Eneva": [
+   {
+    "dt_receb": "2023-05-16",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-13",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.88,
+    "dt_receb": "2024-03-14",
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.03,
+    "dt_receb": "2024-05-14",
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.31,
+    "dt_receb": "2024-08-14",
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.53,
+    "dt_receb": "2024-11-12",
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.54,
+    "dt_receb": "2025-03-20",
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.32,
+    "dt_receb": "2025-05-14",
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.1,
+    "dt_receb": "2025-08-13",
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.76,
+    "dt_receb": "2025-11-11",
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.61,
+    "dt_receb": "2026-03-05",
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.78,
+    "dt_receb": "2026-05-13",
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.21,
+    "dt_receb": "2026-08-12",
+    "ref": "2026-06-30"
+   }
+  ],
+  "Engie Brasil Energia": [
+   {
+    "dt_receb": "2023-05-04",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-08",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-06",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.76,
+    "dt_receb": "2024-02-27",
+    "ebitda/resultado_financeiro": 3.02,
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.53,
+    "dt_receb": "2024-05-07",
+    "ebitda/resultado_financeiro": 3.63,
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.46,
+    "dt_receb": "2024-08-07",
+    "ebitda/resultado_financeiro": 3.65,
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.67,
+    "dt_receb": "2024-11-05",
+    "ebitda/resultado_financeiro": 3.38,
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.7,
+    "dt_receb": "2025-02-20",
+    "ebitda/resultado_financeiro": 3.37,
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.39,
+    "dt_receb": "2025-05-07",
+    "ebitda/resultado_financeiro": 2.9,
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.59,
+    "dt_receb": "2025-08-07",
+    "ebitda/resultado_financeiro": 2.53,
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.73,
+    "dt_receb": "2025-11-06",
+    "ebitda/resultado_financeiro": 2.46,
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.74,
+    "dt_receb": "2026-03-06",
+    "ebitda/resultado_financeiro": 2.27,
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.96,
+    "dt_receb": "2026-05-07",
+    "ebitda/resultado_financeiro": 2.17,
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.83,
+    "dt_receb": "2026-08-05",
+    "ebitda/resultado_financeiro": 2.16,
+    "ref": "2026-06-30"
+   }
+  ],
+  "Equatorial Energia": [
+   {
+    "dt_receb": "2023-05-12",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-11",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-08",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.42,
+    "dt_receb": "2024-03-25",
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.45,
+    "dt_receb": "2024-05-15",
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.34,
+    "dt_receb": "2024-08-14",
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.78,
+    "dt_receb": "2024-11-13",
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.69,
+    "dt_receb": "2025-04-01",
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.68,
+    "dt_receb": "2025-05-14",
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.48,
+    "dt_receb": "2025-08-13",
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.68,
+    "dt_receb": "2025-11-12",
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.96,
+    "dt_receb": "2026-04-08",
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.17,
+    "dt_receb": "2026-05-13",
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 5.13,
+    "dt_receb": "2026-08-12",
+    "ref": "2026-06-30"
+   }
+  ],
+  "Localiza": [
+   {
+    "dt_receb": "2023-05-15",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-14",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-13",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.89,
+    "dt_receb": "2024-03-12",
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.89,
+    "dt_receb": "2024-05-10",
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.94,
+    "dt_receb": "2024-08-13",
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.68,
+    "dt_receb": "2024-11-11",
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.63,
+    "dt_receb": "2025-02-27",
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.71,
+    "dt_receb": "2025-05-08",
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.46,
+    "dt_receb": "2025-08-11",
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.42,
+    "dt_receb": "2025-11-13",
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.35,
+    "dt_receb": "2026-02-26",
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.16,
+    "dt_receb": "2026-05-07",
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.24,
+    "dt_receb": "2026-08-06",
+    "ref": "2026-06-30"
+   }
+  ],
+  "Sanepar": [
+   {
+    "dt_receb": "2023-05-11",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-08",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 1.48,
+    "dt_receb": "2024-02-08",
+    "ebitda/resultado_financeiro": 9.43,
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 1.46,
+    "dt_receb": "2024-05-09",
+    "ebitda/resultado_financeiro": 9.36,
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 1.69,
+    "dt_receb": "2024-08-08",
+    "ebitda/resultado_financeiro": 8.73,
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 1.74,
+    "dt_receb": "2024-11-07",
+    "ebitda/resultado_financeiro": 8.66,
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 1.76,
+    "dt_receb": "2025-02-20",
+    "ebitda/resultado_financeiro": 9.3,
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 1.61,
+    "dt_receb": "2025-05-08",
+    "ebitda/resultado_financeiro": 83.9,
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 1.75,
+    "dt_receb": "2025-08-07",
+    "ebitda/resultado_financeiro": 18.58,
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 0.46,
+    "dt_receb": "2025-11-06",
+    "ebitda/resultado_financeiro": 45.76,
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 0.61,
+    "dt_receb": "2026-02-26",
+    "ebitda/resultado_financeiro": 84.47,
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 0.67,
+    "dt_receb": "2026-05-14",
+    "ebitda/resultado_financeiro": 9.75,
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 0.94,
+    "dt_receb": "2026-08-13",
+    "ebitda/resultado_financeiro": 3.61,
+    "ref": "2026-06-30"
+   }
+  ],
+  "Simpar": [
+   {
+    "dt_receb": "2023-05-03",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-08",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.43,
+    "dt_receb": "2024-03-26",
+    "ebitda/resultado_financeiro": 4.52,
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.49,
+    "dt_receb": "2024-05-09",
+    "ebitda/resultado_financeiro": 4.55,
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.47,
+    "dt_receb": "2024-08-08",
+    "ebitda/resultado_financeiro": 4.8,
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.36,
+    "dt_receb": "2024-11-12",
+    "ebitda/resultado_financeiro": 5.12,
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.37,
+    "dt_receb": "2025-04-08",
+    "ebitda/resultado_financeiro": 4.43,
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.37,
+    "dt_receb": "2025-05-08",
+    "ebitda/resultado_financeiro": 4.41,
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.35,
+    "dt_receb": "2025-08-12",
+    "ebitda/resultado_financeiro": 4.36,
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.33,
+    "dt_receb": "2025-11-12",
+    "ebitda/resultado_financeiro": 4.1,
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.0,
+    "dt_receb": "2026-03-30",
+    "ebitda/resultado_financeiro": 4.49,
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.03,
+    "dt_receb": "2026-05-07",
+    "ebitda/resultado_financeiro": 4.5,
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.0,
+    "dt_receb": "2026-08-12",
+    "ebitda/resultado_financeiro": 4.41,
+    "ref": "2026-06-30"
+   }
+  ]
+ },
+ "versao": "covenant_contratual v1",
+ "versao_definicoes": "definicoes_contratuais v3"
+}

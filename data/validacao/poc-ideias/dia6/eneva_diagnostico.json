@@ -1,0 +1,11 @@
+{
+ "data": "2026-10-17",
+ "emissor": "Eneva",
+ "pergunta": "por que DL/EBITDA contratual calculado com contas CVM fica 27,7% (1T25) e 14,8% (2T25) acima do agente, e 2,2% e 0,4% nos dois trimestres seguintes",
+ "observacao": "a diferenca some quando a janela de 12 meses deixa de conter 2T24 e 3T24. EBITDA implicito no agente (dado o meu caixa e minha divida): 5.532 (1T25), 5.667 (2T25), 5.746 (3T25), 6.541 (4T25) contra 4.327, 4.938, 5.627 e 6.507 pelas contas CVM",
+ "hipotese_testada": "somar de volta a perda por reducao ao valor recuperavel de R$ 635 mi do 4T24 (DFC 6.01.01.08), unico ajuste nao recorrente evidente em 2024",
+ "resultado": {"1T25": 2.90, "2T25": 2.75, "3T25": 2.48, "4T25": 2.61, "agente": [2.6, 2.7, 2.7, 2.6]},
+ "veredito": "REJEITADA. Melhora 1T25 e 2T25 mas leva o 3T25 de +2,2% para -8% e nao bate o criterio de 5%. Nenhuma outra hipotese foi testada para nao ajustar a conta ate bater",
+ "estado": "divergencia da Eneva INEXPLICADA com dado publico. Provavel causa: o agente usa o EBITDA que a propria companhia apura para o covenant, com ajustes que as contas da CVM nao mostram",
+ "observacao_de_sinal": "em 12 de 12 trimestres de DL/EBITDA o calculo CVM fica igual ou acima do apurado pelo agente (Dasa 0 a 3,1%, Simpar 0 a 5,9%, Eneva 0,4 a 27,7%). O erro e conservador (superestima alavancagem). Amostra de 3 emissores."
+}

@@ -1,0 +1,292 @@
+{
+ "detalhe": [
+  {
+   "campos_certos": 3,
+   "emissor": "Assaí Atacadista",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0,
+    "literal"
+   ]
+  },
+  {
+   "emissor": "Brava Energia",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5
+   ],
+   "extraido": null
+  },
+  {
+   "campos_certos": 1,
+   "emissor": "BRK Ambiental",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    6.5
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    ">",
+    6.0,
+    "gatilho"
+   ]
+  },
+  {
+   "emissor": "BRK Ambiental",
+   "esperado": null,
+   "extraido": [
+    "divida_liquida/ebitda",
+    ">",
+    5.0,
+    "gatilho"
+   ],
+   "falso_positivo": true
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Aegea Saneamento",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5,
+    "literal"
+   ]
+  },
+  {
+   "emissor": "Aegea Saneamento",
+   "esperado": null,
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    4.0,
+    "literal"
+   ],
+   "falso_positivo": true
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "JSL",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "JSL",
+   "esperado": [
+    "ebitda/resultado_financeiro",
+    ">=",
+    2.0
+   ],
+   "extraido": [
+    "ebitda/resultado_financeiro",
+    ">=",
+    2.0,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Unidas",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Unidas",
+   "esperado": [
+    "ebitda/resultado_financeiro",
+    ">=",
+    3.2
+   ],
+   "extraido": [
+    "ebitda/resultado_financeiro",
+    ">=",
+    3.2,
+    "literal"
+   ]
+  },
+  {
+   "emissor": "Unidas",
+   "esperado": null,
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    2.75,
+    "literal"
+   ],
+   "falso_positivo": true
+  },
+  {
+   "emissor": "Unidas",
+   "esperado": null,
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    1.05,
+    "literal"
+   ],
+   "falso_positivo": true
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Brisanet",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 2,
+   "emissor": "Minerva Foods",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    ">",
+    3.5,
+    "gatilho"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "CSN Mineração",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "São Martinho",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    4.0
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    4.0,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Sabesp",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.5,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 2,
+   "emissor": "Sabesp",
+   "esperado": [
+    "ebitda/resultado_financeiro",
+    ">=",
+    1.5
+   ],
+   "extraido": [
+    "ebitda/resultado_financeiro",
+    ">",
+    1.5,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Santos Brasil",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0,
+    "literal"
+   ]
+  },
+  {
+   "campos_certos": 3,
+   "emissor": "Hapvida",
+   "esperado": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0
+   ],
+   "extraido": [
+    "divida_liquida/ebitda",
+    "<=",
+    3.0,
+    "literal"
+   ]
+  }
+ ],
+ "totais": {
+  "achados_certos_indicador": 15,
+  "acuracia_campos_nos_achados": 0.911,
+  "campos_certos": 41,
+  "campos_conferidos": 45,
+  "falsos_positivos": 4,
+  "perdidos": 1,
+  "reais": 16,
+  "recall": 0.938
+ }
+}

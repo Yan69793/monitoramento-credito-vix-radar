@@ -1,0 +1,27 @@
+{
+ "conferido_por": "agente (Claude), lendo a clausula de cada escritura; nao e revisao do operador",
+ "data": "2026-10-17",
+ "natureza": "controle: 8 escrituras que o agente NAO tinha lido ao ajustar o operador pelo tipo de clausula (negacao, gatilho, 'maior do que', simbolo). Rotulado ANTES de comparar com o extrator",
+ "ajustes_feitos_antes": ["operador pelo contexto: negacao ('nao podera ser superior') e gatilho ('caso... seja superior') invertem o literal", "'maior do que' e 'menor do que'", "indicador com 'Divida Total/Bruta Consolidada'"],
+ "ajuste_feito_depois_do_controle": "simbolos '<=', '>=', unicode, depois de a Rumo mostrar a falha. Isso consome a Rumo como controle limpo",
+ "itens": [
+  {"emissor": "Algar Telecom", "real": "Divida Liquida/EBITDA <= 3,50", "extraido": "divida_liquida/ebitda <= 3,5", "campos": "3 de 3"},
+  {"emissor": "Algar Telecom", "real": "EBITDA/Resultado Financeiro Liquido >= 2,00", "extraido": "ebitda/resultado_financeiro >= 2,0", "campos": "3 de 3"},
+  {"emissor": "CSN", "real": "Divida Liquida/EBITDA <= 4,50x, anual", "extraido": "divida_liquida/ebitda <= 4,5", "campos": "3 de 3"},
+  {"emissor": "Vamos", "real": "Divida Financeira Liquida/EBITDA Consolidado <= 3,75x", "extraido": "divida_liquida/ebitda <= 3,75", "campos": "3 de 3"},
+  {"emissor": "CCR", "real": "Divida Financeira Liquida/EBITDA Ajustado, apurado anualmente, ser superior a 4,5 impede distribuicao de dividendos", "extraido": "divida_liquida/ebitda <= 4,5 (forma gatilho)", "campos": "3 de 3 nos numeros", "ressalva": "e restricao a dividendos, nao covenant de vencimento antecipado; o extrator nao distingue o tipo"},
+  {"emissor": "Cogna", "real": "Divida Liquida/EBITDA Ajustado <= 3,50x", "extraido": "divida_liquida/ebitda <= 3,5", "campos": "3 de 3"},
+  {"emissor": "Rumo", "real": "Divida Financeira Liquida/EBITDA <= 3,5x, escrito com o simbolo", "extraido_antes_do_ajuste": null, "extraido_depois": "divida_liquida/ebitda <= 3,5, anual", "campos": "falhou antes, 3 de 3 depois do ajuste"},
+  {"emissor": "Auren", "real": "sem EBITDA no texto, nenhum covenant desse tipo", "extraido": "nada", "campos": "negativo correto"},
+  {"emissor": "Raizen", "real": "sem EBITDA no texto, nenhum covenant desse tipo", "extraido": "nada", "campos": "negativo correto"}
+ ],
+ "antes_do_ajuste_de_simbolo": {"covenants_reais": 7, "encontrados": 6, "recall": 0.857, "campos_corretos_nos_encontrados": "18 de 18"},
+ "depois_do_ajuste_de_simbolo": {"covenants_reais": 7, "encontrados": 7, "campos_corretos_nos_encontrados": "21 de 21", "ressalva": "a Rumo nao e mais controle limpo"},
+ "limitacoes": [
+  "o controle quase nao testa a correcao do operador: so a CCR e gatilho e nenhuma das 8 usa negacao ('nao podera ser'). As formas negadas so foram vistas em Engie, Localiza e Equatorial, que ja estavam na amostra de ajuste",
+  "nao distingue covenant de vencimento antecipado de restricao a dividendos (CCR)",
+  "vencimento antecipado automatico ou nao: nao conferido em nenhuma das 8",
+  "amostra de 8 escrituras e 7 covenants, nao e validacao estatistica"
+ ],
+ "extracao_nas_24_escrituras_depois_dos_ajustes": {"covenants": 24, "escrituras_com_covenant": 18, "formas": {"literal": 18, "negacao": 5, "gatilho": 1}}
+}

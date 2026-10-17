@@ -1,0 +1,42 @@
+{
+ "receita_financeira_2024_mi": 403,
+ "ressalva": "o agente arredonda a 1 casa (0,3 e 0,4 tem erro de ate 17%), entao o gap dos dois ultimos trimestres e impreciso",
+ "trimestres": [
+  {
+   "divida_liquida_mi": 4761,
+   "ebitda_implicito_agente_mi": 4328,
+   "gap_ebitda_mi": 1377,
+   "meu_ebitda_mi": 2951,
+   "receita_financeira_acima_de_2024_mi": 2083,
+   "receita_financeira_ltm_mi": 2486,
+   "ref": "2025-03-31"
+  },
+  {
+   "divida_liquida_mi": 5302,
+   "ebitda_implicito_agente_mi": 4418,
+   "gap_ebitda_mi": 1395,
+   "meu_ebitda_mi": 3024,
+   "receita_financeira_acima_de_2024_mi": 2218,
+   "receita_financeira_ltm_mi": 2621,
+   "ref": "2025-06-30"
+  },
+  {
+   "divida_liquida_mi": 1376,
+   "ebitda_implicito_agente_mi": 4586,
+   "gap_ebitda_mi": 1607,
+   "meu_ebitda_mi": 2979,
+   "receita_financeira_acima_de_2024_mi": 2497,
+   "receita_financeira_ltm_mi": 2900,
+   "ref": "2025-09-30"
+  },
+  {
+   "divida_liquida_mi": 1785,
+   "ebitda_implicito_agente_mi": 4461,
+   "gap_ebitda_mi": 1517,
+   "meu_ebitda_mi": 2944,
+   "receita_financeira_acima_de_2024_mi": 2642,
+   "receita_financeira_ltm_mi": 3045,
+   "ref": "2025-12-31"
+  }
+ ]
+}

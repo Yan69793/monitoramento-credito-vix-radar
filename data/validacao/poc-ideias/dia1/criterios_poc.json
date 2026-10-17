@@ -1,0 +1,59 @@
+{
+ "versao": "criterios_poc v1",
+ "congelado_em": "2026-10-17",
+ "regra_geral": {
+  "corte_temporal": "registro so entra em T se data de publicacao conhecida (ou premissa de defasagem) <= T-1",
+  "episodio": "ews2/eventos.py episodios(EPISODIO_DIAS=30), marcar_prevalencia(LOOKBACK_PREV=730), so incidentes",
+  "evento_de_credito": "classificacao CRITICO em data/labels/eventos_credito.jsonl, com tag severa para contar como estresse independente",
+  "independencia": "episodios do mesmo grupo economico ou na mesma semana por lote de rotulagem contam como 1 cluster",
+  "amostra": "menos de 5 clusters independentes avaliaveis ou menos de 20 itens conferidos: demonstracao, veredito maximo REVISAR",
+  "APROVAR_exige_tudo": ["cobertura minima do PoC atingida", "ganho objetivo sobre o benchmark do PoC", "teste de vazamento temporal verde", "amostra suficiente conforme regra acima"],
+  "DESCARTAR": "dado inexistente ou benchmark vence com amostra suficiente"
+ },
+ "poc2_spread_residual": {
+  "janela_movel_dias_uteis": 60,
+  "n_minimo_pontos": 40,
+  "limiar_residuo_sigma": 2.0,
+  "fator_mercado": "mediana do spread dos demais emissores, excluindo o proprio",
+  "fator_setor": "mediana dos demais emissores do mesmo setor (data/cotacoes/tickers_emissores.json), excluindo o proprio; setor com menos de 3 pares nao entra",
+  "estabilidade": "beta de mercado estimado nas duas metades da janela com o mesmo sinal e razao entre 1/3 e 3",
+  "benchmark": "z_spread replicado de calcularZScoresANBIMA (|z|>=2 = ALERTA) sobre as mesmas series e as mesmas datas",
+  "cobertura_minima": 0.70,
+  "episodios_independentes_minimos_para_antecedencia_e_falso_positivo": 5,
+  "falso_positivo": "alerta sem episodio independente do emissor em 30 dias uteis seguintes",
+  "limite_conhecido": "serie local tem 114 dias uteis (2026-04-30 a 2026-10-09), 0 emissores com 120; rotulos terminam em 2026-07-09; 47 de 79 emissores trocaram a composicao de papeis"
+ },
+ "poc1_flow_at_risk": {
+  "cda_meses": "2025-09 a 2026-08",
+  "defasagem_cda_premissa_dias": 60,
+  "defasagem_cda_sensibilidade_dias": [30, 90],
+  "linha_confidencial": "DT_CONFID_APLIC > T-1 nao entra em T",
+  "defasagem_informe_diario_dias": 1,
+  "pressao_potencial": "posicao em fundos com resgate liquido de 5 dias acima do p90 do proprio fundo (janela de 60 dias uteis passados)",
+  "venda_efetiva": "reducao de posicao do fundo no emissor entre dois CDA consecutivos, somente apos publicacao do segundo",
+  "mapa_debenture_emissor": "prefixo de 4 letras do CD_ATIVO e ISIN contra nome do emissor no arquivo ANBIMA, cobertura medida no Dia 3",
+  "denominador_volume": "indisponivel em fonte publica diaria; indice sai em reais e fracao do estoque em fundos, marcado nao validado economicamente",
+  "episodios_minimos": 2,
+  "veredito_maximo_sem_volume": "REVISAR"
+ },
+ "poc5_covenant_margem": {
+  "escopo": "extrair das escrituras indicador, limite, periodicidade, definicao e condicoes (cura, vencimento antecipado), calcular a margem de seguranca com DFP/ITR (DT_RECEB <= T-1) e comparar com o relatorio do agente fiduciario. Nao classifica evento nem duplica violacao, waiver ou assembleia ja detectados",
+  "rastreabilidade": "cada campo extraido carrega protocolo IPE, link, Data_Entrega e linha de origem",
+  "amostra_alvo_escrituras": "5 a 10, escolha por maior alavancagem em fundamentals_altman_latest.json",
+  "precisao_minima_extracao": 0.95,
+  "concordancia_minima_com_agente": 0.90,
+  "tolerancia_margem_pct": 5.0,
+  "veredito_maximo_com_menos_de_20_escrituras": "REVISAR"
+ },
+ "poc6_diff_notas": {
+  "amostra": "5 emissores, 2 trimestres consecutivos",
+  "benchmark": "ews2/features.py H2a, H2b, H2c, H4",
+  "precisao_minima": 0.70,
+  "recall_minimo_em_reapresentacao_e_troca_de_auditor": 1.0,
+  "veredito_maximo_com_menos_de_20_itens": "REVISAR"
+ },
+ "poc3_placar": {
+  "aprova": "verificar aceita o ledger original e rejeita alteracao de 1 byte",
+  "nao_alega": ["imutabilidade fora deste disco", "eficacia preditiva"]
+ }
+}

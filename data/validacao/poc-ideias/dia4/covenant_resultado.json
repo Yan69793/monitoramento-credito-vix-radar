@@ -1,0 +1,5670 @@
+[
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.75,
+    "linha": 1926,
+    "offset": 83135,
+    "operador": "<=",
+    "periodicidade": null,
+    "step_down": [],
+    "trecho": "ão afete negativamente a capacidade financeira da Emissora; (xvii) não manutenção, pela Emissora, a partir de 31 de dezembro de 2024, de índice de alavancagem (composto pela Dívida Liquida Ajustada sob EBITDA Ajustado) menor ou igual a 3,75x (“Índice de Alavancagem”). As apurações de cumprimento do Í",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 2,
+  "emissor": "Azul",
+  "escritura": {
+   "data_entrega": "2024-03-26",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1212426&numSequencia=737152&numVersao=1",
+   "protocolo": "024112IPE190320240104537705-87",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-19",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.75,
+    "margem": 0.248,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.82
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2025-04-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1367731&numSequencia=892457&numVersao=1",
+   "protocolo": "024112IPE290420250177491910-24",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 4.27,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": 21,
+    "diferenca_pct": null,
+    "dt_receb_cvm": "2026-04-09",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA Ajustado",
+    "limite_af": 3.5,
+    "limite_confere": null,
+    "limite_escritura": [],
+    "margem_af": -0.22,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [],
+  "emissao": 9,
+  "emissor": "Oncoclínicas",
+  "escritura": {
+   "data_entrega": "2022-12-07",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1039111&numSequencia=563841&numVersao=1",
+   "protocolo": "026123IPE271020220104490211-77",
+   "texto": "sem_texto"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514340&numSequencia=1039046&numVersao=1",
+   "protocolo": "026123IPE300420260169865626-67",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 4.27,
+    "indice": "Dívida Líquida/ EBITDA Ajustado",
+    "limite": 3.5,
+    "linha": 163,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.25,
+    "linha": 1132,
+    "offset": 52736,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "Emissora relativas ao trimestre encerrado em 31 de março de 2021: (a) Dívida Líquida Consolidada não superior ao Patrimônio Líquido; e (b) Relação entre Dívida Líquida Consolidada e EBITDA Consolidado, menor ou igual a 3,25 (três inteiros e vinte e cinco centésimos); TEXT - 54007883v2 10092.22 24 DocuSign Envelope ID: 2293",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 18,
+  "emissor": "Pão de Açúcar (GPA)",
+  "escritura": {
+   "data_entrega": "2021-05-13",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=867308&numSequencia=392045&numVersao=1",
+   "protocolo": "014826IPE050520210104432912-08",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-04",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.25,
+    "margem": -1.0031,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 6.51
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513028&numSequencia=1037734&numVersao=1",
+   "protocolo": "014826IPE300420260133986511-26",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1653,
+    "offset": 78272,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [
+     [
+      "b",
+      3.75
+     ],
+     [
+      "c",
+      4.0
+     ]
+    ],
+    "trecho": "sendo certo que a primeira apuração será com base na Demonstração Financeira Consolidada da Emissora relativas ao período a ser encerrado em 30 de setembro de 2022: Dívida Financeira Líquida/EBITDA menor ou igual a: (a) 3,50 (três inteiros e cinquenta centésimos), entre o período a ser encerrado em 30 d",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 9,
+  "emissor": "Movida",
+  "escritura": {
+   "data_entrega": "2022-09-27",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1017882&numSequencia=542616&numVersao=1",
+   "protocolo": "023825IPE200920220104483112-15",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-10",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.0657,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.27
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513169&numSequencia=1037875&numVersao=1",
+   "protocolo": "023825IPE311220250152569877-66",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 2,
+  "emissor": "Light",
+  "escritura": {
+   "data_entrega": "2024-12-11",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1314565&numSequencia=839291&numVersao=1",
+   "protocolo": "019879IPE281120240104563711-49",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1511550&numSequencia=1036256&numVersao=1",
+   "protocolo": "019879IPE290420260111838708-79",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "linha": 2010,
+    "offset": 125571,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "próprio, previsto no estatuto social da Emissora: Dívida Líquida Consolidada/(EBITDA Ajustado Consolidado [ - Direito de Outorga Fixo Pago Consolidado]) inferior ou igual a 4,50, sendo certo que, caso sej",
+    "vencimento_antecipado": null
+   }
+  ],
+  "emissao": 18,
+  "emissor": "Arteris",
+  "escritura": {
+   "data_entrega": "2025-10-06",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1429682&numSequencia=954394&numVersao=1",
+   "protocolo": "019771IPE031020250136643364-06",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-13",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "margem": 0.28,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.24
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514167&numSequencia=1038873&numVersao=1",
+   "protocolo": "019771IPE300420260112229806-72",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 4,
+  "emissor": "Marfrig",
+  "escritura": {
+   "data_entrega": "2013-04-19",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=376524&numSequencia=0&numVersao=0",
+   "protocolo": "",
+   "texto": "sem_texto"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2019-04-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=683122&numSequencia=210906&numVersao=1",
+   "protocolo": "020788IPE290420190104358405-59",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 3.65,
+    "calculado_cvm": 3.57,
+    "dias_de_antecedencia_vs_relatorio_af": 322,
+    "diferenca_pct": -2.2,
+    "dt_receb_cvm": "2025-06-12",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<",
+      4.0
+     ]
+    ],
+    "margem_af": 0.0875,
+    "margem_cvm": 0.1075,
+    "operador_af": "<",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.57,
+    "calculado_cvm": 2.52,
+    "dias_de_antecedencia_vs_relatorio_af": 259,
+    "diferenca_pct": -1.9,
+    "dt_receb_cvm": "2025-08-14",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3575,
+    "margem_cvm": 0.37,
+    "operador_af": "<",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.38,
+    "calculado_cvm": 2.31,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": -2.9,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<",
+      4.0
+     ]
+    ],
+    "margem_af": 0.405,
+    "margem_cvm": 0.4225,
+    "operador_af": "<",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.5,
+    "calculado_cvm": 2.45,
+    "dias_de_antecedencia_vs_relatorio_af": 35,
+    "diferenca_pct": -2.0,
+    "dt_receb_cvm": "2026-03-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<",
+      4.0
+     ]
+    ],
+    "margem_af": 0.375,
+    "margem_cvm": 0.3875,
+    "operador_af": "<",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.31,
+    "calculado_cvm": 1.18,
+    "dias_de_antecedencia_vs_relatorio_af": 322,
+    "diferenca_pct": -48.9,
+    "dt_receb_cvm": "2025-06-12",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">",
+      1.5
+     ]
+    ],
+    "margem_af": 0.54,
+    "margem_cvm": -0.2133,
+    "operador_af": ">",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.47,
+    "calculado_cvm": 1.29,
+    "dias_de_antecedencia_vs_relatorio_af": 259,
+    "diferenca_pct": -47.8,
+    "dt_receb_cvm": "2025-08-14",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">",
+      1.5
+     ]
+    ],
+    "margem_af": 0.6467,
+    "margem_cvm": -0.14,
+    "operador_af": ">",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.48,
+    "calculado_cvm": 1.36,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": -45.2,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">",
+      1.5
+     ]
+    ],
+    "margem_af": 0.6533,
+    "margem_cvm": -0.0933,
+    "operador_af": ">",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.09,
+    "calculado_cvm": 1.34,
+    "dias_de_antecedencia_vs_relatorio_af": 35,
+    "diferenca_pct": -35.9,
+    "dt_receb_cvm": "2026-03-26",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">",
+      1.5
+     ]
+    ],
+    "margem_af": 0.3933,
+    "margem_cvm": -0.1067,
+    "operador_af": ">",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "linha": 1298,
+    "offset": 78576,
+    "operador": "<",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " Consolidadas da Companhia relativas a 30 de setembro de 2020: (a) índice financeiro decorrente do quociente da divisão da Dívida Líquida pelo EBITDA, que deverá ser inferior a 4 (quatro) vezes; e (b) índice financeiro decorrente do quocie",
+    "vencimento_antecipado": null
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "linha": 1301,
+    "offset": 78753,
+    "operador": ">",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " pelo EBITDA, que deverá ser inferior a 4 (quatro) vezes; e (b) índice financeiro decorrente do quociente da divisão do EBITDA pelo Resultado Financeiro, que deverá ser superior a 1,5 (um inteiro e cinquenta centésimos) vez. 7.26.3 Ocorrendo qualquer dos Eventos de Inadimplemento ",
+    "vencimento_antecipado": null
+   }
+  ],
+  "emissao": 14,
+  "emissor": "Dasa",
+  "escritura": {
+   "data_entrega": "2020-10-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=804002&numSequencia=328740&numVersao=1",
+   "protocolo": "019623IPE271020200104413312-33",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-13",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "margem": 0.1875,
+    "operador": "<",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.25
+   },
+   {
+    "dt_receb": "2026-08-13",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "margem": -0.2,
+    "operador": ">",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 1.2
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514178&numSequencia=1038884&numVersao=1",
+   "protocolo": "019623IPE311220250179666609-87",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 3.65,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 131,
+    "mes": 3,
+    "operador": "<"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.57,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 131,
+    "mes": 6,
+    "operador": "<"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.38,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 131,
+    "mes": 9,
+    "operador": "<"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.5,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 131,
+    "mes": 12,
+    "operador": "<"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.31,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 137,
+    "mes": 3,
+    "operador": ">"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.47,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 137,
+    "mes": 6,
+    "operador": ">"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.48,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 137,
+    "mes": 9,
+    "operador": ">"
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.09,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 137,
+    "mes": 12,
+    "operador": ">"
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 2.3,
+    "calculado_cvm": 4.07,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 77.0,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 3.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.5
+     ]
+    ],
+    "margem_af": 0.3429,
+    "margem_cvm": -0.1629,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.3,
+    "calculado_cvm": 4.01,
+    "dias_de_antecedencia_vs_relatorio_af": 261,
+    "diferenca_pct": 74.3,
+    "dt_receb_cvm": "2025-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 3.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.5
+     ]
+    ],
+    "margem_af": 0.3429,
+    "margem_cvm": -0.1457,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.2,
+    "calculado_cvm": 3.8,
+    "dias_de_antecedencia_vs_relatorio_af": 169,
+    "diferenca_pct": 72.7,
+    "dt_receb_cvm": "2025-11-12",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 3.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.5
+     ]
+    ],
+    "margem_af": 0.3714,
+    "margem_cvm": -0.0857,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.0,
+    "calculado_cvm": 3.43,
+    "dias_de_antecedencia_vs_relatorio_af": 31,
+    "diferenca_pct": 71.5,
+    "dt_receb_cvm": "2026-03-30",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 3.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.5
+     ]
+    ],
+    "margem_af": 0.4286,
+    "margem_cvm": 0.02,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 3.4,
+    "calculado_cvm": 1.69,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": -50.3,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Adicionado/ Despesa Líquida",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.7,
+    "margem_cvm": -0.155,
+    "operador_af": ">=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 3.2,
+    "calculado_cvm": 1.62,
+    "dias_de_antecedencia_vs_relatorio_af": 261,
+    "diferenca_pct": -49.4,
+    "dt_receb_cvm": "2025-08-12",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Adicionado/ Despesa Líquida",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.6,
+    "margem_cvm": -0.19,
+    "operador_af": ">=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 3.0,
+    "calculado_cvm": 1.55,
+    "dias_de_antecedencia_vs_relatorio_af": 169,
+    "diferenca_pct": -48.3,
+    "dt_receb_cvm": "2025-11-12",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Adicionado/ Despesa Líquida",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.5,
+    "margem_cvm": -0.225,
+    "operador_af": ">=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 3.1,
+    "calculado_cvm": 1.65,
+    "dias_de_antecedencia_vs_relatorio_af": 31,
+    "diferenca_pct": -46.8,
+    "dt_receb_cvm": "2026-03-30",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Adicionado/ Despesa Líquida",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.55,
+    "margem_cvm": -0.175,
+    "operador_af": ">=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1035,
+    "offset": 71400,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "ções financeiras relativas ao trimestre findo em 31 de dezembro de 2022. Para fins deste item devem ser consideradas as seguintes definições: (i) “Dívida Financeira Líquida/EBITDA-Adicionado” menor ou igual a 3,5 (três inteiros e cinco décimos). (ii) “EBITDA-Adicionado/Despesa Financeira Líqui",
+    "vencimento_antecipado": "automatico"
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "linha": 1038,
+    "offset": 71533,
+    "operador": ">=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " seguintes definições: (i) “Dívida Financeira Líquida/EBITDA-Adicionado” menor ou igual a 3,5 (três inteiros e cinco décimos). (ii) “EBITDA-Adicionado/Despesa Financeira Líquida” maior ou igual a 2,0 (dois inteiros). (iii) “Dívida Financeira Líquida” significa sald",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 6,
+  "emissor": "Simpar",
+  "escritura": {
+   "data_entrega": "2022-12-06",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1038686&numSequencia=563416&numVersao=1",
+   "protocolo": "025003IPE281120220104490111-70",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.0743,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.24
+   },
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "margem": -0.19,
+    "operador": ">=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 1.62
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514173&numSequencia=1038879&numVersao=1",
+   "protocolo": "025003IPE311220250102065048-19",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 2.3,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 3.5,
+    "linha": 101,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.3,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 3.5,
+    "linha": 101,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.2,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 3.5,
+    "linha": 101,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.0,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 3.5,
+    "linha": 101,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.4,
+    "indice": "EBITDA Adicionado/ Despesa Líquida",
+    "limite": 2.0,
+    "linha": 107,
+    "mes": 3,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.2,
+    "indice": "EBITDA Adicionado/ Despesa Líquida",
+    "limite": 2.0,
+    "linha": 107,
+    "mes": 6,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.0,
+    "indice": "EBITDA Adicionado/ Despesa Líquida",
+    "limite": 2.0,
+    "linha": 107,
+    "mes": 9,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.1,
+    "indice": "EBITDA Adicionado/ Despesa Líquida",
+    "limite": 2.0,
+    "linha": 107,
+    "mes": 12,
+    "operador": ">="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 2.6,
+    "calculado_cvm": 3.34,
+    "dias_de_antecedencia_vs_relatorio_af": 351,
+    "diferenca_pct": 28.5,
+    "dt_receb_cvm": "2025-05-14",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.4222,
+    "margem_cvm": 0.2578,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.7,
+    "calculado_cvm": 3.1,
+    "dias_de_antecedencia_vs_relatorio_af": 260,
+    "diferenca_pct": 14.8,
+    "dt_receb_cvm": "2025-08-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.4,
+    "margem_cvm": 0.3111,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.7,
+    "calculado_cvm": 2.76,
+    "dias_de_antecedencia_vs_relatorio_af": 170,
+    "diferenca_pct": 2.2,
+    "dt_receb_cvm": "2025-11-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.4,
+    "margem_cvm": 0.3867,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.6,
+    "calculado_cvm": 2.61,
+    "dias_de_antecedencia_vs_relatorio_af": 56,
+    "diferenca_pct": 0.4,
+    "dt_receb_cvm": "2026-03-05",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.4222,
+    "margem_cvm": 0.42,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "linha": 2098,
+    "offset": 136147,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "objeto social na data de celebração desta Escritura de Emissão; (xii) não observância, pela Emissora, durante a vigência da Emissão, do quociente da divisão da Dívida Líquida pelo EBITDA, que deverá ser igual ou inferior a 4,5 (quatro inteiros e cinco décimos) durante toda a vigência das Debêntures, a ser acompanhado ",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 2,
+  "emissor": "Eneva",
+  "escritura": {
+   "data_entrega": "2019-05-23",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=692186&numSequencia=218874&numVersao=1",
+   "protocolo": "021237IPE140520190104360810-89",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "margem": 0.2933,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.18
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513922&numSequencia=1038628&numVersao=1",
+   "protocolo": "021237IPE300420260178904107-30",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 2.6,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.5,
+    "linha": 174,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.7,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.5,
+    "linha": 174,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.7,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.5,
+    "linha": 174,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.6,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.5,
+    "linha": 174,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1895,
+    "offset": 110323,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "iário, observado que a primeira medição deverá ocorrer com base nas demonstrações financeiras consolidadas de 30 de junho de 2022, sendo “Índices Financeiros” entendidos como: (a) Dívida Líquida/EBITDA menor ou igual a 3,50 (três inteiros e cinquenta centésimos); e (b) EBITDA/Resultado Financeiro Líquido superior ou ",
+    "vencimento_antecipado": "nao_automatico"
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "linha": 1896,
+    "offset": 110436,
+    "operador": ">=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "as de 30 de junho de 2022, sendo “Índices Financeiros” entendidos como: (a) Dívida Líquida/EBITDA menor ou igual a 3,50 (três inteiros e cinquenta centésimos); e (b) EBITDA/Resultado Financeiro Líquido superior ou igual a 2,00 (dois inteiros). Para fins das apurações dos Índices Financeiros previstos ",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 12,
+  "emissor": "Algar Telecom",
+  "escritura": {
+   "data_entrega": "2022-01-14",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=933650&numSequencia=458384&numVersao=1",
+   "protocolo": "021032IPE130120220104457511-27",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.16,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.94
+   },
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "margem": 0.3,
+    "operador": ">=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.6
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512773&numSequencia=1037479&numVersao=1",
+   "protocolo": "021032IPE300420260111940217-19",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "linha": 985,
+    "offset": 56061,
+    "operador": "<=",
+    "periodicidade": null,
+    "step_down": [],
+    "trecho": "ados pela Emissora e acompanhados pelo Agente Fiduciário ao final de cada ano fiscal, sendo a primeira apuração referente ao ano findo em 31 de dezembro de 2021 (“Índice Financeiro”): a) Dívida Líquida/EBITDA menor ou igual a 4,50x 6.2.1. Para os fins desta Escritura, o termo: (i) “Acioni",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 11,
+  "emissor": "CSN",
+  "escritura": {
+   "data_entrega": "2021-10-26",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=910142&numSequencia=434876&numVersao=1",
+   "protocolo": "004030IPE211020210104449511-00",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "margem": -0.1244,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 5.06
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513651&numSequencia=1038357&numVersao=1",
+   "protocolo": "004030IPE300420260197700639-98",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 2,
+  "emissor": "Auren Energia",
+  "escritura": {
+   "data_entrega": "2024-04-22",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1224400&numSequencia=749126&numVersao=1",
+   "protocolo": "026620IPE190420240104540412-61",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512783&numSequencia=1037489&numVersao=1",
+   "protocolo": "026620IPE311220250130865334-75",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 4,
+  "emissor": "Raízen",
+  "escritura": {
+   "data_entrega": "2025-07-14",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1400736&numSequencia=925448&numVersao=1",
+   "protocolo": "025917IPE140720250137073529-89",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-07-31",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1550745&numSequencia=1075451&numVersao=1",
+   "protocolo": "025917IPE310720260118709341-07",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 1.94,
+    "calculado_cvm": 2.99,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 54.1,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA N/A N/A N/A",
+    "limite_af": 3.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.5
+     ]
+    ],
+    "margem_af": 0.4457,
+    "margem_cvm": 0.1457,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 2810,
+    "offset": 194057,
+    "operador": "<=",
+    "periodicidade": "anual",
+    "step_down": [],
+    "trecho": "a vigência da Emissão (\"Índice Financeiro\"), sendo a primeira apuração relativa ao exercício social encerrado em 31 de dezembro de 2025: Índice de Alavancagem: Dívida Financeira Líquida / EBITDA ≤ 3,5x. Considera-se como: \"Dívida Financeira Lí",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 18,
+  "emissor": "Rumo",
+  "escritura": {
+   "data_entrega": "2025-12-09",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1455089&numSequencia=979801&numVersao=1",
+   "protocolo": "017450IPE091220250154068371-46",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.3114,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.41
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513589&numSequencia=1038295&numVersao=1",
+   "protocolo": "017450IPE311220250195751969-58",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 1.94,
+    "indice": "Dívida Financeira Líquida/ EBITDA N/A N/A N/A",
+    "limite": 3.5,
+    "linha": 216,
+    "mes": 3,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.19,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 14.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4525,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.55,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 10.2,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3625,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.37,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 5.9,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4075,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.32,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 6.0,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.42,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.25,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 6.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4375,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.34,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 20.1,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.415,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.23,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 12.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4425,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.16,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 13.9,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.46,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.11,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 13.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4725,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.55,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 10.2,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3625,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.37,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 5.9,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4075,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.32,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 6.0,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.42,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.25,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 6.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4375,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.55,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 10.2,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3625,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.37,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 5.9,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4075,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.32,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 6.0,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.42,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.25,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 6.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4375,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.43,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 15.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.3925,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.27,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 10.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4325,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 2.19,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 14.6,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4525,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.46,
+    "dias_de_antecedencia_vs_relatorio_af": 168,
+    "diferenca_pct": 11.3,
+    "dt_receb_cvm": "2025-11-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.385,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.4,
+    "dias_de_antecedencia_vs_relatorio_af": 63,
+    "diferenca_pct": 12.7,
+    "dt_receb_cvm": "2026-02-26",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.4,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 3.19,
+    "calculado_cvm": 3.15,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": -1.3,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesas Financeiras Líquidas",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      1.5
+     ]
+    ],
+    "margem_af": 1.1267,
+    "margem_cvm": 1.1,
+    "operador_af": ">=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 27.1,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 17.8,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 27.1,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 17.8,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 2.21,
+    "calculado_cvm": 2.81,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 27.1,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4475,
+    "margem_cvm": 0.2975,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 2.13,
+    "calculado_cvm": 2.51,
+    "dias_de_antecedencia_vs_relatorio_af": 262,
+    "diferenca_pct": 17.8,
+    "dt_receb_cvm": "2025-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.4675,
+    "margem_cvm": 0.3725,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "negacao",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "linha": 920,
+    "offset": 64744,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "o trimestre em questão com os três trimestres imediatamente anteriores: (i) índice obtido da divisão da Dívida Líquida (conforme abaixo definida) pelo EBITDA (conforme abaixo definido) não superior a 4,00, ",
+    "vencimento_antecipado": "automatico"
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "negacao",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "linha": 948,
+    "offset": 67132,
+    "operador": ">=",
+    "periodicidade": null,
+    "step_down": [],
+    "trecho": ") das despesas não recorrentes e (f) do impairment. (ii) índice obtido da divisão entre EBITDA pelas Despesas Financeiras Líquidas (conforme abaixo definidas) não deverá ser inferior a 1,50, onde: “Despesas Financeiras Líquidas” sign",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 14,
+  "emissor": "Localiza",
+  "escritura": {
+   "data_entrega": "2018-08-31",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=639639&numSequencia=172772&numVersao=1",
+   "protocolo": "019739IPE240820180104334305-16",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-06",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "margem": 0.425,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.3
+   },
+   {
+    "dt_receb": "2026-08-06",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "margem": 1.1467,
+    "operador": ">=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.22
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513398&numSequencia=1038104&numVersao=1",
+   "protocolo": "019739IPE311220250187247911-44",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 257,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.19,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 257,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 257,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 257,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 915,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 915,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 915,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 915,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 1486,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 1486,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 1486,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2056,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2056,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2056,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2056,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2621,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2621,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2621,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 2621,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.55,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3247,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.37,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3247,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.32,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3247,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.25,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3247,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.34,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3893,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.23,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3893,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.16,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3893,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.11,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 3893,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 4460,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 4460,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 4460,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 4460,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.55,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5074,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.37,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5074,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.32,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5074,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.25,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5074,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.55,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5644,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.37,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5644,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.32,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5644,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.25,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 5644,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6216,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6216,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6216,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6216,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6864,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6864,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6864,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 6864,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 7433,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 7433,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 7433,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 7433,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.43,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8004,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.27,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8004,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8004,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8004,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.19,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8632,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8632,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 8632,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.19,
+    "indice": "EBITDA/ Despesas Financeiras Líquidas",
+    "limite": 1.5,
+    "linha": 8636,
+    "mes": 6,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite": 4.0,
+    "linha": 9199,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite": 4.0,
+    "linha": 9199,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite": 4.0,
+    "linha": 9772,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite": 4.0,
+    "linha": 9772,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.21,
+    "indice": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite": 4.0,
+    "linha": 10374,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.13,
+    "indice": "Dívida Líquida/ EBITDA N/A N/A",
+    "limite": 4.0,
+    "linha": 10374,
+    "mes": 6,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 3.2,
+    "calculado_cvm": 3.69,
+    "dias_de_antecedencia_vs_relatorio_af": 351,
+    "diferenca_pct": 15.3,
+    "dt_receb_cvm": "2025-05-14",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA Ajustado",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.2889,
+    "margem_cvm": 0.18,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 3.1,
+    "calculado_cvm": 3.47,
+    "dias_de_antecedencia_vs_relatorio_af": 260,
+    "diferenca_pct": 11.9,
+    "dt_receb_cvm": "2025-08-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA Ajustado",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.3111,
+    "margem_cvm": 0.2289,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 3.4,
+    "calculado_cvm": 3.62,
+    "dias_de_antecedencia_vs_relatorio_af": 169,
+    "diferenca_pct": 6.5,
+    "dt_receb_cvm": "2025-11-12",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA Ajustado",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.2444,
+    "margem_cvm": 0.1956,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.6,
+    "calculado_cvm": 3.9,
+    "dias_de_antecedencia_vs_relatorio_af": 22,
+    "diferenca_pct": 50.0,
+    "dt_receb_cvm": "2026-04-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA Ajustado",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.4222,
+    "margem_cvm": 0.1333,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "negacao",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "linha": 1131,
+    "offset": 69507,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "xo na metodologia de cálculo de indicadores financeiros) pelo EBITDA Ajustado da Emissora (conforme definido abaixo na metodologia de cálculo de indicadores financeiros), que não deverá ser maior do que 4,5x, em apurações trimestrais, sendo a primeira apura",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 7,
+  "emissor": "Equatorial Energia",
+  "escritura": {
+   "data_entrega": "2025-03-18",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1348140&numSequencia=872866&numVersao=1",
+   "protocolo": "020010IPE070320250104573410-83",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "margem": -0.1044,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 4.97
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512644&numSequencia=1037350&numVersao=1",
+   "protocolo": "020010IPE301220250133935394-13",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 3.2,
+    "indice": "Dívida Líquida/ EBITDA Ajustado",
+    "limite": 4.5,
+    "linha": 100,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.1,
+    "indice": "Dívida Líquida/ EBITDA Ajustado",
+    "limite": 4.5,
+    "linha": 100,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.4,
+    "indice": "Dívida Líquida/ EBITDA Ajustado",
+    "limite": 4.5,
+    "linha": 100,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.6,
+    "indice": "Dívida Líquida/ EBITDA Ajustado",
+    "limite": 4.5,
+    "linha": 100,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 3.51,
+    "calculado_cvm": 2.66,
+    "dias_de_antecedencia_vs_relatorio_af": 358,
+    "diferenca_pct": -24.2,
+    "dt_receb_cvm": "2025-05-07",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Total Consolidada/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.22,
+    "margem_cvm": 0.4089,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 3.69,
+    "calculado_cvm": 2.84,
+    "dias_de_antecedencia_vs_relatorio_af": 266,
+    "diferenca_pct": -23.0,
+    "dt_receb_cvm": "2025-08-07",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Total Consolidada/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.18,
+    "margem_cvm": 0.3689,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 3.85,
+    "calculado_cvm": 3.13,
+    "dias_de_antecedencia_vs_relatorio_af": 175,
+    "diferenca_pct": -18.7,
+    "dt_receb_cvm": "2025-11-06",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Total Consolidada/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.1444,
+    "margem_cvm": 0.3044,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 3.84,
+    "calculado_cvm": 3.3,
+    "dias_de_antecedencia_vs_relatorio_af": 55,
+    "diferenca_pct": -14.1,
+    "dt_receb_cvm": "2026-03-06",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Total Consolidada/ EBITDA",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.1467,
+    "margem_cvm": 0.2667,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 4.13,
+    "calculado_cvm": 3.68,
+    "dias_de_antecedencia_vs_relatorio_af": 358,
+    "diferenca_pct": -10.9,
+    "dt_receb_cvm": "2025-05-07",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 1.065,
+    "margem_cvm": 0.84,
+    "operador_af": ">=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 3.34,
+    "calculado_cvm": 3.19,
+    "dias_de_antecedencia_vs_relatorio_af": 266,
+    "diferenca_pct": -4.5,
+    "dt_receb_cvm": "2025-08-07",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.67,
+    "margem_cvm": 0.595,
+    "operador_af": ">=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 3.14,
+    "calculado_cvm": 3.18,
+    "dias_de_antecedencia_vs_relatorio_af": 175,
+    "diferenca_pct": 1.3,
+    "dt_receb_cvm": "2025-11-06",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.57,
+    "margem_cvm": 0.59,
+    "operador_af": ">=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 2.77,
+    "calculado_cvm": 2.9,
+    "dias_de_antecedencia_vs_relatorio_af": 55,
+    "diferenca_pct": 4.7,
+    "dt_receb_cvm": "2026-03-06",
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite_af": 2.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      2.0
+     ]
+    ],
+    "margem_af": 0.385,
+    "margem_cvm": 0.45,
+    "operador_af": ">=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "negacao",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "linha": 1056,
+    "offset": 60735,
+    "operador": ">=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " a relação entre o somatório do EBITDA Consolidado dos últimos 4 (quatro) trimestres da Emissora e o somatório das Despesas Financeiras Consolidadas no mesmo período não poderá ser inferior a 2,0; e (b) na data de cada balanço consolidado trimestr",
+    "vencimento_antecipado": "automatico"
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "negacao",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "linha": 1060,
+    "offset": 60990,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "ta de cada balanço consolidado trimestral da Emissora, a relação entre a Dívida Total Consolidada e o somatório do EBITDA Consolidado dos últimos 4 (quatro) trimestres da Emissora não poderá ser superior a 4,5. Para os fins deste inciso XXII: \"EBITDA co",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 6,
+  "emissor": "Engie Brasil Energia",
+  "escritura": {
+   "data_entrega": "2017-04-05",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=556145&numSequencia=98893&numVersao=1",
+   "protocolo": "017329IPE050720160104282912-83",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-05",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "margem": 3.115,
+    "operador": ">=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 8.23
+   },
+   {
+    "dt_receb": "2026-08-05",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "margem": 0.3244,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.04
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512992&numSequencia=1037698&numVersao=1",
+   "protocolo": "017329IPE311220250155751970-27",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 3.51,
+    "indice": "Dívida Total Consolidada/ EBITDA",
+    "limite": 4.5,
+    "linha": 191,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.69,
+    "indice": "Dívida Total Consolidada/ EBITDA",
+    "limite": 4.5,
+    "linha": 191,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.85,
+    "indice": "Dívida Total Consolidada/ EBITDA",
+    "limite": 4.5,
+    "linha": 191,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.84,
+    "indice": "Dívida Total Consolidada/ EBITDA",
+    "limite": 4.5,
+    "linha": 191,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 4.13,
+    "indice": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite": 2.0,
+    "linha": 195,
+    "mes": 3,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.34,
+    "indice": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite": 2.0,
+    "linha": 195,
+    "mes": 6,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.14,
+    "indice": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite": 2.0,
+    "linha": 195,
+    "mes": 9,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 2.77,
+    "indice": "EBITDA Consolidado/ Despesas Financeiras",
+    "limite": 2.0,
+    "linha": 195,
+    "mes": 12,
+    "operador": ">="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 3.01,
+    "calculado_cvm": 3.57,
+    "dias_de_antecedencia_vs_relatorio_af": 357,
+    "diferenca_pct": 18.6,
+    "dt_receb_cvm": "2025-05-08",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.2475,
+    "margem_cvm": 0.1075,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 3.07,
+    "calculado_cvm": 3.51,
+    "dias_de_antecedencia_vs_relatorio_af": 266,
+    "diferenca_pct": 14.3,
+    "dt_receb_cvm": "2025-08-07",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.2325,
+    "margem_cvm": 0.1225,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 3.21,
+    "calculado_cvm": 3.65,
+    "dias_de_antecedencia_vs_relatorio_af": 175,
+    "diferenca_pct": 13.7,
+    "dt_receb_cvm": "2025-11-06",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.1975,
+    "margem_cvm": 0.0875,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 3.48,
+    "calculado_cvm": 3.84,
+    "dias_de_antecedencia_vs_relatorio_af": 48,
+    "diferenca_pct": 10.3,
+    "dt_receb_cvm": "2026-03-13",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 4.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.0
+     ]
+    ],
+    "margem_af": 0.13,
+    "margem_cvm": 0.04,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "linha": 2120,
+    "offset": 130644,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "strações financeiras consolidadas auditadas relativas ao exercício social encerrado em 31 de dezembro de 2017: a razão entre as contas de Dívida Financeira Líquida e EBITDA da Emissora deverá ser menor ou igual a 4,0 (quatro inteiros); XIX. se, finalizada uma investigação, inquérito ou proced",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 9,
+  "emissor": "Energisa",
+  "escritura": {
+   "data_entrega": "2017-10-04",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=581300&numSequencia=124096&numVersao=1",
+   "protocolo": "015253IPE200920170104301210-08",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-06",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "margem": 0.07,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.72
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512472&numSequencia=1037178&numVersao=1",
+   "protocolo": "015253IPE311220250144545398-10",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 3.01,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 403,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.07,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 403,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.21,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 403,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 3.48,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 4.0,
+    "linha": 403,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 3.16,
+    "calculado_cvm": 3.52,
+    "dias_de_antecedencia_vs_relatorio_af": 358,
+    "diferenca_pct": 11.4,
+    "dt_receb_cvm": "2025-05-07",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA",
+    "limite_af": 3.75,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.75
+     ]
+    ],
+    "margem_af": 0.1573,
+    "margem_cvm": 0.0613,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.75,
+    "linha": 1245,
+    "offset": 96095,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "rme aplicável. Para fins desta clausula, deve ser considerada o seguinte índice e suas definições: “Índice Financeiro”: “Dívida Financeira Líquida/EBITDA Consolidado” – Menor ou igual a 3,75x (três inteiros e setenta e cinco centésimos). ",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 14,
+  "emissor": "Vamos",
+  "escritura": {
+   "data_entrega": "2025-12-04",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1452740&numSequencia=977452&numVersao=1",
+   "protocolo": "024716IPE031220250120170001-97",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.75,
+    "margem": 0.2027,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.99
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514234&numSequencia=1038940&numVersao=1",
+   "protocolo": "024716IPE311220250152512431-96",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 3.16,
+    "indice": "Dívida Financeira Líquida/ EBITDA",
+    "limite": 3.75,
+    "linha": 102,
+    "mes": 3,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 3.1,
+    "calculado_cvm": 4.12,
+    "dias_de_antecedencia_vs_relatorio_af": 360,
+    "diferenca_pct": 32.9,
+    "dt_receb_cvm": "2025-05-05",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Financeira Líquida/ EBITDA N/A",
+    "limite_af": 4.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      4.5
+     ]
+    ],
+    "margem_af": 0.3111,
+    "margem_cvm": 0.0844,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "gatilho",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "linha": 2671,
+    "offset": 184140,
+    "operador": "<=",
+    "periodicidade": "anual",
+    "step_down": [],
+    "trecho": " Ações, e os juros sobre capital próprio imputados aos dividendos obrigatórios, caso a relação Dívida Financeira Líquida/EBITDA Ajustado (conforme definido abaixo), a qual será apurada anualmente, seja superior a 4,5 (quatro vírgula cinco) vezes (“Índice Financeiro”), exceto se a Emissora optar por ",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 19,
+  "emissor": "CCR",
+  "escritura": {
+   "data_entrega": "2025-10-13",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1432290&numSequencia=957002&numVersao=1",
+   "protocolo": "018821IPE131020250110367203-45",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-07-29",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.5,
+    "margem": 0.2267,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.48
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512579&numSequencia=1037285&numVersao=1",
+   "protocolo": "018821IPE300420260160189383-63",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 3.1,
+    "indice": "Dívida Financeira Líquida/ EBITDA N/A",
+    "limite": 4.5,
+    "linha": 166,
+    "mes": 3,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1357,
+    "offset": 93154,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " a primeira apuração com base nas informações trimestrais (ITR) consolidadas da Emissora referentes ao período de 3 (três) meses findo em 30 de junho de 2024: razão entre Dívida Líquida e EBITDA Ajustado menor ou igual a 3,50x, sendo certo que, em caso de outra dívida emitida p",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 13,
+  "emissor": "Cogna Educação",
+  "escritura": {
+   "data_entrega": "2024-07-11",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1259167&numSequencia=783893&numVersao=1",
+   "protocolo": "017973IPE110720240104548412-11",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.3714,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.2
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513512&numSequencia=1038218&numVersao=1",
+   "protocolo": "017973IPE300420260128882457-13",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 42.0,
+    "calculado_cvm": 3.54,
+    "dias_de_antecedencia_vs_relatorio_af": 366,
+    "diferenca_pct": -91.6,
+    "dt_receb_cvm": "2025-04-29",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Bruta/ PPI",
+    "limite_af": 60.0,
+    "limite_confere": null,
+    "limite_escritura": [],
+    "margem_af": 0.3,
+    "margem_cvm": 0.941,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 46.0,
+    "calculado_cvm": 3.86,
+    "dias_de_antecedencia_vs_relatorio_af": 269,
+    "diferenca_pct": -91.6,
+    "dt_receb_cvm": "2025-08-04",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Bruta/ PPI",
+    "limite_af": 60.0,
+    "limite_confere": null,
+    "limite_escritura": [],
+    "margem_af": 0.2333,
+    "margem_cvm": 0.9357,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 52.0,
+    "calculado_cvm": 3.23,
+    "dias_de_antecedencia_vs_relatorio_af": 183,
+    "diferenca_pct": -93.8,
+    "dt_receb_cvm": "2025-10-29",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Bruta/ PPI",
+    "limite_af": 60.0,
+    "limite_confere": null,
+    "limite_escritura": [],
+    "margem_af": 0.1333,
+    "margem_cvm": 0.9462,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 46.0,
+    "calculado_cvm": 3.68,
+    "dias_de_antecedencia_vs_relatorio_af": 78,
+    "diferenca_pct": -92.0,
+    "dt_receb_cvm": "2026-02-11",
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Bruta/ PPI",
+    "limite_af": 60.0,
+    "limite_confere": null,
+    "limite_escritura": [],
+    "margem_af": 0.2333,
+    "margem_cvm": 0.9387,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [],
+  "emissao": 21,
+  "emissor": "Log Commercial Properties",
+  "escritura": {
+   "data_entrega": "2022-06-20",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=991775&numSequencia=516509&numVersao=1",
+   "protocolo": "023272IPE150620220104473207-24",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513453&numSequencia=1038159&numVersao=1",
+   "protocolo": "023272IPE300420260100140951-15",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 42.0,
+    "indice": "Dívida Bruta/ PPI",
+    "limite": 60.0,
+    "linha": 98,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 46.0,
+    "indice": "Dívida Bruta/ PPI",
+    "limite": 60.0,
+    "linha": 98,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 52.0,
+    "indice": "Dívida Bruta/ PPI",
+    "limite": 60.0,
+    "linha": 98,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 46.0,
+    "indice": "Dívida Bruta/ PPI",
+    "limite": 60.0,
+    "linha": 98,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 122.4,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      1.5
+     ]
+    ],
+    "margem_af": 80.6,
+    "margem_cvm": null,
+    "operador_af": ">=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 27.2,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      1.5
+     ]
+    ],
+    "margem_af": 17.1333,
+    "margem_cvm": null,
+    "operador_af": ">=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 69.4,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      1.5
+     ]
+    ],
+    "margem_af": 45.2667,
+    "margem_cvm": null,
+    "operador_af": ">=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 128.7,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "ebitda/resultado_financeiro",
+    "indice_af": "EBITDA/ Despesa Financeira Líquida",
+    "limite_af": 1.5,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      ">=",
+      1.5
+     ]
+    ],
+    "margem_af": 84.8,
+    "margem_cvm": null,
+    "operador_af": ">=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 1.1,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.6333,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 1.2,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.6,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 0.3,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.9,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 0.4,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.8667,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "linha": 1703,
+    "offset": 98279,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "sendo a primeira apuração realizada com base nas demonstrações financeiras relativas ao exercício social findo em 31 de dezembro de 2023: (i) quociente da divisão da Dívida Líquida pelo EBITDA, que deverá ser igual ou inferior a 3,00 (três) vezes; e (ii) quociente da divisão do EBITDA pela Despesa F",
+    "vencimento_antecipado": "automatico"
+   },
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "linha": 1707,
+    "offset": 98436,
+    "operador": ">=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "iente da divisão da Dívida Líquida pelo EBITDA, que deverá ser igual ou inferior a 3,00 (três) vezes; e (ii) quociente da divisão do EBITDA pela Despesa Financeira Líquida, que deverá ser igual ou superior a 1,50 (um inteiro e cinquenta centésimos) vez. ",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 14,
+  "emissor": "Sanepar",
+  "escritura": {
+   "data_entrega": "2023-12-19",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1175578&numSequencia=700304&numVersao=1",
+   "protocolo": "018627IPE191220230104527911-90",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": null,
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "margem": null,
+    "operador": "<=",
+    "ref": null,
+    "valor_cvm_padronizado": null
+   },
+   {
+    "dt_receb": null,
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "margem": null,
+    "operador": ">=",
+    "ref": null,
+    "valor_cvm_padronizado": null
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512663&numSequencia=1037369&numVersao=1",
+   "protocolo": "018627IPE311220250114157475-87",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 122.4,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 122,
+    "mes": 3,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 27.2,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 122,
+    "mes": 6,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 69.4,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 122,
+    "mes": 9,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 128.7,
+    "indice": "EBITDA/ Despesa Financeira Líquida",
+    "limite": 1.5,
+    "linha": 122,
+    "mes": 12,
+    "operador": ">="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.1,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 126,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.2,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 126,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 0.3,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 126,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 0.4,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 126,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [
+   {
+    "apurado_af": 1.8,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ Patrimônio Líquido",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.4,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 1.82,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ Patrimônio Líquido",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.3933,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 1.68,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ Patrimônio Líquido",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.44,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 1.26,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ Patrimônio Líquido",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.58,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   },
+   {
+    "apurado_af": 1.73,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.4233,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-03-31"
+   },
+   {
+    "apurado_af": 1.77,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.41,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-06-30"
+   },
+   {
+    "apurado_af": 1.65,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.45,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-09-30"
+   },
+   {
+    "apurado_af": 1.19,
+    "calculado_cvm": null,
+    "dias_de_antecedencia_vs_relatorio_af": null,
+    "diferenca_pct": null,
+    "dt_receb_cvm": null,
+    "indicador": "divida_liquida/ebitda",
+    "indice_af": "Dívida Líquida/ EBITDA",
+    "limite_af": 3.0,
+    "limite_confere": true,
+    "limite_escritura": [
+     [
+      "<=",
+      3.0
+     ]
+    ],
+    "margem_af": 0.6033,
+    "margem_cvm": null,
+    "operador_af": "<=",
+    "ref": "2025-12-31"
+   }
+  ],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "linha": 1333,
+    "offset": 71126,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " 30 de junho de 2024 relativas a (a) relação entre Dívida Líquida e patrimônio líquido menor ou igual a 3,00 (três inteiros); e 29 (b) relação entre Dívida Líquida e EBITDA menor ou igual a 3,00 (três inteiros); (x) realização de transações financeiras e/ou outras tran",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 10,
+  "emissor": "Assaí Atacadista",
+  "escritura": {
+   "data_entrega": "2024-05-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1244051&numSequencia=768777&numVersao=1",
+   "protocolo": "025372IPE290520240104544113-42",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": null,
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "margem": null,
+    "operador": "<=",
+    "ref": null,
+    "valor_cvm_padronizado": null
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513482&numSequencia=1038188&numVersao=1",
+   "protocolo": "025372IPE311220250169787672-49",
+   "texto": "ok"
+  },
+  "tabela_af": [
+   {
+    "ano": 2025,
+    "apurado": 1.8,
+    "indice": "Dívida Líquida/ Patrimônio Líquido",
+    "limite": 3.0,
+    "linha": 110,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.82,
+    "indice": "Dívida Líquida/ Patrimônio Líquido",
+    "limite": 3.0,
+    "linha": 110,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.68,
+    "indice": "Dívida Líquida/ Patrimônio Líquido",
+    "limite": 3.0,
+    "linha": 110,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.26,
+    "indice": "Dívida Líquida/ Patrimônio Líquido",
+    "limite": 3.0,
+    "linha": 110,
+    "mes": 12,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.73,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 114,
+    "mes": 3,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.77,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 114,
+    "mes": 6,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.65,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 114,
+    "mes": 9,
+    "operador": "<="
+   },
+   {
+    "ano": 2025,
+    "apurado": 1.19,
+    "indice": "Dívida Líquida/ EBITDA",
+    "limite": 3.0,
+    "linha": 114,
+    "mes": 12,
+    "operador": "<="
+   }
+  ]
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 4,
+  "emissor": "Brava Energia",
+  "escritura": {
+   "data_entrega": "2024-01-11",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1182929&numSequencia=707655&numVersao=1",
+   "protocolo": "025291IPE100120240104530213-28",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-05-01",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514437&numSequencia=1039143&numVersao=1",
+   "protocolo": "025291IPE311220250194871347-53",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "gatilho",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 6.0,
+    "linha": 1907,
+    "offset": 103328,
+    "operador": ">",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " Financeiro Debêntures da Primeira Série, o “Índice Financeiro”): Data de Verificação do Índice Dívida Líquida/EBITDA (considerando-se sempre o período de 12 (doze) meses anteriores a tal data) For Menor ou igual a 6.50x Se entre Dez/2023 até set/2024 (não aplicável às Debên",
+    "vencimento_antecipado": null
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "gatilho",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 5.0,
+    "linha": 1910,
+    "offset": 103518,
+    "operador": ">",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "es a tal data) For Menor ou igual a 6.50x Se entre Dez/2023 até set/2024 (não aplicável às Debêntures da Segunda For Menor ou igual a 6.00x For Menor ou igual a 5.50x Série) For M",
+    "vencimento_antecipado": null
+   }
+  ],
+  "emissao": 8,
+  "emissor": "BRK Ambiental",
+  "escritura": {
+   "data_entrega": "2020-10-05",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=797457&numSequencia=322195&numVersao=1",
+   "protocolo": "024830IPE280920200104410911-77",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 6.0,
+    "margem": 0.0083,
+    "operador": ">",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 6.05
+   },
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 5.0,
+    "margem": 0.21,
+    "operador": ">",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 6.05
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513825&numSequencia=1038531&numVersao=1",
+   "protocolo": "024830IPE311220250126770963-78",
+   "texto": "nao_extraido"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1645,
+    "offset": 81462,
+    "operador": "<=",
+    "periodicidade": "anual",
+    "step_down": [],
+    "trecho": "s auditadas consolidadas da Emissora, sendo que a primeira verificação deverá ocorrer com base nas demonstrações financeiras de 31 de dezembro de 2022 (“Índice Financeiro”):  Dívida Financeira Líquida/EBITDA: menor ou igual a 3,5x (três inteiros e cinquenta centésimos vezes) com de ",
+    "vencimento_antecipado": "automatico"
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "linha": 1646,
+    "offset": 81570,
+    "operador": "<=",
+    "periodicidade": "anual",
+    "step_down": [],
+    "trecho": "rações financeiras de 31 de dezembro de 2022 (“Índice Financeiro”):  Dívida Financeira Líquida/EBITDA: menor ou igual a 3,5x (três inteiros e cinquenta centésimos vezes) com de alteração automática para “menor ou igual a 4,0x (quatro inteiros vezes)”, observado que: (a) a parti",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 11,
+  "emissor": "Aegea Saneamento",
+  "escritura": {
+   "data_entrega": "2022-08-01",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1002418&numSequencia=527152&numVersao=1",
+   "protocolo": "023396IPE010820220104477413-04",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-05",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": -0.1743,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 4.11
+   },
+   {
+    "dt_receb": "2026-08-05",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "margem": -0.0275,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 4.11
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-28",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1510014&numSequencia=1034720&numVersao=1",
+   "protocolo": "023396IPE311220250193021541-89",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 7,
+  "emissor": "EcoRodovias",
+  "escritura": {
+   "data_entrega": "2025-11-04",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1439131&numSequencia=963843&numVersao=1",
+   "protocolo": "019453IPE311020250164317228-46",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513402&numSequencia=1038108&numVersao=1",
+   "protocolo": "019453IPE311220250190178231-10",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1244,
+    "offset": 90089,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "ra nos termos acima e encaminhada ao Agente Fiduciário. Para fins deste item devem ser consideradas as seguintes definições. “Dívida Financeira Líquida/EBITDA-Adicionado” menor ou igual a 3,5 (três inteiros e cinco décimos). “EBITDA-Adicionado/Despesa Financ",
+    "vencimento_antecipado": "nao_automatico"
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "linha": 1247,
+    "offset": 90239,
+    "operador": ">=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " “Dívida Financeira Líquida/EBITDA-Adicionado” menor ou igual a 3,5 (três inteiros e cinco décimos). “EBITDA-Adicionado/Despesa Financeira Líquida” maior ou igual a 2,0 (dois inteiros). Para fins desta Cláusula devem se",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 18,
+  "emissor": "JSL",
+  "escritura": {
+   "data_entrega": "2024-03-12",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1206573&numSequencia=731299&numVersao=1",
+   "protocolo": "022020IPE060320240104536311-22",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-10",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": -0.0086,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.53
+   },
+   {
+    "dt_receb": "2026-08-10",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 2.0,
+    "margem": -0.235,
+    "operador": ">=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 1.53
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514193&numSequencia=1038899&numVersao=1",
+   "protocolo": "022020IPE311220250135357662-79",
+   "texto": "nao_extraido"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "linha": 1020,
+    "offset": 66310,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "recebidas do item 5.1(a) e (c) abaixo, conforme aplicáveis, a saber: a) DÍVIDA FINANCEIRA LÍQUIDA /EBITDA AJUSTADO DE OPERAÇÕES FINANCEIRAS deverá ser (i) menor ou igual a: 3,0 (três inteiros) durante cada trimestre desde a ",
+    "vencimento_antecipado": null
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 2.75,
+    "linha": 1022,
+    "offset": 66523,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "er (i) menor ou igual a: 3,0 (três inteiros) durante cada trimestre desde a Data de Emissão até o trimestre encerrado em 30 de setembro de 2018 (inclusive); (ii) menor ou igual a: 2,75 (dois inteiros e setenta e cinc",
+    "vencimento_antecipado": null
+   },
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 3.2,
+    "linha": 1034,
+    "offset": 67315,
+    "operador": ">=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " trimestre até a Data de Vencimento; b) EBITDA AJUSTADO DE OPERAÇÕES FINANCEIRAS/DESPESAS FINANCEIRAS LÍQUIDAS deverá, durante cada trimestre, ser maior ou igual a: 3,2 (três inteiros e dois décimos); c) DÍVIDA FINANCEIRA LÍQUIDA/ATIV",
+    "vencimento_antecipado": null
+   },
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 1.05,
+    "linha": 1038,
+    "offset": 67514,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " cada trimestre, ser maior ou igual a: 3,2 (três inteiros e dois décimos); c) DÍVIDA FINANCEIRA LÍQUIDA/ATIVO IMOBILIZADO deverá ser (i) menor ou igual a: 1,05 (um inteiro e cinco centésimos) durante cada trimestre desde a ",
+    "vencimento_antecipado": null
+   }
+  ],
+  "emissao": 6,
+  "emissor": "Unidas",
+  "escritura": {
+   "data_entrega": "2017-09-13",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=579350&numSequencia=122146&numVersao=1",
+   "protocolo": "023280IPE120920170104299107-04",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "margem": -0.1133,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.34
+   },
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 2.75,
+    "margem": -0.2145,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.34
+   },
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 3.2,
+    "margem": -0.4375,
+    "operador": ">=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 1.8
+   },
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 1.05,
+    "margem": -2.181,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 3.34
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-05-04",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1514872&numSequencia=1039578&numVersao=1",
+   "protocolo": "023280IPE311220250137119674-50",
+   "texto": "nao_extraido"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1655,
+    "offset": 115543,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " manutenção do índice financeiro obtido da Dívida Líquida (conforme definido abaixo) da Companhia pelo EBITDA (conforme definido abaixo) que deverá ser menor ou igual a 3,5x, a ser calculado trimestralmente pela Companhia e ",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 5,
+  "emissor": "Brisanet",
+  "escritura": {
+   "data_entrega": "2025-12-01",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1451599&numSequencia=976311&numVersao=1",
+   "protocolo": "027693IPE011220250142475034-66",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-11",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.3829,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.16
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1510857&numSequencia=1035563&numVersao=1",
+   "protocolo": "027693IPE311220250193554535-69",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "gatilho",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 846,
+    "offset": 49665,
+    "operador": ">",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " assinatura desta Escritura de Emissão, uma ou mais dívidas, exceto: (i) na hipótese em que, na data de contratação de tal(is) dívida(s), o resultado da divisão entre a Dívida Líquida e o EBITDA seja igual ou inferior a 3,50 vezes (“Índice Financeiro”); ou (ii) caso sejam Dívidas",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 11,
+  "emissor": "Minerva Foods",
+  "escritura": {
+   "data_entrega": "2021-10-01",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=904821&numSequencia=429555&numVersao=1",
+   "protocolo": "020931IPE290920210104447012-03",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-17",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": -0.1629,
+    "operador": ">",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.93
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513480&numSequencia=1038186&numVersao=1",
+   "protocolo": "020931IPE311220250178272249-39",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 3,
+  "emissor": "Compass Gás e Energia",
+  "escritura": {
+   "data_entrega": "2024-03-12",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1206640&numSequencia=731366&numVersao=1",
+   "protocolo": "025127IPE040320240104536311-68",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513818&numSequencia=1038524&numVersao=1",
+   "protocolo": "025127IPE300420260126215268-47",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "linha": 1556,
+    "offset": 103881,
+    "operador": "<=",
+    "periodicidade": null,
+    "step_down": [],
+    "trecho": "missora e acompanhados pelo Agente Fiduciário ao final de cada ano fiscal, sendo a primeira apuração referente ao ano findo em 31 de dezembro de 2022 (“Índice Financeiro”): Dívida Líquida/EBITDA menor ou igual a 3,0x. 7.3 Para fins desta Escritura de Emissão, adotam-se as se",
+    "vencimento_antecipado": "nao_automatico"
+   }
+  ],
+  "emissao": 2,
+  "emissor": "CSN Mineração",
+  "escritura": {
+   "data_entrega": "2022-07-12",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=997701&numSequencia=522435&numVersao=1",
+   "protocolo": "025585IPE120720220104475412-87",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "margem": 0.9433,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 0.17
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513643&numSequencia=1038349&numVersao=1",
+   "protocolo": "025585IPE300420260180834784-55",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 11,
+  "emissor": "Vale",
+  "escritura": {
+   "data_entrega": "2025-05-23",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1382624&numSequencia=907336&numVersao=1",
+   "protocolo": "004170IPE230520250141022588-97",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512555&numSequencia=1037261&numVersao=1",
+   "protocolo": "004170IPE300420260111486892-27",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 15,
+  "emissor": "MRV Engenharia",
+  "escritura": {
+   "data_entrega": "2019-11-25",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=722943&numSequencia=247740&numVersao=1",
+   "protocolo": "020915IPE141120190104379411-79",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513142&numSequencia=1037848&numVersao=1",
+   "protocolo": "020915IPE311220250128935616-83",
+   "texto": "nao_extraido"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "linha": 1149,
+    "offset": 94918,
+    "operador": "<=",
+    "periodicidade": "anual",
+    "step_down": [],
+    "trecho": "ce Financeiro”), decorrente do quociente da divisão da Dívida Financeira Líquida Ajustada da Companhia pelo EBITDA da Companhia, que deverá ser igual ou inferior a 4,0 (quatro) vezes. 8.1.2.1. Para os fi",
+    "vencimento_antecipado": null
+   }
+  ],
+  "emissao": 3,
+  "emissor": "São Martinho",
+  "escritura": {
+   "data_entrega": "2021-06-23",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=878335&numSequencia=403072&numVersao=1",
+   "protocolo": "020516IPE220620210104437011-32",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-10",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 4.0,
+    "margem": null,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": null
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-07-31",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1550588&numSequencia=1075294&numVersao=1",
+   "protocolo": "020516IPE310320260166894823-72",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "linha": 1281,
+    "offset": 74312,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "oze) meses (não se aplicando a esta hipótese o período de cura de 30 (trinta) dias acima mencionado) : (a) o índice obtido pela divisão da Dívida Líquida pelo EBITDA Ajustado ser menor ou igual a 3,50 (três inteiros e cinquenta centésimos); e ",
+    "vencimento_antecipado": null
+   },
+   {
+    "base_consolidada": false,
+    "forma_da_clausula": "literal",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "linha": 1285,
+    "offset": 74598,
+    "operador": ">",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": " 29 (b) o índice obtido pela divisão do EBITDA Ajustado pelas Despesas Financeiras ser igualou superior a 1,50 (um inteiro e cinquenta centésimos); onde: ",
+    "vencimento_antecipado": null
+   }
+  ],
+  "emissao": 24,
+  "emissor": "Sabesp",
+  "escritura": {
+   "data_entrega": "2019-06-14",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=696285&numSequencia=222557&numVersao=1",
+   "protocolo": "014443IPE130620190104363012-25",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.5,
+    "margem": 0.3686,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 2.21
+   },
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "ebitda/resultado_financeiro",
+    "limite": 1.5,
+    "margem": 3.6333,
+    "operador": ">",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 6.95
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512565&numSequencia=1037271&numVersao=1",
+   "protocolo": "014443IPE300420260103643751-35",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 12,
+  "emissor": "Taesa",
+  "escritura": {
+   "data_entrega": "2022-04-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=974863&numSequencia=499597&numVersao=1",
+   "protocolo": "020257IPE291220220104468013-92",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1512454&numSequencia=1037160&numVersao=1",
+   "protocolo": "020257IPE300420260198407602-08",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 9,
+  "emissor": "Suzano",
+  "escritura": {
+   "data_entrega": "2024-03-06",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1203706&numSequencia=728432&numVersao=1",
+   "protocolo": "013986IPE220620230104535711-10",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513530&numSequencia=1038236&numVersao=1",
+   "protocolo": "013986IPE300420260188485858-79",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 7,
+  "emissor": "MRS Logística",
+  "escritura": {
+   "data_entrega": "2015-03-13",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=459511&numSequencia=2258&numVersao=1",
+   "protocolo": "017949IPE301220140104207609-15",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513020&numSequencia=1037726&numVersao=1",
+   "protocolo": "017949IPE311220250153221239-88",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [],
+  "emissao": 11,
+  "emissor": "Natura &Co",
+  "escritura": {
+   "data_entrega": "2022-07-01",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=994768&numSequencia=519502&numVersao=1",
+   "protocolo": "019550IPE210620220104474311-34",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [],
+  "relatorio_af": {
+   "data_entrega": "2025-04-29",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1367568&numSequencia=892294&numVersao=1",
+   "protocolo": "019550IPE290420250177058961-93",
+   "texto": "nao_extraido"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "linha": 1304,
+    "offset": 76394,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "ões trimestrais e as demonstrações financeiras consolidadas da Emissora, a partir, inclusive, das demonstrações financeiras consolidadas da Emissora relativas a 31 de dezembro de 2021: Dívida Líquida/EBITDA ≤ 3,0 Sendo que: (i) Dívida Líquida: a soma algébrica dos empré",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 2,
+  "emissor": "Hapvida",
+  "escritura": {
+   "data_entrega": "2021-11-02",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=912128&numSequencia=436862&numVersao=1",
+   "protocolo": "024392IPE131020210104450213-36",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "margem": 0.4233,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 1.73
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2026-04-30",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=1513557&numSequencia=1038263&numVersao=1",
+   "protocolo": "024392IPE311220250152989465-61",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ },
+ {
+  "comparacao": [],
+  "covenants_escritura": [
+   {
+    "base_consolidada": true,
+    "forma_da_clausula": "literal",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "linha": 1388,
+    "offset": 68261,
+    "operador": "<=",
+    "periodicidade": "trimestral",
+    "step_down": [],
+    "trecho": "mbro de 2018: (a) índice financeiro decorrente do quociente da divisão da Dívida Líquida (conforme definido abaixo) pelo EBITDA (conforme definido abaixo), que deverá ser (1) igual ou inferior a 3,0 (três) vezes. 6.27.3 Ocorrendo qualquer dos Eventos de Inadimplemento p",
+    "vencimento_antecipado": "automatico"
+   }
+  ],
+  "emissao": 4,
+  "emissor": "Santos Brasil",
+  "escritura": {
+   "data_entrega": "2019-02-21",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=666818&numSequencia=196593&numVersao=1",
+   "protocolo": "017892IPE200220190104351710-28",
+   "texto": "ok"
+  },
+  "margem_ultimo_itr": [
+   {
+    "dt_receb": "2026-08-12",
+    "indicador": "divida_liquida/ebitda",
+    "limite": 3.0,
+    "margem": 0.7233,
+    "operador": "<=",
+    "ref": "2026-06-30",
+    "valor_cvm_padronizado": 0.83
+   }
+  ],
+  "relatorio_af": {
+   "data_entrega": "2020-06-26",
+   "link": "https://www.rad.cvm.gov.br/ENET/frmDownloadDocumento.aspx?Tela=ext&descTipo=IPE&CodigoInstituicao=1&numProtocolo=771932&numSequencia=296679&numVersao=1",
+   "protocolo": "017892IPE311220190104400814-05",
+   "texto": "ok"
+  },
+  "tabela_af": []
+ }
+]

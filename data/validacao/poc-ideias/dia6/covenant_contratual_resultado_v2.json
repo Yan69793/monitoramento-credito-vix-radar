@@ -1,0 +1,661 @@
+{
+ "comparacao": [
+  {
+   "apurado_af": 3.65,
+   "componentes_rs_mi": {
+    "caixa": 3583.0,
+    "despesa_financeira": 1945.1,
+    "divida": 12906.5,
+    "ebitda": 2487.2,
+    "receita_financeira": 289.4
+   },
+   "contratual_cvm": 3.75,
+   "dif_pct": 2.7,
+   "dt_receb_cvm": "2025-06-12",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.0875,
+   "margem_cvm": 0.0625,
+   "operador": "<",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.57,
+   "componentes_rs_mi": {
+    "caixa": 1414.7,
+    "despesa_financeira": 1777.2,
+    "divida": 8172.0,
+    "ebitda": 2553.3,
+    "receita_financeira": 321.5
+   },
+   "contratual_cvm": 2.65,
+   "dif_pct": 3.1,
+   "dt_receb_cvm": "2025-08-14",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.3575,
+   "margem_cvm": 0.3375,
+   "operador": "<",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.38,
+   "componentes_rs_mi": {
+    "caixa": 2553.2,
+    "despesa_financeira": 1722.4,
+    "divida": 8653.4,
+    "ebitda": 2564.5,
+    "receita_financeira": 334.9
+   },
+   "contratual_cvm": 2.38,
+   "dif_pct": 0.0,
+   "dt_receb_cvm": "2025-11-13",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.405,
+   "margem_cvm": 0.405,
+   "operador": "<",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.5,
+   "componentes_rs_mi": {
+    "caixa": 2667.5,
+    "despesa_financeira": 1469.5,
+    "divida": 7890.4,
+    "ebitda": 2047.2,
+    "receita_financeira": 437.0
+   },
+   "contratual_cvm": 2.55,
+   "dif_pct": 2.0,
+   "dt_receb_cvm": "2026-03-26",
+   "emissor": "Dasa",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.0,
+   "margem_af": 0.375,
+   "margem_cvm": 0.3625,
+   "operador": "<",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.31,
+   "componentes_rs_mi": {
+    "caixa": 3583.0,
+    "despesa_financeira": 1945.1,
+    "divida": 12906.5,
+    "ebitda": 2487.2,
+    "receita_financeira": 289.4
+   },
+   "contratual_cvm": 1.5,
+   "dif_pct": -35.1,
+   "dt_receb_cvm": "2025-06-12",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.54,
+   "margem_cvm": 0.0,
+   "operador": ">",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.47,
+   "componentes_rs_mi": {
+    "caixa": 1414.7,
+    "despesa_financeira": 1777.2,
+    "divida": 8172.0,
+    "ebitda": 2553.3,
+    "receita_financeira": 321.5
+   },
+   "contratual_cvm": 1.75,
+   "dif_pct": -29.1,
+   "dt_receb_cvm": "2025-08-14",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.6467,
+   "margem_cvm": 0.1667,
+   "operador": ">",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.48,
+   "componentes_rs_mi": {
+    "caixa": 2553.2,
+    "despesa_financeira": 1722.4,
+    "divida": 8653.4,
+    "ebitda": 2564.5,
+    "receita_financeira": 334.9
+   },
+   "contratual_cvm": 1.85,
+   "dif_pct": -25.4,
+   "dt_receb_cvm": "2025-11-13",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.6533,
+   "margem_cvm": 0.2333,
+   "operador": ">",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.09,
+   "componentes_rs_mi": {
+    "caixa": 2667.5,
+    "despesa_financeira": 1469.5,
+    "divida": 7890.4,
+    "ebitda": 2047.2,
+    "receita_financeira": 437.0
+   },
+   "contratual_cvm": 1.98,
+   "dif_pct": -5.3,
+   "dt_receb_cvm": "2026-03-26",
+   "emissor": "Dasa",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 1.5,
+   "margem_af": 0.3933,
+   "margem_cvm": 0.32,
+   "operador": ">",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.6,
+   "componentes_rs_mi": {
+    "caixa": 4875.0,
+    "divida": 19256.3,
+    "ebitda": 4326.5
+   },
+   "contratual_cvm": 3.32,
+   "dif_pct": 27.7,
+   "dt_receb_cvm": "2025-05-14",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4222,
+   "margem_cvm": 0.2622,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.7,
+   "componentes_rs_mi": {
+    "caixa": 3935.6,
+    "divida": 19236.3,
+    "ebitda": 4938.1
+   },
+   "contratual_cvm": 3.1,
+   "dif_pct": 14.8,
+   "dt_receb_cvm": "2025-08-13",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4,
+   "margem_cvm": 0.3111,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.7,
+   "componentes_rs_mi": {
+    "caixa": 4026.6,
+    "divida": 19541.8,
+    "ebitda": 5627.0
+   },
+   "contratual_cvm": 2.76,
+   "dif_pct": 2.2,
+   "dt_receb_cvm": "2025-11-11",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4,
+   "margem_cvm": 0.3867,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.6,
+   "componentes_rs_mi": {
+    "caixa": 2729.0,
+    "divida": 19734.5,
+    "ebitda": 6506.8
+   },
+   "contratual_cvm": 2.61,
+   "dif_pct": 0.4,
+   "dt_receb_cvm": "2026-03-05",
+   "emissor": "Eneva",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 4.5,
+   "margem_af": 0.4222,
+   "margem_cvm": 0.42,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.3,
+   "componentes_rs_mi": {
+    "caixa": 13424.5,
+    "despesa_financeira": 5965.2,
+    "divida": 57760.0,
+    "ebitda": 18732.0,
+    "receita_financeira": 1721.4
+   },
+   "contratual_cvm": 2.37,
+   "dif_pct": 3.0,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.3429,
+   "margem_cvm": 0.3229,
+   "operador": "<=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.3,
+   "componentes_rs_mi": {
+    "caixa": 12424.3,
+    "despesa_financeira": 6287.5,
+    "divida": 57763.5,
+    "ebitda": 19275.1,
+    "receita_financeira": 1869.2
+   },
+   "contratual_cvm": 2.35,
+   "dif_pct": 2.2,
+   "dt_receb_cvm": "2025-08-12",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.3429,
+   "margem_cvm": 0.3286,
+   "operador": "<=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.2,
+   "componentes_rs_mi": {
+    "caixa": 12643.8,
+    "despesa_financeira": 6681.1,
+    "divida": 57170.9,
+    "ebitda": 19149.9,
+    "receita_financeira": 2012.4
+   },
+   "contratual_cvm": 2.33,
+   "dif_pct": 5.9,
+   "dt_receb_cvm": "2025-11-12",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.3714,
+   "margem_cvm": 0.3343,
+   "operador": "<=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 2.0,
+   "componentes_rs_mi": {
+    "caixa": 17095.6,
+    "despesa_financeira": 6708.7,
+    "divida": 58641.2,
+    "ebitda": 20741.0,
+    "receita_financeira": 2089.3
+   },
+   "contratual_cvm": 2.0,
+   "dif_pct": 0.0,
+   "dt_receb_cvm": "2026-03-30",
+   "emissor": "Simpar",
+   "indicador": "divida_liquida/ebitda",
+   "limite": 3.5,
+   "margem_af": 0.4286,
+   "margem_cvm": 0.4286,
+   "operador": "<=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 3.4,
+   "componentes_rs_mi": {
+    "caixa": 13424.5,
+    "despesa_financeira": 5965.2,
+    "divida": 57760.0,
+    "ebitda": 18732.0,
+    "receita_financeira": 1721.4
+   },
+   "contratual_cvm": 4.41,
+   "dif_pct": 29.7,
+   "dt_receb_cvm": "2025-05-08",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.7,
+   "margem_cvm": 1.205,
+   "operador": ">=",
+   "ref": "2025-03-31",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 3.2,
+   "componentes_rs_mi": {
+    "caixa": 12424.3,
+    "despesa_financeira": 6287.5,
+    "divida": 57763.5,
+    "ebitda": 19275.1,
+    "receita_financeira": 1869.2
+   },
+   "contratual_cvm": 4.36,
+   "dif_pct": 36.2,
+   "dt_receb_cvm": "2025-08-12",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.6,
+   "margem_cvm": 1.18,
+   "operador": ">=",
+   "ref": "2025-06-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 3.0,
+   "componentes_rs_mi": {
+    "caixa": 12643.8,
+    "despesa_financeira": 6681.1,
+    "divida": 57170.9,
+    "ebitda": 19149.9,
+    "receita_financeira": 2012.4
+   },
+   "contratual_cvm": 4.1,
+   "dif_pct": 36.7,
+   "dt_receb_cvm": "2025-11-12",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.5,
+   "margem_cvm": 1.05,
+   "operador": ">=",
+   "ref": "2025-09-30",
+   "relatorio_af_entregue": "2026-04-30"
+  },
+  {
+   "apurado_af": 3.1,
+   "componentes_rs_mi": {
+    "caixa": 17095.6,
+    "despesa_financeira": 6708.7,
+    "divida": 58641.2,
+    "ebitda": 20741.0,
+    "receita_financeira": 2089.3
+   },
+   "contratual_cvm": 4.49,
+   "dif_pct": 44.8,
+   "dt_receb_cvm": "2026-03-30",
+   "emissor": "Simpar",
+   "indicador": "ebitda/resultado_financeiro",
+   "limite": 2.0,
+   "margem_af": 0.55,
+   "margem_cvm": 1.245,
+   "operador": ">=",
+   "ref": "2025-12-31",
+   "relatorio_af_entregue": "2026-04-30"
+  }
+ ],
+ "concordancia": 0.45,
+ "definicoes_sha256": "a307d56c324af6b6f1d34569a6a65c68dbd5b8c4eba7e73134f268fee9efdd18",
+ "dentro_de_5pct": 9,
+ "mesmo_lado_do_limite": 20,
+ "pares": 20,
+ "por_emissor_indicador": {
+  "Dasa | divida_liquida/ebitda": "4 de 4",
+  "Dasa | ebitda/resultado_financeiro": "0 de 4",
+  "Eneva | divida_liquida/ebitda": "2 de 4",
+  "Simpar | divida_liquida/ebitda": "3 de 4",
+  "Simpar | ebitda/resultado_financeiro": "0 de 4"
+ },
+ "serie_preventiva": {
+  "Dasa": [
+   {
+    "dt_receb": "2023-05-11",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-09",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.94,
+    "dt_receb": "2024-04-17",
+    "ebitda/resultado_financeiro": 1.53,
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.19,
+    "dt_receb": "2024-05-15",
+    "ebitda/resultado_financeiro": 1.68,
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.45,
+    "dt_receb": "2024-08-14",
+    "ebitda/resultado_financeiro": 1.08,
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.59,
+    "dt_receb": "2024-11-13",
+    "ebitda/resultado_financeiro": 1.8,
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.65,
+    "dt_receb": "2025-03-26",
+    "ebitda/resultado_financeiro": 1.49,
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.75,
+    "dt_receb": "2025-06-12",
+    "ebitda/resultado_financeiro": 1.5,
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.65,
+    "dt_receb": "2025-08-14",
+    "ebitda/resultado_financeiro": 1.75,
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.38,
+    "dt_receb": "2025-11-13",
+    "ebitda/resultado_financeiro": 1.85,
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.55,
+    "dt_receb": "2026-03-26",
+    "ebitda/resultado_financeiro": 1.98,
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.87,
+    "dt_receb": "2026-05-12",
+    "ebitda/resultado_financeiro": 2.2,
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.39,
+    "dt_receb": "2026-08-13",
+    "ebitda/resultado_financeiro": 1.67,
+    "ref": "2026-06-30"
+   }
+  ],
+  "Eneva": [
+   {
+    "dt_receb": "2023-05-16",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-13",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.88,
+    "dt_receb": "2024-03-14",
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.03,
+    "dt_receb": "2024-05-14",
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 4.31,
+    "dt_receb": "2024-08-14",
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.53,
+    "dt_receb": "2024-11-12",
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 3.54,
+    "dt_receb": "2025-03-20",
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.32,
+    "dt_receb": "2025-05-14",
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.1,
+    "dt_receb": "2025-08-13",
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.76,
+    "dt_receb": "2025-11-11",
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.61,
+    "dt_receb": "2026-03-05",
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.78,
+    "dt_receb": "2026-05-13",
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 3.21,
+    "dt_receb": "2026-08-12",
+    "ref": "2026-06-30"
+   }
+  ],
+  "Simpar": [
+   {
+    "dt_receb": "2023-05-03",
+    "ref": "2023-03-31"
+   },
+   {
+    "dt_receb": "2023-08-10",
+    "ref": "2023-06-30"
+   },
+   {
+    "dt_receb": "2023-11-08",
+    "ref": "2023-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.43,
+    "dt_receb": "2024-03-26",
+    "ebitda/resultado_financeiro": 4.52,
+    "ref": "2023-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.49,
+    "dt_receb": "2024-05-09",
+    "ebitda/resultado_financeiro": 4.55,
+    "ref": "2024-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.47,
+    "dt_receb": "2024-08-08",
+    "ebitda/resultado_financeiro": 4.8,
+    "ref": "2024-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.36,
+    "dt_receb": "2024-11-12",
+    "ebitda/resultado_financeiro": 5.12,
+    "ref": "2024-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.37,
+    "dt_receb": "2025-04-08",
+    "ebitda/resultado_financeiro": 4.43,
+    "ref": "2024-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.37,
+    "dt_receb": "2025-05-08",
+    "ebitda/resultado_financeiro": 4.41,
+    "ref": "2025-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.35,
+    "dt_receb": "2025-08-12",
+    "ebitda/resultado_financeiro": 4.36,
+    "ref": "2025-06-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.33,
+    "dt_receb": "2025-11-12",
+    "ebitda/resultado_financeiro": 4.1,
+    "ref": "2025-09-30"
+   },
+   {
+    "divida_liquida/ebitda": 2.0,
+    "dt_receb": "2026-03-30",
+    "ebitda/resultado_financeiro": 4.49,
+    "ref": "2025-12-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.03,
+    "dt_receb": "2026-05-07",
+    "ebitda/resultado_financeiro": 4.5,
+    "ref": "2026-03-31"
+   },
+   {
+    "divida_liquida/ebitda": 2.0,
+    "dt_receb": "2026-08-12",
+    "ebitda/resultado_financeiro": 4.41,
+    "ref": "2026-06-30"
+   }
+  ]
+ },
+ "versao": "covenant_contratual v1",
+ "versao_definicoes": "definicoes_contratuais v2"
+}

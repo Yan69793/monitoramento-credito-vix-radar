@@ -1,0 +1,35 @@
+{
+ "conferido_por": "agente (Claude), lendo cada frase sinalizada; nao e revisao do operador",
+ "data": "2026-10-17",
+ "amostra": "9 frases sinalizadas de Simpar (2T25 x 3T25) e 9 de GPA (3T25 x 1T26), primeiras de cada nota, ordem do arquivo",
+ "itens": [
+  {"emissor": "Simpar", "nota": "ativos de frota", "material": false, "motivo": "tabela de movimentacao de imobilizado achatada em frase"},
+  {"emissor": "Simpar", "nota": "base de preparacao", "material": false, "motivo": "cabecalho e indice de notas"},
+  {"emissor": "Simpar", "nota": "cessao de direitos creditorios", "material": false, "motivo": "tabela de saldos"},
+  {"emissor": "Simpar", "nota": "contexto operacional", "material": false, "motivo": "tabela de reclassificacao de periodo anterior"},
+  {"emissor": "Simpar", "nota": "contexto operacional", "material": false, "motivo": "cabecalho de pagina e tabela de tributos"},
+  {"emissor": "Simpar", "nota": "depositos judiciais", "material": false, "motivo": "definicao padrao"},
+  {"emissor": "Simpar", "nota": "eventos subsequentes", "material": true, "motivo": "emissao e pagamento antecipado de debentures da Movida"},
+  {"emissor": "Simpar", "nota": "eventos subsequentes", "material": true, "motivo": "aprovacao da 24a emissao de debentures da Movida com garantia fidejussoria"},
+  {"emissor": "Simpar", "nota": "gastos por natureza", "material": false, "motivo": "impairment de 2024 repetido, fato antigo"},
+  {"emissor": "GPA", "nota": "impostos a recolher", "material": false, "motivo": "remissao a nota anual"},
+  {"emissor": "GPA", "nota": "impostos a recolher", "material": false, "motivo": "rotina de credito tributario"},
+  {"emissor": "GPA", "nota": "intangivel", "material": false, "motivo": "tabela"},
+  {"emissor": "GPA", "nota": "intangivel", "material": true, "motivo": "passivos de risco sacado fora da divida liquida e sem clausulas restritivas"},
+  {"emissor": "GPA", "nota": "politicas contabeis", "material": false, "motivo": "adocao de pronunciamentos, rotina"},
+  {"emissor": "GPA", "nota": "demandas judiciais", "material": true, "motivo": "adesao ao REFIS do Estado do Rio de Janeiro no 1T26"},
+  {"emissor": "GPA", "nota": "demandas judiciais", "material": false, "motivo": "contingencia recorrente"},
+  {"emissor": "GPA", "nota": "tributos a recuperar", "material": false, "motivo": "tabela de imobilizado"},
+  {"emissor": "GPA", "nota": "tributos a recuperar", "material": true, "motivo": "indicativos de impairment em 31/03/2026"}
+ ],
+ "material": 5,
+ "total": 18,
+ "precisao": 0.278,
+ "recall": "nao medido: a separacao de notas falhou na Dasa (0 e 1 nota detectadas), entao o caso de reapresentacao v1 x v2 nao produziu resultado",
+ "limitacoes": [
+  "tabelas viram frases com numeros e entram como mudanca",
+  "titulos de nota do PDF consolidado misturam notas de controladas (Simpar traz texto de Movida e Vamos)",
+  "o XML do ITR nao traz as notas, so o PDF; o PDF solto do ZIP vem cortado em 8 MiB, mas nos 3 casos testados as paginas estavam completas",
+  "amostra de 18 itens e de 2 emissores, nao e validacao estatistica"
+ ]
+}

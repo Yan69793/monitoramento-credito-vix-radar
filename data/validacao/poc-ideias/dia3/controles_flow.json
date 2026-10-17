@@ -1,0 +1,10 @@
+{
+ "correta": {
+  "test_linha_confidencial_so_entra_depois_do_prazo": true,
+  "test_competencia_so_entra_depois_da_defasagem": true,
+  "test_pico_de_resgate_vira_pressao_so_no_dia_seguinte": true
+ },
+ "vazada_sem_confidencialidade_reprovada": true,
+ "vazada_sem_defasagem_reprovada": true,
+ "vazada_informe_mesmo_dia_reprovada": true
+}

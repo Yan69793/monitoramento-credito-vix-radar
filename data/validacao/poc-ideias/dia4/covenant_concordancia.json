@@ -1,0 +1,19 @@
+{
+ "concordancia": 0.3,
+ "criterio_congelado": {
+  "concordancia_minima": 0.9,
+  "escrituras_para_aprovar": 20,
+  "precisao_extracao_minima": 0.95
+ },
+ "dentro_de_5pct": 6,
+ "limite_da_escritura_igual_ao_do_agente": 20,
+ "mesmo_lado_do_limite": 9,
+ "pares_comparaveis": 20,
+ "por_emissor_indicador": {
+  "Dasa | divida_liquida/ebitda": "4 de 4",
+  "Dasa | ebitda/resultado_financeiro": "0 de 4",
+  "Eneva | divida_liquida/ebitda": "2 de 4",
+  "Simpar | divida_liquida/ebitda": "0 de 4",
+  "Simpar | ebitda/resultado_financeiro": "0 de 4"
+ }
+}
