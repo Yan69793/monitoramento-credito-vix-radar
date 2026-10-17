@@ -7,7 +7,66 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 17/10/2026 14:10: VR-TEXTO1 (landing v202.71), METRICABRASKEM1 e baseline visual do CI
+
+> **Status:** PUBLICADO (Pages v202.71, commit `49c6d69`). Baseline visual e e2e commitados em seguida.
+
+- **VR-TEXTO1.** No desktop, o texto da landing classica (logo, chamada, H1, subtitulo, botoes, menu) era desenhado dentro do PNG, a cerca de 75 px de H1, e o celular tinha outro texto em HTML. Arte reprocessada sem o texto (faixa esquerda e menu do topo limpos, cards do grafico preservados) e embutida em JPEG; texto unico em HTML para desktop e celular, com H1 48-54 px no desktop e 32-38 no celular, texto 14-16, botoes e menu 12-13, indicadores 21-28. Pagina de 2,88 MB para 1,0 MB. Removidos dois blocos de escala nao commitados de outro agente (`VR-SCALE1`, `VX-LANDING-SCALE1`), com backup em `BACKUPS\operacional\vix-radar\20261017-040559-landing-texto-html`. Validado em 1920, 1440, 1280, 1024, 768, 375 e 320 sem overflow, login e cadastro abrindo, suite Playwright v1 74 passed.
+- **METRICABRASKEM1.** O workflow `emissores-cadastro` reprovava o card 2 (Rating) da Braskem como "evento de credito com 54 dias (limite 30)". O card mostra o rating RD da Fitch e estava tipado `evento_credito`. Reclassificado para `rating` com `source_date 2026-08-14`, data da acao da Fitch conferida na pagina de Rating do RI da Braskem (o 17/08 do card antigo era o comunicado da companhia). Prova: card antigo exit 1, novo exit 0 hoje, novo exit 1 com hoje simulado em 2027-08-20. A RE de 24/08 tem 90 dias de negociacao: revisar o card por volta de 22/11.
+- **Baseline visual.** `screenshots.spec.mjs` reprovava (6% e 15% de pixels) porque o PNG de referencia era de 06/09, anterior as mudancas da landing estendida. Regenerado no CI Linux (`workflow_dispatch generate-baseline`, run 39011925185) e aprovado pelo operador.
+
+## 17/10/2026 03:45: COLETORVERIF1, Codex reprovava 100% na verificacao-async por contrato contraditorio
+
+> **Status:** CORRIGIDO local (SEM commit). Script lido direto do disco pelo Task Scheduler, vale a partir da proxima verificacao-async (11:03 BRT).
+
+- **Sintoma.** Toda rodada da verificacao-async com provider `codex` reprovou 100% (15/10 22:20 Oi, 15/10 22:35 Minerva x2, 16/10 10:14 Oncoclinicas), com 110 a 175 tokens de saida. A rodada com `claude-subscription` (16/10 21:56) aprovou 5 de 6.
+- **Causa raiz (medida).** Com `COLETOR_PS` ativo (padrao desde 23/09), `Get-VixBlocoColetorVerificacao` anexava ao prompt "PROIBIDO executar WebSearch", "fontes_validas so pode conter URL ja presente no evento" e "coleta vazia ou indisponivel: REPROVADO obrigatorio". O prompt do Worker exige busca ativa e fonte primaria DISTINTA com URL, e a coleta entrega so manchete sem URL numa janela de 7 dias contada de hoje. Para um modelo obediente, APROVADO era impossivel. O Codex obedecia. O Claude roda com `--tools 'WebSearch,WebFetch'`, desobedecia o bloco e buscava.
+- **Prova (replay local, `-ReplayFilaPath`, submit_ok=0, fila real Minerva + BRK).** Bloco antigo: 2 REPROVADO, `fontes_validas []`, Minerva com motivo "a janela de sete dias nao cobre a data declarada". Coletor desligado: 2 REPROVADO de merito com URL real. Bloco corrigido, coletor ligado: 2 REPROVADO de merito, 2 e 1 URLs, Minerva confianca 0,8 ("so reproducoes da mesma apuracao, nenhuma fonte primaria distinta"). Os dois itens sao rejeicoes legitimas pela regra 1 do Worker. Nao foi observado APROVADO do Codex nesta medicao (nao havia item aprovavel na fila).
+- **Correcao.** Provider com busca propria recebe a coleta como ponto de partida e faz a busca ativa. Provider sem busca (`deepseek`, `$script:VixColetorObrigatorio`) mantem o bloco estrito, sem mudanca.
+- **Guarda.** `scripts/test-coletor-verificacao-contrato.ps1`: HEAD reprova 4 de 12 (os 4 do defeito), corrigido 12/12. Regressao: test-verificacao-codex 52/52, test-verificacao-teto 33/33, codex-fallback 58/58, quota-failclosed 64/64, bridge-deepseek 60/60, lint-encoding e check-claude-free exit 0.
+- **Efeito colateral.** Codex com busca gasta mais token por lote (replay: 20.463 com o bloco estrito, 46.106 corrigido). O caminho Claude ja buscava, entao para ele so muda o texto do prompt.
+
+## 17/10/2026 02:40: FILAREMOVE1, health acusava 28h de fila com o item elegivel ha 1h (Worker v4.9.271)
+
+> **Status:** CORRIGIDO e publicado (Worker v4.9.271, commits `21b0c00` e `c9b24e4`, push feito).
+
+- **Sintoma.** Health `ok:false` por `verificador_ok:false`, `verif_fila_atrasada:true`, `verif_fila_mais_antiga_h:28`. Fila com 2 itens: BRK Ambiental (retido de proposito em 16/10 21:59, `PARECER_INCOMPLETO motivo=aprovacao_sem_fonte`) e Minerva Foods (`2026-10-08|minerva foods|neofeed.com.br/...`, `criado_em 2026-10-16T01:30:55Z`).
+- **Causa raiz.** Em 16/10 01:36Z a rotina recebeu duas Minervas na mesma chave diaria, deu REPROVADO nas duas com 1 s de intervalo, e uma saiu da fila e a outra nao. O retorno de `removerDaFilaVerificacao` era ignorado em `confirmar_verificacao`, entao a falha sumia. O item sobrevivente ficou escondido pelo backoff da tentativa nao-conclusiva (REPROVADO-FAILCLOSED1) e voltou 24h depois. O health contava a idade desde `criado_em`, somando as 24h de backoff legitimo ao atraso.
+- **Correcao.** `_verifFilaInicioElegivelMs`: a idade conta a partir de `proxima_em` vencido quando ha tentativa nao-conclusiva. `confirmar_verificacao` tenta a remocao de novo uma vez e expoe `fila_remocao_falhas` + `console.error [FILAREMOVE1]`.
+- **Guarda.** `api/test/fila-remove-health.test.mjs` (prova de duas pontas). Suite completa 55 arquivos, 536/536 no gate do deploy.
+- **Prova.** Portao pos-deploy: HTTP 200, `ok:true`, `versao:v4.9.271`, `verificador_ok:true`, `verif_fila_pendentes:2`, `verif_fila_mais_antiga_h:5`, `verif_fila_atrasada:false`, `verif_orfaos_ativos:0`.
+- **Aberto (P2).** Toda rodada da verificacao-async com provider `codex` rejeitou 100% dos itens com 110 a 175 tokens de saida (15/10 22:20 Oi, 15/10 22:35 Minerva x2, 16/10 10:14 Oncoclinicas), e a rodada com `claude-subscription` (16/10 21:56) aprovou 5 de 6. Rejeicao em massa no Codex pode ser parse ou REPROVADO por padrao, nao julgamento. Nao investigado.
+
+## 17/10/2026 02:20: frontend v202.69 (tipografia da landing) e v202.70 (aviso de sessao removido)
+
+> **Status:** PUBLICADO. v202.69 commit `b83d7ed` com push. v202.70 commit `2c679d4`, push levado pelo deploy do Worker.
+
+- **v202.69.** Escala tipografica da landing (H1 32-38 px no celular e 52 px na estendida, textos 14-16, botoes e navegacao 12-13, indicadores 21-28 com teto pela largura da coluna). Desktop da landing classica e PNG com o texto desenhado, so os indicadores sao texto vivo.
+- **v202.70.** Removido o `window.alert` "A sessao anterior desta conta foi encerrada..." do `agLogin()`. A flag `sessao_anterior_encerrada` do Worker segue, agora so com `_vlog` (debug). Invalidacao da sessao antiga intacta no servidor.
+- **Aberto (P3).** `app/tests/tests/vx-auth-e2e.spec.mjs` ajustado para exigir a AUSENCIA do dialogo, mas fora de commit (o deploy-pages nao versiona `app/tests`). Sem esse commit o e2e no repo ainda exige o aviso que nao existe mais.
+
+## 16/10/2026 21:09, landing aprovada publicada
+
+Fechado o pedido de integrar e publicar a previa cinematografica aprovada. Arte original recuperada do visualizador da conversa "Pesquisar VIX Radar pulsando", indicadores refeitos em HTML para alinhar desktop/celular e botoes ligados ao login/cadastro existentes. Producao v202.68 validada pelo deploy e navegador. Health HTTP 200, ok:true. Registro em `status/ESTADO.md`. Commit/push pendentes, deploy executado com `-SkipGit`.
+
 Fila de acoes abertas. Prioridade: P1 (critico, trava operacao), P2 (alto, degrada cobertura ou seguranca), P3 (medio, melhoria ou conveniencia), P4 (baixo, cosmetico ou futuro).
+
+## 16/10 20:40: SEMTETO1 e SEVERIDADE1, Claude executor das 2 rotinas com modelo por severidade
+
+> **Status:** IMPLEMENTADO local (SEM commit, SEM deploy). Ativo desde a noturna de reposicao de 16/10.
+
+- **SEMTETO1.** Decisao do operador: Claude da assinatura executa a matinal e a noturna, sem teto de tokens. `VIXRADAR_LLM_PROVIDER` User `codex` -> `claude-subscription`, `SEM_TETO=1` em `logs/routines/custo-config.json`, `Test-VixSemTeto` em `lib/vixradar-custo.ps1` (so os dois juntos desligam o cap).
+- **SEVERIDADE1.** Regra unica de modelo nas duas rotinas (`Get-VixSeveridadeEmissor` e `New-VixJobsPorSeveridade` em `lib/vixradar-profundidade.ps1`): CRITICO (EWS>=50, ou CVM novo com EWS>=30) Sonnet lote 2; ALTO (EWS>=30, CVM novo, imprensa recente) Sonnet lote 4; MONITORADO (resto do aprofundamento) Haiku com o MESMO roteiro FULL e buscas, lote 6. Liga so com claude-subscription; codex segue o caminho antigo. Medido antes: Sonnet em lote de 4 levou 453 a 1.700 s por lote (16/10 19:24-20:24), 50 emissores no Sonnet projetavam ~3 h. Antiga (ate 02/09): Sonnet so EWS>=38 ou CVM novo, noturna completa em 26 a 48 min (nota TETOPAREDE1). Replay do plano de 16/10: 6 no Sonnet em 4 lotes, 64 no Haiku em 11. Primeira rodada real (20:42) expos um defeito da propria regra: Oi, GPA e Kora (EWS 55) estavam no lote rapido porque a rotacao semanal ja os tinha aprofundado na matinal. `Select-VixPromocaoSeveridade` sobe CRITICO e ALTO do lote rapido para o aprofundamento antes da montagem. Medido na rodada: Light (1 emissor, Sonnet) 141,9 s e 44.879 tokens.
+- **Guarda:** `scripts/test-severidade1-16out.ps1` 28/28 (fronteiras de nivel nas duas pontas, ordem e tamanho dos lotes, replay do plano real, ligacao no motor). Regressao: capfaixa1 19/19, lotefila1 20/20, quota-failclosed 64/64, claude-fallback 10/10, codex-fallback 58/58, mva-failover 77/77, profundidade-noturna 154/154, lint-encoding e check-claude-free EXIT=0.
+- **Aberto:** (1) Haiku seguindo o roteiro FULL ainda nao medido em producao (qualidade e formato do RESULTADO|); (2) `VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter` segue ativo e, sem teto, cota esgotada da assinatura desvia para OpenRouter pago; (3) lote FULL da noturna no caminho codex mudou de 16 para 4 (CAPFAIXA1/travamento), efeito no codex nao medido.
+
+## 16/10 18:40: CAPFAIXA1, um lote caro fechava o orcamento da rodada inteira
+
+> **Status:** CORRIGIDO local (SEM commit, SEM deploy). Vale a partir da proxima rotina agendada.
+
+- **CAPFAIXA1 (P1, corrigido local).** Noturna de 16/10 18:05-18:16 analisou 0 emissores com 0 tokens e cap de 700.000 livre: o primeiro lote da fila (FULL, 2 emissores, envelope 787.037) nao cabia, o ramo `CAP pre-lote` de `run_vixradar_varredura.ps1` fazia `$capAtingido = $true` e os 3 lotes baratos seguintes (90.360, 90.360, 32.915) eram DEFERIDOS sem ser medidos. 68 deferidos, quadro "O que mudou hoje" vazio. Mesmo padrao na matinal de 16/10 (escalada-7 de 314.815 deferida com 394.324 livres) e nas noturnas de 13/10 e 15/10. Causa raiz: o fechamento da faixa pela estimativa, que LOTEFILA1 tirou do ramo de lote reduzido, ficou no ramo de lote inteiro. Correcao: o ramo so defere o lote; a faixa fecha so por consumo real (CAP_EXCEDIDO, uso nao mensuravel). `Get-VixCaudaRotacao` recebe `$capAtingido -or tokens_hard_hit`, mantendo o motivo `cap_efetivo` da cauda.
+- **Guarda:** `scripts/test-capfaixa1-16out.ps1` 12/12 (AST reprova o motor de HEAD e aprova o atual, replay com as funcoes reais de admissao: antes 0 rodam, depois 33 rodam com maximo admitido 130.357 contra cap 700.000, cap curto continua respeitado, ancora no log real). Regressao: lotefila1 20/20, quota-failclosed 64/64, codex-fallback 58/58, mva-failover 77/77, lint-encoding 0 reprovado.
+- **Aberto:** a sentinela das 16:56 abriu o disjuntor do Codex por cota (156.293 tokens perdidos). Sem medir a cota, nao da para afirmar que a noturna teria rodado mesmo com a correcao.
 
 ## 16/10 14:50: RESEARCHTOGGLE1 e METRICASFOLD1, pagina do emissor (frontend v202.66)
 
