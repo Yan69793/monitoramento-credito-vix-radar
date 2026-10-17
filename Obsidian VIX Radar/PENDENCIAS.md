@@ -7,6 +7,20 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 17/10/2026 16:30: auditoria independente: COLETATETO1 homologado na Coleta das 17:00, CUSTOSEMUSAGE1 corrigido local (SEM commit), EWS 2.0 parado por decisao de rotulador
+
+> **Status:** COLETATETO1 homologado e commitado; CUSTOSEMUSAGE1 local, SEM commit (mesmos arquivos de trabalho nao commitado de outra sessao).
+
+Producao conferida: Worker `v4.9.271`, Pages `v202.71`, health HTTP 200 `ok:true` `sentry_ok:true` `verificador_ok:true`. Matinal de 17/10 fechou 22/22 (`COBERTURA_RECONCILIACAO: OK`), Verificacao-Async 11:03 aprovou 3/3 com Claude (COLETORVERIF1 sem rejeicao em massa). Suite `run-all-tests` 58/58 no PowerShell nativo (o `test-rollback-pages` so falha sob Git Bash, que resolve `tar` para o GNU tar).
+
+**COLETATETO1.** Em 16/10 a Coleta-Volatilidade passou do limite de 15 min no upload e o Scheduler matou a task (`0x40010004`) sem FIM nem causa, porque a saida do filho ficava em memoria. `scripts/run_coleta_volatilidade.ps1` roda coletor (420 s) e uploader (330 s) com teto proprio e saida em `logs/routines/coleta_<etapa>_*.out.txt`. Guarda `scripts/test-coletateto1-17out.ps1`: HEAD 0/4, corrigido 12/12. Homologado em execucao real 17/10 17:00: coletor 138 s, upload 2 s, `FIM: coleta_volatilidade OK`, preflight `exit=0 dur=145s`, `UPLOAD_OK` em `coleta_uploader_20261017_170225.out.txt`. Causa do travamento de 16/10 nao medida (a saida se perdeu); a proxima falha deixa o arquivo.
+
+**CUSTOSEMUSAGE1 (EWS 2.0).** Tentativa do OpenRouter que estoura o prazo era cobrada e entrava no orcamento como zero (16/10: US$ 2,97 gastos contra US$ 1,40 registrados). `llm_cli._post_openrouter` soma estimativa conservadora por tentativa com status 0 e `rotular_etapa1.custo_usd` conta sempre. `portoes` sem ETAPA_DIR devolvia IndexError, agora uso e exit 2. Testes novos 4/4, codigo anterior 0/4, suite de validacao 275/275, ews2 40/40.
+
+**EWS 2.0, por que nao homologou.** Metodologia e codigo prontos ate o portao de rotulagem; G1-eq do Claude aprovado 30/30. A autorizacao gravada aponta o primeiro leitor para o DeepSeek, reprovado na qualidade independente, entao `portoes` sai `EXIT=86` (P2 e P4) e nada roda. Rotulados 19 de 1.261, a 100 mil tokens por item medidos (1.906.323 tokens nos 19). Terminar com Claude custa ~124M tokens da assinatura so na primeira leitura, disputando cota com Matinal e Noturna em `SEM_TETO`. Decisao do operador.
+
+**Checkout `SISTEMAS/VIX-Radar`.** 69 commits atras do `origin/main`, nenhuma task aponta para ele, as diferencas locais sao reescrita mecanica de caminho e nome de script da migracao abortada de 07/10. Nada a integrar. Nao apagado.
+
 ## 17/10/2026 14:10: VR-TEXTO1 (landing v202.71), METRICABRASKEM1 e baseline visual do CI
 
 > **Status:** PUBLICADO (Pages v202.71, commit `49c6d69`). Baseline visual e e2e commitados em seguida.
