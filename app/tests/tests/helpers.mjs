@@ -29,8 +29,11 @@ export async function ensureExtended(page) {
   const card = page.locator('#phDemoCard');
   const hidden = await card.isHidden().catch(() => true);
   if (hidden) {
+    // A landing classica (v202.68) nao tem mais o botao #phBtnSaiba; o modo estendido
+    // entra pela query ?landing=extended, que resolveLandingMode le no carregamento.
     const saiba = page.locator('#phBtnSaiba');
     if (await saiba.isVisible().catch(() => false)) await saiba.click();
+    else await page.goto(BASE + '/?landing=extended', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('#publicHome')).toHaveClass(/vix-landing-extended/, { timeout: 15_000 });
   }
 }
