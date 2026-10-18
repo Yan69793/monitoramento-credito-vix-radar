@@ -1,0 +1,56 @@
+// Contrato de indicador da interface (auditoria UX/UI de 18/10/2026).
+// Cada teste guarda uma correcao e prova as duas pontas: reprova o caso ruim
+// e aceita o bom. So exibicao: faixa, metodologia e dado continuam no Worker.
+import { test, expect } from '@playwright/test';
+import { openLanding } from './helpers.mjs';
+
+async function semLanding(page) {
+  await openLanding(page, { extended: true });
+  await page.evaluate(() => {
+    const ph = document.getElementById('publicHome');
+    if (ph) ph.style.display = 'none';
+  });
+}
+
+// EWSFAIXA1 (A05): mesmo score, mesma faixa e mesma cor em qualquer tela,
+// com o clamp e o Math.round de classificarEWS do Worker.
+test('faixa do score usa o clamp e o arredondamento do Worker', async ({ page }) => {
+  await semLanding(page);
+  const regua = await page.evaluate(() => {
+    const k = (s) => window.vxSevKey(ewsFaixa(s).label);
+    return { s55: k(55), s35_4: k(35.4), s35_5: k(35.5), s15_5: k(15.5), s60_6: k(60.6), s120: k(120), sNeg: k(-3) };
+  });
+  expect(regua).toEqual({ s55: 'ALERTA', s35_4: 'ATENCAO', s35_5: 'ALERTA', s15_5: 'ATENCAO', s60_6: 'CRITICO', s120: 'CRITICO', sNeg: 'ESTAVEL' });
+});
+
+test('Visao Geral pinta o score pela faixa, nao de vermelho fixo', async ({ page }) => {
+  await semLanding(page);
+  const m = await page.evaluate(() => {
+    try { resultados = { Raizen: { empresa: 'Raizen', eventos: [] } }; } catch (_) {}
+    try { resultados = { Raizen: { empresa: 'Raizen', eventos: [] } }; } catch (_) {}
+    try {
+      ewsRankingCache = { ranking: [
+        { empresa: 'Critica', score: 61, decomposicao: [] },
+        { empresa: 'Raizen', score: 55, decomposicao: [] },
+        { empresa: 'Atencao', score: 20, decomposicao: [] },
+      ] };
+    } catch (_) {}
+    window._vixDesign2026Render();
+    const rows = [...document.querySelectorAll('#mo-content .vx2-rank .vx2-row')].map((r) => ({
+      nome: r.querySelector('.vx2-name').textContent.trim(),
+      cor: getComputedStyle(r.querySelector('.vx2-score')).color,
+      fill: getComputedStyle(r.querySelector('.vx2-fill')).backgroundColor,
+      tag: r.querySelector('.vx2-tag').textContent.trim(),
+    }));
+    const hexRgb = (h) => 'rgb(' + [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16)).join(', ') + ')';
+    return { rows, alerta: hexRgb(window.VX_SEV.ALERTA.cor), critico: hexRgb(window.VX_SEV.CRITICO.cor) };
+  });
+  const raizen = m.rows.find((r) => r.nome === 'Raizen');
+  const critica = m.rows.find((r) => r.nome === 'Critica');
+  expect(raizen.cor).toBe(m.alerta);
+  expect(raizen.fill).toBe(m.alerta);
+  expect(raizen.tag).toBe('ALERTA');
+  expect(critica.cor).toBe(m.critico);
+  expect(critica.tag).toBe('CRÍTICO');
+  expect(raizen.cor).not.toBe(critica.cor);
+});
