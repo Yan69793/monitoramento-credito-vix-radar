@@ -172,7 +172,7 @@ def main(argv=None):
             fontes["itr_%d" % y] = baixar(CVM % ("ITR", "itr_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_ITR, "itr_cia_aberta_", y), zip_integro)
         for y in anos(D.DIRS_DFP, "dfp_cia_aberta_", "zip", 2):
             fontes["dfp_%d" % y] = baixar(CVM % ("DFP", "dfp_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_DFP, "dfp_cia_aberta_", y), zip_integro)
-        for y in anos(D.DIRS_FCA, "fca_cia_aberta_", "zip", 1):
+        for y in anos(D.DIRS_FCA, "fca_cia_aberta_", "zip", 3):   # ponte ticker->CNPJ: uniao de varios anos (ticker antigo, troca de ticker)
             fontes["fca_%d" % y] = baixar(CVM % ("FCA", "fca_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_FCA, "fca_cia_aberta_", y), zip_integro)
         for y in anos(D.DIRS_COTAHIST, "COTAHIST_A", "ZIP", 2):
             fontes["cotahist_%d" % y] = baixar(B3 % y, os.path.join(D.DIRS_COTAHIST[0], "COTAHIST_A%d.ZIP" % y), zip_integro)

@@ -10,7 +10,7 @@
 # para ligar. Sem -Publicar a conferencia roda sem rede e so informa.
 #
 # Fluxo, cada passo fail-closed:
-#   1. Backtest de referencia fixo (data/validacao/g0v4/backtest_real_v3_20261018.json) com sha256 pinado. O backtest
+#   1. Backtest de referencia fixo (data/validacao/g0v4/backtest_real_v4_20261018.json) com sha256 pinado. O backtest
 #      decide QUAIS sinais sao expostos; trocar ele e decisao do operador, entao hash diferente aborta.
 #   2. T = ultimo dia util ANTERIOR a hoje (calendario.dia_util do ews2), salvo -T explicito.
 #   2b. atualizar_dados.py: baixa ITR, DFP, FCA e COTAHIST do ano e a Selic (Ipeadata); cotacao ou Selic mais de 5 dias
@@ -41,7 +41,7 @@ param(
     [switch]$Publicar,
     [string]$T,
     [string]$Backtest,
-    [string]$BacktestSha256 = '8DCDBA69D36CF7ABA3C6DF74F4DA9F5765C0E7E8544BD725DC7864E16C73EC61',
+    [string]$BacktestSha256 = 'BBAAE5544BCE91DC00B667249BFC4E32BE77F0B05F5E1C4015936E51C7F6DA45',
     [int]$IpeMaxDias = 10,
     [string]$PacotePronto,
     [string]$KvCli,
@@ -74,7 +74,7 @@ $Validador   = Join-Path $Ews2Dir 'integracao\validar_pacote.mjs'
 $NamespaceId = 'c6805b8d8a7b468e9f854ab4f91fb93a'
 $Chave       = 'ews2:latest'
 $NEmissores  = 104
-if (-not $Backtest) { $Backtest = Join-Path $ProjectRoot 'data\validacao\g0v4\backtest_real_v3_20261018.json' }
+if (-not $Backtest) { $Backtest = Join-Path $ProjectRoot 'data\validacao\g0v4\backtest_real_v4_20261018.json' }
 if (-not $LogDir)   { $LogDir = Join-Path $ProjectRoot 'logs\ews2-pacote' }
 
 $Carimbo  = Get-Date -Format 'yyyyMMdd-HHmmss'

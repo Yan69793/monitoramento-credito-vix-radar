@@ -32,8 +32,8 @@ import conferencia as C  # noqa: E402
 
 BASE = os.path.abspath(os.path.join(AQUI, "..", "..", ".."))
 API_PADRAO = "https://api.vixradar.com"
-BACKTEST_PADRAO = os.path.join(BASE, "data", "validacao", "g0v4", "backtest_real_v3_20261018.json")
-BACKTEST_SHA256 = "8dcdba69d36cf7aba3c6df74f4da9f5765c0e7e8544bd725dc7864e16c73ec61"
+BACKTEST_PADRAO = os.path.join(BASE, "data", "validacao", "g0v4", "backtest_real_v4_20261018.json")
+BACKTEST_SHA256 = "bbaae5544bce91dc00b667249bfc4e32be77f0b05f5e1c4015936e51c7f6da45"
 N_EMISSORES = 104
 ESTADO_PADRAO = os.path.join(BASE, "data", "ews2-conferencia", "estado_conferencia.json")   # fora do livro: ler_livro le todo .json de la
 

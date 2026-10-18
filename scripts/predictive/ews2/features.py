@@ -30,6 +30,7 @@ RX_ASSEMB = re.compile(r"assembleia")
 RX_DEB = re.compile(r"debentur|titulares de valores mobiliarios|titulares de deb")
 RX_H4_A = re.compile(r"renuncia|desligamento|substituicao|deixa o cargo|destituicao")
 RX_H4_B = re.compile(r"diretor financeiro|\bcfo\b|relacoes com investidores|\bdri\b")
+PRECO_MAX_IDADE_DIAS = 10
 DD_CORTE = 1.5
 
 
@@ -95,6 +96,11 @@ def h5(precos, versoes_dfp, selic, t):
     F = pc + 0.5 * pnc
     lim = t - timedelta(days=1)
     precos = [(x[0], x[1], x[2] if len(x) > 2 else x[1]) for x in precos]
+    # Serie parada nao mede nada: acao suspensa ou que saiu da bolsa tinha o H5 calculado com preco de anos atras (Oi, com
+    # cotacao so ate 2023, saia como H5=1 em 2026). Ultimo pregao ate T-1 precisa estar a no maximo PRECO_MAX_IDADE_DIAS.
+    ult = max((d for d, _, _ in precos if d <= lim), default=None)
+    if ult is None or (lim - ult).days > PRECO_MAX_IDADE_DIAS:
+        return None, None
     fechos = [p for d, p, _ in precos if d <= lim][-253:]
     if len(fechos) < 121:
         return None, None

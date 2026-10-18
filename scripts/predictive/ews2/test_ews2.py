@@ -127,6 +127,17 @@ class Features(unittest.TestCase):
         self.assertIn(alerta, (0, 1))
         self.assertEqual(F.h5(precos[:50], vs, {date(2021, 1, 1): 0.1}, t), (None, None))  # < 120 pregoes
 
+    def test_h5_serie_parada_nao_mede(self):
+        """Duas pontas: a mesma serie e usada com T logo depois do ultimo pregao (mede) e 400 dias depois (None)."""
+        fim = date(2023, 6, 30)
+        precos = [(fim - timedelta(days=400) + timedelta(days=k), 10.0 * math.exp(0.001 * k + 0.02 * math.sin(k))) for k in range(400)]
+        vs = [{"dt_refer": date(2022, 12, 31), "versao": 1, "dt_receb": date(2023, 3, 1), "parecer_enfase": False,
+               "acoes": {"integralizadas": 1e6, "tesouraria": 0}, "contas": {"2.01": 2e6, "2.02": 2e6}}]
+        sel = {date(2021, 1, 1): 0.1}
+        dd, _ = F.h5(precos, vs, sel, fim + timedelta(days=5))
+        self.assertIsNotNone(dd)
+        self.assertEqual(F.h5(precos, vs, sel, fim + timedelta(days=400)), (None, None))
+
     def test_h5_desdobramento_nao_gera_alerta(self):
         """Desdobramento 5:1 depois da referencia do BPP: DD igual ao da serie sem evento (duas pontas: sem ajuste, cai)."""
         t = date(2021, 6, 30)
