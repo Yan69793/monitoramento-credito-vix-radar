@@ -6753,6 +6753,9 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
 .p14-period{font-size:11px;padding:2px 7px;border:1px solid #0D2438;border-radius:4px;background:transparent;color:#94A3B8;cursor:pointer}
 .p14-period.active{border-color:#B7985D;color:#C9A96E;background:#001830}
 .p14-head-row{display:flex;align-items:center;gap:8px}
+.p14-emissao{font-size:11px;color:#94A3B8;margin-bottom:3px}
+.p14-emissao b{font-family:'JetBrains Mono',monospace;font-weight:600;color:#D0C8B8}
+.p14-database{font-size:11px;color:#8899AA;margin-top:2px}
 </style>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="p14-sparklines-module">!function(){"use strict";
   var API=(typeof API_BASE!=="undefined"&&API_BASE)||"https://api.vixradar.com";
@@ -6801,16 +6804,22 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
   var FAM_NOMES={IPCA:"IPCA +",DI_SPREAD:"DI + spread",PCT_DI:"% do DI",PRE_FIXADO:"Pré-fixado"};
 
   function renderTaxaCard(p,dataRef){
-    if(!p||!p.taxa_display)return renderCard("Taxa indicativa ANBIMA","—",'<div class="p14-empty">Sem papel na data de referência</div>');
+    if(!p||!p.taxa_display)return renderCard("Taxa indicativa · secundário ANBIMA","—",'<div class="p14-empty">Sem papel na data de referência</div>');
     var pts=[],hist=p.historico||[];
     for(var i=0;i<hist.length;i++){var v=hist[i].percentual_taxa!=null?hist[i].percentual_taxa:hist[i].taxa_indicativa;if(v!=null)pts.push({data:hist[i].data,v:v});}
     var delta=null;
     if(pts.length>=2)delta=Math.round((pts[pts.length-1].v-pts[0].v)*10)/10;
     var chartHtml=pts.length>=5?buildSpark(pts,"#F59E0B","#F59E0B"):'<div class="p14-empty"></div>';
-    var tooltip="Taxa indicativa ANBIMA do mercado secundário · ref "+(dataRef||"—")+" · ativo "+p.codigo_ativo;
-    var sub='<div class="p14-code">'+esc(p.codigo_ativo)+' · '+esc(p.indice_original||p.grupo||"—")+'</div>';
-    return'<div class="p14-card" title="'+esc(tooltip)+'"><div class="p14-label">Taxa indicativa ANBIMA</div>'+sub+'<div class="p14-val">'+esc(p.taxa_display)+fmtDelta(delta," p.p.")+'</div><div class="p14-chart">'+chartHtml+'</div></div>';
+    /* TAXAROTULO1 (2026-10-18): o subtitulo e a coluna Indice/Correcao do arquivo ANBIMA, ou seja
+       a remuneracao de EMISSAO do papel, e o valor grande e a taxa indicativa do SECUNDARIO na
+       data-base. Antes os dois saiam com o mesmo prefixo e sem rotulo (CSNAA1 DI + 1,65% sobre
+       DI + 17,13%). Cada numero agora diz o que e, e a data-base fica visivel. */
+    var dataBase=fmtDataBase(dataRef);
+    var tooltip="Taxa indicativa ANBIMA do mercado secundário · data-base "+(dataBase||"—")+" · ativo "+p.codigo_ativo;
+    var sub='<div class="p14-code">'+esc(p.codigo_ativo)+'</div>'+(p.indice_original?'<div class="p14-emissao">Remuneração de emissão <b>'+esc(p.indice_original)+'</b></div>':'');
+    return'<div class="p14-card" title="'+esc(tooltip)+'"><div class="p14-label">Taxa indicativa · secundário ANBIMA</div>'+sub+'<div class="p14-val">'+esc(p.taxa_display)+fmtDelta(delta," p.p.")+'</div><div class="p14-database">Data-base '+esc(dataBase||"não informada")+'</div><div class="p14-chart">'+chartHtml+'</div></div>';
   }
+  function fmtDataBase(s){var m=/^(\d{4})-(\d{2})-(\d{2})/.exec(String(s||""));return m?m[3]+"/"+m[2]+"/"+m[1]:(s?String(s):"");}
 
   function renderPaperList(data,selectedCode){
     var familias=Array.isArray(data&&data.familias)?data.familias:[];
@@ -6826,7 +6835,7 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
         var venc=p.data_vencimento?String(p.data_vencimento).slice(0,10):"—";
         html+='<div class="p14-paper-row'+(active?" active":"")+'" role="button" tabindex="0" aria-pressed="'+(active?"true":"false")+'" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();this.click();}" data-cod="'+esc(p.codigo_ativo)+'">'+
           '<span class="p14-paper-code">'+esc(p.codigo_ativo)+'</span>'+
-          '<span class="p14-paper-taxa">'+esc(p.taxa_display||"—")+'</span>'+
+          '<span class="p14-paper-taxa" title="Taxa indicativa no secundário'+(p.indice_original?' · emissão '+esc(p.indice_original):'')+'">'+esc(p.taxa_display||"—")+'</span>'+
           '<span class="p14-paper-venc" title="Vencimento">'+esc(venc)+'</span>'+
           (typeof p.pct_reune==="number"?'<span class="p14-paper-reune" title="Participação REUNE (indicador por papel)">REUNE '+esc(p.pct_reune)+'</span>':'')+
           '</div>';
@@ -6849,8 +6858,8 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
        mas o card nao o usa mais (fail-closed: sem papeis, mostra "—"). */
     var taxaCard;
     if(p){taxaCard=renderTaxaCard(p,data&&data.data_referencia);}
-    else if(papeis.length){taxaCard=renderCard("Taxa indicativa ANBIMA","—",'<div class="p14-empty">Sem liquidez REUNE — selecione um papel</div>');}
-    else{taxaCard=renderCard("Taxa indicativa ANBIMA","—",'<div class="p14-empty">Sem papéis na data de referência</div>');}
+    else if(papeis.length){taxaCard=renderCard("Taxa indicativa · secundário ANBIMA","—",'<div class="p14-empty">Sem liquidez REUNE — selecione um papel</div>');}
+    else{taxaCard=renderCard("Taxa indicativa · secundário ANBIMA","—",'<div class="p14-empty">Sem papéis na data de referência</div>');}
     var ewsPts=(data&&data.ews_serie||[]).map(function(r){return{data:r.data,v:r.score};});
     var ewsVal=data&&data.ews_atual!=null?esc(data.ews_atual):"—";
     var ewsCard=renderCard("EWS Score",ewsVal+fmtDelta(data&&data.ews_delta," pts"),buildSpark(ewsPts,"#B7985D","#B7985D"));

@@ -149,3 +149,39 @@ test('KPIs da Agenda mudam com o horizonte e batem com a lista', async ({ page }
   expect([k7.Assembleias, k7.Vencimentos, k7.Resultados]).toEqual(['1', '0', '0']);
   expect(k7.Universo).toBe('104');
 });
+
+// TAXAROTULO1 (A07): remuneracao de emissao separada da taxa indicativa do secundario, com data-base.
+test('card de taxa separa emissao da taxa indicativa do secundario e mostra a data-base', async ({ page }) => {
+  await semLanding(page);
+  const m = await page.evaluate(async () => {
+    const papel = {
+      codigo_ativo: 'CSNAA1', indice_original: 'DI + 1,6500%', grupo: 'DI_SPREAD', taxa_display: 'DI + 17,13%',
+      data_vencimento: '2031-04-15', pct_reune: 45, historico: [],
+    };
+    const serie = { ok: true, data_referencia: '2026-10-16', papeis: [papel], familias: [{ grupo: 'DI_SPREAD', papeis: [papel] }], destaque: papel, ews_serie: [], ews_atual: 40 };
+    window.fetch = (url) => {
+      const u = String(url);
+      const body = u.includes('op=serie') ? serie : { ok: false };
+      return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+    };
+    resultados = { CSN: { empresa: 'CSN', eventos: [], fontes_consultadas: [], alertas_mercado: [], sem_eventos: true, timestamp: '2026-10-17T21:10:04.000Z' } };
+    window.selecionar('CSN');
+    for (let i = 0; i < 50 && !document.querySelector('#p14-sparklines-host .p14-val'); i++) await new Promise((r) => setTimeout(r, 100));
+    for (let i = 0; i < 50 && /Carregando/.test(document.getElementById('p14-sparklines-host').textContent); i++) await new Promise((r) => setTimeout(r, 100));
+    const card = [...document.querySelectorAll('#p14-sparklines-host .p14-card')][0];
+    return {
+      label: card.querySelector('.p14-label').textContent.trim(),
+      code: card.querySelector('.p14-code').textContent.trim(),
+      emissao: (card.querySelector('.p14-emissao') || {}).textContent || '',
+      val: card.querySelector('.p14-val').textContent.trim(),
+      base: (card.querySelector('.p14-database') || {}).textContent || '',
+    };
+  });
+  expect(m.label.toLowerCase()).toContain('secundário');
+  expect(m.code).toBe('CSNAA1');
+  expect(m.emissao).toMatch(/Remuneração de emissão/i);
+  expect(m.emissao).toContain('DI + 1,6500%');
+  expect(m.val).toContain('DI + 17,13%');
+  expect(m.val).not.toContain('1,6500');
+  expect(m.base).toBe('Data-base 16/10/2026');
+});
