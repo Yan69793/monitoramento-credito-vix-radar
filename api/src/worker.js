@@ -6,7 +6,7 @@
 // adicionar no_bundle=true/--no-bundle sem primeiro vendorizar o SDK, senao
 // o import quebra silenciosamente no deploy seguinte. Ver wrangler.toml.
 import * as Sentry from "@sentry/cloudflare";
-import { fundir as fundirEws2Lab, anexarEws as anexarEws2 } from "./ews2_adapter.mjs";
+import { fundir as fundirEws2Lab, anexarEws as anexarEws2, validarPayload as validarPayloadEws2, liberacaoValida as liberacaoValidaEws2, pacoteFresco as pacoteFrescoEws2 } from "./ews2_adapter.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -6621,19 +6621,36 @@ __name22222(handleAdminRejeitar, "handleAdminRejeitar");
 __name222222(handleAdminRejeitar, "handleAdminRejeitar");
 __name2222222(handleAdminRejeitar, "handleAdminRejeitar");
 __name22222222(handleAdminRejeitar, "handleAdminRejeitar");
+// LIMPARCACHE2 (v4.9.274, 2026-10-18): apagar o estado da semana exige confirmacao
+// explicita "LIMPAR <semana>". Incidente: um clique sem aviso no painel apagou
+// radar:estado:2026-W42 e o painel regrediu para a data da semana anterior.
+// O arquivo de seguranca e gravado antes do delete e a auditoria aponta para ele.
 async function handleLimparCache(body, env2222) {
   const { admin_senha } = body;
   if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403);
   if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indispon\xEDvel." }, 500);
   const s = semanaISO(obterAgoraBRT());
   const estadoAtual = await carregarEstadoCompartilhado(env2222, s);
-  if (estadoAtual && estadoAtual.results && Object.keys(estadoAtual.results).length > 0) {
-    const archiveKey = `radar:arquivo:${s}:${Date.now()}`;
+  const nEmpresas = Object.keys(estadoAtual?.results || {}).length;
+  const confirmacaoEsperada = `LIMPAR ${s}`;
+  if (body.confirmar !== confirmacaoEsperada) {
+    return resp({
+      ok: false,
+      codigo: "CONFIRMACAO_OBRIGATORIA",
+      erro: `Limpar apaga o estado da semana ${s} (${nEmpresas} empresas). Enquanto uma rotina n\xE3o regravar, o painel volta a mostrar a data da semana anterior. Um arquivo de seguran\xE7a \xE9 criado antes. Para confirmar, reenvie com confirmar="${confirmacaoEsperada}".`,
+      semana: s,
+      n_empresas: nEmpresas,
+      confirmar_com: confirmacaoEsperada
+    }, 409);
+  }
+  let archiveKey = null;
+  if (nEmpresas > 0) {
+    archiveKey = `radar:arquivo:${s}:${Date.now()}`;
     await env2222.RADAR_KV.put(archiveKey, JSON.stringify({ ...estadoAtual, _arquivado_em: (/* @__PURE__ */ new Date()).toISOString(), _motivo: "admin_limpar_cache" }), { expirationTtl: 60 * 60 * 24 * 90 });
   }
-  await env2222.RADAR_KV.put(`audit:limpar_cache:${Date.now()}`, JSON.stringify({ semana: s, admin: ADMIN_EMAIL, ts: (/* @__PURE__ */ new Date()).toISOString(), n_empresas: Object.keys(estadoAtual?.results || {}).length }), { expirationTtl: 60 * 60 * 24 * 365 });
+  await env2222.RADAR_KV.put(`audit:limpar_cache:${Date.now()}`, JSON.stringify({ semana: s, admin: ADMIN_EMAIL, ts: (/* @__PURE__ */ new Date()).toISOString(), n_empresas: nEmpresas, arquivo: archiveKey }), { expirationTtl: 60 * 60 * 24 * 365 });
   await env2222.RADAR_KV.delete(chaveEstadoCompartilhado(s));
-  return resp({ ok: true, mensagem: `Cache ${s} limpo. Arquivo criado com ${Object.keys(estadoAtual?.results || {}).length} empresas.` });
+  return resp({ ok: true, semana: s, n_empresas: nEmpresas, arquivo: archiveKey, mensagem: `Cache ${s} limpo. Arquivo criado com ${nEmpresas} empresas${archiveKey ? " em " + archiveKey : ""}.` });
 }
 __name(handleLimparCache, "handleLimparCache");
 __name2(handleLimparCache, "handleLimparCache");
@@ -22119,6 +22136,57 @@ async function __coreFetch(request, env2222, ctx) {
       }
       var _dpaInstrumentos = _dpaRes && Array.isArray(_dpaRes.instrumentos_ativos) ? _dpaRes.instrumentos_ativos : [];
       return resp({ ok: true, empresa: _dpaEmp, setor: _dpaSetor, janela_inicio: _dpaJanelaInicio, janela_fim: _dpaHoje, cvm_documentos: _dpaDocs, eventos_historicos: _dpaEventosHist.slice(0, 10), contexto_historico: _dpaCtxHist, instrumentos_ativos: _dpaInstrumentos }, 200, request);
+    }
+    // EWS2PUB1 (2026-10-18): a rotina semanal do pacote EWS 2.0 passa a rodar no GitHub Actions e publica por aqui, com a
+    // ROUTINE_API_KEY que o repositorio ja guarda, em vez de levar um token Cloudflare para o CI. O Worker revalida o pacote
+    // com o MESMO adaptador que serve o cliente (schema, nota 126 por hash, idade, sem probabilidade) e so aceita as duas
+    // operacoes que a rotina precisa: gravar ews2:latest e DESLIGAR ews2:flag. Nao existe caminho para ligar a flag.
+    if (body.action === "ews2_publicar") {
+      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      var _epPac = body.pacote;
+      var _epErros = [];
+      if (!_epPac || typeof _epPac !== "object") _epErros.push("pacote ausente");
+      else {
+        var _epV = validarPayloadEws2(_epPac);
+        if (!_epV.ok) _epErros = _epErros.concat(_epV.erros);
+        if (!liberacaoValidaEws2(_epPac)) _epErros.push("liberacao.nota_sha256 diferente da nota 126 fixada");
+        if (!pacoteFrescoEws2(_epPac)) _epErros.push("data_observacao ausente, futura ou com mais de 14 dias");
+        if (_epPac.exibir_probabilidade !== false) _epErros.push("exibir_probabilidade tem que ser false");
+        var _epEm = Array.isArray(_epPac.emissores) ? _epPac.emissores : [];
+        if (_epEm.length < 100 || _epEm.length > 110) _epErros.push("emissores fora de 100..110: " + _epEm.length);
+        if (new Set(_epEm.map(function(e) { return e && e.cnpj; })).size !== _epEm.length) _epErros.push("cnpj duplicado");
+        if (_epEm.some(function(e) { return !e || ["alta", "media", "baixa"].indexOf(e.severidade) < 0; })) _epErros.push("severidade fora de alta/media/baixa");
+        if (JSON.stringify(_epPac).length > 400000) _epErros.push("pacote grande demais");
+      }
+      if (_epErros.length) return resp({ ok: false, erro: "pacote reprovado", erros: _epErros.slice(0, 12) }, 400, request);
+      var _epAnt = await env2222.RADAR_KV.get("ews2:latest", "json").catch(function() { return null; });
+      if (_epAnt) await env2222.RADAR_KV.put("ews2:latest:anterior", JSON.stringify(_epAnt));
+      await env2222.RADAR_KV.put("ews2:latest", JSON.stringify(_epPac));
+      var _epLido = await env2222.RADAR_KV.get("ews2:latest", "json").catch(function() { return null; });
+      var _epOk = !!(_epLido && _epLido.gerado_em === _epPac.gerado_em && _epLido.data_observacao === _epPac.data_observacao && (_epLido.emissores || []).length === _epEm.length);
+      return resp({ ok: _epOk, gravado: true, releitura_confere: _epOk, gerado_em: _epPac.gerado_em, data_observacao: _epPac.data_observacao,
+        emissores: _epEm.length, anterior: _epAnt ? { gerado_em: _epAnt.gerado_em, data_observacao: _epAnt.data_observacao } : null }, _epOk ? 200 : 500, request);
+    }
+    if (body.action === "ews2_flag_desligar") {
+      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      var _efMot = typeof body.motivo === "string" ? body.motivo.trim().slice(0, 500) : "";
+      if (!_efMot) return resp({ ok: false, erro: "motivo obrigatorio." }, 400, request);
+      var _efAnt = await env2222.RADAR_KV.get("ews2:flag", "json").catch(function() { return null; });
+      if (_efAnt) await env2222.RADAR_KV.put("ews2:flag:anterior", JSON.stringify(_efAnt));
+      var _efNovo = { ativo: false, desligado_em: new Date().toISOString(), origem: "conferencia_automatica", motivo: _efMot, relatorio: typeof body.relatorio === "string" ? body.relatorio.slice(0, 300) : null };
+      await env2222.RADAR_KV.put("ews2:flag", JSON.stringify(_efNovo));
+      var _efLido = await env2222.RADAR_KV.get("ews2:flag", "json").catch(function() { return null; });
+      var _efOk = !!(_efLido && _efLido.ativo === false);
+      return resp({ ok: _efOk, flag: _efLido, anterior: _efAnt }, _efOk ? 200 : 500, request);
+    }
+    if (body.action === "ews2_estado") {
+      if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      var _esLat = await env2222.RADAR_KV.get("ews2:latest", "json").catch(function() { return null; });
+      var _esFlag = await env2222.RADAR_KV.get("ews2:flag", "json").catch(function() { return null; });
+      return resp({ ok: true, latest: _esLat ? { gerado_em: _esLat.gerado_em, data_observacao: _esLat.data_observacao, sinais_aprovados: _esLat.sinais_aprovados, emissores: (_esLat.emissores || []).length } : null, flag: _esFlag }, 200, request);
     }
     if (body.action === "receber_analise") {
       if (!body.routine_key || body.routine_key !== env2222.ROUTINE_API_KEY) return resp({ ok: false, erro: "Acesso negado." }, 403, request);

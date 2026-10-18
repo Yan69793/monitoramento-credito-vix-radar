@@ -4,6 +4,14 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.274.js = v4.9.273 + LIMPARCACHE2: `admin_limpar_cache` exige
+#   confirmar="LIMPAR <semana>"; sem isso responde 409 CONFIRMACAO_OBRIGATORIA
+#   com semana e n_empresas, e nao apaga nada. Com confirmacao, arquiva em
+#   radar:arquivo:<semana>:<ts> antes do delete e a auditoria guarda a chave do
+#   arquivo. Incidente 2026-10-18: clique sem aviso apagou radar:estado:2026-W42
+#   e o painel regrediu para a data de 11/10 (restaurado do arquivo). O botao do
+#   painel (app/index.html) precisa enviar `confirmar`; ate o deploy do Pages ele
+#   falha fechado com 409. Testes api/test/limpar-cache (4 casos, duas pontas).
 # v4.9.273.js = v4.9.272 + EWS2IDADE1: pacote `ews2:latest` com data_observacao
 #   ausente, invalida ou com mais de 14 dias corridos deixa de ser exibido
 #   (op=ews e predictive_v1), mesmo com a flag ligada. Sem isso, uma rotina
