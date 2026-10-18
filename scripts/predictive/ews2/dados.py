@@ -30,11 +30,21 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.abspath(os.path.join(AQUI, "..", "..", ".."))
 sys.path.insert(0, os.path.join(AQUI, "..", "validacao"))
 
-DIRS_IPE = [os.path.join(BASE, "data", "cvm"), r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cvm-ipe"]
-DIRS_DFP = [os.path.join(BASE, "data", "cvm"), r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cvm-dfp"]
-DIRS_ITR = [r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cvm-itr"]
-DIRS_COTAHIST = [r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cotahist"]
-CAD = os.path.join(BASE, "data", "cvm", "cad_cia_aberta.csv")
+# EWS2_DADOS_DIR (GitHub Actions, EWS2PUB1): uma pasta so, fora do repo, com cvm-ipe, cvm-dfp, cvm-itr, cvm-fca, cotahist e cad.
+# Sem a variavel valem os caminhos desta maquina, como sempre.
+EWS2_DADOS_DIR = os.environ.get("EWS2_DADOS_DIR") or None
+
+
+def _pasta(nome, padrao):
+    return os.path.join(EWS2_DADOS_DIR, nome) if EWS2_DADOS_DIR else padrao
+
+
+_TMP_VIX = r"E:\Diretorio\Claude\tmp\operacional\vix-radar"
+DIRS_IPE = [os.path.join(BASE, "data", "cvm"), _pasta("cvm-ipe", os.path.join(_TMP_VIX, "cvm-ipe"))]
+DIRS_DFP = [os.path.join(BASE, "data", "cvm"), _pasta("cvm-dfp", os.path.join(_TMP_VIX, "cvm-dfp"))]
+DIRS_ITR = [_pasta("cvm-itr", os.path.join(_TMP_VIX, "cvm-itr"))]
+DIRS_COTAHIST = [_pasta("cotahist", os.path.join(_TMP_VIX, "cotahist"))]
+CAD = _pasta("cad/cad_cia_aberta.csv", os.path.join(BASE, "data", "cvm", "cad_cia_aberta.csv"))
 # selic_sgs_1178_cache.json guarda so o valor do dia (rotinas), nao serie; o H5 precisa da serie historica (Ipeadata
 # BM366_TJOVER366, Selic over diaria, baixada em 18/10/2026). Sem o historico, cai no cache e o H5 fica sem dado.
 SELIC_HIST = os.path.join(BASE, "data", "cotacoes", "selic_historico_ipea.json")
@@ -216,7 +226,7 @@ def ler_cotahist(dirs=None):
     return out, {"arquivos": sorted(zips), "disponivel": bool(zips)}
 
 
-DIRS_FCA = [r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cvm-fca"]
+DIRS_FCA = [_pasta("cvm-fca", os.path.join(_TMP_VIX, "cvm-fca"))]
 
 
 def ler_tickers_fca(dirs=None):

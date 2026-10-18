@@ -64,7 +64,7 @@ def extrair_texto(caminho, tipo, destino):
 
 
 def baixar(url, saida):
-    r = subprocess.run(["curl.exe", "-s", "--compressed", "--http1.1", "--max-time", "120", "-D", "-", "-o", saida,
+    r = subprocess.run(["curl.exe" if os.name == "nt" else "curl", "-s", "--compressed", "--http1.1", "--max-time", "120", "-D", "-", "-o", saida,
                         "-w", "\n__HTTP=%{http_code}", url], capture_output=True, timeout=180)
     out = r.stdout.decode("latin-1", "ignore")
     m = re.search(r"__HTTP=(\d+)", out)

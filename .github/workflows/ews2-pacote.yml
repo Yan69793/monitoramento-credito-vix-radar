@@ -1,0 +1,129 @@
+name: Pacote EWS 2.0
+
+# EWS2PUB1 (2026-10-18). Atualiza o pacote ews2:latest toda segunda 23h15 BRT e confere o EWS 2.0 contra eventos reais
+# (EWS2CONF1, nota 127), sem depender do computador do operador. Guarda que depende de maquina ligada nao e guarda.
+#
+# Sem token Cloudflare: publica pelo Worker (acao ews2_publicar), que revalida o pacote com o mesmo adaptador que serve o
+# cliente, e so desliga a flag (acao ews2_flag_desligar), nunca liga. Usa o secret ROUTINE_API_KEY que o repositorio ja tem.
+#
+# Disparo manual (workflow_dispatch) e dry-run por padrao: baixa, gera, valida e confere, mas NAO publica, NAO registra no
+# livro e NAO toca na flag. Marque "publicar" para o disparo manual valer como a rodada semanal.
+#
+# Saidas de erro (rodar_ci.py): 2 entrada invalida ou dado velho, 3 geracao, 4 pacote reprovado, 5/6 envio, 9 flag desligada,
+# 11 livro, 12 conferencia, 13 desligamento falhou, 14 veredito desligar aguardando confirmacao. Qualquer valor diferente de
+# zero deixa o job vermelho e o e-mail padrao do GitHub avisa.
+
+on:
+  schedule:
+    - cron: '15 2 * * 2'          # terca 02:15 UTC = segunda 23:15 BRT
+  workflow_dispatch:
+    inputs:
+      publicar:
+        description: 'Publicar de verdade (grava ews2:latest, registra no livro, pode desligar a flag)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: ews2-pacote
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  pacote:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      EWS2_DADOS_DIR: ${{ github.workspace }}/../ews2-dados
+      PUBLICAR: ${{ github.event_name == 'schedule' || inputs.publicar == true }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+
+      - name: Dependencias de extracao de texto
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq poppler-utils
+          pip install --quiet python-docx olefile
+
+      - name: Cache dos dados publicos (CVM, B3)
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.EWS2_DADOS_DIR }}
+          key: ews2-dados-${{ github.run_id }}
+          restore-keys: |
+            ews2-dados-
+
+      - name: Testes do orquestrador e da conferencia
+        run: |
+          python -I scripts/predictive/ews2/test_rodar_ci.py
+          python -I scripts/predictive/ews2/test_conferencia.py
+
+      - name: Rodar o pacote
+        id: rodar
+        env:
+          ROUTINE_API_KEY: ${{ secrets.ROUTINE_API_KEY }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/ews2-saida"
+          args=(--saida-dir "$RUNNER_TEMP/ews2-saida")
+          if [ "$PUBLICAR" = "true" ]; then args+=(--publicar); fi
+          set +e
+          python -I scripts/predictive/ews2/rodar_ci.py "${args[@]}"
+          cod=$?
+          echo "exit=$cod" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Resumo
+        if: always()
+        run: |
+          {
+            echo "### EWS 2.0, rodada $(date -u +%F)"
+            echo "- modo: $([ "$PUBLICAR" = "true" ] && echo publicar || echo dry-run)"
+            echo "- saida do orquestrador: ${{ steps.rodar.outputs.exit }}"
+            if [ -f "$RUNNER_TEMP/ews2-saida/resultado.json" ]; then
+              echo '```json'
+              python -I -c "import json,sys; r=json.load(open(sys.argv[1])); print(json.dumps({k:r.get(k) for k in ('modo','T','exit','ok','motivo','publicado','conferencia','flag_desligada')}, ensure_ascii=False, indent=1))" "$RUNNER_TEMP/ews2-saida/resultado.json"
+              echo '```'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Guardar relatorios
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ews2-rodada-${{ github.run_id }}
+          path: ${{ runner.temp }}/ews2-saida
+          retention-days: 90
+          if-no-files-found: ignore
+
+      - name: Gravar livro de previsoes e estado no repositorio
+        if: always() && env.PUBLICAR == 'true'
+        run: |
+          git config user.name "ews2-pacote[bot]"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/ews2-previsoes data/ews2-conferencia
+          if git diff --cached --quiet; then echo "sem mudanca no livro"; exit 0; fi
+          git commit -q -m "chore(ews2): livro de previsoes e estado da conferencia ($(date -u +%F))"
+          for i in 1 2 3; do
+            git pull --rebase -q origin main && git push -q origin HEAD:main && exit 0
+            sleep 5
+          done
+          echo "::error::nao foi possivel gravar o livro no repositorio"
+          exit 1
+
+      - name: Falhar se o orquestrador falhou
+        if: always()
+        run: |
+          cod="${{ steps.rodar.outputs.exit }}"
+          if [ -n "$cod" ] && [ "$cod" != "0" ]; then
+            echo "::error::rodar_ci.py terminou com exit $cod (ver o resumo da rodada)"
+            exit "$cod"
+          fi

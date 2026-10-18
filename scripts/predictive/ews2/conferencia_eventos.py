@@ -34,7 +34,7 @@ BASE = D.BASE
 ROTULOS = os.path.join(BASE, "data", "validacao", "g0v4", "rotulos_g0v4_final.csv")
 CACHE_DIR = os.path.join(BASE, "data", "ews2-conferencia")
 CACHE = os.path.join(CACHE_DIR, "classificacoes.jsonl")
-DOCS_DIR = r"E:\Diretorio\Claude\tmp\operacional\vix-radar\ews2-conferencia"
+DOCS_DIR = os.path.join(D.EWS2_DADOS_DIR, "ews2-conferencia") if D.EWS2_DADOS_DIR else r"E:\Diretorio\Claude\tmp\operacional\vix-radar\ews2-conferencia"
 MAPA = os.path.join(BASE, "scripts", "predictive", "cnpj_emissores.json")
 ROTULOS_ATE = dt.date(2026, 9, 30)      # os rotulos cobrem a janela da regua de K ate esta data
 # textos ja extraidos na etapa 1 (mesmo numProtocolo): lidos antes de baixar, nunca alterados

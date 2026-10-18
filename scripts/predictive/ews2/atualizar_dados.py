@@ -9,7 +9,7 @@ Cada arquivo baixa para <destino>.parcial, e validado (zip integro, JSON com ser
 Download que falha mantem o arquivo anterior; quem decide se o dado velho serve e o frescor medido (--T).
 
 Saida: uma linha JSON {ok, fontes{nome: {baixado, erro, ...}}, frescor{cotahist_max, selic_max}, motivo}.
-ok = false quando a ultima cotacao ou a ultima Selic ficam mais de --folga-dias corridos antes de --T.
+ok = false quando a ultima cotacao ou a ultima Selic ficam mais de --folga-dias corridos antes de --T, ou o IPE mais de --folga-ipe-dias.
 Exit 0 ok | 1 frescor reprovado | 2 argumento invalido.
 
 Uso: python -I atualizar_dados.py --T AAAA-MM-DD [--sem-download] [--folga-dias 5]
@@ -29,6 +29,7 @@ sys.path.insert(0, AQUI)
 import dados as D  # noqa: E402
 
 CVM = "https://dados.cvm.gov.br/dados/CIA_ABERTA/DOC/%s/DADOS/%s"
+CVM_CAD = "https://dados.cvm.gov.br/dados/CIA_ABERTA/CAD/DADOS/cad_cia_aberta.csv"
 B3 = "https://bvmf.bmfbovespa.com.br/InstDados/SerHist/COTAHIST_A%d.ZIP"
 IPEA = "http://www.ipeadata.gov.br/api/odata4/ValoresSerie(SERCODIGO='BM366_TJOVER366')"
 UA = {"User-Agent": "Mozilla/5.0 (vixradar-ews2-pacote)"}
@@ -78,6 +79,20 @@ def selic_de_ipea(tmp):
     return {"ultimo": serie[-1]["data"]}
 
 
+def csv_integro(p):
+    with open(p, "rb") as fh:
+        cab = fh.read(4096)
+    if b";" not in cab or b"CNPJ" not in cab.upper():
+        raise ValueError("csv sem cabecalho esperado")
+    return None
+
+
+def ipe_max_entrega():
+    """Maior Data_Entrega nos zips do IPE lidos pelo pipeline (frescor da fonte)."""
+    docs, _ = D.ler_ipe()
+    return max((d["data"] for d in docs), default=None)
+
+
 def destino_zip(dirs, prefixo, ano):
     """Atualiza o arquivo que o dados.py de fato le para aquele ano (primeiro diretorio que o tem), senao o ultimo."""
     for d in dirs:
@@ -110,6 +125,7 @@ def main(argv=None):
     ap.add_argument("--T", required=True)
     ap.add_argument("--sem-download", action="store_true")
     ap.add_argument("--folga-dias", type=int, default=5)
+    ap.add_argument("--folga-ipe-dias", type=int, default=14, help="o IPE em lote atrasa dias com a CVM; acima disso e fonte parada")
     a = ap.parse_args(argv)
     try:
         t = dt.date.fromisoformat(a.T)
@@ -119,16 +135,36 @@ def main(argv=None):
     ano = t.year
     fontes = {}
     if not a.sem_download:
-        fontes["itr"] = baixar(CVM % ("ITR", "itr_cia_aberta_%d.zip" % ano), destino_zip(D.DIRS_ITR, "itr_cia_aberta_", ano), zip_integro)
-        fontes["dfp"] = baixar(CVM % ("DFP", "dfp_cia_aberta_%d.zip" % (ano - 1)), destino_zip(D.DIRS_DFP, "dfp_cia_aberta_", ano - 1), zip_integro)
-        fontes["fca"] = baixar(CVM % ("FCA", "fca_cia_aberta_%d.zip" % ano), destino_zip(D.DIRS_FCA, "fca_cia_aberta_", ano), zip_integro)
-        fontes["cotahist"] = baixar(B3 % ano, os.path.join(D.DIRS_COTAHIST[0], "COTAHIST_A%d.ZIP" % ano), zip_integro)
+        # `anos_largos` baixa tambem os anos anteriores que ainda nao estao na pasta (primeira rodada de um runner limpo);
+        # com a pasta preenchida (cache) so o ano corrente e renovado.
+        def anos(dirs, prefixo, ext, ultimos):
+            tem = lambda y: any(os.path.exists(os.path.join(d, "%s%d.%s" % (prefixo, y, ext))) for d in dirs)  # noqa: E731
+            return [y for y in range(ano - ultimos, ano + 1) if y == ano or not tem(y)]
+        os.makedirs(D.DIRS_ITR[0], exist_ok=True)
+        os.makedirs(D.DIRS_COTAHIST[0], exist_ok=True)
+        os.makedirs(D.DIRS_FCA[0], exist_ok=True)
+        os.makedirs(D.DIRS_DFP[-1], exist_ok=True)
+        os.makedirs(D.DIRS_IPE[-1], exist_ok=True)
+        os.makedirs(os.path.dirname(D.CAD), exist_ok=True)
+        for y in anos(D.DIRS_IPE, "ipe_cia_aberta_", "zip", 3):
+            fontes["ipe_%d" % y] = baixar(CVM % ("IPE", "ipe_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_IPE, "ipe_cia_aberta_", y), zip_integro)
+        for y in anos(D.DIRS_ITR, "itr_cia_aberta_", "zip", 1):
+            fontes["itr_%d" % y] = baixar(CVM % ("ITR", "itr_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_ITR, "itr_cia_aberta_", y), zip_integro)
+        for y in anos(D.DIRS_DFP, "dfp_cia_aberta_", "zip", 2):
+            fontes["dfp_%d" % y] = baixar(CVM % ("DFP", "dfp_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_DFP, "dfp_cia_aberta_", y), zip_integro)
+        for y in anos(D.DIRS_FCA, "fca_cia_aberta_", "zip", 1):
+            fontes["fca_%d" % y] = baixar(CVM % ("FCA", "fca_cia_aberta_%d.zip" % y), destino_zip(D.DIRS_FCA, "fca_cia_aberta_", y), zip_integro)
+        for y in anos(D.DIRS_COTAHIST, "COTAHIST_A", "ZIP", 2):
+            fontes["cotahist_%d" % y] = baixar(B3 % y, os.path.join(D.DIRS_COTAHIST[0], "COTAHIST_A%d.ZIP" % y), zip_integro)
+        fontes["cad"] = baixar(CVM_CAD, D.CAD, csv_integro)
         fontes["selic"] = baixar(IPEA, D.SELIC_HIST, selic_de_ipea)
     for p in glob.glob(os.path.join(D.DIRS_COTAHIST[0], "*.parcial")):
         os.remove(p)
-    fr = {"cotahist_max": cotahist_max(ano), "selic_max": selic_max()}
+    ipe = ipe_max_entrega()
+    fr = {"cotahist_max": cotahist_max(ano), "selic_max": selic_max(), "ipe_max_entrega": ipe.isoformat() if ipe else None}
     limite = (t - dt.timedelta(days=a.folga_dias)).isoformat()
-    velhos = [k for k, v in fr.items() if not v or v < limite]
+    limite_ipe = (t - dt.timedelta(days=a.folga_ipe_dias)).isoformat()
+    velhos = [k for k, v in fr.items() if not v or v < (limite_ipe if k == "ipe_max_entrega" else limite)]
     out = {"ok": not velhos, "T": a.T, "limite": limite, "fontes": fontes, "frescor": fr,
            "motivo": ("fonte velha ou ausente: " + ",".join(velhos)) if velhos else None}
     print(json.dumps(out, ensure_ascii=False))
