@@ -389,10 +389,12 @@ Conferência automática (EWS2CONF1, nota 127): depois de publicar, a mesma roti
 `data/ews2-previsoes/` (livro só de acréscimo, com o `ews_score` do EWS atual no dia), detecta eventos novos nos
 comunicados ao mercado do IPE (`conferencia_eventos.py`, regras locais, sem LLM) e compara EWS 2.0 e EWS atual
 (`conferencia.py`). Critério pré-registrado em `data/validacao/g0v4/conferencia_criterios.json`, hash fixado no código.
-Só desliga com 5 ou mais eventos e teste de sinal a favor do EWS atual (p até 0,10); então grava `ews2:flag` com
-`ativo:false` (backup do valor anterior, releitura) e sai com exit 9. Exit 11 registro no livro falhou, 12 conferência
-não rodou, 13 desligamento falhou. Teste de duas pontas em `scripts/test-ews2-pacote.ps1` (27/27) e
-`scripts/predictive/ews2/test_conferencia.py` (22/22).
+Só desliga com 6 ou mais episódios, teste de sinal a favor do EWS atual (p até 0,05) **e o mesmo veredito em duas rodadas
+separadas por 5 dias ou mais**; então grava `ews2:flag` com `ativo:false` (backup do valor anterior, releitura) e sai com
+exit 9. Exit 11 registro no livro falhou, 12 conferência não rodou, 13 desligamento falhou, 14 veredito desligar aguardando
+confirmação. O detector de eventos foi medido (`data/validacao/ews2_detector_validacao.json`): dia material certo em 85%
+das vezes e 47% dos dias materiais achados no universo rotulado; em 2026, 4 de 5 episódios achados e 2 falsos. Teste de
+duas pontas em `scripts/test-ews2-pacote.ps1` (29/29) e `scripts/predictive/ews2/test_conferencia.py` (24/24).
 
 Vigia: `monitor-tasks.ps1` cobre a task pelo prefixo `VIXRadar-` (exit diferente de zero alerta) e pela
 tabela `$weeklyTasks` (segunda 23h, semana pulada vira aviso de staleness).

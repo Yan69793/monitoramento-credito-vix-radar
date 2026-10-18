@@ -2,19 +2,21 @@
   "versao": "conf-v1",
   "registrado_em": "2026-10-18",
   "base": "Nota 126, controle mantido: conferir alertas gravados contra eventos reais e desligar se o resultado for pior que o EWS atual.",
-  "unidade": "um evento novo (episodio de 30 dias, emissor sem episodio nos 365 dias anteriores) ligado ao ultimo pacote publicado antes dele, dentro de 180 dias",
+  "unidade": "um episodio novo de credito (dias materiais a ate 30 dias entre si), de emissor sem documento de categoria A (em RJ/RE) nos 730 dias anteriores e sem episodio nos 365 dias anteriores, ligado ao ultimo pacote publicado antes dele, dentro de 180 dias",
   "escore_ews2": "severidade alta=2, media=1, baixa=0 do pacote ews2:latest",
   "escore_atual": "ews_score do EWS atual do mesmo emissor no dia da observacao do pacote (data/historico)",
   "metrica": "percentil do emissor do evento entre os emissores do mesmo pacote, empates pelo ponto medio; maior = o sistema ranqueou o evento mais alto",
   "teste": "sinal exato unilateral sobre os eventos em que os dois percentis diferem: H0 = EWS atual e EWS 2.0 empatados",
-  "min_eventos": 5,
-  "p_max": 0.10,
+  "min_eventos": 6,
+  "p_max": 0.05,
   "regra_desligar": "desligar somente se eventos_independentes >= min_eventos E percentil medio do EWS atual > o do EWS 2.0 E p <= p_max",
   "regra_manter": "qualquer outro resultado mantem a flag; abaixo de min_eventos o relatorio e descritivo e nao decide",
-  "deteccao_de_eventos": "comunicados dos 104 emissores ao mercado (IPE: Fato Relevante, Comunicado ao Mercado, Aviso aos Debenturistas, Informacoes de companhias em RJ/RE) com categoria/assunto de gatilho forte, lidos pelas regras locais g0v4_regras (evento_proprio). Assembleia, escritura e demonstracao financeira ficam fora porque trazem clausula de vencimento antecipado como texto padrao. Subestima eventos (revocacao da rede entre 23% e 67%, nota 125); o vies atinge os dois sistemas igualmente.",
+  "deteccao_de_eventos": "dia material = comunicado dos 104 emissores ao mercado (IPE: Fato Relevante, Comunicado ao Mercado, Aviso aos Debenturistas, Informacoes de companhias em RJ/RE) com gatilho forte no metadado e ato proprio de credito no texto, lido pelas regras locais g0v4_regras (classe evento_proprio ou continuacao). Assembleia, escritura e demonstracao financeira ficam fora porque trazem clausula de vencimento antecipado como texto padrao. A separacao entre episodio novo e continuacao e feita pela conferencia, nao pelo classificador. Aquecimento desde 2025-07-01 para saber quem ja estava em RJ/RE.",
   "limites_declarados": [
     "poucos eventos: a regra so decide com evidencia forte e quase sempre devolve amostra_insuficiente nos primeiros meses",
+    "o detector tem erros nos dois sentidos (precisao e revocacao em data/validacao/ews2_detector_validacao.json); falso episodio em emissor ja estressado favorece o EWS atual, por isso os limiares sao rigidos (6 eventos, p ate 0,05)",
     "nao mede prejuizo de falso alerta, so ordenacao de eventos",
     "o EWS atual e o do dia da observacao, nao recalculado"
-  ]
+  ],
+  "revisado_em": "2026-10-18, antes de qualquer pacote ter evento observado: detector e limiares ajustados apos o ensaio de validacao (nota 127)"
 }

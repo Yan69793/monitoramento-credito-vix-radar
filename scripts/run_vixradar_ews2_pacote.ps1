@@ -29,6 +29,7 @@
 #   | 5 kv put falhou | 6 releitura nao confirmou | 7 instancia duplicada | 8 backup do valor atual falhou
 #   | 9 conferencia mandou DESLIGAR e a flag foi desligada | 11 publicou mas o registro no livro de previsoes falhou
 #   | 12 conferencia nao rodou ou falhou | 13 conferencia mandou desligar e o desligamento da flag falhou
+#   | 14 veredito desligar ainda sem confirmacao (so desliga se a rodada anterior, 5+ dias antes, tambem disse desligar)
 #
 # Uso:
 #   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\run_vixradar_ews2_pacote.ps1            (dry-run)
@@ -55,6 +56,7 @@ param(
     [string]$HistoricoDir,
     [string]$EventosJson,
     [string]$HojeConferencia,
+    [double]$ConfirmacaoMinDias = 5,
     [int]$KvTimeoutSeg = 120
 )
 
@@ -205,8 +207,28 @@ function Invoke-Conferencia([bool]$Aplicar) {
     Write-Log ('CONFERENCIA: exit=' + $r.Code + (' {0:N0}s ' -f ((Get-Date) - $ini).TotalSeconds) + (Get-Cabeca $r.Out 1))
     if ($r.Code -eq 9 -and $cj -and $cj.decisao -eq 'desligar') {
         if (-not $Aplicar) { Write-Log 'CONFERENCIA: veredito DESLIGAR em dry-run, flag nao alterada'; return }
+        # Confirmacao: o detector de eventos tem erros nos dois sentidos, entao o veredito precisa se repetir em duas
+        # rodadas separadas por ConfirmacaoMinDias. A primeira so avisa (exit 14); a segunda desliga.
+        $estadoF = Join-Path $LogDir 'conferencia_estado.json'
+        $ant = $null
+        if (Test-Path -LiteralPath $estadoF) { $ant = Get-JsonDoTexto ([System.IO.File]::ReadAllText($estadoF, [System.Text.Encoding]::UTF8)) }
+        $agora = (Get-Date).ToUniversalTime()
+        $desde = $agora
+        if ($ant -and $ant.decisao -eq 'desligar' -and $ant.desde) { $desde = [datetime]::Parse($ant.desde, [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::RoundtripKind) }
+        $estado = [ordered]@{ decisao = 'desligar'; desde = $desde.ToString('o'); atualizado_em = $agora.ToString('o'); motivo = $cj.motivo }
+        [System.IO.File]::WriteAllText($estadoF, ($estado | ConvertTo-Json -Compress), $Utf8NoBom)
+        $confirmado = ($ant -and $ant.decisao -eq 'desligar' -and (($agora - $desde).TotalDays -ge $ConfirmacaoMinDias))
+        if (-not $confirmado) {
+            Write-Log ('CONFERENCIA: veredito DESLIGAR registrado, aguardando confirmacao na proxima rodada (min ' + $ConfirmacaoMinDias + ' dias)')
+            Stop-Rotina 14 ('conferencia indicou desligar, aguardando confirmacao na proxima rodada: ' + $cj.motivo)
+        }
         Invoke-FlagDesligar $cj.motivo $rel
         Stop-Rotina 9 ('conferencia mandou desligar o EWS 2.0 e a flag foi desligada: ' + $cj.motivo)
+    }
+    if ($Aplicar -and $r.Code -eq 0 -and $cj) {
+        $estadoF = Join-Path $LogDir 'conferencia_estado.json'
+        $estado = [ordered]@{ decisao = [string]$cj.decisao; desde = (Get-Date).ToUniversalTime().ToString('o'); atualizado_em = (Get-Date).ToUniversalTime().ToString('o'); motivo = $cj.motivo }
+        [System.IO.File]::WriteAllText($estadoF, ($estado | ConvertTo-Json -Compress), $Utf8NoBom)
     }
     if ($r.Code -ne 0) {
         if (-not $Aplicar) { Write-Log 'CONFERENCIA: nao rodou em dry-run (livro vazio ou criterio alterado), nada a fazer'; return }

@@ -1,5 +1,11 @@
 # Estado do projeto — VIX Radar
 
+## 18/10/2026 05:53, EWS2CONF1: detector de eventos validado, limiares endurecidos
+
+Validei o detector com uma amostra cega de 2026 (69 dias candidatos dos 104 emissores, lidos sem ver a classe das regras) e contra os 1.261 rotulos do G0-v4. A primeira versao falhou: 0 de 7 eventos de 2026, porque o contexto de 180 dias fazia as regras chamarem de continuacao o dia do proprio evento. Corrigi: evento passou a ser dia material (evento_proprio ou continuacao) e a distincao episodio novo x continuacao ficou na conferencia (episodio de 30 dias, categoria A em 730 dias, episodio anterior em 365 dias, aquecimento desde 01/07/2025). Medido: universo rotulado, precisao do dia material 0,85 (IC95 0,80 a 0,89) e revocacao 0,47; amostra cega de 2026 em episodios, 4 de 5 achados e 2 falsos em 6 (Cosan, Oncoclinicas 14/07). Amostra minuscula, intervalos largos.
+
+Como o detector erra nos dois sentidos e o erro tende a favorecer o EWS atual, endureci a regra antes de haver qualquer episodio observado: desliga so com 6 episodios, p ate 0,05 e o mesmo veredito em duas rodadas separadas por 5 dias (a primeira so avisa, exit 14). Criterio repinado por hash. Testes: conferencia 24/24, rotina 29/29, EWS2 Python 43/43. Relatorio em `data/validacao/ews2_detector_validacao.json`, rotulos cegos em `data/validacao/ews2_detector_amostra_2026.csv`.
+
 ## 18/10/2026 05:35, EWS2CONF1: conferencia automatica de acerto com desligamento pela regra da nota 126 (nota 127)
 
 Rotina semanal passou a registrar cada pacote publicado (`data/ews2-previsoes/`, congelado, com o ews_score do EWS atual do dia), detectar eventos novos nos comunicados do IPE com as regras locais e comparar EWS 2.0 e EWS atual. Criterio pre-registrado e pinado por hash (`conferencia_criterios.json`): desliga so com 5 ou mais eventos e sinal exato a favor do EWS atual (p ate 0,10). Se desligar, grava `ews2:flag` com ativo:false (backup, releitura, exit 9); nunca liga. Testes: conferencia 22/22, rotina 27/27 (inclui desligar, manter, amostra pequena, dry-run), EWS2 Python 43/43. Livro semeado com o pacote de 16/10; primeira conferencia real devolve 0 eventos, amostra insuficiente.

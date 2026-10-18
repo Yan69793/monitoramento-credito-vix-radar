@@ -33,7 +33,7 @@ HISTORICO = os.path.join(BASE, "data", "historico")
 CRITERIOS = os.path.join(BASE, "data", "validacao", "g0v4", "conferencia_criterios.json")
 # sha256 do arquivo de criterios com fim de linha normalizado para LF. Mudar o criterio depois de ver resultado e
 # exatamente o que esta trava impede: o hash diverge, a conferencia recusa rodar (exit 2).
-CRITERIOS_SHA256 = "84d0821d8c5731b9c2cd889f6345129878184e78adb76082574153fb45be8623"
+CRITERIOS_SHA256 = "110c426a2f318ef92a354e9814aa331885aa783d1ba7fcccf69d1a08d85cf98f"
 SEV = {"alta": 2, "media": 1, "baixa": 0}
 EPISODIO_DIAS = 30
 PREVALENCIA_DIAS = 365
@@ -78,7 +78,8 @@ def p_sinal_unilateral(k, n):
 
 
 def episodios_de_eventos(eventos):
-    """Funde eventos do mesmo emissor a ate EPISODIO_DIAS. Devolve [{cnpj, inicio, ultimo}] ordenado."""
+    """Funde eventos do mesmo emissor a ate EPISODIO_DIAS. Devolve [{cnpj, inicio, ultimo, prev_cat_a}] ordenado;
+    prev_cat_a vem do evento que abre o episodio (emissor ja em RJ/RE por documento de categoria A nos 730 dias antes)."""
     out = []
     atual = None
     for e in sorted(eventos, key=lambda x: (x["cnpj"], _d(x["data"]))):
@@ -86,7 +87,7 @@ def episodios_de_eventos(eventos):
         if atual and atual["cnpj"] == e["cnpj"] and (d - atual["ultimo"]).days <= EPISODIO_DIAS:
             atual["ultimo"] = d
             continue
-        atual = {"cnpj": e["cnpj"], "inicio": d, "ultimo": d}
+        atual = {"cnpj": e["cnpj"], "inicio": d, "ultimo": d, "prev_cat_a": bool(e.get("prev_cat_a"))}
         out.append(atual)
     return out
 
@@ -102,6 +103,9 @@ def decidir(snapshots, eventos, criterios, hoje):
     primeiro = snaps[0]["data_obs"] if snaps else None
     for ep in eps:
         if primeiro is None or ep["inicio"] <= primeiro or ep["inicio"] > hoje:
+            continue
+        if ep["prev_cat_a"]:
+            excluidos.append({"cnpj": ep["cnpj"], "inicio": ep["inicio"].isoformat(), "motivo": "prevalente_categoria_a"})
             continue
         # prevalencia: outro episodio do mesmo emissor nos 365 dias antes do inicio
         if any(o["cnpj"] == ep["cnpj"] and o is not ep and 0 < (ep["inicio"] - o["ultimo"]).days <= PREVALENCIA_DIAS for o in eps):

@@ -7,6 +7,12 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 18/10/2026 05:53: detector de eventos validado (fecha a pendencia de validacao do detector)
+
+- Feito: amostra cega de 2026 e validacao contra os 1.261 rotulos (relatorio em `data/validacao/ews2_detector_validacao.json`). Precisao do dia material 85%, revocacao 47% no universo rotulado; em 2026, 4 de 5 episodios achados e 2 falsos.
+- Valores de limiar da regra de desligamento mudaram de 5 eventos e p 0,10 para 6 episodios, p 0,05 e confirmacao em duas rodadas (a entrada de 04:5x acima descreve a versao anterior).
+- Aberto: o detector perde cerca de metade dos dias materiais no universo rotulado por falta de texto de contexto e por continuidade nao verificavel; um adjudicador LLM para os candidatos duvidosos melhoraria, mas depende de assinatura e foi deixado fora de proposito.
+
 ## 18/10/2026 05:35: autonomia do EWS 2.0, passo 2 de 3 feito (conferencia)
 
 - Feito: conferencia automatica com desligamento pela regra pre-registrada (nota 127).

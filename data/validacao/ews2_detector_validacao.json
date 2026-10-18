@@ -1,0 +1,163 @@
+{
+ "gerado_em": "2026-10-18",
+ "detector": "conferencia_eventos.py (dia material = evento_proprio ou continuacao, cat-v1)",
+ "universo_rotulado_1261": {
+  "janela": [
+   "2011-01-01",
+   "2026-09-30"
+  ],
+  "itens": 1261,
+  "definicao": "dia material = evento_proprio ou continuacao",
+  "dia": {
+   "detectados": 233,
+   "verdadeiros": 421,
+   "acertos": 198,
+   "falsos_positivos": 35,
+   "perdidos": 223,
+   "precisao": 0.85,
+   "precisao_ic95": [
+    0.798,
+    0.89
+   ],
+   "revocacao": 0.47,
+   "revocacao_ic95": [
+    0.423,
+    0.518
+   ]
+  },
+  "perdidos_por_causa": {
+   "fora_do_alcance": 96,
+   "pendente": 110,
+   "sem_texto": 17
+  }
+ },
+ "amostra_cega_2026_104_emissores": {
+  "janela": [
+   "2026-01-13",
+   "2026-09-30"
+  ],
+  "dias_candidatos": 69,
+  "dias_de_aquecimento": 32,
+  "dia": {
+   "detectados": 62,
+   "verdadeiros": 57,
+   "acertos": 54,
+   "falsos_positivos": 8,
+   "perdidos": 3,
+   "precisao": 0.871,
+   "precisao_ic95": [
+    0.766,
+    0.933
+   ],
+   "revocacao": 0.947,
+   "revocacao_ic95": [
+    0.856,
+    0.982
+   ]
+  },
+  "episodio": {
+   "detectados": 6,
+   "verdadeiros": 5,
+   "acertos": 4,
+   "falsos_positivos": 2,
+   "perdidos": 1,
+   "precisao": 0.667,
+   "precisao_ic95": [
+    0.3,
+    0.903
+   ],
+   "revocacao": 0.8,
+   "revocacao_ic95": [
+    0.376,
+    0.964
+   ]
+  },
+  "episodios_verdadeiros": [
+   [
+    "12.104.241/0004-02",
+    "2026-04-13"
+   ],
+   [
+    "13.270.520/0001-66",
+    "2026-05-05"
+   ],
+   [
+    "33.453.598/0001-23",
+    "2026-03-11"
+   ],
+   [
+    "42.150.391/0001-70",
+    "2026-06-25"
+   ],
+   [
+    "47.508.411/0001-56",
+    "2026-03-10"
+   ]
+  ],
+  "episodios_detectados": [
+   [
+    "12.104.241/0004-02",
+    "2026-07-14"
+   ],
+   [
+    "13.270.520/0001-66",
+    "2026-05-05"
+   ],
+   [
+    "33.453.598/0001-23",
+    "2026-03-11"
+   ],
+   [
+    "42.150.391/0001-70",
+    "2026-06-25"
+   ],
+   [
+    "47.508.411/0001-56",
+    "2026-03-10"
+   ],
+   [
+    "50.746.577/0001-15",
+    "2026-03-11"
+   ]
+  ],
+  "episodios_falsos": [
+   [
+    "12.104.241/0004-02",
+    "2026-07-14"
+   ],
+   [
+    "50.746.577/0001-15",
+    "2026-03-11"
+   ]
+  ],
+  "episodios_perdidos": [
+   [
+    "12.104.241/0004-02",
+    "2026-04-13"
+   ]
+  ]
+ },
+ "leitura": [
+  "No universo rotulado (1.261 itens, enriquecido de casos dificeis e de todos os emissores), o dia material detectado esta certo em 85% das vezes e o detector acha 47% dos dias materiais; 46% dos dias que abrem episodio segundo os rotulos. O resto cai em pendente (continuidade nao verificavel), fora do alcance (sem comunicado ao mercado ou sem gatilho no metadado) ou sem texto.",
+  "Na amostra cega de 2026 dos 104 emissores (69 dias candidatos, lidos por outro leitor sem ver a classe das regras), dia material: precisao 0,87 e revocacao 0,95. No nivel de episodio, que e o que a conferencia usa: 4 de 5 episodios reais achados e 2 falsos de 6 detectados (Cosan, fato da Raizen visto como proprio; Oncoclinicas 14/07, repetido porque a cautelar de 13/04 caiu em pendente).",
+  "n de episodios e minusculo (5 verdadeiros): os intervalos de confianca sao largos (revocacao 0,38 a 0,96)."
+ ],
+ "conferencia_real_hoje": {
+  "decisao": "amostra_insuficiente",
+  "motivo": "0 evento(s) independente(s), minimo 6: relatorio descritivo, nada a decidir",
+  "eventos_independentes": 0,
+  "pacotes": 1,
+  "deteccao": {
+   "candidatos": 109,
+   "evento_proprio": 4,
+   "continuacao": 91,
+   "pendente": 14,
+   "outras_classes": 0,
+   "nao_classificados": 0,
+   "novos": 0,
+   "documentos_baixados": 0,
+   "rotulos_eventos": 312,
+   "ipe_max_entrega": "2026-10-08"
+  }
+ }
+}

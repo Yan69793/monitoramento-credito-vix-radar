@@ -106,6 +106,19 @@ class Selecao(unittest.TestCase):
         self.assertEqual(r["eventos_independentes"], 0)
         self.assertEqual(r["excluidos"][0]["motivo"], "prevalente")
 
+    def test_emissor_ja_em_rj_re_por_categoria_a_e_excluido(self):
+        s = [snap("2026-10-16", {}, {})]
+        ev = [{"cnpj": "c00", "data": "2026-11-15", "prev_cat_a": True}, {"cnpj": "c01", "data": "2026-11-15", "prev_cat_a": False}]
+        r = C.decidir(s, ev, CRIT, date(2026, 12, 1))
+        self.assertEqual(r["eventos_independentes"], 1)
+        self.assertEqual(r["excluidos"][0]["motivo"], "prevalente_categoria_a")
+
+    def test_flag_de_categoria_a_vale_so_para_o_dia_que_abre_o_episodio(self):
+        eps = C.episodios_de_eventos([{"cnpj": "c00", "data": "2026-11-01", "prev_cat_a": False},
+                                      {"cnpj": "c00", "data": "2026-11-20", "prev_cat_a": True}])
+        self.assertEqual(len(eps), 1)
+        self.assertFalse(eps[0]["prev_cat_a"])
+
     def test_evento_alem_de_180_dias_do_pacote_nao_conta(self):
         s = [snap("2026-10-16", {}, {})]
         r = C.decidir(s, eventos(("c00", "2027-05-01")), CRIT, date(2027, 6, 1))
@@ -167,12 +180,13 @@ class Livro(unittest.TestCase):
 
 class Criterios(unittest.TestCase):
     def test_criterio_pre_registrado_confere(self):
-        self.assertEqual(C.ler_criterios()["min_eventos"], 5)
+        crit = C.ler_criterios()
+        self.assertEqual((crit["min_eventos"], crit["p_max"]), (6, 0.05))
 
     def test_criterio_alterado_recusa(self):
         with tempfile.TemporaryDirectory() as d:
             f = os.path.join(d, "c.json")
-            s = open(C.CRITERIOS, "rb").read().replace(b'"min_eventos": 5', b'"min_eventos": 1')
+            s = open(C.CRITERIOS, "rb").read().replace(b'"min_eventos": 6', b'"min_eventos": 1')
             open(f, "wb").write(s)
             with self.assertRaises(SystemExit):
                 C.ler_criterios(f)

@@ -47,6 +47,14 @@ INDICE_MESES = 24
 CATS_EVENTO = ("fato relevante", "comunicado ao mercado", "aviso aos debenturistas",
                "informacoes de companhias em recuperacao judicial ou extrajudicial")
 DETECCAO_V = "cat-v1"
+# Evento = DIA MATERIAL: comunicado do emissor com ato proprio de credito (RJ, RE, falencia, vencimento antecipado,
+# inadimplemento, cautelar contra credores). O classificador separa "evento_proprio" de "continuacao" olhando 180 dias de
+# contexto, e no ensaio de 2026 isso errou o dia do evento em 5 de 5 casos (o contexto trazia negociacao anterior do mesmo
+# tipo). Quem decide se o dia abre um episodio novo e a conferencia (episodio de 30 dias, categoria A em 730 dias, episodio
+# anterior em 365 dias), que e o mesmo criterio do backtest. Medido em data/validacao/ews2_detector_validacao.json.
+CLASSES_MATERIAIS = ("evento_proprio", "continuacao")
+CAT_A_DIAS = 730
+WARMUP_INICIO = dt.date(2025, 7, 1)
 RETENTAR_DIAS = 7
 PAUSA = 0.25
 
@@ -206,21 +214,31 @@ def detectar(docs, cnpjs, de, ate, sem_rede, hoje, docs_dir=DOCS_DIR):
     cand = candidatos(docs, cnpjs, de, ate)
     textos = Textos(docs_dir, not sem_rede, hoje)
     cache, sha = ler_cache(), sha_regras()
-    ev, cont = [], {"candidatos": len(cand), "evento_proprio": 0, "pendente": 0, "nao_evento_ou_continuacao": 0, "nao_classificados": 0, "novos": 0}
+    cata = cat_a_por_cnpj(docs)
+    ev, cont = [], {"candidatos": len(cand), "evento_proprio": 0, "continuacao": 0, "pendente": 0, "outras_classes": 0, "nao_classificados": 0, "novos": 0}
     for (cnpj, dia) in sorted(cand, key=lambda k: (k[1], k[0])):
         r, novo = classificar_dia(cnpj, dia, docs_por, textos, cache, sha)
         cont["novos"] += int(novo)
         if r is None:
             cont["nao_classificados"] += 1
-        elif r["classe"] == "evento_proprio":
-            cont["evento_proprio"] += 1
-            ev.append({"cnpj": cnpj, "data": r.get("data_evento") or dia.isoformat(), "fonte": "ipe+regras", "tipo": r.get("tipo"), "dia_documento": dia.isoformat()})
+        elif r["classe"] in CLASSES_MATERIAIS:
+            cont[r["classe"]] = cont.get(r["classe"], 0) + 1
+            ev.append({"cnpj": cnpj, "data": dia.isoformat(), "fonte": "ipe+regras", "tipo": r.get("tipo"), "classe": r["classe"],
+                       "prev_cat_a": any(dia - dt.timedelta(days=CAT_A_DIAS) <= x < dia for x in cata.get(cnpj, [])), "dia_documento": dia.isoformat()})
         elif r["classe"] == "PENDENTE_REVISAO":
             cont["pendente"] += 1
         else:
-            cont["nao_evento_ou_continuacao"] += 1
+            cont["outras_classes"] += 1
     cont["documentos_baixados"] = textos.baixados
     return ev, cont
+
+
+def cat_a_por_cnpj(docs):
+    out = {}
+    for d in docs:
+        if EV.RX_CAT_A.search(d["cat_n"]):
+            out.setdefault(d["cnpj"], []).append(d["data"])
+    return out
 
 
 def cnpjs_emissores():
@@ -228,11 +246,12 @@ def cnpjs_emissores():
 
 
 def eventos(hoje, sem_rede=False, primeiro_pacote=None):
-    """Eventos para a conferencia: rotulos finais (ate ROTULOS_ATE, so para prevalencia) mais os detectados depois."""
+    """Eventos para a conferencia: rotulos finais (so para prevalencia) mais os dias materiais detectados desde o aquecimento
+    (WARMUP_INICIO, um ano antes do primeiro pacote, para saber quem ja estava em RJ/RE)."""
     rot = EV.ler_rotulos(ROTULOS)
     evs = [{"cnpj": e["cnpj"], "data": e["data"], "fonte": "rotulo"} for e in EV.eventos_de_rotulos(rot)]
     docs, _ = D.ler_ipe()
-    det_ev, cont = detectar(docs, cnpjs_emissores(), ROTULOS_ATE + dt.timedelta(days=1), hoje, sem_rede, hoje)
+    det_ev, cont = detectar(docs, cnpjs_emissores(), WARMUP_INICIO, hoje, sem_rede, hoje)
     cont["rotulos_eventos"] = len(evs)
     cont["ipe_max_entrega"] = max((d["data"] for d in docs), default=None).isoformat() if docs else None
     return evs + det_ev, cont
@@ -242,7 +261,7 @@ def eventos(hoje, sem_rede=False, primeiro_pacote=None):
 def replay(de, ate, sem_rede, hoje):
     rot = EV.ler_rotulos(ROTULOS)
     nossos = cnpjs_emissores()
-    verdade = {(r["cnpj"].strip(), r["data"]) for r in rot if (r.get("classe_final") or "") == "evento_proprio" and de.isoformat() <= r["data"] <= ate.isoformat() and r["cnpj"].strip() in nossos}
+    verdade = {(r["cnpj"].strip(), r["data"]) for r in rot if (r.get("classe_final") or "") in CLASSES_MATERIAIS and de.isoformat() <= r["data"] <= ate.isoformat() and r["cnpj"].strip() in nossos}
     itens = {(r["cnpj"].strip(), r["data"]) for r in rot if de.isoformat() <= r["data"] <= ate.isoformat() and r["cnpj"].strip() in nossos}
     docs, _ = D.ler_ipe()
     ev, cont = detectar(docs, cnpjs_emissores(), de, ate, sem_rede, hoje)

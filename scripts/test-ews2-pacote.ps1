@@ -155,13 +155,26 @@ function Invoke-Conf([string]$Nome, [string]$EventosArq, [string[]]$Modo) {
 
 # Ponta ruim: o EWS atual ranqueia os 6 eventos acima do EWS 2.0 (todos baixa no pacote) -> desligar
 $evRuim = New-Eventos 'ruim' $baixas
-$c = Invoke-Conf 'ruim' $evRuim @('-Publicar')
+# 1a rodada: o veredito so avisa (exit 14), a flag nao e tocada
+$c = Invoke-Conf 'ruim' $evRuim @('-Publicar', '-ConfirmacaoMinDias', '0')
+Assert-Teste ($c.R.Code -eq 14 -and -not (@($c.Ch) -match 'ews2:flag')) 'conferencia/desligar 1a rodada so avisa (exit=14, flag intocada)' ('exit=' + $c.R.Code + ' ' + ($c.Ch -join ' || '))
+# 2a rodada com o mesmo veredito: confirma e desliga
+Reset-Fake
+$r2 = Invoke-Rotina $PacoteValido @('-LivroDir', $c.Livro, '-HistoricoDir', $hist, '-EventosJson', $evRuim, '-HojeConferencia', '2027-03-01', '-Publicar', '-ConfirmacaoMinDias', '0')
+$c = [pscustomobject]@{ R = $r2; Livro = $c.Livro; Ch = @(Get-Chamadas) }
 $flagCalls = @($c.Ch | Where-Object { $_ -match 'ews2:flag' })
-Assert-Teste ($c.R.Code -eq 9) 'conferencia/desligar exit=9' ('exit=' + $c.R.Code + ' ' + $c.R.Resultado)
+Assert-Teste ($c.R.Code -eq 9) 'conferencia/desligar 2a rodada confirma exit=9' ('exit=' + $c.R.Code + ' ' + $c.R.Resultado)
 Assert-Teste ($flagCalls.Count -eq 3 -and $flagCalls[0] -match '^kv key get ews2:flag ' -and $flagCalls[1] -match '^kv key put ews2:flag ' -and $flagCalls[2] -match '^kv key get ews2:flag ') 'conferencia/desligar sequencia get-put-get em ews2:flag' ($c.Ch -join ' || ')
 $gravado = if (Test-Path -LiteralPath $Store) { [System.IO.File]::ReadAllText($Store) | ConvertFrom-Json } else { $null }
 Assert-Teste ($gravado -and $gravado.ativo -eq $false -and $gravado.origem -eq 'conferencia_automatica') 'conferencia/desligar grava SO ativo=false' ($gravado | ConvertTo-Json -Compress)
 Assert-Teste ((@(Get-ChildItem -LiteralPath $c.Livro -Filter '*.json')).Count -eq 1) 'conferencia/pacote registrado no livro' ''
+
+# Confirmacao exige tempo: com ConfirmacaoMinDias alto, a 2a rodada ainda so avisa
+$ev3 = New-Eventos 'ruim2' $baixas
+$c3 = Invoke-Conf 'ruim2' $ev3 @('-Publicar', '-ConfirmacaoMinDias', '30')
+Reset-Fake
+$r3 = Invoke-Rotina $PacoteValido @('-LivroDir', $c3.Livro, '-HistoricoDir', $hist, '-EventosJson', $ev3, '-HojeConferencia', '2027-03-01', '-Publicar', '-ConfirmacaoMinDias', '30')
+Assert-Teste ($c3.R.Code -eq 14 -and $r3.Code -eq 14 -and -not (@(Get-Chamadas) -match 'ews2:flag')) 'conferencia/desligar sem tempo de confirmacao nao liga a flag' ('exit1=' + $c3.R.Code + ' exit2=' + $r3.Code)
 
 # Ponta boa: EWS 2.0 melhor que o EWS atual nos mesmos 6 eventos (emissores 'alta' no pacote, escore atual 0) -> manter
 $altas = @($obj.emissores | Where-Object { $_.severidade -eq 'alta' } | Select-Object -First 6)
