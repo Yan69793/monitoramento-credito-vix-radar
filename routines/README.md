@@ -385,6 +385,15 @@ $s = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-T
 Register-ScheduledTask -TaskName 'VIXRadar-EWS2-Pacote' -Action $a -Trigger $t -Settings $s
 ```
 
+Conferência automática (EWS2CONF1, nota 127): depois de publicar, a mesma rotina registra o pacote em
+`data/ews2-previsoes/` (livro só de acréscimo, com o `ews_score` do EWS atual no dia), detecta eventos novos nos
+comunicados ao mercado do IPE (`conferencia_eventos.py`, regras locais, sem LLM) e compara EWS 2.0 e EWS atual
+(`conferencia.py`). Critério pré-registrado em `data/validacao/g0v4/conferencia_criterios.json`, hash fixado no código.
+Só desliga com 5 ou mais eventos e teste de sinal a favor do EWS atual (p até 0,10); então grava `ews2:flag` com
+`ativo:false` (backup do valor anterior, releitura) e sai com exit 9. Exit 11 registro no livro falhou, 12 conferência
+não rodou, 13 desligamento falhou. Teste de duas pontas em `scripts/test-ews2-pacote.ps1` (27/27) e
+`scripts/predictive/ews2/test_conferencia.py` (22/22).
+
 Vigia: `monitor-tasks.ps1` cobre a task pelo prefixo `VIXRadar-` (exit diferente de zero alerta) e pela
 tabela `$weeklyTasks` (segunda 23h, semana pulada vira aviso de staleness).
 

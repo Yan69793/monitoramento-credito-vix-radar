@@ -1,5 +1,11 @@
 # Estado do projeto — VIX Radar
 
+## 18/10/2026 05:35, EWS2CONF1: conferencia automatica de acerto com desligamento pela regra da nota 126 (nota 127)
+
+Rotina semanal passou a registrar cada pacote publicado (`data/ews2-previsoes/`, congelado, com o ews_score do EWS atual do dia), detectar eventos novos nos comunicados do IPE com as regras locais e comparar EWS 2.0 e EWS atual. Criterio pre-registrado e pinado por hash (`conferencia_criterios.json`): desliga so com 5 ou mais eventos e sinal exato a favor do EWS atual (p ate 0,10). Se desligar, grava `ews2:flag` com ativo:false (backup, releitura, exit 9); nunca liga. Testes: conferencia 22/22, rotina 27/27 (inclui desligar, manter, amostra pequena, dry-run), EWS2 Python 43/43. Livro semeado com o pacote de 16/10; primeira conferencia real devolve 0 eventos, amostra insuficiente.
+
+Limites: ritmo esperado de cerca de 1 evento por mes, entao nos checkpoints de 30 e 90 dias nao ha veredito; o detector de eventos nao e validado (no ensaio sobre 2026 as regras isoladas erraram dois eventos rotulados e foram corrigidas contra clausula de escritura); a metrica nao mede custo de falso alerta. IPE local ate 08/10 (renovado segunda 12h pela Reconciliacao-CVM).
+
 ## 18/10/2026 05:08, EWS2IDADE1: pacote ews2 velho some sozinho, Worker v4.9.273
 
 O Worker deixa de exibir o EWS 2.0 (op=ews e predictive_v1) quando `ews2:latest` tem `data_observacao` ausente, invalida ou com mais de 14 dias corridos, mesmo com a flag ligada. Antes, se a rotina semanal parasse, o cliente via sinal velho como atual. 14 dias = uma execucao semanal perdida. Prova de duas pontas: o teste novo falha contra o adaptador anterior e passa no atual (15 dias some, 14 aparece). Worker 542/542, adaptador 10/10. Pacote no ar (16/10) segue visivel. Commits `6947271` e `e6eb9ad` (deploy). Proximos passos da autonomia: conferencia automatica de acerto com desligamento pela regra da nota 126, depois rodar a rotina fora deste PC.

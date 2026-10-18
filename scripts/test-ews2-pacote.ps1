@@ -5,7 +5,9 @@
 #   Ponta ruim : 5 pacotes invalidos -> exit 4 e ZERO chamadas ao KV (nem leitura).
 #   Ponta boa  : pacote valido -> exit 0, sequencia get/put/get so em ews2:latest, conteudo gravado = pacote.
 #   Dry-run    : pacote valido sem -Publicar -> exit 0 e ZERO chamadas ao KV.
-#   Guarda     : nenhuma chamada em nenhum cenario menciona ews2:flag.
+#   Guarda     : nenhuma chamada fora dos cenarios de conferencia menciona ews2:flag.
+#   Conferencia: veredito desligar (EWS atual ganha em 6 de 6) -> exit 9, flag gravada com ativo=false e so assim;
+#                EWS 2.0 melhor, empate, amostra pequena e dry-run -> flag intocada.
 #
 # Uso: powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\test-ews2-pacote.ps1 [-PacoteValido <json>]
 # Sem -PacoteValido usa o ews2_latest.json mais recente de tmp\operacional\vix-radar\ews2-pacote (rode a rotina em
@@ -64,6 +66,7 @@ function Reset-Fake { Remove-Item -LiteralPath $Calls, $Store -Force -ErrorActio
 function Invoke-Rotina([string]$Pacote, [string[]]$Extra) {
     $logDir = Join-Path $Dir 'logs'
     $argv = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Rotina, '-PacotePronto', $Pacote, '-KvCli', $Fake, '-LogDir', $logDir, '-BackupRaiz', (Join-Path $Dir 'backups')) + $Extra
+    if ($Extra -notcontains '-LivroDir') { $argv += '-SemConferencia' }
     $saida = & powershell.exe @argv 2>&1
     $code = $LASTEXITCODE
     $res = ($saida | Where-Object { "$_" -match 'RESULTADO ' } | Select-Object -Last 1)
@@ -123,10 +126,60 @@ $bk = $null
 if ($r.Resultado -match '"backup":"([^"]+)"') { $bk = $Matches[1] -replace '\\\\', '\' }
 Assert-Teste ($r.Code -eq 0 -and $bk -and (Test-Path -LiteralPath $bk) -and $bk.StartsWith($Dir)) 'bom/republicar gera backup do valor anterior' ('exit=' + $r.Code + ' backup=' + $bk)
 
-# Guarda: nada, em cenario nenhum, encostou em ews2:flag
+# Guarda: nada, ate aqui, encostou em ews2:flag
 $todas = Get-Content -LiteralPath $Calls -ErrorAction SilentlyContinue
-Assert-Teste (-not (@($todas) -match 'ews2:flag')) 'guarda/nunca toca ews2:flag' (@($todas) -join ' || ')
+Assert-Teste (-not (@($todas) -match 'ews2:flag')) 'guarda/nunca toca ews2:flag fora da conferencia' (@($todas) -join ' || ')
 
+# ---------------- Conferencia (EWS2CONF1): livro, historico e eventos de teste, tudo em pasta temporaria
+$baixas = @($obj.emissores | Where-Object { $_.severidade -eq 'baixa' } | Select-Object -First 6)
+$hist = Join-Path $Dir 'hist'
+New-Item -ItemType Directory -Force -Path (Join-Path $hist $T) | Out-Null
+$escoreAtual = @{}; foreach ($e in $baixas) { $escoreAtual[$e.nome] = 90 }
+$hjson = [ordered]@{ emissores = @($obj.emissores | ForEach-Object { $sc = 0; if ($escoreAtual.ContainsKey($_.nome)) { $sc = 90 }; [ordered]@{ name = $_.nome; features = [ordered]@{ ews_score = $sc } } }) }
+[System.IO.File]::WriteAllText((Join-Path $hist ($T + '\predictive.json')), ($hjson | ConvertTo-Json -Depth 6), $Utf8NoBom)
+
+function New-Eventos([string]$Nome, $Emissores) {
+    $f = Join-Path $Dir ('eventos_' + $Nome + '.json')
+    $i = 0
+    $lista = @($Emissores | ForEach-Object { $i++; [ordered]@{ cnpj = $_.cnpj; data = (([datetime]$T).AddDays(10 + $i * 3)).ToString('yyyy-MM-dd') } })
+    [System.IO.File]::WriteAllText($f, (ConvertTo-Json -InputObject $lista -Depth 4), $Utf8NoBom)
+    return $f
+}
+function Invoke-Conf([string]$Nome, [string]$EventosArq, [string[]]$Modo) {
+    Reset-Fake
+    $livro = Join-Path $Dir ('livro_' + $Nome)
+    Remove-Item -LiteralPath $livro -Recurse -Force -ErrorAction SilentlyContinue
+    $r = Invoke-Rotina $PacoteValido (@('-LivroDir', $livro, '-HistoricoDir', $hist, '-EventosJson', $EventosArq, '-HojeConferencia', '2027-03-01') + $Modo)
+    return [pscustomobject]@{ R = $r; Livro = $livro; Ch = @(Get-Chamadas) }
+}
+
+# Ponta ruim: o EWS atual ranqueia os 6 eventos acima do EWS 2.0 (todos baixa no pacote) -> desligar
+$evRuim = New-Eventos 'ruim' $baixas
+$c = Invoke-Conf 'ruim' $evRuim @('-Publicar')
+$flagCalls = @($c.Ch | Where-Object { $_ -match 'ews2:flag' })
+Assert-Teste ($c.R.Code -eq 9) 'conferencia/desligar exit=9' ('exit=' + $c.R.Code + ' ' + $c.R.Resultado)
+Assert-Teste ($flagCalls.Count -eq 3 -and $flagCalls[0] -match '^kv key get ews2:flag ' -and $flagCalls[1] -match '^kv key put ews2:flag ' -and $flagCalls[2] -match '^kv key get ews2:flag ') 'conferencia/desligar sequencia get-put-get em ews2:flag' ($c.Ch -join ' || ')
+$gravado = if (Test-Path -LiteralPath $Store) { [System.IO.File]::ReadAllText($Store) | ConvertFrom-Json } else { $null }
+Assert-Teste ($gravado -and $gravado.ativo -eq $false -and $gravado.origem -eq 'conferencia_automatica') 'conferencia/desligar grava SO ativo=false' ($gravado | ConvertTo-Json -Compress)
+Assert-Teste ((@(Get-ChildItem -LiteralPath $c.Livro -Filter '*.json')).Count -eq 1) 'conferencia/pacote registrado no livro' ''
+
+# Ponta boa: EWS 2.0 melhor que o EWS atual nos mesmos 6 eventos (emissores 'alta' no pacote, escore atual 0) -> manter
+$altas = @($obj.emissores | Where-Object { $_.severidade -eq 'alta' } | Select-Object -First 6)
+$evBom = New-Eventos 'bom' $altas
+$c = Invoke-Conf 'bom' $evBom @('-Publicar')
+Assert-Teste ($c.R.Code -eq 0) 'conferencia/ews2 melhor exit=0' ('exit=' + $c.R.Code + ' ' + $c.R.Resultado)
+Assert-Teste (-not (@($c.Ch) -match 'ews2:flag')) 'conferencia/ews2 melhor nao toca a flag' ($c.Ch -join ' || ')
+
+# Amostra pequena (3 eventos, mesmo com o EWS atual ganhando) -> nada a decidir
+$evPouco = New-Eventos 'pouco' @($baixas | Select-Object -First 3)
+$c = Invoke-Conf 'pouco' $evPouco @('-Publicar')
+Assert-Teste ($c.R.Code -eq 0 -and -not (@($c.Ch) -match 'ews2:flag')) 'conferencia/amostra insuficiente exit=0 e flag intocada' ('exit=' + $c.R.Code + ' ' + ($c.Ch -join ' || '))
+
+# Dry-run com veredito desligar: informa e NAO escreve nada
+$c = Invoke-Conf 'dry' $evRuim @()
+Assert-Teste ($c.R.Code -eq 0 -and $c.Ch.Count -eq 0) 'conferencia/dry-run com veredito desligar nao escreve nada' ('exit=' + $c.R.Code + ' ' + ($c.Ch -join ' || '))
+
+# Guarda final: a flag so foi tocada no cenario do veredito desligar, e so com ativo=false (assert acima)
 Write-Output ('RESUMO: {0}/{1} pass, {2} falha(s). Artefatos: {3}' -f ($script:Total - $script:Falhas), $script:Total, $script:Falhas, $Dir)
 if ($script:Falhas -gt 0) { exit 1 }
 exit 0

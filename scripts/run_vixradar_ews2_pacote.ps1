@@ -3,6 +3,12 @@
 # Substitui o passo manual de 18/10/2026 (pacote de 16/10 gerado a mao, nota 126). Sem LLM: so Python local,
 # o validador do proprio adaptador do Worker e wrangler. NUNCA toca em `ews2:flag` (ligar/desligar e do operador).
 #
+# Conferencia automatica (EWS2CONF1, controle da nota 126): depois de publicar, registra o pacote no livro de previsoes
+# (data/ews2-previsoes) e compara EWS 2.0 e EWS atual contra eventos reais (scripts/predictive/ews2/conferencia.py, criterio
+# pre-registrado e pinado por hash). Veredito "desligar" (evidencia forte de que o EWS 2.0 e pior): a rotina escreve
+# ews2:flag = {"ativo": false, ...} depois de guardar o valor anterior. E o UNICO caso em que ela toca em ews2:flag e nunca
+# para ligar. Sem -Publicar a conferencia roda sem rede e so informa.
+#
 # Fluxo, cada passo fail-closed:
 #   1. Backtest de referencia fixo (data/validacao/g0v4/backtest_real_v3_20261018.json) com sha256 pinado. O backtest
 #      decide QUAIS sinais sao expostos; trocar ele e decisao do operador, entao hash diferente aborta.
@@ -21,6 +27,8 @@
 #
 # Exit codes (Task Scheduler): 0 ok | 2 entrada invalida | 3 geracao falhou | 4 validacao reprovou (nada gravado)
 #   | 5 kv put falhou | 6 releitura nao confirmou | 7 instancia duplicada | 8 backup do valor atual falhou
+#   | 9 conferencia mandou DESLIGAR e a flag foi desligada | 11 publicou mas o registro no livro de previsoes falhou
+#   | 12 conferencia nao rodou ou falhou | 13 conferencia mandou desligar e o desligamento da flag falhou
 #
 # Uso:
 #   powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\run_vixradar_ews2_pacote.ps1            (dry-run)
@@ -40,7 +48,13 @@ param(
     [string]$BackupRaiz = 'E:\Diretorio\Claude\BACKUPS\operacional\vix-radar\ews2-latest',
     [int]$GerarTimeoutSeg = 1200,
     [int]$DadosTimeoutSeg = 1800,
+    [int]$ConferenciaTimeoutSeg = 1800,
     [switch]$SemDownload,
+    [switch]$SemConferencia,
+    [string]$LivroDir,
+    [string]$HistoricoDir,
+    [string]$EventosJson,
+    [string]$HojeConferencia,
     [int]$KvTimeoutSeg = 120
 )
 
@@ -117,7 +131,8 @@ function Get-Cabeca([string]$s, [int]$n) {
 
 # Chamada ao wrangler (ou ao -KvCli falso dos testes). A chave e conferida AQUI: nada alem de ews2:latest passa.
 function Invoke-KvCli([string]$Sub, [string]$Key, [string]$Extra) {
-    if ($Key -ne 'ews2:latest') { return [pscustomobject]@{ Code = 99; Out = ''; Err = ('chave recusada pela guarda: ' + $Key) } }
+    $permitida = ($Key -eq 'ews2:latest') -or ($Key -eq 'ews2:flag' -and $script:PermiteFlag -eq $true)
+    if (-not $permitida) { return [pscustomobject]@{ Code = 99; Out = ''; Err = ('chave recusada pela guarda: ' + $Key) } }
     if ($KvCli) { $exe = $KvCli; $pre = '' }
     else {
         $exe = (Get-Command npx.cmd -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1).Source
@@ -133,6 +148,70 @@ function Get-JsonDoTexto([string]$raw) {
     $i = $raw.IndexOf('{')
     if ($i -lt 0) { return $null }
     try { return ($raw.Substring($i) | ConvertFrom-Json) } catch { return $null }
+}
+
+$script:PermiteFlag = $false
+
+# Desligamento da flag pela conferencia. Escreve SO ativo=false (conteudo conferido antes do put e na releitura).
+function Invoke-FlagDesligar([string]$Motivo, [string]$Relatorio) {
+    $script:PermiteFlag = $true
+    try {
+        $r = Invoke-KvCli 'get' 'ews2:flag' ''
+        if ($r.Code -ne 0) { Stop-Rotina 13 ('desligar: leitura da flag falhou: exit=' + $r.Code) }
+        New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+        $bk = Join-Path $BackupDir 'ews2_flag_anterior.json'
+        [System.IO.File]::WriteAllText($bk, $r.Out, $Utf8NoBom)
+        $script:Res.backup_flag = $bk
+        $novo = [ordered]@{ ativo = $false; desligado_em = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'); origem = 'conferencia_automatica'; motivo = $Motivo; relatorio = $Relatorio }
+        $f = Join-Path $TmpDir 'ews2_flag_desligada.json'
+        [System.IO.File]::WriteAllText($f, ($novo | ConvertTo-Json -Compress), $Utf8NoBom)
+        $conf = Get-JsonDoTexto ([System.IO.File]::ReadAllText($f, [System.Text.Encoding]::UTF8))
+        if (-not $conf -or $conf.ativo -ne $false) { Stop-Rotina 13 'desligar: conteudo a gravar nao e ativo=false, recusado' }
+        $r = Invoke-KvCli 'put' 'ews2:flag' ('--path "' + $f + '"')
+        Write-Log ('FLAG_DESLIGADA: put exit=' + $r.Code + ' ' + (Get-Cabeca $r.Err 2))
+        if ($r.Code -ne 0) { Stop-Rotina 13 ('desligar: put da flag falhou: ' + (Get-Cabeca $r.Err 2)) }
+        $r = Invoke-KvCli 'get' 'ews2:flag' ''
+        $lido = Get-JsonDoTexto $r.Out
+        if ($r.Code -ne 0 -or -not $lido -or $lido.ativo -ne $false) { Stop-Rotina 13 'desligar: releitura nao confirmou ativo=false' }
+        $script:Res.flag_desligada = $true
+    } finally { $script:PermiteFlag = $false }
+}
+
+# Registro do pacote no livro de previsoes e conferencia contra eventos reais.
+function Invoke-Conferencia([bool]$Aplicar) {
+    if ($SemConferencia) { Write-Log 'CONFERENCIA: pulada (-SemConferencia)'; return }
+    if (-not $python) { Stop-Rotina 12 'python.exe ausente no PATH, conferencia nao rodou' }
+    $conf = Join-Path $Ews2Dir 'conferencia.py'
+    $livroArg = ''
+    if ($LivroDir) { $livroArg = ' --livro "' + $LivroDir + '"' }
+    if ($Aplicar) {
+        $histArg = ''
+        if ($HistoricoDir) { $histArg = ' --historico "' + $HistoricoDir + '"' }
+        $r = Invoke-ProcessoComTeto $python ('-I "' + $conf + '" registrar --pacote "' + $caminhoPacote + '"' + $livroArg + $histArg) $ProjectRoot 120
+        $rj = Get-JsonDoTexto $r.Out
+        $script:Res.livro = $rj
+        Write-Log ('CONFERENCIA_REGISTRO: exit=' + $r.Code + ' ' + (Get-Cabeca $r.Out 1))
+        if ($r.Code -ne 0 -or -not $rj -or $rj.ok -ne $true) { Stop-Rotina 11 ('pacote publicado, mas o registro no livro de previsoes falhou: ' + (Get-Cabeca $r.Err 2)) }
+    }
+    $rel = Join-Path $LogDir ('conferencia-' + $Carimbo + '.json')
+    $cArgs = '-I "' + $conf + '" conferir --relatorio "' + $rel + '"' + $livroArg
+    if (-not $Aplicar) { $cArgs += ' --sem-rede' }
+    if ($EventosJson) { $cArgs += ' --eventos-json "' + $EventosJson + '"' }
+    if ($HojeConferencia) { $cArgs += ' --hoje ' + $HojeConferencia }
+    $ini = Get-Date
+    $r = Invoke-ProcessoComTeto $python $cArgs $ProjectRoot $ConferenciaTimeoutSeg
+    $cj = Get-JsonDoTexto $r.Out
+    $script:Res.conferencia = $cj
+    Write-Log ('CONFERENCIA: exit=' + $r.Code + (' {0:N0}s ' -f ((Get-Date) - $ini).TotalSeconds) + (Get-Cabeca $r.Out 1))
+    if ($r.Code -eq 9 -and $cj -and $cj.decisao -eq 'desligar') {
+        if (-not $Aplicar) { Write-Log 'CONFERENCIA: veredito DESLIGAR em dry-run, flag nao alterada'; return }
+        Invoke-FlagDesligar $cj.motivo $rel
+        Stop-Rotina 9 ('conferencia mandou desligar o EWS 2.0 e a flag foi desligada: ' + $cj.motivo)
+    }
+    if ($r.Code -ne 0) {
+        if (-not $Aplicar) { Write-Log 'CONFERENCIA: nao rodou em dry-run (livro vazio ou criterio alterado), nada a fazer'; return }
+        Stop-Rotina 12 ('conferencia falhou: ' + (Get-Cabeca $r.Out 1) + ' ' + (Get-Cabeca $r.Err 2))
+    }
 }
 
 # ---------------------------------------------------------------
@@ -219,6 +298,7 @@ if ($r.Code -ne 0 -or -not $v -or $v.ok -ne $true) {
 
 if (-not $Publicar) {
     Write-Log ('DRYRUN: pacote valido, SERIA gravado em ' + $Chave + ' (namespace ' + $NamespaceId + '). KV nao foi lido nem escrito.')
+    Invoke-Conferencia $false
     Stop-Rotina 0 $null
 }
 
@@ -252,4 +332,5 @@ $conf = ($r.Code -eq 0 -and $lido -and $lido.gerado_em -eq $esperado.gerado_em -
 $script:Res.releitura = [ordered]@{ exit = $r.Code; confere = [bool]$conf; gerado_em = $(if ($lido) { $lido.gerado_em } else { $null }) }
 if (-not $conf) { Stop-Rotina 6 ('gravado mas releitura nao confirmou: exit=' + $r.Code + ' ' + (Get-Cabeca $r.Err 2)) }
 Write-Log ('PUBLICADO: ' + $Chave + ' data_observacao=' + $esperado.data_observacao + ' gerado_em=' + $esperado.gerado_em)
+Invoke-Conferencia $true
 Stop-Rotina 0 $null

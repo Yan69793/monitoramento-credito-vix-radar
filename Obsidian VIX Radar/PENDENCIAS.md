@@ -7,6 +7,13 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 18/10/2026 05:35: autonomia do EWS 2.0, passo 2 de 3 feito (conferencia)
+
+- Feito: conferencia automatica com desligamento pela regra pre-registrada (nota 127).
+- Aberto: o detector de eventos precisa de validacao propria (medir revocacao e precisao contra uma amostra rotulada de 2026 fora do ensaio) e talvez de um adjudicador LLM para os candidatos duvidosos; ate la o desligamento automatico depende de evidencia forte (5 eventos, sinal exato) e o relatorio mostra os eventos usados.
+- Aberto: rodar a rotina fora deste PC (GitHub Actions).
+- Conferir em 20/10 o log da primeira execucao agendada (19/10 23:15) em `logs\ews2-pacote\`.
+
 ## 18/10/2026 05:08: autonomia do EWS 2.0, passo 1 de 3 feito
 
 - Feito: pacote velho some sozinho (Worker v4.9.273, EWS2IDADE1).
