@@ -7,6 +7,12 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 18/10/2026 05:08: autonomia do EWS 2.0, passo 1 de 3 feito
+
+- Feito: pacote velho some sozinho (Worker v4.9.273, EWS2IDADE1).
+- Aberto: conferencia automatica de 30/90 dias (rotular documentos novos com as regras G0-v4, medir acerto e falso alarme, desligar a flag se pior que o EWS atual, criterio da nota 126).
+- Aberto: rodar a rotina do pacote fora deste PC (GitHub Actions, cache do COTAHIST, token Cloudflare como secret).
+
 ## 18/10/2026 04:52: preco do H5 corrigido e rotina do pacote registrada
 
 - Fecha "preco nao ajustado" e "rotina semanal" do item de 04:38 (ESTADO.md 04:52).

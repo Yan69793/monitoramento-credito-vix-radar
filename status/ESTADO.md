@@ -1,5 +1,9 @@
 # Estado do projeto — VIX Radar
 
+## 18/10/2026 05:08, EWS2IDADE1: pacote ews2 velho some sozinho, Worker v4.9.273
+
+O Worker deixa de exibir o EWS 2.0 (op=ews e predictive_v1) quando `ews2:latest` tem `data_observacao` ausente, invalida ou com mais de 14 dias corridos, mesmo com a flag ligada. Antes, se a rotina semanal parasse, o cliente via sinal velho como atual. 14 dias = uma execucao semanal perdida. Prova de duas pontas: o teste novo falha contra o adaptador anterior e passa no atual (15 dias some, 14 aparece). Worker 542/542, adaptador 10/10. Pacote no ar (16/10) segue visivel. Commits `6947271` e `e6eb9ad` (deploy). Proximos passos da autonomia: conferencia automatica de acerto com desligamento pela regra da nota 126, depois rodar a rotina fora deste PC.
+
 ## 18/10/2026 04:52, EWS 2.0: preco corrigido por desdobramento e FATCOT, rotina semanal do pacote REGISTRADA
 
 H5 lia o COTAHIST sem dividir pelo FATCOT (preco por lote de 1.000 acoes entrava como unitario) e sem ajuste de desdobramento ou grupamento (510 saltos em 187 tickers). Correcao em `dados.py` (`eventos_de_capital`, `ajustar_capital`: salto de fator inteiro que persiste 5 pregoes) e em `features.h5` (volatilidade pelo ajustado, acoes do BPP corrigidas pelos eventos entre a referencia e T-1, sem olhar para frente). 305 eventos detectados, 33 dos nossos emissores (EQTL3 5:1 em 2019, B3SA3 3:1 em 2021, SBSP3 5:1 em 29/04/2026). Testes de duas pontas novos; EWS2 Python 43/43.
