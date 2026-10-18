@@ -54,3 +54,55 @@ test('Visao Geral pinta o score pela faixa, nao de vermelho fixo', async ({ page
   expect(critica.tag).toBe('CRÍTICO');
   expect(raizen.cor).not.toBe(critica.cor);
 });
+
+// VXTERMOS1 (A41, A12): stub de emissor adiado nao mostra termo interno nem a rodada falsa.
+const PROIBIDOS = /token_cap|deferred|ledger|Cap efetivo|Tier [A-Z]|EWS=/i;
+
+function renderEmissor(page, analise, aba) {
+  return page.evaluate(async ({ analise, aba }) => {
+    resultados = { CPFL: Object.assign({ empresa: 'CPFL', eventos: [], alertas_mercado: [], timestamp: '2026-10-17T21:10:04.000Z' }, analise) };
+    window.ARQUIVO_PRE = { CPFL: [] };
+    window.__histEmissorCache = {};
+    window.__histEmissorLoading = null;
+    selecionada = 'CPFL'; modo = 'live'; abaAtual = aba; loading = false;
+    window.renderEmpBody();
+    await new Promise((r) => setTimeout(r, 0));
+    const body = document.getElementById('emp-body');
+    return { texto: body.innerText, rodadas: [...body.querySelectorAll('.rodada-row')].map((r) => r.innerText.replace(/\s+/g, ' ').trim()) };
+  }, { analise, aba });
+}
+
+const STUB_ADIADO = {
+  sem_eventos: true,
+  cobertura_nota: 'Tier FULL. Cap efetivo 0 tokens - ledger minimo. EWS=0. Priorizar amanha.',
+  fontes_consultadas: [{ rodada: '0', query: 'token_cap', resultado: 'deferred' }],
+  _token_cap_deferred: true,
+};
+
+test('emissor adiado nao expoe token_cap, deferred nem ledger e esconde a rodada falsa', async ({ page }) => {
+  await semLanding(page);
+  const buscas = await renderEmissor(page, STUB_ADIADO, 'buscas');
+  expect(buscas.texto).not.toMatch(PROIBIDOS);
+  expect(buscas.rodadas).toEqual([]);
+  expect(buscas.texto).toContain('Análise adiada por limite de processamento');
+  const eventos = await renderEmissor(page, STUB_ADIADO, 'eventos');
+  expect(eventos.texto).not.toMatch(PROIBIDOS);
+  expect(eventos.texto).toContain('Análise adiada por limite de processamento');
+});
+
+test('rodada real continua visivel e nota comum so perde o jargao', async ({ page }) => {
+  await semLanding(page);
+  const r = await renderEmissor(page, {
+    sem_eventos: true,
+    cobertura_nota: 'Tier SKIP. CVM: 2 docs na janela. 0 novos. Motivos: sem_delta_24h.',
+    fontes_consultadas: [
+      { rodada: '0', query: 'token_cap', resultado: 'deferred' },
+      { rodada: '2', query: '"CPFL" rating Fitch', resultado: 'sem novidade' },
+    ],
+  }, 'buscas');
+  expect(r.texto).not.toMatch(PROIBIDOS);
+  expect(r.rodadas).toHaveLength(1);
+  expect(r.rodadas[0]).toContain('"CPFL" rating Fitch');
+  expect(r.texto).toContain('CVM: 2 docs na janela');
+  expect(r.texto).toContain('sem delta 24h');
+});
