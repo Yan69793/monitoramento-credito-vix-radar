@@ -215,8 +215,12 @@ servido direto, validado manualmente ou pelo `Portão de verificação`.
 Estes scripts PowerShell chamam o Claude CLI localmente. Todos usam `routine_key` para
 autenticar contra o Worker. A chave nunca está versionada.
 
-**Claude Code Pro voltou a ser a infraestrutura operacional, sem API paga.** Governança
-atualizada em 12/09/2026: `CLAUDE_SUBSCRIPTION = PRO`, `CLAUDE_CODE = OPERACIONAL`,
+**A assinatura Claude (plano Max 5x) voltou a ser a infraestrutura operacional, sem API paga.**
+O plano é **Max 5x**, informado pelo operador em 17/10/2026. A governança de 12/09/2026
+registrava `CLAUDE_SUBSCRIPTION = PRO`, e isso não vale mais. O piloto de rotulagem
+EWS e as rotinas usam o mesmo token, então dividem a cota de 5h e a semanal. O que sobra
+se mede pelo percentual semanal no painel de uso da conta, nunca convertendo para tokens
+de cabeça. Segue valendo `CLAUDE_CODE = OPERACIONAL`,
 `ANTHROPIC_API_PAYG = NÃO AUTORIZADO`. O provider operacional é
 `claude-subscription`, usando o Claude CLI e a autenticação da assinatura. O
 agendamento das rotinas LLM permanece no **Task Scheduler nativo**,
@@ -235,7 +239,9 @@ valor ativo hoje"; as duas afirmações estavam erradas nesta data e foram medid
 novo - a divergência já constava de `status/ESTADO.md` no checkpoint de 13/10.
 `claude-subscription` continua suportado: `Test-VixLlmPermiteClaude` libera este valor
 direto, sem exigir `-ForceClaude`, e as rotinas LLM chamam o Claude CLI nativo,
-autenticado pela assinatura Claude Code Pro, sem OpenRouter e sem chave Anthropic paga.
+autenticado pela assinatura Claude (Max 5x), sem OpenRouter e sem chave Anthropic paga.
+**Medido em 17/10/2026 17:27, o valor ativo é `claude-subscription`** (User e Process),
+e não `codex` como dizem as linhas acima, que ficaram desatualizadas.
 `claude-manual` = Claude só com `-ForceClaude` explícito do operador, nunca pelo
 scheduler. `openrouter` e `codex` são caminhos gated
 (exigem `OpenRouterAdapterHabilitado`/`CodexAdapterHabilitado` no chamador).
