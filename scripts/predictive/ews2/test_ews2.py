@@ -255,6 +255,19 @@ class Metricas(unittest.TestCase):
 
 
 class Guarda(unittest.TestCase):
+    def test_sha256_ignora_fim_de_linha(self):
+        """CRLF do Windows e LF do git/Linux sao o mesmo conteudo (EWS2PUB1): o hash tem que ser um so."""
+        with tempfile.TemporaryDirectory() as d:
+            a, b = os.path.join(d, "lf.csv"), os.path.join(d, "crlf.csv")
+            with open(a, "wb") as fh:
+                fh.write(b"id;x\n1;a\n2;b\n")
+            with open(b, "wb") as fh:
+                fh.write(b"id;x\r\n1;a\r\n2;b\r\n")
+            self.assertEqual(GT.sha256_arquivo(a), GT.sha256_arquivo(b))
+            with open(b, "wb") as fh:                      # conteudo diferente continua diferente
+                fh.write(b"id;x\r\n1;a\r\n2;c\r\n")
+            self.assertNotEqual(GT.sha256_arquivo(a), GT.sha256_arquivo(b))
+
     def test_sem_registro_bloqueia(self):
         ok, mot = GT.avaliar(None, "x")
         self.assertFalse(ok)

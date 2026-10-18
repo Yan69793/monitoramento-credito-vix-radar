@@ -22,8 +22,10 @@ CAMPOS = ("g1a_passa", "g1b_passa", "g1c_passa", "sha256_rotulos", "arquivo_rotu
 
 
 def sha256_arquivo(p):
+    """sha256 com fim de linha normalizado para LF (EWS2PUB1). O CSV de rotulos nasceu com CRLF no Windows e o git guarda LF;
+    sem normalizar, o mesmo conteudo dava hashes diferentes no Windows e no runner do GitHub Actions e a guarda barrava."""
     with open(p, "rb") as fh:
-        return hashlib.sha256(fh.read()).hexdigest()
+        return hashlib.sha256(fh.read().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def _override_valido(registro, sha_nota_real):
