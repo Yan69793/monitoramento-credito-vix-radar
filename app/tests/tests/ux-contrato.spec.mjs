@@ -185,3 +185,54 @@ test('card de taxa separa emissao da taxa indicativa do secundario e mostra a da
   expect(m.val).not.toContain('1,6500');
   expect(m.base).toBe('Data-base 16/10/2026');
 });
+
+// LIVEFRESCOR1 (A08): selo Live segue painel_analise_fresca e painel_fresco do health, sem pulso verde fixo.
+test('selo Live degrada quando a analise envelhece e so pulsa verde no prazo', async ({ page }) => {
+  await semLanding(page);
+  const m = await page.evaluate(async () => {
+    const b = document.getElementById('btn-live');
+    const ponto = () => { const cs = getComputedStyle(b, '::before'); return { bg: cs.backgroundColor, anim: cs.animationName }; };
+    const ler = () => ({ classe: b.className, texto: b.textContent.trim(), dica: b.title, ...ponto() });
+    const health = (extra) => Object.assign({ ok: true, feed_fresco: true }, extra);
+    const comHealth = async (body) => {
+      window.fetch = (url) => {
+        const u = String(url);
+        const resp = /\/\?op=|[?&]op=/.test(u) ? { ok: false } : body;
+        return Promise.resolve(new Response(JSON.stringify(resp), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      };
+      document.dispatchEvent(new Event('visibilitychange'));
+      for (let i = 0; i < 30 && b.dataset.frescor === undefined; i++) await new Promise((r) => setTimeout(r, 50));
+      await new Promise((r) => setTimeout(r, 100));
+      return ler();
+    };
+    const atrasado = await comHealth(health({
+      painel_atualizado_em: '2026-10-11T13:09:33.000Z', painel_fresco: false,
+      painel_ultima_analise_em: '2026-10-11T13:09:33.000Z', painel_analise_fresca: false,
+    }));
+    delete b.dataset.frescor;
+    const escritaSemAnalise = await comHealth(health({
+      painel_atualizado_em: '2026-10-18T13:00:00.000Z', painel_fresco: true,
+      painel_ultima_analise_em: null, painel_analise_fresca: false,
+    }));
+    delete b.dataset.frescor;
+    const fresco = await comHealth(health({
+      painel_atualizado_em: '2026-10-18T13:00:00.000Z', painel_fresco: true,
+      painel_ultima_analise_em: '2026-10-18T12:55:00.000Z', painel_analise_fresca: true,
+    }));
+    if (typeof window.vxAtualizarSeloLive === 'function') window.vxAtualizarSeloLive(null);
+    const semDado = ler();
+    return { atrasado, escritaSemAnalise, fresco, semDado };
+  });
+  const verde = 'rgb(5, 150, 105)', ambar = 'rgb(245, 158, 11)';
+  expect(m.atrasado.bg).toBe(ambar);
+  expect(m.atrasado.anim).toBe('none');
+  expect(m.atrasado.dica).toContain('11/10/2026');
+  expect(m.atrasado.texto).toContain('atrasado');
+  expect(m.escritaSemAnalise.bg).toBe(ambar);
+  expect(m.fresco.bg).toBe(verde);
+  expect(m.fresco.anim).toBe('v63-pulse');
+  expect(m.fresco.texto).toBe('Live');
+  expect(m.fresco.dica).toContain('18/10/2026');
+  expect(m.semDado.bg).not.toBe(verde);
+  expect(m.semDado.anim).toBe('none');
+});
