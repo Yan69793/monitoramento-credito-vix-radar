@@ -1,0 +1,38 @@
+{
+ "protocolo": "G0-v4",
+ "versao_regras": "g0v4-local-v4",
+ "sha256_regras": "d690abdad05792e200c61d3c1376ab1272563af77f80c62ab6d2ee197461a3d2",
+ "sha256_processar": "420c1f2a245599ecfe787890bab1204d0a6bf87a21be8594fe76a0135cf12ab3",
+ "registrado_em": "2026-10-18T05:03:26+00:00",
+ "plano": {
+  "semente_amostra": 20261024,
+  "estratos": "caminho de decisao do nao_evento automatico (sem_gatilho, so_hipotetico, standstill_sem_fato) x origem (uniao, F, W); a origem vem do mapa privado e so o amostrador a usa, nunca o classificador nem o revisor",
+  "tamanho_por_estrato": "n_h = min(N_h, max(20, ceil(0.15 * N_h)))",
+  "revisao_obrigatoria": "todo evento_proprio, continuacao, evento_terceiro, PENDENTE_REVISAO e todo nao_evento com motivo de revisao",
+  "cegueira": "amostra_cega.csv leva so id, CNPJ e data; o revisor nao ve classe G0-v4, rotulo legado nem camada",
+  "adjudicacao": "revisor independente (humano ou fornecedor autorizado pelo operador) decide pelo item 2 da G0-v3 e anexo G0-v2; divergencia com o G0-v4 vai ao operador, cujo rotulo e final",
+  "limiares": {
+   "fn_material_referencia_independente": 0,
+   "fn_material_amostra_cega_observado": 0,
+   "fn_projetado_sup_975": "U (hipergeometrica, alfa 0,025 unilateral) de falsos negativos na populacao de nao_evento automatico <= piso(K/9), K do G1b com rotulo final",
+   "erro_data_ep": "entre evento_proprio confirmados, >= 90% com data a ate 7 dias",
+   "erro_entidade": "<= 10% dos positivos confirmados com titularidade trocada",
+   "cobertura": 1.0,
+   "rastreabilidade_material": 1.0
+  },
+  "recall": "recall_auto = 1 - (FN ponderado N_h/n_h) / (positivos confirmados + FN ponderado); revocacao da uniao pelo G1b (g1b_v2) com rotulo final",
+  "referencia_independente": "episodios de eventos_v0.csv, eventos_v0_1.csv e eventos_v1.csv (metodo e1, anterior ao G0-v4) cujo (CNPJ, data_evento) coincide com (CNPJ, data) de um item: o G0-v4 nao pode deixar nenhum deles em nao_evento automatico",
+  "ressalva_in_sample": "as regras v2 foram ajustadas depois de ver os 150 rotulos legados (v1 errava i0034 e i0065); a comparacao com os 150 e in-sample e NAO conta como medida independente de falso negativo"
+ },
+ "preservados": {
+  "data/validacao/rotulos_etapa1.csv": "e0cc7c63670b1817de0d6eac89bbd6ad201f4ddac56845d80b65953b68d6d22b",
+  "data/validacao/rotulos_etapa1.claude-sonnet-5-5.parcial-20261016.csv": "c2e2795c3b9a9366862088182bb3eca01a2107f86642e5cb19d8ab167b892ac6",
+  "scripts/predictive/validacao/guarda_g0v3.py": "fb6b3c8eabeeb738e68b62fbbfadc19525fff9617ca57bb9e9658e2465ddfc65",
+  "scripts/predictive/validacao/recuperar_g0v3.py": "f0b7e40374ebac18ed13dc8d1adc8dd38f68306c8ee80065f48585f3056ce244",
+  "scripts/predictive/validacao/rotular_etapa1.py": "cf8452403ebfd0c5d71770ffd7b1661d0327659889f7e7dfb7a549041b0b7b2c",
+  "scripts/predictive/validacao/rotular_g0v3.py": "3e8f5a3da3b7d2e10db7f6a743a68e1c7f5b78ac4403544d1c30e916347e3205",
+  "data/validacao/etapa1_g0v2/itens_cegos.json": "e0a8dec28af9b36720af7a63e4a4f35a149e86f2727c15f911f39864669aa813",
+  "data/validacao/etapa1_g0v2/mapa_camadas.json": "4ef9b12624254277b8584e5be2acabef6305bb22b13a5f30a74544a592ba5a77"
+ },
+ "estado": "rascunho tecnico, NAO homologado; homologacao e decisao do operador"
+}

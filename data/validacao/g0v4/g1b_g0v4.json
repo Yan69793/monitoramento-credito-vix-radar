@@ -1,0 +1,58 @@
+{
+ "K": 166,
+ "M_max": 18,
+ "x": {
+  "F": 101,
+  "W": 59
+ },
+ "U_F_mais_U_W": 563,
+ "revocacao_uniao": 0.2277,
+ "passa": false,
+ "sensibilidade_sem_incerto_de_G": {
+  "x": {
+   "F": 76,
+   "W": 30
+  },
+  "U": 364,
+  "revocacao_uniao": 0.3132,
+  "passa": false
+ },
+ "eventos_fora_da_regua": {
+  "uniao": 8,
+  "G": 0
+ },
+ "G": {
+  "eventos_proprio": 12,
+  "continuacao": 186,
+  "incerto": 54,
+  "episodios_perdidos": 160
+ },
+ "uniao": {
+  "evento_proprio": 81,
+  "continuacao": 142,
+  "incerto": 85,
+  "continuacao_divergente": 6
+ },
+ "gerado_em": "2026-10-18T06:09:34+00:00",
+ "limite_otimista": {
+  "premissa": "toda continuacao de G cujo CNPJ tem evento anterior na uniao conta como coberta (origem truncada em 180 dias), e incerto de G ignorado",
+  "continuacao_G_cobertas": 160,
+  "x": {
+   "F": 17,
+   "W": 2
+  },
+  "U": 81,
+  "M_max": 18,
+  "revocacao_uniao": 0.672,
+  "passa": false
+ },
+ "limite_otimista_com_incerto": {
+  "x": {
+   "F": 42,
+   "W": 31
+  },
+  "U": 301,
+  "revocacao_uniao": 0.355,
+  "passa": false
+ }
+}

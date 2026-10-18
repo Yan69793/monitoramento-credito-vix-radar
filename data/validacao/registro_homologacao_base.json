@@ -1,0 +1,17 @@
+{
+ "g1a_passa": false,
+ "g1b_passa": false,
+ "g1c_passa": false,
+ "g1a_nota": "nao calculado: depende de segunda leitura humana ou de outro fornecedor sobre amostra de 60; a G0-v4 usou revisor unico",
+ "g1b_nota": "reprovado, ver data/validacao/g0v4/g1b_g0v4.json (revocacao da uniao 23% a 67%, minimo 90%)",
+ "g1c_nota": "nao calculado",
+ "sha256_rotulos": "3faa18f3319788aeda16d1317ceb8198b30e360d9c1328d7f2f12c5f80093b74",
+ "arquivo_rotulos": "data/validacao/g0v4/rotulos_g0v4_final.csv",
+ "autorizado_por_operador": true,
+ "autorizado_em": "2026-10-18",
+ "protocolo": "G0-v4",
+ "override_operador": true,
+ "override_motivo": "Liberacao operacional por decisao do operador em 18/10/2026, sem homologacao do G1. Ver nota 126.",
+ "override_nota": "Obsidian VIX Radar/126 - EWS 2.0 Liberacao operacional por decisao do operador 2026-10-18.md",
+ "override_nota_sha256": "950c7b0404ff900877f161840ea0a601711860ba67baa4ae09f6e554900138c5"
+}

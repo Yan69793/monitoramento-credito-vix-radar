@@ -1,0 +1,152 @@
+{
+ "gerado_em": "2026-10-18T05:13:02+00:00",
+ "versao": "g0v4-local-v4",
+ "sha256_regras": "d690abdad05792e200c61d3c1376ab1272563af77f80c62ab6d2ee197461a3d2",
+ "sha256_preregistro": "eb0c3cea531013314bf4e7456a458fe9c26abda76e8b2b5e6a057b6b6f7c3bbb",
+ "sha256_classificacoes": "47aac2670a24273e9561cd18c36572819fb4547cffb3c4be98ed03231de97ce7",
+ "cobertura": {
+  "itens_manifesto": 1261,
+  "classificados": 1261,
+  "faltam": [],
+  "pendentes_g0v3": 1111,
+  "com_rotulo_legado": 150
+ },
+ "classes": {
+  "continuacao": 321,
+  "PENDENTE_REVISAO": 577,
+  "nao_evento": 221,
+  "evento_proprio": 142
+ },
+ "caminhos": {
+  "continuacao_origem_texto": 247,
+  "continuacao_status": 74,
+  "conflito_metadado": 95,
+  "entidade_terceiro": 21,
+  "sem_gatilho": 208,
+  "proprio_documento_do_dia": 125,
+  "sinal_fraco": 139,
+  "negacao": 76,
+  "proprio_standstill_com_fato": 17,
+  "cautelar_ambigua": 29,
+  "status_recuperacao_sem_origem": 39,
+  "continuacao_origem_incompleta": 82,
+  "continuidade_nao_verificavel": 26,
+  "ilegivel_parcial": 10,
+  "so_hipotetico": 13,
+  "ilegivel_total": 46,
+  "intencao": 7,
+  "standstill_contexto_incompleto": 7
+ },
+ "revisao_obrigatoria": 1040,
+ "nao_evento_automatico": 221,
+ "rastreabilidade_material": {
+  "n": 463,
+  "conferida": 463
+ },
+ "eventos_identificados": {
+  "evento_proprio": 142,
+  "continuacao": 321,
+  "adicionais": 152
+ },
+ "integridade_preservados": {
+  "data/validacao/rotulos_etapa1.csv": true,
+  "data/validacao/rotulos_etapa1.claude-sonnet-5-5.parcial-20261016.csv": true,
+  "scripts/predictive/validacao/guarda_g0v3.py": true,
+  "scripts/predictive/validacao/recuperar_g0v3.py": true,
+  "scripts/predictive/validacao/rotular_etapa1.py": true,
+  "scripts/predictive/validacao/rotular_g0v3.py": true,
+  "data/validacao/etapa1_g0v2/itens_cegos.json": true,
+  "data/validacao/etapa1_g0v2/mapa_camadas.json": true
+ },
+ "legados": {
+  "linhas": 150,
+  "ids_unicos": 150
+ },
+ "referencia_independente": {
+  "itens_com_episodio_e1": 269,
+  "classes_g0v4": {
+   "continuacao": 76,
+   "PENDENTE_REVISAO": 159,
+   "evento_proprio": 33,
+   "nao_evento": 1
+  },
+  "falsos_negativos": [
+   "i0791"
+  ]
+ },
+ "legado_150_in_sample": {
+  "n_comparados": 150,
+  "matriz": {
+   "continuacao->PENDENTE_REVISAO": 11,
+   "continuacao->continuacao": 23,
+   "continuacao->evento_proprio": 1,
+   "evento_proprio->PENDENTE_REVISAO": 2,
+   "evento_proprio->continuacao": 5,
+   "evento_proprio->evento_proprio": 6,
+   "evento_terceiro->PENDENTE_REVISAO": 2,
+   "evento_terceiro->continuacao": 3,
+   "evento_terceiro->nao_evento": 2,
+   "incerto->PENDENTE_REVISAO": 1,
+   "incerto->nao_evento": 1,
+   "nao_evento->PENDENTE_REVISAO": 31,
+   "nao_evento->continuacao": 22,
+   "nao_evento->evento_proprio": 10,
+   "nao_evento->nao_evento": 30
+  },
+  "falsos_negativos_materiais": [],
+  "materiais_legados": 48,
+  "materiais_em_revisao": [
+   "i0011",
+   "i0034",
+   "i0040",
+   "i0058",
+   "i0063",
+   "i0067",
+   "i0074",
+   "i0076",
+   "i0079",
+   "i0090",
+   "i0124",
+   "i0131",
+   "i0148"
+  ],
+  "evento_proprio_legado": 13,
+  "evento_proprio_nao_capturado_como_ep_ou_revisao": [],
+  "datas_divergentes_em_ep": [],
+  "legado_nao_evento_para_positivo": [
+   "i0002",
+   "i0019",
+   "i0020",
+   "i0026",
+   "i0033",
+   "i0047",
+   "i0057",
+   "i0061",
+   "i0070",
+   "i0075",
+   "i0078",
+   "i0082",
+   "i0083",
+   "i0091",
+   "i0095",
+   "i0096",
+   "i0097",
+   "i0098",
+   "i0099",
+   "i0100",
+   "i0108",
+   "i0119",
+   "i0120",
+   "i0126",
+   "i0132",
+   "i0135",
+   "i0137",
+   "i0139",
+   "i0142",
+   "i0144",
+   "i0145",
+   "i0149"
+  ],
+  "pendentes": 47
+ }
+}

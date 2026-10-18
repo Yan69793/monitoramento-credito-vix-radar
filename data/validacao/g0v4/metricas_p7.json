@@ -1,0 +1,113 @@
+{
+ "pares_g0v4_decidiu": 509,
+ "concordancia_binaria": 0.7151277013752456,
+ "kappa_binario": 0.12814666934426394,
+ "datas_ep_pares": 26,
+ "datas_ep_ate_7_dias": 0.9615384615384616,
+ "erro_entidade": {
+  "materiais_g0v4_revisados": 463,
+  "revisor_diz_terceiro": 33,
+  "taxa": 0.07127429805615551
+ },
+ "amostra_cega": {
+  "populacao_auto": 221,
+  "revisados": 46,
+  "falsos_negativos": [],
+  "U_fn_sup_975": 15
+ },
+ "K_provisorio_sem_regua": 175,
+ "M_max_provisorio": 19,
+ "limites": {
+  "fn_amostra": true,
+  "U_fn_le_Mmax": true,
+  "datas_90pct": true,
+  "entidade_le_10pct": true
+ },
+ "g1b_provisorio": {
+  "K": 175,
+  "M_max": 19,
+  "x_F": 99,
+  "x_W": 59,
+  "U_F_mais_U_W": 559,
+  "passa_provisorio": false,
+  "revocacao_uniao": 0.23841961852861035,
+  "nota": "provisorio, sem regua de K; incerto de G conta como perdido; nao substitui o G1b do protocolo",
+  "G_incertos": 54,
+  "G_eventos": 198
+ },
+ "amostra_positivos": [
+  {
+   "classe": "continuacao",
+   "caminho": "continuacao_origem_texto",
+   "N": 247,
+   "n": 38,
+   "revisados": 38,
+   "discordam": 12,
+   "incertos": 1,
+   "U_erro_sup_975": 123
+  },
+  {
+   "classe": "continuacao",
+   "caminho": "continuacao_status",
+   "N": 74,
+   "n": 20,
+   "revisados": 20,
+   "discordam": 2,
+   "incertos": 3,
+   "U_erro_sup_975": 33
+  },
+  {
+   "classe": "evento_proprio",
+   "caminho": "proprio_documento_do_dia",
+   "N": 125,
+   "n": 20,
+   "revisados": 20,
+   "discordam": 14,
+   "incertos": 3,
+   "U_erro_sup_975": 120
+  },
+  {
+   "classe": "evento_proprio",
+   "caminho": "proprio_standstill_com_fato",
+   "N": 17,
+   "n": 17,
+   "revisados": 17,
+   "discordam": 15,
+   "incertos": 1,
+   "U_erro_sup_975": 16
+  }
+ ],
+ "fontes": {
+  "concordancia": 259,
+  "adjudicacao_luna": 272,
+  "revisor": 416,
+  "g0v4_automatico_nao_amostrado": 175,
+  "regra_g0v3_incerto": 139
+ },
+ "classes_finais": {
+  "continuacao": 328,
+  "nao_evento": 615,
+  "evento_terceiro": 86,
+  "evento_proprio": 93,
+  "incerto": 139
+ },
+ "divergencias_por_motivo": {
+  "G0-v4 x revisor": 12,
+  "revisor incerto | adjudicacao: continuacao": 5,
+  "trecho do revisor nao confere no documento | adjudicacao: nao_evento": 15,
+  "revisor incerto | adjudicacao: incerto": 62,
+  "revisor marcou evento sem data AAAA-MM-DD valida (None) | adjudicacao: continuacao": 19,
+  "trecho do revisor nao confere no documento | adjudicacao: continuacao": 8,
+  "trecho do revisor nao confere no documento | adjudicacao: incerto": 2,
+  "revisor marcou evento sem data AAAA-MM-DD valida (None) | adjudicacao: incerto": 8,
+  "revisor marcou evento sem data AAAA-MM-DD valida ('2024-01-19') | adjudicacao: continuacao": 1,
+  "revisor marcou evento sem data AAAA-MM-DD valida ('2014-07-07') | adjudicacao: continuacao": 1,
+  "revisor marcou evento sem data AAAA-MM-DD valida ('2021-08-05') | adjudicacao: continuacao": 1,
+  "trecho do revisor nao confere no documento | adjudicacao: evento_terceiro": 1,
+  "revisor marcou evento sem data AAAA-MM-DD valida ('2015-11-27') | adjudicacao: incerto": 1,
+  "revisor marcou evento sem data AAAA-MM-DD valida ('2013-??-??') | adjudicacao: continuacao": 1,
+  "trecho do revisor nao confere no documento | adjudicacao: evento_proprio": 1,
+  "revisor marcou evento sem data AAAA-MM-DD valida ('2023-??-??') | adjudicacao: continuacao": 1
+ },
+ "gerado_em": "2026-10-18T06:05:27+00:00"
+}
