@@ -31,7 +31,7 @@ document.addEventListener('click', (e) => {
 let adminPromise = null;
 export function carregarAdmin() {
   if (!adminPromise) {
-    adminPromise = import('../admin-bootstrap.js?v=202.77').catch((err) => {
+    adminPromise = import('../admin-bootstrap.js?v=202.79').catch((err) => {
       adminPromise = null;
       console.error('[vx] falha ao carregar modulos admin', err);
     });
