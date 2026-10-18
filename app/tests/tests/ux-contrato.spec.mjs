@@ -106,3 +106,46 @@ test('rodada real continua visivel e nota comum so perde o jargao', async ({ pag
   expect(r.texto).toContain('CVM: 2 docs na janela');
   expect(r.texto).toContain('sem delta 24h');
 });
+
+// AGENDAKPI1 (A06): KPIs da Agenda seguem o horizonte, contando os eventos da lista.
+test('KPIs da Agenda mudam com o horizonte e batem com a lista', async ({ page }) => {
+  await semLanding(page);
+  await page.evaluate(() => {
+    const ev = (data, tipo, emissor) => ({ data, tipo, emissor, titulo: tipo + ' ' + emissor, fonte: 'CVM' });
+    // Build de 90 dias: 18 emissores com assembleia, 1 com vencimento, nenhum resultado.
+    const cobertura = { total_emissores_universo: 104, com_resultado: 0, com_vencimento: 1, com_assembleia: 18 };
+    const lista = {
+      7: [ev('2026-10-20', 'assembleia', 'Grupo Mateus')],
+      30: [ev('2026-10-20', 'assembleia', 'Grupo Mateus'), ev('2026-10-30', 'assembleia', 'Grupo Mateus'),
+        ev('2026-10-30', 'assembleia', 'Sabesp'), ev('2026-11-05', 'vencimento', 'CSN')],
+    };
+    const orig = window.fetch.bind(window);
+    window.fetch = (url, opts) => {
+      const u = String(url);
+      if (u.includes('op=calendario')) {
+        const h = Number((u.match(/horizonte=(\d+)/) || [])[1] || 30);
+        const body = { ok: true, horizonte_dias: h, cobertura, eventos: lista[h] || [], gerado_em: '2026-10-18T04:01:00.000Z' };
+        return Promise.resolve(new Response(JSON.stringify(body), { status: 200, headers: { 'Content-Type': 'application/json' } }));
+      }
+      return orig(url, opts);
+    };
+    try { localStorage.removeItem('vix:agenda:filtros:v1'); } catch (_) {}
+  });
+  const kpis = () => page.evaluate(() => {
+    const o = {};
+    document.querySelectorAll('#agenda-overlay .ag-stat').forEach((s) => {
+      o[s.querySelector('.ag-stat-lbl').textContent.trim()] = s.querySelector('.ag-stat-val').textContent.trim();
+    });
+    return o;
+  });
+  await page.evaluate(() => { agendaAbrir(); agendaSetHorizonte(30); });
+  await expect(page.locator('#agenda-overlay .ag-stat')).toHaveCount(5);
+  await expect.poll(async () => (await kpis()).Horizonte).toBe('30d');
+  const k30 = await kpis();
+  await page.evaluate(() => agendaSetHorizonte(7));
+  await expect.poll(async () => (await kpis()).Horizonte).toBe('7d');
+  const k7 = await kpis();
+  expect([k30.Assembleias, k30.Vencimentos, k30.Resultados]).toEqual(['3', '1', '0']);
+  expect([k7.Assembleias, k7.Vencimentos, k7.Resultados]).toEqual(['1', '0', '0']);
+  expect(k7.Universo).toBe('104');
+});

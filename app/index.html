@@ -1,4 +1,4 @@
-﻿<!--
+<!--
   VIX Radar — Sistema de Monitoramento de Crédito Privado com IA
   Copyright (c) 2026 Szuchmacher Consultoria Ltda. Todos os direitos reservados.
   Software registrado no INPI. Protegido pela Lei 9.609/98 (Lei do Software)
@@ -5769,10 +5769,22 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
       }
       return s;
     }
+    // AGENDAKPI1 (2026-10-18): os KPIs contam os EVENTOS da lista, que o Worker ja corta pelo
+    // horizonte. Antes liam `cobertura` (emissores distintos do build de 90 dias) e nao mudavam
+    // entre 7d e 30d. `cobertura` so decide se a fonte esta integrada (zero no build inteiro).
+    var _evHor = Array.isArray(STATE.payload.eventos) ? STATE.payload.eventos : [];
+    function _nTipo(t){ return _evHor.filter(function(e){ return e && e.tipo === t; }).length; }
+    var _hintHor = "eventos em " + STATE.payload.horizonte_dias + " dias";
+    function _statTipo(l, t, campoBuild){
+      var integrada = !campoBuild || !(campoBuild in cob) || cob[campoBuild] > 0;
+      var s = integrada ? _mkStat(l, _nTipo(t)) : _mkStat(l, "—", "em integração");
+      if (integrada) { try { s.title = _hintHor; } catch(_){} }
+      return s;
+    }
     stats.appendChild(_mkStat("Universo", cob.total_emissores_universo));
-    stats.appendChild(_mkStat("Resultados", cob.com_resultado));
-    stats.appendChild(_mkStat("Vencimentos", cob.com_vencimento > 0 ? cob.com_vencimento : "—", cob.com_vencimento > 0 ? null : "em integração"));
-    stats.appendChild(_mkStat("Assembleias", cob.com_assembleia > 0 ? cob.com_assembleia : "—", cob.com_assembleia > 0 ? null : "em integração"));
+    stats.appendChild(_statTipo("Resultados", "resultado", null));
+    stats.appendChild(_statTipo("Vencimentos", "vencimento", "com_vencimento"));
+    stats.appendChild(_statTipo("Assembleias", "assembleia", "com_assembleia"));
     stats.appendChild(_mkStat("Horizonte", STATE.payload.horizonte_dias + "d"));
     card.appendChild(stats);
     // eventos
