@@ -4,6 +4,12 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.273.js = v4.9.272 + EWS2IDADE1: pacote `ews2:latest` com data_observacao
+#   ausente, invalida ou com mais de 14 dias corridos deixa de ser exibido
+#   (op=ews e predictive_v1), mesmo com a flag ligada. Sem isso, uma rotina
+#   semanal parada mostrava sinal velho ao cliente como se fosse atual. A
+#   rotina VIXRadar-EWS2-Pacote publica toda segunda; 14 dias = uma execucao
+#   perdida. Testes api/test/ews2-operacional (duas pontas, 15 x 14 dias).
 # v4.9.272.js = v4.9.271 + EWS2OPER1: op=ews (ranking e por emissor) anexa
 #   `ews2` {severidade, sinais H1/H6, data_observacao} ao EWS atual quando
 #   `ews2:flag` esta ligada e `ews2:latest` e valido. Liberacao operacional por

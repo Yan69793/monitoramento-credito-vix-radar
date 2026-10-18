@@ -2,7 +2,8 @@ import { SELF, env } from "cloudflare:test";
 import { afterEach, describe, expect, it } from "vitest";
 const url = "https://example.com/?op=predictive_v1";
 const base = () => ({ modelo: "lab", emissores: [{ name: "Alfa", cnpj: "00.000.000/0001-00", predictive_v1: { score: 42 } }] });
-const ews = () => ({ schema: "ews2/1", sha256_rotulos: "a".repeat(64), homologacao: { g1a: true, g1b: true, g1c: true, g2: true, g3: false }, sinais_aprovados: ["H1"], exibir_probabilidade: false, emissores: [{ cnpj: "00.000.000/0001-00", nome: "Alfa", sinais: { H1: 1 }, prob_180d: 0.8 }] });
+// data_observacao de hoje: desde EWS2IDADE1 pacote sem data ou com mais de 14 dias nao e exibido.
+const ews = () => ({ schema: "ews2/1", sha256_rotulos: "a".repeat(64), homologacao: { g1a: true, g1b: true, g1c: true, g2: true, g3: false }, sinais_aprovados: ["H1"], exibir_probabilidade: false, data_observacao: new Date().toISOString().slice(0, 10), emissores: [{ cnpj: "00.000.000/0001-00", nome: "Alfa", sinais: { H1: 1 }, prob_180d: 0.8 }] });
 const seed = async (key, val) => env.RADAR_KV.put(key, JSON.stringify(val));
 const query = async () => SELF.fetch(url, { headers: { "x-admin-password": env.ADMIN_PASSWORD } });
 afterEach(async () => { for (const k of ["predictive_v1:latest", "ews2:latest", "ews2:flag"]) await env.RADAR_KV.delete(k); });

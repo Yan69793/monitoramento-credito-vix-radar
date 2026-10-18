@@ -40,17 +40,33 @@ export function validarPayload(p) {
   return { ok: erros.length === 0, erros };
 }
 
+// Pacote velho nao aparece (EWS2IDADE1, 18/10/2026). A rotina semanal publica toda segunda com T = dia util anterior,
+// entao o pacote normal tem ate ~10 dias. Acima de IDADE_MAX_DIAS corridos (uma execucao perdida), ou sem data valida,
+// o sinal some sozinho em vez de ser exibido como se fosse atual. `agora` so e passado pelos testes.
+export const IDADE_MAX_DIAS = 14;
+
+export function idadeDias(p, agora = Date.now()) {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(String((p && p.data_observacao) || "")) ? Date.parse(p.data_observacao + "T00:00:00Z") : NaN;
+  return Number.isFinite(d) ? Math.floor((agora - d) / 86400000) : null;
+}
+
+export function pacoteFresco(p, agora = Date.now()) {
+  const i = idadeDias(p, agora);
+  return i !== null && i >= -1 && i <= IDADE_MAX_DIAS;
+}
+
 export function flagAtiva(flag) {
   return !!(flag && typeof flag === "object" && flag.ativo === true);
 }
 
 // Funde o EWS 2.0 no payload de predictive_v1 SEM alterar nenhum campo existente: so acrescenta `ews2` por emissor
 // (chave `name` do predictive_v1 casa com `nome` do ews2) e um bloco `ews2` no topo. Probabilidade so se G3 aprovou.
-export function fundir(predictiveV1, ews2, flag) {
+export function fundir(predictiveV1, ews2, flag, agora = Date.now()) {
   const base = predictiveV1 && typeof predictiveV1 === "object" ? predictiveV1 : { emissores: [] };
   if (!flagAtiva(flag)) return { ...base, ews2: { ativo: false, motivo: "flag desligada" } };
   const v = validarPayload(ews2);
   if (!v.ok) return { ...base, ews2: { ativo: false, motivo: "payload invalido: " + v.erros.join("; ") } };
+  if (!pacoteFresco(ews2, agora)) return { ...base, ews2: { ativo: false, motivo: "pacote velho: data_observacao " + ews2.data_observacao + ", limite " + IDADE_MAX_DIAS + " dias" } };
   const porNome = new Map((ews2.emissores || []).map((e) => [String(e.nome || "").toLowerCase().trim(), e]));
   const porCnpj = new Map((ews2.emissores || []).map((e) => [e.cnpj, e]));
   const emissores = (base.emissores || []).map((em) => {
@@ -68,10 +84,10 @@ export function fundir(predictiveV1, ews2, flag) {
 }
 
 // EWS do cliente (op=ews): anexa `ews2` {severidade, sinais} a cada objeto do EWS atual, casando por nome do emissor
-// (`empresa`). NUNCA altera campo existente. Flag desligada ou payload invalido: devolve os objetos sem mudanca.
-export function anexarEws(objetos, ews2, flag) {
+// (`empresa`). NUNCA altera campo existente. Flag desligada, payload invalido ou pacote velho: devolve sem mudanca.
+export function anexarEws(objetos, ews2, flag, agora = Date.now()) {
   const lista = Array.isArray(objetos) ? objetos : [];
-  if (!flagAtiva(flag) || !validarPayload(ews2).ok) return lista;
+  if (!flagAtiva(flag) || !validarPayload(ews2).ok || !pacoteFresco(ews2, agora)) return lista;
   const porNome = new Map((ews2.emissores || []).map((e) => [String(e.nome || "").toLowerCase().trim(), e]));
   return lista.map((o) => {
     const e = o && porNome.get(String(o.empresa || "").toLowerCase().trim());

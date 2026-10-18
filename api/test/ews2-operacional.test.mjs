@@ -9,10 +9,10 @@ import anomalias from "./fixtures/anomalias.json" with { type: "json" };
 // EWS2OPER1 (2026-10-18, nota 126): sinais estruturais do EWS 2.0 no EWS do cliente, atras de flag. Duas pontas:
 // sem flag, flag desligada ou payload com hash de nota errado, a resposta e a de antes; com tudo valido, acrescenta ews2.
 const NOTA = "950c7b0404ff900877f161840ea0a601711860ba67baa4ae09f6e554900138c5";
-const payload = (sha = NOTA) => ({
+const payload = (sha = NOTA, data = "2026-08-28") => ({
   schema: "ews2/1", sha256_rotulos: "c".repeat(64), homologacao: { g1a: false, g1b: false, g1c: true, g2: false, g3: false },
   liberacao: { modo: "operacional_por_decisao_do_operador", nota_sha256: sha }, sinais_aprovados: ["H1", "H6"], exibir_probabilidade: false,
-  data_observacao: "2026-10-16", emissores: [{ cnpj: "x", nome: "Raízen", sinais: { H1: 1, H6: 1 }, prob_180d: null, severidade: "alta" }],
+  data_observacao: data, emissores: [{ cnpj: "x", nome: "Raízen", sinais: { H1: 1, H6: 1 }, prob_180d: null, severidade: "alta" }],
 });
 
 let token;
@@ -56,9 +56,16 @@ describe("EWS2OPER1: EWS 2.0 no EWS do cliente, fail-closed", () => {
     await env.RADAR_KV.put("ews2:latest", JSON.stringify(payload()));
     await env.RADAR_KV.put("ews2:flag", JSON.stringify({ ativo: true }));
     const depois = (await ews("Raízen")).ews;
-    expect(depois.ews2).toEqual({ severidade: "alta", sinais: { H1: 1, H6: 1 }, data_observacao: "2026-10-16" });
+    expect(depois.ews2).toEqual({ severidade: "alta", sinais: { H1: 1, H6: 1 }, data_observacao: "2026-08-28" });
     const { ews2: _x, ...resto } = depois;
     expect(resto).toEqual(antes);
+  });
+  it("pacote com mais de 14 dias some sozinho (EWS2IDADE1), mesmo com flag ligada", async () => {
+    await env.RADAR_KV.put("ews2:latest", JSON.stringify(payload(NOTA, "2026-08-15")));
+    await env.RADAR_KV.put("ews2:flag", JSON.stringify({ ativo: true }));
+    expect((await ews("Raízen")).ews.ews2).toBeUndefined();
+    await env.RADAR_KV.put("ews2:latest", JSON.stringify(payload(NOTA, "2026-08-16")));
+    expect((await ews("Raízen")).ews.ews2.severidade).toBe("alta");
   });
   it("ranking ganha ews2 so no emissor do payload", async () => {
     await env.RADAR_KV.put("ews2:latest", JSON.stringify(payload()));
