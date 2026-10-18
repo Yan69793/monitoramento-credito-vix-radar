@@ -27,11 +27,12 @@ RR_MIN = 1.5
 
 
 def sinais_expostos(bt):
-    out = []
+    """Uniao dos aprovados no G2 com os de limite inferior do IC95 da RR > RR_MIN (estes declarados como escolha olhando o teste)."""
+    out = set(bt.get("aprovados_g2") or [])
     for s, v in (bt.get("hipoteses") or {}).items():
         ic = v.get("rr_ic95") or [None, None]
         if ic[0] is not None and ic[0] > RR_MIN:
-            out.append(s)
+            out.add(s)
     return sorted(out)
 
 
@@ -52,6 +53,10 @@ def main(argv=None):
     t = dt.date.fromisoformat(a.T)
     docs, _ = D.ler_ipe()
     dfp, _ = D.ler_dfp()
+    itr, _ = D.ler_dfp(itr=True)
+    precos_ticker, _ = D.ler_cotahist()
+    precos, _escolha = D.precos_por_cnpj(precos_ticker, D.ler_tickers_fca())
+    selic, _ = D.ler_selic()
     cad = D.ler_cad()
     docs_por = defaultdict(list)
     for d in docs:
@@ -71,7 +76,7 @@ def main(argv=None):
         c = info["cnpj"]
         lst = docs_por.get(c, [])
         evs_outros = {s: [(d, cc) for d, cc in v if cc != c] for s, v in ev_setor.items()}
-        f = F.features_em_T(c, t, lst, [d["data"] for d in lst], dfp.get(c, []), [], None, {}, setor_de(c), evs_outros)
+        f = F.features_em_T(c, t, lst, [d["data"] for d in lst], dfp.get(c, []), itr.get(c, []), precos.get(c), selic, setor_de(c), evs_outros)
         sv = {s: (None if f.get(s) is None else int(bool(f.get(s)))) for s in sinais}
         ativos = sum(1 for v in sv.values() if v == 1)
         emissores.append({"cnpj": c, "nome": nome, "sinais": sv, "prob_180d": None,
@@ -81,11 +86,13 @@ def main(argv=None):
         "schema": "ews2/1", "protocolo": "G0-v4", "versao_pipeline": bt.get("versao_pipeline"), "gerado_em": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
         "data_observacao": t.isoformat(), "sha256_rotulos": est["sha256_rotulos_real"],
         "homologacao": {"g1a": reg.get("g1a_passa") is True, "g1b": reg.get("g1b_passa") is True, "g1c": (bt.get("g1c") or {}).get("passa") is True,
-                        "g2": False, "g3": False},
+                        "g2": bool(bt.get("aprovados_g2")), "g3": False},
         "liberacao": {"modo": "operacional_por_decisao_do_operador", "nota": reg["override_nota"],
                       "nota_sha256": hashlib.sha256(open(nota, "rb").read()).hexdigest(),
-                      "criterio_sinais": "limite inferior do IC95 da razao de risco > %.1f no backtest real (selecao olhando o teste; nenhum sinal passou o G2 inteiro)" % RR_MIN,
-                      "sinais_sem_dado": ["H5 (sem COTAHIST)", "H2a/H2b sem ITR"]},
+                      "criterio_sinais": "aprovados no G2 do backtest real (%s) mais limite inferior do IC95 da razao de risco > %.1f (%s, selecao olhando o teste, sem G2)" % (
+                          ",".join(sorted(bt.get("aprovados_g2") or [])) or "nenhum", RR_MIN,
+                          ",".join(s for s in sinais if s not in (bt.get("aprovados_g2") or [])) or "nenhum"),
+                      "dados": "IPE, DFP, ITR (CVM), COTAHIST (B3, ticker mais liquido do FCA, preco nao ajustado) e Selic over (Ipeadata)"},
         "sinais_aprovados": sinais, "exibir_probabilidade": False, "emissores": emissores,
         "resumo": {"n": len(emissores), "severidade": {k: sum(1 for e in emissores if e["severidade"] == k) for k in ("alta", "media", "baixa")}},
     }

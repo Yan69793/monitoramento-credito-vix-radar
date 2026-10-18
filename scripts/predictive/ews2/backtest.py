@@ -249,7 +249,8 @@ def main(argv=None):
         docs, _ = D.ler_ipe()
         dfp, _ = D.ler_dfp()
         itr, _ = D.ler_dfp(itr=True)
-        precos, _ = D.ler_cotahist()
+        precos_ticker, _ = D.ler_cotahist()
+        precos, _escolha = D.precos_por_cnpj(precos_ticker, D.ler_tickers_fca())  # COTAHIST por ticker -> por CNPJ
         selic, _ = D.ler_selic()
         r = rodar({"docs": docs, "cad": D.ler_cad(), "dfp": dfp, "itr": itr, "precos": precos, "selic": selic}, EV.ler_rotulos(a.rotulos), origem="real")
     else:

@@ -35,7 +35,10 @@ DIRS_DFP = [os.path.join(BASE, "data", "cvm"), r"E:\Diretorio\Claude\tmp\operaci
 DIRS_ITR = [r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cvm-itr"]
 DIRS_COTAHIST = [r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cotahist"]
 CAD = os.path.join(BASE, "data", "cvm", "cad_cia_aberta.csv")
-SELIC_CACHE = os.path.join(BASE, "data", "cotacoes", "selic_sgs_1178_cache.json")
+# selic_sgs_1178_cache.json guarda so o valor do dia (rotinas), nao serie; o H5 precisa da serie historica (Ipeadata
+# BM366_TJOVER366, Selic over diaria, baixada em 18/10/2026). Sem o historico, cai no cache e o H5 fica sem dado.
+SELIC_HIST = os.path.join(BASE, "data", "cotacoes", "selic_historico_ipea.json")
+SELIC_CACHE = SELIC_HIST if os.path.exists(SELIC_HIST) else os.path.join(BASE, "data", "cotacoes", "selic_sgs_1178_cache.json")
 
 CONTAS = {"ativo_total": "1", "caixa": "1.01.01", "aplicacoes": "1.01.02", "passivo_total": "2", "pc": "2.01", "pnc": "2.02",
           "emprestimos_cp": "2.01.04", "cfo": "6.01"}
@@ -196,7 +199,9 @@ def ler_cotahist(dirs=None):
             for n in zf.namelist():
                 with zf.open(n) as fh:
                     for ln in io.TextIOWrapper(fh, encoding="latin-1"):
-                        if ln[:2] != "01" or ln[16:18].strip() != "10":  # 10 = lote padrao, a vista
+                        # layout B3: CODBDI nas posicoes 11-12 ("02" = lote padrao) e TPMERC em 25-27 ("010" = a vista).
+                        # Ate 18/10/2026 o filtro lia ln[16:18] (meio do CODNEG) e descartava quase tudo.
+                        if ln[:2] != "01" or ln[10:12] != "02" or ln[24:27] != "010":
                             continue
                         d = pdate("%s-%s-%s" % (ln[2:6], ln[6:8], ln[8:10]))
                         try:
@@ -207,6 +212,33 @@ def ler_cotahist(dirs=None):
     for v in out.values():
         v.sort()
     return out, {"arquivos": sorted(zips), "disponivel": bool(zips)}
+
+
+DIRS_FCA = [r"E:\Diretorio\Claude\tmp\operacional\vix-radar\cvm-fca"]
+
+
+def ler_tickers_fca(dirs=None):
+    """FCA da CVM (valor_mobiliario): {cnpj: set(codigos de negociacao)} de acoes e units, todos os anos."""
+    out = {}
+    for ano, z in sorted(_zips(dirs or DIRS_FCA, "fca_cia_aberta_").items()):
+        for r in _csv_do_zip(z, "fca_cia_aberta_valor_mobiliario_%s.csv" % ano):
+            cod = (r.get("Codigo_Negociacao") or "").strip().upper()
+            tipo = norm(r.get("Valor_Mobiliario") or "")
+            if cod and ("acao" in tipo or "acoes" in tipo or "unit" in tipo or "certificado de deposito" in tipo):
+                out.setdefault((r.get("CNPJ_Companhia") or "").strip(), set()).add(cod)
+    return out
+
+
+def precos_por_cnpj(precos_ticker, tickers_cnpj):
+    """COTAHIST e indexado por ticker; o pipeline consulta por CNPJ. Para cada CNPJ, o ticker com mais pregoes
+    (o mais liquido) entre os declarados no FCA. Devolve ({cnpj: [(data, fech)]}, {cnpj: ticker})."""
+    out, escolha = {}, {}
+    for c, cods in tickers_cnpj.items():
+        cand = [(len(precos_ticker[k]), k) for k in cods if k in precos_ticker]
+        if cand:
+            n, k = max(cand)
+            out[c], escolha[c] = precos_ticker[k], k
+    return out, escolha
 
 
 def ler_selic(caminho=SELIC_CACHE):
