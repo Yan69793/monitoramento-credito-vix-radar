@@ -1,0 +1,382 @@
+{
+ "versao_pipeline": "ews2-backtest-v0.2 (2026-10-16, G3 condicional + largura + blocos)",
+ "origem_dados": "real",
+ "evidencia_de_eficacia": true,
+ "exibir_probabilidade": false,
+ "painel": {
+  "linhas": 109650,
+  "usaveis_180_sem_formulacao": 95289,
+  "por_particao": {
+   "treino": {
+    "n": 54550,
+    "eventos": 313
+   },
+   "validacao": {
+    "n": 9617,
+    "eventos": 40
+   },
+   "embargo": {
+    "n": 0,
+    "eventos": 0
+   },
+   "teste": {
+    "n": 31122,
+    "eventos": 227
+   }
+  },
+  "embargo_usado": 0
+ },
+ "n_eventos": 312,
+ "n_episodios": 279,
+ "n_incidentes": 159,
+ "securitizadoras_fora": 142,
+ "formulacao_fora": [
+  "00.776.574/0001-56",
+  "01.917.818/0001-36",
+  "03.378.521/0001-75",
+  "06.164.253/0001-87",
+  "08.070.508/0001-78",
+  "09.305.994/0001-29",
+  "12.104.241/0004-02",
+  "21.240.146/0001-84",
+  "33.014.556/0001-96",
+  "33.041.260/0652-90",
+  "33.453.598/0001-23",
+  "42.150.391/0001-70",
+  "47.508.411/0001-56",
+  "60.444.437/0001-46",
+  "76.535.764/0001-43"
+ ],
+ "linhas_por_particao": {
+  "treino": 54550,
+  "validacao": 9617,
+  "teste": 31122
+ },
+ "g1c": {
+  "eventos_janela": 159,
+  "eventos_teste_sem_formulacao": 54,
+  "passa": true
+ },
+ "hipoteses": {
+  "H1": {
+   "sinal": "H1",
+   "n": 19647,
+   "eventos": 183,
+   "ativos": 1220,
+   "razao_de_risco": 4.781153437905414,
+   "rr_ic95": [
+    1.9393319297659684,
+    9.348166060646529
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.019077898851628593,
+   "pr_auc_b0": 0.009781137550989104,
+   "pr_auc_b1": 0.012189307350938582,
+   "pr_auc_b2": 0.025191070482402267,
+   "pr_auc_b3": 0.009581141125736858,
+   "falsos_alertas_por_100": 5.985646663612766,
+   "antecedencia": {
+    "n": 19,
+    "mediana": 337.0,
+    "q1": 119.0,
+    "q3": 353.5
+   },
+   "p_unilateral": 0.001998001998001998,
+   "p_holm": 0.013986013986013986,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "PR-AUC nao supera a de B2"
+    ]
+   }
+  },
+  "H2a": {
+   "sinal": "H2a",
+   "n": 19647,
+   "eventos": 183,
+   "ativos": 7087,
+   "razao_de_risco": 2.333100542444447,
+   "rr_ic95": [
+    1.2117891069711328,
+    4.591241494798471
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.013527299905565606,
+   "pr_auc_b0": 0.009781137550989104,
+   "pr_auc_b1": 0.012189307350938582,
+   "pr_auc_b2": 0.025191070482402267,
+   "pr_auc_b3": 0.009581141125736858,
+   "falsos_alertas_por_100": 35.54232198299995,
+   "antecedencia": {
+    "n": 29,
+    "mediana": 343.0,
+    "q1": 231.0,
+    "q3": 349.0
+   },
+   "p_unilateral": 0.005994005994005994,
+   "p_holm": 0.02997002997002997,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "limite inferior do IC95 da razao de risco nao supera 1.5",
+     "PR-AUC nao supera a de B2"
+    ]
+   }
+  },
+  "H2b": {
+   "sinal": "H2b",
+   "n": 19647,
+   "eventos": 183,
+   "ativos": 7465,
+   "razao_de_risco": 0.8567381111855324,
+   "rr_ic95": [
+    0.36857094635160703,
+    1.6911310131227424
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.00898137639950152,
+   "pr_auc_b0": 0.009781137550989104,
+   "pr_auc_b1": 0.012189307350938582,
+   "pr_auc_b2": 0.025191070482402267,
+   "pr_auc_b3": 0.009581141125736858,
+   "falsos_alertas_por_100": 37.67496309869191,
+   "antecedencia": {
+    "n": 15,
+    "mediana": 348.0,
+    "q1": 328.0,
+    "q3": 358.0
+   },
+   "p_unilateral": 0.6763236763236763,
+   "p_holm": 0.7342657342657343,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "limite inferior do IC95 da razao de risco nao supera 1.5",
+     "PR-AUC nao supera a de B2",
+     "p ajustado por Holm nao fica abaixo de 0.05"
+    ]
+   }
+  },
+  "H2c": {
+   "sinal": "H2c",
+   "n": 19647,
+   "eventos": 183,
+   "ativos": 19478,
+   "razao_de_risco": null,
+   "rr_ic95": [
+    null,
+    null
+   ],
+   "rr_boot_validas": 0,
+   "pr_auc": 0.0100642396694654,
+   "pr_auc_b0": 0.009781137550989104,
+   "pr_auc_b1": 0.012189307350938582,
+   "pr_auc_b2": 0.025191070482402267,
+   "pr_auc_b3": 0.009581141125736858,
+   "falsos_alertas_por_100": 98.20837786939482,
+   "antecedencia": {
+    "n": 46,
+    "mediana": 348.0,
+    "q1": 337.5,
+    "q3": 357.5
+   },
+   "p_unilateral": null,
+   "p_holm": null,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "limite inferior do IC95 da razao de risco nao supera 1.5",
+     "PR-AUC nao supera a de B2",
+     "p ajustado por Holm nao fica abaixo de 0.05"
+    ]
+   }
+  },
+  "H3": {
+   "sinal": "H3",
+   "n": 18767,
+   "eventos": 176,
+   "ativos": 2450,
+   "razao_de_risco": 1.6531914893617021,
+   "rr_ic95": [
+    0.783348748531236,
+    2.9143306871077206
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.011815987195332427,
+   "pr_auc_b0": 0.0098996254072156,
+   "pr_auc_b1": 0.013433360764796516,
+   "pr_auc_b2": 0.029417463923246776,
+   "pr_auc_b3": 0.00958373946246061,
+   "falsos_alertas_por_100": 12.868332711674748,
+   "antecedencia": {
+    "n": 29,
+    "mediana": 233.0,
+    "q1": 152.0,
+    "q3": 324.0
+   },
+   "p_unilateral": 0.0939060939060939,
+   "p_holm": 0.3756243756243756,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "limite inferior do IC95 da razao de risco nao supera 1.5",
+     "PR-AUC nao supera a de B2",
+     "p ajustado por Holm nao fica abaixo de 0.05"
+    ]
+   }
+  },
+  "H4": {
+   "sinal": "H4",
+   "n": 19647,
+   "eventos": 183,
+   "ativos": 1484,
+   "razao_de_risco": 1.5017445802258862,
+   "rr_ic95": [
+    0.2738391629464951,
+    3.3962120600770427
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.011153747592395086,
+   "pr_auc_b0": 0.009781137550989104,
+   "pr_auc_b1": 0.012189307350938582,
+   "pr_auc_b2": 0.025191070482402267,
+   "pr_auc_b3": 0.009581141125736858,
+   "falsos_alertas_por_100": 7.451519315926095,
+   "antecedencia": {
+    "n": 5,
+    "mediana": 255.0,
+    "q1": 142.0,
+    "q3": 301.0
+   },
+   "p_unilateral": 0.24475524475524477,
+   "p_holm": 0.7342657342657343,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "limite inferior do IC95 da razao de risco nao supera 1.5",
+     "PR-AUC nao supera a de B2",
+     "p ajustado por Holm nao fica abaixo de 0.05"
+    ]
+   }
+  },
+  "H5": {
+   "sinal": "H5",
+   "n": 12276,
+   "eventos": 112,
+   "ativos": 6187,
+   "razao_de_risco": 17.386832606001835,
+   "rr_ic95": [
+    4.633825368362267,
+    24.580563157276362
+   ],
+   "rr_boot_validas": 639,
+   "pr_auc": 0.029997425705053798,
+   "pr_auc_b0": 0.009872620130676893,
+   "pr_auc_b1": 0.016021585341555403,
+   "pr_auc_b2": 0.0265637847164425,
+   "pr_auc_b3": 0.008437739556625141,
+   "falsos_alertas_por_100": 49.535679374389055,
+   "antecedencia": {
+    "n": 26,
+    "mediana": 343.0,
+    "q1": 326.0,
+    "q3": 349.75
+   },
+   "p_unilateral": 0.0015625,
+   "p_holm": 0.0125,
+   "g2": {
+    "passa": true,
+    "motivos": []
+   }
+  },
+  "H6": {
+   "sinal": "H6",
+   "n": 18752,
+   "eventos": 183,
+   "ativos": 4238,
+   "razao_de_risco": 3.862775332813855,
+   "rr_ic95": [
+    1.945090662012201,
+    8.352730788899594
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.017783172122862755,
+   "pr_auc_b0": 0.010300251568586721,
+   "pr_auc_b1": 0.01229758502682024,
+   "pr_auc_b2": 0.025227435784796137,
+   "pr_auc_b3": 0.010164956428855237,
+   "falsos_alertas_por_100": 22.08297781569966,
+   "antecedencia": {
+    "n": 24,
+    "mediana": 345.0,
+    "q1": 315.0,
+    "q3": 350.0
+   },
+   "p_unilateral": 0.002997002997002997,
+   "p_holm": 0.017982017982017984,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "PR-AUC nao supera a de B2"
+    ]
+   }
+  },
+  "H8": {
+   "sinal": "H8",
+   "n": 19647,
+   "eventos": 183,
+   "ativos": 4151,
+   "razao_de_risco": 1.2534416999157707,
+   "rr_ic95": [
+    0.4942535097318512,
+    2.4019206724966478
+   ],
+   "rr_boot_validas": 1000,
+   "pr_auc": 0.010667449002501883,
+   "pr_auc_b0": 0.009781137550989104,
+   "pr_auc_b1": 0.012189307350938582,
+   "pr_auc_b2": 0.025191070482402267,
+   "pr_auc_b3": 0.009581141125736858,
+   "falsos_alertas_por_100": 20.893775131063265,
+   "antecedencia": {
+    "n": 18,
+    "mediana": 336.0,
+    "q1": 293.25,
+    "q3": 349.0
+   },
+   "p_unilateral": 0.2987012987012987,
+   "p_holm": 0.7342657342657343,
+   "g2": {
+    "passa": false,
+    "motivos": [
+     "limite inferior do IC95 da razao de risco nao supera 1.5",
+     "PR-AUC nao supera a de B2",
+     "p ajustado por Holm nao fica abaixo de 0.05"
+    ]
+   }
+  }
+ },
+ "aprovados_g2": [
+  "H5"
+ ],
+ "g3": {
+  "estado": "insuficiente",
+  "n": {
+   "treino": 0,
+   "validacao": 932,
+   "teste": 12276
+  },
+  "condicional_a_selecao": true,
+  "libera_probabilidade": false,
+  "nota_condicional": "G3 condicional a selecao do G2 no mesmo teste; nao libera probabilidade exibivel (decisao 16/10/2026)"
+ },
+ "declaracoes": [
+  "IC95 por cluster de CNPJ (sem mapeamento FRE de controle: cada CNPJ e seu proprio cluster)",
+  "H5 depende de COTAHIST e Selic; sem eles sai 'sem_dado'",
+  "H2a/H2b sem ITR usam so DFP",
+  "mapeamento de contas do H6/B1/B2 e proposta (dados.CONTAS), a congelar como G0-v1-anexo-contas antes de metrica real",
+  "G3 condicional a selecao do G2 no mesmo teste: nunca libera probabilidade; produto exibe sinais e severidade",
+  "G3 exige IC95 da inclinacao com largura <= 0.20 (congelado antes do teste); acima disso e nao informativo",
+  "IC do gate G3 = o mais largo entre cluster de CNPJ e blocos de 6 meses (dependencia no tempo)"
+ ]
+}

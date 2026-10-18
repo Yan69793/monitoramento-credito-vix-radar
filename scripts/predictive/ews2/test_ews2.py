@@ -127,6 +127,29 @@ class Features(unittest.TestCase):
         self.assertIn(alerta, (0, 1))
         self.assertEqual(F.h5(precos[:50], vs, {date(2021, 1, 1): 0.1}, t), (None, None))  # < 120 pregoes
 
+    def test_h5_desdobramento_nao_gera_alerta(self):
+        """Desdobramento 5:1 depois da referencia do BPP: DD igual ao da serie sem evento (duas pontas: sem ajuste, cai)."""
+        t = date(2021, 6, 30)
+        base = [(t - timedelta(days=400) + timedelta(days=k), 10.0 * math.exp(0.001 * k + 0.02 * math.sin(k))) for k in range(400)]
+        corte = 300  # dia 300 cai depois de 31/12/2020
+        split = [(d, p / 5 if k >= corte else p) for k, (d, p) in enumerate(base)]
+        vs = [{"dt_refer": date(2020, 12, 31), "versao": 1, "dt_receb": date(2021, 3, 1), "parecer_enfase": False,
+               "acoes": {"integralizadas": 1e6, "tesouraria": 0}, "contas": {"2.01": 2e6, "2.02": 2e6}}]
+        sel = {date(2021, 1, 1): 0.1}
+        dd_base, _ = F.h5(base, vs, sel, t)
+        self.assertEqual(D.eventos_de_capital(split), [(corte, 0.2)])
+        dd_aj, _ = F.h5(D.ajustar_capital(split), vs, sel, t)
+        self.assertAlmostEqual(dd_aj, dd_base, places=6)
+        dd_cru, _ = F.h5(split, vs, sel, t)
+        self.assertLess(dd_cru, dd_base - 1)  # sem o ajuste o mesmo emissor parece muito mais arriscado
+
+    def test_eventos_de_capital_ignora_queda_real_e_erro_de_cotacao(self):
+        d0 = date(2023, 1, 2)
+        serie = lambda ps: [(d0 + timedelta(days=k), p) for k, p in enumerate(ps)]  # noqa: E731
+        self.assertEqual(D.eventos_de_capital(serie([10, 10, 2.26, 2.2, 2.1, 2.0, 2.0])), [])  # fator 4,42: queda real
+        self.assertEqual(D.eventos_de_capital(serie([10, 10, 5, 10, 10, 10, 10])), [])  # voltou: erro de cotacao
+        self.assertEqual(D.eventos_de_capital(serie([1, 1, 10, 10.1, 9.9, 10, 10])), [(2, 10.0)])  # grupamento 10:1
+
 
 class Eventos(unittest.TestCase):
     def test_episodios_30_dias_e_dedup(self):

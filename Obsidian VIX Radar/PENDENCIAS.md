@@ -7,6 +7,76 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 18/10/2026 04:52: preco do H5 corrigido e rotina do pacote registrada
+
+- Fecha "preco nao ajustado" e "rotina semanal" do item de 04:38 (ESTADO.md 04:52).
+- Continua aberto: H5 dispara em cerca de metade das observacoes; revisar na conferencia de 30 dias.
+- Primeira execucao agendada da `VIXRadar-EWS2-Pacote` em 19/10 23:15: conferir a linha `FIM: ok` em `logs\ews2-pacote\` no dia 20.
+- Hashes pinados (rotulos, backtest) valem para o arquivo local; checkout com autocrlf muda os bytes e a guarda fecha. A rotina roda so neste checkout.
+
+## 18/10/2026 04:38: H5 aprovado no G2 e no ar (Pages v202.74)
+
+- Fecha "ITR e COTAHIST ausentes" do item de 04:20: baixados, H5 medido e aprovado no G2 (ESTADO.md).
+- **H5 dispara em cerca de metade das observacoes** (50,5 falsos alertas por 100): conferir na revisao de 30 dias se a severidade "media" por H5 sozinho nao vira ruido para o cliente.
+- Rotina semanal do pacote: pronta em dry-run na sessao paralela, falta conferir, registrar a task e garantir que ela use ITR, COTAHIST e Selic atualizados (COTAHIST e Selic sao arquivos locais, envelhecem).
+- `dados.py` usa preco nao ajustado por proventos e desdobramento; H5 pode dar falso sinal em emissor que desdobrou acao.
+
+## 18/10/2026 04:20: EWS 2.0 LIGADO para o cliente (nota 126), pendencias operacionais
+
+- **Atualizacao do pacote `ews2:latest`**: hoje manual (`scripts/predictive/ews2/gerar_payload.py`, dado de 16/10). Falta rotina agendada; sem ela os sinais envelhecem.
+- **Conferencia em 30 e 90 dias**: alertas gravados contra eventos reais; desligar se pior que o EWS atual (nota 126).
+- **Nao editar a nota 126**: o hash dela esta fixado no Worker; editar desliga o EWS 2.0 (fail-closed).
+- ITR e COTAHIST ausentes no disco: H5 sem dado. Baixar exige aval.
+- Conferencia visual da linha "Sinais estruturais" com sessao real de cliente (a sessao do agente nao usa credencial).
+
+## 18/10/2026 03:20: EWS 2.0 ENCERRADO nesta formulacao (decisao do operador)
+
+Detalhe na nota `125 - EWS 2.0 Encerramento da formulacao atual 2026-10-18.md`. G1b reprova em todos os cenarios (revocacao da uniao 23% a 67%, minimo 90%). Fecha as pendencias de rotulagem, segunda leitura e G1 do EWS 2.0 registradas abaixo, que ficam como historico. Abertos:
+
+- **Commit do codigo e dos resultados G0-v4** (`scripts/predictive/validacao/g0v4_*.py`, `data/validacao/g0v4/`) aguarda autorizacao.
+- **Adaptador sombra EWS2SHADOW1 no Worker** segue inerte no bundle (flag ausente). Remover so com mudanca e deploy proprios, se o operador quiser.
+- **`main` local divergiu de `origin/main`**: origem tem `100ba7f` (deploy Pages v202.72), local tem `d791514`. Producao do frontend esta em v202.72; deploy de Pages a partir deste checkout regrediria para v202.71. Reconciliar antes de qualquer deploy.
+
+## 17/10/2026 19:58: conclusao final das PoCs de inovacao (decisao do operador)
+
+Detalhe em `data/validacao/poc-ideias/conclusao_final.md`. Abertos:
+
+- **Decidir se a margem de covenant vira produto assistido.** Custo estimado de 50 a 100 horas de confirmacao humana para os 104 emissores (30 a 60 min cada), uma unica vez. Sem cobertura de juros.
+- **Dasa:** margem ate 4,0x caiu de 40% para 15% entre set/25 e jun/26 (publicado 13/08/2026), sem conferencia do agente para 2026.
+- **Commit do codigo e dos resultados** (`scripts/predictive/ideias/`, `data/validacao/poc-ideias/`) aguarda autorizacao.
+- Spread residual: reavaliar em dez/2026. Diff de notas: descartado na forma atual.
+
+## 17/10/2026 ~18:52: PoCs de inovacao, 4 em REVISAR e proximos passos (decisao do operador)
+
+Detalhe em `status/ESTADO.md` (17/10 22:00) e `data/validacao/poc-ideias/dia5/veredito.md`. Abertos:
+
+- **Guardar a ancora do placar fora do disco.** Cabeca `696f8318db3602e60bd12362b1665d6dde9c56dcb5a5077b25ebb85d7f885c8f`. Sem ancora externa, uma cadeia reescrita inteira passa na verificacao. Disparo diario do `placar.py` no export das 20:45 depende de aprovacao e de `lint-encoding-ps1.ps1`.
+- **Spread residual:** repetir com rotulos de ago a out e 120 dias de serie. Hoje 22,8% de cobertura e zero episodios independentes avaliaveis.
+- **Flow-at-Risk:** a regra "competencia mais recente por fundo" esconde linha confidencial que ja era visivel no mes anterior; corrigir antes de nova rodada. Falta denominador de volume publico.
+- **Covenant:** calculo com contas CVM so concorda em 30%; precisa da definicao contratual por emissor. 2 de 10 escrituras escaneadas, OCR nao feito (custo a autorizar). **Atualizado 17/10 22:30:** com a definicao contratual, divida liquida/EBITDA bate em 9 de 12 e o lado do limite em 20 de 20. Faltam: explicar a divergencia da Eneva no 1T25 e 2T25, mapear mais emissores ate 20 escrituras, decidir se a cobertura de juros fica fora. Dasa com margem caindo de 40% para 15% (jun/26), vale olhar.
+- **Diff de notas:** metodo atual reprovado (precisao 27,8%). Refazer so para dívida e eventos subsequentes, lendo tabelas.
+- **Short interest da B3:** fonte nao verificada, fora desta rodada.
+
+## 17/10/2026 17:35: EWS 2.0: piloto v2 confirmado (pid 16584), 32 rotulos integros, riscos residuais abertos
+
+Confirmado em operacao, sem correcao necessaria. Detalhe e provas em `status/ESTADO.md`, secao de 17/10 17:35.
+
+Abertos, todos decisao do operador:
+
+- **19h15 na mesma janela de cota do lote 1.** Os 2,1M tokens das 17:17 caem na janela de 5h que vai ate ~22:17. Se a cota esgotar antes da verificacao, ela desvia para o OpenRouter pago (`VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter`). Risco aceito pelo operador no comentario da v1 (`-SemFolga`), e a v2 nao dispara nada antes de 20:30.
+- **Limite semanal da assinatura nao entra na conta da v2.** A folga de 5h15 cobre so a janela de 5h. Os ~87 rotulos que faltam para 119 projetam algo como 14M tokens esta noite, e se o teto semanal estourar, as rotinas de domingo e segunda caem no fallback pago.
+- **A v2 nao tem trava contra uma segunda instancia de si mesma.** Hoje so existe uma. Duas ao mesmo tempo poderiam disparar lote junto e gravar rotulo duplicado, porque `rotular_etapa1.py` le a idempotencia so no inicio.
+- **CLAUDE.md desatualizado no provider.** Diz `codex` ativo desde 13/10, medido `claude-subscription` em 17/10 17:27.
+- **Exposicao paga do fallback das rotinas, medida 17/10 17:40.** A cadeia viva e Claude assinatura, depois OpenRouter por lote (cota no meio do lote), depois 402 devolve para a assinatura e a rotina fecha. Codex nao entra (`VIXRADAR_CODEX_FALLBACK_PROVIDER` vazio, nenhum desvio Claude para Codex no codigo). O unico freio em dolar fica no OpenRouter, com saldo pre-pago de US$ 6,62 (329 creditos, 322,38 usados) e chave com limite de US$ 50 sem reset (restam US$ 43,93). `Test-VixPaygTetoEstourado` existe e nao tem chamador. `SEM_TETO=1` vale pelo provider do ambiente, entao um lote desviado para o OpenRouter tambem roda sem teto de tokens. A recarga automatica da conta nao aparece em `/key` nem em `/credits` e precisa ser conferida no painel.
+
+## 17/10/2026 17:10: EWS 2.0: piloto de rotulagem com Claude DISPARADO (100 itens, janela protegida, sem leitor pago)
+
+Medido nos 19 rotulos do Claude: 2.491.183 tokens em 27 chamadas, 89,4% criacao de cache, 9,6% leitura de cache, 1% saida, media 10 s por chamada. Cache nao barateia (cada item tem documentos proprios), projecao de ~124M tokens para os 1.242 restantes se mantem; o gargalo e cota, nao tempo. O rotulador Python nao le `VIXRADAR_CLAUDE_FALLBACK_PROVIDER` (cota vira EXIT 87), o risco pago esta nas rotinas.
+
+Autorizacao reapontada para `primeiro_rotulador=claude` (`claude-sonnet-5-5`), segundo `codex` `gpt-6.1-sol`, teto 2M por lote; backup em `BACKUPS/operacional/vix-radar/autorizacao-etapa1-20261017-170714-piloto-claude/`. 19 rotulos restaurados do parcial em `data/validacao/rotulos_etapa1.csv` (sha256 C2E2795C... conferido). `portoes` EXIT=0, P1 a P4 verdes. Dry-run retoma em i0020.
+
+Encadeador `tmp/operacional/vix-radar/ews-etapa1/piloto-claude-etapa1-20261017.ps1` (pid 7756): so dispara lote se nenhuma rotina de IA comecar nas 5h15 seguintes nem estiver rodando, para cota esgotada voltar antes da rotina e nao cair no OpenRouter pago. Hoje libera 20:30 e para de disparar 04:51. Para em cota (87), portoes, 3 lotes sem progresso, `PARAR` ou +100 rotulos. Status em `piloto-claude-etapa1-20261017.status.json`. Rollback: restaurar o backup da autorizacao.
+
 ## 17/10/2026 16:30: auditoria independente: COLETATETO1 homologado na Coleta das 17:00, CUSTOSEMUSAGE1 corrigido local (SEM commit), EWS 2.0 parado por decisao de rotulador
 
 > **Status:** COLETATETO1 homologado e commitado; CUSTOSEMUSAGE1 local, SEM commit (mesmos arquivos de trabalho nao commitado de outra sessao).

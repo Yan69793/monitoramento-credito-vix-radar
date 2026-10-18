@@ -324,6 +324,70 @@ v4.9.217). Emissor deferido uma vez virava FULL permanente no tiering da noturna
 gastando 9 rodadas de busca todo dia e realimentando o próprio deferimento. Nenhuma
 leitura de código tinha achado isso; rodar duas vezes e comparar a saída achou.
 
+### `VIXRadar-EWS2-Pacote` (EWS2PACOTE1, 18/10/2026)
+
+O EWS 2.0 está ligado para o cliente desde 18/10/2026 (nota 126), mas o pacote `ews2:latest`
+foi gravado à mão com dado de 16/10 e não se atualiza sozinho. `scripts/run_vixradar_ews2_pacote.ps1`
+faz o mesmo caminho sem mão humana e sem LLM: gera, valida pela régua do Worker e só então grava.
+**Nunca toca em `ews2:flag`**, ligar e desligar continua sendo decisão do operador.
+
+Passos, cada um fail-closed:
+
+1. Backtest de referência fixo em `data/validacao/g0v4/backtest_real_v3_20261018.json`, sha256
+   `8DCDBA69...EC61` pinado no script (era `backtest_real_20261018.json`, `31D845E4...10B1`, até a
+   entrada de ITR, COTAHIST e Selic em 18/10). É ele que decide quais sinais aparecem (hoje H5, aprovado
+   no G2, mais H1 e H6 pelo critério de RR), então trocar o backtest é decisão do operador e hash
+   diferente aborta com exit 2.
+2. Idade do `data/cvm/ipe_cia_aberta_<ano>.zip`, renovado pela `VIXRadar-Reconciliacao-CVM` (seg 12h00).
+   Acima de 10 dias aborta (exit 2), porque pacote com data nova sobre dado velho seria mentira.
+3. `T` = último dia útil **anterior** a hoje, pelo `calendario.dia_util` do próprio ews2.
+3b. `scripts/predictive/ews2/atualizar_dados.py --T <T>`: baixa ITR, FCA e COTAHIST do ano corrente, DFP
+   do ano anterior (CVM e B3) e a Selic over inteira (Ipeadata `BM366_TJOVER366`; o SGS do BCB bloqueia
+   depois da primeira requisição). Cada arquivo baixa para `.parcial`, é validado e só então substitui o
+   atual; download que falha mantém o anterior. Última cotação ou última Selic mais de 5 dias corridos
+   antes de `T` aborta (exit 2), porque H5 sobre preço velho seria mentira. Teto de 30 min.
+4. `python -I scripts/predictive/ews2/gerar_payload.py --backtest ... --saida tmp\...\ews2_latest.json --T <T>`,
+   com teto de 20 min (medido 38 s em 18/10).
+5. `node scripts/predictive/ews2/integracao/validar_pacote.mjs`, que importa `validarPayload`,
+   `liberacaoValida` e `LIBERACAO_NOTA_SHA256` do adaptador do Worker (mesma régua, sem cópia), mais
+   104 emissores, CNPJ único, `exibir_probabilidade:false` e `data_observacao = T`. Reprovou, exit 4 e nada é gravado.
+6. Só com `-Publicar`: lê o valor atual e guarda em `BACKUPS\operacional\vix-radar\ews2-latest\<ts>\`
+   (se a leitura falhar, exit 8 e nada é gravado), `wrangler kv key put ews2:latest --remote` no namespace
+   `c6805b8d8a7b468e9f854ab4f91fb93a`, relê e confere `gerado_em`, `data_observacao` e contagem (exit 6 se não bater).
+   Sem `-Publicar` é dry-run, o KV não é lido nem escrito.
+
+Exit codes: 0 ok, 2 entrada inválida, 3 geração falhou, 4 validação reprovou, 5 put falhou,
+6 releitura não confirmou, 7 instância duplicada, 8 backup do valor atual falhou. Log em
+`logs\ews2-pacote\ews2-pacote-AAAAMMDD.log`, última linha `RESULTADO {json}`, com `FIM:` antes dela.
+Rollback do pacote: `wrangler kv key put ews2:latest --path <backup> --namespace-id c6805b8d8a7b468e9f854ab4f91fb93a --remote`
+a partir de `api/`. Rollback da exposição inteira continua sendo `ews2:flag` (CONTRATO.md).
+
+Teste de duas pontas: `scripts/test-ews2-pacote.ps1`, com wrangler falso que só registra chamadas.
+Seis pacotes inválidos (nota com hash errado, schema errado, 103 emissores, sinal fora de {0,1,null},
+JSON truncado, `T` divergente) saem com exit 4 e zero chamada ao KV; o válido em dry-run sai 0 sem
+chamada; o válido com `-Publicar` faz get, put, get em `ews2:latest`, grava byte a byte o pacote
+validado e, na segunda vez, gera backup. Nenhuma chamada menciona `ews2:flag`. 19/19 em 18/10/2026.
+
+**Agendamento proposto: semanal, segunda 23h15 BRT.** Segunda porque o zip do IPE do ano é
+republicado pela CVM na segunda de manhã e a Reconciliação o baixa às 12h00. 23h15 porque fica fora de
+todas as rotinas LLM: a noturna (18h00) e o retry dela (21h30) já terminaram, a Sentinela para às 17h55,
+a AgendaSemanal é domingo e quarta, e o build da agenda no Worker é 01h00. Com `T` = dia útil anterior,
+a execução de segunda publica a sexta.
+
+Pré-requisito antes de registrar: uma execução manual `-Publicar` na conta do operador, para confirmar
+que o wrangler autentica e **lê** valor do KV (em 06/09 o `CLOUDFLARE_API_TOKEN` listava chave mas dava 401
+ao ler valor; nesse caso a rotina para no backup com exit 8, sem gravar nada). Comando de registro (executado em 18/10/2026 04:53, task Ready, primeira execução 19/10 23:15):
+
+```powershell
+$a = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -File "E:\Diretorio\Claude\Monitoramento de Credito\scripts\run_vixradar_ews2_pacote.ps1" -Publicar' -WorkingDirectory 'E:\Diretorio\Claude\Monitoramento de Credito'
+$t = New-ScheduledTaskTrigger -Weekly -DaysOfWeek Monday -At '23:15'
+$s = New-ScheduledTaskSettingsSet -StartWhenAvailable -ExecutionTimeLimit (New-TimeSpan -Minutes 45) -MultipleInstances IgnoreNew
+Register-ScheduledTask -TaskName 'VIXRadar-EWS2-Pacote' -Action $a -Trigger $t -Settings $s
+```
+
+Vigia: `monitor-tasks.ps1` cobre a task pelo prefixo `VIXRadar-` (exit diferente de zero alerta) e pela
+tabela `$weeklyTasks` (segunda 23h, semana pulada vira aviso de staleness).
+
 ## Claude Code Routines remotas (nuvem, `claude.ai/code`)
 
 Confirmado ao vivo via `RemoteTrigger list` em 18/08/2026. Só existem **2** rotinas VIX

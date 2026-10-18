@@ -450,6 +450,9 @@ foreach ($task in $allTasks) {
         'Szuchmacher-AgendaAgent'        = @{ days = @('Sunday', 'Monday', 'Thursday'); hour = 8 }
         'Szuchmacher-MacroAgent'         = @{ days = @('Friday');                       hour = 18 }
         'Szuchmacher-AgendaMacro-Claude' = @{ days = @('Friday');                       hour = 7 }
+        # EWS2PACOTE1 (18/10/2026): pacote ews2:latest, segunda 23h15. Sem esta linha uma semana
+        # pulada deixaria o cliente vendo sinal velho com LastTaskResult=0 congelado.
+        'VIXRadar-EWS2-Pacote'           = @{ days = @('Monday');                       hour = 23 }
     }
     if (-not $staleHours -and $weeklyTasks.ContainsKey($name)) {
         $wcfg = $weeklyTasks[$name]

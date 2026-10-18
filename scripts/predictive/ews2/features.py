@@ -10,7 +10,8 @@ Definicoes literais do bloco G0-v1:
   H3  docs IPE (exceto categoria A) nos 90 dias ate T-1 / media trimestral dos 24 meses anteriores <= 0,5, com media >= 3
   H4  assunto casa (renuncia|desligamento|substituicao|deixa o cargo|destituicao) E (diretor financeiro|\bcfo\b|relacoes com investidores|\bdri\b), 365 dias ate T-1
   H5  DD = [ln((E+F)/F) + (r - 0,5 sigmaV^2)] / sigmaV, sigmaV = (E/(E+F)) sigmaE + (F/(E+F)) (0,05 + 0,25 sigmaE),
-      F = PC + 0,5 PNC (BPP vigente), E = fechamento x (acoes integralizadas - tesouraria), sigmaE = desvio do log-retorno
+      F = PC + 0,5 PNC (BPP vigente), E = fechamento x (acoes integralizadas - tesouraria), precos COTAHIST divididos pelo
+      FATCOT e ajustados por desdobramento/grupamento (dados.ajustar_capital, 18/10/2026), sigmaE = desvio do log-retorno
       diario de 252 pregoes ate T-1 anualizado, r = Selic em T-1; so com >= 120 pregoes. Alerta: DD < 1,5
   H6  emprestimos CP (2.01.04) / (caixa 1.01.01 + aplicacoes 1.01.02 + CFO 12m 6.01) >= 1,0
   H8  >= 1 evento incidente em outra empresa do mesmo SETOR_ATIV nos 180 dias ate T-1
@@ -82,7 +83,9 @@ def h4(docs, datas, t):
 
 
 def h5(precos, versoes_dfp, selic, t):
-    """precos: lista ordenada de (data, fechamento). Devolve (dd, alerta) ou (None, None) sem dado."""
+    """precos: lista ordenada de (data, fechamento) ou (data, fech_ajustado, fech_bruto) de dados.ajustar_capital.
+    Volatilidade pelo ajustado; E = ajustado(T-1) x acoes do BPP x (bruto/ajustado na data de referencia do BPP), que
+    corrige a quantidade de acoes por desdobramento ou grupamento entre a referencia e T-1. Devolve (dd, alerta)."""
     v = vigente(versoes_dfp, t)
     if not v or not v.get("acoes") or not precos:
         return None, None
@@ -91,7 +94,8 @@ def h5(precos, versoes_dfp, selic, t):
         return None, None
     F = pc + 0.5 * pnc
     lim = t - timedelta(days=1)
-    fechos = [p for d, p in precos if d <= lim][-253:]
+    precos = [(x[0], x[1], x[2] if len(x) > 2 else x[1]) for x in precos]
+    fechos = [p for d, p, _ in precos if d <= lim][-253:]
     if len(fechos) < 121:
         return None, None
     rets = [math.log(fechos[i] / fechos[i - 1]) for i in range(1, len(fechos)) if fechos[i] > 0 and fechos[i - 1] > 0]
@@ -100,7 +104,9 @@ def h5(precos, versoes_dfp, selic, t):
     mu = sum(rets) / len(rets)
     sigE = math.sqrt(sum((r - mu) ** 2 for r in rets) / (len(rets) - 1)) * math.sqrt(252)
     n_acoes = v["acoes"]["integralizadas"] - v["acoes"]["tesouraria"]
-    E = fechos[-1] * n_acoes
+    ref = [(p, b) for d, p, b in precos if d <= (v.get("dt_refer") or lim)]
+    fator = (ref[-1][1] / ref[-1][0]) if ref and ref[-1][0] > 0 else 1.0
+    E = fechos[-1] * n_acoes * fator
     if E <= 0 or F <= 0 or sigE <= 0:
         return None, None
     r = _selic_em(selic, lim)

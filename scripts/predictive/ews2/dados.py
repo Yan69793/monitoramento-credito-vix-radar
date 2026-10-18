@@ -205,7 +205,9 @@ def ler_cotahist(dirs=None):
                             continue
                         d = pdate("%s-%s-%s" % (ln[2:6], ln[6:8], ln[8:10]))
                         try:
-                            fech = int(ln[108:121]) / 100.0
+                            # FATCOT (posicoes 211-217): preco cotado por lote de 1, 10, 100, 1000 ou 1000000 acoes.
+                            # Ate 18/10/2026 era ignorado e o preco por lote de mil entrava como unitario.
+                            fech = int(ln[108:121]) / 100.0 / max(1, int(ln[210:217] or 1))
                         except Exception:  # noqa: BLE001
                             continue
                         out.setdefault(ln[12:24].strip(), []).append((d, fech))
@@ -229,15 +231,63 @@ def ler_tickers_fca(dirs=None):
     return out
 
 
+SALTO_MIN, SALTO_TOL, SALTO_PERSISTE = 1.8, 0.04, 5
+
+
+def eventos_de_capital(serie):
+    """Desdobramento e grupamento no COTAHIST, que nao e ajustado. Salto de um pregao para o outro com razao >= SALTO_MIN
+    (ou <= 1/SALTO_MIN) cujo fator fica a SALTO_TOL de um inteiro >= 2 e que persiste nos SALTO_PERSISTE pregoes seguintes.
+    Queda de mercado real raramente cai num inteiro exato (Americanas em 12/01/2023: fator 4,42, fica fora).
+    Devolve [(indice, m)], m = multiplicador de preco do evento (desdobramento 5:1 -> m = 0,2)."""
+    ev = []
+    for i in range(1, len(serie)):
+        a, b = serie[i - 1][1], serie[i][1]
+        if a <= 0 or b <= 0:
+            continue
+        q = b / a
+        k = 1 / q if q < 1 else q
+        if k < SALTO_MIN:
+            continue
+        n = round(k)
+        if n < 2 or abs(k - n) / n > SALTO_TOL:
+            continue
+        seg = [p for _, p in serie[i:i + SALTO_PERSISTE] if p > 0]
+        if len(seg) < SALTO_PERSISTE:
+            continue
+        med = sorted(seg)[len(seg) // 2]
+        r = med / a
+        if (q < 1 and r > 1 / (1 + (n - 1) / 2)) or (q > 1 and r < 1 + (n - 1) / 2):
+            continue  # voltou ao nivel anterior: erro de cotacao, nao evento de capital
+        ev.append((i, (1.0 / n) if q < 1 else float(n)))
+    return ev
+
+
+def ajustar_capital(serie):
+    """[(data, fech)] -> [(data, fech_ajustado, fech_bruto)], ajuste retroativo pelos eventos de capital. Retornos do
+    ajustado nao tem o salto artificial; bruto/ajustado em d e o fator acumulado dos eventos posteriores a d (o H5 usa a
+    razao entre dois pontos, entao nao ha olhar para frente)."""
+    ev = eventos_de_capital(serie)
+    mult = [1.0] * len(serie)
+    acc = 1.0
+    j = len(ev) - 1
+    for i in range(len(serie) - 1, -1, -1):
+        mult[i] = acc
+        while j >= 0 and ev[j][0] == i:
+            acc *= ev[j][1]
+            j -= 1
+    return [(d, p * mult[i], p) for i, (d, p) in enumerate(serie)]
+
+
 def precos_por_cnpj(precos_ticker, tickers_cnpj):
     """COTAHIST e indexado por ticker; o pipeline consulta por CNPJ. Para cada CNPJ, o ticker com mais pregoes
-    (o mais liquido) entre os declarados no FCA. Devolve ({cnpj: [(data, fech)]}, {cnpj: ticker})."""
+    (o mais liquido) entre os declarados no FCA, ajustado por eventos de capital.
+    Devolve ({cnpj: [(data, fech_ajustado, fech_bruto)]}, {cnpj: ticker})."""
     out, escolha = {}, {}
     for c, cods in tickers_cnpj.items():
         cand = [(len(precos_ticker[k]), k) for k in cods if k in precos_ticker]
         if cand:
             n, k = max(cand)
-            out[c], escolha[c] = precos_ticker[k], k
+            out[c], escolha[c] = ajustar_capital(precos_ticker[k]), k
     return out, escolha
 
 
