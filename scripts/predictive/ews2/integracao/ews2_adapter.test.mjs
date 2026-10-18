@@ -58,3 +58,31 @@ test("rollback puro devolve o payload sem EWS 2.0", () => {
   const r = remover(fundir(base, bom(), { ativo: true }));
   assert.deepEqual(r, base);
 });
+
+// Liberacao operacional (nota 126): duas pontas.
+import { anexarEws, liberacaoValida, LIBERACAO_NOTA_SHA256, LIBERACAO_MODO } from "./ews2_adapter.mjs";
+const liberado = () => ({ schema: "ews2/1", sha256_rotulos: "b".repeat(64), homologacao: { g1a: false, g1b: false, g1c: true, g2: false, g3: false },
+  liberacao: { modo: LIBERACAO_MODO, nota_sha256: LIBERACAO_NOTA_SHA256 }, sinais_aprovados: ["H1", "H6"], exibir_probabilidade: false,
+  data_observacao: "2026-10-16", emissores: [{ cnpj: "1", nome: "Raízen", sinais: { H1: 1, H6: 1 }, prob_180d: null, severidade: "alta" }] });
+test("liberacao com hash exato aceita homologacao reprovada", () => {
+  assert.equal(liberacaoValida(liberado()), true);
+  assert.equal(validarPayload(liberado()).ok, true);
+});
+test("liberacao com hash errado, modo errado ou ausente continua bloqueando", () => {
+  assert.equal(validarPayload({ ...liberado(), liberacao: { modo: LIBERACAO_MODO, nota_sha256: "0".repeat(64) } }).ok, false);
+  assert.equal(validarPayload({ ...liberado(), liberacao: { modo: "outro", nota_sha256: LIBERACAO_NOTA_SHA256 } }).ok, false);
+  const { liberacao: _l, ...sem } = liberado();
+  assert.equal(validarPayload(sem).ok, false);
+});
+test("liberacao nao libera probabilidade sem G3", () => {
+  assert.equal(validarPayload({ ...liberado(), exibir_probabilidade: true }).ok, false);
+});
+test("anexarEws acrescenta ews2 sem tocar campos e respeita a flag", () => {
+  const ews = [{ empresa: "Raízen", score: 40 }, { empresa: "Outra", score: 10 }];
+  const r = anexarEws(ews, liberado(), { ativo: true });
+  assert.deepEqual(r[0], { empresa: "Raízen", score: 40, ews2: { severidade: "alta", sinais: { H1: 1, H6: 1 }, data_observacao: "2026-10-16" } });
+  assert.deepEqual(r[1], { empresa: "Outra", score: 10 });
+  assert.deepEqual(anexarEws(ews, liberado(), { ativo: false }), ews);
+  assert.deepEqual(anexarEws(ews, liberado(), null), ews);
+  assert.deepEqual(anexarEws(ews, { ...liberado(), liberacao: null }, { ativo: true }), ews);
+});

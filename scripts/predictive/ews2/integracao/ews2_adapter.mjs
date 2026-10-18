@@ -10,6 +10,15 @@
 
 export const SCHEMA = "ews2/1";
 export const SINAIS = ["H1", "H2a", "H2b", "H2c", "H3", "H4", "H5", "H6", "H8"];
+// Liberacao operacional por decisao do operador (nota 126, 18/10/2026): aceita payload com homologacao reprovada SO se o
+// bloco `liberacao` citar esta nota com este sha256 exato. Editar a nota muda o hash e volta a bloquear (fail-closed).
+export const LIBERACAO_MODO = "operacional_por_decisao_do_operador";
+export const LIBERACAO_NOTA_SHA256 = "950c7b0404ff900877f161840ea0a601711860ba67baa4ae09f6e554900138c5";
+
+export function liberacaoValida(p) {
+  const l = p && p.liberacao;
+  return !!(l && l.modo === LIBERACAO_MODO && l.nota_sha256 === LIBERACAO_NOTA_SHA256);
+}
 
 export function validarPayload(p) {
   const erros = [];
@@ -17,7 +26,7 @@ export function validarPayload(p) {
   if (p.schema !== SCHEMA) erros.push("schema diferente de " + SCHEMA);
   if (!/^[0-9a-f]{64}$/.test(String(p.sha256_rotulos || ""))) erros.push("sha256_rotulos invalido");
   const h = p.homologacao || {};
-  for (const g of ["g1a", "g1b", "g1c", "g2"]) if (h[g] !== true) erros.push("homologacao." + g + " nao aprovada");
+  if (!liberacaoValida(p)) for (const g of ["g1a", "g1b", "g1c", "g2"]) if (h[g] !== true) erros.push("homologacao." + g + " nao aprovada");
   if (!Array.isArray(p.sinais_aprovados) || p.sinais_aprovados.length === 0) erros.push("sem sinal aprovado em G2");
   else for (const s of p.sinais_aprovados) if (!SINAIS.includes(s)) erros.push("sinal desconhecido: " + s);
   if (p.exibir_probabilidade === true && h.g3 !== true) erros.push("probabilidade exibivel exige G3 aprovado");
@@ -56,6 +65,21 @@ export function fundir(predictiveV1, ews2, flag) {
     ews2: { ativo: true, schema: ews2.schema, protocolo: ews2.protocolo, versao_pipeline: ews2.versao_pipeline, gerado_em: ews2.gerado_em,
       sinais_aprovados: ews2.sinais_aprovados, exibir_probabilidade: ews2.exibir_probabilidade === true, cobertos: emissores.filter((x) => x.ews2).length },
   };
+}
+
+// EWS do cliente (op=ews): anexa `ews2` {severidade, sinais} a cada objeto do EWS atual, casando por nome do emissor
+// (`empresa`). NUNCA altera campo existente. Flag desligada ou payload invalido: devolve os objetos sem mudanca.
+export function anexarEws(objetos, ews2, flag) {
+  const lista = Array.isArray(objetos) ? objetos : [];
+  if (!flagAtiva(flag) || !validarPayload(ews2).ok) return lista;
+  const porNome = new Map((ews2.emissores || []).map((e) => [String(e.nome || "").toLowerCase().trim(), e]));
+  return lista.map((o) => {
+    const e = o && porNome.get(String(o.empresa || "").toLowerCase().trim());
+    if (!e) return o;
+    const sinais = {};
+    for (const s of ews2.sinais_aprovados) sinais[s] = e.sinais[s];
+    return { ...o, ews2: { severidade: e.severidade ?? null, sinais, data_observacao: ews2.data_observacao || null } };
+  });
 }
 
 // Rollback puro: devolve o payload sem nada do EWS 2.0 (o que a flag desligada tambem produz).

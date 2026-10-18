@@ -4,6 +4,13 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.272.js = v4.9.271 + EWS2OPER1: op=ews (ranking e por emissor) anexa
+#   `ews2` {severidade, sinais H1/H6, data_observacao} ao EWS atual quando
+#   `ews2:flag` esta ligada e `ews2:latest` e valido. Liberacao operacional por
+#   decisao do operador (nota 126), aceita so com o sha256 exato da nota no
+#   payload; G1b NAO aprovado e gravado como tal. Nenhum campo existente muda;
+#   flag desligada, KV fora ou payload invalido devolvem a resposta de antes.
+#   Rollback: ews2:flag = {"ativo": false}. Testes api/test/ews2-operacional.
 # v4.9.271.js = v4.9.270 + FILAREMOVE1: health conta a idade da fila de
 #   verificacao a partir de quando o item ficou elegivel (proxima_em vencido de
 #   tentativa nao-conclusiva), nao do criado_em; o backoff legitimo de 24h nao

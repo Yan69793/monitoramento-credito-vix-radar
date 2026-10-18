@@ -6,7 +6,7 @@
 // adicionar no_bundle=true/--no-bundle sem primeiro vendorizar o SDK, senao
 // o import quebra silenciosamente no deploy seguinte. Ver wrangler.toml.
 import * as Sentry from "@sentry/cloudflare";
-import { fundir as fundirEws2Lab } from "./ews2_adapter.mjs";
+import { fundir as fundirEws2Lab, anexarEws as anexarEws2 } from "./ews2_adapter.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
@@ -18227,13 +18227,18 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
     return resp({ ok: false, erro: "Indice de quarentena indisponivel (fail-closed).", codigo: "QUARENTENA_INDICE_ERRO", quarentena_indice_indisponivel: true }, 503, request);
   }
   filtrarQuarentenaDoEstado(estado, _qiEws.ids);
+  // EWS2OPER1 (2026-10-18, nota 126): sinais estruturais do EWS 2.0 anexados ao EWS atual, atras de flag no KV.
+  // Fail-closed: KV indisponivel, flag desligada ou payload invalido devolvem o EWS atual sem mudanca.
+  const _ews2Latest = await env2222.RADAR_KV.get("ews2:latest", "json").catch(() => null);
+  const _ews2Flag = await env2222.RADAR_KV.get("ews2:flag", "json").catch(() => null);
   if (empresa) {
     const resultado = estado.results[empresa];
     const eventos = resultado?.eventos || [];
-    const ews = calcularEWS(empresa, anomalias, eventos, []);
-    ews.ecos = eventos.filter(function(e) {
+    const ews0 = calcularEWS(empresa, anomalias, eventos, []);
+    ews0.ecos = eventos.filter(function(e) {
       return e.classificacao === "ECO";
     }).length;
+    const ews = anexarEws2([ews0], _ews2Latest, _ews2Flag)[0];
     return resp({ ok: true, ews }, 200, request);
   }
   const ranking = [];
@@ -18251,7 +18256,8 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
   // PISODIFF1 (2026-08-30): desempate por score_calculado desc dentro de scores
   // iguais, para o ranking refletir a gravidade dos sinais dentro do grupo pisado.
   ranking.sort((a2, b) => (b.score - a2.score) || ((b.score_calculado || 0) - (a2.score_calculado || 0)));
-  return resp({ ok: true, ranking, total: ranking.length, calculado_em: obterAgoraBRT().toISOString().split("T")[0] }, 200, request);
+  const rankingFinal = anexarEws2(ranking, _ews2Latest, _ews2Flag);
+  return resp({ ok: true, ranking: rankingFinal, total: rankingFinal.length, calculado_em: obterAgoraBRT().toISOString().split("T")[0] }, 200, request);
 }
 __name(handleEWS, "handleEWS");
 __name2(handleEWS, "handleEWS");

@@ -247,12 +247,30 @@ class Guarda(unittest.TestCase):
         reg3 = dict(reg, autorizado_por_operador=False)
         self.assertFalse(GT.avaliar(reg3, "a" * 64)[0])
 
-    def test_estado_real_hoje_bloqueia(self):
-        self.assertFalse(GT.estado()["ok"])
+    # Ate 18/10/2026 estes dois testes liam o estado real do disco. Desde a liberacao operacional (nota 126) o registro
+    # real libera por override; o bloqueio passa a ser provado com registro ausente, independente do disco.
+    def test_registro_ausente_bloqueia(self):
+        self.assertFalse(GT.estado(registro_path=os.path.join(os.path.dirname(GT.REGISTRO), "nao_existe_registro.json"))["ok"])
 
     def test_backtest_real_sem_homologacao_sai_sem_ler(self):
-        with self.assertRaises(SystemExit):
-            BT.main(["--real", "--rotulos", "inexistente.csv"])
+        orig = GT.estado
+        GT.estado = lambda *a, **k: {"ok": False, "motivos": ["registro de homologacao da base ausente"]}
+        try:
+            with self.assertRaises(SystemExit):
+                BT.main(["--real", "--rotulos", "inexistente.csv"])
+        finally:
+            GT.estado = orig
+
+    def test_override_exige_nota_por_hash(self):
+        reg = {"g1a_passa": False, "g1b_passa": False, "g1c_passa": False, "sha256_rotulos": "a" * 64, "arquivo_rotulos": "x.csv",
+               "autorizado_por_operador": True, "autorizado_em": "2026-10-18", "protocolo": "G0-v4",
+               "override_operador": True, "override_motivo": "nota 126", "override_nota_sha256": "n" * 64}
+        self.assertTrue(GT.avaliar(reg, "a" * 64, "n" * 64)[0])
+        self.assertFalse(GT.avaliar(reg, "a" * 64, "m" * 64)[0])          # nota alterada
+        self.assertFalse(GT.avaliar(reg, "a" * 64, None)[0])              # nota ausente
+        self.assertFalse(GT.avaliar(dict(reg, override_motivo=""), "a" * 64, "n" * 64)[0])
+        self.assertFalse(GT.avaliar(dict(reg, override_operador=False), "a" * 64, "n" * 64)[0])
+        self.assertFalse(GT.avaliar(reg, "b" * 64, "n" * 64)[0])          # rotulos alterados
 
 
 class SelecaoSemVazamento(unittest.TestCase):

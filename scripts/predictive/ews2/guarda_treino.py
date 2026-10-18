@@ -26,7 +26,14 @@ def sha256_arquivo(p):
         return hashlib.sha256(fh.read()).hexdigest()
 
 
-def avaliar(registro, sha_rotulos_real):
+def _override_valido(registro, sha_nota_real):
+    """Liberacao operacional (nota 126): o operador pode liberar o treino com G1 reprovado SE o registro citar a nota de
+    decisao e o sha256 dela bater com o arquivo atual. O registro continua gravando os G1 como realmente foram."""
+    return (registro.get("override_operador") is True and bool(registro.get("override_motivo"))
+            and bool(sha_nota_real) and registro.get("override_nota_sha256") == sha_nota_real)
+
+
+def avaliar(registro, sha_rotulos_real, sha_nota=None):
     """Puro. Devolve (ok, motivos)."""
     motivos = []
     if registro is None:
@@ -34,9 +41,12 @@ def avaliar(registro, sha_rotulos_real):
     for c in CAMPOS:
         if c not in registro:
             motivos.append("campo ausente no registro: %s" % c)
+    override = _override_valido(registro, sha_nota)
     for g in ("g1a_passa", "g1b_passa", "g1c_passa"):
-        if registro.get(g) is not True:
+        if registro.get(g) is not True and not override:
             motivos.append("%s nao aprovado" % g)
+    if registro.get("override_operador") is True and not override:
+        motivos.append("override do operador sem nota valida: hash da nota citada nao bate ou motivo ausente")
     if registro.get("autorizado_por_operador") is not True:
         motivos.append("sem autorizacao explicita do operador")
     if not registro.get("sha256_rotulos") or registro.get("sha256_rotulos") != sha_rotulos_real:
@@ -54,8 +64,14 @@ def estado(registro_path=REGISTRO, base=BASE):
         p = os.path.join(base, reg["arquivo_rotulos"])
         if os.path.isfile(p):
             sha = sha256_arquivo(p)
-    ok, motivos = avaliar(reg, sha)
-    return {"ok": ok, "motivos": motivos, "registro": registro_path, "sha256_rotulos_real": sha}
+    sha_nota = None
+    if reg and reg.get("override_nota"):
+        pn = os.path.join(base, reg["override_nota"])
+        if os.path.isfile(pn):
+            sha_nota = sha256_arquivo(pn)
+    ok, motivos = avaliar(reg, sha, sha_nota)
+    return {"ok": ok, "motivos": motivos, "registro": registro_path, "sha256_rotulos_real": sha,
+            "override_operador": bool(reg and reg.get("override_operador") is True and not motivos)}
 
 
 def exigir(finalidade):
