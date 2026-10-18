@@ -21,6 +21,7 @@ import io
 import json
 import os
 import sys
+import time
 import urllib.request
 import zipfile
 
@@ -36,24 +37,43 @@ UA = {"User-Agent": "Mozilla/5.0 (vixradar-ews2-pacote)"}
 TIMEOUT = 300
 
 
-def baixar(url, destino, validar):
+def baixar(url, destino, validar, tentativas=3, espera=20):
+    """Baixa para .parcial, valida e so entao substitui. Ate `tentativas` tentativas (a B3 corta conexao de vez em quando).
+    Em falha, o erro leva os primeiros bytes recebidos: pagina de bloqueio e arquivo truncado se distinguem pelo texto."""
     tmp = destino + ".parcial"
-    try:
-        with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=TIMEOUT) as r, open(tmp, "wb") as fh:
-            while True:
-                b = r.read(1 << 20)
-                if not b:
-                    break
-                fh.write(b)
-        info = validar(tmp)
-        os.replace(tmp, destino)
-        return dict(baixado=True, bytes=os.path.getsize(destino), **(info or {}))
-    except Exception as e:  # noqa: BLE001
+    erro = None
+    for t in range(1, tentativas + 1):
+        amostra = b""
         try:
-            os.remove(tmp)
-        except OSError:
-            pass
-        return {"baixado": False, "erro": "%s: %s" % (type(e).__name__, str(e)[:200])}
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=TIMEOUT) as r, open(tmp, "wb") as fh:
+                status = getattr(r, "status", None)
+                tipo = r.headers.get("Content-Type")
+                while True:
+                    b = r.read(1 << 20)
+                    if not b:
+                        break
+                    if len(amostra) < 160:
+                        amostra += b[:160]
+                    fh.write(b)
+            info = validar(tmp)
+            os.replace(tmp, destino)
+            return dict(baixado=True, bytes=os.path.getsize(destino), tentativas=t, **(info or {}))
+        except Exception as e:  # noqa: BLE001
+            erro = "%s: %s" % (type(e).__name__, str(e)[:160])
+            if amostra:
+                erro += " | recebido: %r" % amostra[:120]
+            try:
+                tam = os.path.getsize(tmp)
+                erro += " | bytes=%d" % tam
+            except OSError:
+                pass
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            if t < tentativas:
+                time.sleep(espera)
+    return {"baixado": False, "erro": erro, "tentativas": tentativas}
 
 
 def zip_integro(p):
