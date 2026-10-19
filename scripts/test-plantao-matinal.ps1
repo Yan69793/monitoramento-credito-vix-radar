@@ -68,12 +68,11 @@ Assert-Igual 'motor carrega a lib' $true ($motor -match [regex]::Escape("lib\vix
 Assert-Igual 'motor chama Sentinela -Plantao' $true ($motor -match "'-Plantao'")
 Assert-Igual 'motor sem lista de feriado inline' $false ($motor -match "\`$feriados = @\(")
 Assert-Igual 'sentinela tem param Plantao' $true ($sent -match '\[switch\]\$Plantao')
-Assert-Igual 'sentinela: backlog nao dispara em plantao' $true ($sent -match 'if \(\$Plantao -and -not \$acervoMudou\)')
+# SENTINELASHA1 (19/10): a decisao do plantao saiu para lib\vixradar-sentinela-portao.ps1; a tabela
+# completa (cego antes de quieto, backlog nao dispara) e provada em test-sentinela-portao.ps1.
+Assert-Igual 'sentinela: plantao decidido pelo portao' $true ($sent -match '-Plantao \(\[bool\]\$Plantao\)')
 Assert-Igual 'sentinela: plantao preserva pending' $true ($sent -match 'Write-State \$workerLm \$zipLmParaEstado \$pendingAnterior \$streak')
-Assert-Igual 'sentinela: zip novo sem sync nao e quieto' $true ($sent -match "plantao_zip_novo_sem_sync")
-Assert-Igual 'sentinela: HEAD falho nao e quieto' $true ($sent -match "plantao_fonte_indisponivel")
-$iCego = $sent.IndexOf('plantao_zip_novo_sem_sync'); $iQuieto = $sent.IndexOf("motivo=plantao_sem_novidade")
-Assert-Igual 'sentinela: fonte cega julgada antes do quieto' $true (($iCego -gt 0) -and ($iCego -lt $iQuieto))
+Assert-Igual 'sentinela: cego sai exit 3' $true ($sent -match "Acao -eq 'cego'")
 Assert-Igual 'fonte cega (exit 3) vira FALHA no plantao' 'FALHA' (Get-VixPlantaoResultado 3)
 Assert-Igual 'monitor carrega a lib' $true ($mon -match [regex]::Escape("lib\vixradar-plantao.ps1"))
 Assert-Igual 'monitor julga plantao' $true ($mon -match 'Get-VixPlantaoEntrega')

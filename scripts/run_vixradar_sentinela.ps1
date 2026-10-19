@@ -128,12 +128,12 @@ function Write-Log([string]$msg) {
 
 function Read-State {
     if (-not (Test-Path $StateFile)) {
-        return [pscustomobject]@{ worker_cvm_last_modified = ''; zip_last_modified = ''; pending = $false; pending_streak = 0; ts = '' }
+        return [pscustomobject]@{ worker_cvm_last_modified = ''; zip_last_modified = ''; acervo_sha256 = ''; pending = $false; pending_streak = 0; ts = '' }
     }
     try { return (Get-Content $StateFile -Raw -Encoding UTF8 | ConvertFrom-Json) }
     catch {
         Write-Log 'AVISO: sentinela_state.json ilegivel - tratando como estado zerado.'
-        return [pscustomobject]@{ worker_cvm_last_modified = ''; zip_last_modified = ''; pending = $false; pending_streak = 0; ts = '' }
+        return [pscustomobject]@{ worker_cvm_last_modified = ''; zip_last_modified = ''; acervo_sha256 = ''; pending = $false; pending_streak = 0; ts = '' }
     }
 }
 
@@ -141,6 +141,7 @@ function Write-State($workerLm, $zipLm, [bool]$pending, [int]$streak) {
     $o = [ordered]@{
         worker_cvm_last_modified = '' + $workerLm
         zip_last_modified        = '' + $zipLm
+        acervo_sha256            = '' + $script:AcervoShaParaEstado
         pending                  = $pending
         pending_streak           = $streak
         ts                       = (Get-Date -Format 'o')
@@ -245,7 +246,13 @@ foreach ($rot in @('vixradar-noturno', 'vixradar-matinal')) {
 }
 
 # --- Portao barato: o que mudou? -------------------------------------------
+# SENTINELASHA1 (2026-10-19): decisao do portao em lib pura, provada por test-sentinela-portao.ps1.
+. (Join-Path $ScriptsDir 'lib\vixradar-sentinela-portao.ps1')
+if (-not (Get-Command Get-VixSentinelaPortao -ErrorAction SilentlyContinue)) { Write-Log 'ERRO: lib\vixradar-sentinela-portao.ps1 ausente'; Write-Log 'FIM: sentinela abortada. tokens=0 analisados=0 motivo=lib_portao_ausente'; exit 6 }
 $estado = Read-State
+# Marcador do acervo gravado no estado. So avanca quando o portao decide com ele (entrar
+# ou quieto); fonte cega preserva o anterior.
+$script:AcervoShaParaEstado = '' + $estado.acervo_sha256
 
 # HEAD no zip da CVM. Custo desprezivel e e o unico jeito de saber que a fonte
 # publicou algo antes do Worker ingerir.
@@ -283,85 +290,74 @@ if ($estado.pending -eq $true) { $pendingAnterior = $true }
 $streak = 0
 if ($estado.pending_streak) { $streak = [int]$estado.pending_streak }
 
-# --- SENTINELA-SYNC1: a fonte publicou, o Worker ingere AGORA ---------------
-# Duas condicoes, e a segunda existe porque a primeira e cega a republicacao no
-# mesmo dia: o zip esta a frente do que o Worker ingeriu, OU o Last-Modified mudou
-# desde a ultima vez que esta rotina agiu. `zip_last_modified` so avanca no estado
-# quando a sincronizacao volta ok, entao falha de sync nao consome o gatilho e a
-# proxima execucao tenta de novo.
+# --- SENTINELASHA1 (2026-10-19): sync da ENET explicito em TODA execucao ----
+# Ate 19/10 o sync dependia de `precisaSync` (data do zip > health.cvm_fonte_last_modified),
+# e com o campo null desde 13/09 isso era sempre verdadeiro. O sync a cada execucao era o
+# que trazia Fato Relevante da ENET durante o dia, entao ele vira regra declarada, sem
+# depender do zip. O HEAD do zip fica so como informacao e para o estado. `zip_last_modified`
+# so avanca com sync ok; falha de sync nao consome gatilho.
 $syncFeito = $false
 $zipLmParaEstado = '' + $estado.zip_last_modified
 if ($zipLmUtc) {
-    $zipDia = $zipLmUtc.ToString('yyyy-MM-dd')
-    $precisaSync = ($zipDia -gt $workerLm) -or ($zipLm -ne ('' + $estado.zip_last_modified))
-    if ($precisaSync) {
-        $atrasoMin = [math]::Round(((Get-Date).ToUniversalTime() - $zipLmUtc).TotalMinutes, 0)
-        Write-Log ('FONTE: zip da CVM publicado em ' + $zipLm + ' (ha ' + $atrasoMin + ' min). Worker ingeriu ate ' + $workerLm + '. Sincronizando.')
-        $senha = Get-AdminSenha
-        if (-not $senha) {
-            # Degradacao explicita, nunca aborto: sem cofre a rotina segue com o
-            # acervo que o Worker ja tem, que e o comportamento de antes.
-            Write-Log 'AVISO: cofre DPAPI da senha admin indisponivel - sem sincronizacao sob demanda. Rode api\Set-VixAdminCredential.ps1. Seguindo com o acervo atual.'
-        } else {
-            try {
-                $rs = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'admin_sync_cvm_auto'; admin_senha = $senha } -TimeoutSec 180
-                if ($rs -and $rs.ok -eq $true) {
-                    $syncFeito = $true
-                    $zipLmParaEstado = $zipLm
-                    Write-Log ('SYNC: CVM reingerida sob demanda. documentos=' + $rs.sync.documentos + ' empresas=' + $rs.sync.empresas + ' last_modified=' + $rs.sync.last_modified_iso)
-                } else {
-                    Write-Log ('AVISO: admin_sync_cvm_auto devolveu nao-ok (' + ($rs.sync.motivo) + '). Gatilho preservado para a proxima execucao.')
-                }
-            } catch {
-                Write-Log ('AVISO: admin_sync_cvm_auto falhou (' + $_.Exception.Message + '). Gatilho preservado para a proxima execucao.')
-            }
-            $senha = $null
-        }
-    } else {
-        $zipLmParaEstado = $zipLm
-    }
+    $atrasoMin = [math]::Round(((Get-Date).ToUniversalTime() - $zipLmUtc).TotalMinutes, 0)
+    Write-Log ('FONTE: zip da CVM publicado em ' + $zipLm + ' (ha ' + $atrasoMin + ' min). Health last_modified=' + $workerLm + ' acervo_sha=' + $health.cvm_acervo_sha256 + '. Sincronizando a ENET.')
+} else {
+    Write-Log ('FONTE: sem Last-Modified do zip. Sincronizando a ENET mesmo assim.')
 }
-# Health relido depois do sync: o acervo mudou agora, e e sobre o valor NOVO que o
-# portao decide.
+$senha = Get-AdminSenha
+if (-not $senha) {
+    # Degradacao explicita, nunca aborto em dia util: sem cofre a rotina segue com o acervo
+    # que o Worker ja tem. Em plantao isso e fonte cega (o portao decide).
+    Write-Log 'AVISO: cofre DPAPI da senha admin indisponivel - sem sincronizacao sob demanda. Rode api\Set-VixAdminCredential.ps1. Seguindo com o acervo atual.'
+} else {
+    try {
+        $rs = Invoke-WorkerJsonUtf8 -Uri $WorkerUrl -BodyObj @{ action = 'admin_sync_cvm_auto'; admin_senha = $senha } -TimeoutSec 180
+        if ($rs -and $rs.ok -eq $true) {
+            $syncFeito = $true
+            if ($zipLm) { $zipLmParaEstado = $zipLm }
+            Write-Log ('SYNC: CVM reingerida sob demanda. documentos=' + $rs.sync.documentos)
+        } else {
+            Write-Log ('AVISO: admin_sync_cvm_auto devolveu nao-ok (' + ($rs.sync.motivo) + '). Gatilho preservado para a proxima execucao.')
+        }
+    } catch {
+        Write-Log ('AVISO: admin_sync_cvm_auto falhou (' + $_.Exception.Message + '). Gatilho preservado para a proxima execucao.')
+    }
+    $senha = $null
+}
+# Health relido depois do sync: o portao decide sobre o acervo NOVO.
+$shaAtual = '' + $health.cvm_acervo_sha256
 if ($syncFeito) {
     try {
         $h2 = Invoke-RestMethod -Uri $WorkerUrl -Method Get -TimeoutSec 45
-        if ($h2) { $workerLm = '' + $h2.cvm_fonte_last_modified }
+        if ($h2) { $workerLm = '' + $h2.cvm_fonte_last_modified; $shaAtual = '' + $h2.cvm_acervo_sha256 }
     } catch { }
 }
 
-$acervoMudou = ($workerLm -ne ('' + $estado.worker_cvm_last_modified)) -or $syncFeito
-
-if (-not $acervoMudou -and -not $pendingAnterior) {
-    Write-Log ('PORTAO: acervo do Worker inalterado (' + $workerLm + ') e sem backlog. Nada a fazer.')
-    Write-State $workerLm $zipLmParaEstado $false 0
-    Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=sem_novidade'
-    exit 0
-}
-# PLANTAO1: fonte cega nunca vira "sem novidade". Em plantao o unico gatilho e o acervo, e o
-# health devolvia cvm_fonte_last_modified vazio em 19/10/2026, entao a novidade so aparece
-# pelo zip + sync. HEAD do zip falhou, ou zip novo sem sync concluido = fonte indisponivel.
-$__plantaoZipNovo = $false
-if ($zipLmUtc) { $__plantaoZipNovo = (($zipLmUtc.ToString('yyyy-MM-dd')) -gt $workerLm) -or ($zipLm -ne ('' + $estado.zip_last_modified)) }
-if ($Plantao -and -not $acervoMudou -and ((-not $zipLmUtc) -or ($__plantaoZipNovo -and -not $syncFeito))) {
-    $__motFonte = 'plantao_fonte_indisponivel'
-    if ($zipLmUtc) { $__motFonte = 'plantao_zip_novo_sem_sync' }
-    Write-Log ('PORTAO: plantao sem visao da fonte (' + $__motFonte + '). zip=' + $zipLm + ' estado=' + $estado.zip_last_modified + '. Nao e dia quieto; backlog preservado.')
+$portao = Get-VixSentinelaPortao -ShaAtual $shaAtual -ShaEstado ('' + $estado.acervo_sha256) -WorkerLm $workerLm -WorkerLmEstado ('' + $estado.worker_cvm_last_modified) -SyncFeito $syncFeito -Pending $pendingAnterior -Plantao ([bool]$Plantao)
+$acervoMudou = [bool]$portao.AcervoMudou
+if ($portao.Acao -eq 'cego') {
+    # PLANTAO1 + SENTINELASHA1: fonte cega nunca vira dia quieto. Estado inteiro preservado.
+    Write-Log ('PORTAO: sem visao da fonte (' + $portao.Motivo + ', regua=' + $portao.Regua + '). Nao e dia quieto; backlog (' + $pendingAnterior + ', streak=' + $streak + ') preservado.')
     Write-State ('' + $estado.worker_cvm_last_modified) ('' + $estado.zip_last_modified) $pendingAnterior $streak
-    Write-Log ('FIM: sentinela abortada. tokens=0 analisados=0 motivo=' + $__motFonte)
+    Write-Log ('FIM: sentinela abortada. tokens=0 analisados=0 motivo=' + $portao.Motivo)
     exit 3
 }
-# PLANTAO1: em plantao o backlog nao dispara. Estado de pending/streak fica como estava.
-if ($Plantao -and -not $acervoMudou) {
-    Write-Log ('PORTAO: plantao, acervo do Worker inalterado (' + $workerLm + '). Backlog (' + $pendingAnterior + ', streak=' + $streak + ') fica para o proximo dia util.')
-    Write-State $workerLm $zipLmParaEstado $pendingAnterior $streak
-    Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=plantao_sem_novidade'
+if ($shaAtual) { $script:AcervoShaParaEstado = $shaAtual }
+if ($portao.Acao -eq 'quieto') {
+    if ($portao.Motivo -eq 'plantao_sem_novidade') {
+        # Em plantao o backlog nao dispara e fica para o proximo dia util.
+        Write-Log ('PORTAO: plantao, acervo inalterado (regua=' + $portao.Regua + '). Backlog (' + $pendingAnterior + ', streak=' + $streak + ') fica para o proximo dia util.')
+        Write-State $workerLm $zipLmParaEstado $pendingAnterior $streak
+    } else {
+        Write-Log ('PORTAO: acervo do Worker inalterado (regua=' + $portao.Regua + ') e sem backlog. Nada a fazer.')
+        Write-State $workerLm $zipLmParaEstado $false 0
+    }
+    Write-Log ('FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=' + $portao.Motivo)
     exit 0
 }
 
-$motivoEntrada = 'acervo_novo'
-if (-not $acervoMudou) { $motivoEntrada = 'backlog' }
-Write-Log ('PORTAO: entrando por ' + $motivoEntrada + '. acervo_worker=' + $workerLm + ' backlog_anterior=' + $pendingAnterior + ' streak=' + $streak)
+$motivoEntrada = $portao.Motivo
+Write-Log ('PORTAO: entrando por ' + $motivoEntrada + '. regua=' + $portao.Regua + ' acervo_sha=' + $shaAtual + ' acervo_worker=' + $workerLm + ' backlog_anterior=' + $pendingAnterior + ' streak=' + $streak)
 
 if ($streak -ge $PendingAlerta) {
     Write-Log ('ALERTA: backlog pendente ha ' + $streak + ' execucoes seguidas. Pode ser emissor que nao fecha, nao laco normal de drenagem.')
