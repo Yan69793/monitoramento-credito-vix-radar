@@ -505,7 +505,13 @@ function Submit-CapDeferred($key, $emp, [string]$Motivo = 'cap_efetivo', [string
     # rotacao semanal NAO e: o emissor ficou de fora por desenho da rotacao, e devolve-lo como
     # FULL prioritario no dia seguinte desfaria a propria rotacao que o deixou de fora, enchendo
     # a noite seguinte de emissores que a anterior acabou de decidir nao aprofundar.
-    $ehCorteDeCap = ($Motivo -ne 'rotacao_semanal')
+    # DIVIDAAPAGADA1 (2026-10-19): a rotacao continua sem devolver como FULL quem foi analisado
+    # de verdade ha pouco, mas nao apaga mais a divida de quem esta sem analise real ha 120h ou
+    # mais (ou sem registro). Era assim que a CPFL saia da divida e caia em SKIP no dia seguinte.
+    $ehCorteDeCap = Test-VixRotacaoMantemDivida $emp $Motivo
+    if ($Motivo -eq 'rotacao_semanal' -and $ehCorteDeCap) {
+        $causa = $causa + ' Analise real ha ' + $script:VixDividaAnaliseH + 'h ou mais (ou sem registro): divida de analise mantida (DIVIDAAPAGADA1).'
+    }
     $resultado = [ordered]@{
         empresa = $emp.empresa; setor = $emp.setor; sem_eventos = $true
         cobertura_nota = "Tier $Tier. $causa EWS=$($emp.ews_score). Priorizar amanha."
@@ -2071,15 +2077,21 @@ try {
     # COBFALLBACK1: o fallback nao reenvia SKIP ao Worker - isso e da noturna. Ele so analisa alvo.
     if ($script:VixCobFallbackModo) { $skipQueue = @() }
     $skipN = 0
+    $__filaPendSkip = @{}
+    try { $__filaPendSkip = Read-VixFilaPendente $__filaPendentePath } catch { $__filaPendSkip = @{} }
     foreach ($emp in $skipQueue) {
         $skipN++
         $subOk = $false
         try { $r = Submit-SkipEmissor $routineKey $emp; $subOk = ($r.ok -eq $true) } catch { $subOk = $false }
         if ($subOk) { $stats.skip_ok++ } else { $stats.skip_fail++ }
         Write-Ledger $emp.empresa 'SKIP' '-' 0 $subOk 'SKIP'
-        # COBERTURA-13OUT1: SKIP aceito pelo Worker e cobertura do dia (outra rotina ja analisou
-        # ou o plano provou que nao ha delta) - solta a pendencia persistente se houver.
-        if ($subOk) { Remove-VixPendenteSeguro $emp.empresa }
+        # COBERTURA-13OUT1: SKIP aceito pelo Worker soltava a pendencia persistente. DIVIDAAPAGADA1
+        # (2026-10-19): so solta quando o SKIP e credito de analise real do dia. SKIP por frescor
+        # de varredura nao prova analise, e foi assim que a CPFL saiu da fila em 15/10 18:05:57.
+        if ($subOk -and (Test-VixSkipSoltaPendente $emp)) { Remove-VixPendenteSeguro $emp.empresa }
+        elseif ($subOk -and $__filaPendSkip.ContainsKey((ConvertTo-VixChaveEmissor $emp.empresa))) {
+            Write-Log ('FILA_PENDENTE: ' + $emp.empresa + ' mantido (SKIP motivo=' + ('' + @($emp.motivos)[0]) + ' nao e analise, DIVIDAAPAGADA1)')
+        }
         # COBERTURA-RECON1: o SKIP entra no contrato como REUTILIZADO (analise valida do dia
         # reaproveitada, nunca republicada como nova) - e o que faz o numero do ledger fechar com
         # o numero do contrato. A prova e o motivo do proprio plano (`analisado_hoje_por_*`) ou o
@@ -3232,8 +3244,10 @@ try {
         Write-Ledger $emp.empresa $pendente.tier '-' 0 $subOk 'DEFERIDO'
         # COBERTURA-13OUT1: todo deferimento obrigatorio entra na fila persistente, com submit
         # aceito ou nao (sem submit aceito o Worker nem sabe que o emissor ficou de fora). Rotacao
-        # semanal nao e pendencia: foi decisao de distribuicao da profundidade.
-        if ($motivoItem -ne 'rotacao_semanal') { Add-VixPendenteSeguro $emp.empresa $emp.ews_score $motivoItem $pendente.tier $subOk }
+        # semanal nao e pendencia: foi decisao de distribuicao da profundidade. DIVIDAAPAGADA1: a
+        # menos que a rotacao tenha mantido a divida (analise real ha 120h ou mais), mesma regra
+        # do submit, para fila local e Worker nao discordarem.
+        if ($motivoItem -ne 'rotacao_semanal' -or (Test-VixRotacaoMantemDivida $emp $motivoItem)) { Add-VixPendenteSeguro $emp.empresa $emp.ews_score $motivoItem $pendente.tier $subOk }
         # COBERTURA-RECON1: DEFERIDO entra no contrato do dia com o motivo. Sem isto o ledger
         # registrava o deferimento e a cobertura nao, e os dois numeros nao fechavam.
         Set-VixContratoEstado -Empresa $emp.empresa -Estado 'DEFERIDO' -Motivo $motivoItem -Faltantes @() -Triado $false

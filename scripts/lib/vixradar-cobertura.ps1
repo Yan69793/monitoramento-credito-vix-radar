@@ -625,6 +625,44 @@ function Remove-VixFilaPendente([string]$Path, [string]$Empresa) {
     return [bool]$estado.removido
 }
 
+# DIVIDAAPAGADA1 (2026-10-19): tres guardas de cobertura caiam juntas. Cadeia medida na CPFL:
+# deferido por cap em 14/10 (divida marcada no Worker), deferido por rotacao_semanal em 15/10
+# 02:09 (o submit manda _token_cap_deferred=false e o Worker apaga a divida), SKIP sem_delta_30h
+# em 15/10 18:05 pelo relogio de VARREDURA, e o SKIP aceito soltava a pendencia local como se
+# fosse analise. Resultado em 19/10: 7 emissores com a ultima analise real ha mais de 16 dias.
+# As duas regras abaixo sao locais. O tiering do Worker continua no relogio de varredura
+# (decisao de 19/09, emissor-stale-analise.test.mjs).
+$script:VixDividaAnaliseH = 120
+
+# Horas desde a ultima analise REAL do item do plano. $null quando o Worker nao tem registro.
+function Get-VixHorasAnaliseItem($Item) {
+    if ($null -eq $Item) { return $null }
+    $p = $Item.PSObject.Properties['horas_desde_analise']
+    if ($null -eq $p -or $null -eq $p.Value) { return $null }
+    $h = 0.0
+    if (-not [double]::TryParse(('' + $p.Value), [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$h)) { return $null }
+    return $h
+}
+
+# Deferimento mantem a divida de analise (_token_cap_deferred=true)? Corte por cap, assinatura ou
+# provedor sempre mantem. Rotacao semanal so solta quem tem analise real recente: sem registro ou
+# com analise acima de VixDividaAnaliseH horas, a rotacao nao pode apagar a divida (fail-closed).
+function Test-VixRotacaoMantemDivida($Item, [string]$Motivo) {
+    if ($Motivo -ne 'rotacao_semanal') { return $true }
+    $h = Get-VixHorasAnaliseItem $Item
+    if ($null -eq $h) { return $true }
+    return ([double]$h -ge [double]$script:VixDividaAnaliseH)
+}
+
+# SKIP aceito solta a pendencia persistente? So quando o SKIP e credito de analise real do dia
+# (motivo analisado_hoje_por_*, janela de 14h do Worker). SKIP por frescor de varredura
+# (sem_delta_30h, scan_recente_sem_delta) nao prova analise e mantem a pendencia.
+function Test-VixSkipSoltaPendente($Item) {
+    if ($null -eq $Item) { return $false }
+    $m0 = '' + @($Item.motivos)[0]
+    return ($m0 -like 'analisado_hoje_por_*')
+}
+
 function Get-VixFilaPendenteOrdenada($Fila) {
     $lista = foreach ($k in @($Fila.Keys)) {
         $e = $Fila[$k]
