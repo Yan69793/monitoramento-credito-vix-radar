@@ -4,6 +4,12 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.275.js = v4.9.274 + CVMLASTMOD1: gravarFonteCVMMeta preserva
+#   last_modified/last_modified_iso do ultimo ZIP quando a escrita (ENET) nao
+#   traz a chave; quem traz, mesmo null, decide. Desde 13/09 o health devolvia
+#   cvm_fonte_last_modified:null e a Sentinela sincronizava a CVM em toda
+#   execucao. Health ganha cvm_acervo_sha256 (marcador do acervo ENET). Testes
+#   api/test/cvm-lastmod-enet (5 casos, 2 falham sem a correcao).
 # v4.9.274.js = v4.9.273 + LIMPARCACHE2: `admin_limpar_cache` exige
 #   confirmar="LIMPAR <semana>"; sem isso responde 409 CONFIRMACAO_OBRIGATORIA
 #   com semana e n_empresas, e nao apaga nada. Com confirmacao, arquiva em
