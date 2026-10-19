@@ -27,6 +27,8 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # o test-monitor-kfp-janela.ps1 provar a MESMA funcao que a producao usa, sem executar o
 # monitor inteiro. Regra ancorada em data fixa, nao no LastRunTime vivo.
 . (Join-Path $ScriptDir 'lib\vixradar-monitor-kfp.ps1')
+# PLANTAO1 (2026-10-19): modo do dia e evidencia de plantao da matinal, mesma lib do motor.
+. (Join-Path $ScriptDir 'lib\vixradar-plantao.ps1')
 # CLAUDE-FREE-MIGRATION (2026-09-04): fonte unica de provider de LLM das rotinas.
 # Quando bloqueado, as rotinas LLM do VIX saem exit 86 com a linha canonica
 # BLOQUEADO_SEM_PROVIDER ANTES de qualquer auth/claude. Este monitor trata exit 86 como
@@ -746,6 +748,33 @@ foreach ($rot in $RotinasVigiadas) {
                 script  = $logRot
                 reason  = "$alvoTxt sem BLOQUEADO_SEM_PROVIDER nem entrega no log: executor nao rodou o ciclo (task desligada, gate ausente ou script quebrou antes do gate)"
             }
+        }
+        continue
+    }
+
+    # PLANTAO1 (2026-10-19): fim de semana e feriado a matinal nao varre, delega a checagem
+    # de evento extraordinario para a Sentinela -Plantao e fecha com 'FIM: matinal plantao'.
+    # Plantao OK/PARCIAL e entrega desse dia; FALHA vira 9001. Dia util nunca entra aqui.
+    if ($rot.nome -eq 'vixradar-matinal' -and (Get-VixModoDia -Data $alvo -Feriados (Get-VixFeriadosB3)) -ne 'util') {
+        $txtPl = ''
+        try { $txtPl = Get-VixLogDiaConteudo $logRot } catch { $txtPl = '' }
+        $pl = Get-VixPlantaoEntrega $txtPl
+        if ($null -ne $pl -and $pl.Entregue) {
+            Write-Log "PLANTAO esperado: $($rot.rotulo) | $alvoTxt $($pl.Linha)"
+            $ok++
+            continue
+        }
+        $motivoPl = "$alvoTxt sem linha 'FIM: matinal plantao' no log: a checagem de fim de semana/feriado nao fechou"
+        if ($null -ne $pl) { $motivoPl = "$alvoTxt plantao fechou com resultado=$($pl.Resultado): $($pl.Linha)" }
+        Write-Log "PLANTAO SEM ENTREGA: $($rot.rotulo) | $motivoPl"
+        $erros += [ordered]@{
+            task    = $rot.rotulo
+            code    = 9001
+            codeHex = '0x2329'
+            lastRun = "$alvoTxt (plantao esperado)"
+            ageDays = [int]((Get-Date).Date - $alvo).Days
+            script  = $logRot
+            reason  = $motivoPl
         }
         continue
     }

@@ -38,7 +38,12 @@ param(
     # pendentes que o relatorio do dia decidiu CLAUDE_FALLBACK, pela assinatura (ProviderOverride
     # claude-subscription), dentro de CLAUDE_FALLBACK_DIA. Opt-in por
     # VIXRADAR_COBERTURA_FALLBACK_CLAUDE=1; sem ela sai 0 aqui no topo, sem log, lock, rede ou token.
-    [switch]$CoberturaFallbackClaude
+    [switch]$CoberturaFallbackClaude,
+    # PLANTAO1 (2026-10-19): fim de semana e feriado a matinal vira plantao (lib\vixradar-plantao.ps1).
+    # -IgnorarPlantao e so para o operador forcar a varredura cheia nesses dias. -SimularData
+    # (yyyy-MM-dd) so vale com -DryRun, para provar a decisao do dia sem esperar o calendario.
+    [switch]$IgnorarPlantao,
+    [string]$SimularData = ''
 )
 
 $ErrorActionPreference = 'Continue'
@@ -1471,15 +1476,47 @@ if ($script:VixCobFallbackModo) {
 
 if (-not (Test-Path $Perfil.skill)) { Write-Log ('ERRO: skill ausente ' + $Perfil.skill); exit 1 }
 
-# Feriado B3: nenhuma fonte publica, nada a varrer. Fim de semana fica a cargo do gatilho
-# (noturno seg-sex no Task Scheduler; matinal diaria de proposito).
-$feriados = @(
-    '2026-01-01', '2026-02-16', '2026-02-17', '2026-04-03', '2026-04-21', '2026-05-01',
-    '2026-06-04', '2026-09-07', '2026-10-12', '2026-11-02', '2026-11-15', '2026-11-20', '2026-12-25'
-)
-if (($feriados -contains (Get-Date).ToString('yyyy-MM-dd')) -and -not $DryRun) {
+# PLANTAO1 (2026-10-19, decisao do operador): sabado, domingo e feriado B3 nao rodam
+# varredura. A matinal (diaria no Scheduler) vira plantao: delega para a Sentinela com
+# -Plantao, que so analisa se houve acervo novo da CVM, e fecha com a linha canonica
+# 'FIM: matinal plantao ...' que o monitor reconhece. A noturna (seg-sex) segue com o SKIP
+# de feriado de antes. Ate 18/10 a matinal rodava a varredura cheia no fim de semana e
+# pulava tudo no feriado, inclusive qualquer checagem.
+. (Join-Path $PSScriptRoot 'lib\vixradar-plantao.ps1')
+if (-not (Get-Command Get-VixModoDia -ErrorAction SilentlyContinue)) { Write-Log 'ERRO: lib\vixradar-plantao.ps1 ausente ou sem Get-VixModoDia'; exit 1 }
+$__dataDia = Get-Date
+if ($SimularData) {
+    if ($DryRun) { $__dataDia = [datetime]::ParseExact($SimularData, 'yyyy-MM-dd', [Globalization.CultureInfo]::InvariantCulture) }
+    else { Write-Log ('AVISO: -SimularData ' + $SimularData + ' ignorado fora de -DryRun') }
+}
+$__modoDia = Get-VixModoDia -Data $__dataDia -Feriados (Get-VixFeriadosB3)
+# Noturna: so o feriado pula, com a linha de sempre. Ela nao e agendada no fim de semana, e
+# chamada manual nesses dias (reposicao) continua permitida como antes.
+if ($__modoDia -eq 'feriado' -and $Rotina -eq 'noturno' -and -not $DryRun) {
     Write-Log ('SKIP: feriado B3. FIM: ' + $Rotina + ' pulado por feriado. Total do dia 0/0. analisados=0 skip=0 deferidos=0 submits_aceitos=0')
     exit 0
+}
+if ($__modoDia -ne 'util' -and $Rotina -eq 'matinal' -and -not $IgnorarPlantao) {
+    if ($CoberturaFallbackClaude) {
+        Write-Log ('SKIP: plantao ' + $__modoDia + ', fallback de cobertura nao roda em dia nao util. FIM_PLANTAO_FALLBACK: nada executado')
+        exit 0
+    }
+    $__sentScript = Join-Path $PSScriptRoot 'run_vixradar_sentinela.ps1'
+    Write-Log ('PLANTAO: ' + $__dataDia.ToString('yyyy-MM-dd') + ' e ' + $__modoDia + '. Sem varredura; checagem de evento extraordinario pela Sentinela -Plantao.')
+    if ($DryRun) {
+        Write-Log ('FIM_DRYRUN: matinal plantao modo=' + $__modoDia + ' chamaria ' + $__sentScript + ' -Plantao. tokens=0')
+        exit 0
+    }
+    $__sentArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $__sentScript, '-Plantao')
+    if ($ForceClaude) { $__sentArgs += '-ForceClaude' }
+    & powershell.exe @__sentArgs | Out-Null
+    $__sentExit = $LASTEXITCODE
+    if ($null -eq $__sentExit) { $__sentExit = 1 }
+    $__sentLog = Join-Path $LogDir ('vixradar-sentinela_' + (Get-Date -Format 'yyyyMMdd') + '.log')
+    $__sentFim = ''
+    try { $__sentFim = Get-VixSentinelaUltimoFim @(Get-VixLogDiaLinhas $__sentLog) } catch { $__sentFim = '' }
+    Write-Log (Get-VixPlantaoFimLinha -Modo $__modoDia -ExitSentinela ([int]$__sentExit) -FimSentinela $__sentFim)
+    exit (Get-VixPlantaoExit -ExitSentinela ([int]$__sentExit) -FimSentinela $__sentFim)
 }
 
 # Mutex global: nunca duas instancias da mesma rotina (incidente 2026-07-06).

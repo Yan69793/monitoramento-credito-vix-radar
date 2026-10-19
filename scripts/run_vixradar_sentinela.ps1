@@ -58,8 +58,13 @@
 # CLAUDE-FREE-MIGRATION (2026-09-04): -ForceClaude so o operador passa, em chamada manual
 # com VIXRADAR_LLM_PROVIDER='claude-manual'. O Task Scheduler nunca passa essa flag; sem
 # ela o gate abaixo bloqueia com exit 86 antes de gastar qualquer token.
+#
+# PLANTAO1 (2026-10-19, decisao do operador): -Plantao e o modo de fim de semana e feriado,
+# chamado pela matinal (lib\vixradar-plantao.ps1). So acervo novo da CVM dispara analise;
+# backlog de dia util NAO e gatilho e fica preservado no estado para o proximo dia util.
 param(
-    [switch]$ForceClaude
+    [switch]$ForceClaude,
+    [switch]$Plantao
 )
 
 $ErrorActionPreference = 'Continue'
@@ -196,6 +201,7 @@ function Invoke-WorkerJsonUtf8 {
 }
 
 Write-Log ('INICIO: sentinela teto=' + $Teto + ' hard=' + $TokenHardCap)
+if ($Plantao) { Write-Log 'MODO: plantao (fim de semana/feriado). Gatilho so por acervo novo da CVM; backlog preservado.' }
 
 # --- Guarda 1: mutex proprio, nao rodar duas sentinelas ---------------------
 $__mutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-sentinela-v1')
@@ -330,6 +336,26 @@ if (-not $acervoMudou -and -not $pendingAnterior) {
     Write-Log ('PORTAO: acervo do Worker inalterado (' + $workerLm + ') e sem backlog. Nada a fazer.')
     Write-State $workerLm $zipLmParaEstado $false 0
     Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=sem_novidade'
+    exit 0
+}
+# PLANTAO1: fonte cega nunca vira "sem novidade". Em plantao o unico gatilho e o acervo, e o
+# health devolvia cvm_fonte_last_modified vazio em 19/10/2026, entao a novidade so aparece
+# pelo zip + sync. HEAD do zip falhou, ou zip novo sem sync concluido = fonte indisponivel.
+$__plantaoZipNovo = $false
+if ($zipLmUtc) { $__plantaoZipNovo = (($zipLmUtc.ToString('yyyy-MM-dd')) -gt $workerLm) -or ($zipLm -ne ('' + $estado.zip_last_modified)) }
+if ($Plantao -and -not $acervoMudou -and ((-not $zipLmUtc) -or ($__plantaoZipNovo -and -not $syncFeito))) {
+    $__motFonte = 'plantao_fonte_indisponivel'
+    if ($zipLmUtc) { $__motFonte = 'plantao_zip_novo_sem_sync' }
+    Write-Log ('PORTAO: plantao sem visao da fonte (' + $__motFonte + '). zip=' + $zipLm + ' estado=' + $estado.zip_last_modified + '. Nao e dia quieto; backlog preservado.')
+    Write-State ('' + $estado.worker_cvm_last_modified) ('' + $estado.zip_last_modified) $pendingAnterior $streak
+    Write-Log ('FIM: sentinela abortada. tokens=0 analisados=0 motivo=' + $__motFonte)
+    exit 3
+}
+# PLANTAO1: em plantao o backlog nao dispara. Estado de pending/streak fica como estava.
+if ($Plantao -and -not $acervoMudou) {
+    Write-Log ('PORTAO: plantao, acervo do Worker inalterado (' + $workerLm + '). Backlog (' + $pendingAnterior + ', streak=' + $streak + ') fica para o proximo dia util.')
+    Write-State $workerLm $zipLmParaEstado $pendingAnterior $streak
+    Write-Log 'FIM: sentinela sem gatilho. tokens=0 analisados=0 motivo=plantao_sem_novidade'
     exit 0
 }
 

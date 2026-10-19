@@ -121,7 +121,7 @@ três voltam ao Task Scheduler nativo como tasks Enabled rodando o gate de provi
 | Rotina | Gatilho | Script | Função |
 |------|---------|--------|--------|
 | `VIXRadar-Noturno` | **Seg-Sex 18h00 BRT** | `run_vixradar_noturno_claude.ps1` | 103/103 emissores, fila rápida em Haiku primeiro (lotes de até 15) + fila aprofundada em Sonnet depois (lotes de até 16). É a varredura completa, e roda à noite |
-| `VIXRadar-Matinal` | **Diário 10h00 BRT** | `run_vixradar_matinal_claude.ps1` | Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4). É a passada curta, e roda de manhã |
+| `VIXRadar-Matinal` | **Diário 10h00 BRT** | `run_vixradar_matinal_claude.ps1` | Dia útil: Top 15 por EWS, Haiku (lotes 6) + Sonnet (EWS>=38, lotes 4). Sábado, domingo e feriado B3: **plantão** (PLANTAO1, 19/10/2026), sem varredura, só `run_vixradar_sentinela.ps1 -Plantao`, que analisa apenas se houve documento novo na CVM e fecha com `FIM: matinal plantao` |
 | `VIXRadar-Verificacao-Async` | **Diário 11h00 e 18h45 BRT** | `run_vixradar_verificacao_async.ps1` | Dreno da fila `radar:verif_fila:{data}` (também acionado inline pós-varredura) |
 
 A verificação passou a ter **duas sessões, e a das 18h45 não é opcional**. Sem
