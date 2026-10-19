@@ -6,7 +6,7 @@ const PORT = 4190;
 export default defineConfig({
   testDir: './tests',
   testMatch: /vx-.*\.spec\.mjs$/,
-  testIgnore: /vx-auth-.*\.spec\.mjs$/, // roda em playwright.auth.config.mjs (Worker real em workerd local)
+  testIgnore: /vx-(auth-.*|mobile)\.spec\.mjs$/, // auth: playwright.auth.config.mjs (Worker real); mobile: playwright.mobile.config.mjs
   fullyParallel: false,
   workers: 1,
   retries: 0,

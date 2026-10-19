@@ -304,6 +304,11 @@ test('mobile bottom buttons respond to real taps', async ({ page }) => {
   });
   await page.locator('#mob-btn-agenda').click();
   await expect(page.locator('#agenda-overlay')).toHaveClass(/show/);
+  // VIX-MOBILE-20261018: com a Agenda aberta a barra marca Agenda (antes ficava em Ajustes, que
+  // estava escondido atras do overlay). Ao fechar, o item anterior volta a ser o ativo.
+  await expect(page.locator('#mob-btn-agenda')).toHaveClass(/active/);
+  await expect(page.locator('#mob-btn-config')).not.toHaveClass(/active/);
+  await page.evaluate(() => agendaFechar()); // eslint-disable-line no-undef
   await expect(page.locator('#mob-btn-config')).toHaveClass(/active/);
 });
 

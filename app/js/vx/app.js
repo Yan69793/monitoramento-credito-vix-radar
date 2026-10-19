@@ -63,7 +63,7 @@ function mostrarBotaoVoltar() {
     b = document.createElement('button');
     b.id = 'vx2-voltar'; b.type = 'button';
     b.textContent = 'Voltar à nova interface';
-    b.style.cssText = 'position:fixed;right:16px;bottom:76px;z-index:899;background:#B7985D;color:#001020;border:0;border-radius:6px;padding:12px 16px;font:600 13px Inter,system-ui,sans-serif;min-height:44px;cursor:pointer';
+    b.style.cssText = 'position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:899;background:#B7985D;color:#001020;border:0;border-radius:6px;padding:12px 16px;font:600 13px Inter,system-ui,sans-serif;min-height:44px;cursor:pointer';
     b.addEventListener('click', () => { b.remove(); ir('#/eventos'); });
     document.body.appendChild(b);
   }
@@ -110,6 +110,16 @@ function selo() {
 }
 
 /* ---------- render ---------- */
+/* VIX-MOBILE-20261018: icones desenhados no mesmo traco da barra da v1 (24px, stroke 1.5),
+   no lugar dos caracteres unicode, que cada sistema desenha de um jeito. */
+const svgIc = (d) => `<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const ICONE = {
+  eventos: svgIc('<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>'),
+  empresas: svgIc('<path d="M4 21V5a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v16"/><path d="M15 9h4a1 1 0 0 1 1 1v11"/><path d="M3 21h18"/><path d="M8 8h3M8 12h3M8 16h3"/>'),
+  busca: svgIc('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'),
+  livro: svgIc('<path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/>'),
+  mais: svgIc('<circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/>'),
+};
 function shell(rota, tela) {
   const atual = (t) => (tela === t ? ' aria-current="page"' : '');
   return `
@@ -132,11 +142,11 @@ function shell(rota, tela) {
   ${selo()}
   <main class="vx-main" id="vx-main" tabindex="-1"><div class="vx-wrap" id="vx-tela"></div></main>
   <nav class="vx-bottom" aria-label="Navegação principal">
-    <button type="button" data-ir="#/eventos"${tela === 'eventos' && !rota.q.get('livro') ? ' aria-current="page"' : ''}><span class="ic" aria-hidden="true">&#9650;</span>Eventos</button>
-    <button type="button" data-ir="#/empresas"${atual('empresas')}><span class="ic" aria-hidden="true">&#9638;</span>Empresas</button>
-    <button type="button" data-acao="busca"><span class="ic" aria-hidden="true">&#8981;</span>Busca</button>
-    <button type="button" data-ir="#/eventos?livro=1"${tela === 'eventos' && rota.q.get('livro') ? ' aria-current="page"' : ''}><span class="ic" aria-hidden="true">&#9733;</span>Livro</button>
-    <button type="button" data-acao="mais" aria-expanded="false" aria-controls="vx-mais"><span class="ic" aria-hidden="true">&#8943;</span>Mais</button>
+    <button type="button" data-ir="#/eventos"${tela === 'eventos' && !rota.q.get('livro') ? ' aria-current="page"' : ''}><span class="ic" aria-hidden="true">${ICONE.eventos}</span>Eventos</button>
+    <button type="button" data-ir="#/empresas"${atual('empresas')}><span class="ic" aria-hidden="true">${ICONE.empresas}</span>Empresas</button>
+    <button type="button" data-acao="busca"><span class="ic" aria-hidden="true">${ICONE.busca}</span>Busca</button>
+    <button type="button" data-ir="#/eventos?livro=1"${tela === 'eventos' && rota.q.get('livro') ? ' aria-current="page"' : ''}><span class="ic" aria-hidden="true">${ICONE.livro}</span>Livro</button>
+    <button type="button" data-acao="mais" aria-expanded="false" aria-controls="vx-mais"><span class="ic" aria-hidden="true">${ICONE.mais}</span>Mais</button>
   </nav>
   <div class="vx-mais" id="vx-mais">
     <button type="button" class="vx-btn" data-v1="agenda">Agenda</button>
