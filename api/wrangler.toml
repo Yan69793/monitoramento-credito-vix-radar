@@ -4,6 +4,13 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.278.js = v4.9.277 + EWSVAR7D1: op=ews devolve score_anterior_7d, delta_7d e
+#   data_anterior_7d por emissor (null sem ponto entre 7 e 10 dias atras, nunca
+#   estima). persistirHistEwsBatch grava o resumo das ultimas 15 entradas de cada
+#   serie em `ews_hist_resumo:v1`, entao o op=ews publico faz 1 leitura de KV em vez
+#   de 104. Campos so preenchidos apos o primeiro cron preditivo depois do deploy.
+#   Alimenta a coluna "Delta 7 dias" do PDF executivo (REL-EXEC2).
+#   Testes api/test/ews-variacao-7d. Rollback: main = "v4.9.277.js".
 # v4.9.277.js = v4.9.276 + EVOLUCAO2 (VIX Intelligence Evolution, marco 2):
 #   action evolucao_coletar (admin ou routine_key) le radar:verif:attempt:* e
 #   deriva propostas quando 3+ itens DISTINTOS esgotaram a verificacao, uma por
