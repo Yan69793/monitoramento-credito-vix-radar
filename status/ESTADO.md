@@ -1,5 +1,9 @@
 # Estado do projeto — VIX Radar
 
+## 19/10/2026 23:40, EVOLUCAO1 (VIX Intelligence Evolution, marco 1) em producao, Worker v4.9.276
+
+Livro de propostas de evolucao no ar: actions `evolucao_propor` (admin ou routine_key), `evolucao_listar` e `evolucao_decidir` (so admin), KV `evolucao:{tenant}:p:{id}`. Nada executa, aprovar so autoriza planejar. Detalhe e proximos marcos na nota 129. Subiu junto o SENHAMIN8 (minimo de 8 caracteres no Worker); o placeholder do app segue no Pages so no proximo deploy do frontend. Deploy pelo `deploy-worker.ps1`: suite 62 arquivos 632/632, health `ok:true`, `versao v4.9.276`; as 3 actions respondem 403 sem credencial ou com routine_key errada em producao. Nenhuma proposta criada. Commit `695d5e0` no GitHub. Rollback: `main = "v4.9.275.js"`.
+
 ## 18/10/2026, cinco correcoes de UX do app/index.html (auditoria UX/UI de 18/10), SEM deploy
 
 So frontend, Worker intocado, nada publicado (Pages segue na versao anterior ate `deploy-pages.ps1`). Commits: `5f87ba0` EWSFAIXA1 (A05, `ewsFaixa` com clamp, `Math.round` e fallback do `classificarEWS` e cor VX_SEV; Visao Geral deixou de pintar todo score de vermelho fixo), `1c90551` VXTERMOS1 (A41/A12, `vxNotaCliente` e `vxRodadasCliente`: nota de cobertura em frase de cliente e rodada falsa `token_cap`/`deferred` escondida), `514699d` AGENDAKPI1 (A06, KPIs da Agenda contam os eventos do horizonte em vez de `cobertura` do build de 90 dias), `fc0e94a` TAXAROTULO1 (A07, remuneracao de emissao separada da taxa indicativa do secundario, data-base visivel; o valor correto de CSN/CEMIG NAO foi conferido na ANBIMA), `7225ff9` LIVEFRESCOR1 (A08, selo Live por `painel_analise_fresca` e `painel_fresco` do GET publico). Guarda: `app/tests/tests/ux-contrato.spec.mjs`, 9 testes, cada um reprovado contra o HEAD anterior. Suite `playwright.config.mjs` 88 passed, 6 skipped. Suite vx: 8 falhas pre-existentes em VXLCP2/pagina publica, identicas no HEAD sem estas mudancas.
