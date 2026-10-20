@@ -1,5 +1,9 @@
 # Estado do projeto — VIX Radar
 
+## 20/10/2026 01:15, EVOLUCAO2 em producao (Worker v4.9.277) e frontend v202.81 (mobile v202.80 + SENHAMIN8)
+
+Worker: action `evolucao_coletar` (marco 2, nota 129) deriva propostas de verificacao esgotada; padrao e simulacao, `aplicar:true` grava so no livro. Suite 63 arquivos 640/640, health `ok:true` `versao v4.9.277`, 403 sem credencial em producao. Nenhuma coleta executada. Rollback `main = "v4.9.276.js"`. Pages: v202.81 publicado pelo `deploy-pages.ps1`, com o redesign mobile da v202.80 (guarda vx-mobile 56/56) e o placeholder de senha 8 caracteres conferido no HTML de producao. Pendente: Safari real no iPhone.
+
 ## 19/10/2026 23:40, EVOLUCAO1 (VIX Intelligence Evolution, marco 1) em producao, Worker v4.9.276
 
 Livro de propostas de evolucao no ar: actions `evolucao_propor` (admin ou routine_key), `evolucao_listar` e `evolucao_decidir` (so admin), KV `evolucao:{tenant}:p:{id}`. Nada executa, aprovar so autoriza planejar. Detalhe e proximos marcos na nota 129. Subiu junto o SENHAMIN8 (minimo de 8 caracteres no Worker); o placeholder do app segue no Pages so no proximo deploy do frontend. Deploy pelo `deploy-worker.ps1`: suite 62 arquivos 632/632, health `ok:true`, `versao v4.9.276`; as 3 actions respondem 403 sem credencial ou com routine_key errada em producao. Nenhuma proposta criada. Commit `695d5e0` no GitHub. Rollback: `main = "v4.9.275.js"`.
