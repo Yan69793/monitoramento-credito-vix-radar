@@ -88,6 +88,47 @@ export async function proporEvolucao(kv, tenant, entrada, { origem, agora }) {
   return { ok: true, criada: true, id: p.id, estado: "proposta", versao: 1 };
 }
 
+// EVOLUCAO2 (marco 2): coletor de erros. Funcao PURA que le os registros de tentativa de verificacao
+// (radar:verif:attempt:*) e deriva propostas a partir de erro REAL e repetido: item que esgotou as 3
+// tentativas sem conclusao. O id do item e `data|empresa|host+path`; agrupa por host (fonte) e por empresa
+// (emissor). Limiar de itens DISTINTOS evita proposta por caso isolado. Titulo sem contagem: o mesmo erro
+// recorrente cai na mesma proposta (idempotencia do livro), so a evidencia cresce.
+export const COLETA = { limiar: 3, maximo_propostas: 20 };
+const HOST_RE = /^[a-z0-9]([a-z0-9.-]{0,251}[a-z0-9])?\.[a-z]{2,}$/;
+
+export function derivarPropostasDeErros(registros, { limiar = COLETA.limiar } = {}) {
+  const porHost = new Map(), porEmpresa = new Map();
+  for (const r of Array.isArray(registros) ? registros : []) {
+    if (!r || !(r.esgotado || r.aguarda_manual) || typeof r.id !== "string") continue;
+    const partes = r.id.split("|");
+    const empresa = sanitizarTexto(r.empresa || partes[1] || "", 80);
+    const host = String(partes[2] || "").split("/")[0].toLowerCase().replace(/^www\./, "");
+    const id = r.id;
+    if (HOST_RE.test(host)) {
+      const g = porHost.get(host) || { ids: new Set(), empresas: new Set() };
+      g.ids.add(id); if (empresa) g.empresas.add(empresa); porHost.set(host, g);
+    }
+    if (empresa) {
+      const g = porEmpresa.get(empresa) || { ids: new Set(), hosts: new Set() };
+      g.ids.add(id); if (HOST_RE.test(host)) g.hosts.add(host); porEmpresa.set(empresa, g);
+    }
+  }
+  const out = [];
+  for (const [host, g] of [...porHost].sort((a, b) => b[1].ids.size - a[1].ids.size || (a[0] < b[0] ? -1 : 1))) {
+    if (g.ids.size < limiar) continue;
+    out.push({ tipo: "descoberta_fonte", alvo: host, titulo: `Revisar confiabilidade da fonte ${host}`,
+      descricao: `${g.ids.size} itens citando ${host} esgotaram as tentativas de verificacao sem conclusao (empresas: ${[...g.empresas].sort().slice(0, 5).join(", ") || "n/d"}). Avaliar se a fonte e inadequada para verificacao ou precisa de excecao declarada.`,
+      fontes: [`https://${host}/`] });
+  }
+  for (const [empresa, g] of [...porEmpresa].sort((a, b) => b[1].ids.size - a[1].ids.size || (a[0] < b[0] ? -1 : 1))) {
+    if (g.ids.size < limiar || g.hosts.size < 1) continue;
+    out.push({ tipo: "descoberta_emissor", alvo: empresa, titulo: `Revisar cobertura de fontes do emissor ${empresa}`,
+      descricao: `${g.ids.size} itens do emissor ${empresa} esgotaram as tentativas de verificacao sem conclusao (fontes: ${[...g.hosts].sort().slice(0, 5).join(", ")}). Avaliar fontes primarias melhores para este emissor.`,
+      fontes: [...g.hosts].sort().slice(0, LIMITES.fontes).map((h) => `https://${h}/`) });
+  }
+  return out.slice(0, COLETA.maximo_propostas);
+}
+
 export async function listarEvolucao(kv, tenant, { estado, limite = 100 } = {}) {
   if (!tenantValido(tenant)) return { ok: false, codigo: "EVOLUCAO_TENANT_INVALIDO" };
   const itens = [];

@@ -17,3 +17,9 @@ Menor peca sem duplicar nada existente: a memoria versionada e a trava de aprova
 2. Coletor de erros e acertos: ler historico de EWS, verificacoes reprovadas e filas e gerar propostas `ews`/`indicador` (so propostas).
 3. Descoberta externa periodica (emissor, fonte, setor) com Queue + Workflow, exige binding e autorizacao de deploy.
 4. Painel admin para revisar o livro.
+
+## Marco 2: coletor de erros (EVOLUCAO2, 2026-10-20). Estado: commitado local, SEM deploy
+- `derivarPropostasDeErros` (pura, em `api/src/evolucao.mjs`) le os registros `radar:verif:attempt:*` e propoe so quando 3 ou mais itens DISTINTOS esgotaram as 3 tentativas de verificacao: uma proposta por fonte (host do id do item) e uma por emissor. Titulo sem contagem, entao o mesmo erro recorrente cai na mesma proposta.
+- Action `evolucao_coletar` (admin ou routine_key). Padrao e simulacao, so devolve o que seria proposto. Com `aplicar:true` grava apenas no livro, origem `rotina`, estado `proposta`. Nao toca fila, estado, evento nem tentativa.
+- Testes: `api/test/evolucao-coleta.test.mjs` (8). Suite completa 63 arquivos, 640/640.
+- Fonte de erro ainda coberta: so verificacao esgotada. Acertos e erros do EWS (conferencia ews2) ficam para o marco 2b.

@@ -6,7 +6,7 @@
 // adicionar no_bundle=true/--no-bundle sem primeiro vendorizar o SDK, senao
 // o import quebra silenciosamente no deploy seguinte. Ver wrangler.toml.
 import * as Sentry from "@sentry/cloudflare";
-import { proporEvolucao, listarEvolucao, decidirEvolucao } from "./evolucao.mjs";
+import { proporEvolucao, listarEvolucao, decidirEvolucao, derivarPropostasDeErros } from "./evolucao.mjs";
 import { fundir as fundirEws2Lab, anexarEws as anexarEws2, validarPayload as validarPayloadEws2, liberacaoValida as liberacaoValidaEws2, pacoteFresco as pacoteFrescoEws2 } from "./ews2_adapter.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
@@ -21708,6 +21708,30 @@ async function __coreFetch(request, env2222, ctx) {
       }
       await tel(env2222, request, { evento: "verificacao_orfao_resolvido_manual", empresa: "", extra: { id: String(id).slice(0, 128), decisao: decisao } });
       return resp({ ok: true, id, decisao, resolvido: true, detalhe: _om.orfao || null }, 200, request);
+    }
+    if (body.action === "evolucao_coletar") {
+      // EVOLUCAO2: deriva propostas de erro recorrente de verificacao (itens esgotados). Admin ou routine_key.
+      // Padrao e simulacao (aplicar !== true): so devolve o que seria proposto. Com aplicar:true grava SO no livro
+      // (origem rotina, estado proposta). Nao toca em fila, estado, evento nem tentativa.
+      const _ecAdmin = !!body.admin_senha && body.admin_senha === env2222.ADMIN_PASSWORD;
+      const _ecRotina = !!body.routine_key && body.routine_key === env2222.ROUTINE_API_KEY;
+      if (!(_ecAdmin || _ecRotina)) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      const _ecTenant = body.tenant || DEFAULT_TENANT_ID;
+      if (!DEFAULT_TENANTS[_ecTenant]) return resp({ ok: false, erro: "Tenant desconhecido.", codigo: "EVOLUCAO_TENANT_INVALIDO" }, 400, request);
+      const _ecRegs = [];
+      let _ecCursor;
+      do {
+        const _ecPag = await env2222.RADAR_KV.list({ prefix: "radar:verif:attempt:", cursor: _ecCursor || undefined });
+        for (const _ecK of _ecPag.keys) { const _ecR = await env2222.RADAR_KV.get(_ecK.name, "json").catch(() => null); if (_ecR) _ecRegs.push(_ecR); }
+        _ecCursor = _ecPag.list_complete ? null : _ecPag.cursor;
+      } while (_ecCursor);
+      const _ecProps = derivarPropostasDeErros(_ecRegs);
+      if (body.aplicar !== true) return resp({ ok: true, simulacao: true, lidos: _ecRegs.length, propostas: _ecProps }, 200, request);
+      const _ecAgora = (/* @__PURE__ */ new Date()).toISOString();
+      const _ecRes = [];
+      for (const _ecP of _ecProps) _ecRes.push(await proporEvolucao(env2222.RADAR_KV, _ecTenant, _ecP, { origem: "rotina", agora: _ecAgora }));
+      return resp({ ok: true, simulacao: false, lidos: _ecRegs.length, derivadas: _ecProps.length, criadas: _ecRes.filter((x) => x.ok && x.criada).length, ja_existiam: _ecRes.filter((x) => x.ok && !x.criada).length, recusadas: _ecRes.filter((x) => !x.ok).map((x) => x.codigo) }, 200, request);
     }
     if (body.action === "evolucao_propor" || body.action === "evolucao_listar" || body.action === "evolucao_decidir") {
       // EVOLUCAO1: livro de propostas do VIX Intelligence Evolution. Propor aceita routine_key (origem rotina/ia) ou admin;
