@@ -143,6 +143,34 @@ test('explicarEws: sem confianca informada devolve n/d, nunca inventa', () => {
   assert.equal(R.explicarEws(null), null);
 });
 
+test('EWSVAR7D1: com score de 7 dias a variacao aparece no item e na tabela', () => {
+  const e = R.explicarEws({ empresa: 'Gol', score: 72, label: 'ALERTA', score_anterior_7d: 64.5, delta_7d: 7.5, data_anterior_7d: '2026-10-13', decomposicao: [{ fator: 'a', pontos: 4 }] });
+  assert.deepEqual(e.variacao7d, { anterior: 64.5, delta: 7.5, data: '2026-10-13' });
+  const html = R.secEws({ ews: [e] });
+  assert.match(html, /Δ 7 dias/);
+  assert.match(html, /\+7,5/);
+  assert.match(html, /era 64,5/);
+  assert.doesNotMatch(html, /a API pública do EWS não entrega o score anterior/);
+});
+
+test('EWSVAR7D1: sem score anterior (null ou ausente) nao inventa variacao', () => {
+  const semCampo = R.explicarEws({ empresa: 'X', score: 10, decomposicao: [] });
+  const nulo = R.explicarEws({ empresa: 'Y', score: 10, score_anterior_7d: null, delta_7d: null, decomposicao: [] });
+  assert.equal(semCampo.variacao7d, null);
+  assert.equal(nulo.variacao7d, null);
+  const html = R.secEws({ ews: [semCampo, nulo] });
+  assert.doesNotMatch(html, /Δ 7 dias/);
+  assert.match(html, /Variação de 7 dias indisponível/);
+});
+
+test('EWSVAR7D1: queda de score sai com sinal de menos e emissor sem historico mostra traco', () => {
+  const caiu = R.explicarEws({ empresa: 'A', score: 30, score_anterior_7d: 40, delta_7d: -10, decomposicao: [] });
+  const sem = R.explicarEws({ empresa: 'B', score: 20, decomposicao: [] });
+  const html = R.secEws({ ews: [caiu, sem] });
+  assert.match(html, /−10/);
+  assert.match(html, /<td class="num">—<\/td>/);
+});
+
 /* ---------- metricas ---------- */
 
 test('metricasVerificaveis: exige valor e fonte ou referencia', () => {

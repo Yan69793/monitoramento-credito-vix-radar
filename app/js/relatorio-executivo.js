@@ -290,6 +290,8 @@
     var pc = 0, pw = 0;
     fat.forEach(function (f) { var c = confNum(f.confianca); if (c != null) { pc += c * f.pontos; pw += f.pontos; } });
     var cm = pw ? pc / pw : null;
+    // EWSVAR7D1: variacao so quando a API entrega o score de 7 dias atras; ausente fica null, nunca estimada.
+    var temVar = typeof item.delta_7d === 'number' && isFinite(item.delta_7d) && typeof item.score_anterior_7d === 'number' && isFinite(item.score_anterior_7d);
     return {
       empresa: item.empresa, score: item.score, label: item.label || '', total_fatores: fat.length, fatores: fat, top: top,
       pctTop3: total ? top.reduce(function (s, f) { return s + f.pontos; }, 0) / total : 0,
@@ -298,7 +300,8 @@
       piso: item.piso_aplicado ? { valor: item.piso_valor, causa: item.piso_causa || '' } : null,
       ews2: item.ews2 && item.ews2.severidade ? String(item.ews2.severidade) : '',
       melhoras: fat.filter(function (f) { return f.direcao === 'melhora'; }),
-      calculado_em: item.calculado_em || ''
+      calculado_em: item.calculado_em || '',
+      variacao7d: temVar ? { anterior: item.score_anterior_7d, delta: item.delta_7d, data: item.data_anterior_7d || '' } : null
     };
   }
 
@@ -597,8 +600,16 @@
       }).join('') + '</tbody></table>' + (lista.length > 6 ? '<p class="muted">+' + (lista.length - 6) + ' no anexo.</p>' : '');
   }
 
+  function fmtDelta7d(v) {
+    if (!v) return '—';
+    var d = Math.round(v.delta * 10) / 10;
+    var txt = (d > 0 ? '+' : d < 0 ? '−' : '') + String(Math.abs(d)).replace('.', ',');
+    return txt + '<br><span class="muted">era ' + esc(String(v.anterior).replace('.', ',')) + '</span>';
+  }
+
   function secEws(m) {
     var top = m.ews.slice(0, 8);
+    var comVar = top.some(function (e) { return e.variacao7d; });
     if (!top.length) {
       return '<section class="block"><h2 class="sec-h">Early Warning Score</h2><p class="muted">Ranking EWS indisponível. Recarregue o painel antes de exportar, nenhum score foi estimado.</p></section>';
     }
@@ -607,11 +618,14 @@
         return esc(trunc(f.fator, 34)) + ' <b>' + f.pontos + (f.pesoMax ? '/' + f.pesoMax : '') + '</b>' + (f.direcao === 'melhora' ? ' (melhora)' : '');
       }).join('<br>') : '<span class="muted">sem decomposição</span>';
       var extra = (e.piso ? 'Piso ' + esc(e.piso.valor != null ? e.piso.valor : '') + (e.piso.causa ? ': ' + esc(trunc(e.piso.causa, 40)) : '') : '') + (e.ews2 ? (e.piso ? '<br>' : '') + 'EWS 2.0: ' + esc(e.ews2) : '');
-      return '<tr><td class="num">' + (i + 1) + '</td><td><strong>' + esc(e.empresa) + '</strong></td><td class="num">' + esc(e.score) + '</td><td>' + esc(e.label || '—') + '</td><td>' + drv + '</td><td class="num">' + esc(e.confianca) + '</td><td>' + (extra || '—') + '</td></tr>';
+      return '<tr><td class="num">' + (i + 1) + '</td><td><strong>' + esc(e.empresa) + '</strong></td><td class="num">' + esc(e.score) + '</td>' + (comVar ? '<td class="num">' + fmtDelta7d(e.variacao7d) + '</td>' : '') + '<td>' + esc(e.label || '—') + '</td><td>' + drv + '</td><td class="num">' + esc(e.confianca) + '</td><td>' + (extra || '—') + '</td></tr>';
     }).join('');
     return '<section class="block"><h2 class="sec-h">Early Warning Score explicado</h2>' + svgEws(top) +
-      '<table class="data" style="margin-top:8px"><thead><tr><th style="width:5%">#</th><th style="width:17%">Emissor</th><th style="width:8%">Score</th><th style="width:12%">Faixa</th><th>Fatores (pontos / máximo)</th><th style="width:9%">Confiança</th><th style="width:16%">Piso / EWS 2.0</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
-      '<p class="muted" style="margin-top:4px">Variação semanal do score não é exibida: a API pública do EWS não entrega o score anterior. Confiança é a média dos fatores ponderada por pontos, n/d quando a base não informa.</p></section>';
+      '<table class="data" style="margin-top:8px"><thead><tr><th style="width:5%">#</th><th style="width:17%">Emissor</th><th style="width:8%">Score</th>' + (comVar ? '<th style="width:8%">Δ 7 dias</th>' : '') + '<th style="width:12%">Faixa</th><th>Fatores (pontos / máximo)</th><th style="width:9%">Confiança</th><th style="width:16%">Piso / EWS 2.0</th></tr></thead><tbody>' + linhas + '</tbody></table>' +
+      '<p class="muted" style="margin-top:4px">' + (comVar
+        ? 'Δ 7 dias compara o score atual com o registrado entre 7 e 10 dias atrás, — quando não há registro nessa janela. '
+        : 'Variação de 7 dias indisponível nesta exportação, a API não entregou histórico do score para estes emissores. ') +
+      'Confiança é a média dos fatores ponderada por pontos, n/d quando a base não informa.</p></section>';
   }
 
   function fichaEmissor(e, m, reg) {
@@ -799,6 +813,6 @@
     VERSAO: VERSAO, PRESETS: PRESETS, esc: esc, trunc: trunc, buildHtml: buildHtml, montarModelo: montarModelo,
     deduplicarEventos: deduplicarEventos, limparGenerico: limparGenerico, compararJanelas: compararJanelas,
     explicarEws: explicarEws, metricasVerificaveis: metricasVerificaveis, priorizar: priorizar, gatilhos: gatilhos,
-    resumoDecisorio: resumoDecisorio, ratingTxt: ratingTxt
+    resumoDecisorio: resumoDecisorio, ratingTxt: ratingTxt, secEws: secEws
   };
 });

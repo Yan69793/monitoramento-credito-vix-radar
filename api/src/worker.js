@@ -17940,8 +17940,52 @@ async function persistirHistEwsBatch(env2222, histUpdates) {
     const chunk = histUpdates.slice(i, i + 15);
     await Promise.all(chunk.map((h) => { var v = JSON.stringify(h.hist); return _kvPutDualEmissor(env2222, h.empresa, kvEwsHistKey(h.empresa), v, "putEwsHist", [h.empresa, v]); }));
   }
+  // EWSVAR7D1 (2026-10-20): resumo das ultimas 15 entradas de cada serie numa chave so,
+  // gravado aqui porque este e o unico ponto que ja tem as 104 series na memoria. O op=ews
+  // publico le 1 chave por request em vez de 104 (ews:hist:{empresa}). Prefixo fora de
+  // "ews:hist:" de proposito, senao o list do pipeline preditivo leria o resumo como emissor.
+  await env2222.RADAR_KV.put(EWS_HIST_RESUMO_KEY, JSON.stringify(montarResumoHistEws(histUpdates))).catch((e) => console.warn("[EWSVAR7D1] resumo nao gravado:", e && e.message));
 }
 __name(persistirHistEwsBatch, "persistirHistEwsBatch");
+const EWS_HIST_RESUMO_KEY = "ews_hist_resumo:v1";
+function montarResumoHistEws(histUpdates) {
+  const emissores = {};
+  for (const h of histUpdates || []) {
+    if (!h || !Array.isArray(h.hist)) continue;
+    emissores[String(h.empresa || "").toLowerCase().trim()] = h.hist.filter((p) => p && typeof p.data === "string" && Number.isFinite(p.score)).slice(0, 15).map((p) => ({ data: p.data, score: p.score }));
+  }
+  return { schema: 1, gerado_em: (/* @__PURE__ */ new Date()).toISOString(), emissores };
+}
+__name(montarResumoHistEws, "montarResumoHistEws");
+// Ponto de referencia de 7 dias: o mais recente com data entre hoje-10 e hoje-7. A folga de
+// 3 dias cobre fim de semana e cron perdido. Sem ponto nessa janela devolve null, nunca cai
+// para o ponto mais antigo como calcularVelocityEws faz.
+function referenciaEws7d(serie, hojeISO) {
+  if (!Array.isArray(serie) || !/^\d{4}-\d{2}-\d{2}$/.test(String(hojeISO || ""))) return null;
+  const hoje = Date.parse(hojeISO + "T12:00:00Z");
+  let melhor = null;
+  for (const p of serie) {
+    if (!p || !/^\d{4}-\d{2}-\d{2}$/.test(String(p.data || "")) || !Number.isFinite(p.score)) continue;
+    const dias = (hoje - Date.parse(p.data + "T12:00:00Z")) / 864e5;
+    if (dias < 7 || dias > 10) continue;
+    if (!melhor || p.data > melhor.data) melhor = p;
+  }
+  return melhor;
+}
+__name(referenciaEws7d, "referenciaEws7d");
+function anexarVariacaoEws7d(itens, resumo, hojeISO) {
+  const mapa = resumo && resumo.emissores && typeof resumo.emissores === "object" ? resumo.emissores : null;
+  for (const it of itens || []) {
+    if (!it) continue;
+    const ref = mapa ? referenciaEws7d(mapa[String(it.empresa || "").toLowerCase().trim()], hojeISO) : null;
+    const ok = ref && Number.isFinite(it.score);
+    it.score_anterior_7d = ok ? ref.score : null;
+    it.delta_7d = ok ? Math.round((it.score - ref.score) * 10) / 10 : null;
+    it.data_anterior_7d = ok ? ref.data : null;
+  }
+  return itens;
+}
+__name(anexarVariacaoEws7d, "anexarVariacaoEws7d");
 function scorePreditivoRuleV1(f) {
   let score = 0;
   const drivers = [];
@@ -18260,6 +18304,10 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
   // Fail-closed: KV indisponivel, flag desligada ou payload invalido devolvem o EWS atual sem mudanca.
   const _ews2Latest = await env2222.RADAR_KV.get("ews2:latest", "json").catch(() => null);
   const _ews2Flag = await env2222.RADAR_KV.get("ews2:flag", "json").catch(() => null);
+  // EWSVAR7D1 (2026-10-20): score de 7 dias atras por 1 leitura de KV (resumo gravado pelo
+  // pipeline preditivo). Resumo ausente ou invalido deixa os campos em null, sem estimar.
+  const _ewsResumo = await env2222.RADAR_KV.get(EWS_HIST_RESUMO_KEY, "json").catch(() => null);
+  const _hojeEws = obterAgoraBRT().toISOString().split("T")[0];
   if (empresa) {
     const resultado = estado.results[empresa];
     const eventos = resultado?.eventos || [];
@@ -18267,7 +18315,7 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
     ews0.ecos = eventos.filter(function(e) {
       return e.classificacao === "ECO";
     }).length;
-    const ews = anexarEws2([ews0], _ews2Latest, _ews2Flag)[0];
+    const ews = anexarEws2(anexarVariacaoEws7d([ews0], _ewsResumo, _hojeEws), _ews2Latest, _ews2Flag)[0];
     return resp({ ok: true, ews }, 200, request);
   }
   const ranking = [];
@@ -18285,8 +18333,8 @@ async function handleEWS(url, env2222, request, _estado, _anomalias) {
   // PISODIFF1 (2026-08-30): desempate por score_calculado desc dentro de scores
   // iguais, para o ranking refletir a gravidade dos sinais dentro do grupo pisado.
   ranking.sort((a2, b) => (b.score - a2.score) || ((b.score_calculado || 0) - (a2.score_calculado || 0)));
-  const rankingFinal = anexarEws2(ranking, _ews2Latest, _ews2Flag);
-  return resp({ ok: true, ranking: rankingFinal, total: rankingFinal.length, calculado_em: obterAgoraBRT().toISOString().split("T")[0] }, 200, request);
+  const rankingFinal = anexarEws2(anexarVariacaoEws7d(ranking, _ewsResumo, _hojeEws), _ews2Latest, _ews2Flag);
+  return resp({ ok: true, ranking: rankingFinal, total: rankingFinal.length, calculado_em: _hojeEws }, 200, request);
 }
 __name(handleEWS, "handleEWS");
 __name2(handleEWS, "handleEWS");
@@ -23906,6 +23954,9 @@ var worker_com_sentry = Sentry.withSentry(
 );
 export {
   LLM_RETRY_CONFIG,
+  persistirHistEwsBatch,
+  referenciaEws7d,
+  EWS_HIST_RESUMO_KEY,
   _llmEsperaMs,
   _llmErroNaoRetryable,
   _llmFetchComRetry,
