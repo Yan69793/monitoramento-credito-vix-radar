@@ -4,6 +4,16 @@
 # ATENCAO: o changelog abaixo tem lacuna. Nao ha entrada para v4.9.184 a
 #   v4.9.188, deployadas sem registro aqui. A entrada de v4.9.189 declara o
 #   pai real (v4.9.188), nao a v4.9.183 que aparece logo abaixo dela.
+# v4.9.276.js = v4.9.275 + EVOLUCAO1 + SENHAMIN8. EVOLUCAO1 (VIX Intelligence
+#   Evolution, marco 1, nota 129): livro de propostas de evolucao no KV
+#   `evolucao:{tenant}:p:{id}`, actions evolucao_propor (admin ou routine_key),
+#   evolucao_listar e evolucao_decidir (so admin). Idempotente por hash, tenant
+#   validado e isolado na chave, fonte https obrigatoria, marca de prompt
+#   injection, teto de 50 propostas de IA/dia e 200 pendentes, historico
+#   append-only com reverter. Nada executa: aprovar so autoriza planejar.
+#   SENHAMIN8: minimo de 8 caracteres em registrar, admin_reset_senha e
+#   resetar_senha (login intocado). Testes api/test/evolucao (10),
+#   senha-minima e admin-isolamento. Rollback: main = "v4.9.275.js".
 # v4.9.275.js = v4.9.274 + CVMLASTMOD1: gravarFonteCVMMeta preserva
 #   last_modified/last_modified_iso do ultimo ZIP quando a escrita (ENET) nao
 #   traz a chave; quem traz, mesmo null, decide. Desde 13/09 o health devolvia
