@@ -87,7 +87,7 @@ def episodios_de_eventos(eventos):
         if atual and atual["cnpj"] == e["cnpj"] and (d - atual["ultimo"]).days <= EPISODIO_DIAS:
             atual["ultimo"] = d
             continue
-        atual = {"cnpj": e["cnpj"], "inicio": d, "ultimo": d, "prev_cat_a": bool(e.get("prev_cat_a"))}
+        atual = {"cnpj": e["cnpj"], "inicio": d, "ultimo": d, "prev_cat_a": bool(e.get("prev_cat_a")), "links": list(e.get("links") or [])}
         out.append(atual)
     return out
 
@@ -126,7 +126,7 @@ def decidir(snapshots, eventos, criterios, hoje):
         pa = percentil(s["atual"][ep["cnpj"]], ea)
         linhas.append({"cnpj": ep["cnpj"], "inicio": ep["inicio"].isoformat(), "pacote": s["data_obs"].isoformat(),
                        "sev_ews2": s["ews2"][ep["cnpj"]], "score_atual": s["atual"][ep["cnpj"]],
-                       "pct_ews2": round(p2, 4), "pct_atual": round(pa, 4)})
+                       "pct_ews2": round(p2, 4), "pct_atual": round(pa, 4), "links": ep["links"]})
     n = len(linhas)
     dif = [(l["pct_atual"] - l["pct_ews2"]) for l in linhas if abs(l["pct_atual"] - l["pct_ews2"]) > 1e-9]
     k = sum(1 for x in dif if x > 0)

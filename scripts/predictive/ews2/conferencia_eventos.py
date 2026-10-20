@@ -223,8 +223,12 @@ def detectar(docs, cnpjs, de, ate, sem_rede, hoje, docs_dir=DOCS_DIR):
             cont["nao_classificados"] += 1
         elif r["classe"] in CLASSES_MATERIAIS:
             cont[r["classe"]] = cont.get(r["classe"], 0) + 1
+            # EVOLUCAO2B: link oficial (RAD/CVM) dos documentos do dia, para a proposta de evolucao citar a fonte.
+            links = sorted({d["link"] for d in docs_por.get(cnpj, []) if d["data"] == dia and d["cat_n"] in CATS_EVENTO
+                            and str(d.get("link") or "").startswith("https://")})[:5]
             ev.append({"cnpj": cnpj, "data": dia.isoformat(), "fonte": "ipe+regras", "tipo": r.get("tipo"), "classe": r["classe"],
-                       "prev_cat_a": any(dia - dt.timedelta(days=CAT_A_DIAS) <= x < dia for x in cata.get(cnpj, [])), "dia_documento": dia.isoformat()})
+                       "prev_cat_a": any(dia - dt.timedelta(days=CAT_A_DIAS) <= x < dia for x in cata.get(cnpj, [])), "dia_documento": dia.isoformat(),
+                       "links": links})
         elif r["classe"] == "PENDENTE_REVISAO":
             cont["pendente"] += 1
         else:

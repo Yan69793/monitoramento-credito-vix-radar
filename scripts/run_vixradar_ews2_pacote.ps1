@@ -179,6 +179,36 @@ function Invoke-FlagDesligar([string]$Motivo, [string]$Relatorio) {
     } finally { $script:PermiteFlag = $false }
 }
 
+# EVOLUCAO2B: deriva propostas de evolucao do relatorio da conferencia (propor_evolucao.py, sem rede) e, so com
+# VIXRADAR_EVOLUCAO_ENVIAR=1 (env User) e -Publicar, envia ao livro do Worker (evolucao_propor, origem rotina). Sem isso
+# e simulacao: so registra no log. Nunca muda o exit da rotina nem a flag do EWS: falha aqui so vira linha de log.
+function Invoke-PropostasEvolucao([string]$Relatorio, [bool]$Aplicar) {
+    try {
+        if (-not (Test-Path -LiteralPath $Relatorio)) { Write-Log 'EVOLUCAO: relatorio ausente, nada a propor'; return }
+        $r = Invoke-ProcessoComTeto $python ('-I "' + (Join-Path $Ews2Dir 'propor_evolucao.py') + '" --relatorio "' + $Relatorio + '"') $ProjectRoot 120
+        $pj = Get-JsonDoTexto $r.Out
+        if ($r.Code -ne 0 -or -not $pj -or $pj.ok -ne $true) { Write-Log ('EVOLUCAO: derivacao falhou exit=' + $r.Code + ' ' + (Get-Cabeca $r.Err 2)); return }
+        $props = @($pj.propostas | Where-Object { $_ })
+        $script:Res.evolucao = [ordered]@{ derivadas = $props.Count; enviadas = 0; modo = 'simulacao' }
+        foreach ($p in $props) { Write-Log ('EVOLUCAO_PROPOSTA: ' + $p.titulo + ' | fontes=' + @($p.fontes).Count) }
+        $ligado = ([Environment]::GetEnvironmentVariable('VIXRADAR_EVOLUCAO_ENVIAR', 'User') -eq '1') -or ($env:VIXRADAR_EVOLUCAO_ENVIAR -eq '1')
+        if (-not ($ligado -and $Aplicar) -or $props.Count -eq 0) { Write-Log ('EVOLUCAO: ' + $props.Count + ' proposta(s) derivada(s), modo simulacao, nada enviado'); return }
+        $chave = [Environment]::GetEnvironmentVariable('ROUTINE_API_KEY', 'User')
+        if (-not $chave) { $chave = $env:ROUTINE_API_KEY }
+        if (-not $chave) { Write-Log 'EVOLUCAO: ROUTINE_API_KEY ausente, nada enviado'; return }
+        $script:Res.evolucao.modo = 'envio'
+        foreach ($p in $props) {
+            $corpo = @{ action = 'evolucao_propor'; routine_key = $chave; origem = 'rotina'; proposta = $p } | ConvertTo-Json -Depth 6 -Compress
+            try {
+                $resp = Invoke-WebRequest -Uri 'https://api.vixradar.com/' -Method Post -UseBasicParsing -TimeoutSec 60 -ContentType 'application/json; charset=utf-8' -Body ([System.Text.Encoding]::UTF8.GetBytes($corpo)) -ErrorAction Stop
+                $rj = [System.Text.Encoding]::UTF8.GetString($resp.RawContentStream.ToArray()) | ConvertFrom-Json
+                if ($rj.ok) { $script:Res.evolucao.enviadas++ }
+                Write-Log ('EVOLUCAO_ENVIO: ok=' + $rj.ok + ' criada=' + $rj.criada + ' estado=' + $rj.estado + ' codigo=' + $rj.codigo)
+            } catch { Write-Log ('EVOLUCAO_ENVIO: falhou ' + $_.Exception.Message) }
+        }
+    } catch { Write-Log ('EVOLUCAO: erro ' + $_.Exception.Message) }
+}
+
 # Registro do pacote no livro de previsoes e conferencia contra eventos reais.
 function Invoke-Conferencia([bool]$Aplicar) {
     if ($SemConferencia) { Write-Log 'CONFERENCIA: pulada (-SemConferencia)'; return }
@@ -205,6 +235,7 @@ function Invoke-Conferencia([bool]$Aplicar) {
     $cj = Get-JsonDoTexto $r.Out
     $script:Res.conferencia = $cj
     Write-Log ('CONFERENCIA: exit=' + $r.Code + (' {0:N0}s ' -f ((Get-Date) - $ini).TotalSeconds) + (Get-Cabeca $r.Out 1))
+    Invoke-PropostasEvolucao $rel $Aplicar
     if ($r.Code -eq 9 -and $cj -and $cj.decisao -eq 'desligar') {
         if (-not $Aplicar) { Write-Log 'CONFERENCIA: veredito DESLIGAR em dry-run, flag nao alterada'; return }
         # Confirmacao: o detector de eventos tem erros nos dois sentidos, entao o veredito precisa se repetir em duas
