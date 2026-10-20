@@ -40,7 +40,9 @@ $paths    = @(
   (Join-Path $root "app/js/vx/main.js")
 )
 # Modulos admin adicionais que carregam ?v= (se existirem no bundle)
-foreach ($m in @("shared","modules","engajamento","metricas","fase3")) {
+# BUMPEVOLUCAO1 (2026-10-20): "evolucao" nao estava na lista e ficou com ?v= velho,
+# o que reprova o gate 3.4 do deploy-pages (import com versao diferente da CACHE_VERSION).
+foreach ($m in @("shared","modules","engajamento","metricas","fase3","evolucao")) {
   $p = Join-Path $root "app/js/admin/$m.js"
   if (Test-Path $p) { $paths += $p }
 }
