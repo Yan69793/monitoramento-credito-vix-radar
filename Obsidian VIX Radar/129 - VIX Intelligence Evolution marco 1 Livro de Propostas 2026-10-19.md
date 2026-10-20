@@ -30,3 +30,5 @@ Menor peca sem duplicar nada existente: a memoria versionada e a trava de aprova
 - `run_vixradar_ews2_pacote.ps1` chama a derivacao depois da conferencia. Envio so com `VIXRADAR_EVOLUCAO_ENVIAR=1` (env User) E `-Publicar`; fora disso e simulacao e so loga `EVOLUCAO_PROPOSTA`. Falha aqui nunca muda o exit da rotina nem a flag do EWS.
 - Testes: `test_propor_evolucao.py` 9/9, `test_conferencia.py` 24/24 (sem regressao), `scripts/test-evolucao-ews2.ps1` 8/8 no PowerShell 5.1 (duas pontas, com duble de rede, chave fora do log). Proposta derivada aceita pelo `normalizarProposta` do Worker. Lint de encoding OK.
 - Para ligar o envio, depois de ver a primeira simulacao no log: `[Environment]::SetEnvironmentVariable('VIXRADAR_EVOLUCAO_ENVIAR','1','User')`.
+
+- 20/10/2026: envio LIGADO por decisao do operador, sem esperar a primeira simulacao. `VIXRADAR_EVOLUCAO_ENVIAR=1` no escopo User, medido. Primeira execucao com envio: VIXRADAR-EWS2-Pacote em 26/10/2026 23:15. Desligar: apagar a variavel (`[Environment]::SetEnvironmentVariable('VIXRADAR_EVOLUCAO_ENVIAR',$null,'User')`).
