@@ -1,4 +1,4 @@
-﻿# Reconciliacao CVM IPE vs Estado Radar - 2026-10-19
+# Reconciliacao CVM IPE vs Estado Radar - 2026-10-19
 
 Gerado por reconciliar_ipe_cvm.ps1 (janela 10d, semanas 2026-W43, 2026-W42, 2026-W41, 3/3 lidas).
 
@@ -7,4 +7,3 @@ Documentos severos no IPE (RJ/RE/default/reestruturacao/inadimplencia) na janela
 Sem divergencias neste ciclo - todo emissor com documento severo na janela tem CRITICO correspondente.
 
 **Gap informativo:** 6 emissor(es) sem CNPJ mapeado nao puderam ser reconciliados (PRED3): CCR, Banco Pan, Banco Votorantim, Nexa Resources, Omega Energia, AES Brasil.
-
