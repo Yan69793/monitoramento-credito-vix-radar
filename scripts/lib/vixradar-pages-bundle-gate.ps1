@@ -16,7 +16,7 @@ function Get-VixPagesUnexpectedFiles {
     'admin/vr-admin-metricas.js', 'admin/vr-admin-fase3.js', 'admin/vr-admin-engajamento.js',
     'app/js/api.js', 'app/js/admin-router.js', 'app/js/admin-bootstrap.js',
     'app/js/admin/shared.js', 'app/js/admin/modules.js', 'app/js/admin/metricas.js',
-    'app/js/admin/fase3.js', 'app/js/admin/engajamento.js',
+    'app/js/admin/fase3.js', 'app/js/admin/engajamento.js', 'app/js/admin/evolucao.js',
     # VXV2-1 (2026-10-14): redesign v2 (entrada, shell, telas, tokens) e fontes self-hosted.
     'favicon.ico', 'favicon.svg',
     'app/js/vx/main.js', 'app/js/vx/app.js', 'app/js/vx/css/vx.css',
