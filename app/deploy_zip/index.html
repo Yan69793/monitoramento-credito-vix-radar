@@ -7276,27 +7276,15 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
   window._VIX_LAYOUT_VERSAO="v201.63";
 }();
 </script>
+<script nonce="SBmwijc5RXf1v4r2gkzvoA==" src="app/js/relatorio-executivo.js?v=202.83"></script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="pdf-export-executivo">
-/* PDF Executivo v201.59 — relatório para clientes/comitê (override exportar) */
+/* PDF Executivo v201.59 — relatório para clientes/comitê (override exportar)
+ * REL-EXEC2 (v202.83): a lógica de montagem vive em app/js/relatorio-executivo.js
+ * (window.VixRelatorioExecutivo). Este bloco só coleta os dados do painel e abre a janela. */
 (function () {
   "use strict";
 
-  var PRESETS = {
-    sobrio_dark_navy: { bg: "#001830", text: "#EDE8D8", accent: "#B7985D", muted: "#8899AA", divider: "#0D2438" },
-    classic_gold: { bg: "#1A1208", text: "#F5EBD4", accent: "#D4AF37", muted: "#6B5838", divider: "#2A1D0E" },
-    minimal_slate: { bg: "#1E293B", text: "#E2E8F0", accent: "#94A3B8", muted: "#94A3B8", divider: "#334155" }
-  };
-
-  function escaparHtml(s) {
-    return String(s ?? "").replace(/[&<>"']/g, function (c) {
-      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
-    });
-  }
-
-  function trunc(s, n) {
-    s = String(s || "").trim();
-    return s.length > n ? s.slice(0, n) + "…" : s;
-  }
+  function modulo() { return window.VixRelatorioExecutivo; }
 
   function parseLocal(iso) {
     try {
@@ -7307,92 +7295,31 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
     return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null;
   }
 
-  function dentroJanela(ev, dias, corte) {
-    var d = parseLocal(ev.data_evento);
-    return !!(d && d >= corte);
-  }
-
   function coletarEventos(dias) {
+    // mesma janela do modulo: `dias` dias contando hoje
     var corte = new Date();
-    corte.setDate(corte.getDate() - (dias || 30));
+    corte.setDate(corte.getDate() - ((dias || 30) - 1));
     corte.setHours(0, 0, 0, 0);
-    var vistos = new Set();
     var lista = [];
-    function add(ev, empresa) {
-      var key = (empresa || ev._empresa || "") + "|" + (ev.titulo || "");
-      if (vistos.has(key)) return;
-      vistos.add(key);
-      lista.push(Object.assign({}, ev, { _empresa: empresa || ev._empresa || ev.empresa }));
-    }
     try {
       Object.entries(resultados || {}).forEach(function (pair) {
-        var emp = pair[0];
         var reg = pair[1];
         if (!reg || !reg.eventos) return;
         reg.eventos.forEach(function (ev) {
-          add(ev, emp);
+          if (ev.classificacao !== "CRITICO" && ev.classificacao !== "RELEVANTE") return;
+          var d = parseLocal(ev.data_evento);
+          if (d && d >= corte) lista.push(Object.assign({}, ev, { _empresa: pair[0] }));
         });
       });
     } catch (_) {}
-    return lista.filter(function (ev) {
-      return (ev.classificacao === "CRITICO" || ev.classificacao === "RELEVANTE") && dentroJanela(ev, dias, corte);
-    }).sort(function (a, b) {
-      var ord = { CRITICO: 0, RELEVANTE: 1 };
-      var oa = ord[a.classificacao] ?? 9;
-      var ob = ord[b.classificacao] ?? 9;
-      if (oa !== ob) return oa - ob;
-      return (b.data_evento || "").localeCompare(a.data_evento || "");
-    });
+    return lista;
   }
 
-  function ratingEmissor(emp) {
-    var arr = (typeof METRICAS_CURADAS !== "undefined" && METRICAS_CURADAS[emp]) || [];
-    var r = arr.find(function (x) { return x && String(x.label || "").toLowerCase().indexOf("rating") >= 0; });
-    return r ? trunc((r.value || "—") + (r.ref ? " (" + r.ref + ")" : ""), 28) : "—";
-  }
-
-  function setoresDist(eventos) {
-    var map = {};
-    eventos.forEach(function (ev) {
-      var s = (typeof SETOR_DE !== "undefined" && SETOR_DE[ev._empresa]) || "Outros";
-      if (!map[s]) map[s] = { criticos: 0, relevantes: 0 };
-      if (ev.classificacao === "CRITICO") map[s].criticos++;
-      else map[s].relevantes++;
-    });
-    return Object.entries(map)
-      .map(function (p) { return { setor: p[0], total: p[1].criticos + p[1].relevantes, criticos: p[1].criticos, relevantes: p[1].relevantes }; })
-      .sort(function (a, b) { return b.total - a.total; })
-      .slice(0, 10);
-  }
-
-  function watchlist(eventos) {
-    var map = {};
-    eventos.forEach(function (ev) {
-      var emp = ev._empresa;
-      if (!map[emp]) {
-        map[emp] = { empresa: emp, setor: (typeof SETOR_DE !== "undefined" && SETOR_DE[emp]) || "—", sev: "RELEVANTE", count: 0, rating: ratingEmissor(emp) };
-      }
-      map[emp].count++;
-      if (ev.classificacao === "CRITICO") map[emp].sev = "CRITICO";
-    });
-    return Object.values(map).sort(function (a, b) {
-      if (a.sev === "CRITICO" && b.sev !== "CRITICO") return -1;
-      if (b.sev === "CRITICO" && a.sev !== "CRITICO") return 1;
-      return b.count - a.count;
-    });
-  }
-
-  function bulletsExecutivos(criticos, relevantes) {
-    var picks = criticos.slice(0, 2).concat(relevantes.slice(0, 2)).slice(0, 3);
-    return picks.map(function (ev) {
-      var tit = (ev.titulo || "").trim() || String(ev.evento || ev.descricao || "").trim().slice(0, 120);
-      return {
-        empresa: ev._empresa,
-        titulo: tit,
-        data: ev.data_evento || "—",
-        cls: ev.classificacao === "CRITICO" ? "Crítico" : "Relevante"
-      };
-    });
+  // op=state entrega 5 semanas ISO (carregarEstadoMultiSemana(env, 5)): da segunda-feira de
+  // 4 semanas atras ate hoje. A comparacao com o periodo anterior so vale dentro disso.
+  function coberturaPainel() {
+    var dow = (new Date().getDay() + 6) % 7;
+    return 28 + dow + 1;
   }
 
   async function fetchEwsTop(n) {
@@ -7418,10 +7345,11 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
   }
 
   function branding() {
+    var presets = modulo().PRESETS;
     var user = {};
     try { user = JSON.parse(localStorage.getItem("radar_user") || "{}"); } catch (_) {}
     var wl = user && user.white_label && window.BRANDING ? window.BRANDING : {};
-    var preset = PRESETS[wl.preset || "sobrio_dark_navy"] || PRESETS.sobrio_dark_navy;
+    var preset = presets[wl.preset || "sobrio_dark_navy"] || presets.sobrio_dark_navy;
     return {
       theme: preset,
       gestora: (wl.gestora || "").trim(),
@@ -7430,254 +7358,6 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
       cnpj: (wl.cnpj || "").trim(),
       logo: (wl.logo_data_url || "").trim()
     };
-  }
-
-  function cardEvento(ev) {
-    var st = ev.classificacao === "CRITICO"
-      ? { border: "#FECACA", bg: "#FEF2F2", text: "#991B1B", badge: "#FEE2E2", dot: "#DC2626", label: "CRÍTICO" }
-      : { border: "#FDE68A", bg: "#FFFBEB", text: "#92400E", badge: "#FEF3C7", dot: "#D97706", label: "RELEVANTE" };
-    var memo = ev.memo_acontecimento || ev.memo_importancia_credito || ev.memo_monitorar || ev.memo_acao_sugerida;
-    var body = memo
-      ? '<div class="ev-memo">' +
-        (ev.memo_acontecimento ? '<p><span class="ml">Contexto</span>' + escaparHtml(trunc(ev.memo_acontecimento, 480)) + "</p>" : "") +
-        (ev.memo_importancia_credito ? '<p><span class="ml imp">Relevância</span>' + escaparHtml(trunc(ev.memo_importancia_credito, 320)) + "</p>" : "") +
-        (ev.memo_monitorar ? '<p><span class="ml mon">Monitorar</span>' + escaparHtml(trunc(ev.memo_monitorar, 240)) + "</p>" : "") +
-        (ev.memo_acao_sugerida ? '<p><span class="ml ac">Ação</span>' + escaparHtml(trunc(ev.memo_acao_sugerida, 240)) + "</p>" : "") +
-        "</div>"
-      : '<p class="ev-impacto">' + escaparHtml(trunc(ev.impacto_credito || ev.evento || ev.descricao || "—", 520)) + "</p>";
-    return (
-      '<article class="ev-card no-break">' +
-      '<header class="ev-head" style="background:' + st.bg + ";border-color:" + st.border + '">' +
-      '<span class="ev-badge" style="color:' + st.text + ";background:" + st.badge + '"><i class="dot" style="background:' + st.dot + '"></i>' + st.label + "</span>" +
-      "<strong>" + escaparHtml(ev._empresa) + "</strong>" +
-      '<span class="ev-meta">' + escaparHtml((typeof SETOR_DE !== "undefined" && SETOR_DE[ev._empresa]) || "") +
-      (ev.data_evento ? " · " + escaparHtml(ev.data_evento) : "") + "</span></header>" +
-      '<div class="ev-body">' +
-      (ev.titulo ? '<h3>' + escaparHtml(ev.titulo) + "</h3>" : "") +
-      body +
-      (ev.fonte_primaria && String(ev.fonte_primaria).indexOf("http") === 0
-        ? '<p class="ev-fonte"><a href="' + escaparHtml(ev.fonte_primaria) + '">Fonte primária</a></p>' : "") +
-      "</div></article>"
-    );
-  }
-
-  function buildHtml(dias, eventos, ews, brand) {
-    var t = brand.theme;
-    var agora = new Date();
-    var dataLong = agora.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "long", year: "numeric" });
-    var dataCurta = agora.toLocaleDateString("pt-BR");
-    var hora = agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    var semana = typeof semanaISO === "function" ? semanaISO() : "—";
-    var criticos = eventos.filter(function (e) { return e.classificacao === "CRITICO"; });
-    var relevantes = eventos.filter(function (e) { return e.classificacao === "RELEVANTE"; });
-    var emps = [...new Set(eventos.map(function (e) { return e._empresa; }))];
-    var setores = [...new Set(eventos.map(function (e) { return (typeof SETOR_DE !== "undefined" && SETOR_DE[e._empresa]) || ""; }).filter(Boolean))];
-    var nomeGestora = brand.gestora ? escaparHtml(brand.gestora).toUpperCase() : "RADAR";
-    var subtitulo = brand.gestora ? "Monitoramento de Crédito Privado" : "Inteligência de Crédito Privado";
-    var logo = brand.logo
-      ? '<img src="' + escaparHtml(brand.logo) + '" alt="logo" class="cover-logo-img">'
-      : '<svg width="36" height="25" viewBox="0 0 40 28" fill="none"><path d="M40 8.47V14.98L30.45 6.51L20.30 14.98L10.15 6.51L0 14.98V8.47L10.15 0L20.30 8.47L30.45 0L40 8.47Z" fill="' + t.accent + '"/><path d="M40 21.49V28L30.45 19.54L20.30 28L10.15 19.54L0 28V21.49L10.15 13.03L20.30 21.49L30.45 13.03L40 21.49Z" fill="' + t.accent + '"/></svg>';
-    var bullets = bulletsExecutivos(criticos, relevantes);
-    var dist = setoresDist(eventos);
-    var maxDist = Math.max.apply(null, dist.map(function (d) { return d.total; }).concat([1]));
-    var wl = watchlist(eventos);
-
-    var sectorHtml = dist.map(function (d) {
-      var pct = Math.round(d.total / maxDist * 100);
-      var cls = d.criticos > 0 ? "bar-crit" : "bar-rel";
-      return '<div class="sec-row"><span class="sec-name">' + escaparHtml(d.setor) + '</span><div class="sec-track"><div class="sec-fill ' + cls + '" style="width:' + pct + '%"></div></div><span class="sec-val">' + d.total + "</span></div>";
-    }).join("");
-
-    var ewsHtml = ews.length
-      ? ews.map(function (r, i) {
-          var drv = (r.drivers || r.decomposicao || [])[0];
-          var drvTxt = drv ? (drv.tag || drv.fator || drv.tipo_sinal || "—") : "—";
-          return "<tr><td class=\"num\">#" + (i + 1) + "</td><td><strong>" + escaparHtml(r.empresa) + "</strong></td><td class=\"num\">" + r.score + '</td><td>' + escaparHtml(r.severidade || r.label || "—") + "</td><td>" + escaparHtml(trunc(drvTxt, 36)) + "</td></tr>";
-        }).join("")
-      : '<tr><td colspan="5" class="empty">Ranking EWS indisponível — recarregue o painel antes de exportar.</td></tr>';
-
-    var watchHtml = wl.map(function (w) {
-      var badge = w.sev === "CRITICO" ? '<span class="tag crit">CRÍTICO</span>' : '<span class="tag rel">RELEVANTE</span>';
-      return "<tr><td><strong>" + escaparHtml(w.empresa) + "</strong></td><td>" + escaparHtml(w.setor) + "</td><td>" + badge + '</td><td class="num">' + w.count + "</td><td>" + escaparHtml(w.rating) + "</td></tr>";
-    }).join("");
-
-    var bulletHtml = bullets.length
-      ? "<ul class=\"exec-list\">" + bullets.map(function (b) {
-          return '<li><span class="tag ' + (b.cls === "Crítico" ? "crit" : "rel") + '">' + b.cls + "</span> <strong>" + escaparHtml(b.empresa) + "</strong> — " + escaparHtml(b.titulo) + ' <em>(' + escaparHtml(b.data) + ")</em></li>";
-        }).join("") + "</ul>"
-      : "<p class=\"muted\">Nenhum destaque narrativo no período.</p>";
-
-    var deepHtml = "";
-    if (criticos.length) {
-      deepHtml += '<section class="block detail-block"><div class="detail-head crit"><div class="detail-head-title">Eventos críticos</div><div class="detail-head-sub">' + criticos.length + " evento(s) · atenção imediata</div></div>" + criticos.map(cardEvento).join("") + "</section>";
-    }
-    if (relevantes.length) {
-      deepHtml += '<section class="block detail-block' + (criticos.length ? " page-break" : "") + '"><div class="detail-head rel"><div class="detail-head-title">Eventos relevantes</div><div class="detail-head-sub">' + relevantes.length + " evento(s) · acompanhamento</div></div>" + relevantes.map(cardEvento).join("") + "</section>";
-    }
-
-    var pulseTxt = criticos.length
-      ? "Mercado com " + criticos.length + " emissor" + (criticos.length > 1 ? "es" : "") + " em alerta crítico no período."
-      : relevantes.length
-        ? relevantes.length + " evento" + (relevantes.length > 1 ? "s" : "") + " relevante" + (relevantes.length > 1 ? "s" : "") + " em acompanhamento."
-        : "Período sem alertas materiais identificados.";
-
-    return (
-      '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">' +
-      "<title>" + nomeGestora + " — Relatório Executivo " + dataCurta + "</title>" +
-      '<meta name="viewport" content="width=device-width,initial-scale=1">' +
-      "<style>" +
-      '@page{size:A4 portrait;margin:12mm 11mm}' +
-      '*{box-sizing:border-box;margin:0;padding:0}' +
-      'body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;font-size:12px;line-height:1.55;color:#111827;background:#fff;max-width:210mm;margin:0 auto}' +
-      '.print-bar{position:fixed;top:0;left:0;right:0;background:#001830;padding:10px 18px;display:flex;gap:10px;align-items:center;z-index:99}' +
-      '.print-bar span{color:#C9A96E;font-size:11px;font-weight:700;letter-spacing:.08em;margin-right:auto}' +
-      '.btn-p{background:#B7985D;color:#001020;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:800;cursor:pointer;font-family:inherit}' +
-      '.btn-s{background:transparent;color:#B7985D;border:1px solid #B7985D}' +
-      '.cover-header{background:' + t.bg + ";color:" + t.text + ';padding:24px 28px 18px}' +
-      '.cover-top{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;flex-wrap:wrap}' +
-      '.cover-brand{display:flex;align-items:center;gap:12px}' +
-      '.cover-logo-img{max-height:44px;max-width:160px;object-fit:contain}' +
-      '.cover-name{font-size:16px;font-weight:900;letter-spacing:.16em;color:' + t.accent + '}' +
-      '.cover-sub{font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:' + t.muted + ";margin-top:3px}" +
-      '.cover-right{text-align:right;flex:1;min-width:200px}' +
-      '.cover-type{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:' + t.muted + '}' +
-      '.cover-date{font-size:14px;font-weight:700;margin-top:4px;color:' + t.text + '}' +
-      '.cover-period{font-size:11px;color:' + t.muted + ";margin-top:3px}" +
-      '.cover-divider{border:none;border-top:1px solid ' + t.divider + ';margin:14px 0 12px}' +
-      '.cover-meta{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:11px;color:' + t.muted + '}' +
-      '.cover-meta strong{color:' + t.accent + '}' +
-      '.cover-pulse{font-size:11px;line-height:1.6;color:' + t.text + ';margin-top:10px;max-width:640px}' +
-      '.conf{background:' + t.accent + ';color:#001020;text-align:center;font-size:11px;font-weight:800;letter-spacing:.12em;padding:5px;text-transform:uppercase}' +
-      '.summary{background:#F9FAFB;border-bottom:2px solid #E5E7EB;padding:18px 28px}' +
-      '.summary-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9CA3AF;margin-bottom:12px}' +
-      '.summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}' +
-      '.summary-card{background:#fff;border:1px solid #E5E7EB;border-radius:6px;padding:12px 10px;text-align:center}' +
-      '.summary-card .n{font-size:28px;font-weight:900;line-height:1;margin-bottom:4px}' +
-      '.summary-card .l{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:#94A3B8}' +
-      '.block{padding:20px 28px}' +
-      '.sec-h{font-size:11px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;margin-bottom:12px;padding-bottom:6px;border-bottom:2px solid #E5E7EB;display:flex;align-items:center;gap:8px;color:#7C8C9E}' +
-      '.sec-h .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}' +
-      '.exec-list{list-style:none;padding:0}' +
-      '.exec-list li{margin-bottom:9px;line-height:1.55;word-break:break-word}' +
-      '.exec-list em{color:#94A3B8;font-style:normal;font-size:11px}' +
-      '.panel{background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;padding:14px 16px;margin-bottom:16px}' +
-      '.panel h3{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:10px}' +
-      '.sec-row{display:grid;grid-template-columns:minmax(90px,32%) 1fr 32px;gap:8px;align-items:center;margin-bottom:5px;font-size:11px}' +
-      '.sec-name{color:#7C8C9E;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}' +
-      '.sec-track{height:7px;background:#E5E7EB;border-radius:4px;overflow:hidden}' +
-      '.sec-fill{height:100%;border-radius:4px}.bar-crit{background:#DC2626}.bar-rel{background:#D97706}' +
-      '.sec-val{text-align:right;font-weight:700;color:#111827}' +
-      'table.data{width:100%;border-collapse:collapse;font-size:11px;table-layout:fixed}' +
-      'table.data th{background:#001830;color:#C9A96E;padding:7px 8px;text-align:left;font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}' +
-      'table.data td{padding:6px 8px;border-bottom:1px solid #ECEEF1;vertical-align:top;word-wrap:break-word;overflow-wrap:anywhere}' +
-      'table.data tr:nth-child(even) td{background:#FAFAFA}' +
-      'table.data .num{text-align:center;font-weight:700;font-variant-numeric:tabular-nums}' +
-      'table.data .empty{text-align:center;color:#9CA3AF;font-style:italic;padding:14px}' +
-      'table.ews th:nth-child(1),table.ews td:nth-child(1){width:36px}' +
-      'table.ews th:nth-child(2),table.ews td:nth-child(2){width:28%}' +
-      'table.ews th:nth-child(3),table.ews td:nth-child(3){width:52px}' +
-      'table.ews th:nth-child(4),table.ews td:nth-child(4){width:18%}' +
-      'table.watch th:nth-child(1),table.watch td:nth-child(1){width:26%}' +
-      'table.watch th:nth-child(2),table.watch td:nth-child(2){width:18%}' +
-      'table.watch th:nth-child(3),table.watch td:nth-child(3){width:16%}' +
-      'table.watch th:nth-child(4),table.watch td:nth-child(4){width:52px}' +
-      'table.watch th:nth-child(5),table.watch td:nth-child(5){width:22%}' +
-      '.tag{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.05em;padding:2px 6px;border-radius:3px;text-transform:uppercase;vertical-align:middle}' +
-      '.tag.crit{background:#FEE2E2;color:#991B1B}.tag.rel{background:#FEF3C7;color:#92400E}' +
-      '.detail-head{display:flex;flex-direction:column;gap:2px;margin-bottom:14px;padding:10px 14px;border-radius:6px}' +
-      '.detail-head.crit{background:#FEF2F2;border:1px solid #FECACA}' +
-      '.detail-head.rel{background:#FFFBEB;border:1px solid #FDE68A}' +
-      '.detail-head-title{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}' +
-      '.detail-head.crit .detail-head-title{color:#991B1B}.detail-head.rel .detail-head-title{color:#92400E}' +
-      '.detail-head-sub{font-size:11px;color:#94A3B8}' +
-      '.ev-card{margin-bottom:14px;border:1px solid #E5E7EB;border-radius:6px;overflow:hidden}' +
-      '.ev-head{padding:9px 12px;display:flex;flex-wrap:wrap;align-items:center;gap:8px;border-bottom:1px solid}' +
-      '.ev-badge{font-size:11px;font-weight:800;letter-spacing:.05em;padding:3px 7px;border-radius:3px;display:inline-flex;align-items:center;gap:4px;flex-shrink:0}' +
-      '.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}' +
-      '.ev-meta{font-size:11px;color:#94A3B8;margin-left:auto;text-align:right}' +
-      '.ev-body{padding:12px 14px;background:#fff}' +
-      '.ev-body h3{font-size:13px;font-weight:700;margin-bottom:6px;line-height:1.35;word-break:break-word}' +
-      '.ev-impacto,.ev-memo p{font-size:11px;color:#7C8C9E;line-height:1.65;word-break:break-word}' +
-      '.ev-memo p{margin-bottom:7px}' +
-      '.ev-memo .ml{font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;display:block;margin-bottom:2px;color:#94A3B8}' +
-      '.ev-memo .ml.imp{color:#D97706}.ev-memo .ml.mon{color:#059669}.ev-memo .ml.ac{color:#7C3AED}' +
-      '.ev-fonte{margin-top:6px;font-size:11px}.ev-fonte a{color:#2563EB;text-decoration:none;word-break:break-all}' +
-      '.disclaimer{margin:0 28px 20px;padding:14px 16px;background:#F9FAFB;border:1px solid #E5E7EB;border-radius:6px;font-size:11px;color:#94A3B8;line-height:1.6}' +
-      '.disclaimer strong{color:#7C8C9E}' +
-      '.footer-bar{margin-top:8px;border-top:2px solid #E5E7EB;padding:12px 28px;display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:11px;color:#9CA3AF;background:#F9FAFB;flex-wrap:wrap}' +
-      '.footer-logo{font-weight:800;color:#001830;letter-spacing:.08em}' +
-      '.footer-conf{background:#FEF3C7;color:#92400E;padding:2px 7px;border-radius:3px;font-size:11px;font-weight:700}' +
-      '.muted{color:#9CA3AF;font-style:italic}' +
-      '@media print{' +
-      '*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;animation:none!important;transition:none!important}' +
-      'html,body{width:auto!important;max-width:none!important;margin:0!important;padding:0!important;background:#fff!important;font-size:10.5pt!important}' +
-      '.no-print{display:none!important}' +
-      '.cover-top{display:block!important}' +
-      '.cover-brand{display:block!important;margin-bottom:8pt!important}' +
-      '.cover-right{display:block!important;text-align:left!important;margin-bottom:8pt!important}' +
-      '.cover-meta{display:block!important}' +
-      '.cover-meta span{display:inline-block!important;margin:0 14pt 4pt 0!important}' +
-      '.summary-grid{display:table!important;width:100%!important;table-layout:fixed!important;border-collapse:separate!important;border-spacing:8px 0!important}' +
-      '.summary-card{display:table-cell!important;vertical-align:top!important}' +
-      '.sec-row{display:table!important;width:100%!important;table-layout:fixed!important;margin-bottom:4pt!important}' +
-      '.sec-name,.sec-track,.sec-val{display:table-cell!important;vertical-align:middle!important}' +
-      '.sec-name{width:34%!important;padding-right:6pt!important}' +
-      '.sec-val{width:28pt!important}' +
-      '.sec-h,.detail-head,.footer-bar{display:block!important}' +
-      '.ev-head{display:block!important}' +
-      '.ev-meta{margin-left:0!important;text-align:left!important;margin-top:4pt!important}' +
-      '.footer-bar>span{display:inline-block!important;margin-right:12pt!important}' +
-      '.cover-header,.summary,.block,.disclaimer,.footer-bar,.panel{padding-left:0!important;padding-right:0!important}' +
-      '.ev-card,.detail-head,.summary-card,tr{page-break-inside:avoid!important;break-inside:avoid-page!important}' +
-      '.sec-h,.detail-head-title{page-break-after:avoid!important;break-after:avoid-page!important}' +
-      '.page-break{page-break-before:always!important;break-before:page!important}' +
-      '.ev-card,.panel{overflow:visible!important}' +
-      'thead{display:table-header-group!important}' +
-      'a[href]:after{content:none!important}' +
-      'p{orphans:3;widows:3}' +
-      '}' +
-      "</style>" +
-      "<scr" + "ipt>function salvarPdf(){requestAnimationFrame(function(){requestAnimationFrame(function(){window.print()})})}</scr" + "ipt>" +
-      "</head><body>" +
-      '<div class="print-bar no-print"><span>RELATÓRIO EXECUTIVO — pré-visualização</span>' +
-      '<button class="btn-p btn-s" onclick="window.close()">Fechar</button>' +
-      '<button class="btn-p" onclick="salvarPdf()">Salvar PDF</button></div>' +
-      '<div style="height:52px" class="no-print"></div>' +
-      '<div class="doc">' +
-      '<header class="cover-header"><div class="cover-top"><div class="cover-brand">' + logo +
-      '<div><div class="cover-name">' + nomeGestora + '</div><div class="cover-sub">' + subtitulo + "</div></div></div>" +
-      '<div class="cover-right"><div class="cover-type">Relatório executivo</div><div class="cover-date">' + escaparHtml(dataLong) + '</div><div class="cover-period">Últimos ' + dias + " dias · Semana " + semana + " · " + hora + "</div>" +
-      (brand.analista ? '<div class="cover-period" style="margin-top:6px">Analista: <strong>' + escaparHtml(brand.analista) + "</strong>" + (brand.credencial ? " · " + escaparHtml(brand.credencial) : "") + "</div>" : "") +
-      "</div></div>" +
-      '<hr class="cover-divider">' +
-      '<div class="cover-meta">' +
-      '<span>Críticos: <strong style="color:#FCA5A5">' + criticos.length + "</strong></span>" +
-      '<span>Relevantes: <strong style="color:#FCD34D">' + relevantes.length + "</strong></span>" +
-      '<span>Emissores: <strong>' + emps.length + "</strong></span>" +
-      '<span>Setores: <strong>' + setores.length + "</strong></span>" +
-      "</div>" +
-      '<p class="cover-pulse">' + escaparHtml(pulseTxt) + "</p></header>" +
-      '<div class="conf">Confidencial — uso restrito ao destinatário</div>' +
-      '<section class="summary"><div class="summary-title">Resumo do período</div><div class="summary-grid">' +
-      '<div class="summary-card"><div class="n" style="color:#DC2626">' + criticos.length + '</div><div class="l">Críticos</div></div>' +
-      '<div class="summary-card"><div class="n" style="color:#D97706">' + relevantes.length + '</div><div class="l">Relevantes</div></div>' +
-      '<div class="summary-card"><div class="n" style="color:#001830">' + emps.length + '</div><div class="l">Emissores</div></div>' +
-      '<div class="summary-card"><div class="n" style="color:#B7985D">' + setores.length + '</div><div class="l">Setores</div></div>' +
-      "</div></section>" +
-      '<section class="block"><h2 class="sec-h"><i class="dot" style="background:#B7985D"></i> Destaques do período</h2>' + bulletHtml + "</section>" +
-      '<section class="block page-break"><div class="panel"><h3>Concentração setorial</h3>' + (sectorHtml || '<p class="muted">Sem eventos no período.</p>') + "</div>" +
-      '<h2 class="sec-h"><i class="dot" style="background:#001830"></i> Early Warning Score — Top ' + ews.length + "</h2>" +
-      '<table class="data ews"><thead><tr><th>#</th><th>Emissor</th><th>Score</th><th>Faixa</th><th>Driver</th></tr></thead><tbody>' + ewsHtml + "</tbody></table></section>" +
-      '<section class="block"><h2 class="sec-h"><i class="dot" style="background:#001830"></i> Watchlist do período</h2>' +
-      '<table class="data watch"><thead><tr><th>Emissor</th><th>Setor</th><th>Alerta</th><th>Eventos</th><th>Rating</th></tr></thead><tbody>' + watchHtml + "</tbody></table></section>" +
-      deepHtml +
-      '<div class="disclaimer"><strong>Metodologia e limitações.</strong> Este relatório consolida eventos classificados por inteligência artificial e curadoria humana com base em fontes públicas (CVM, RI, imprensa especializada, agências de rating). Não constitui recomendação de investimento, oferta de valores mobiliários ou parecer de crédito vinculante. Ratings e métricas financeiras exibidos referem-se à última atualização cadastral disponível e podem estar defasados — confirme sempre com fonte primária. Distribuição restrita ao destinatário autorizado.' +
-      (brand.cnpj ? " " + escaparHtml(brand.gestora) + " · CNPJ " + escaparHtml(brand.cnpj) + "." : "") +
-      " Gerado em " + dataCurta + " " + hora + " via VIX Radar.</div>" +
-      '<footer class="footer-bar"><span><span class="footer-logo">' + nomeGestora + "</span> · Relatório Executivo</span>" +
-      '<span class="footer-conf">CONFIDENCIAL</span><span>' + dataCurta + " " + hora + "</span></footer></div>" +
-      "</body></html>"
-    );
   }
 
   window.abrirSeletorPDF = function () {
@@ -7692,10 +7372,13 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
         '<span style="color:#B7985D">' + tit + '</span> <span style="color:#94A3B8;font-size:11px;font-weight:400;margin-left:6px">' + sub + "</span></button>";
     }
     ov.innerHTML =
-      '<div style="background:#0B1120;border:1px solid #1E293B;border-radius:10px;padding:28px 32px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.6)">' +
+      '<div role="dialog" aria-label="Relatório executivo" style="background:#0B1120;border:1px solid #1E293B;border-radius:10px;padding:28px 32px;max-width:380px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,.6)">' +
       '<div style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#94A3B8;margin-bottom:4px">Relatório executivo</div>' +
       '<div style="font-size:15px;font-weight:700;color:#EDE8D8;margin-bottom:4px">PDF para comitê</div>' +
-      '<div style="font-size:11px;color:#94A3B8;margin-bottom:18px;line-height:1.5">Versão resumida para clientes — críticos, relevantes, EWS e watchlist. Sem apêndice de métricas.</div>' +
+      '<div style="font-size:11px;color:#94A3B8;margin-bottom:12px;line-height:1.5">Resumo decisório com comparação ao período anterior, EWS explicado e fichas dos emissores prioritários. O anexo técnico traz todos os eventos, a decomposição do EWS, métricas com fonte e o índice de fontes.</div>' +
+      '<label for="pdf-tipo" style="display:block;font-size:11px;color:#94A3B8;margin-bottom:4px">Conteúdo</label>' +
+      '<select id="pdf-tipo" style="width:100%;margin-bottom:14px;background:#111827;border:1px solid #1F2937;color:#E2E8F0;padding:8px 10px;border-radius:6px;font-family:inherit;font-size:12px">' +
+      '<option value="executivo">Executivo (3 a 5 páginas)</option><option value="completo">Executivo + anexo técnico</option><option value="anexo">Somente anexo técnico</option></select>' +
       '<div style="display:flex;flex-direction:column;gap:8px">' +
       btn(7, "7 dias", "última semana") +
       btn(15, "15 dias", "quinzena") +
@@ -7706,15 +7389,22 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
     ov.querySelectorAll("button[data-dias]").forEach(function (b) {
       b.onclick = function () {
         var d = parseInt(b.getAttribute("data-dias"), 10);
+        var sel = ov.querySelector("#pdf-tipo");
+        var tipo = sel ? sel.value : "executivo";
         ov.remove();
-        window.exportar(d);
+        window.exportar(d, tipo);
       };
     });
     ov.querySelector("#pdf-period-cancel").onclick = function () { ov.remove(); };
   };
 
-  window.exportar = async function (dias) {
+  window.exportar = async function (dias, tipo) {
     dias = dias || 30;
+    tipo = tipo || "executivo";
+    if (!modulo()) {
+      alert("Módulo do relatório não carregou. Recarregue a página e tente de novo.");
+      return;
+    }
     var eventos = coletarEventos(dias);
     if (!eventos.length) {
       alert("Nenhum evento crítico ou relevante no período selecionado.");
@@ -7724,11 +7414,19 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
     var btnTxt = btn ? btn.textContent : "";
     if (btn) { btn.disabled = true; btn.textContent = "Gerando…"; }
     try {
-      var ews = await fetchEwsTop(8);
+      var ews = await fetchEwsTop(40);
       var brand = branding();
-      var html = buildHtml(dias, eventos, ews, brand);
+      var html = modulo().buildHtml(dias, coletarEventos(dias * 2), ews, brand, {
+        tipo: tipo,
+        semana: typeof semanaISO === "function" ? semanaISO() : "—",
+        setorDe: typeof SETOR_DE !== "undefined" ? SETOR_DE : {},
+        curadas: typeof METRICAS_CURADAS !== "undefined" ? METRICAS_CURADAS : {},
+        anomalias: window._anomaliasAtivas || {},
+        coberturaDias: coberturaPainel(),
+        scrub: typeof window._vixScrubMoney === "function" ? window._vixScrubMoney : null
+      });
       if (typeof registrarAcesso === "function") {
-        registrarAcesso("exportar_pdf_executivo", eventos.length + " eventos · " + dias + "d");
+        registrarAcesso("exportar_pdf_executivo", eventos.length + " eventos · " + dias + "d · " + tipo);
       }
       var w = window.open("", "_blank");
       if (!w) {
@@ -7750,7 +7448,7 @@ METRICAS_CURADAS["Usina Pampa Sul"]=[
     }
   };
 
-  window._PDF_EXECUTIVO_VERSAO = "v201.59";
+  window._PDF_EXECUTIVO_VERSAO = "REL-EXEC2";
 })();
 </script>
 <script nonce="SBmwijc5RXf1v4r2gkzvoA==" id="focus-trap">!function(){"use strict";var CLOSE_FN={};function _def(e,t){var el=document.getElementById(e);if(el&&"function"==typeof t)CLOSE_FN[e]=t}function _vis(){var els=document.querySelectorAll('[role="dialog"]');for(var i=0;i<els.length;i++){var el=els[i];if(el.classList.contains("show")||el.classList.contains("onb-vis")||el.classList.contains("vis"))return el;var d=el.style.display;if(d&&d!=="none")return el}return null}function _focos(el){var sel='a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';return Array.prototype.filter.call(el.querySelectorAll(sel),function(e){return e.offsetWidth>0||e.offsetHeight>0})}document.addEventListener("keydown",function(e){if(!e)return;var d=_vis();if(!d)return;if("Tab"===e.key){var f=_focos(d);if(!f.length)return;var cur=document.activeElement,idx=f.indexOf(cur);if(e.shiftKey){if(idx<=0){e.preventDefault();f[f.length-1].focus()}}else{if(idx<0||idx>=f.length-1){e.preventDefault();f[0].focus()}}return}if("Escape"===e.key){var id=d.id;if(CLOSE_FN[id]){e.preventDefault();CLOSE_FN[id]();return}var btn=d.querySelector('.ag-close,.cart-close,.onb-close,button[onclick*="Fechar"],button[onclick*="fechar"],[aria-label="Fechar"]');if(btn){e.preventDefault();btn.click();return}}});_def("guia-overlay",function(){var el=document.getElementById("guia-overlay");if("function"==typeof toggleGuia)toggleGuia();else el&&(el.style.display="none")});_def("modal-varredura",function(){if("function"==typeof fecharModalVarredura)fecharModalVarredura()});_def("config-modal-unsubscribe",function(){if("function"==typeof fecharModalCancelarEmails)fecharModalCancelarEmails()});_def("modal-share",function(){if("function"==typeof fecharModalShare)fecharModalShare()});_def("agenda-overlay",function(){if("function"==typeof agendaFechar)agendaFechar()});_def("onb-overlay",function(){if("function"==typeof onbFechar)onbFechar()});_def("cmdk-overlay",function(){if("function"==typeof cmdKFechar)cmdKFechar()});_def("carteira-overlay",function(){if("function"==typeof carteiraFechar)carteiraFechar()});_vlog("[VixRadar] Focus-trap v1 — 8 dialogs")}();</script>
