@@ -6,6 +6,7 @@
 // adicionar no_bundle=true/--no-bundle sem primeiro vendorizar o SDK, senao
 // o import quebra silenciosamente no deploy seguinte. Ver wrangler.toml.
 import * as Sentry from "@sentry/cloudflare";
+import { proporEvolucao, listarEvolucao, decidirEvolucao } from "./evolucao.mjs";
 import { fundir as fundirEws2Lab, anexarEws as anexarEws2, validarPayload as validarPayloadEws2, liberacaoValida as liberacaoValidaEws2, pacoteFresco as pacoteFrescoEws2 } from "./ews2_adapter.mjs";
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
@@ -21707,6 +21708,28 @@ async function __coreFetch(request, env2222, ctx) {
       }
       await tel(env2222, request, { evento: "verificacao_orfao_resolvido_manual", empresa: "", extra: { id: String(id).slice(0, 128), decisao: decisao } });
       return resp({ ok: true, id, decisao, resolvido: true, detalhe: _om.orfao || null }, 200, request);
+    }
+    if (body.action === "evolucao_propor" || body.action === "evolucao_listar" || body.action === "evolucao_decidir") {
+      // EVOLUCAO1: livro de propostas do VIX Intelligence Evolution. Propor aceita routine_key (origem rotina/ia) ou admin;
+      // listar e decidir so admin. Nada aqui executa mudanca: aprovar so autoriza planejar.
+      const _evAdmin = !!body.admin_senha && body.admin_senha === env2222.ADMIN_PASSWORD;
+      const _evRotina = !!body.routine_key && body.routine_key === env2222.ROUTINE_API_KEY;
+      if (!(_evAdmin || (body.action === "evolucao_propor" && _evRotina))) return resp({ ok: false, erro: "Acesso negado." }, 403, request);
+      if (!env2222.RADAR_KV) return resp({ ok: false, erro: "KV indisponivel." }, 500, request);
+      const _evTenant = body.tenant || DEFAULT_TENANT_ID;
+      if (!DEFAULT_TENANTS[_evTenant]) return resp({ ok: false, erro: "Tenant desconhecido.", codigo: "EVOLUCAO_TENANT_INVALIDO" }, 400, request);
+      const _evAgora = (/* @__PURE__ */ new Date()).toISOString();
+      let _evR;
+      if (body.action === "evolucao_propor") {
+        const _evOrigem = _evAdmin ? "admin" : (body.origem === "ia" ? "ia" : "rotina");
+        _evR = await proporEvolucao(env2222.RADAR_KV, _evTenant, body.proposta, { origem: _evOrigem, agora: _evAgora });
+      } else if (body.action === "evolucao_listar") {
+        _evR = await listarEvolucao(env2222.RADAR_KV, _evTenant, { estado: body.estado, limite: Math.min(Number(body.limite) || 100, 200) });
+      } else {
+        _evR = await decidirEvolucao(env2222.RADAR_KV, _evTenant, body.id, body, { por: "admin", agora: _evAgora });
+      }
+      if (!_evR.ok) return resp(Object.assign({ erro: "Operacao de evolucao recusada (fail-closed)." }, _evR), _evR.codigo === "EVOLUCAO_AUSENTE" ? 404 : (/CONFLITANTE|FILA_CHEIA|ORCAMENTO|NAO_RECONHECIDA/.test(_evR.codigo) ? 409 : 400), request);
+      return resp(_evR, 200, request);
     }
     if (body.action === "admin_remover_data") {
       const { admin_senha, data_alvo } = body;
