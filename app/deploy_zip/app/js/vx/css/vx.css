@@ -64,7 +64,7 @@
 
 /* ---------- KPIs ---------- */
 .vx-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--vx-space-3);margin-bottom:var(--vx-space-4)}
-.vx-kpi{background:var(--vx-bg-2);border:1px solid var(--vx-border);border-radius:var(--vx-radius);padding:var(--vx-space-3)}
+#vx2-root .vx-kpi{background:var(--vx-bg-2);border:1px solid var(--vx-border);border-radius:var(--vx-radius);padding:var(--vx-space-3)}
 .vx-kpi-v{font-family:var(--vx-font-num);font-variant-numeric:tabular-nums;font-size:var(--vx-fs-28);color:var(--vx-text);line-height:1.1}
 .vx-kpi-l{font-size:var(--vx-fs-12);color:var(--vx-text-2);margin-top:4px}
 .vx-kpi-p{font-size:var(--vx-fs-11);color:var(--vx-text-2);margin-top:2px}
@@ -76,7 +76,8 @@
 .vx-dens-col{flex:1 0 14px;min-width:14px;display:flex;flex-direction:column-reverse;gap:1px;height:100%;background:none;border:0;padding:0;cursor:pointer;border-radius:2px}
 .vx-dens-col[aria-pressed="true"]{outline:2px solid var(--vx-accent);outline-offset:1px}
 .vx-dens-col .vx-sevbar{display:block;width:100%;border-radius:1px}
-.vx-dens-col.vazio{background:var(--vx-bg-3);height:4px;align-self:flex-end}
+.vx-dens-col.vazio{position:relative}
+.vx-dens-col.vazio::after{content:"";position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--vx-bg-3);border-radius:2px}
 .vx-dens-x{display:flex;justify-content:space-between;font-size:var(--vx-fs-11);color:var(--vx-text-2);margin-top:4px}
 
 /* ---------- filtros ---------- */
@@ -162,22 +163,22 @@ fieldset.vx-fgroup{margin:0}
 /* ---------- mobile ---------- */
 .vx-bottom{display:none}
 .vx-sheet-bg{display:none}
-@media (max-width:767px){
+@media (max-width:768px){ /* VIX-MOBILE-20261018: mesmo corte da v1 (era 767) */
   .vx-tabs-top,.vx-top-actions .vx-hide-m{display:none}
   .vx-top{padding:6px var(--vx-space-3);gap:var(--vx-space-2)}
   .vx-search{max-width:none;order:3;flex-basis:100%}
-  .vx-wrap{padding:var(--vx-space-3) var(--vx-space-3) calc(var(--vx-nav-h) + var(--vx-space-4))}
+  .vx-wrap{padding:var(--vx-space-3) var(--vx-space-3) calc(var(--vx-nav-h) + env(safe-area-inset-bottom,0px) + var(--vx-space-4))}
   .vx-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--vx-space-2)}
   .vx-kpi-v{font-size:var(--vx-fs-20)}
   .vx-split{grid-template-columns:minmax(0,1fr)}
-  .vx-det{display:none;position:fixed;inset:auto 0 0 0;max-height:85vh;z-index:5;border-radius:12px 12px 0 0;padding-bottom:calc(var(--vx-nav-h) + 16px)}
+  .vx-det{display:none;position:fixed;inset:auto 0 0 0;max-height:85vh;z-index:5;border-radius:12px 12px 0 0;padding-bottom:calc(var(--vx-nav-h) + env(safe-area-inset-bottom,0px) + 16px)}
   .vx-det.vx-aberto{display:block}
   .vx-det-close{display:inline-block}
   .vx-ev{min-height:var(--vx-touch);grid-template-columns:auto minmax(0,1fr)}
   .vx-ev-meta{grid-column:1/3;white-space:normal}
   .vx-ev-tit{grid-column:1/3}
   .vx-filtros{display:none}
-  .vx-filtros.vx-aberto{display:flex;position:fixed;inset:auto 0 0 0;max-height:80vh;overflow:auto;z-index:6;background:var(--vx-bg-1);border-top:1px solid var(--vx-border-strong);padding:var(--vx-space-4) var(--vx-space-3) calc(var(--vx-nav-h) + 16px);border-radius:12px 12px 0 0;flex-direction:column;align-items:stretch}
+  .vx-filtros.vx-aberto{display:flex;position:fixed;inset:auto 0 0 0;max-height:80vh;overflow:auto;z-index:6;background:var(--vx-bg-1);border-top:1px solid var(--vx-border-strong);padding:var(--vx-space-4) var(--vx-space-3) calc(var(--vx-nav-h) + env(safe-area-inset-bottom,0px) + 16px);border-radius:12px 12px 0 0;flex-direction:column;align-items:stretch}
   .vx-chip,.vx-select,.vx-btn{min-height:var(--vx-touch)}
   .vx-sheet-bg.vx-aberto{display:block;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:4}
   .vx-filtros-m{display:inline-flex!important}
@@ -192,12 +193,19 @@ fieldset.vx-fgroup{margin:0}
   .vx-aba{min-height:var(--vx-touch);border:1px solid var(--vx-border-strong);border-radius:999px;margin:4px 0}
   .vx-abas{border-bottom:0}
   .vx-dens-col{flex:0 0 14px}
-  .vx-bottom{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;height:var(--vx-nav-h);background:var(--vx-bg-0);border-top:1px solid var(--vx-border-strong);z-index:7;padding-bottom:env(safe-area-inset-bottom)}
+  .vx-bottom{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;height:calc(var(--vx-nav-h) + env(safe-area-inset-bottom,0px));background:var(--vx-bg-0);border-top:1px solid var(--vx-border-strong);z-index:7;padding-bottom:env(safe-area-inset-bottom)}
   .vx-bottom button{background:none;border:0;color:var(--vx-text-2);font-size:var(--vx-fs-11);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:var(--vx-touch);cursor:pointer}
   .vx-bottom button[aria-current="page"]{color:var(--vx-accent)}
-  .vx-bottom .ic{font-size:var(--vx-fs-16);line-height:1}
-  .vx-mais{position:fixed;left:0;right:0;bottom:var(--vx-nav-h);background:var(--vx-bg-1);border-top:1px solid var(--vx-border-strong);z-index:6;padding:var(--vx-space-2);display:none;flex-direction:column;gap:4px}
+  .vx-bottom .ic{display:flex;line-height:1}
+  .vx-bottom .ic svg{width:22px;height:22px}
+  .vx-bottom button{min-width:0;font-weight:600}
+  .vx-crumb button{min-height:40px;display:inline-flex;align-items:center}
+  .vx-mais{position:fixed;left:0;right:0;bottom:calc(var(--vx-nav-h) + env(safe-area-inset-bottom,0px));background:var(--vx-bg-1);border-top:1px solid var(--vx-border-strong);z-index:6;padding:var(--vx-space-2);display:none;flex-direction:column;gap:4px}
   .vx-mais.vx-aberto{display:flex}
 }
 .vx-filtros-m{display:none}
-@media (min-width:768px){ .vx-mais{display:none!important} }
+/* VIX-MOBILE-20261018: a barra inferior da v1 (fixed, z-index 1000) ficava por cima da barra da v2
+   (dentro de #vx2-root, z-index 900). Com a v2 ligada, a barra da v1 sai. O !important e o mesmo
+   nivel da regra da v1, que precisa dele para vencer o display:none inline do proprio elemento. */
+body:has(#vx2-root.vx-on) #mobile-bottom-nav{display:none!important}
+@media (min-width:769px){ .vx-mais{display:none!important} }
