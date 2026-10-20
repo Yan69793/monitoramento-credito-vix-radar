@@ -1,4 +1,4 @@
-/**
+﻿/**
  * VIX Radar — Admin: aba Evolucao (EVOLUCAO-UI1, VIX Intelligence Evolution)
  *
  * Lista o livro de propostas (action evolucao_listar) e decide cada uma
@@ -8,7 +8,7 @@
  * Todo texto da proposta vem de fonte nao confiavel: sempre via esc().
  */
 
-import { esc, postAdmin } from './shared.js?v=202.83';
+import { esc, postAdmin } from './shared.js?v=202.84';
 
 const ROTULO_ESTADO = { proposta: 'Aguardando decisao', aprovada: 'Aprovada', rejeitada: 'Rejeitada' };
 const ROTULO_TIPO = {

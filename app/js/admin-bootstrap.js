@@ -16,32 +16,32 @@
 // <script src> do index.html, e mudar CACHE_VERSION. Se um ficar para tras, o browser baixa
 // shared.js duas vezes como dois modulos distintos. O gate 3.2 do deploy so olha o
 // index.html, o resto e conferido pelo 3.4a.
-import './admin/shared.js?v=202.83';
-import './admin/modules.js?v=202.83';
-import './admin/engajamento.js?v=202.83';
-import './admin/metricas.js?v=202.83';
-import './admin/fase3.js?v=202.83';
-import './admin/evolucao.js?v=202.83';
+import './admin/shared.js?v=202.84';
+import './admin/modules.js?v=202.84';
+import './admin/engajamento.js?v=202.84';
+import './admin/metricas.js?v=202.84';
+import './admin/fase3.js?v=202.84';
+import './admin/evolucao.js?v=202.84';
 
 // Also expose the API client and router for direct use
-export { api, createApiClient, fetchWithRetry, Skeleton } from './api.js?v=202.83';
-export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from './admin-router.js?v=202.83';
+export { api, createApiClient, fetchWithRetry, Skeleton } from './api.js?v=202.84';
+export { initRouter, navigate, onRoute, registerRoutes, getCurrentRoute } from './admin-router.js?v=202.84';
 
 // Export admin module APIs for programmatic use
 export {
   loadHoje, calcHeart, sendReengage, getHeartHistory,
   renderHeartKpis, renderUserHealth, renderHeartbeats, injectHojeTab,
-} from './admin/modules.js?v=202.83';
+} from './admin/modules.js?v=202.84';
 
 export {
   API_BASE, esc, getSenha, setSenha, authHeaders,
   postAdmin, skeletonBlock, injectBaseStyles, wrapWhenReady,
-} from './admin/shared.js?v=202.83';
+} from './admin/shared.js?v=202.84';
 
-export { initEngajamento } from './admin/engajamento.js?v=202.83';
-export { initMetricas } from './admin/metricas.js?v=202.83';
-export { initFase3Polish } from './admin/fase3.js?v=202.83';
-export { initEvolucao, loadEvolucao } from './admin/evolucao.js?v=202.83';
+export { initEngajamento } from './admin/engajamento.js?v=202.84';
+export { initMetricas } from './admin/metricas.js?v=202.84';
+export { initFase3Polish } from './admin/fase3.js?v=202.84';
+export { initEvolucao, loadEvolucao } from './admin/evolucao.js?v=202.84';
 
 console.log('[VRAdmin] Bootstrap loaded — ES modules ready');
 
