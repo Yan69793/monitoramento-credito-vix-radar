@@ -498,3 +498,11 @@ conferir se não reabre um desses.
 - Design system: gold `#B7985D`, navy `#001020`, fontes DM Sans + Cormorant Garamond + Inter.
 - Copyright Szuchmacher Consultoria Ltda (INPI). CACHE_VERSION no header de `app/index.html`.
 - CSP deliberadamente ausente (scripts inline no HTML de 700 KB).
+
+## Contexto específico de produção e segurança
+- Repositório canônico de monitoramento de crédito, E:\Diretorio\Claude\Monitoramento de Credito, GitHub público Yan69793/monitoramento-credito-vix-radar. Nunca incluir segredos ou informações confidenciais em commits e pushes.
+- Produção Cloudflare, Worker radar-credito-api (api.vixradar.com) e Pages radar-credito (vixradar.com). Deploy exclusivamente pelos scripts/deploy-worker.ps1 e scripts/deploy-pages.ps1, preservando bindings, migrations e dependências.
+- Nunca fazer deploy direto com npx wrangler deploy, nem publicar a pasta legada producao/, desconectada da interface ativa.
+- Preservar bindings de KV, Durable Objects e Analytics Engine e não editar snapshots históricos de produção como se fossem código ativo.
+- Segredos apenas no mecanismo apropriado de secrets e variáveis de ambiente. Não armazenar valores em CLAUDE.md, git ou settings.json. Atenção ao incidente ROUTINEKEY-PLAIN1, cuja chave continua sem rotação confirmada.
+- Alterações em autenticação, rotinas e serviços críticos exigem verificação dos testes locais e do procedimento de aceite já definido neste documento.
