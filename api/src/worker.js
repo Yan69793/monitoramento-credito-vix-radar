@@ -6243,6 +6243,10 @@ __name22222(hashEmail, "hashEmail");
 __name222222(hashEmail, "hashEmail");
 __name2222222(hashEmail, "hashEmail");
 __name22222222(hashEmail, "hashEmail");
+// SENHAMIN8 (2026-10-19): minimo unico, antes copiado em tres handlers.
+const SENHA_MIN_CARACTERES = 8;
+const SENHA_MIN_ERRO = "Senha m\xEDnima: " + SENHA_MIN_CARACTERES + " caracteres.";
+function senhaCurta(s) { return typeof s !== "string" || s.length < SENHA_MIN_CARACTERES; }
 async function handleRegistrar(body, env2222) {
   const { nome, email, empresa, senha, consentimento_lgpd, consentimento_ts } = body;
   const _telReg = (motivo, http) => {
@@ -6254,7 +6258,7 @@ async function handleRegistrar(body, env2222) {
   if (!nome || !email || !empresa || !senha) { _telReg("campos_faltando", 400); return resp({ ok: false, erro: "Todos os campos s\xE3o obrigat\xF3rios." }, 400); }
   if (!/^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(email) || email.length > 254) { _telReg("email_invalido", 400); return resp({ ok: false, erro: "E-mail inv\xE1lido." }, 400); }
   if (/[<>]/.test(nome) || /[<>]/.test(empresa) || /[<>]/.test(email)) { _telReg("campos_html", 400); return resp({ ok: false, erro: "Caracteres inv\xE1lidos nos dados." }, 400); }
-  if (senha.length < 6) { _telReg("senha_curta", 400); return resp({ ok: false, erro: "Senha m\xEDnima: 6 caracteres." }, 400); }
+  if (senhaCurta(senha)) { _telReg("senha_curta", 400); return resp({ ok: false, erro: SENHA_MIN_ERRO }, 400); }
   if (!consentimento_lgpd) { _telReg("sem_consentimento", 400); return resp({ ok: false, erro: "Consentimento com a Pol\xEDtica de Privacidade e Termos de Uso \xE9 obrigat\xF3rio." }, 400); }
   const existing = await getUser(env2222, email);
   const ehReinscricao = !!(existing && existing.status === "rejeitado");
@@ -6469,7 +6473,7 @@ async function handleAdminResetSenha(body, env2222) {
   const { admin_senha, email, nova_senha } = body;
   if (!admin_senha || admin_senha !== env2222.ADMIN_PASSWORD) return resp({ ok: false, erro: "Acesso negado." }, 403);
   if (!email || !nova_senha) return resp({ ok: false, erro: "E-mail e nova_senha obrigatorios." }, 400);
-  if (nova_senha.length < 6) return resp({ ok: false, erro: "Senha minima: 6 caracteres." }, 400);
+  if (senhaCurta(nova_senha)) return resp({ ok: false, erro: SENHA_MIN_ERRO }, 400);
   const user = await getUser(env2222, email.toLowerCase().trim());
   if (!user) return resp({ ok: false, erro: "Usuario nao encontrado." }, 404);
   user.senha_hash = await hashSenha(nova_senha);
@@ -6484,7 +6488,7 @@ __name(handleAdminResetSenha, "handleAdminResetSenha");
 async function handleResetarSenha(body, env2222) {
   const { token, nova_senha } = body;
   if (!token || !nova_senha) return resp({ ok: false, erro: "Token e nova senha obrigat\xF3rios." }, 400);
-  if (nova_senha.length < 6) return resp({ ok: false, erro: "Senha m\xEDnima: 6 caracteres." }, 400);
+  if (senhaCurta(nova_senha)) return resp({ ok: false, erro: SENHA_MIN_ERRO }, 400);
   const raw = await env2222.RADAR_KV.get(`reset:${token}`, "text");
   if (!raw) return resp({ ok: false, erro: "Link expirado ou inv\xE1lido. Solicite novamente." }, 400);
   // AUDITORIA-15AGO (RESETPARSE1): JSON.parse sem try derrubava a rota em 500 se o
