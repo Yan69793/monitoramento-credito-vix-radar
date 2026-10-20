@@ -8,7 +8,7 @@
  * Todo texto da proposta vem de fonte nao confiavel: sempre via esc().
  */
 
-import { esc, postAdmin } from './shared.js?v=202.85';
+import { esc, postAdmin } from './shared.js?v=202.86';
 
 const ROTULO_ESTADO = { proposta: 'Aguardando decisao', aprovada: 'Aprovada', rejeitada: 'Rejeitada' };
 const ROTULO_TIPO = {

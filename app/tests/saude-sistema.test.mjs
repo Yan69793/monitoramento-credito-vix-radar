@@ -70,6 +70,41 @@ test('rodape trata fila_atrasada como servico no ar (cliente nao ve atraso inter
   assert.doesNotMatch(html, /Verificação em atraso/);
 });
 
+// Payload do admin logado, medido no Brave do operador em 20/10/2026 (sem bindings, sem
+// verificador_ok, sem verif_fila_atrasada). O frontend consulta com o token, entao cai neste ramo.
+const admin20out = {
+  ok: false, fonte_externa_ok: true, cvm_fonte_ok: true, resend: true, kv: true, telemetria: true,
+  admin_email_ok: true, sentry_ok: true, verif_orfaos_ativos: 0
+};
+
+test('payload do admin so com ok:false e servicos de pe nao pinta vermelho (caso do Brave 20/10)', () => {
+  assert.equal(classificar(admin20out), 'fila_atrasada');
+});
+
+test('payload do admin: kv false e fora', () => {
+  assert.equal(classificar({ ...admin20out, kv: false }), 'fora');
+});
+
+test('payload do admin: telemetria false e fora', () => {
+  assert.equal(classificar({ ...admin20out, telemetria: false }), 'fora');
+});
+
+test('payload do admin: sentry fora continua degradado', () => {
+  assert.equal(classificar({ ...admin20out, sentry_ok: false }), 'degradado');
+});
+
+test('payload do admin: orfaos ativos continua degradado', () => {
+  assert.equal(classificar({ ...admin20out, verif_orfaos_ativos: 3 }), 'degradado');
+});
+
+test('payload do admin: resend ausente continua degradado', () => {
+  assert.equal(classificar({ ...admin20out, resend: false }), 'degradado');
+});
+
+test('payload do admin: fonte CVM falhando continua degradado', () => {
+  assert.equal(classificar({ ...admin20out, cvm_fonte_ok: false }), 'degradado');
+});
+
 test('a funcao vive no escopo global, em script proprio (rodape esta em outro script)', () => {
   // A v202.84 declarou a funcao dentro do callback de DOMContentLoaded e o rodape caia no
   // fallback "Sistema degradado". O script dedicado tem que conter so a declaracao.

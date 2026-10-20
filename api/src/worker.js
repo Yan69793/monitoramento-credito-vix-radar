@@ -21266,6 +21266,14 @@ async function __coreFetch(request, env2222, ctx) {
         // SWEEP-ORFAOS1: amostra, nao censo (teto de 100). -1 = falha ao listar,
         // tratada como pendencia (fail-closed).
         verif_orfaos_ativos: _orfaosAtivos,
+        // SAUDEFILA1: o admin recebia um payload sem estes campos e o frontend (que consulta com o
+        // token do admin logado) nao conseguia separar fila atrasada de falha de servico.
+        servico_ok: _servicoOk,
+        verificador_ok: _verificadorRealOk,
+        verif_fila_pendentes: _filaVerifPendentes,
+        verif_fila_mais_antiga_h: _filaVerifMaisAntigaH,
+        verif_fila_atrasada: _filaVerifAtrasada,
+        cvm_fonte_degrada_servico: _cvmDegrada,
         ts: (/* @__PURE__ */ new Date()).toISOString()
       }, 200, request);
     }
