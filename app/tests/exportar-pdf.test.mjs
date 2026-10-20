@@ -67,6 +67,9 @@ function stubs(html) {
   ctx.window = ctx;
   ctx.open = () => janela;
   vm.createContext(ctx);
+  // REL-EXEC2: a logica do relatorio vive em app/js/relatorio-executivo.js; o bloco inline
+  // do index.html e so a casca que coleta dados e abre a janela.
+  vm.runInContext(readFileSync(path.join(APP, 'js', 'relatorio-executivo.js'), 'utf8'), ctx, { filename: 'relatorio-executivo.js' });
   return { ctx, escritos, html };
 }
 
@@ -118,8 +121,17 @@ for (const alvo of ALVOS) {
     new vm.Script(internos[0].src);
 
     // escape de dado do usuario: HTML do titulo nao vira tag
-    assert.match(doc, /<h3>Titulo &lt;b&gt;cru&lt;\/b&gt;<\/h3>/);
+    assert.match(doc, /Titulo &lt;b&gt;cru&lt;\/b&gt;/);
+    assert.doesNotMatch(doc, /Titulo <b>/);
     assert.match(doc, /<strong>Emissor &lt;X&gt;<\/strong>/);
+    // deploy_zip/index.html e copia gerada no deploy: ate o proximo deploy ainda carrega o
+    // gerador antigo, que nao usa o modulo. Cada alvo e validado pelo gerador que contem.
+    if (html.includes('js/relatorio-executivo.js')) {
+      assert.match(doc, /Resumo decisório/);
+      assert.match(doc, /Fichas dos emissores prioritários/);
+    } else {
+      assert.match(doc, /<h3>Titulo &lt;b&gt;cru&lt;\/b&gt;<\/h3>/);
+    }
     assert.match(doc, /href="https:\/\/www\.rad\.cvm\.gov\.br\/x\?a=1&amp;b=2"/);
 
     // CSS equilibrado
