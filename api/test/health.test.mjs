@@ -54,6 +54,10 @@ describe("GET / (health check)", () => {
     expect(body.admin_email_ok).toBe(true);
     expect(body.sentry_ok).toBe(true);
     expect(body.verificador_ok).toBe(true);
+    // SAUDEFILA1 (v4.9.279): servico_ok e o sinal publico do frontend, sem o backlog da fila de
+    // verificacao. No caminho feliz acompanha o ok. O caso de fila atrasada derrubar so o `ok`
+    // fica em app/tests/saude-sistema.test.mjs (classificacao no cliente).
+    expect(body.servico_ok).toBe(true);
     // HEALTHSPLIT1: frescor de fonte externa tem campo proprio e NAO compoe o
     // `ok`. Se alguem religar cvm_fonte_ok no _okHealth, o teste de 4 dias em
     // cvm-frescor.test.mjs quebra junto e o CI reprova antes do deploy.
