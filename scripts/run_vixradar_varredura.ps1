@@ -1535,13 +1535,19 @@ if (-not $__mutex.WaitOne(0)) {
 # Espera pela sentinela (ela roda ate 22 min a partir de :25/:55 e a noturna comeca 18h05).
 $__sentMutex = New-Object System.Threading.Mutex($false, 'Global\vixradar-sentinela-v1')
 $__esperou = 0
-while (-not $__sentMutex.WaitOne(0)) {
+# MUTEXVAZADO1 (21/10/2026): o WaitOne do laco ADQUIRE o mutex quando ele esta livre. O codigo
+# antigo adquiria de novo logo abaixo e soltava so uma vez, entao a rotina segurava
+# Global\vixradar-sentinela-v1 ate o fim da execucao. Efeito medido: a Sentinela via "mutex
+# proprio ocupado" sem sentinela nenhuma viva, e a Noturna esperava 25 min atras da Matinal.
+# Agora quem adquiriu solta exatamente uma vez.
+$__sentAdquirido = $false
+while (-not ($__sentAdquirido = $__sentMutex.WaitOne(0))) {
     if ($__esperou -eq 0) { Write-Log ('AGUARDANDO sentinela: mutex Global\vixradar-sentinela-v1 ocupado, esperando ate ' + $EsperaSentinelaMaxMin + ' min') }
     if ($__esperou -ge ($EsperaSentinelaMaxMin * 2)) { Write-Log 'AVISO: sentinela ainda ocupada apos o limite de espera - seguindo mesmo assim (o lock de arquivo abaixo segura a proxima sentinela)'; break }
     Start-Sleep -Seconds 30
     $__esperou++
 }
-if ($__sentMutex.WaitOne(0)) { $__sentMutex.ReleaseMutex() }
+if ($__sentAdquirido) { $__sentMutex.ReleaseMutex() }
 if ($__esperou -gt 0) { Write-Log ('sentinela livre apos ' + ($__esperou * 30) + 's') }
 
 # DRYRUN-PROBE1 (10/09/2026, regra do operador): o probe tem log e lock proprios e NUNCA
