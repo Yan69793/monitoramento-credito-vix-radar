@@ -7,6 +7,44 @@ status: ativo
 
 # Pendencias — VIX Radar
 
+## 19/10/2026, CVMLASTMOD1 fechada (Worker v4.9.275) e tres achados novos
+
+Correcao: `gravarFonteCVMMeta` deixa de apagar o Last-Modified do ZIP quando a ENET grava a meta. Causa raiz: o spread `{ ...meta }` trocava o registro inteiro, e a ENET (desde 13/09) nao traz os campos do ZIP. Guarda: `api/test/cvm-lastmod-enet.test.mjs`, 2 falham sem a correcao e 5/5 passam com ela. Suite 567/567. Commits `9751f82`, `ec08a13`, deploy `0edbf0b`, com push. O campo segue `null` em producao ate a proxima leitura do ZIP (Reconciliacao-CVM, segunda 12h), porque o valor ja tinha sido apagado no KV.
+
+Achados em aberto:
+
+1. **WORKERCORROMPIDO1.** O `api/src/worker.js` do working tree estava com acentos em dupla codificacao, tipico de PowerShell 5.1 regravando UTF-8 como ANSI (`/[̀-ͯ]/g` virou `/[Ì€-Í¯]/g`, o que quebra a comparacao sem acento de NOMEMORTO1). Junto vieram um import de `api/src/billing.js` (Stripe, `/checkout` e `/stripe_webhook`) e um `handleNewsletterCadastro` com as aspas perdidas. Origem desconhecida, `billing.js` e de 18/10 09:31. Backup completo e diff em `tmp/operacional/vix-radar/cvmlastmod1-20261019-035645/`. Nada disso foi para producao. Fora desta execucao por decisao do operador. O que da para recuperar esta em `RECUPERAVEL.md` na mesma pasta: billing.js e as rotas voltam com revisao (webhook sem tolerancia de tempo, nenhum evento desliga assinatura). A newsletter perdeu o texto mas a intencao e reconstruivel, e a confirmacao do token nunca existiu.
+2. **MATINALKILL1.** A Matinal de 18/10 foi encerrada de fora com `0x40010004` as 11:29:52, 12 min depois de abrir o lote escalada-9 (Raizen, Light, Rede D'Or, Banco Pan), deixando `vixradar-matinal_20261018.lock` para tras. O limite da task e PT4H, entao nao foi o tempo. O codigo e o lock nao dizem quem interrompeu. Trava resolvida em 19/10 04:11: pid 22968 inexistente, nenhum processo de rotina vivo, task `Ready`. A trava tem a data no nome (`run_vixradar_varredura.ps1:120`), entao nao bloquearia a de 19/10. Movida para a pasta de backup como `.orfao`, com hash conferido. Raizen, Light, Rede D'Or e Banco Pan ficaram sem a analise daquele lote.
+3. **COBDIARIA-SENTINELA1, reconciliado por identidade e data em 19/10.** A premissa de que a Sentinela tinha coberto os 11 estava errada. Na Noturna de 16/10 o plano do Worker tinha 36 SKIP, mas so 18 vieram de credito de outra rotina. Dos 11 marcados `PENDENTE_IA`:
+   - **Sem analise real no periodo, lacuna de verdade (5):** CPFL Energia, Embraer e Igua Saneamento sem nenhuma analise de 06 a 18/10, so DEFERIDO em 13 e 14/10 e SKIP em 16/10, com corte de evidencia em 29 e 30/09. Iguatemi so com Sentinela em 13/10. Cogna so com INCONCLUSIVO em 15/10. O Worker mandou SKIP sem que houvesse analise que justificasse.
+   - **Sentinela em 16/10, com noticia possivelmente posterior (2):** Braskem (Sentinela 09:57, e no mesmo dia "cai quase 4% no after em Nova York" e "nova proposta a credores", que pelo texto sao do fim do dia) e Eneva (Sentinela 09:56, aporte de R$ 1,77 bi do Itau no mesmo dia, hora nao conferida).
+   - **Sentinela em 16/10, noticia do mesmo dia de baixa materialidade (4):** Suzano (as manchetes do dia sao da cidade de Suzano, ruido de nome), Vibra (uma pagina de cotacao), Brava (descoberta de gas, provavelmente o gatilho da propria Sentinela) e Taesa (troca de diretor).
+   - A coleta so tem data, nao hora. Por isso evidencia do mesmo dia nao se resolve pelo calendario, so pela identidade do evento no estado do Worker.
+   - Os 5 INCONCLUSIVO continuam: MRS, Engie, Vivo, Bradesco e B3.
+   - Correcao a decidir: o controle diario precisa usar a hora da ultima analise efetiva de qualquer rotina como corte, e o plano do Worker nao pode dar SKIP a quem acumula DEFERIDO sem analise. O SKIP `sem_delta_30h` da noturna olha o relogio de varredura (`worker.js:12653`), e SKIP ou DEFERIDO tambem conta como varredura. Suspeita, ainda nao provada: e assim que um emissor fica sem analise e com o relogio sempre fresco.
+   - **DIVIDAAPAGADA1, cadeia provada em 19/10 para a CPFL** (a suspeita acima vira causa):
+     1. 14/10 02:44, `OK|CPFL Energia|FULL|-|0|true|DEFERIDO|0` por `cap_efetivo`. O submit marca `_token_cap_deferred=true` (divida de analise).
+     2. 15/10 02:09 (log de fallback `vixradar-noturno_20261015_fallback_22888.log`), DEFERIDO de novo, agora `motivo=rotacao_semanal` (101 deferidos, "o cap NAO foi a causa"). Rotacao manda `_token_cap_deferred=false` (`run_vixradar_varredura.ps1:508`). O Worker apaga a marca (`else delete`, `worker.js:10174` e seguintes) e renova `_last_scanned_at`.
+     3. 15/10 18:05, varredura de 16h, sem marca de divida: plano da SKIP `sem_delta_30h` (`worker.js:12653`). O submit do SKIP renova a varredura de novo.
+     4. 15/10 18:05:57, `FILA_PENDENTE: CPFL Energia resolvido (analise efetiva)`: a fila local solta a pendencia em todo SKIP aceito (`run_vixradar_varredura.ps1:2099`).
+     - Resultado: nenhuma das tres guardas (divida no Worker, relogio, fila local) sobrevive a uma rotacao seguida de SKIP. Medido no plano noturno de producao em 19/10 ~04:40 (so leitura): 17 dos 104 com analise acima de 72h e 7 acima de 7 dias (Compass 466h, MRS 442h, Embraer 423h, Igua 418h, CPFL, Vivo e Engie 394h). Saida em `plano_noturno_relogios.json` na pasta do item 1.
+     - 19/10: (a) e (b) APLICADAS no working tree, SEM commit, aguardando o operador ver. Regras em `scripts/lib/vixradar-cobertura.ps1` (`Test-VixSkipSoltaPendente`, `Test-VixRotacaoMantemDivida`, limite `VixDividaAnaliseH=120`), ligadas em 3 pontos de `run_vixradar_varredura.ps1`. Teste `scripts/test-divida-apagada.ps1` em PS 5.1: 1/7 contra HEAD (exit 1), 20/20 com a correcao (exit 0). Suites de cobertura, plantao, quota e codex-fallback verdes. Efeito de custo: emissor com analise acima de 120h deferido pela rotacao volta como FULL `deferred_prioritario` na noite seguinte.
+     - Correcoes candidatas: (a) local, SKIP nao solta pendencia, so analise efetiva; (b) local, deferido por rotacao de quem tem analise acima de 120h leva `_token_cap_deferred=true`; (c) Worker, SKIP `sem_delta_30h` pelo relogio de analise, decisao travada desde 19/09 junto do P0 de orcamento pelo teste `emissor-stale-analise.test.mjs:254`.
+     - Detalhe de verdade de log: a linha `DEFERIDOS:` de 14/10 e 15/10 22:35 diz `motivo=cap_efetivo` e a `ROTACAO:` de 15/10 18:17 diz `rotacao_semanal` para o mesmo lote.
+   - 19/10 04:30: os 7 (CPFL, Embraer, Igua, Iguatemi, Cogna, Braskem, Eneva) entraram em `logs/routines/fila_pendente_cobertura.json` com prioridade 2, motivo `operador_19out_lacuna_analise`, backup `.antes-19out.original` na pasta do item 1. A Matinal de dia util nao os inclui, porque o plano dela vem do Worker (top por EWS, `worker.js:12597`), e mexer nisso foi vetado pelo operador. A Noturna de 19/10 18:05 deve inclui-los: cerca de 72h desde a ultima varredura passa do SKIP de 30h e do credito de 14h, o que leva no minimo a LIGHT por `stale_2d`, e a fila os poe na frente. Conferir no log da Noturna as linhas `FILA_PENDENTE:` e `OK|` dos 7.
+
+Verificacao pendente: `cvm_fonte_last_modified` tem que sair de `null` na leitura real do health depois da Reconciliacao-CVM de 19/10 12h. Enquanto isso nao aparecer, a CVMLASTMOD1 nao esta homologada.
+
+Contrato da fila Top 5 em rascunho: nota 128.
+
+## 18/10/2026 06:50, LIMPARCACHE2: "Limpar Cache KV" agora pede confirmacao
+
+- Incidente: o botao do painel admin apagou `radar:estado:2026-W42` as 04:27 BRT sem aviso e o painel voltou a mostrar 11/10. Causa provada, nao era falha de gravacao. Restaurado do arquivo `radar:arquivo:2026-W42:1792308439596` (104 empresas, ultima atualizacao 17/10 14:10 UTC).
+- Feito: Worker v4.9.274 e painel v202.76. Sem `confirmar="LIMPAR <semana>"` o Worker responde 409 e nao apaga. O painel mostra a semana e o numero de empresas e so entao reenvia.
+- Aberto: `git push origin HEAD` dos 3 commits locais (nao autorizado ainda). Conferir se `api/src/worker.js` ja tem mudancas de outros commits que ainda nao foram deployadas (a v4.9.274 saiu do commit 989f217).
+- Aberto: `api/node_modules` desta maquina esta quebrado (outro processo segura arquivos). O deploy saiu de uma copia limpa em `C:\Users\User\vixradar-deploy-274`. Pode apagar essa pasta e `api\node_modules` quando nenhum outro processo estiver rodando, depois `npm ci` em `api`.
+- Lembrete: o `deploy-worker.ps1` so funciona no `pwsh` 7, no PowerShell 5.1 ele morre em silencio quando o vitest escreve no stderr.
+
 ## 18/10/2026 05:53: detector de eventos validado (fecha a pendencia de validacao do detector)
 
 - Feito: amostra cega de 2026 e validacao contra os 1.261 rotulos (relatorio em `data/validacao/ews2_detector_validacao.json`). Precisao do dia material 85%, revocacao 47% no universo rotulado; em 2026, 4 de 5 episodios achados e 2 falsos.
