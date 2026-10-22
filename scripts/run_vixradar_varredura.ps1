@@ -1300,6 +1300,16 @@ function Test-VixAusenciaCertificavel($res) {
     return [pscustomobject]@{ permitir_sem_eventos = $true; recheck = $false; motivo = 'cobertura_valida'; faltantes = @() }
 }
 
+# RECHECKLIQUIDO1 (2026-10-22): pendencia de recheck desta execucao e o estado FINAL de cada
+# emissor, nao o numero de vezes que o portao disparou. Em 21/10 Bradesco, VLI e MRS cairam
+# no portao na rodada barata, foram retidos para a escalada e fecharam RESOLVIDO no FULL da
+# mesma noite; o contador so somava e a rotina saiu PARCIAL com pendentes_obrigatorios=4
+# (exit 10 no Agendador) quando so a Itausa ficou INCONCLUSIVA (contrato_inconclusivo=1).
+function Update-VixRecheckExecucao($Mapa, [string]$Empresa, [bool]$Pendente) {
+    $k = Get-NomeNormalizado $Empresa
+    if ($Pendente) { $Mapa[$k] = $Empresa } elseif ($Mapa.ContainsKey($k)) { $Mapa.Remove($k) }
+}
+
 # Contrato persistido em logs\routines\cobertura_YYYYMMDD.json (RECHECK_PENDENTE/RESOLVIDO por cobertura).
 function Get-VixContratoCoberturaPath([string]$tag) {
     return Join-Path $LogDir ('cobertura_' + $tag + '.json')
@@ -1809,7 +1819,7 @@ $stats = @{
     # conta submit com evento enviado mas n_eventos=0 (Worker aceitou o transporte e
     # descartou tudo no saneamento ou no pre-verificador - ver DESCARTADO| no log).
     eventos_avanco_data = 0; chaves_novas = 0; descartados = 0; descartes_inesperados = 0
-    cobertura_deferidos = 0; recheck_resolvidos = 0
+    cobertura_deferidos = 0; recheck_resolvidos = 0; recheck_pendentes_final = 0
     # OR402-DEGRADA1: chamadas ao adapter que cairam para o fallback por 402 (saldo). Contador
     # separado de silent_fail de proposito: o lote fechou, mas a degradacao fica visivel.
     degradados_402 = 0
@@ -2157,6 +2167,7 @@ try {
         Write-Log ('COBFALLBACK_FILA: ' + $analyzeList.Count + ' de ' + @($script:VixCobFallbackAlvos).Count + ' alvo(s) no plano noturno')
     }
     $__faltAnt = Get-VixRecheckPendentes $LogDir
+    $recheckExecucao = @{}
     foreach ($emp in $analyzeList) {
         if ($__faltAnt.ContainsKey((Get-NomeNormalizado $emp.empresa))) {
             try { $emp | Add-Member -NotePropertyName vix_recheck_pendente -NotePropertyValue $true -Force } catch { }
@@ -2990,6 +3001,7 @@ try {
                 try { $res | Add-Member -NotePropertyName '_recheck_pendente' -NotePropertyValue $true -Force } catch { }
                 try { $res | Add-Member -NotePropertyName '_familia_faltantes' -NotePropertyValue @($__decAus.faltantes) -Force } catch { }
                 $stats.cobertura_deferidos++
+                Update-VixRecheckExecucao $recheckExecucao $emp.empresa $true
                 if (-not $DryRun) { Merge-VixContratoCobertura $contratoCobertura $emp.empresa 'RECHECK_PENDENTE' $__decAus.faltantes }
             }
             # COBERTURA-13OUT4: escalada por emissor. Decide com os sinais JA medidos nesta
@@ -3122,7 +3134,7 @@ try {
             # COBERTURA-13OUT1: so analise EFETIVA solta a pendencia persistente (submit aceito
             # e sem recheck). Recheck ou submit recusado mantem/abre a pendencia. Mesma definicao
             # de "concluida" da linha de cima, agora vinda da mesma funcao.
-            if ($__concluida -and -not $__decAus.recheck) { Remove-VixPendenteSeguro $emp.empresa }
+            if ($__concluida -and -not $__decAus.recheck) { Remove-VixPendenteSeguro $emp.empresa; Update-VixRecheckExecucao $recheckExecucao $emp.empresa $false }
             elseif (-not $subOk) { Add-VixPendenteSeguro $emp.empresa $emp.ews_score 'submit_recusado' $job.Tier $false }
             else { Add-VixPendenteSeguro $emp.empresa $emp.ews_score 'recheck_cobertura' $job.Tier $true }
             # BUSCADEGRADADA1-FIX: RECHECK_PENDENTE so sai da frente da fila quando RESOLVIDO.
@@ -3335,7 +3347,10 @@ try {
     $deferidosCap = [int][Math]::Max(0, ([int]$stats.deferred - [int]$stats.deferred_auth - [int]$stats.deferred_rotacao - [int]$stats.deferred_provider - [int]$stats.deferred_escalada))
     # COBERTURA-13OUT1: pendencias obrigatorias desta execucao = tudo que foi deferido sem ser
     # rotacao (aceito ou recusado pelo Worker) + recheck de cobertura + submit de analise recusado.
-    $pendentesObrigatorios = [int]([Math]::Max(0, ([int]$stats.deferred - [int]$stats.deferred_rotacao)) + [int]$stats.deferred_fail + [int]$stats.cobertura_deferidos + [int]$stats.submit_fail)
+    # RECHECKLIQUIDO1: o recheck entra pelo estado final por emissor; cobertura_deferidos segue
+    # publicado como contagem de disparos do portao (recheck_eventos na linha COBERTURA_RESULTADO).
+    $stats.recheck_pendentes_final = $recheckExecucao.Count
+    $pendentesObrigatorios = [int]([Math]::Max(0, ([int]$stats.deferred - [int]$stats.deferred_rotacao)) + [int]$stats.deferred_fail + [int]$stats.recheck_pendentes_final + [int]$stats.submit_fail)
 
     $sw.Stop()
     $submitsAceitos = $stats.skip_ok + $stats.submit_ok + $stats.deferred
@@ -3624,7 +3639,7 @@ try {
     # impede OK; nenhuma analise efetiva com plano nao vazio e FALHA (antes saia PARCIAL).
     $__resRot = Get-VixResultadoRotina -DryRun ([bool]$DryRun) -TrabalhoZero $trabalhoZero -PlanoTotal $__planoResultado -Analisados $stats.analisados -Skips $stats.skip_ok -PendentesObrigatorios $pendentesObrigatorios -Erros $errosTotal
     $resultadoTxt = $__resRot.Resultado
-    Write-Log ('COBERTURA_RESULTADO: ' + $resultadoTxt + ' motivo=' + $__resRot.Motivo + ' pendentes_obrigatorios=' + $pendentesObrigatorios + ' (deferidos_nao_rotacao=' + ([int]$stats.deferred - [int]$stats.deferred_rotacao) + ' deferidos_submit_falho=' + $stats.deferred_fail + ' recheck=' + $stats.cobertura_deferidos + ' submit_fail=' + $stats.submit_fail + ') analisados=' + $stats.analisados + ' skip=' + $stats.skip_ok + ' plano=' + $planoTotal)
+    Write-Log ('COBERTURA_RESULTADO: ' + $resultadoTxt + ' motivo=' + $__resRot.Motivo + ' pendentes_obrigatorios=' + $pendentesObrigatorios + ' (deferidos_nao_rotacao=' + ([int]$stats.deferred - [int]$stats.deferred_rotacao) + ' deferidos_submit_falho=' + $stats.deferred_fail + ' recheck=' + $stats.recheck_pendentes_final + ' recheck_eventos=' + $stats.cobertura_deferidos + ' submit_fail=' + $stats.submit_fail + ') analisados=' + $stats.analisados + ' skip=' + $stats.skip_ok + ' plano=' + $planoTotal)
     # COBDIARIA1: a noturna e a ultima varredura do dia e dona do universo, entao e ela que fecha o
     # dia da cobertura. O resultado da rotina (exit, OK/PARCIAL) NAO muda por isto: o fechamento
     # tem relatorio, incidente e alerta proprios. Sombra: relatorio PARCIAL/OK local, sem alerta.
