@@ -249,6 +249,9 @@ foreach ($fn in @('Get-VixIdempotenciaEntregas', 'Get-VixReconciliacaoUniverso',
 # COBERTURA-13OUT1 (2026-10-13): contexto enxuto do Codex, consumo medido do JSONL, orcamento
 # por emissor, disjuntor de provedor, resultado OK/PARCIAL/FALHA e fila pendente persistente.
 . (Join-Path $PSScriptRoot 'lib\vixradar-cobertura.ps1')
+# CVMPDF1 (2026-10-21): texto legivel dos PDFs do ENET extraido localmente. Opcional e desligado por
+# padrao (VIXRADAR_CVM_PDF_TEXTO=1 liga); lib ausente ou qualquer falha deixa a rotina como era.
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'lib\vixradar-cvm-pdf.ps1')) { . (Join-Path $PSScriptRoot 'lib\vixradar-cvm-pdf.ps1') }
 # COBDIARIA1 (2026-10-14): controle diario de verificacao por emissor (ledger com evidencia do dia,
 # fechamento com incidente). Duas fases, por decisao de seguranca: SOMBRA (padrao) so grava o
 # ledger e o relatorio local; ATIVO (VIXRADAR_COBERTURA_DIARIA=1) tambem poe o obrigatorio do dia
@@ -398,6 +401,11 @@ function Get-SlimEmissor($emp, [string]$Tier = '', [switch]$Ultra) {
         $assunto = '' + $_.assunto
         if ($assunto.Length -gt 100) { $assunto = $assunto.Substring(0, 100) }
         $d = [ordered]@{ categoria = $_.categoria; assunto = $assunto; data = $_.data; link = $_.link }
+        # CVMPDF1: o WebFetch do modelo recebe o PDF do ENET como binario; o texto local evita o fallback.
+        if (Get-Command Get-VixCvmDocumentoTexto -ErrorAction SilentlyContinue) {
+            $__txtPdf = Get-VixCvmDocumentoTexto -Link ('' + $_.link) -MaxChars $(if ($Ultra) { 1500 } else { 3000 })
+            if ($__txtPdf) { $d['texto_extraido'] = $__txtPdf }
+        }
         if ($_.empresa_cvm -and ($_.empresa_cvm -notmatch [regex]::Escape(($emp.empresa -split ' ')[0]))) { $d['empresa_cvm'] = $_.empresa_cvm }
         [pscustomobject]$d
     })
