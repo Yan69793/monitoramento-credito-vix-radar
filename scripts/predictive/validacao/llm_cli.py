@@ -290,6 +290,12 @@ def chamar_codex(prompt, sistema, esquema=None, modelo=MODELO_CODEX_PADRAO, time
 PROVEDORES_SEGUNDO = ("codex", "gemini", "openrouter", "claude")
 GEMINI_POLITICA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gemini_politica_rotulador.toml")
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+# Economia (16/10): o mesmo modelo tem ~35 fornecedores no OpenRouter, de US$ 0,036 a 0,60/M na entrada. Sem ordenar por
+# preco o roteador espalha a carga e o custo real sobe ate ~16x na saida. usage.include devolve o custo real da chamada.
+# raciocinio baixo + teto de saida (16/10, medido): com o padrao o modelo gerava 8 a 12 mil tokens de raciocinio por
+# chamada, e o fornecedor mais barato entrega ~25 tok/s, entao a resposta passava de 5 min e estourava o prazo.
+OPENROUTER_ROTEAMENTO = {"provider": {"sort": "price", "allow_fallbacks": True}, "usage": {"include": True},
+                         "reasoning": {"effort": "low"}, "max_tokens": 16000}  # 12000 truncou trecho de ~12k; 32000 deixa o laco de raciocinio passar do prazo
 VAR_OPENROUTER_KEY = "OPENROUTER_API_KEY"
 
 
@@ -379,8 +385,9 @@ def chamar_gemini(prompt, sistema, esquema=None, modelo=None, timeout=TIMEOUT_S,
     return r
 
 
-def interpretar_saida_openrouter(corpo, status):
-    """Puro. Corpo JSON de chat/completions -> resultado normalizado. 402 = sem credito (limite)."""
+def interpretar_saida_openrouter(corpo, status, texto_livre=False):
+    """Puro. Corpo JSON de chat/completions -> resultado normalizado. 402 = sem credito (limite).
+    texto_livre=True (transcricao): ok quando ha texto, sem exigir objeto JSON."""
     r = {"ok": False, "classe": None, "exit": status, "structured": None, "result": None,
          "usage": {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0}, "usage_mensuravel": False, "modelos": []}
     try:
@@ -401,9 +408,20 @@ def interpretar_saida_openrouter(corpo, status):
     r["usage"] = {"input": max(0, int(u.get("prompt_tokens") or 0) - cached), "output": int(u.get("completion_tokens") or 0),
                   "cache_read": cached, "cache_creation": 0}
     r["usage_mensuravel"] = bool(u)
+    r["usage"]["custo_usd"] = float(u.get("cost") or 0)  # custo real cobrado (usage.include); 0 quando ausente
+    r["provedor_roteado"] = j.get("provider")
     r["modelos"] = [j.get("model")] if j.get("model") else []
     texto = str(((j["choices"][0] or {}).get("message") or {}).get("content") or "")
     r["result"] = texto
+    r["finish_reason"] = (j["choices"][0] or {}).get("finish_reason")
+    if not texto.strip() and r["finish_reason"] == "length":
+        r.update(classe="transitoria", erro="truncada no teto de saida (raciocinio consumiu max_tokens)")
+        return r
+    if texto_livre:
+        r["ok"] = bool(texto.strip())
+        if not r["ok"]:
+            r.update(classe="transitoria", erro="resposta vazia")
+        return r
     m = re.search(r"\{.*\}", texto, re.S)
     if m:
         try:
@@ -420,34 +438,120 @@ def chamar_openrouter(prompt, sistema, esquema=None, modelo=None, timeout=TIMEOU
     """Chave lida do ambiente/registro User, so no header da requisicao. Nunca em argv, log ou registro."""
     if not modelo or "/" not in str(modelo):
         raise LimiteDeCota("modelo do OpenRouter nao fixado no formato fornecedor/modelo")
-    corpo = {"model": modelo, "temperature": 0, "response_format": {"type": "json_object"},
+    corpo = {"model": modelo, "temperature": 0, "response_format": {"type": "json_object"}, **OPENROUTER_ROTEAMENTO,
              "messages": [{"role": "system", "content": sistema + "\n\nResponda com UM unico objeto JSON" + (
                  " neste esquema: %s" % json.dumps(esquema, ensure_ascii=False) if esquema else "")},
                  {"role": "user", "content": prompt}]}
-    dados = json.dumps(corpo, ensure_ascii=False).encode("utf-8")
     base = {"provider": "openrouter", "modelo": modelo, "sha256_prompt": sha256_texto(prompt), "chars_prompt": len(prompt)}
     if not executar:
         return dict(base, ok=False, classe="dry_run", argv=["POST", OPENROUTER_URL])
+    r = _post_openrouter(corpo, base, timeout)
+    if not r.get("ok") and r.get("classe") == "transitoria" and not r.get("ultima_sem_raciocinio") and r.get("exit") == 200:
+        # 16/10 (i0004, i0007): HTTP 200 sem resposta aproveitavel (teto consumido pelo raciocinio, ou texto sem JSON). A mesma\n        # pergunta a temperatura 0 repete igual, entao a nova tentativa e SEM raciocinio.
+        # Uma nova tentativa, a MESMA pergunta sem raciocinio; o custo das duas e somado e o desvio fica registrado.
+        r2 = _post_openrouter(dict(corpo, reasoning={"enabled": False}, max_tokens=OPENROUTER_TETO_SEM_RACIOCINIO), base, timeout)
+        for k, v in (r.get("usage") or {}).items():
+            if isinstance(v, (int, float)):
+                r2.setdefault("usage", {})[k] = (r2.get("usage") or {}).get(k, 0) + v
+        r2["fallback_sem_raciocinio"] = True
+        r2["erro_primeira"] = r.get("erro")
+        return r2
+    return r
+
+
+
+# Falha de transporte (rede, 5xx, 408, prazo) repete com espera; 4xx de credito/credencial e resposta sem JSON nao repetem.
+OPENROUTER_TENTATIVAS = 3
+OPENROUTER_TETO_SEM_RACIOCINIO = 16000  # i0007 fatia 36: lista legitima de ~28 mil caracteres cortada em 8000
+OPENROUTER_ESPERA_S = (10, 40)
+# Prazo TOTAL por tentativa (16/10: uma fatia ficou 12+ min presa no fornecedor mais barato; o timeout do urllib e por
+# leitura e nao dispara se o servidor manda bytes de espera). Depois da 1a falha de transporte, a nova tentativa pede o
+# fornecedor mais RAPIDO dentro de um teto de preco, para nao ficar preso nem pagar caro.
+OPENROUTER_PRAZO_S = 300
+OPENROUTER_PRAZOS_S = (150, 300, 300)  # 1a tentativa (mais barato, lento) curta: estourou, cai logo no fornecedor rapido
+OPENROUTER_FALLBACK = {"provider": {"sort": "throughput", "allow_fallbacks": True, "max_price": {"prompt": 0.15, "completion": 0.65}}}
+
+
+def _urlopen_com_prazo(req, prazo):
+    """urlopen numa thread com prazo total. Estourou: (0, 'PrazoTotal') e a thread fica orfa (daemon)."""
+    import threading
+    import urllib.error
+    import urllib.request
+    caixa = {}
+
+    def alvo():
+        try:
+            with urllib.request.urlopen(req, timeout=prazo) as resp:
+                caixa["r"] = (resp.status, resp.read().decode("utf-8", "replace"))
+        except urllib.error.HTTPError as e:
+            caixa["r"] = (e.code, e.read().decode("utf-8", "replace"))
+        except Exception as e:  # noqa: BLE001
+            caixa["r"] = (0, type(e).__name__)
+    t = threading.Thread(target=alvo, daemon=True)
+    t.start()
+    t.join(prazo)
+    return caixa.get("r") or (0, "PrazoTotal")
+
+
+def _post_openrouter(corpo, base, timeout, texto_livre=False, dormir=None):
+    """POST com a chave so no header. Repete so falha de transporte (status 0, 408, 5xx), com prazo total por tentativa."""
+    import time
+    import urllib.request
     chave = _var_usuario(VAR_OPENROUTER_KEY)
     if not chave:
         raise LimiteDeCota("%s ausente" % VAR_OPENROUTER_KEY)
-    import urllib.error
-    import urllib.request
-    req = urllib.request.Request(OPENROUTER_URL, data=dados, method="POST",
-                                 headers={"Authorization": "Bearer " + chave, "Content-Type": "application/json"})
+    dormir = dormir or time.sleep
     t0 = dt.datetime.now(dt.timezone.utc)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            status, txt = resp.status, resp.read().decode("utf-8", "replace")
-    except urllib.error.HTTPError as e:
-        status, txt = e.code, e.read().decode("utf-8", "replace")
-    except Exception as e:  # noqa: BLE001
-        status, txt = 0, type(e).__name__
-    r = interpretar_saida_openrouter(txt, status)
+    tentativas, falhas = 0, []
+    # CUSTOSEMUSAGE1 (17/10): tentativa que estoura o prazo pode ser cobrada pelo OpenRouter sem devolver usage
+    # (16/10: US$ 2,97 gastos na chave contra US$ 1,40 registrados). Cada tentativa com status 0 entra como
+    # estimativa conservadora (prompt em chars/3 e saida no teto max_tokens) para o orcamento nao subcontar.
+    sem_usage_in, sem_usage_out = 0, 0
+    while True:
+        tentativas += 1
+        corpo_t = dict(corpo, **OPENROUTER_FALLBACK) if tentativas > 1 else corpo
+        if tentativas >= OPENROUTER_TENTATIVAS:  # ultima chance: sem raciocinio (laco deterministico a temperatura 0 nao sai por repeticao)
+            corpo_t = dict(corpo_t, reasoning={"enabled": False}, max_tokens=OPENROUTER_TETO_SEM_RACIOCINIO)
+        dados = json.dumps(corpo_t, ensure_ascii=False).encode("utf-8")
+        req = urllib.request.Request(OPENROUTER_URL, data=dados, method="POST",
+                                     headers={"Authorization": "Bearer " + chave, "Content-Type": "application/json"})
+        prazo = min(timeout, OPENROUTER_PRAZO_S, OPENROUTER_PRAZOS_S[min(tentativas - 1, len(OPENROUTER_PRAZOS_S) - 1)])
+        status, txt = _urlopen_com_prazo(req, prazo)
+        transporte = status == 0 or status == 408 or status >= 500
+        if status == 0:
+            sem_usage_in += len(dados) // 3
+            sem_usage_out += int(corpo_t.get("max_tokens") or 0)
+        if transporte:
+            falhas.append("HTTP %s %s" % (status, txt[:40] if status == 0 else ""))
+        if not transporte or tentativas >= OPENROUTER_TENTATIVAS:
+            break
+        dormir(OPENROUTER_ESPERA_S[min(tentativas - 1, len(OPENROUTER_ESPERA_S) - 1)])
+    r = interpretar_saida_openrouter(txt, status, texto_livre=texto_livre)
+    r["usage"]["sem_usage_input"] = sem_usage_in
+    r["usage"]["sem_usage_output"] = sem_usage_out
     r.update(base)
     r.update({"inicio_utc": t0.isoformat(timespec="seconds"), "segundos": round((dt.datetime.now(dt.timezone.utc) - t0).total_seconds(), 1),
-              "sha256_resposta": sha256_texto(txt)})
+              "sha256_resposta": sha256_texto(txt), "tentativas": tentativas, "falhas_transporte": falhas,
+              "ultima_sem_raciocinio": tentativas >= OPENROUTER_TENTATIVAS})
     return r
+
+
+def chamar_openrouter_imagens(prompt, sistema, imagens, modelo, timeout=TIMEOUT_S, executar=True):
+    """Transcricao de paginas renderizadas por modelo com entrada de imagem (PNG em data URL). Texto livre, sem
+    ferramenta e sem acesso a disco pelo modelo: as imagens vao no corpo da requisicao."""
+    import base64
+    if not modelo or "/" not in str(modelo):
+        raise LimiteDeCota("modelo de transcricao do OpenRouter nao fixado no formato fornecedor/modelo")
+    conteudo = [{"type": "text", "text": prompt}]
+    for f in imagens:
+        with open(f, "rb") as fh:
+            conteudo.append({"type": "image_url", "image_url": {"url": "data:image/png;base64," + base64.b64encode(fh.read()).decode("ascii")}})
+    corpo = {"model": modelo, "temperature": 0, **OPENROUTER_ROTEAMENTO,
+             "messages": [{"role": "system", "content": sistema}, {"role": "user", "content": conteudo}]}
+    base = {"provider": "openrouter", "modelo": modelo, "sha256_prompt": sha256_texto(prompt), "chars_prompt": len(prompt), "n_imagens": len(imagens)}
+    if not executar:
+        return dict(base, ok=False, classe="dry_run", argv=["POST", OPENROUTER_URL])
+    return _post_openrouter(corpo, base, timeout, texto_livre=True)
 
 
 def chamar(prompt, sistema, esquema=None, provider="claude", modelo=None, **kw):
@@ -475,12 +579,15 @@ def modelo_segundo():
     return m or None
 
 
+_LOCK_REGISTRO = __import__("threading").Lock()
+
+
 def registrar(caminho, registro):
     """Append-only. Nunca grava token nem ambiente: so o que o chamador devolveu."""
     reg = {k: v for k, v in registro.items() if k not in ("argv",)}
     reg["registrado_em"] = dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")
     os.makedirs(os.path.dirname(caminho), exist_ok=True)
-    with open(caminho, "a", encoding="utf-8", newline="\n") as fh:
+    with _LOCK_REGISTRO, open(caminho, "a", encoding="utf-8", newline="\n") as fh:  # lock: itens em paralelo no G1-eq
         fh.write(json.dumps(reg, ensure_ascii=False, default=str) + "\n")
 
 

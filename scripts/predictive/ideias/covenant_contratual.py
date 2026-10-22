@@ -20,8 +20,9 @@ FLUXO = {"DRE", "DFC"}
 TOL = 5.0
 
 
-def ler_linhas(cnpjs, anos=("2023", "2024", "2025", "2026"), base="con"):
-    """{(cnpj, dt_refer): {"dt_receb", "versao", "tipo", "linhas": {dem: [(cd, ds_norm, valor)]}}}, versao mais alta."""
+def ler_linhas(cnpjs, anos=("2023", "2024", "2025", "2026"), base="con", todas_versoes=False):
+    """{(cnpj, dt_refer): {"dt_receb", "versao", "tipo", "linhas": {dem: [(cd, ds_norm, valor)]}}}, versao mais alta.
+    Com todas_versoes=True a chave vira (cnpj, dt_refer, versao), para escolher a versao vigente em cada data."""
     alvo = set(cnpjs)
     out = {}
     for tipo, pref, dirs in (("ITR", "itr_cia_aberta_", [os.path.join(RAW, "itr")]), ("DFP", "dfp_cia_aberta_", dados.DIRS_DFP)):
@@ -33,12 +34,15 @@ def ler_linhas(cnpjs, anos=("2023", "2024", "2025", "2026"), base="con"):
                 c = digitos(r["CNPJ_CIA"])
                 if c in alvo:
                     k, v = (c, r["DT_REFER"]), int(r["VERSAO"] or 0)
-                    if k not in cab or v > cab[k]["versao"]:
+                    if todas_versoes:
+                        k = (c, r["DT_REFER"], v)
+                        cab[k] = {"versao": v, "dt_receb": r["DT_RECEB"], "tipo": tipo, "linhas": {d: [] for d in DEMS}}
+                    elif k not in cab or v > cab[k]["versao"]:
                         cab[k] = {"versao": v, "dt_receb": r["DT_RECEB"], "tipo": tipo, "linhas": {d: [] for d in DEMS}}
             for curto, dem in DEMS.items():
                 for r in dados._csv_do_zip(z, "%s%s_%s.csv" % (pref, dem.replace("_con", "_" + base), ano)):
                     c = digitos(r["CNPJ_CIA"])
-                    k = (c, r["DT_REFER"])
+                    k = (c, r["DT_REFER"], int(r["VERSAO"] or 0)) if todas_versoes else (c, r["DT_REFER"])
                     if k not in cab or int(r["VERSAO"] or 0) != cab[k]["versao"]:
                         continue
                     if r.get("ORDEM_EXERC", "").upper() not in ("ÚLTIMO", "ULTIMO"):

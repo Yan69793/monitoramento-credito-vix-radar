@@ -14,7 +14,7 @@ recusada interrompe com exit 87 e preserva o que ja foi feito (reexecucao retoma
 
 Uso:
   python -I g1eq.py prontidao ETAPA_DIR DOCS_DIR
-  python -I g1eq.py rodar ETAPA_DIR DOCS_DIR [--modelo M] [--teto-tokens N] [--itens 30] [--so progressiva|integral]
+  python -I g1eq.py rodar ETAPA_DIR DOCS_DIR [--modelo M] [--teto-tokens N] [--itens 30] [--so progressiva|integral] [--provider P] [--workers N]
   python -I g1eq.py avaliar ETAPA_DIR
 """
 import datetime as dt
@@ -37,8 +37,16 @@ EP = "evento_proprio"
 EXIT_COTA = 87
 
 
-def saida_dir(etapa):
-    return os.path.join(etapa, "g1eq")
+def slug_leitor(provider="claude", modelo=None):
+    """Claude (padrao historico) fica em g1eq/; outro leitor em g1eq_<provider>_<modelo>/, sem misturar resultados."""
+    if provider == "claude" and (not modelo or modelo == L.MODELO_PADRAO):
+        return ""
+    import re
+    return "_" + re.sub(r"[^a-z0-9.]+", "-", ("%s_%s" % (provider, modelo or "")).lower()).strip("-")
+
+
+def saida_dir(etapa, provider="claude", modelo=None):
+    return os.path.join(etapa, "g1eq" + slug_leitor(provider, modelo))
 
 
 def itens_g1eq(etapa, n=N_ITENS):
@@ -135,8 +143,8 @@ def _ler(p):
     return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else None
 
 
-def coletar(etapa, n=N_ITENS):
-    sd = saida_dir(etapa)
+def coletar(etapa, n=N_ITENS, provider="claude", modelo=None):
+    sd = saida_dir(etapa, provider, modelo)
     pares, tokens = [], {"progressiva": 0, "integral": 0}
     for x in itens_g1eq(etapa, n):
         a = _ler(os.path.join(sd, "progressiva", "%s.json" % x["id"]))
@@ -158,18 +166,19 @@ def coletar(etapa, n=N_ITENS):
     return pares, tokens
 
 
-def avaliar(etapa, n=N_ITENS):
-    pares, tokens = coletar(etapa, n)
+def avaliar(etapa, n=N_ITENS, provider="claude", modelo=None):
+    modelo = modelo or L.MODELO_PADRAO
+    pares, tokens = coletar(etapa, n, provider, modelo)
     r = avaliar_pares(pares)
     exec_sha = {}
     for nome in ("llm_cli.py", "rotular_g0v3.py", "leitura_integral_g0v3.py", "g1eq.py", "recuperar_g0v3.py"):
         exec_sha[nome] = hashlib.sha256(open(os.path.join(AQUI, nome), "rb").read()).hexdigest()
     r.update({"protocolo": "G0-v3", "gate": "G1-eq", "sha256_bloco_v3": G3.PROTOCOLO_G0V3_SHA256,
-              "sha256_recuperar": G3.RECUPERAR_SHA256, "sha256_executor": exec_sha, "modelo": L.MODELO_PADRAO,
+              "sha256_recuperar": G3.RECUPERAR_SHA256, "sha256_executor": exec_sha, "modelo": modelo, "provider": provider,
               "versoes_executor": {"progressiva": RO.VERSAO_EXECUTOR, "integral": LI.VERSAO_EXECUTOR},
               "tokens": tokens, "pares": pares,
               "avaliado_em": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")})
-    sd = saida_dir(etapa)
+    sd = saida_dir(etapa, provider, modelo)
     os.makedirs(sd, exist_ok=True)
     with open(os.path.join(sd, "resultado_g1eq.json"), "w", encoding="utf-8", newline="\n") as fh:
         json.dump(r, fh, ensure_ascii=False, indent=1)
@@ -185,17 +194,21 @@ def avaliar(etapa, n=N_ITENS):
     return r
 
 
-def rodar(etapa, docs_dir, modelo=L.MODELO_PADRAO, teto_tokens=8_000_000, n=N_ITENS, so=None, refazer=()):
-    """refazer: ids cujo braco integral deve ser refeito (executor novo); o resultado antigo e preservado em *.v_anterior.json."""
+def rodar(etapa, docs_dir, modelo=L.MODELO_PADRAO, teto_tokens=8_000_000, n=N_ITENS, so=None, refazer=(), provider="claude", workers=1):
+    """refazer: ids cujo braco integral deve ser refeito (executor novo); o resultado antigo e preservado em *.v_anterior.json.
+    workers>1: pares (item, braco) independentes em paralelo (16/10, leitor pago e lento por chamada). Credito ou credencial
+    acabando para tudo: o que ja terminou fica gravado, o que estava em voo e refeito na reexecucao."""
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
     est = G3.estado()
     if not est["ok"]:
         print(json.dumps({"ok": False, "erro": "guarda G0-v3 reprovou", "motivos": est["motivos"]}))
         return 1
     pront = prontidao(etapa, n)
-    sd = saida_dir(etapa)
+    sd = saida_dir(etapa, provider, modelo)
     itens, man, meta = RO.carregar(etapa)
     guia = RO.guia_v3()
-    gasto = 0
+    tarefas = []
     for x in itens_g1eq(etapa, n):
         pr = next(d for d in pront["detalhe"] if d["id"] == x["id"])
         if not pr["pronto"]:
@@ -211,26 +224,41 @@ def rodar(etapa, docs_dir, modelo=L.MODELO_PADRAO, teto_tokens=8_000_000, n=N_IT
                     os.replace(alvo, alvo[:-5] + ".v_anterior.json")
                 else:
                     continue
-            if gasto >= teto_tokens:
-                print(json.dumps({"parado": "teto de tokens", "gasto": gasto, "teto": teto_tokens}))
-                return EXIT_COTA
-            try:
-                if modo == "progressiva":
-                    r = func(itens[x["id"]], man[x["id"]], meta, docs_dir, sd, modelo=modelo, guia=guia)
-                else:
-                    r = func(itens[x["id"]], man[x["id"]], meta, docs_dir, sd, modelo=modelo, guia=guia)
-            except L.LimiteDeCota as e:
-                print(json.dumps({"parado": "limite de cota ou credencial", "detalhe": str(e)[:200], "gasto": gasto}))
-                return EXIT_COTA
-            os.makedirs(os.path.dirname(alvo), exist_ok=True)
-            with open(alvo, "w", encoding="utf-8", newline="\n") as fh:
-                json.dump(r, fh, ensure_ascii=False, indent=1, default=str)
-            t = L.total_tokens(r["tokens"]) if r.get("tokens") else 0
-            gasto += t
-            print(json.dumps({"id": x["id"], "modo": modo, "status": r.get("status"), "classe": (r.get("rotulo") or {}).get("classe"),
-                              "tokens": t, "acumulado": gasto}), flush=True)
-    return 0
+            tarefas.append((x["id"], modo, func, alvo))
+    estado = {"gasto": 0, "parar": None}
+    trava = threading.Lock()
 
+    def executar(tarefa):
+        iid, modo, func, alvo = tarefa
+        with trava:
+            if estado["parar"]:
+                return
+            if estado["gasto"] >= teto_tokens:
+                estado["parar"] = {"parado": "teto de tokens", "gasto": estado["gasto"], "teto": teto_tokens}
+                return
+        try:
+            r = func(itens[iid], man[iid], meta, docs_dir, sd, modelo=modelo, guia=guia, provider=provider)
+        except L.LimiteDeCota as e:
+            with trava:
+                estado["parar"] = estado["parar"] or {"parado": "limite de cota ou credencial", "detalhe": str(e)[:200], "gasto": estado["gasto"]}
+            return
+        os.makedirs(os.path.dirname(alvo), exist_ok=True)
+        with open(alvo + "." + str(threading.get_ident()) + ".tmp", "w", encoding="utf-8", newline="\n") as fh:  # atomico por thread
+            json.dump(r, fh, ensure_ascii=False, indent=1, default=str)
+        os.replace(fh.name, alvo)
+        t = L.total_tokens(r["tokens"]) if r.get("tokens") else 0
+        with trava:
+            estado["gasto"] += t
+            acumulado = estado["gasto"]
+        print(json.dumps({"id": iid, "modo": modo, "status": r.get("status"), "classe": (r.get("rotulo") or {}).get("classe"),
+                          "tokens": t, "acumulado": acumulado}), flush=True)
+
+    with ThreadPoolExecutor(max_workers=max(1, int(workers))) as pool:
+        list(pool.map(executar, tarefas))
+    if estado["parar"]:
+        print(json.dumps(estado["parar"]))
+        return EXIT_COTA
+    return 0
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
@@ -244,12 +272,13 @@ def main(argv=None):
     if argv[0] == "prontidao":
         print(json.dumps(prontidao(argv[1], n), ensure_ascii=False, indent=1))
         return 0
+    prov = opt("--provider", "claude")
     if argv[0] == "avaliar":
-        r = avaliar(argv[1], n)
+        r = avaliar(argv[1], n, provider=prov, modelo=opt("--modelo"))
         print(json.dumps({k: v for k, v in r.items() if k != "pares"}, ensure_ascii=False, indent=1))
         return 0 if r["passa"] else 1
     refazer = tuple(x for x in (opt("--refazer", "") or "").split(",") if x)
-    return rodar(argv[1], argv[2], modelo=opt("--modelo", L.MODELO_PADRAO), teto_tokens=int(opt("--teto-tokens", 8_000_000)), n=n, so=opt("--so"), refazer=refazer)
+    return rodar(argv[1], argv[2], modelo=opt("--modelo", L.MODELO_PADRAO), teto_tokens=int(opt("--teto-tokens", 8_000_000)), n=n, so=opt("--so"), refazer=refazer, provider=prov, workers=int(opt("--workers", 1)))
 
 
 if __name__ == "__main__":

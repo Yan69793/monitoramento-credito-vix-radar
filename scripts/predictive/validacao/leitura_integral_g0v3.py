@@ -134,7 +134,7 @@ def fatias(man_item, meta, txt_dir, teto=TETO_FATIA, transcritos=None):
     return out, sem_texto
 
 
-def transcrever_sem_texto(man_item, meta, docs_dir, saida_dir, modelo, registro_path):
+def transcrever_sem_texto(man_item, meta, docs_dir, saida_dir, modelo, registro_path, provider="claude"):
     """Renderiza e transcreve todo PDF do dia/180d sem texto extraivel (ate MAX_PAGINAS_RENDER_DOC paginas, declarado)."""
     txt_dir = os.path.join(docs_dir, "TXT")
     out, log = {}, []
@@ -155,7 +155,7 @@ def transcrever_sem_texto(man_item, meta, docs_dir, saida_dir, modelo, registro_
         a = 1
         while a <= teto_pag:
             b = min(teto_pag, a + RO.MAX_PAGINAS_RENDER - 1)
-            texto, st = RO.renderizar_e_transcrever(p, "%d-%d" % (a, b), docs_dir, saida_dir, modelo, registro_path)
+            texto, st = RO.renderizar_e_transcrever(p, "%d-%d" % (a, b), docs_dir, saida_dir, modelo, registro_path, provider=provider)
             log.append({"protocolo": p, "paginas": [a, b], "status": st})
             if texto is None:
                 break
@@ -213,7 +213,7 @@ def _cache_dir(saida_dir, iid):
     return d
 
 
-def rotular_integral(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MODELO_PADRAO, dry_run=False, guia=None):
+def rotular_integral(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MODELO_PADRAO, dry_run=False, guia=None, provider="claude"):
     guia = guia or RO.guia_v3()
     txt_dir = os.path.join(docs_dir, "TXT")
     meta = RO.meta_de(man_item, docs_meta)
@@ -221,11 +221,11 @@ def rotular_integral(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MO
     registro_path = os.path.join(saida_dir, "chamadas.jsonl")
     prov_n2 = os.path.join(saida_dir, "proveniencia_nivel2.jsonl")
     os.makedirs(saida_dir, exist_ok=True)
-    tokens = {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0}
+    tokens = {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0, "custo_usd": 0.0, "sem_usage_input": 0, "sem_usage_output": 0}
     resultado = {"id": item["id"], "modo": "integral_fatiada", "versao_executor": VERSAO_EXECUTOR, "protocolo_guia": "G0-v3",
-                 "sha256_bloco_v3": guia[2]["sha256_v3"], "modelo": modelo,
+                 "sha256_bloco_v3": guia[2]["sha256_v3"], "modelo": modelo, "provider": provider,
                  "inicio_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
-    transcritos, log_render = ({}, []) if dry_run else transcrever_sem_texto(man_item, meta, docs_dir, saida_dir, modelo, registro_path)
+    transcritos, log_render = ({}, []) if dry_run else transcrever_sem_texto(man_item, meta, docs_dir, saida_dir, modelo, registro_path, provider=provider)
     fts, sem_texto = fatias(man_item, meta, txt_dir, transcritos=transcritos)
     resultado.update({"n_fatias": len(fts), "chars_fatias": sum(len(f) for f in fts), "docs_sem_texto": len(sem_texto),
                       "transcritos": sorted(transcritos), "log_render": log_render, "sha256_fatias": [L.sha256_texto(f) for f in fts]})
@@ -238,14 +238,18 @@ def rotular_integral(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MO
         cf = os.path.join(cache, "fatia%03d.json" % k)
         h = L.sha256_texto(f)
         if os.path.exists(cf):
-            c = json.load(open(cf, encoding="utf-8"))
-            if c.get("sha256_fatia") == h:
+            try:
+                c = json.load(open(cf, encoding="utf-8"))
+            except (ValueError, OSError):  # cache truncado por interrupcao: conta como ausente e e refeito
+                c = {}
+            # cache so vale para o MESMO modelo (cache antigo sem campo = padrao Claude): leitor novo nunca herda fatos de outro
+            if c.get("sha256_fatia") == h and c.get("modelo", L.MODELO_PADRAO) == modelo:
                 fatos += c["fatos"]
                 for kk in tokens:
                     tokens[kk] += 0  # tokens da fatia ja contados na execucao anterior (registro em chamadas.jsonl)
                 continue
         prompt = INSTRUCAO_FATIA.format(cnpj=item["cnpj"], data=item["data"]) + "\n\n=== FATIA %d/%d ===\n" % (k, len(fts)) + f
-        r = L.chamar_claude(prompt, SISTEMA_FATIA, ESQUEMA_FATIA, modelo)
+        r = L.chamar(prompt, SISTEMA_FATIA, ESQUEMA_FATIA, provider=provider, modelo=modelo)
         r.update({"finalidade": "fatia_integral", "id": item["id"], "fatia": k, "de": len(fts), "sha256_fatia": h})
         L.registrar(registro_path, r)
         for kk in tokens:
@@ -259,14 +263,16 @@ def rotular_integral(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MO
         for ft in (r["structured"] or {}).get("fatos") or []:
             ft["fatia"] = k
             novos.append(ft)
-        with open(cf, "w", encoding="utf-8", newline="\n") as fh:
-            json.dump({"sha256_fatia": h, "fatos": novos, "tokens": r["usage"]}, fh, ensure_ascii=False)
+        tmp = cf + ".tmp"  # gravacao atomica: interrupcao no meio nunca deixa cache truncado no lugar do valido
+        with open(tmp, "w", encoding="utf-8", newline="\n") as fh:
+            json.dump({"sha256_fatia": h, "modelo": modelo, "provider": provider, "fatos": novos, "tokens": r["usage"]}, fh, ensure_ascii=False)
+        os.replace(tmp, cf)
         fatos += novos
     servidos, rodadas = [], []
     for rodada in range(R.RODADAS + 1):
         prompt = prompt_final(item, man_item, meta, txt_dir, fatos, sem_texto, guia, transcritos, servidos, rodada)
         esquema = RO.ESQUEMA if rodada < R.RODADAS else RO.ESQUEMA_SO_ROTULO
-        r = L.chamar_claude(prompt, RO.SISTEMA, esquema, modelo)
+        r = L.chamar(prompt, RO.SISTEMA, esquema, provider=provider, modelo=modelo)
         r.update({"finalidade": "rotulo_integral", "id": item["id"], "rodada": rodada, "n_fatos": len(fatos)})
         L.registrar(registro_path, r)
         for kk in tokens:
@@ -278,7 +284,7 @@ def rotular_integral(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MO
             return resultado
         s = r["structured"] or {}
         if rodada < R.RODADAS and s.get("acao") == "pedir_paginas" and s.get("pedidos"):
-            texto, log, rlog = RO.servir_pedidos(s["pedidos"], perm, meta, docs_dir, saida_dir, modelo, registro_path, prov_n2)
+            texto, log, rlog = RO.servir_pedidos(s["pedidos"], perm, meta, docs_dir, saida_dir, modelo, registro_path, prov_n2, provider=provider)
             rodadas.append({"rodada": rodada, "pedidos": s["pedidos"], "servido": log, "render": rlog,
                             "sha256_servido": L.sha256_texto(texto), "chars_servido": len(texto)})
             servidos.append("--- rodada %d ---\n%s" % (rodada + 1, texto or "(nada servido)"))

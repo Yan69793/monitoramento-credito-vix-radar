@@ -95,12 +95,22 @@ def h5(precos, versoes_dfp, selic, t):
         return None, None
     F = pc + 0.5 * pnc
     lim = t - timedelta(days=1)
-    precos = [(x[0], x[1], x[2] if len(x) > 2 else x[1]) for x in precos]
-    # Serie parada nao mede nada: acao suspensa ou que saiu da bolsa tinha o H5 calculado com preco de anos atras (Oi, com
-    # cotacao so ate 2023, saia como H5=1 em 2026). Ultimo pregao ate T-1 precisa estar a no maximo PRECO_MAX_IDADE_DIAS.
-    ult = max((d for d, _, _ in precos if d <= lim), default=None)
-    if ult is None or (lim - ult).days > PRECO_MAX_IDADE_DIAS:
+    # `precos` e uma serie (lista de tuplas) ou uma lista de series, uma por ticker do emissor (ELET6 e AXIA3 da Eletrobras,
+    # por exemplo). Serie parada nao mede nada: acao suspensa ou que saiu da bolsa tinha o H5 calculado com preco de anos
+    # atras (Oi, cotacao so ate 2023, saia como H5=1 em 2026). Vale a serie cujo ultimo pregao ate T-1 esta a no maximo
+    # PRECO_MAX_IDADE_DIAS e que tem mais pregoes ate T-1; o ticker e escolhido em cada T, nao uma vez para sempre.
+    series = [precos] if isinstance(precos[0], tuple) else list(precos)
+    melhor = None
+    for sr in series:
+        sr = [(x[0], x[1], x[2] if len(x) > 2 else x[1]) for x in sr]
+        ate = [x for x in sr if x[0] <= lim]
+        if not ate or (lim - ate[-1][0]).days > PRECO_MAX_IDADE_DIAS:
+            continue
+        if melhor is None or len(ate) > melhor[0]:
+            melhor = (len(ate), sr)
+    if melhor is None:
         return None, None
+    precos = melhor[1]
     fechos = [p for d, p, _ in precos if d <= lim][-253:]
     if len(fechos) < 121:
         return None, None

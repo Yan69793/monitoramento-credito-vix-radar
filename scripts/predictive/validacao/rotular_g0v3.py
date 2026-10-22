@@ -168,9 +168,18 @@ def baixar_sob_pedido(p, meta_p, docs_dir, prov_path):
     return reg
 
 
-def renderizar_e_transcrever(p, paginas, docs_dir, saida_dir, modelo, registro_path):
+def transcritor_de(provider, modelo):
+    """Quem transcreve pagina escaneada para este leitor. OpenRouter: o proprio modelo, por imagem no corpo da requisicao.
+    Qualquer outro leitor: Claude com Read restrito (comportamento anterior; o modelo so vale se for Claude)."""
+    if provider == "openrouter":
+        return "openrouter", modelo
+    return "claude", modelo if str(modelo or "").lower().startswith("claude") else L.MODELO_PADRAO
+
+
+def renderizar_e_transcrever(p, paginas, docs_dir, saida_dir, modelo, registro_path, provider="claude"):
     """Documento sem texto extraivel: renderiza as paginas pedidas (PyMuPDF) e pede transcricao literal ao modelo
-    com Read restrito ao diretorio. Devolve o texto transcrito (ou None) e grava TXT_RENDER/<p>.txt."""
+    (Claude com Read restrito ao diretorio, ou modelo multimodal do OpenRouter com as imagens no corpo).
+    Transcricao ja existente em TXT_RENDER e reaproveitada. Devolve o texto transcrito (ou None)."""
     pdf = os.path.join(docs_dir, "DOCS", "%s.pdf" % p)
     if not os.path.exists(pdf):
         return None, "nao_renderizavel_nao_pdf"
@@ -199,13 +208,24 @@ def renderizar_e_transcrever(p, paginas, docs_dir, saida_dir, modelo, registro_p
             doc[k - 1].get_pixmap(dpi=130).save(f)
         arquivos.append(f)
     a, b = faltam[0], faltam[-1]
-    prompt = ("Transcreva LITERALMENTE, pagina a pagina, o texto das imagens abaixo (documento escaneado da CVM), abrindo cada "
-              "arquivo pelo caminho ABSOLUTO indicado com a ferramenta Read. Nao resuma, nao interprete, nao complete palavras "
-              "ilegiveis (marque [ilegivel]). Comece cada pagina com uma linha '=== PAGINA n ===' (n = numero da pagina no documento).\n"
-              + "\n".join("pagina %d: %s" % (k, f) for k, f in zip(faltam, arquivos)))
-    r = L.chamar_claude(prompt, "Voce transcreve documentos escaneados literalmente. Use a ferramenta Read para abrir cada imagem pelo caminho absoluto listado.",
-                        None, modelo, ferramentas="Read", add_dir=rdir)
-    r.update({"finalidade": "transcricao_renderizada", "protocolo": p, "paginas": [a, b]})
+    quem, mod_t = transcritor_de(provider, modelo)
+    if quem == "openrouter":
+        prompt = ("Transcreva LITERALMENTE, pagina a pagina, o texto das imagens a seguir (documento escaneado da CVM), na ordem "
+                  "em que aparecem. Nao resuma, nao interprete, nao complete palavras ilegiveis (marque [ilegivel]). Comece cada "
+                  "pagina com uma linha '=== PAGINA n ===', com n = numero da pagina no documento: "
+                  + ", ".join("imagem %d = pagina %d" % (i, k) for i, k in enumerate(faltam, 1)) + ".")
+        r = L.chamar_openrouter_imagens(prompt, "Voce transcreve documentos escaneados literalmente, sem acrescentar nada.", arquivos, mod_t)
+    else:
+        prompt = ("Transcreva LITERALMENTE, pagina a pagina, o texto das imagens abaixo (documento escaneado da CVM), abrindo cada "
+                  "arquivo pelo caminho ABSOLUTO indicado com a ferramenta Read. Nao resuma, nao interprete, nao complete palavras "
+                  "ilegiveis (marque [ilegivel]). Comece cada pagina com uma linha '=== PAGINA n ===' (n = numero da pagina no documento).\n"
+                  + "\n".join("pagina %d: %s" % (k, f) for k, f in zip(faltam, arquivos)))
+        r = L.chamar_claude(prompt, "Voce transcreve documentos escaneados literalmente. Use a ferramenta Read para abrir cada imagem pelo caminho absoluto listado.",
+                            None, mod_t, ferramentas="Read", add_dir=rdir)
+    r.update({"finalidade": "transcricao_renderizada", "protocolo": p, "paginas": [a, b], "transcritor": quem})
+    if not r["ok"] and r.get("classe") in ("limite", "auth"):
+        L.registrar(registro_path, r)
+        raise L.LimiteDeCota("%s: %s" % (r.get("classe"), r.get("erro")))
     L.registrar(registro_path, r)
     txt = r.get("result") or ""
     if not r["ok"] or "=== PAGINA" not in txt:
@@ -273,7 +293,7 @@ def verificar_rotulo(rot, docs_dir):
     return falhas
 
 
-def servir_pedidos(pedidos, perm, meta, docs_dir, saida_dir, modelo, registro_path, prov_n2):
+def servir_pedidos(pedidos, perm, meta, docs_dir, saida_dir, modelo, registro_path, prov_n2, provider="claude"):
     """Nivel 2: paginas de documentos do indice. Baixa sob pedido e renderiza/transcreve o que nao tem texto."""
     txt_dir = os.path.join(docs_dir, "TXT")
     render_log = []
@@ -285,7 +305,7 @@ def servir_pedidos(pedidos, perm, meta, docs_dir, saida_dir, modelo, registro_pa
             baixar_sob_pedido(p, meta[p], docs_dir, prov_n2)
         t = R.ler_txt(txt_dir, p)
         if t is not None and len(t.strip()) < 80:
-            _, st = renderizar_e_transcrever(p, ped.get("paginas"), docs_dir, saida_dir, modelo, registro_path)
+            _, st = renderizar_e_transcrever(p, ped.get("paginas"), docs_dir, saida_dir, modelo, registro_path, provider=provider)
             render_log.append({"protocolo": p, "paginas": ped.get("paginas"), "status": st})
     # TXT e o texto extraido e nao e sobrescrito. Transcricao renderizada vive em TXT_RENDER e e servida
     # numa segunda passagem, so para os pedidos que o TXT devolveu como sem_texto.
@@ -310,7 +330,7 @@ def rotular(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MODELO_PADR
     registro_path = os.path.join(saida_dir, "chamadas.jsonl")
     prov_n2 = os.path.join(saida_dir, "proveniencia_nivel2.jsonl")
     os.makedirs(saida_dir, exist_ok=True)
-    servidos, rodadas, tokens = [], [], {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0}
+    servidos, rodadas, tokens = [], [], {"input": 0, "output": 0, "cache_read": 0, "cache_creation": 0, "custo_usd": 0.0, "sem_usage_input": 0, "sem_usage_output": 0}
     resultado = {"id": item["id"], "modo": "progressiva", "versao_executor": VERSAO_EXECUTOR, "protocolo_guia": "G0-v3", "sha256_bloco_v3": guia[2]["sha256_v3"],
                  "sha256_recuperar": guia[2]["sha256_recuperar"], "modelo": modelo, "provider": provider,
                  "inicio_utc": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
@@ -335,7 +355,7 @@ def rotular(item, man_item, docs_meta, docs_dir, saida_dir, modelo=L.MODELO_PADR
             return resultado
         s = r["structured"] or {}
         if rodada < R.RODADAS and s.get("acao") == "pedir_paginas" and s.get("pedidos"):
-            texto, log, rlog = servir_pedidos(s["pedidos"], perm, meta, docs_dir, saida_dir, modelo, registro_path, prov_n2)
+            texto, log, rlog = servir_pedidos(s["pedidos"], perm, meta, docs_dir, saida_dir, modelo, registro_path, prov_n2, provider=provider)
             rodadas.append({"rodada": rodada, "pedidos": s["pedidos"], "servido": log, "render": rlog,
                             "sha256_servido": L.sha256_texto(texto), "chars_servido": len(texto)})
             servidos.append("--- rodada %d ---\n%s" % (rodada + 1, texto or "(nada servido)"))

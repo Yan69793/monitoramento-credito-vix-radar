@@ -289,15 +289,16 @@ def ajustar_capital(serie):
 
 
 def precos_por_cnpj(precos_ticker, tickers_cnpj):
-    """COTAHIST e indexado por ticker; o pipeline consulta por CNPJ. Para cada CNPJ, o ticker com mais pregoes
-    (o mais liquido) entre os declarados no FCA, ajustado por eventos de capital.
-    Devolve ({cnpj: [(data, fech_ajustado, fech_bruto)]}, {cnpj: ticker})."""
+    """COTAHIST e indexado por ticker; o pipeline consulta por CNPJ. Para cada CNPJ, TODAS as series dos tickers declarados
+    no FCA, ajustadas por eventos de capital, da mais longa para a mais curta; features.h5 escolhe a vigente em cada T
+    (troca de ticker, como ELET6 para AXIA3, nao pode deixar o emissor sem preco nem preso a um ticker parado).
+    Devolve ({cnpj: [serie]}, {cnpj: [tickers]}); serie = [(data, fech_ajustado, fech_bruto)]."""
     out, escolha = {}, {}
     for c, cods in tickers_cnpj.items():
-        cand = [(len(precos_ticker[k]), k) for k in cods if k in precos_ticker]
+        cand = sorted(((len(precos_ticker[k]), k) for k in cods if k in precos_ticker), reverse=True)
         if cand:
-            n, k = max(cand)
-            out[c], escolha[c] = ajustar_capital(precos_ticker[k]), k
+            out[c] = [ajustar_capital(precos_ticker[k]) for _, k in cand]
+            escolha[c] = [k for _, k in cand]
     return out, escolha
 
 

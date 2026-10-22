@@ -138,6 +138,22 @@ class Features(unittest.TestCase):
         self.assertIsNotNone(dd)
         self.assertEqual(F.h5(precos, vs, sel, fim + timedelta(days=400)), (None, None))
 
+    def test_h5_escolhe_o_ticker_vigente_em_cada_T(self):
+        """Duas series do mesmo emissor: a antiga (mais longa, parou) e a nova (curta, em dia). Antes da troca vale a antiga,
+        depois da troca vale a nova; sem nenhuma em dia, None."""
+        troca = date(2025, 11, 7)
+        antiga = [(troca - timedelta(days=500) + timedelta(days=k), 10.0 * math.exp(0.001 * k + 0.02 * math.sin(k))) for k in range(500)]
+        nova = [(troca + timedelta(days=1 + k), 12.0 * math.exp(0.0005 * k + 0.02 * math.cos(k))) for k in range(300)]
+        vs = [{"dt_refer": date(2024, 12, 31), "versao": 1, "dt_receb": date(2025, 3, 1), "parecer_enfase": False,
+               "acoes": {"integralizadas": 1e6, "tesouraria": 0}, "contas": {"2.01": 2e6, "2.02": 2e6}}]
+        sel = {date(2021, 1, 1): 0.1}
+        antes, depois = date(2025, 11, 10), date(2026, 8, 1)
+        self.assertIsNotNone(F.h5([antiga, nova], vs, sel, antes)[0])           # ticker antigo em dia
+        self.assertIsNone(F.h5([nova], vs, sel, antes)[0])                      # so a nova: ainda nao existia
+        self.assertIsNotNone(F.h5([antiga, nova], vs, sel, depois)[0])          # a nova assume
+        self.assertIsNone(F.h5([antiga], vs, sel, depois)[0])                   # so a antiga: parada, nao mede
+        self.assertEqual(F.h5([antiga, nova], vs, sel, depois), F.h5(nova, vs, sel, depois))  # = usar a nova sozinha
+
     def test_h5_desdobramento_nao_gera_alerta(self):
         """Desdobramento 5:1 depois da referencia do BPP: DD igual ao da serie sem evento (duas pontas: sem ajuste, cai)."""
         t = date(2021, 6, 30)

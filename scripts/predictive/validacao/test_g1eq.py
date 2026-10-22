@@ -431,6 +431,56 @@ class IsolamentoEGuarda(unittest.TestCase):
         it = GQ.itens_g1eq(etapa)
         self.assertEqual([x["id"] for x in it], ["i%04d" % i for i in range(1, 31)])
 
+class ParaleloEConfigOpenRouter(unittest.TestCase):
+    """16/10: raciocinio baixo com teto de saida, 1a tentativa curta, e G1-eq em paralelo."""
+
+    def test_config_openrouter_raciocinio_baixo_e_prazos(self):
+        r = L.OPENROUTER_ROTEAMENTO
+        self.assertEqual(r["reasoning"], {"effort": "low"})
+        self.assertGreater(r["max_tokens"], 0)
+        self.assertEqual(r["provider"]["sort"], "price")
+        self.assertLess(L.OPENROUTER_PRAZOS_S[0], L.OPENROUTER_PRAZOS_S[1])
+        self.assertEqual(L.OPENROUTER_FALLBACK["provider"]["sort"], "throughput")
+
+    def _rodar(self, falso, workers, ids=("i0001", "i0002", "i0003", "i0004")):
+        import shutil
+        from unittest import mock
+        d = tempfile.mkdtemp()
+        try:
+            det = [{"id": i, "docs": 1, "faltam": 0, "pronto": True} for i in ids]
+            with mock.patch.object(GQ.G3, "estado", return_value={"ok": True, "motivos": []}), \
+                 mock.patch.object(GQ, "prontidao", return_value={"detalhe": det}), \
+                 mock.patch.object(GQ, "itens_g1eq", return_value=[{"id": i} for i in ids]), \
+                 mock.patch.object(GQ.RO, "carregar", return_value=({i: {"id": i} for i in ids}, {i: {} for i in ids}, {})), \
+                 mock.patch.object(GQ.RO, "guia_v3", return_value=None), \
+                 mock.patch.object(GQ.RO, "rotular", side_effect=falso), \
+                 mock.patch.object(GQ.LI, "rotular_integral", side_effect=falso):
+                rc = GQ.rodar(d, d, modelo="deepseek/x", provider="openrouter", workers=workers)
+            feitos = sorted(os.listdir(os.path.join(GQ.saida_dir(d, "openrouter", "deepseek/x"), "progressiva"))) \
+                if os.path.isdir(os.path.join(GQ.saida_dir(d, "openrouter", "deepseek/x"), "progressiva")) else []
+            return rc, feitos
+        finally:
+            shutil.rmtree(d, ignore_errors=True)
+
+    def test_todas_as_tarefas_rodam_em_paralelo(self):
+        def ok(item, *a, **k):
+            return {"id": item["id"], "status": "rotulado", "rotulo": {"classe": "nao_evento"}, "tokens": {"input": 10, "output": 5, "cache_read": 0, "cache_creation": 0}}
+        rc, feitos = self._rodar(ok, workers=4)
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(feitos), 4)
+        self.assertFalse([f for f in feitos if f.endswith(".tmp")])
+
+    def test_credito_acabando_para_o_lote_com_exit_87(self):
+        chamadas = []
+
+        def sem_credito(item, *a, **k):
+            chamadas.append(item["id"])
+            raise L.LimiteDeCota("limite: HTTP 402")
+        rc, feitos = self._rodar(sem_credito, workers=1)
+        self.assertEqual(rc, GQ.EXIT_COTA)
+        self.assertEqual(feitos, [])
+        self.assertEqual(len(chamadas), 1)  # parou na primeira, sem gastar nas outras
+
 
 if __name__ == "__main__":
     unittest.main()
