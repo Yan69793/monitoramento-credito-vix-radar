@@ -1,5 +1,13 @@
 # Estado do projeto — VIX Radar
 
+## 22/10/2026 03:00, cobertura diaria ATIVA e texto dos PDFs da CVM LIGADO (autorizado pelo operador); RECHECKLIQUIDO1 commitado local
+
+- `VIXRADAR_COBERTURA_DIARIA=1` (User) pelo `cobertura-diaria-ativacao.ps1`: recibo 9/9 suites, lint e check-claude-free exit 0. Os emissores com noticia nova entram na fila no mesmo dia. Custo aceito pelo operador, cerca de 23 x 112 mil tokens/dia na assinatura. Reverter: `-Acao Reverter` (registro em `BACKUPS\operacional\vix-radar\cobdiaria-ativacao-20261022-025918`). Primeira execucao com o modo ativo: Matinal 22/10 10:06.
+- `VIXRADAR_CVM_PDF_TEXTO=1` (User), CVMPDF1. Codigo da lib commitado local em `0fb3354` (so a lib, 2 testes e 8 linhas do motor; sem push). Reverter: apagar a variavel (registro em `BACKUPS\operacional\vix-radar\cvmpdf-ativacao-20261022-025925`).
+- A validacao reprovava por uma trava orfa da Noturna de 19/10 (PID 24936 morto). Movida, sem apagar, para `BACKUPS\operacional\vix-radar\lock-orfao-noturno-20261019-20261022-025839`.
+- Commit local `4c0586a` (RECHECKLIQUIDO1): pendentes de recheck contam pelo estado final do emissor. Em 21/10 eram 4 contados e 1 real (Itausa). Sem push. Detalhe na nota 130, rodada 4.
+- Nao validado em rotina real: conferir no log da Matinal de 22/10 a linha `COBDIARIA_UNIVERSO` com `modo=ativo` e `texto_extraido` nos documentos da CVM.
+
 ## 20/10/2026 01:15, EVOLUCAO2 em producao (Worker v4.9.277) e frontend v202.81 (mobile v202.80 + SENHAMIN8)
 
 Worker: action `evolucao_coletar` (marco 2, nota 129) deriva propostas de verificacao esgotada; padrao e simulacao, `aplicar:true` grava so no livro. Suite 63 arquivos 640/640, health `ok:true` `versao v4.9.277`, 403 sem credencial em producao. Nenhuma coleta executada. Rollback `main = "v4.9.276.js"`. Pages: v202.81 publicado pelo `deploy-pages.ps1`, com o redesign mobile da v202.80 (guarda vx-mobile 56/56) e o placeholder de senha 8 caracteres conferido no HTML de producao. Pendente: Safari real no iPhone.
