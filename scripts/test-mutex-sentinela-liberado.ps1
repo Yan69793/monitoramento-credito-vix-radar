@@ -46,5 +46,24 @@ $temAntigo = $fonte.Contains('if ($__sentMutex.WaitOne(0)) { $__sentMutex.Releas
 if ($temNovo -and -not $temAntigo) { Write-Output 'OK estatico: run_vixradar_varredura.ps1 usa o padrao novo e nao tem o antigo' }
 else { Write-Output ('FALHA estatico: novo=' + $temNovo + ' antigo=' + $temAntigo); $falhas++ }
 
+function Confere($nome, $cond) {
+    if ($cond) { Write-Output ('OK ' + $nome) } else { Write-Output ('FALHA ' + $nome); $script:falhas++ }
+}
+# Guarda geral (auditoria 22/10, correcao 1): nenhum script de rotina pode repetir o padrao que vazou o mutex,
+# isto e, adquirir em laco `while (-not $x.WaitOne(0))` e logo depois chamar `if ($x.WaitOne(0))` de novo.
+$rxVazado = '(?s)while\s*\(\s*-not\s*\$(\w+)\.WaitOne\(\s*0\s*\)\s*\)\s*\{.{0,1200}?\}\s*if\s*\(\s*\$\1\.WaitOne\(\s*0\s*\)\s*\)'
+$suspeitos = @()
+foreach ($s in Get-ChildItem -LiteralPath $aqui -Filter '*.ps1' -File) {
+    if ($s.Name -eq 'test-mutex-sentinela-liberado.ps1') { continue }
+    $txt = Get-Content -LiteralPath $s.FullName -Raw -Encoding UTF8
+    if ($txt -match $rxVazado) { $suspeitos += $s.Name }
+}
+Confere ('guarda geral: nenhum script repete o padrao de mutex vazado (' + ($suspeitos -join ',') + ')') ($suspeitos.Count -eq 0)
+# E a guarda reprova o padrao ruim (ponta ruim da propria guarda).
+$ruimTxt = 'while (-not $mx.WaitOne(0)) { Start-Sleep 1 }' + "`n" + 'if ($mx.WaitOne(0)) { $mx.ReleaseMutex() }'
+Confere 'guarda geral reprova o padrao antigo' ($ruimTxt -match $rxVazado)
+$bomTxt = '$ad = $false' + "`n" + 'while (-not ($ad = $mx.WaitOne(0))) { Start-Sleep 1 }' + "`n" + 'if ($ad) { $mx.ReleaseMutex() }'
+Confere 'guarda geral aceita o padrao novo' (-not ($bomTxt -match $rxVazado))
+
 Write-Output ('RESULTADO: falhas=' + $falhas)
 exit $falhas

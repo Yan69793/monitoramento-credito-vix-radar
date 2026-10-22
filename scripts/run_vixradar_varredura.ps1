@@ -252,6 +252,11 @@ foreach ($fn in @('Get-VixIdempotenciaEntregas', 'Get-VixReconciliacaoUniverso',
 # CVMPDF1 (2026-10-21): texto legivel dos PDFs do ENET extraido localmente. Opcional e desligado por
 # padrao (VIXRADAR_CVM_PDF_TEXTO=1 liga); lib ausente ou qualquer falha deixa a rotina como era.
 if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'lib\vixradar-cvm-pdf.ps1')) { . (Join-Path $PSScriptRoot 'lib\vixradar-cvm-pdf.ps1') }
+# PROGRESSO1 (2026-10-21): checkpoint por lote (jsonl append-only) e deteccao de lote abandonado. Opcional.
+$script:VixProgressoPath = $null
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'lib\vixradar-progresso.ps1')) { . (Join-Path $PSScriptRoot 'lib\vixradar-progresso.ps1') }
+# PROVENIENCIA1 (2026-10-21): provedor e horario reais nas fontes_consultadas. Opcional como o CVMPDF1.
+if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'lib\vixradar-proveniencia.ps1')) { . (Join-Path $PSScriptRoot 'lib\vixradar-proveniencia.ps1') }
 # COBDIARIA1 (2026-10-14): controle diario de verificacao por emissor (ledger com evidencia do dia,
 # fechamento com incidente). Duas fases, por decisao de seguranca: SOMBRA (padrao) so grava o
 # ledger e o relatorio local; ATIVO (VIXRADAR_COBERTURA_DIARIA=1) tambem poe o obrigatorio do dia
@@ -583,6 +588,7 @@ function Get-VixCodexUsageProbe($Linhas) {
 
 function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores = 0, [string]$Tier = '', [string]$ProviderOverride = '', [string]$PromptAppend = '') {
     if (-not $Tier) { $Tier = $Perfil.tier }
+    $__invIniUtc = (Get-Date).ToUniversalTime()   # PROVENIENCIA2: janela medida DESTA invocacao
     # Fallback cross-provider opt-in. O provider global continua sendo OpenRouter durante
     # toda a rotina. A substituicao vale apenas para esta invocacao recursiva, quando o
     # OpenRouter devolveu 402 de credito. Nunca habilitar a chave paga por este caminho.
@@ -914,7 +920,13 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
                         # de fallback). Simetrico ao FALLBACK_ANTHROPIC ja existente no ramo openrouter
                         # (402 de credito -> assinatura), agora no sentido inverso.
                         $__claudeFrDesviado = $false
-                        if ((Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue) -and -not $providerOverrideAtivo) {
+                        # CAPACIDADE2: com SEM_TETO o cap de tokens some; o fallback PAGO so sai se o teto normal do dia
+                        # ainda tem margem. Sem isso um lote desviado para o OpenRouter ficaria sem limite.
+                        $__pagoOk = Test-VixFallbackPagoPermitido (Get-VixCustoDia $LogDir $DateTag $custoCfg) ([bool]$script:VixSemTeto)
+                        if (-not $__pagoOk.Permitido -and (Get-VixClaudeFallbackOpenRouterHabilitado)) {
+                            Write-Log ('FALLBACK_OPENROUTER_BLOQUEADO: ' + $__pagoOk.Motivo + '. SEM_TETO vale so para a assinatura e nunca libera consumo pago; lote segue para o fail-closed.')
+                        }
+                        if ($__pagoOk.Permitido -and (Get-VixClaudeFallbackOpenRouterHabilitado) -and $script:VixLibOpenRouterOk -and (Get-Command 'Test-VixOpenRouterPronto' -ErrorAction SilentlyContinue) -and -not $providerOverrideAtivo) {
                             $__claudeFrBoot = Test-VixOpenRouterPronto
                             if ($__claudeFrBoot.ok) {
                                 Write-Log ('FALLBACK_OPENROUTER: ' + $acao.Motivo + '. Transferindo somente este lote para openrouter (VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter).')
@@ -1003,7 +1015,7 @@ function Invoke-ClaudeBatch([string]$promptPath, [string]$Model, [int]$Emissores
     if ($providerOverrideAtivo) {
         [Environment]::SetEnvironmentVariable('VIXRADAR_LLM_PROVIDER', $providerProcessAnterior, 'Process')
     }
-    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; UsoMensuravel = $usoMensuravel; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote; CotaEsgotada = $cotaEsgotadaSemFallback; CotaEsgotadaMotivo = $cotaEsgotadaMotivo; ProviderFalhou = $providerFalhou; ProviderClasse = $providerClasse; ProviderSemPerspectiva = $providerSemPerspectiva; ConsumoDesconhecidoFalha = $consumoDesconhecidoFalha }
+    return @{ Output = $textOut; ExitCode = $exitCode; Tokens = $tokens; Parcelas = $parcelas; UsoMensuravel = $usoMensuravel; AuthFailure = $authFail; Escalou = $escalou; Degradados402 = $degradado402Lote; CotaEsgotada = $cotaEsgotadaSemFallback; CotaEsgotadaMotivo = $cotaEsgotadaMotivo; ProviderFalhou = $providerFalhou; ProviderClasse = $providerClasse; ProviderSemPerspectiva = $providerSemPerspectiva; ConsumoDesconhecidoFalha = $consumoDesconhecidoFalha; ProviderExecutado = $providerDaInvocacao; IniUtc = $__invIniUtc; FimUtc = (Get-Date).ToUniversalTime() }
 }
 
 function Get-NomeNormalizado([string]$s) {
@@ -1226,6 +1238,8 @@ function Get-VixCoberturaProviderCapability([string]$Provedor) {
     # D2: allowlist de capability, nao uma excecao generica para campo HTTP nulo.
     $allowlist = @{
         'openrouter' = [pscustomobject]@{ requer_http = $true; contrato = 'cobertura_http_provider_openrouter' }
+        # PROVENIENCIA1: provider claude-subscription deixou de ser rotulado como openrouter. Exige HTTP 2xx.
+        'claude' = [pscustomobject]@{ requer_http = $true; contrato = 'cobertura_http_provider_claude' }
         'codex' = [pscustomobject]@{ requer_http = $false; contrato = 'cobertura_parcial_provider_codex' }
         # COBERTURA-13OUT1: consulta feita pelo ORQUESTRADOR (coletor RSS), HTTP real medido.
         # Exige status_http 2xx como o openrouter; nao e excecao de capability.
@@ -1254,6 +1268,9 @@ function ConvertTo-VixFonteEstrutural($f) {
     if (-not $semHttpPermitido -and -not [int]::TryParse($httpRaw, [ref]$http)) { $out.motivo = 'sem_prova_sem_status_http'; return $out }
     $res = ('' + $f.resultado).Trim()
     $cl = ('' + $f.classificacao).Trim().ToLowerInvariant()
+    # PROVENIENCIA2: fonte do modelo sem prova de consulta (horario fora da janela da invocacao que respondeu,
+    # ou sem janela medida) nao conta como prova. Horario de processamento nunca substitui a consulta.
+    if ($null -ne $f.PSObject.Properties['_consulta_prova'] -and ('' + $f._consulta_prova) -eq 'sem_prova') { $out.motivo = 'sem_prova_consulta_horario_nao_verificavel'; return $out }
     if (-not $q -or -not $ts -or -not $prov -or -not $res) { $out.motivo = 'sem_prova_campo_vazio'; return $out }
     if ($res -eq 'vazio') { $out.motivo = 'resposta_vazia_anomalia'; return $out }
     $okHttp = ($semHttpPermitido -or ($http -ge 200 -and $http -lt 300))
@@ -1424,14 +1441,14 @@ $instrucaoCobertura
 $instrucaoVeredito
 SAIDA - exatamente estas linhas e nada mais:
 1 linha por emissor: RESULTADO|<empresa exatamente como no JSON, com acentuacao identica>|<objeto resultado em JSON compacto de linha unica>
-Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"...","resultado":"..."}]}
+Formato do objeto resultado: {"classificacao_geral":"CRITICO|RELEVANTE|ECO|NENHUM","sem_eventos":true,"cobertura_nota":"...","eventos":[],"fontes_consultadas":[<um objeto por consulta executada, com TODOS os campos exigidos em COBERTURA acima>]}
 Cada evento em CRITICO/RELEVANTE EXIGE: memo_acontecimento (2-3 frases, o que aconteceu - alimenta o card do usuario E o contexto_historico da rotina de amanha), memo_importancia_credito (por que importa para o credito), memo_monitorar (o que observar a seguir). Sem esses 3 campos preenchidos o evento fica incompleto - nao omitir.
 $linhaBuscas
 Anomalia operacional (opcional, max 1): ANOTA|<frase curta>
 Exemplo literal de saida completa para lote de 2 emissores:
-RESULTADO|Empresa A|{"classificacao_geral":"ECO","sem_eventos":true,"cobertura_nota":"R2 sem sinal de credito na janela.","eventos":[],"fontes_consultadas":[{"rodada":"R2","query":"Empresa A divida rating","resultado":"sem eventos"}]}
-RESULTADO|Empresa B|{"classificacao_geral":"RELEVANTE","sem_eventos":false,"cobertura_nota":"","eventos":[{"classificacao":"RELEVANTE","titulo":"Emissao de debentures","evento":"...","impacto_credito":"...","memo_acontecimento":"Empresa B emitiu R$500mi em debentures em 01/07 para rolagem de divida de curto prazo.","memo_importancia_credito":"Reduz risco de refinanciamento no curto prazo, sem piora de alavancagem.","memo_monitorar":"Prazo e taxa da nova emissao vs divida anterior.","fonte_primaria":"https://exemplo.com/materia-especifica","fonte_tipo":"IMPRENSA","data_evento":"2026-07-01","data_aproximada":false,"tags":["emissao"]}],"fontes_consultadas":[{"rodada":"R2","query":"Empresa B debentures","resultado":"emissao confirmada"},{"rodada":"R6","query":"Empresa B rating","resultado":"sem acao de rating"}]}
-LOTE_RESUMO|buscas=3
+RESULTADO|Empresa A|{"classificacao_geral":"ECO","sem_eventos":true,"cobertura_nota":"<o que as consultas acharam na janela>","eventos":[],"fontes_consultadas":[<itens das familias emissor, divida e fato, no formato de COBERTURA>]}
+RESULTADO|Empresa B|{"classificacao_geral":"RELEVANTE","sem_eventos":false,"cobertura_nota":"","eventos":[{"classificacao":"RELEVANTE","titulo":"Emissao de debentures","evento":"...","impacto_credito":"...","memo_acontecimento":"Empresa B emitiu R$500mi em debentures em 01/07 para rolagem de divida de curto prazo.","memo_importancia_credito":"Reduz risco de refinanciamento no curto prazo, sem piora de alavancagem.","memo_monitorar":"Prazo e taxa da nova emissao vs divida anterior.","fonte_primaria":"https://exemplo.com/materia-especifica","fonte_tipo":"IMPRENSA","data_evento":"2026-07-01","data_aproximada":false,"tags":["emissao"]}],"fontes_consultadas":[<itens das familias emissor, divida e fato, no formato de COBERTURA>]}
+LOTE_RESUMO|buscas=<total real de consultas executadas no lote>
 
 JSON:
 $json
@@ -1599,6 +1616,18 @@ if ($__lockAtual.motivo -like 'LOCK_ORFAO_*' -and $__lockAtual.motivo -ne 'LOCK_
 try {
     ("source=run_vixradar_varredura.ps1`nrotina=$Rotina`npid=$PID`ninicio_utc=" + (Get-Process -Id $PID).StartTime.ToUniversalTime().ToString('o') + "`ndryrun=$DryRun") | Set-Content -Path $LockFile -Encoding UTF8 -ErrorAction Stop
     Write-Log ('LOCK_OK: ' + (Split-Path $LockFile -Leaf) + ' criado com pid e inicio_utc, toque a cada lote')
+    # PROGRESSO1: lote que a instancia anterior deixou em voo (processo morto) vira linha RETOMADA no log.
+    # So registra: quem decide o que analisar continua sendo o plano do Worker (analisado_hoje => SKIP).
+    $script:VixProgressoPath = $null
+    if (-not $DryRun -and (Get-Command Get-VixProgressoPath -ErrorAction SilentlyContinue)) {
+        try {
+            $script:VixProgressoPath = Get-VixProgressoPath $LogDir $RotinaArq $DateTag
+            foreach ($__ab in @(Get-VixProgressoAbandonado $script:VixProgressoPath)) {
+                Write-Log ('RETOMADA|lote_em_voo_abandonado=' + $__ab.lote + '|pid=' + $__ab.pid + '|inicio=' + $__ab.ts + '|emissores=' + (@($__ab.empresas) -join ',') + ' (instancia anterior morreu sem fechar o lote; o plano do Worker decide o que refazer)')
+                $null = Add-VixProgresso -Path $script:VixProgressoPath -Evento 'RETOMADA' -Lote ('' + $__ab.lote) -Empresas @($__ab.empresas) -Extra @{ pid_abandonado = [int]$__ab.pid; inicio_abandonado = ('' + $__ab.ts) }
+            }
+        } catch { Write-Log ('PROGRESSO_ERRO|' + $_.Exception.Message) }
+    }
 } catch {
     Write-Log ('AVISO: nao consegui escrever o lock ' + $LockFile + ' - ' + $_.Exception.Message)
 }
@@ -1784,6 +1813,25 @@ if ($custoDia.circuito_aberto) {
     Write-Log ('CIRCUITO_ABERTO: margem do dia ' + $custoDia.margem + ' abaixo de ' + $custoDia.margem_minima + '. Nenhum lote sera disparado; tudo que nao for SKIP sai como DEFERIDO.')
     $TokenHardCap = 0
     $TokenHardCapEscalada = 0
+}
+# SEMTETO1 (2026-10-16, decisao do operador): com o Claude da assinatura como executor da matinal e
+# da noturna, o teto de tokens deixa de barrar lote. `SEM_TETO=1` em logs\routines\custo-config.json
+# liga; vale SO para claude-subscription (sem custo por token). Codex e OpenRouter seguem com o cap.
+# O modelo continua decidido pela severidade: LIGHT em Haiku, FULL (EWS alto, prioritario,
+# financeiro, escalada) em Sonnet. Cota esgotada da assinatura segue o caminho COTAESGOTADA1.
+$script:VixSemTeto = $false
+# SEVERIDADE1: modelo por severidade (lib/vixradar-profundidade.ps1) so com o Claude da
+# assinatura. Codex e OpenRouter ignoram $job.Model e seguem com os lotes de antes.
+$script:VixRegraSeveridade = $false
+try { $script:VixRegraSeveridade = ((Get-VixLlmProvider) -eq 'claude-subscription') -and -not $script:VixCobFallbackModo } catch { $script:VixRegraSeveridade = $false }
+# CAPACIDADE2: SEM_TETO vale para o provider EFETIVO. Desvio de boot para OpenRouter (pago) nao herda o
+# claude-subscription da env.
+try { $script:VixSemTeto = Test-VixSemTeto -Config $custoCfg -Provider (Get-VixProviderEfetivo (Get-VixLlmProvider) ([bool]$script:VixUsaOpenRouter) ([bool]$script:VixUsaCodex)) } catch { $script:VixSemTeto = $false }
+if ($script:VixSemTeto -and -not $script:VixCobFallbackModo) {
+    $TokenHardCap = [int64]100000000
+    $TokenHardCapEscalada = $TokenHardCap
+    $TokenTarget = $TokenHardCap
+    Write-Log ('SEM_TETO: executor claude-subscription, cap de tokens desligado (cap_efetivo=' + $TokenHardCap + '; circuito_aberto=' + [bool]$custoDia.circuito_aberto + ' ignorado)')
 }
 # COBFALLBACK1: o cap desta execucao e o SALDO do fallback Claude (CLAUDE_FALLBACK_DIA menos o
 # gasto do fallback hoje), nao o TETO_DIA do primario: e outra regua e outro provedor. O circuito
@@ -2471,7 +2519,19 @@ try {
                 Write-Log ('MAX_EMISSORES: -MaxEmissores ' + $MaxEmissores + ' em execucao real: full=' + $fullSelecionados.Count + ' light=' + $lightSelecionados.Count + ' cortados=' + $script:VixMaxEmissoresCortados.Count + ' (saem DEFERIDO motivo=max_emissores)')
             }
         }
-        $jobsFull = New-VixJobsPorTier -Selecionados $fullSelecionados -Tier 'FULL' -Chunk 16 -Model $ModelSonnet -Skill (Join-Path $ScriptsDir 'noturno-batch-sonnet.md') -Ultra $false -Provedor 'claude-sonnet-routine'
+        if ($script:VixRegraSeveridade) {
+            # SEVERIDADE1: a rotacao semanal manda ao lote rapido quem ja foi aprofundado na
+            # semana, inclusive EWS 55 (Oi, GPA, Kora em 16/10 20:42). Severidade CRITICO ou ALTO
+            # nunca fica no lote rapido: sobe para o aprofundamento, que escolhe o Sonnet.
+            $__promov = Select-VixPromocaoSeveridade -Full $fullSelecionados -Light $lightSelecionados
+            if ($__promov.Promovidos.Count -gt 0) {
+                $fullSelecionados = @($__promov.Full); $lightSelecionados = @($__promov.Light)
+                Write-Log ('SEVERIDADE_PROMOCAO: ' + $__promov.Promovidos.Count + ' emissor(es) do lote rapido sobem para o aprofundamento: ' + ($__promov.Promovidos -join ', '))
+            }
+            $jobsFull = New-VixJobsPorSeveridade -Selecionados $fullSelecionados -ModelSonnet $ModelSonnet -ModelHaiku $ModelHaiku -Skill (Join-Path $ScriptsDir 'noturno-batch-sonnet.md') -Provedor 'claude-sonnet-routine'
+        } else {
+            $jobsFull = New-VixJobsPorTier -Selecionados $fullSelecionados -Tier 'FULL' -Chunk 4 -Model $ModelSonnet -Skill (Join-Path $ScriptsDir 'noturno-batch-sonnet.md') -Ultra $false -Provedor 'claude-sonnet-routine'
+        }
         $jobsLight = New-VixJobsPorTier -Selecionados $lightSelecionados -Tier 'LIGHT' -Chunk $Perfil.chunk -Model $ModelHaiku -Skill $Perfil.skill -Ultra ([bool]$Perfil.ultra) -Provedor $Perfil.provedor
         # COBERTURA-13OUT4: so o lote LIGHT e rodada barata. O FULL da rotacao semanal mantem a
         # ferramenta: ele existe para abrir fonte primaria (rotacao por risco da semana), e a
@@ -2518,11 +2578,21 @@ try {
                 Write-Log ('MAX_EMISSORES: -MaxEmissores ' + $MaxEmissores + ' em execucao real: fila=' + $fila.Count + ' cortados=' + $__mxResto.Count + ' (saem DEFERIDO motivo=max_emissores)')
             }
         }
-        foreach ($chunk in (Split-IntoChunks $fila $Perfil.chunk)) {
-            # COBERTURA-13OUT4: a matinal rotula os proprios lotes como FULL, mas com o coletor
-            # ligado ela E a rodada barata dos emissores de maior risco; quem precisa de fonte
-            # primaria volta pela escalada. Por isso o marcador e explicito aqui.
-            $jobs.Add([ordered]@{ Name = $Perfil.tier.ToLower(); Tier = $Perfil.tier; Model = $Perfil.model; Chunk = @($chunk); Skill = $Perfil.skill; Ultra = [bool]$Perfil.ultra; Provedor = $Perfil.provedor; Barato = $true })
+        if ($script:VixRegraSeveridade) {
+            # SEVERIDADE1: a mesma regra da noturna escolhe modelo e tamanho de lote da matinal.
+            # A fila ja vem por prioridade (recheck, pendencias, EWS), e a ordem e preservada
+            # dentro de cada nivel.
+            foreach ($__sj in (New-VixJobsPorSeveridade -Selecionados $fila -ModelSonnet $ModelSonnet -ModelHaiku $ModelHaiku -Skill $Perfil.skill -Provedor $Perfil.provedor)) {
+                $__sj['Barato'] = $true
+                $jobs.Add($__sj)
+            }
+        } else {
+            foreach ($chunk in (Split-IntoChunks $fila $Perfil.chunk)) {
+                # COBERTURA-13OUT4: a matinal rotula os proprios lotes como FULL, mas com o coletor
+                # ligado ela E a rodada barata dos emissores de maior risco; quem precisa de fonte
+                # primaria volta pela escalada. Por isso o marcador e explicito aqui.
+                $jobs.Add([ordered]@{ Name = $Perfil.tier.ToLower(); Tier = $Perfil.tier; Model = $Perfil.model; Chunk = @($chunk); Skill = $Perfil.skill; Ultra = [bool]$Perfil.ultra; Provedor = $Perfil.provedor; Barato = $true })
+            }
         }
     }
     foreach ($job in $jobs) {
@@ -2532,6 +2602,13 @@ try {
             $u = if ($emp.ultima_origem) { $emp.ultima_origem } else { '-' }
             Write-Log ('ALVO ' + $emp.empresa + ' tier_plano=' + $emp.tier + ' tier_aplicado=' + $job.Tier + ' cvm_novos=' + $emp.cvm_novos + ' motivo=' + @($emp.motivos)[0] + ' ews=' + $emp.ews_score + ' ultimo=' + $u + ' h=' + $h)
         }
+    }
+    if ($script:VixRegraSeveridade) {
+        $__sevResumo = @{}
+        foreach ($__sjob in $jobs) { if ($__sjob.Contains('Severidade')) { $__sk = '' + $__sjob.Severidade; if (-not $__sevResumo.ContainsKey($__sk)) { $__sevResumo[$__sk] = @{ lotes = 0; emissores = 0; modelo = '' + $__sjob.Model } }; $__sevResumo[$__sk].lotes++; $__sevResumo[$__sk].emissores += @($__sjob.Chunk).Count } }
+        $__sevTxt = @()
+        foreach ($__sk in @('CRITICO', 'ALTO', 'MONITORADO')) { if ($__sevResumo.ContainsKey($__sk)) { $__sevTxt += ($__sk + '=' + $__sevResumo[$__sk].emissores + 'em' + $__sevResumo[$__sk].lotes + 'lotes:' + $__sevResumo[$__sk].modelo) } }
+        Write-Log ('SEVERIDADE: regra unica ativa (claude-subscription) ' + ($__sevTxt -join ' '))
     }
     Write-Log ('Fila aplicada: ' + $fila.Count + ' emissores em ' + $jobs.Count + ' lote(s) (cap_efetivo=' + $TokenHardCap + ')')
     $lotesEsperados = if ($Perfil.modo -eq 'noturno' -or $script:VixCobFallbackModo) { @($jobsFull).Count + @($jobsLight).Count } elseif ($fila.Count -eq 0) { 0 } else { [Math]::Ceiling($fila.Count / $Perfil.chunk) }
@@ -2640,7 +2717,13 @@ try {
         if ($__cabem -le 0) {
             $estLote = [int64]$__resumoEst.Est
             $stats.tokens_hard_hit = $true
-            if ($job.Escalada) { $capEscaladaFechado = $true } else { $capAtingido = $true }
+            # CAPFAIXA1 (2026-10-16): este ramo fechava a faixa ($capAtingido) e todo lote seguinte,
+            # de qualquer classe, caia aqui sem ser medido. Basta o PRIMEIRO lote ser caro para o cap
+            # (FULL de 2 a 393.519 cada, envelope 787.037 > 700.000) e os lotes baratos de 90.360
+            # eram DEFERIDOS com acum=0. Noturna de 16/10 18:14: 35 emissores na fila, 0 analisados,
+            # 0 tokens. Cada lote ja e admitido contra acum + estimativa propria, entao nao fechar
+            # aqui nao deixa estourar o cap. A faixa so fecha por consumo REAL (CAP_EXCEDIDO,
+            # uso nao mensuravel), nunca pela estimativa de um lote que nem rodou.
             foreach ($e in $job.Chunk) { $pendingDeferred.Add([pscustomobject]@{ emissor = $e; tier = $job.Tier; motivo = $__motivoEscalada }) }
             if ($job.Escalada) { $stats.escalada_sem_orcamento += $job.Chunk.Count }
             Write-Log ('CAP pre-lote: acum=' + $stats.tokens_total + ' est=' + $estLote + ' (' + $__cpe.Custo + '/emissor fonte=' + $__cpe.Fonte + ') >= ' + $__capLote + ' - lote ' + $job.Name + '-' + $ji + ' deferred (' + $job.Chunk.Count + ' emissores, cauda de menor EWS)')
@@ -2686,8 +2769,10 @@ try {
             exit 6
         }
         $modeloPrompt = $job.Model
-        $fonteProvedor = 'openrouter'
-        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $job.Tier }
+        # PROVENIENCIA1: o rotulo vem do provider que executa (antes era a constante 'openrouter' para
+        # tudo que nao fosse codex, inclusive claude-subscription).
+        $fonteProvedor = 'claude'
+        if ($script:VixUsaOpenRouter) { $modeloPrompt = Get-VixOpenRouterModel $job.Tier; $fonteProvedor = 'openrouter' }
         elseif ($script:VixUsaCodex) { $modeloPrompt = 'codex-subscription'; $fonteProvedor = 'codex' }
         $prompt = New-BatchPrompt $job.Chunk $label $modeloPrompt $job.Skill $janIni $janFim $fonteProvedor -Ultra:$job.Ultra -Tier $job.Tier -ModoEscalada:([bool]$job.Escalada) -ModoBarato:([bool]$job.Barato)
         $promptPath = Join-Path $LogDir ($Perfil.prefix + '_' + $label + '_' + $DateTag + '.txt')
@@ -2703,6 +2788,9 @@ try {
         # marcados como tentados ANTES da chamada - crash no meio nao libera repeticao no mesmo dia.
         Update-VixCobFallbackGastoSeguro -Tentados @($job.Chunk | ForEach-Object { '' + $_.empresa })
         $swLote = [System.Diagnostics.Stopwatch]::StartNew()
+        $__loteIniUtc = (Get-Date).ToUniversalTime()   # PROVENIENCIA1: inicio medido do lote
+        # PROGRESSO1: lote em voo registrado antes da chamada (kill no meio deixa rastro de quem estava nele).
+        if (Get-Command Add-VixProgresso -ErrorAction SilentlyContinue) { $null = Add-VixProgresso -Path $script:VixProgressoPath -Evento 'LOTE_INICIO' -Lote $label -Empresas @($job.Chunk | ForEach-Object { $_.empresa }) }
         # COBFALLBACK1: ProviderOverride claude-subscription (padrao CODEXFALLBACK-OR1). Fora do modo
         # o valor e '' e a chamada e identica a anterior. Com o override, Invoke-ClaudeBatch confere
         # a assinatura por lote, recusa chave paga e nao desvia para OpenRouter (-not override).
@@ -2832,6 +2920,7 @@ try {
             cache_read = $result.Parcelas.cache_read; trabalho = $result.Parcelas.trabalho; duracao_sec = [Math]::Round($swLote.Elapsed.TotalSeconds, 1)
         })
 
+        $retryParsed = $null; $retryRes = $null   # PROVENIENCIA2: nao herdar retry de lote anterior
         $parsed = Get-ParsedResultados $result.Output
         $buscasLote = $parsed.Buscas
 
@@ -2948,6 +3037,24 @@ try {
                 $__nTs = Set-VixTimestampLoteCodex -Res $res -Ts ((Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ'))
                 if ($__nTs -gt 0) { Write-Log ('TIMESTAMP_LOTE|' + $emp.empresa + '|fontes_codex_carimbadas=' + $__nTs + ' (origem=orquestrador_lote)') }
             } catch { Write-Log ('TIMESTAMP_LOTE_ERRO|' + $emp.empresa + '|' + $_.Exception.Message) }
+            # PROVENIENCIA1: provedor e horario das fontes do modelo vem do orquestrador, nao do texto do modelo.
+            $__provExec = '' + $__providerExec   # C5: provider que EXECUTOU este emissor (ajustado abaixo pela invocacao real)
+            if (Get-Command Repair-VixFontesProveniencia -ErrorAction SilentlyContinue) {
+                try {
+                    # PROVENIENCIA2: provider e janela vem da invocacao que respondeu ESTE emissor (principal,
+                    # retry, ou o lote que um fallback assumiu), nao do provider configurado.
+                    $__veioRetry = ($null -ne $retryParsed -and $null -ne $retryParsed.Map -and $null -ne (Get-ResultadoEmissor $retryParsed.Map $emp.empresa))
+                    $__orig = Resolve-VixOrigemExecucao -Principal $result -Retry $retryRes -VeioDoRetry $__veioRetry -ProviderConfigurado $__providerExec
+                    if ($__orig.Provider) { $__provExec = '' + $__orig.Provider }
+                    $__pv = Repair-VixFontesProveniencia -Res $res -ProvedorAtivo $__orig.Provider -LoteIniUtc $__orig.IniUtc -LoteFimUtc $__orig.FimUtc -Modo (Get-VixProvenienciaModo)
+                    if ($__pv.provedor_reescrito -gt 0 -or $__pv.consulta_sem_prova -gt 0 -or $__pv.consulta_pela_janela -gt 0) {
+                        Write-Log ('PROVENIENCIA|' + $emp.empresa + '|provider_executado=' + $__orig.Provider + '(' + $__orig.Origem + ')|provedor_reescrito=' + $__pv.provedor_reescrito + '|consulta_na_janela=' + $__pv.consulta_na_janela + '|consulta_sem_prova=' + $__pv.consulta_sem_prova + '|consulta_pela_janela=' + $__pv.consulta_pela_janela + '|modo=' + (Get-VixProvenienciaModo) + ' (timestamp original preservado; sem_prova nao conta como cobertura)')
+                    }
+                } catch { Write-Log ('PROVENIENCIA_ERRO|' + $emp.empresa + '|' + $_.Exception.Message) }
+            }
+            # C5: o payload que vai ao Worker carrega o provider que EXECUTOU (o rotulo `provedor` do perfil, que
+            # o Worker ja consome, nao muda).
+            try { $res | Add-Member -NotePropertyName '_provider_executado' -NotePropertyValue $__provExec -Force } catch { }
             if ($script:VixColetorAtivo) {
                 try {
                     $__colIA = Get-VixColetorParaEmissor ('' + $emp.empresa)
@@ -3134,7 +3241,7 @@ try {
                 try {
                     $__cdCls = '' + $classif
                     if ($__decAus.recheck) { $__cdCls = 'INCONCLUSIVO' }
-                    $__cdAn = [ordered]@{ provider = ('' + (Get-VixLlmProvider)); provedor_rotulo = ('' + $job.Provedor); modelo = ('' + $job.Model); tier = ('' + $job.Tier); barato = [bool]$job.Barato; escalada = [bool]$job.Escalada; classificacao = $__cdCls; submit_ok = [bool]$subOk; n_eventos = [int]$nEv; lote = ('' + $job.Name) }
+                    $__cdAn = [ordered]@{ provider = ('' + $__provExec); provider_configurado = ('' + (Get-VixLlmProvider)); provedor_rotulo = ('' + $job.Provedor); modelo = ('' + $job.Model); tier = ('' + $job.Tier); barato = [bool]$job.Barato; escalada = [bool]$job.Escalada; classificacao = $__cdCls; submit_ok = [bool]$subOk; n_eventos = [int]$nEv; lote = ('' + $job.Name) }
                     $__cdA = Register-VixCobDiaria -Path $script:VixCobDiariaPath -DateTag $DateTag -Empresa ('' + $emp.empresa) -Estado 'VERIFICADO_ANALISADO' -Motivo ('analise:' + $__cdCls) -Rotina $Perfil.modo -Fontes @($res.fontes_consultadas) -Analise $__cdAn
                     Write-Log ('COBDIARIA|' + $emp.empresa + '|analise|' + $__cdCls + '|prova=' + $__cdA.Prova + '|estado=' + $__cdA.Estado)
                 } catch { Write-Log ('COBDIARIA_ERRO: analise ' + $emp.empresa + ' - ' + $_.Exception.Message) }
@@ -3196,6 +3303,7 @@ try {
         if ($buscasReaisLote -gt 0 -or $buscasLote -lt 0) { $buscasLote = $buscasReaisLote }
         if ($buscasLote -ge 0) { $stats.buscas_total += $buscasLote }
         Write-Log ('LOTE_FECHADO|' + $label + '|ok=' + $loteOk + '|fail=' + $loteFail + '|dryrun=' + $loteDry + '|buscas=' + $buscasLote + '|criticos=' + $loteCrit + '|tokens=' + $bt + '|duracao_sec=' + [Math]::Round($swLote.Elapsed.TotalSeconds, 1))
+        if (Get-Command Add-VixProgresso -ErrorAction SilentlyContinue) { $null = Add-VixProgresso -Path $script:VixProgressoPath -Evento 'LOTE_FECHADO' -Lote $label -Empresas @($job.Chunk | ForEach-Object { $_.empresa }) -Extra @{ ok = $loteOk; fail = $loteFail; tokens = $bt } }
         if ($loteFail -gt 0 -and -not $DryRun) { $stats.batch_fail++ } else { $stats.batch_ok++ }
         Remove-Item $promptPath -Force -ErrorAction SilentlyContinue
         Update-VixLock
@@ -3226,7 +3334,7 @@ try {
     # aberto e cap estourado nao sao rotacao: sao corte por orcamento, e o texto de
     # CIRCUITO_ABERTO sempre prometeu exatamente isso ("tudo que nao for SKIP sai como DEFERIDO").
     if ($Perfil.modo -eq 'noturno') {
-        $caudaRotacao = Get-VixCaudaRotacao -AnalyzeList $analyzeList -Fila $fila -CapAtingido $capAtingido -TokenHardCap $TokenHardCap -CircuitoAberto ([bool]$custoDia.circuito_aberto)
+        $caudaRotacao = Get-VixCaudaRotacao -AnalyzeList $analyzeList -Fila $fila -CapAtingido ($capAtingido -or [bool]$stats.tokens_hard_hit) -TokenHardCap $TokenHardCap -CircuitoAberto ([bool]$custoDia.circuito_aberto)
         if ($caudaRotacao.Emissores.Count -gt 0) {
             foreach ($eRot in $caudaRotacao.Emissores) {
                 # MAXEMISSORESREAL1: cortado pelo -MaxEmissores do operador nao e rotacao.
@@ -3668,7 +3776,7 @@ try {
         } catch { Write-Log ('COBFALLBACK_ERRO: resumo - ' + $_.Exception.Message) }
     } elseif ($script:VixCobDiariaPath) {
         try {
-            $__cdProv = '' + (Get-VixLlmProvider)
+            $__cdProv = '' + (Get-VixProviderEfetivo (Get-VixLlmProvider) ([bool]$script:VixUsaOpenRouter) ([bool]$script:VixUsaCodex))
             $__cdMB = Get-VixModeloLoteClasse -Amostras @(Get-VixHistoricoCustoClasse $LogDir $__cdProv 'BARATO') -DefaultEmissor 0
             $__cdMF = Get-VixModeloLoteClasse -Amostras @(@(Get-VixHistoricoCustoClasse $LogDir $__cdProv 'FULL') + @(Get-VixHistoricoCustoClasse $LogDir $__cdProv 'ESCALADA')) -DefaultEmissor 0
             $__cdCusto = Get-VixCustoDia $LogDir $DateTag $custoCfg
@@ -3680,9 +3788,12 @@ try {
             $__cdG = Read-VixCobFallbackGasto (Get-VixCobFallbackGastoPath $LogDir $DateTag) $DateTag
             $__cdRg = Get-VixCobFallbackResumoGasto $__cdG
             $__cdOrcCl = Get-VixCobFallbackSaldo -Teto ([int64]$__cdCfg.CLAUDE_FALLBACK_DIA) -Gasto ([int64]$__cdRg.Gasto) -Mensuravel ([bool]$__cdRg.Mensuravel)
+            # CAPACIDADE1: mesma regra do motor (SEM_TETO ignora o circuito), com os booleanos no log.
+            $__cdPrim = Get-VixCapacidadePrimario $__cdCusto $custoCfg $__cdProv ([bool]$__disjuntor.aberto) ([int64]$custoCfg.RESERVA_VERIFICACAO)
             $__cdCap = @{
-                PrimarioDisponivel = ((-not $__disjuntor.aberto) -and (-not $__cdCusto.circuito_aberto))
-                OrcamentoPrimario = [int64](Get-VixCapEfetivo ([int64]$custoCfg.TETO_DIA) $__cdCusto $custoCfg ([int64]$custoCfg.RESERVA_VERIFICACAO))
+                PrimarioDisponivel = [bool]$__cdPrim.PrimarioDisponivel
+                OrcamentoPrimario = [int64]$__cdPrim.OrcamentoPrimario
+                MotivoPrimario = '' + $__cdPrim.MotivoPrimario
                 CustoBarato = [int64](Get-VixEstimativaLoteClasse -Modelo $__cdMB -Emissores 1); CustoFull = [int64](Get-VixEstimativaLoteClasse -Modelo $__cdMF -Emissores 1)
                 ClaudeHabilitado = ((('' + $__cdFlagCl).Trim() -eq '1') -and [int64]$__cdCfg.CLAUDE_FALLBACK_DIA -gt 0); ClaudeLimiteAtingido = [bool](Get-VixCobFallbackLimiteAtingido $__cdG); OrcamentoClaude = [int64]$__cdOrcCl
             }
@@ -3692,7 +3803,7 @@ try {
             }
             $__cdFech = Invoke-VixCobDiariaFechamento -LogDir $LogDir -DateTag $DateTag -Fechamento:($script:VixCobDiariaAtivo -and $Perfil.modo -eq 'noturno') -AlertaAcao $__cdAlerta -Rotina $Perfil.id -Capacidade $__cdCap
             Write-Log $__cdFech.Linha
-            Write-Log ('COBDIARIA_CAPACIDADE: provider=' + $__cdProv + ' barato=' + $__cdCap.CustoBarato + ' full=' + $__cdCap.CustoFull + ' saldo_dia=' + $__cdCap.OrcamentoPrimario + ' claude_fallback=' + [int]$__cdCap.ClaudeHabilitado + ' relatorio=' + $__cdFech.RelatorioPath)
+            Write-Log ('COBDIARIA_CAPACIDADE: provider=' + $__cdProv + ' barato=' + $__cdCap.CustoBarato + ' full=' + $__cdCap.CustoFull + ' saldo_dia=' + $__cdCap.OrcamentoPrimario + ' primario_disponivel=' + [bool]$__cdPrim.PrimarioDisponivel + ' motivo_primario=' + $__cdPrim.MotivoPrimario + ' disjuntor_aberto=' + [bool]$__cdPrim.DisjuntorAberto + ' circuito_aberto=' + [bool]$__cdPrim.CircuitoAberto + ' sem_teto=' + [bool]$__cdPrim.SemTeto + ' margem=' + $__cdPrim.Margem + ' reserva=' + $__cdPrim.Reserva + ' claude_fallback=' + [int]$__cdCap.ClaudeHabilitado + ' relatorio=' + $__cdFech.RelatorioPath)
         } catch { Write-Log ('COBDIARIA_ERRO: fechamento - ' + $_.Exception.Message) }
     }
     Write-Log ('ROTINA_RESUMO|' + $Perfil.id + '|local|' + $inicioIso + '|' + $fimIso + '|' + $resultadoTxt + '|' + $stats.submit_ok + '|' + $errosTotal + '|' + $stats.deferred + '|' + $versaoWorker)

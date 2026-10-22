@@ -60,9 +60,10 @@ Assert-Rl ($motor -match 'cobertura_deferidos\+\+\s*\r?\n\s*Update-VixRecheckExe
 Assert-Rl ($motor -match 'if \(\$__concluida -and -not \$__decAus\.recheck\) \{ Remove-VixPendenteSeguro \$emp\.empresa; Update-VixRecheckExecucao \$recheckExecucao \$emp\.empresa \$false \}') 'L4 so analise concluida sem recheck desmarca'
 Assert-Rl ($motor -match '\$recheckExecucao = @\{\}') 'L5 mapa inicializado'
 
-Write-Host '== Ponta ruim contra o HEAD =='
+Write-Host '== Ponta ruim contra o commit anterior (a4ced5b) =='
 $head = ''
-try { $head = (& git -C $Raiz show 'HEAD:scripts/run_vixradar_varredura.ps1' 2>$null) -join "`n" } catch { }
+# a4ced5b = ultimo commit ANTES da correcao (o HEAD ja a contem). Sem o commit no clone, SKIP.
+try { $head = (& git -C $Raiz show 'a4ced5b:scripts/run_vixradar_varredura.ps1' 2>$null) -join "`n" } catch { }
 if ($head) {
     Assert-Rl ($head -match '\[int\]\$stats\.cobertura_deferidos \+ \[int\]\$stats\.submit_fail') 'H1 HEAD soma disparos (reproduz o 4 de 21/10)'
     Assert-Rl (-not ((Get-FuncDefsFromText $head @('Update-VixRecheckExecucao')).ContainsKey('Update-VixRecheckExecucao'))) 'H2 HEAD nao tem a funcao'

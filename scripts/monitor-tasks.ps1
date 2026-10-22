@@ -37,6 +37,9 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 # uma rotina que rodou DEPOIS do bloqueio e 9006 (violacao do gate). 9004 ALERTA_AUTH segue
 # valendo: escalacao para chave paga vista em log prova que o corte falhou e vira erro.
 . (Join-Path $ScriptDir 'lib\vixradar-llm-provider.ps1')
+# TAREFAAUSENTE1: carregada junto das demais libs, com caminho literal, para o detector de chamada orfa
+# (test-monitor-funcoes.ps1) enxergar a definicao. O bloco que a usa continua condicionado ao motor.
+. (Join-Path $ScriptDir 'lib\vixradar-tarefas-esperadas.ps1')
 $LlmProvider   = Get-VixLlmProvider
 $OpenRouterAdapter = Join-Path $ScriptDir 'lib\vixradar-openrouter.ps1'
 $OpenRouterAdapterHabilitado = $false
@@ -259,6 +262,25 @@ $allTasks = Get-ScheduledTask | Where-Object {
 }
 
 Write-Log "Tasks escaneadas: $($allTasks.Count)"
+
+# TAREFAAUSENTE1 (2026-10-21): o laco abaixo so ve tarefa que existe. Tarefa apagada do Agendador
+# (VIXRadar-Noturno e VIXRadar-Sentinela sumiram em 21/10 21:03) nao deixava rastro nem alerta.
+# Com o motor Task Scheduler ativo, cada tarefa esperada que nao existe vira erro 9009.
+if ($MotorAtual -eq 'task-scheduler' -and (Get-Command Get-VixTarefasAusentes -ErrorAction SilentlyContinue)) {
+    $__nomesVivos = @(Get-ScheduledTask -ErrorAction SilentlyContinue | ForEach-Object { $_.TaskName })
+    foreach ($__aus in @(Get-VixTarefasAusentes -Existentes $__nomesVivos)) {
+        $erros += [ordered]@{
+            task    = $__aus
+            code    = 9009
+            codeHex = '0x2331'
+            lastRun = ('ausente ' + (Get-Date).ToString('yyyy-MM-dd'))
+            ageDays = 0
+            script  = 'desconhecido'
+            reason  = 'TAREFA AUSENTE: a tarefa nao existe mais no Agendador, entao a rotina nao roda e nenhuma checagem de resultado a enxerga. Recriar pelo manifest em C:\ProgramData\SilentScheduledTasks\manifest.json e pelo XML de backup (BACKUPS\operacional). Quem apagou nao foi provado em 21/10/2026.'
+        }
+        Write-Log ('ERRO 9009: tarefa ' + $__aus + ' AUSENTE do Agendador.')
+    }
+}
 
 foreach ($task in $allTasks) {
     $name = $task.TaskName

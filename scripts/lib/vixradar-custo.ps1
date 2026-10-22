@@ -25,7 +25,7 @@ function Get-VixCustoConfig([string]$LogDir) {
     if (Test-Path $p) {
         try {
             $j = Get-Content $p -Raw -Encoding UTF8 | ConvertFrom-Json
-            foreach ($k in @('TETO_DIA', 'RESERVA_VERIFICACAO', 'RESERVA_NOTURNO', 'MARGEM_MINIMA', 'SENTINELA_DIA')) {
+            foreach ($k in @('TETO_DIA', 'RESERVA_VERIFICACAO', 'RESERVA_NOTURNO', 'MARGEM_MINIMA', 'SENTINELA_DIA', 'SEM_TETO')) {
                 if ($j.PSObject.Properties[$k]) { $cfg[$k] = [int64]$j.$k }
             }
         } catch {
@@ -33,6 +33,69 @@ function Get-VixCustoConfig([string]$LogDir) {
         }
     }
     return $cfg
+}
+
+# SEMTETO1 (2026-10-16): teto de tokens desligado so quando o operador pediu (SEM_TETO=1) E o
+# executor e o Claude da assinatura. Qualquer outro provedor, ou config ausente, mantem o cap.
+function Test-VixSemTeto($Config, [string]$Provider) {
+    if (-not $Config -or -not $Config.ContainsKey('SEM_TETO')) { return $false }
+    $v = [int64]0
+    if (-not [int64]::TryParse(('' + $Config.SEM_TETO), [ref]$v)) { return $false }
+    return ($v -eq 1 -and $Provider -eq 'claude-subscription')
+}
+
+# CAPACIDADE2 (2026-10-22): o provider que vale para SEM_TETO e o EFETIVO, nao o configurado na env.
+# Get-VixLlmProvider le so VIXRADAR_LLM_PROVIDER. Quando a assinatura fica indisponivel e
+# VIXRADAR_CLAUDE_FALLBACK_PROVIDER=openrouter desvia a rotina inteira (VixUsaOpenRouter=$true), a env
+# continua dizendo claude-subscription: SEM_TETO=1 ligava o cap de 100 milhoes em cima de consumo PAGO.
+function Get-VixProviderEfetivo([string]$Configurado, [bool]$UsaOpenRouter = $false, [bool]$UsaCodex = $false) {
+    if ($UsaOpenRouter) { return 'openrouter' }
+    if ($UsaCodex) { return 'codex' }
+    return (('' + $Configurado).Trim().ToLowerInvariant())
+}
+
+# CAPACIDADE2: com SEM_TETO ligado o cap de tokens some, entao um lote desviado para o provedor PAGO
+# (OpenRouter) ficaria sem nenhum limite. A regra: o fallback pago so e liberado se o teto NORMAL do dia
+# ainda tem margem (circuito fechado). Sem SEM_TETO o cap normal ja governa, e a funcao nao interfere.
+function Test-VixFallbackPagoPermitido($CustoDia, [bool]$SemTeto) {
+    if (-not $SemTeto) { return @{ Permitido = $true; Motivo = 'cap_normal_governa' } }
+    # C1 (22/10/2026): custo do dia NAO mensuravel (metrics ilegivel, tokens nao numericos, uso desconhecido)
+    # subestima o gasto e deixa o circuito parecer fechado. Mesma regra de Get-VixCapEfetivo: sem custo
+    # mensuravel nao ha orcamento verificavel, entao o consumo pago fica bloqueado.
+    if ($null -eq $CustoDia) { return @{ Permitido = $false; Motivo = 'sem_teto_nao_libera_consumo_pago_custo_do_dia_ausente' } }
+    $mensuravel = $false
+    if ($CustoDia -is [System.Collections.IDictionary] -and $CustoDia.Contains('mensuravel')) { $mensuravel = [bool]$CustoDia['mensuravel'] }
+    elseif ($null -ne $CustoDia.PSObject.Properties['mensuravel']) { $mensuravel = [bool]$CustoDia.mensuravel }
+    if (-not $mensuravel) { return @{ Permitido = $false; Motivo = 'sem_teto_nao_libera_consumo_pago_custo_do_dia_nao_mensuravel' } }
+    $circuito = $true
+    if ($null -ne $CustoDia -and $CustoDia -is [System.Collections.IDictionary] -and $CustoDia.Contains('circuito_aberto')) { $circuito = [bool]$CustoDia['circuito_aberto'] }
+    elseif ($null -ne $CustoDia -and $null -ne $CustoDia.PSObject.Properties['circuito_aberto']) { $circuito = [bool]$CustoDia.circuito_aberto }
+    if ($circuito) { return @{ Permitido = $false; Motivo = 'sem_teto_nao_libera_consumo_pago_teto_do_dia_esgotado' } }
+    return @{ Permitido = $true; Motivo = 'teto_do_dia_com_margem' }
+}
+
+# CAPACIDADE1 (2026-10-21): a cobertura diaria decidia "primario indisponivel" por circuito_aberto
+# mesmo com SEM_TETO=1 no Claude da assinatura, onde o motor ja ignora o circuito (log "SEM_TETO:
+# ... circuito_aberto=True ignorado"). Resultado em 21/10: saldo_dia=0 e 24 pendentes com o motivo
+# "primario_indisponivel_claude_desligado", sem a linha do log dizer qual condicao decidiu.
+# Funcao pura: devolve a decisao E os booleanos que a causaram, para o log registrar todos.
+function Get-VixCapacidadePrimario($CustoDia, $Config, [string]$Provider, [bool]$DisjuntorAberto = $false, [int64]$Reserva = 0) {
+    $semTeto = [bool](Test-VixSemTeto $Config $Provider)
+    $circuito = $false
+    if ($null -ne $CustoDia -and $CustoDia -is [System.Collections.IDictionary] -and $CustoDia.Contains('circuito_aberto')) { $circuito = [bool]$CustoDia['circuito_aberto'] }
+    elseif ($null -ne $CustoDia -and $null -ne $CustoDia.PSObject.Properties['circuito_aberto']) { $circuito = [bool]$CustoDia.circuito_aberto }
+    $disponivel = ((-not $DisjuntorAberto) -and ($semTeto -or (-not $circuito)))
+    $motivo = 'ok'
+    if ($DisjuntorAberto) { $motivo = 'disjuntor_do_provider_aberto' }
+    elseif ($semTeto) { $motivo = 'sem_teto_assinatura' }
+    elseif ($circuito) { $motivo = 'circuito_do_dia_aberto_teto_esgotado' }
+    $orc = [int64]0
+    if ($semTeto -and -not $DisjuntorAberto) { $orc = [int64]100000000 }
+    elseif (-not $DisjuntorAberto) { $orc = [int64](Get-VixCapEfetivo ([int64]$Config.TETO_DIA) $CustoDia $Config $Reserva) }
+    $margem = $null
+    if ($null -ne $CustoDia -and $CustoDia -is [System.Collections.IDictionary] -and $CustoDia.Contains('margem')) { $margem = $CustoDia['margem'] }
+    elseif ($null -ne $CustoDia -and $null -ne $CustoDia.PSObject.Properties['margem']) { $margem = $CustoDia.margem }
+    return @{ PrimarioDisponivel = $disponivel; OrcamentoPrimario = $orc; MotivoPrimario = $motivo; SemTeto = $semTeto; DisjuntorAberto = [bool]$DisjuntorAberto; CircuitoAberto = $circuito; Margem = $margem; Reserva = [int64]$Reserva }
 }
 
 function Read-VixMetrics([string]$Path) {
@@ -140,15 +203,31 @@ function Get-VixRotinaLogConsumo([string]$LogDir, [string]$Rotina, [string]$Date
     }
     $vistas = New-Object 'System.Collections.Generic.HashSet[string]' ([StringComparer]::Ordinal)
     $rxFim = '^\S+ \S+ FIM: ' + [regex]::Escape($Rotina) + ' concluido .*?\btokens=(\d+)\b'
+    $rxIni = '^\S+ \S+ INICIO: ' + [regex]::Escape($Rotina) + ' '
+    # CUSTOSEMFIM1 (2026-10-21): execucao morta antes do FIM (task apagada, queda de energia) nao deixa
+    # linha FIM nem metrics, e o CUSTO_DIA contava 0 (noturno=0 com 1,1M gastos em 21/10). Cada
+    # execucao e um trecho INICIO..FIM; sem FIM, vale a soma dos LOTE_FECHADO do trecho (piso, o FIM
+    # real e cerca de 30% maior). Trecho com FIM nunca soma os lotes (sem contagem dupla).
+    $semFim = 0
     foreach ($a in $arqs) {
+        $segLotes = [int64]0
         foreach ($line in @(Get-Content -LiteralPath $a.FullName -Encoding UTF8 -ErrorAction SilentlyContinue)) {
-            if ($line -match $rxFim) {
-                if (-not $vistas.Add($line)) { continue }
-                $total += [int64]$Matches[1]; $runs++
+            if ($line -match $rxIni) {
+                if ($segLotes -gt 0) { $total += $segLotes; $runs++; $semFim++ }
+                $segLotes = [int64]0
+                continue
             }
+            if ($line -match $rxFim) {
+                if (-not $vistas.Add($line)) { $segLotes = [int64]0; continue }
+                $total += [int64]$Matches[1]; $runs++
+                $segLotes = [int64]0
+                continue
+            }
+            if ($line -match 'LOTE_FECHADO\|.*\bdryrun=0\b.*?\btokens=(\d+)\b') { $segLotes += [int64]$Matches[1] }
         }
+        if ($segLotes -gt 0) { $total += $segLotes; $runs++; $semFim++ }
     }
-    return @{ tokens = $total; execucoes = $runs }
+    return @{ tokens = $total; execucoes = $runs; sem_fim = $semFim }
 }
 
 function Get-VixCustoDia([string]$LogDir, [string]$DateTag, $Config) {

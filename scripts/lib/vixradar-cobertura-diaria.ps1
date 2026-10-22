@@ -319,7 +319,8 @@ function Get-VixCobDiariaProximoPasso {
     param(
         [string]$Estado = '', [int]$TentativasColeta = 0, [bool]$IaInconclusiva = $false, [bool]$Critico = $false,
         [bool]$PrimarioDisponivel = $true, [int64]$OrcamentoPrimario = 0, [int64]$CustoBarato = 0, [int64]$CustoFull = 0,
-        [bool]$ClaudeHabilitado = $false, [bool]$ClaudeLimiteAtingido = $false, [int64]$OrcamentoClaude = 0
+        [bool]$ClaudeHabilitado = $false, [bool]$ClaudeLimiteAtingido = $false, [int64]$OrcamentoClaude = 0,
+        [string]$MotivoPrimario = ''
     )
     if ($script:VixCobDiariaTerminais -contains $Estado) { return @{ Passo = 'NADA'; Tier = ''; Custo = [int64]0; Motivo = 'verificado' } }
     if ($Estado -eq 'FALHA_CONSULTA' -and $TentativasColeta -lt $script:VixCobDiariaMaxTentativasColeta) {
@@ -334,7 +335,7 @@ function Get-VixCobDiariaProximoPasso {
     if ($custo -le 0) { return @{ Passo = 'INSUFICIENCIA'; Tier = $tier; Custo = [int64]0; Motivo = 'custo_desconhecido_fail_closed' } }
     if ($PrimarioDisponivel -and $OrcamentoPrimario -ge $custo) { return @{ Passo = 'IA_PRIMARIA'; Tier = $tier; Custo = [int64]$custo; Motivo = ('primario_' + $tier.ToLowerInvariant()) } }
     $porque = 'orcamento_primario_insuficiente'
-    if (-not $PrimarioDisponivel) { $porque = 'primario_indisponivel' }
+    if (-not $PrimarioDisponivel) { $porque = 'primario_indisponivel'; if ($MotivoPrimario) { $porque = $porque + '_' + $MotivoPrimario } }
     if ($ClaudeHabilitado -and -not $ClaudeLimiteAtingido -and $OrcamentoClaude -ge $custo) {
         return @{ Passo = 'CLAUDE_FALLBACK'; Tier = $tier; Custo = [int64]$custo; Motivo = ($porque + '_claude_ultimo_recurso') }
     }
@@ -419,7 +420,7 @@ function Invoke-VixCobDiariaFechamento {
         if ($null -ne $Capacidade) {
             $dec = Get-VixCobDiariaProximoPasso -Estado $p.estado -TentativasColeta $p.tentativas_coleta -IaInconclusiva (('' + $p.motivo) -like '*inconclusiv*') `
                 -PrimarioDisponivel ([bool]$Capacidade.PrimarioDisponivel) -OrcamentoPrimario ([int64]$Capacidade.OrcamentoPrimario) -CustoBarato ([int64]$Capacidade.CustoBarato) -CustoFull ([int64]$Capacidade.CustoFull) `
-                -ClaudeHabilitado ([bool]$Capacidade.ClaudeHabilitado) -ClaudeLimiteAtingido ([bool]$Capacidade.ClaudeLimiteAtingido) -OrcamentoClaude ([int64]$Capacidade.OrcamentoClaude)
+                -ClaudeHabilitado ([bool]$Capacidade.ClaudeHabilitado) -ClaudeLimiteAtingido ([bool]$Capacidade.ClaudeLimiteAtingido) -OrcamentoClaude ([int64]$Capacidade.OrcamentoClaude) -MotivoPrimario ('' + $Capacidade.MotivoPrimario)
             # O orcamento e consumido na ordem: o segundo pendente ve o saldo que o primeiro deixou.
             if ($dec.Passo -eq 'IA_PRIMARIA') { $Capacidade.OrcamentoPrimario = [int64]$Capacidade.OrcamentoPrimario - [int64]$dec.Custo }
             elseif ($dec.Passo -eq 'CLAUDE_FALLBACK') { $Capacidade.OrcamentoClaude = [int64]$Capacidade.OrcamentoClaude - [int64]$dec.Custo }

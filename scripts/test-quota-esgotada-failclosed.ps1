@@ -98,6 +98,11 @@ function Test-LinhaAscii([string]$Texto) {
 # libs reais (auth/ambient ja dot-sourceiam a lib de provider)
 . $AuthLib
 . $AmbLib
+# CAPACIDADE2: o ramo de fallback pago do motor consulta Get-VixCustoDia/Test-VixFallbackPagoPermitido
+# (lib custo) e a classe da falha (lib cobertura). Em producao o motor dot-sourceia as duas na
+# partida (e sai com erro se faltar funcao); a suite precisa das mesmas libs para exercer o ramo.
+. (Join-Path $Raiz 'scripts\lib\vixradar-custo.ps1')
+. (Join-Path $Raiz 'scripts\lib\vixradar-cobertura.ps1')
 
 # TODAS as funcoes do motor, sem executar uma linha do corpo principal. Extrair todas
 # (e nao uma lista fixa) mantem a suite de pe se o patch criar funcao nova no caminho.
@@ -179,6 +184,7 @@ $env:PATH = $FakeDir + ';' + $env:PATH
 
 $Perfil        = @{ prefix = 'vixradar-teste-cota' }
 $LogDir        = $LogDirFake
+$custoCfg      = Get-VixCustoConfig $LogDir
 $McpConfigFile = Join-Path $FakeDir 'mcp-empty.json'
 Set-Content -Path $McpConfigFile -Value '{"mcpServers":{}}' -Encoding ASCII
 

@@ -374,6 +374,72 @@ function Get-VixCaudaRotacao {
     return [pscustomobject]@{ Emissores = $cauda; Motivo = $motivo }
 }
 
+# SEVERIDADE1 (2026-10-16, decisao do operador): com o Claude da assinatura como executor, o
+# MODELO de cada emissor do aprofundamento sai da severidade, nao do tier. Regra unica para a
+# matinal e a noturna. A regra antiga (ate 02/09) mandava ao Sonnet so EWS>=38 ou CVM novo e
+# rebaixava o resto ao lote rapido; a de 16/10 mandava 50 emissores ao Sonnet (640 s por lote de
+# 4). Aqui ninguem perde o roteiro profundo nem as buscas: muda so quem le.
+#   CRITICO    EWS>=50, ou CVM novo com EWS>=30           Sonnet, lote 2
+#   ALTO       EWS>=30, CVM novo, imprensa recente         Sonnet, lote 4
+#   MONITORADO resto do aprofundamento (rotacao semanal)   Haiku com o roteiro FULL, lote 6
+$script:VixSevEwsCritico = 50
+$script:VixSevEwsAlto = 30
+$script:VixSevChunk = @{ CRITICO = 2; ALTO = 4; MONITORADO = 6 }
+
+function Get-VixSeveridadeEmissor($Emissor) {
+    $ews = 0.0; $cvm = 0
+    try { if ($null -ne $Emissor.ews_score) { $ews = [double]$Emissor.ews_score } } catch { $ews = 0.0 }
+    try { if ($null -ne $Emissor.cvm_novos) { $cvm = [int]$Emissor.cvm_novos } } catch { $cvm = 0 }
+    $mot = (@($Emissor.motivos) | ForEach-Object { '' + $_ }) -join ' '
+    if ($ews -ge $script:VixSevEwsCritico) { return @{ Nivel = 'CRITICO'; Motivo = ('ews=' + $ews) } }
+    if ($cvm -gt 0 -and $ews -ge $script:VixSevEwsAlto) { return @{ Nivel = 'CRITICO'; Motivo = ('cvm_novos=' + $cvm + ' ews=' + $ews) } }
+    if ($ews -ge $script:VixSevEwsAlto) { return @{ Nivel = 'ALTO'; Motivo = ('ews=' + $ews) } }
+    if ($cvm -gt 0 -or $mot -match 'cvm_delta') { return @{ Nivel = 'ALTO'; Motivo = ('cvm_novos=' + $cvm) } }
+    if ($mot -match 'imprensa_recente') { return @{ Nivel = 'ALTO'; Motivo = 'imprensa_recente' } }
+    return @{ Nivel = 'MONITORADO'; Motivo = ('ews=' + $ews) }
+}
+
+# Quem esta no lote rapido com severidade CRITICO ou ALTO sobe para o aprofundamento. Ordem de
+# entrada preservada nas duas listas; o promovido vai para o FIM do aprofundamento e a
+# montagem por severidade o coloca no nivel certo.
+function Select-VixPromocaoSeveridade([object[]]$Full = @(), [object[]]$Light = @()) {
+    $novoFull = New-Object System.Collections.Generic.List[object]
+    $novoLight = New-Object System.Collections.Generic.List[object]
+    $prom = New-Object System.Collections.Generic.List[string]
+    foreach ($e in @($Full)) { $novoFull.Add($e) }
+    foreach ($e in @($Light)) {
+        $n = (Get-VixSeveridadeEmissor $e).Nivel
+        if ($n -eq 'CRITICO' -or $n -eq 'ALTO') { $novoFull.Add($e); $prom.Add(('' + $e.empresa)) } else { $novoLight.Add($e) }
+    }
+    return @{ Full = @($novoFull.ToArray()); Light = @($novoLight.ToArray()); Promovidos = @($prom.ToArray()) }
+}
+
+# Lotes FULL por severidade, na ordem CRITICO, ALTO, MONITORADO, preservando a ordem de
+# prioridade de entrada dentro de cada nivel. Mesmo formato de job do New-VixJobsPorTier, com a
+# chave Severidade a mais.
+function New-VixJobsPorSeveridade {
+    param(
+        [object[]]$Selecionados = @(),
+        [string]$ModelSonnet = '',
+        [string]$ModelHaiku = '',
+        [string]$Skill = '',
+        [string]$Provedor = ''
+    )
+    $jobs = New-Object System.Collections.Generic.List[object]
+    $grupos = [ordered]@{ CRITICO = @(); ALTO = @(); MONITORADO = @() }
+    foreach ($e in @($Selecionados)) { $n = (Get-VixSeveridadeEmissor $e).Nivel; $grupos[$n] = @($grupos[$n]) + @($e) }
+    foreach ($nivel in @($grupos.Keys)) {
+        $lista = @($grupos[$nivel])
+        if ($lista.Count -eq 0) { continue }
+        $modelo = if ($nivel -eq 'MONITORADO') { $ModelHaiku } else { $ModelSonnet }
+        foreach ($j in (New-VixJobsPorTier -Selecionados $lista -Tier 'FULL' -Chunk ([int]$script:VixSevChunk[$nivel]) -Model $modelo -Skill $Skill -Ultra $false -Provedor $Provedor)) {
+            $j['Severidade'] = $nivel
+            $jobs.Add($j)
+        }
+    }
+    return $jobs
+}
+
 # Monta os lotes de uma lista ja ordenada, com tier e higiene proprios: FULL usa o modelo e o
 # prompt aprofundados, LIGHT usa os do perfil. Devolve lista de jobs no mesmo formato que o
 # motor ja consome (Name, Model, Chunk, Skill, Ultra, Provedor, Tier).
